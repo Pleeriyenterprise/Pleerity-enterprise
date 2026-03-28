@@ -3,7 +3,8 @@ Contractor portal API: work orders assigned to the contractor, status updates, e
 All routes require contractor_route_guard (JWT with role=ROLE_CONTRACTOR and contractor_id).
 Contractors only see and act on work orders where contractor_id matches their own.
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -12,6 +13,7 @@ from middleware import contractor_route_guard
 from services import maintenance_service
 from services import invoice_service
 from services import contractor_service
+from services import contractor_evidence_service
 from models import AuditAction
 from utils.audit import create_audit_log
 
@@ -157,6 +159,87 @@ async def accept_assignment(request: Request, work_order_id: str):
     return updated or wo
 
 
+@router.get("/work-orders/{work_order_id}/evidence/file")
+async def download_work_order_evidence_file(
+    request: Request,
+    work_order_id: str,
+    storage_key: str = Query(..., min_length=3),
+    download: bool = Query(False),
+):
+    """View or download an evidence file for an assigned work order."""
+    user = await contractor_route_guard(request)
+    contractor_id = user.get("contractor_id")
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    _ensure_assigned_to_me(wo, contractor_id)
+    wo_client_id = (wo.get("client_id") or "").strip()
+    try:
+        path, media, filename = await contractor_evidence_service.resolve_contractor_evidence_file(
+            work_order_id=work_order_id,
+            wo_client_id=wo_client_id,
+            evidence_keys=wo.get("evidence_keys"),
+            storage_key=storage_key,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Evidence file missing")
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_EVIDENCE_DOWNLOADED,
+        actor_id=contractor_id,
+        client_id=wo.get("client_id"),
+        resource_type="work_order",
+        resource_id=work_order_id,
+        metadata={
+            "storage_key": contractor_evidence_service.normalize_evidence_storage_key(storage_key),
+            "download": download,
+            "via": "contractor_portal",
+        },
+    )
+    disposition = "attachment" if download else "inline"
+    return FileResponse(
+        path=str(path),
+        media_type=media,
+        filename=filename,
+        headers={"Content-Disposition": f'{disposition}; filename="{filename}"'},
+    )
+
+
+@router.post("/work-orders/{work_order_id}/evidence")
+async def upload_work_order_evidence(request: Request, work_order_id: str, file: UploadFile = File(...)):
+    """Multipart upload: stores file and appends a storage key to work order evidence_keys."""
+    user = await contractor_route_guard(request)
+    contractor_id = user.get("contractor_id")
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    _ensure_assigned_to_me(wo, contractor_id)
+    try:
+        content = await file.read()
+        storage_key, updated = await contractor_evidence_service.save_contractor_work_order_evidence(
+            work_order_id=work_order_id,
+            contractor_id=contractor_id,
+            filename=file.filename,
+            content=content,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError:
+        raise HTTPException(status_code=500, detail="Failed to save evidence") from None
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_EVIDENCE_UPLOADED,
+        actor_id=contractor_id,
+        client_id=wo.get("client_id"),
+        resource_type="work_order",
+        resource_id=work_order_id,
+        metadata={"storage_key": storage_key, "via": "multipart"},
+    )
+    return {"storage_key": storage_key, "work_order": updated}
+
+
 @router.post("/work-orders/{work_order_id}/decline")
 async def decline_assignment(request: Request, work_order_id: str):
     """Decline assignment. Clears contractor_id and sets status back to OPEN."""
@@ -166,17 +249,9 @@ async def decline_assignment(request: Request, work_order_id: str):
     if not wo:
         raise HTTPException(status_code=404, detail="Work order not found")
     _ensure_assigned_to_me(wo, contractor_id)
-    from datetime import datetime, timezone
-    db = database.get_db()
-    now = datetime.now(timezone.utc).isoformat()
-    result = await db.work_orders.find_one_and_update(
-        {"work_order_id": work_order_id, "contractor_id": contractor_id},
-        {"$set": {"contractor_id": None, "status": maintenance_service.STATUS_OPEN, "updated_at": now}},
-        return_document=True,
-    )
+    result = await maintenance_service.contractor_decline_assignment(work_order_id, contractor_id)
     if not result:
         raise HTTPException(status_code=404, detail="Work order not found or not assigned to you")
-    result.pop("_id", None)
     await create_audit_log(
         action=AuditAction.CONTRACTOR_DECLINED_ASSIGNMENT,
         actor_id=contractor_id,

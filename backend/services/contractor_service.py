@@ -262,15 +262,39 @@ async def list_contractors(
     status: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
+    pending_network_review: bool = False,
 ) -> Dict[str, Any]:
-    """List contractors, optionally filtered by client_id, vetted, source_type, status."""
+    """List contractors, optionally filtered by client_id, vetted, source_type, status.
+
+    When pending_network_review=True: landlord_added contractors submitted for network promotion
+    (submitted_to_network_at set, not yet approved_for_network_at, no rejection reason).
+    """
     db = database.get_db()
-    q = {}
+    q: Dict[str, Any] = {}
     if client_id is not None:
         q["client_id"] = client_id
     if vetted_only:
         q["vetted"] = True
-    if source_type is not None:
+    if pending_network_review:
+        q["source_type"] = SOURCE_LANDLORD_ADDED
+        q["$and"] = [
+            {"submitted_to_network_at": {"$exists": True, "$nin": [None, ""]}},
+            {
+                "$or": [
+                    {"approved_for_network_at": {"$exists": False}},
+                    {"approved_for_network_at": None},
+                    {"approved_for_network_at": ""},
+                ]
+            },
+            {
+                "$or": [
+                    {"network_submission_rejection_reason": {"$exists": False}},
+                    {"network_submission_rejection_reason": None},
+                    {"network_submission_rejection_reason": ""},
+                ]
+            },
+        ]
+    elif source_type is not None:
         q["source_type"] = source_type
     if status is not None:
         q["status"] = status
@@ -1229,7 +1253,20 @@ async def submit_contractor_to_network(contractor_id: str, client_id: str) -> Op
         {"contractor_id": contractor_id},
         {"$set": {"submitted_to_network_at": now, "updated_at": now}},
     )
-    return await get_contractor(contractor_id)
+    updated = await get_contractor(contractor_id)
+    try:
+        from utils.submission_utils import notify_admin_new_submission
+
+        cname = (doc.get("name") or doc.get("company_name") or contractor_id).strip()
+        await notify_admin_new_submission(
+            "contractor_network_submission",
+            contractor_id,
+            f"Client {client_id}: {cname} submitted a private contractor for platform network review.",
+            detail_url_path=f"/admin/ops/contractors",
+        )
+    except Exception as e:
+        logger.warning("Admin notify for contractor network submission failed: %s", e)
+    return updated
 
 
 async def approve_contractor_to_network(

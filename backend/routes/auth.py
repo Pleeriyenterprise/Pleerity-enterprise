@@ -1042,11 +1042,28 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This link has already been used")
     if password_token.get("revoked_at"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This link is no longer valid")
-    expires_at = password_token.get("expires_at")
-    if expires_at:
+    expires_at_raw = password_token.get("expires_at")
+    if expires_at_raw:
         from datetime import datetime, timezone
+
         now = datetime.now(timezone.utc)
-        exp = expires_at if isinstance(expires_at, datetime) else datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+        if isinstance(expires_at_raw, str):
+            exp = datetime.fromisoformat(expires_at_raw.replace("Z", "+00:00"))
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+            else:
+                exp = exp.astimezone(timezone.utc)
+        elif isinstance(expires_at_raw, datetime):
+            if expires_at_raw.tzinfo is None:
+                exp = expires_at_raw.replace(tzinfo=timezone.utc)
+            else:
+                exp = expires_at_raw.astimezone(timezone.utc)
+        else:
+            exp = datetime.fromisoformat(str(expires_at_raw).replace("Z", "+00:00"))
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+            else:
+                exp = exp.astimezone(timezone.utc)
         if now > exp:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This link has expired")
     if password_token.get("purpose") != "contractor_invite":
@@ -1275,7 +1292,12 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest):
         )
 
         sent = result.outcome == "sent"
-        fail_reason = None if sent else (result.block_reason or result.error_message or "send_failed")
+        if sent:
+            fail_reason = None
+        elif result.outcome == "duplicate_ignored":
+            fail_reason = "duplicate_idempotency"
+        else:
+            fail_reason = result.block_reason or result.error_message or "send_failed"
         await create_audit_log(
             action=AuditAction.FORGOT_PASSWORD_REQUESTED,
             actor_id=portal_user["portal_user_id"],

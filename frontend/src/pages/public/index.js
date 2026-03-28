@@ -14,6 +14,7 @@ export { default as ContactPage } from './ContactPage';
 export { default as CareersPage } from './CareersPage';
 export { default as PartnershipsPage } from './PartnershipsPage';
 export { default as TalentPoolWizard } from './TalentPoolWizard';
+export { default as ContractorRegisterPage } from './ContractorRegisterPage';
 export { default as PartnershipEnquiryForm } from './PartnershipEnquiryForm';
 export { default as PrivacyPage } from './PrivacyPage';
 export { default as TermsPage } from './TermsPage';

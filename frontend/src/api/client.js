@@ -137,6 +137,41 @@ export { API_URL, setLastApiError };
 
 export default apiClient;
 
+/** Storage keys for files uploaded via contractor multipart evidence (path contains this segment). */
+export function isContractorFileEvidenceKey(storageKey) {
+  return typeof storageKey === 'string' && storageKey.includes('/contractor_evidence/') && !storageKey.startsWith('document:');
+}
+
+/** Best-effort display/download filename from an evidence key. */
+export function contractorEvidenceFilenameFromKey(storageKey) {
+  if (!storageKey || typeof storageKey !== 'string') return 'evidence';
+  const k = storageKey.trim();
+  if (k.startsWith('document:')) return 'linked-document';
+  const last = k.replace(/\\/g, '/').split('/').pop();
+  return last && last.length ? last : 'evidence';
+}
+
+/** Preview (new tab) or save blob from an API response with responseType: 'blob'. */
+export function openBlobApiResponse(res, { download = false, fallbackFilename = 'download' } = {}) {
+  if (typeof window === 'undefined') return;
+  const ct = res.headers['content-type'] || 'application/octet-stream';
+  const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: ct });
+  const objectUrl = URL.createObjectURL(blob);
+  if (download) {
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = fallbackFilename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+  } else {
+    window.open(objectUrl, '_blank', 'noopener,noreferrer');
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+  }
+}
+
 // API methods
 export const authAPI = {
   login: (data) => apiClient.post('/auth/login', data),
@@ -267,6 +302,11 @@ export const clientAPI = {
   /** Maintenance work orders (requires MAINTENANCE_WORKFLOWS). */
   getMaintenanceWorkOrders: (params = {}) => apiClient.get('/client/maintenance/work-orders', { params }),
   getMaintenanceWorkOrder: (workOrderId) => apiClient.get(`/client/maintenance/work-orders/${workOrderId}`),
+  getMaintenanceWorkOrderContractorEvidenceFile: (workOrderId, storageKey, download = false) =>
+    apiClient.get(`/client/maintenance/work-orders/${workOrderId}/contractor-evidence/file`, {
+      params: { storage_key: storageKey, ...(download ? { download: true } : {}) },
+      responseType: 'blob',
+    }),
   createMaintenanceWorkOrder: (body) => apiClient.post('/client/maintenance/work-orders', body),
   updateMaintenanceWorkOrder: (workOrderId, body) => apiClient.patch(`/client/maintenance/work-orders/${workOrderId}`, body),
   getRecommendContractors: (workOrderId, params = {}) => apiClient.get(`/client/maintenance/work-orders/${workOrderId}/recommend-contractors`, { params }),
@@ -416,6 +456,10 @@ export const adminAPI = {
   createContractor: (body) => apiClient.post('/admin/ops/contractors', body),
   createNetworkContractor: (body) => apiClient.post('/admin/ops/contractors/network', body),
   approveContractor: (contractorId) => apiClient.patch(`/admin/ops/contractors/${contractorId}/approve`),
+  approveContractorToNetwork: (contractorId) =>
+    apiClient.patch(`/admin/ops/contractors/${contractorId}/approve-to-network`),
+  rejectContractorNetworkSubmission: (contractorId, body) =>
+    apiClient.patch(`/admin/ops/contractors/${contractorId}/reject-network-submission`, body || {}),
   updateContractor: (contractorId, body) => apiClient.patch(`/admin/ops/contractors/${contractorId}`, body),
   deleteContractor: (contractorId) => apiClient.delete(`/admin/ops/contractors/${contractorId}`),
   resendContractorPortalInvite: (contractorId) => apiClient.post(`/admin/ops/contractors/${contractorId}/invite-portal/resend`),
@@ -426,6 +470,11 @@ export const adminAPI = {
   // Work orders (Ops Maintenance)
   getWorkOrders: (params = {}) => apiClient.get('/admin/ops/work-orders', { params }),
   getWorkOrder: (workOrderId) => apiClient.get(`/admin/ops/work-orders/${workOrderId}`),
+  getWorkOrderContractorEvidenceFile: (workOrderId, storageKey, download = false) =>
+    apiClient.get(`/admin/ops/work-orders/${workOrderId}/contractor-evidence/file`, {
+      params: { storage_key: storageKey, ...(download ? { download: true } : {}) },
+      responseType: 'blob',
+    }),
   getRecommendContractors: (workOrderId, params = {}) => apiClient.get(`/admin/ops/work-orders/${workOrderId}/recommend-contractors`, { params }),
   createWorkOrder: (body) => apiClient.post('/admin/ops/work-orders', body),
   updateWorkOrder: (workOrderId, body) => apiClient.patch(`/admin/ops/work-orders/${workOrderId}`, body),
@@ -451,6 +500,17 @@ export function createContractorAPI(accessToken) {
     submitInvoice: (body) => apiClient.post('/contractor/invoices', body, { headers }),
     getProfile: () => apiClient.get('/contractor/profile', { headers }),
     getInvoices: (params = {}) => apiClient.get('/contractor/invoices', { params, headers }),
+    uploadWorkOrderEvidence: (workOrderId, file) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return apiClient.post(`/contractor/work-orders/${workOrderId}/evidence`, fd, { headers });
+    },
+    downloadWorkOrderEvidenceFile: (workOrderId, storageKey, download = false) =>
+      apiClient.get(`/contractor/work-orders/${workOrderId}/evidence/file`, {
+        params: { storage_key: storageKey, ...(download ? { download: true } : {}) },
+        headers,
+        responseType: 'blob',
+      }),
   };
 }
 
@@ -464,5 +524,17 @@ export function createJobLinkAPI(jobToken) {
     acceptAssignment: () => apiClient.post('/job/work-order/accept', {}, config()),
     declineAssignment: () => apiClient.post('/job/work-order/decline', {}, config()),
     submitInvoice: (body) => apiClient.post('/job/invoices', body, config()),
+    uploadWorkOrderEvidence: (file) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return apiClient.post('/job/work-order/evidence', fd, config());
+    },
+    downloadWorkOrderEvidenceFile: (storageKey, download = false) =>
+      apiClient.get('/job/work-order/evidence/file', {
+        ...config({
+          params: { storage_key: storageKey, ...(download ? { download: true } : {}) },
+        }),
+        responseType: 'blob',
+      }),
   };
 }

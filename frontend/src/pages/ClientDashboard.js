@@ -133,9 +133,42 @@ const ClientDashboard = () => {
   const [activitySince, setActivitySince] = useState(null);
   const [activitySinceLoading, setActivitySinceLoading] = useState(false);
   const [activitySinceAckBusy, setActivitySinceAckBusy] = useState(false);
+  /** Landlord contractors: submitted for network review vs rejected (CONTRACTOR_NETWORK). */
+  const [contractorNetworkActivity, setContractorNetworkActivity] = useState(null);
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
+  const contractorNetworkEnabled = hasFeature('contractor_network');
+
+  useEffect(() => {
+    if (!isClientUser || !contractorNetworkEnabled) {
+      setContractorNetworkActivity(null);
+      return undefined;
+    }
+    let cancelled = false;
+    clientAPI
+      .getContractors({ source_type: 'landlord_added', skip: 0, limit: 100 })
+      .then((res) => {
+        if (cancelled) return;
+        const list = res.data?.contractors || [];
+        let pendingNetwork = 0;
+        let rejectedCount = 0;
+        list.forEach((c) => {
+          if ((c.network_submission_rejection_reason || '').trim()) {
+            rejectedCount += 1;
+          } else if (c.submitted_to_network_at && !c.approved_for_network_at) {
+            pendingNetwork += 1;
+          }
+        });
+        setContractorNetworkActivity({ pendingNetwork, rejectedCount });
+      })
+      .catch(() => {
+        if (!cancelled) setContractorNetworkActivity(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isClientUser, contractorNetworkEnabled]);
 
   useEffect(() => {
     if (!isClientUser) {
@@ -1895,6 +1928,30 @@ const ClientDashboard = () => {
               </Card>
             )}
           </div>
+        )}
+
+        {!setupView && contractorNetworkEnabled && contractorNetworkActivity && contractorNetworkActivity.pendingNetwork > 0 && (
+          <Alert className="mb-8 border-sky-200 bg-sky-50" data-testid="contractor-network-dashboard-alert">
+            <AlertCircle className="h-4 w-4 text-sky-600" />
+            <AlertDescription>
+              <span className="font-medium text-sky-900">Contractor network</span>
+              <span className="block mt-1 text-sky-800">
+                {contractorNetworkActivity.pendingNetwork} private contractor{contractorNetworkActivity.pendingNetwork !== 1 ? 's are' : ' is'} with Pleerity for platform network review (submitted from your account).
+              </span>
+              {contractorNetworkActivity.rejectedCount > 0 && (
+                <span className="block mt-2 text-sm text-sky-900/85">
+                  {contractorNetworkActivity.rejectedCount} earlier submission{contractorNetworkActivity.rejectedCount !== 1 ? 's were' : ' was'} declined — open Contractors for the reason.
+                </span>
+              )}
+              <Button
+                size="sm"
+                className="mt-3 bg-electric-teal hover:bg-electric-teal/90"
+                onClick={() => navigate('/operations/contractors')}
+              >
+                Open Contractors
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
 
         {/* Priority Actions: ranked next steps from compliance, operations, risk, approvals */}

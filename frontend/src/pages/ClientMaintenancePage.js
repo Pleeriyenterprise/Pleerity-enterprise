@@ -5,7 +5,12 @@
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { clientAPI } from '../api/client';
+import {
+  clientAPI,
+  openBlobApiResponse,
+  contractorEvidenceFilenameFromKey,
+  isContractorFileEvidenceKey,
+} from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { Button } from '../components/ui/button';
@@ -120,6 +125,7 @@ function ClientMaintenancePageInner() {
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [invoiceForm, setInvoiceForm] = useState({ reference: '', description: '', submitted_amount: '' });
   const [invoiceSaving, setInvoiceSaving] = useState(false);
+  const [contractorEvidenceLoadingKey, setContractorEvidenceLoadingKey] = useState(null);
   const [contractorExplainId, setContractorExplainId] = useState(null);
   const [contractorExplainData, setContractorExplainData] = useState(null);
   const [contractorExplainLoading, setContractorExplainLoading] = useState(false);
@@ -256,6 +262,27 @@ function ClientMaintenancePageInner() {
     const c = contractors.find((x) => (x.contractor_id || x.id) === id);
     return c ? (c.name || c.contractor_name || c.contractor_id || id) : id;
   }, [contractors]);
+
+  const openContractorEvidence = useCallback(
+    async (storageKey, download) => {
+      const wid = woDetailData?.work_order_id;
+      if (!wid || !storageKey) return;
+      setContractorEvidenceLoadingKey(storageKey);
+      try {
+        const res = await clientAPI.getMaintenanceWorkOrderContractorEvidenceFile(wid, storageKey, download);
+        openBlobApiResponse(res, {
+          download,
+          fallbackFilename: contractorEvidenceFilenameFromKey(storageKey),
+        });
+      } catch (err) {
+        const d = err?.response?.data?.detail;
+        toast.error(typeof d === 'string' ? d : 'Could not open evidence file');
+      } finally {
+        setContractorEvidenceLoadingKey(null);
+      }
+    },
+    [woDetailData?.work_order_id],
+  );
 
   const summary = useMemo(() => {
     const activeStatuses = ['DRAFT', 'OPEN', 'ASSIGNED', 'SCHEDULED', 'IN_PROGRESS', 'AWAITING_PARTS'];
@@ -835,6 +862,40 @@ function ClientMaintenancePageInner() {
                   {woDetailData.resolution_outcome && <p className="text-sm text-gray-600 mb-2">Outcome: {woDetailData.resolution_outcome}</p>}
                   {(woDetailData.cost_estimate_min != null || woDetailData.cost_estimate_max != null) && (
                     <p className="text-sm text-gray-600 mb-4">Cost estimate: £{woDetailData.cost_estimate_min ?? '—'} – £{woDetailData.cost_estimate_max ?? '—'}</p>
+                  )}
+                  {(woDetailData.evidence_keys || []).some(isContractorFileEvidenceKey) && (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-3 mb-4 text-sm">
+                      <p className="font-medium text-gray-800 mb-2">Contractor evidence</p>
+                      <ul className="space-y-2">
+                        {(woDetailData.evidence_keys || []).filter(isContractorFileEvidenceKey).map((key) => (
+                          <li key={key} className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-gray-700 break-all text-xs">{contractorEvidenceFilenameFromKey(key)}</span>
+                            <span className="flex gap-1 shrink-0">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs"
+                                disabled={contractorEvidenceLoadingKey === key}
+                                onClick={() => openContractorEvidence(key, false)}
+                              >
+                                {contractorEvidenceLoadingKey === key ? <Loader2 className="w-3 h-3 animate-spin" /> : 'View'}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 text-xs"
+                                disabled={contractorEvidenceLoadingKey === key}
+                                onClick={() => openContractorEvidence(key, true)}
+                              >
+                                Download
+                              </Button>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                   {hasFeature('invoicing') && woDetailData.contractor_id && (
                     <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-3 mb-4 text-sm">

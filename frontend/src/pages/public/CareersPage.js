@@ -130,6 +130,13 @@ const CareersPage = () => {
               We encourage prospective applicants to join our Talent Pool so they can be contacted when 
               suitable roles become available.
             </p>
+            <p className="mt-4 pt-4 border-t border-gray-200 text-gray-700">
+              <strong className="text-midnight-blue">Field contractors</strong> (e.g. gas, electrical, plumbing) who want to receive jobs from our clients should apply to the{' '}
+              <Link to="/contractors/register" className="text-electric-teal font-medium hover:underline">
+                contractor network
+              </Link>
+              — this is separate from the office Talent Pool above.
+            </p>
           </div>
         </div>
       </section>
@@ -246,16 +253,21 @@ const CareersPage = () => {
           <p className="text-lg text-gray-300 mb-8 max-w-2xl mx-auto">
             Submit your details to our Talent Pool and we'll contact you when suitable roles become available.
           </p>
-          <Button
-            size="lg"
-            className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
-            asChild
-          >
-            <Link to="/careers/talent-pool">
-              Join the Talent Pool
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+            <Button
+              size="lg"
+              className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
+              asChild
+            >
+              <Link to="/careers/talent-pool">
+                Join the Talent Pool
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8" asChild>
+              <Link to="/contractors/register">Apply as a field contractor</Link>
+            </Button>
+          </div>
         </div>
       </section>
     </PublicLayout>

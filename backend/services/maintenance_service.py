@@ -11,6 +11,7 @@ import logging
 from auth import generate_secure_token, hash_token
 from services.work_order_assignment_constants import (
     ASSIGNMENT_ROUTING_ASSIGNED,
+    ASSIGNMENT_ROUTING_CONTRACTOR_DECLINED,
     ASSIGNMENT_ROUTING_UNASSIGNED,
 )
 from services.work_order_execution_constants import (
@@ -594,6 +595,65 @@ async def update_work_order(
                 )
             except Exception as outcome_err:
                 logger.debug("Action outcome work_order_completed skip: %s", outcome_err)
+    return result
+
+
+async def contractor_decline_assignment(work_order_id: str, contractor_id: str) -> Optional[Dict[str, Any]]:
+    """Unassign contractor: OPEN, routing CONTRACTOR_DECLINED, revoke job tokens, optional routing invalidate + status webhook."""
+    db = database.get_db()
+    cid = (contractor_id or "").strip()
+    filt = {"work_order_id": work_order_id, "contractor_id": cid}
+    wo = await db.work_orders.find_one(filt)
+    if not wo:
+        return None
+    prev_status = wo.get("status")
+    now = datetime.now(timezone.utc).isoformat()
+    result = await db.work_orders.find_one_and_update(
+        filt,
+        {
+            "$set": {
+                "contractor_id": None,
+                "status": STATUS_OPEN,
+                "updated_at": now,
+                "assignment_routing_state": ASSIGNMENT_ROUTING_CONTRACTOR_DECLINED,
+                "accepted_at": None,
+            }
+        },
+        return_document=True,
+    )
+    if not result:
+        return None
+    result.pop("_id", None)
+    await db.contractor_job_tokens.update_many(
+        {"work_order_id": work_order_id, "contractor_id": cid, "revoked_at": None},
+        {"$set": {"revoked_at": now, "revoked_reason": "contractor_declined_assignment"}},
+    )
+    try:
+        from services.work_order_contractor_routing_service import invalidate_pending_routing_for_work_order
+
+        await invalidate_pending_routing_for_work_order(work_order_id, "CONTRACTOR_DECLINED")
+    except Exception as inv_e:
+        logger.warning("Routing invalidate on contractor decline failed: %s", inv_e)
+    new_status = result.get("status")
+    if (
+        prev_status
+        and new_status
+        and str(prev_status).upper() != str(new_status).upper()
+        and result.get("client_id")
+    ):
+        try:
+            from services.webhook_service import fire_work_order_status_changed
+
+            await fire_work_order_status_changed(
+                client_id=result["client_id"],
+                work_order_id=work_order_id,
+                property_id=result.get("property_id"),
+                old_status=str(prev_status).upper(),
+                new_status=str(new_status).upper(),
+                completed_at=None,
+            )
+        except Exception as wh_e:
+            logger.warning("Work order status webhook on contractor decline failed (non-fatal): %s", wh_e)
     return result
 
 

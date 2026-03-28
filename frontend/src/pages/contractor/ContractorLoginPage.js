@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { authAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -100,6 +100,11 @@ export default function ContractorLoginPage() {
             </Button>
           </form>
           <p className="text-center text-sm text-gray-500 mt-4">
+            <Link to="/contractors/register" className="text-electric-teal hover:underline font-medium">
+              New to the network? Apply to join
+            </Link>
+          </p>
+          <p className="text-center text-sm text-gray-500 mt-2">
             <button type="button" className="text-electric-teal hover:underline" onClick={() => navigate('/login')}>
               Client or staff?
             </button>

@@ -4,7 +4,12 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { adminAPI } from '../../api/client';
+import {
+  adminAPI,
+  openBlobApiResponse,
+  contractorEvidenceFilenameFromKey,
+  isContractorFileEvidenceKey,
+} from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -38,6 +43,7 @@ export default function AdminWorkOrderDetailPage() {
   const [contractorExplainId, setContractorExplainId] = useState(null);
   const [contractorExplainData, setContractorExplainData] = useState(null);
   const [contractorExplainLoading, setContractorExplainLoading] = useState(false);
+  const [contractorEvidenceLoadingKey, setContractorEvidenceLoadingKey] = useState(null);
 
   const loadWo = useCallback(() => {
     if (!workOrderId) return;
@@ -94,6 +100,23 @@ export default function AdminWorkOrderDetailPage() {
   const formatDate = (s) => {
     if (!s) return '—';
     try { return new Date(s).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }); } catch { return s; }
+  };
+
+  const openContractorEvidence = async (storageKey, download) => {
+    if (!workOrderId || !storageKey) return;
+    setContractorEvidenceLoadingKey(storageKey);
+    try {
+      const res = await adminAPI.getWorkOrderContractorEvidenceFile(workOrderId, storageKey, download);
+      openBlobApiResponse(res, {
+        download,
+        fallbackFilename: contractorEvidenceFilenameFromKey(storageKey),
+      });
+    } catch (err) {
+      const d = err?.response?.data?.detail;
+      toast.error(typeof d === 'string' ? d : 'Could not open evidence file');
+    } finally {
+      setContractorEvidenceLoadingKey(null);
+    }
   };
 
   if (loading && !wo) {
@@ -274,6 +297,41 @@ export default function AdminWorkOrderDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {(wo.evidence_keys || []).some(isContractorFileEvidenceKey) && (
+          <Card className="mb-6">
+            <CardHeader><CardTitle className="text-base">Contractor evidence</CardTitle></CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm">
+                {(wo.evidence_keys || []).filter(isContractorFileEvidenceKey).map((key) => (
+                  <li key={key} className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-gray-700 break-all text-xs">{contractorEvidenceFilenameFromKey(key)}</span>
+                    <span className="flex gap-1 shrink-0">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={contractorEvidenceLoadingKey === key}
+                        onClick={() => openContractorEvidence(key, false)}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={contractorEvidenceLoadingKey === key}
+                        onClick={() => openContractorEvidence(key, true)}
+                      >
+                        Download
+                      </Button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         {wo.triage_reasoning?.length > 0 && (
           <Card>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminAPI } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
-import { Users, Plus, Pencil, Trash2, Loader2, CheckCircle, Clock, Mail, BarChart3, Info, ChevronDown, ChevronUp, ShieldOff, RefreshCw, Briefcase } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, Loader2, CheckCircle, Clock, Mail, BarChart3, Info, ChevronDown, ChevronUp, ShieldOff, RefreshCw, Briefcase, Send, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../../components/ui/button';
 
@@ -34,6 +34,10 @@ export default function AdminOpsContractorsPage() {
   const [assignedJobsFor, setAssignedJobsFor] = useState(null);
   const [assignedJobsLoading, setAssignedJobsLoading] = useState(false);
   const [assignedJobs, setAssignedJobs] = useState([]);
+  const [networkReviewApprovingId, setNetworkReviewApprovingId] = useState(null);
+  const [networkReviewRejectingId, setNetworkReviewRejectingId] = useState(null);
+  const [networkRejectModal, setNetworkRejectModal] = useState(null);
+  const [networkRejectReason, setNetworkRejectReason] = useState('');
   const [form, setForm] = useState({
     name: '',
     trade_types: [],
@@ -78,9 +82,13 @@ export default function AdminOpsContractorsPage() {
     const params = { skip: 0, limit: 200 };
     if (clientIdFilter) params.client_id = clientIdFilter;
     if (vettedOnly) params.vetted_only = true;
-    if (sourceTypeFilter) params.source_type = sourceTypeFilter;
-    if (activeTab === 'pending') params.status = 'pending_review';
-    else if (statusFilter) params.status = statusFilter;
+    if (activeTab === 'network_review') {
+      params.pending_network_review = true;
+    } else {
+      if (sourceTypeFilter) params.source_type = sourceTypeFilter;
+      if (activeTab === 'pending') params.status = 'pending_review';
+      else if (statusFilter) params.status = statusFilter;
+    }
     adminAPI.getContractors(params)
       .then((res) => {
         setContractors(res.data?.contractors || []);
@@ -278,7 +286,7 @@ export default function AdminOpsContractorsPage() {
 
   return (
     <UnifiedAdminLayout>
-      <div className="p-6 max-w-5xl">
+      <div className="p-6 max-w-7xl">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Users className="w-7 h-7" />
@@ -294,9 +302,19 @@ export default function AdminOpsContractorsPage() {
             </Button>
           </div>
         </div>
-        <p className="text-gray-600 mb-6">
+        <p className="text-gray-600 mb-4">
           Manage vetted trades and preferred contractors. Link to a client for client-specific contractors, or leave unset for system-wide use.
         </p>
+        <div className="mb-6 rounded-lg border border-teal-200 bg-teal-50/80 px-4 py-3 text-sm text-midnight-blue">
+          <strong className="font-semibold">Contractor portal invites:</strong>{' '}
+          Each row must have an <strong>email</strong> before you can send access. Use{' '}
+          <strong>Invite to portal</strong> to email a setup link, or <strong>Resend invite</strong> to rotate the link.
+          Self-registrations from the website appear as <em>Pending</em> until you <strong>Approve</strong>, then invite.
+          {' '}
+          <strong className="font-semibold">Landlord → network:</strong> clients can submit a private contractor for review; use the{' '}
+          <strong>Network review</strong> tab to approve (creates a platform network copy) or reject. New submissions trigger an internal email when{' '}
+          <code className="text-xs bg-white/80 px-1 rounded border border-teal-100">ADMIN_NOTIFY_EMAIL</code> is configured.
+        </div>
 
         <div className="flex flex-wrap gap-4 mb-6">
           <div className="flex gap-2 items-end">
@@ -314,6 +332,14 @@ export default function AdminOpsContractorsPage() {
             >
               <Clock className="w-4 h-4" />
               Pending Approvals
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('network_review')}
+              className={`px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1 ${activeTab === 'network_review' ? 'bg-electric-teal text-white' : 'bg-gray-100 text-gray-700'}`}
+            >
+              <Send className="w-4 h-4" />
+              Network review
             </button>
             <button
               type="button"
@@ -538,6 +564,7 @@ export default function AdminOpsContractorsPage() {
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Trades</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Client</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Source</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Landlord network</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Portal access</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Vetted</th>
@@ -545,12 +572,29 @@ export default function AdminOpsContractorsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {contractors.map((c) => (
+                {contractors.map((c) => {
+                  const canNetworkReview =
+                    (c.source_type || '') === 'landlord_added' &&
+                    c.submitted_to_network_at &&
+                    !c.approved_for_network_at &&
+                    !(c.network_submission_rejection_reason || '').trim();
+                  const landlordNetworkLabel =
+                    (c.source_type || '') !== 'landlord_added'
+                      ? '—'
+                      : (c.network_submission_rejection_reason || '').trim()
+                        ? <span className="text-red-600">Rejected</span>
+                        : c.approved_for_network_at
+                          ? <span className="text-green-700">On network</span>
+                          : c.submitted_to_network_at
+                            ? <span className="text-amber-700">Pending review</span>
+                            : '—';
+                  return (
                   <tr key={c.contractor_id}>
                     <td className="px-4 py-2 text-sm text-gray-900">{c.name || c.company_name}</td>
                     <td className="px-4 py-2 text-sm text-gray-600">{(c.trade_types || []).join(', ') || '—'}</td>
                     <td className="px-4 py-2 text-sm text-gray-600">{clientLabel(c.client_id)}</td>
                     <td className="px-4 py-2 text-sm text-gray-600">{c.source_type || '—'}</td>
+                    <td className="px-4 py-2 text-sm">{landlordNetworkLabel}</td>
                     <td className="px-4 py-2 text-sm">
                       {c.status === 'pending_review' && <span className="text-amber-600">Pending</span>}
                       {c.status === 'suspended' && <span className="text-red-600">Suspended</span>}
@@ -569,15 +613,55 @@ export default function AdminOpsContractorsPage() {
                     </td>
                     <td className="px-4 py-2">{c.vetted ? <CheckCircle className="w-4 h-4 text-green-600" /> : '—'}</td>
                     <td className="px-4 py-2 text-right">
+                      <div className="flex flex-wrap items-center justify-end gap-1">
+                      {canNetworkReview && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-green-700 border-green-300 text-xs"
+                            disabled={!!networkReviewApprovingId || !!networkReviewRejectingId}
+                            onClick={async () => {
+                              setNetworkReviewApprovingId(c.contractor_id);
+                              try {
+                                await adminAPI.approveContractorToNetwork(c.contractor_id);
+                                toast.success('Contractor added to platform network.');
+                                loadContractors();
+                              } catch (e) {
+                                toast.error(e.response?.data?.detail || 'Approve to network failed');
+                              } finally {
+                                setNetworkReviewApprovingId(null);
+                              }
+                            }}
+                          >
+                            {networkReviewApprovingId === c.contractor_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5 mr-1 inline" />}
+                            Approve to network
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-700 border-red-200 text-xs"
+                            disabled={!!networkReviewApprovingId || !!networkReviewRejectingId}
+                            onClick={() => {
+                              setNetworkRejectModal({ id: c.contractor_id, name: c.name || c.company_name || c.contractor_id });
+                              setNetworkRejectReason('');
+                            }}
+                          >
+                            <XCircle className="w-3.5 h-3.5 mr-1 inline" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
                       {c.status === 'pending_review' && (
-                        <Button variant="outline" size="sm" className="mr-1 text-green-700 border-green-300" onClick={() => handleApprove(c.contractor_id)}>
+                        <Button variant="outline" size="sm" className="text-green-700 border-green-300" onClick={() => handleApprove(c.contractor_id)}>
                           Approve
                         </Button>
                       )}
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        title="Invite to contractor portal"
+                        className="text-xs"
+                        title={!c.email ? 'Add an email to this contractor first' : 'Send contractor portal setup link'}
                         disabled={!c.email || !!invitingId}
                         onClick={async () => {
                           setInvitingId(c.contractor_id);
@@ -593,12 +677,18 @@ export default function AdminOpsContractorsPage() {
                           }
                         }}
                       >
-                        {invitingId === c.contractor_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                        {invitingId === c.contractor_id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Mail className="w-3.5 h-3.5 mr-1 inline" />
+                        )}
+                        Invite to portal
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        title="Resend contractor portal invite"
+                        className="text-xs"
+                        title={!c.email ? 'Add an email first' : 'Resend portal setup link'}
                         disabled={!c.email || !!resendingInviteId}
                         onClick={async () => {
                           setResendingInviteId(c.contractor_id);
@@ -614,7 +704,12 @@ export default function AdminOpsContractorsPage() {
                           }
                         }}
                       >
-                        {resendingInviteId === c.contractor_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                        {resendingInviteId === c.contractor_id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-3.5 h-3.5 mr-1 inline" />
+                        )}
+                        Resend invite
                       </Button>
                       <Button
                         variant="ghost"
@@ -664,9 +759,11 @@ export default function AdminOpsContractorsPage() {
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => openEdit(c)}><Pencil className="w-4 h-4" /></Button>
                       <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => handleDelete(c.contractor_id, c.name || c.company_name)}><Trash2 className="w-4 h-4" /></Button>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                );
+                })}
               </tbody>
             </table>
           </div>
@@ -981,6 +1078,53 @@ export default function AdminOpsContractorsPage() {
             )}
             <div className="flex gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setAssignedJobsOpen(false)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {networkRejectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => !networkReviewRejectingId && setNetworkRejectModal(null)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Reject network submission</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Rejection is recorded on the contractor and is visible to the submitting organisation on their Contractors page.
+              {' '}
+              <span className="font-medium text-gray-800">{networkRejectModal.name}</span>
+            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Reason (optional)</label>
+            <textarea
+              value={networkRejectReason}
+              onChange={(e) => setNetworkRejectReason(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm mb-4"
+              rows={3}
+              placeholder="Brief reason for the client"
+            />
+            <div className="flex gap-2 justify-end">
+              <Button type="button" variant="outline" disabled={!!networkReviewRejectingId} onClick={() => setNetworkRejectModal(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={!!networkReviewRejectingId}
+                onClick={async () => {
+                  setNetworkReviewRejectingId(networkRejectModal.id);
+                  try {
+                    await adminAPI.rejectContractorNetworkSubmission(networkRejectModal.id, {
+                      reason: networkRejectReason.trim() || undefined,
+                    });
+                    toast.success('Network submission rejected.');
+                    setNetworkRejectModal(null);
+                    loadContractors();
+                  } catch (e) {
+                    toast.error(e.response?.data?.detail || 'Reject failed');
+                  } finally {
+                    setNetworkReviewRejectingId(null);
+                  }
+                }}
+              >
+                {networkReviewRejectingId ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm reject'}
+              </Button>
             </div>
           </div>
         </div>

@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createContractorAPI } from '../../api/client';
+import {
+  createContractorAPI,
+  openBlobApiResponse,
+  contractorEvidenceFilenameFromKey,
+  isContractorFileEvidenceKey,
+} from '../../api/client';
 import { getContractorToken } from './ContractorLoginPage';
 import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Wrench, LogOut, Loader2, X, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { Card, CardContent } from '../../components/ui/card';
+import { Input } from '../../components/ui/input';
+import { Wrench, LogOut, Loader2, X, FileText, CheckCircle, XCircle, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 function formatDate(s) {
@@ -39,6 +45,9 @@ export default function ContractorDashboardPage() {
   const [invoiceSaving, setInvoiceSaving] = useState(false);
   const [invoices, setInvoices] = useState([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [notesForm, setNotesForm] = useState({ contractor_notes: '', completion_notes: '' });
+  const [evidenceUploading, setEvidenceUploading] = useState(false);
+  const [evidenceFileLoadingKey, setEvidenceFileLoadingKey] = useState(null);
 
   useEffect(() => {
     const t = getContractorToken();
@@ -96,6 +105,15 @@ export default function ContractorDashboardPage() {
       .finally(() => setDetailLoading(false));
   }, [api, detailId]);
 
+  useEffect(() => {
+    if (detail) {
+      setNotesForm({
+        contractor_notes: detail.contractor_notes || '',
+        completion_notes: detail.completion_notes || '',
+      });
+    }
+  }, [detail]);
+
   const handleLogout = () => {
     localStorage.removeItem('contractor_token');
     localStorage.removeItem('contractor_user');
@@ -137,6 +155,59 @@ export default function ContractorDashboardPage() {
       })
       .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
       .finally(() => setActionLoading(null));
+  };
+
+  const handleSaveNotes = () => {
+    if (!detail || !api) return;
+    setActionLoading(detail.work_order_id);
+    api
+      .updateWorkOrder(detail.work_order_id, {
+        contractor_notes: notesForm.contractor_notes || undefined,
+        completion_notes: notesForm.completion_notes || undefined,
+      })
+      .then((r) => {
+        toast.success('Notes saved');
+        setDetail(r.data);
+        loadWorkOrders();
+      })
+      .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
+      .finally(() => setActionLoading(null));
+  };
+
+  const onEvidenceSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !detail || !api) return;
+    setEvidenceUploading(true);
+    api
+      .uploadWorkOrderEvidence(detail.work_order_id, file)
+      .then((res) => {
+        toast.success('Evidence uploaded');
+        setDetail(res.data.work_order);
+        loadWorkOrders();
+      })
+      .catch((err) => toast.error(err.response?.data?.detail || 'Upload failed'))
+      .finally(() => {
+        setEvidenceUploading(false);
+        e.target.value = '';
+      });
+  };
+
+  const handleEvidenceFileOpen = (storageKey, download) => {
+    if (!detail || !api) return;
+    setEvidenceFileLoadingKey(storageKey);
+    api
+      .downloadWorkOrderEvidenceFile(detail.work_order_id, storageKey, download)
+      .then((res) =>
+        openBlobApiResponse(res, {
+          download,
+          fallbackFilename: contractorEvidenceFilenameFromKey(storageKey),
+        }),
+      )
+      .catch((err) => {
+        const d = err?.response?.data?.detail;
+        toast.error(typeof d === 'string' ? d : 'Could not open file');
+      })
+      .finally(() => setEvidenceFileLoadingKey(null));
   };
 
   const handleSubmitInvoice = (e) => {
@@ -256,8 +327,84 @@ export default function ContractorDashboardPage() {
                       <dt className="text-gray-500">SLA complete by</dt>
                       <dd>{formatDate(detail.sla_complete_by)}</dd>
                     </dl>
-                    {detail.contractor_notes && <p className="text-sm text-gray-600 mb-2">Your notes: {detail.contractor_notes}</p>}
-                    {detail.completion_notes && <p className="text-sm text-gray-600 mb-2">Completion: {detail.completion_notes}</p>}
+                    <div className="space-y-2 mb-4">
+                      <span className="block text-sm font-medium text-gray-700">Your notes</span>
+                      <Input
+                        placeholder="Contractor notes"
+                        value={notesForm.contractor_notes}
+                        onChange={(ev) => setNotesForm((f) => ({ ...f, contractor_notes: ev.target.value }))}
+                        className="mb-1"
+                      />
+                      <Input
+                        placeholder="Completion notes"
+                        value={notesForm.completion_notes}
+                        onChange={(ev) => setNotesForm((f) => ({ ...f, completion_notes: ev.target.value }))}
+                        className="mb-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleSaveNotes}
+                        disabled={!!actionLoading || evidenceUploading}
+                      >
+                        Save notes
+                      </Button>
+                    </div>
+                    <div className="mb-4">
+                      <span className="block text-sm font-medium text-gray-700 mb-1">Evidence</span>
+                      <p className="text-xs text-gray-500 mb-2">PDF, images, or Word — max 20MB. Upload after you accept the job.</p>
+                      {(detail.evidence_keys || []).length > 0 && (
+                        <ul className="text-sm text-gray-700 mb-2 space-y-2 max-h-40 overflow-y-auto">
+                          {(detail.evidence_keys || []).map((k) => {
+                            const keyStr = typeof k === 'string' ? k : String(k);
+                            const fileKey = isContractorFileEvidenceKey(keyStr);
+                            return (
+                              <li key={keyStr} className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2 last:border-0">
+                                <span className="break-all text-xs">{contractorEvidenceFilenameFromKey(keyStr)}</span>
+                                {fileKey ? (
+                                  <span className="flex gap-1 shrink-0">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs px-2"
+                                      disabled={evidenceFileLoadingKey === keyStr}
+                                      onClick={() => handleEvidenceFileOpen(keyStr, false)}
+                                    >
+                                      View
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 text-xs px-2"
+                                      disabled={evidenceFileLoadingKey === keyStr}
+                                      onClick={() => handleEvidenceFileOpen(keyStr, true)}
+                                    >
+                                      Download
+                                    </Button>
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-400 shrink-0">Linked ref</span>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                      <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                        <Upload className="w-4 h-4 shrink-0 text-electric-teal" />
+                        <span>{evidenceUploading ? 'Uploading…' : 'Choose file'}</span>
+                        <input
+                          type="file"
+                          className="sr-only"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,application/pdf"
+                          disabled={evidenceUploading || detail.status === 'OPEN' || detail.status === 'ASSIGNED'}
+                          onChange={onEvidenceSelected}
+                        />
+                      </label>
+                    </div>
                     {(detail.status === 'ASSIGNED' || detail.status === 'OPEN') && (
                       <div className="flex gap-2 mb-4">
                         <Button size="sm" onClick={() => handleAccept(detail.work_order_id)} disabled={!!actionLoading}>

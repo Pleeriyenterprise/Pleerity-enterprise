@@ -55,6 +55,7 @@ import ChecklistThankYouPage from './pages/public/ChecklistThankYouPage';
 import UnsubscribePage from './pages/public/UnsubscribePage';
 import RiskCheckPage from './pages/public/RiskCheckPage';
 import LeadActivityTrackPage from './pages/public/LeadActivityTrackPage';
+import ContractorRegisterPage from './pages/public/ContractorRegisterPage';
 
 // Auth & Onboarding pages
 import PortalSelectorPage from './pages/PortalSelectorPage';
@@ -295,6 +296,7 @@ function App() {
               <Route path="/job" element={<JobPage />} />
               {/* Contractor portal (separate auth via contractor_token) */}
               <Route path="/contractor/login" element={<ContractorLoginPage />} />
+              <Route path="/contractors/register" element={<ContractorRegisterPage />} />
               <Route path="/contractor" element={<ContractorDashboardPage />} />
               <Route path="/intake/start" element={<IntakePage />} />
               <Route path="/onboarding-status" element={<OnboardingStatusPage />} />

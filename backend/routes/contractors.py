@@ -93,6 +93,10 @@ async def list_contractors(
     vetted_only: bool = Query(False, description="Only vetted contractors"),
     source_type: Optional[str] = Query(None, description="Filter by source_type"),
     status: Optional[str] = Query(None, description="Filter by status (e.g. pending_review)"),
+    pending_network_review: bool = Query(
+        False,
+        description="Landlord contractors awaiting admin approve-to-network (submitted, not approved, not rejected)",
+    ),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
 ):
@@ -105,6 +109,7 @@ async def list_contractors(
         status=status,
         skip=skip,
         limit=limit,
+        pending_network_review=pending_network_review,
     )
     return result
 

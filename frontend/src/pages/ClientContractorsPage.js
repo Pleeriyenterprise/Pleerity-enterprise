@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Briefcase, Loader2, AlertCircle, CheckCircle, Plus, Send, UserPlus, Eye, FileText } from 'lucide-react';
+import { Briefcase, Loader2, AlertCircle, CheckCircle, Plus, Send, UserPlus, Eye } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 
@@ -235,10 +235,19 @@ function ClientContractorsPageInner() {
                             Vetted
                           </span>
                         )}
-                        {c.submitted_to_network_at && (
+                        {c.submitted_to_network_at && !c.approved_for_network_at && !(c.network_submission_rejection_reason || '').trim() && (
                           <span className="text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Submitted for review</span>
                         )}
+                        {(c.network_submission_rejection_reason || '').trim() && (
+                          <span className="text-xs text-red-700 bg-red-50 px-1.5 py-0.5 rounded">Network review declined</span>
+                        )}
+                        {c.approved_for_network_at && (
+                          <span className="text-xs text-green-800 bg-green-50 px-1.5 py-0.5 rounded">On platform network</span>
+                        )}
                       </p>
+                      {(c.network_submission_rejection_reason || '').trim() && (
+                        <p className="text-xs text-red-800 mt-1 max-w-xl">{c.network_submission_rejection_reason}</p>
+                      )}
                       {c.company_name && <p className="text-sm text-gray-600">{c.company_name}</p>}
                       {(c.trade_types?.length > 0) && (
                         <p className="text-xs text-gray-500 mt-1">
@@ -260,12 +269,6 @@ function ClientContractorsPageInner() {
                         <Button size="sm" variant="ghost" onClick={() => navigate('/operations/work-orders')}>
                           <Eye className="w-3.5 h-3.5 mr-1" />
                           View
-                        </Button>
-                      )}
-                      {activeTab === 'marketplace' && (
-                        <Button size="sm" variant="ghost" disabled className="text-gray-400">
-                          <FileText className="w-3.5 h-3.5 mr-1" />
-                          Request Quote
                         </Button>
                       )}
                       {canSubmitToNetwork && (

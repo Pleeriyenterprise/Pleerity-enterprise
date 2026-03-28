@@ -3,6 +3,7 @@ Admin API for maintenance work orders (Ops & Compliance).
 List, get, update, assign contractor. Owner/Admin for write.
 """
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -10,7 +11,10 @@ from database import database
 from middleware import admin_route_guard, require_owner_or_admin
 from services import maintenance_service
 from services import contractor_service
+from services import contractor_evidence_service
 from services.risk_signal_regen_queue import get_regen_queue_summary
+from utils.audit import create_audit_log
+from models import AuditAction
 
 router = APIRouter(prefix="/api/admin/ops", tags=["ops-maintenance"], dependencies=[Depends(admin_route_guard)])
 
@@ -134,6 +138,55 @@ async def get_work_order(request: Request, work_order_id: str):
     if not doc:
         raise HTTPException(status_code=404, detail="Work order not found")
     return doc
+
+
+@router.get("/work-orders/{work_order_id}/contractor-evidence/file")
+async def download_contractor_evidence_file(
+    request: Request,
+    work_order_id: str,
+    storage_key: str = Query(..., min_length=3),
+    download: bool = Query(False),
+):
+    """Admin: view or download contractor evidence file for a work order."""
+    await admin_route_guard(request)
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    wo_client_id = (wo.get("client_id") or "").strip()
+    try:
+        path, media, filename = await contractor_evidence_service.resolve_contractor_evidence_file(
+            work_order_id=work_order_id,
+            wo_client_id=wo_client_id,
+            evidence_keys=wo.get("evidence_keys"),
+            storage_key=storage_key,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Evidence file missing")
+    user = getattr(request.state, "user", None) or {}
+    actor_id = user.get("portal_user_id") or user.get("email") or user.get("user_id") or "admin"
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_EVIDENCE_DOWNLOADED,
+        actor_id=actor_id,
+        client_id=wo.get("client_id"),
+        resource_type="work_order",
+        resource_id=work_order_id,
+        metadata={
+            "storage_key": contractor_evidence_service.normalize_evidence_storage_key(storage_key),
+            "download": download,
+            "via": "admin_ops",
+        },
+    )
+    disposition = "attachment" if download else "inline"
+    return FileResponse(
+        path=str(path),
+        media_type=media,
+        filename=filename,
+        headers={"Content-Disposition": f'{disposition}; filename="{filename}"'},
+    )
 
 
 @router.get("/work-orders/{work_order_id}/recommend-contractors")

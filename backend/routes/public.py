@@ -488,6 +488,14 @@ async def get_service_detail(service_code: str):
 contractor_public_router = APIRouter(prefix="/contractors", tags=["public-contractors"])
 
 
+@contractor_public_router.get("/registration-open")
+async def contractor_registration_open():
+    """Whether public contractor network self-registration is enabled (env CONTRACTOR_SELF_REGISTRATION_ENABLED)."""
+    from services.ops_compliance_feature_flags import is_contractor_self_registration_enabled
+
+    return {"enabled": bool(is_contractor_self_registration_enabled())}
+
+
 class ContractorRegisterBody(BaseModel):
     """Public contractor onboarding. Prefer name + email + postcode; legacy company/contact/coverage_regions still accepted."""
 

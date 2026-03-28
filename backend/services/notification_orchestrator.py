@@ -21,6 +21,21 @@ from utils.audit import create_audit_log
 logger = logging.getLogger(__name__)
 
 
+def _normalized_idempotency_key(idempotency_key: Optional[str]) -> Optional[str]:
+    """
+    Return a non-empty idempotency key, or None.
+
+    message_logs has a unique sparse index on idempotency_key. Documents with the field
+    set to null still occupy one index entry, so only one row may have idempotency_key=null
+    cluster-wide — subsequent inserts E11000 and send() returns duplicate_ignored.
+    Callers that omit dedupe (e.g. forgot-password) must not store the field at all.
+    """
+    if idempotency_key is None:
+        return None
+    s = str(idempotency_key).strip()
+    return s if s else None
+
+
 def _strip_html_to_text(html: str) -> str:
     """Crude HTML strip for plain-text fallback (e.g. scheduled-report message)."""
     if not html:
@@ -157,6 +172,7 @@ class NotificationOrchestrator:
         Returns NotificationResult with outcome: sent | blocked | failed | duplicate_ignored.
         """
         db = database.get_db()
+        idempotency_key = _normalized_idempotency_key(idempotency_key)
 
         # Load template
         template = await db.notification_templates.find_one(
@@ -212,7 +228,6 @@ class NotificationOrchestrator:
                 "channel": channel,
                 "status": "PENDING",
                 "attempt_count": 1,
-                "idempotency_key": idempotency_key,
                 "metadata": {
                     "event_type": event_type,
                     **(
@@ -225,6 +240,8 @@ class NotificationOrchestrator:
                 },
                 "created_at": datetime.now(timezone.utc),
             }
+            if idempotency_key:
+                log_doc["idempotency_key"] = idempotency_key
             try:
                 await db.message_logs.insert_one(log_doc)
             except Exception as e:
@@ -388,10 +405,11 @@ class NotificationOrchestrator:
             "channel": channel,
             "status": "PENDING",
             "attempt_count": 1,
-            "idempotency_key": idempotency_key,
             "metadata": meta,
             "created_at": now,
         }
+        if idempotency_key:
+            log_doc["idempotency_key"] = idempotency_key
         try:
             await db.message_logs.insert_one(log_doc)
         except Exception as e:
@@ -580,6 +598,7 @@ class NotificationOrchestrator:
         event_type: Optional[str],
     ) -> None:
         now = datetime.now(timezone.utc)
+        ik = _normalized_idempotency_key(idempotency_key)
         doc = {
             "message_id": str(uuid.uuid4()),
             "client_id": client_id,
@@ -588,11 +607,12 @@ class NotificationOrchestrator:
             "channel": channel,
             "status": block_reason,
             "attempt_count": 1,
-            "idempotency_key": idempotency_key,
             "error_message": error_message,
             "metadata": {"event_type": event_type, "block_reason": block_reason},
             "created_at": now,
         }
+        if ik:
+            doc["idempotency_key"] = ik
         try:
             await db.message_logs.insert_one(doc)
         except Exception as e:

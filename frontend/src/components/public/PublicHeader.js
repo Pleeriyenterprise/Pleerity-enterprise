@@ -219,7 +219,15 @@ const PublicHeader = () => {
                 className="text-gray-600 hover:text-electric-teal font-medium transition-colors"
                 data-testid="header-contractor-login"
               >
-                Contractor
+                Contractor login
+              </Link>
+              <span className="text-gray-300" aria-hidden>|</span>
+              <Link
+                to="/contractors/register"
+                className="text-gray-600 hover:text-electric-teal font-medium transition-colors"
+                data-testid="header-contractor-register"
+              >
+                Join network
               </Link>
             </div>
           </div>
@@ -315,6 +323,9 @@ const PublicHeader = () => {
               </Button>
               <Button variant="outline" className="w-full min-h-[48px]" asChild>
                 <Link to="/contractor/login" onClick={() => setMobileMenuOpen(false)}>Contractor login</Link>
+              </Button>
+              <Button variant="outline" className="w-full min-h-[48px]" asChild>
+                <Link to="/contractors/register" onClick={() => setMobileMenuOpen(false)}>Join contractor network</Link>
               </Button>
             </div>
           </div>

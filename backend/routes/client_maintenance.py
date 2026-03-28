@@ -5,6 +5,7 @@ List own work orders, create new (client or property manager).
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -19,6 +20,7 @@ from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE
 from services import property_assets_service
 from services import risk_signal_service
 from services import operational_issue_suggestions_service
+from services import contractor_evidence_service
 from utils.audit import create_audit_log
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from config.security_limits import security_limits
@@ -473,6 +475,53 @@ async def get_my_work_order(request: Request, work_order_id: str):
     if not doc or doc.get("client_id") != user["client_id"]:
         raise HTTPException(status_code=404, detail="Work order not found")
     return doc
+
+
+@router.get("/maintenance/work-orders/{work_order_id}/contractor-evidence/file")
+async def download_contractor_evidence_file(
+    request: Request,
+    work_order_id: str,
+    storage_key: str = Query(..., min_length=3, description="Evidence storage key from work order evidence_keys"),
+    download: bool = Query(False),
+):
+    """Download or inline-view a contractor-uploaded evidence file (own client’s work order only)."""
+    user = await _require_maintenance_enabled(request)
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo or wo.get("client_id") != user["client_id"]:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    wo_client_id = (wo.get("client_id") or "").strip()
+    try:
+        path, media, filename = await contractor_evidence_service.resolve_contractor_evidence_file(
+            work_order_id=work_order_id,
+            wo_client_id=wo_client_id,
+            evidence_keys=wo.get("evidence_keys"),
+            storage_key=storage_key,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Evidence file missing")
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_EVIDENCE_DOWNLOADED,
+        actor_id=user.get("portal_user_id"),
+        client_id=user["client_id"],
+        resource_type="work_order",
+        resource_id=work_order_id,
+        metadata={
+            "storage_key": contractor_evidence_service.normalize_evidence_storage_key(storage_key),
+            "download": download,
+            "via": "client_portal",
+        },
+    )
+    disposition = "attachment" if download else "inline"
+    return FileResponse(
+        path=str(path),
+        media_type=media,
+        filename=filename,
+        headers={"Content-Disposition": f'{disposition}; filename="{filename}"'},
+    )
 
 
 class UpdateWorkOrderBody(BaseModel):
