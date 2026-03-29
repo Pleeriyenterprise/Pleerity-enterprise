@@ -14,7 +14,15 @@ from services.work_order_assignment_constants import (
     ASSIGNMENT_ROUTING_CONTRACTOR_DECLINED,
     ASSIGNMENT_ROUTING_UNASSIGNED,
 )
+from services.work_order_schedule_constants import SCHEDULE_STATUS_COMPLETED
 from services.work_order_execution_constants import (
+    COMPLIANCE_BOOKING_AWAITING_CONTRACTOR_RESPONSE,
+    COMPLIANCE_BOOKING_BOOKING_REQUESTED,
+    COMPLIANCE_BOOKING_IN_PROGRESS,
+    COMPLIANCE_BOOKING_OPERATIONALLY_COMPLETE,
+    COMPLIANCE_BOOKING_SCHEDULED,
+    COMPLIANCE_PROOF_NOT_SUBMITTED,
+    COMPLIANCE_PROOF_SUBMITTED,
     WORK_ORDER_CATEGORY_COMPLIANCE,
     WORK_ORDER_KIND_COMPLIANCE,
     WORK_ORDER_KIND_MAINTENANCE,
@@ -111,6 +119,13 @@ async def create_work_order(
     kind = (work_order_kind or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
     if kind not in (WORK_ORDER_KIND_MAINTENANCE, WORK_ORDER_KIND_COMPLIANCE):
         kind = WORK_ORDER_KIND_MAINTENANCE
+    if kind == WORK_ORDER_KIND_COMPLIANCE:
+        rc = (requirement_code or "").strip()
+        lpr = (linked_property_requirement_id or "").strip()
+        if not rc:
+            raise ValueError("COMPLIANCE work orders require requirement_code")
+        if not lpr:
+            raise ValueError("COMPLIANCE work orders require linked_property_requirement_id")
     use_triage_effective = use_triage and kind != WORK_ORDER_KIND_COMPLIANCE
     if kind == WORK_ORDER_KIND_COMPLIANCE:
         eff_category = WORK_ORDER_CATEGORY_COMPLIANCE
@@ -196,7 +211,18 @@ async def create_work_order(
         "routing_decline_note": None,
         "routing_pending_admin": False,
         "routing_invalidation_reason": None,
+        "scheduled_at": None,
+        "scheduled_timezone": None,
+        "schedule_status": None,
+        "scheduled_by": None,
+        "schedule_notes": None,
+        "schedule_reschedule_reason": None,
+        "last_schedule_update_at": None,
+        "reminder_sent": False,
     }
+    if kind == WORK_ORDER_KIND_COMPLIANCE:
+        doc["compliance_booking_status"] = COMPLIANCE_BOOKING_BOOKING_REQUESTED
+        doc["compliance_proof_status"] = COMPLIANCE_PROOF_NOT_SUBMITTED
     if created_from:
         doc["created_from"] = (created_from or "").strip()
     if triggering_rule:
@@ -298,6 +324,7 @@ async def update_work_order(
     completion_notes: Optional[str] = None,
     evidence_keys_append: Optional[List[str]] = None,
     accepted_at: Optional[str] = None,
+    scheduled_at: Optional[str] = None,
     *,
     allow_direct_contractor_assignment: bool = False,
     assignment_profile: str = "standard",
@@ -306,9 +333,29 @@ async def update_work_order(
     db = database.get_db()
     prev_snapshot = await db.work_orders.find_one(
         {"work_order_id": work_order_id},
-        {"_id": 0, "status": 1, "client_id": 1, "property_id": 1, "requires_client_assignment_confirmation": 1},
+        {
+            "_id": 0,
+            "status": 1,
+            "client_id": 1,
+            "property_id": 1,
+            "requires_client_assignment_confirmation": 1,
+            "work_order_kind": 1,
+            "evidence_keys": 1,
+            "requirement_code": 1,
+            "linked_property_requirement_id": 1,
+            "expected_output_document_type": 1,
+            "scheduled_at": 1,
+            "schedule_status": 1,
+            "scheduled_timezone": 1,
+        },
     )
     prev_status = (prev_snapshot or {}).get("status")
+    prev_kind = ((prev_snapshot or {}).get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
+    merged_evidence = list((prev_snapshot or {}).get("evidence_keys") or [])
+    if evidence_keys_append:
+        for k in evidence_keys_append:
+            if k and k not in merged_evidence:
+                merged_evidence.append(k)
     if contractor_id is not None and prev_snapshot:
         wo_client = prev_snapshot.get("client_id")
         if not wo_client:
@@ -336,11 +383,40 @@ async def update_work_order(
     if status is not None:
         status = status.strip().upper()
         if status in ALL_STATUSES:
+            if status == STATUS_COMPLETED and prev_snapshot:
+                try:
+                    from services.work_order_schedule_service import assert_completion_schedule_policy
+
+                    assert_completion_schedule_policy(dict(prev_snapshot))
+                except ValueError as e:
+                    raise ValueError(str(e)) from e
             set_fields["status"] = status
             if status == STATUS_COMPLETED:
                 set_fields["completed_at"] = now
+                if prev_snapshot and (
+                    (prev_snapshot.get("scheduled_at") or "").strip()
+                    or (prev_snapshot.get("schedule_status") or "").strip()
+                ):
+                    set_fields["schedule_status"] = SCHEDULE_STATUS_COMPLETED
+                    set_fields["last_schedule_update_at"] = now
     if accepted_at is not None:
         set_fields["accepted_at"] = accepted_at
+    if scheduled_at is not None:
+        set_fields["scheduled_at"] = (scheduled_at or "").strip() or None
+        if prev_kind == WORK_ORDER_KIND_COMPLIANCE and (scheduled_at or "").strip():
+            set_fields["compliance_booking_status"] = COMPLIANCE_BOOKING_SCHEDULED
+    if prev_kind == WORK_ORDER_KIND_COMPLIANCE and status is not None and status in ALL_STATUSES:
+        if status == STATUS_IN_PROGRESS:
+            set_fields["compliance_booking_status"] = COMPLIANCE_BOOKING_IN_PROGRESS
+        elif status == STATUS_SCHEDULED:
+            set_fields["compliance_booking_status"] = COMPLIANCE_BOOKING_SCHEDULED
+        elif status == STATUS_COMPLETED:
+            set_fields["compliance_booking_status"] = COMPLIANCE_BOOKING_OPERATIONALLY_COMPLETE
+            set_fields["compliance_proof_status"] = (
+                COMPLIANCE_PROOF_SUBMITTED if merged_evidence else COMPLIANCE_PROOF_NOT_SUBMITTED
+            )
+    if prev_kind == WORK_ORDER_KIND_COMPLIANCE and evidence_keys_append and any(evidence_keys_append):
+        set_fields["compliance_proof_status"] = COMPLIANCE_PROOF_SUBMITTED
     if contractor_id is not None:
         set_fields["contractor_id"] = contractor_id
         set_fields["assigned_at"] = now
@@ -354,6 +430,9 @@ async def update_work_order(
         set_fields["confirmation_escalated_at"] = None
         set_fields["routing_decline_note"] = None
         set_fields["routing_pending_admin"] = False
+        if prev_kind == WORK_ORDER_KIND_COMPLIANCE:
+            # Assigned and client-notify path will run after this update; awaiting schedule / accept / progress.
+            set_fields["compliance_booking_status"] = COMPLIANCE_BOOKING_AWAITING_CONTRACTOR_RESPONSE
         if status is None:
             existing = await db.work_orders.find_one({"work_order_id": work_order_id}, {"status": 1})
             if existing and existing.get("status") == STATUS_OPEN:
@@ -569,6 +648,8 @@ async def update_work_order(
                 req_for_outcome = None
                 if wo_kind_out == WORK_ORDER_KIND_COMPLIANCE:
                     req_for_outcome = (result.get("requirement_code") or "").strip() or None
+                ev_keys = list(result.get("evidence_keys") or [])
+                closure_ready = wo_kind_out == WORK_ORDER_KIND_COMPLIANCE and bool(ev_keys)
                 result["outcome"] = await apply_action_outcome(
                     {
                         "event_type": EVENT_WORK_ORDER_COMPLETED,
@@ -585,6 +666,8 @@ async def update_work_order(
                             "work_order_id": work_order_id,
                             "work_order_kind": wo_kind_out,
                             "requirement_code": req_for_outcome,
+                            "compliance_proof_submitted": bool(ev_keys),
+                            "resolve_linked_compliance_risks": closure_ready,
                             "execution_context": (
                                 "compliance_inspection_or_renewal"
                                 if wo_kind_out == WORK_ORDER_KIND_COMPLIANCE
@@ -595,6 +678,35 @@ async def update_work_order(
                 )
             except Exception as outcome_err:
                 logger.debug("Action outcome work_order_completed skip: %s", outcome_err)
+        if evidence_keys_append and prev_kind == WORK_ORDER_KIND_COMPLIANCE and result.get("client_id"):
+            try:
+                from services.compliance_outcome_engine import (
+                    apply_action_outcome,
+                    EVENT_CERTIFICATE_UPLOADED,
+                )
+
+                req_code = (result.get("requirement_code") or "").strip() or None
+                await apply_action_outcome(
+                    {
+                        "event_type": EVENT_CERTIFICATE_UPLOADED,
+                        "client_id": result["client_id"],
+                        "property_id": result.get("property_id"),
+                        "asset_id": result.get("asset_id"),
+                        "requirement_type": req_code,
+                        "timestamp": now,
+                        "source_id": work_order_id,
+                        "dedupe_key": f"{EVENT_CERTIFICATE_UPLOADED}:{work_order_id}:{len(result.get('evidence_keys') or [])}",
+                        "actor_id": assigned_by or result.get("contractor_id"),
+                        "actor_role": "CONTRACTOR",
+                        "metadata": {
+                            "work_order_id": work_order_id,
+                            "linked_property_requirement_id": result.get("linked_property_requirement_id"),
+                            "expected_output_document_type": result.get("expected_output_document_type"),
+                        },
+                    }
+                )
+            except Exception as cert_e:
+                logger.debug("Compliance certificate_uploaded outcome skip: %s", cert_e)
     return result
 
 

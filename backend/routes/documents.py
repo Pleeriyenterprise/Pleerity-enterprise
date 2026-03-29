@@ -14,7 +14,12 @@ import uuid
 import logging
 from pathlib import Path
 
-from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE
+from services.work_order_execution_constants import (
+    COMPLIANCE_PROOF_NOT_SUBMITTED,
+    COMPLIANCE_PROOF_SUBMITTED,
+    COMPLIANCE_PROOF_VERIFIED,
+    WORK_ORDER_KIND_COMPLIANCE,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -94,6 +99,79 @@ async def _append_document_evidence_to_work_order(document_id: str, work_order_i
     await maintenance_service.update_work_order(
         wid,
         evidence_keys_append=[f"document:{document_id}"],
+    )
+
+
+async def _set_compliance_work_order_proof_verified(db, work_order_id: Optional[str]) -> None:
+    """After a linked document is verified, mark compliance proof as policy-satisfied on the work order."""
+    if not (work_order_id or "").strip():
+        return
+    wid = work_order_id.strip()
+    now = datetime.now(timezone.utc).isoformat()
+    await db.work_orders.update_one(
+        {"work_order_id": wid, "work_order_kind": WORK_ORDER_KIND_COMPLIANCE},
+        {"$set": {"compliance_proof_status": COMPLIANCE_PROOF_VERIFIED, "updated_at": now}},
+    )
+
+
+async def _reconcile_compliance_work_order_proof_after_document_removed(
+    db,
+    document_id: str,
+    work_order_id: Optional[str],
+) -> None:
+    """
+    When a document linked to a compliance work order is rejected or deleted:
+    remove its evidence pointer, then set compliance_proof_status from remaining evidence and VERIFIED documents.
+    """
+    if not (work_order_id or "").strip() or not (document_id or "").strip():
+        return
+    wid = work_order_id.strip()
+    did = document_id.strip()
+    wo = await db.work_orders.find_one(
+        {"work_order_id": wid, "work_order_kind": WORK_ORDER_KIND_COMPLIANCE},
+        {"_id": 0, "work_order_id": 1},
+    )
+    if not wo:
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    key = f"document:{did}"
+    await db.work_orders.update_one(
+        {"work_order_id": wid, "work_order_kind": WORK_ORDER_KIND_COMPLIANCE},
+        {"$pull": {"evidence_keys": key}, "$set": {"updated_at": now}},
+    )
+    wo2 = await db.work_orders.find_one({"work_order_id": wid}, {"_id": 0, "evidence_keys": 1})
+    ev = [k for k in (wo2 or {}).get("evidence_keys") or [] if k]
+    doc_refs: list[str] = []
+    for k in ev:
+        if isinstance(k, str) and k.startswith("document:"):
+            rid = k[9:].strip()
+            if rid:
+                doc_refs.append(rid)
+    # Exclude the removed document so pre-delete reconciliation does not count a soon-deleted VERIFIED row.
+    verified_base: Dict[str, Any] = {
+        "status": DocumentStatus.VERIFIED.value,
+        "document_id": {"$ne": did},
+    }
+    if doc_refs:
+        verified_q: Dict[str, Any] = {
+            **verified_base,
+            "$or": [
+                {"work_order_id": wid},
+                {"document_id": {"$in": doc_refs}},
+            ],
+        }
+    else:
+        verified_q = {**verified_base, "work_order_id": wid}
+    has_verified = await db.documents.count_documents(verified_q) > 0
+    if has_verified:
+        proof = COMPLIANCE_PROOF_VERIFIED
+    elif ev:
+        proof = COMPLIANCE_PROOF_SUBMITTED
+    else:
+        proof = COMPLIANCE_PROOF_NOT_SUBMITTED
+    await db.work_orders.update_one(
+        {"work_order_id": wid, "work_order_kind": WORK_ORDER_KIND_COMPLIANCE},
+        {"$set": {"compliance_proof_status": proof, "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
 
 
@@ -1484,6 +1562,11 @@ async def verify_document(request: Request, document_id: str):
         except Exception as ev_err:
             logger.debug("Evidence append to work order skip: %s", ev_err)
 
+        try:
+            await _set_compliance_work_order_proof_verified(db, document.get("work_order_id"))
+        except Exception as proof_err:
+            logger.warning("Could not set compliance work order proof verified: %s", proof_err)
+
         return {"message": "Document verified", "outcome": outcome}
     
     except HTTPException:
@@ -1545,7 +1628,14 @@ async def reject_document(request: Request, document_id: str, reason: str = Form
             after_state={"status": DocumentStatus.REJECTED.value},
             metadata={"reason": reason}
         )
-        
+
+        try:
+            await _reconcile_compliance_work_order_proof_after_document_removed(
+                db, document_id, document.get("work_order_id")
+            )
+        except Exception as wo_proof_err:
+            logger.warning("Compliance WO proof reconcile on document reject failed: %s", wo_proof_err)
+
         return {"message": "Document rejected"}
     
     except HTTPException:
@@ -1571,6 +1661,12 @@ async def delete_document(request: Request, document_id: str):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this document")
         requirement_id = document.get("requirement_id")
         property_id = document.get("property_id")
+        try:
+            await _reconcile_compliance_work_order_proof_after_document_removed(
+                db, document_id, document.get("work_order_id")
+            )
+        except Exception as wo_proof_err:
+            logger.warning("Compliance WO proof reconcile on client delete failed: %s", wo_proof_err)
         await db.documents.delete_one({"document_id": document_id})
         if requirement_id:
             await _revert_requirement_if_no_verified_docs(db, requirement_id, property_id)
@@ -1622,6 +1718,12 @@ async def admin_delete_document(request: Request, document_id: str):
         requirement_id = document.get("requirement_id")
         property_id = document.get("property_id")
         client_id = document["client_id"]
+        try:
+            await _reconcile_compliance_work_order_proof_after_document_removed(
+                db, document_id, document.get("work_order_id")
+            )
+        except Exception as wo_proof_err:
+            logger.warning("Compliance WO proof reconcile on admin delete failed: %s", wo_proof_err)
         await db.documents.delete_one({"document_id": document_id})
         if requirement_id:
             await _revert_requirement_if_no_verified_docs(db, requirement_id, property_id)
@@ -2422,6 +2524,11 @@ async def apply_ai_extraction(
             await _append_document_evidence_to_work_order(document_id, document.get("work_order_id"))
         except Exception as ev_err:
             logger.debug("Evidence append to work order skip: %s", ev_err)
+
+        try:
+            await _set_compliance_work_order_proof_verified(db, document.get("work_order_id"))
+        except Exception as proof_err:
+            logger.warning("Could not set compliance work order proof verified: %s", proof_err)
         
         # Send email notification
         try:

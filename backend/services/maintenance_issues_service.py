@@ -250,6 +250,8 @@ async def update_issue(
     description: Optional[str] = None,
     category: Optional[str] = None,
     updated_by_id: Optional[str] = None,
+    resolution_note: Optional[str] = None,
+    closed_by: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Update issue status and/or editable fields. Audit ISSUE_STATUS_UPDATED or ISSUE_CLOSED on status change."""
     db = database.get_db()
@@ -264,6 +266,27 @@ async def update_issue(
             if old_status in (STATUS_CLOSED, STATUS_CANCELLED) and s not in (STATUS_CLOSED, STATUS_CANCELLED):
                 pass  # do not reopen
             else:
+                terminal = s in (STATUS_CLOSED, STATUS_CANCELLED, STATUS_RESOLVED)
+                if terminal:
+                    wo = await db.work_orders.find_one(
+                        {"issue_id": issue_id, "client_id": client_id},
+                        {"status": 1},
+                    )
+                    wo_ok = wo and (wo.get("status") or "").upper() in (
+                        "COMPLETED",
+                        "VERIFIED",
+                        "CLOSED",
+                    )
+                    note_ok = (resolution_note or "").strip()
+                    if not wo_ok and not note_ok:
+                        raise ValueError(
+                            "Close or resolve this issue only after the linked maintenance job is completed, "
+                            "or provide a resolution note explaining how it was handled."
+                        )
+                    if note_ok:
+                        updates["resolution_note"] = resolution_note.strip()
+                    if closed_by:
+                        updates["closed_by"] = closed_by
                 updates["status"] = s
     if description is not None:
         updates["description"] = (description or "").strip() or issue.get("description", "")

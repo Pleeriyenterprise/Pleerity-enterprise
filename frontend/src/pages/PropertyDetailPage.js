@@ -47,7 +47,7 @@ import {
   issueStatusLabel,
 } from '../domain/presentDomain';
 import { toast } from 'sonner';
-import { resolveClientPortalPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
+import { buildSafeQueryPath, resolveClientPortalPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -138,6 +138,11 @@ export default function PropertyDetailPage() {
   const [urgentExplainKey, setUrgentExplainKey] = useState(null);
   const [urgentExplainData, setUrgentExplainData] = useState(null);
   const [urgentExplainLoading, setUrgentExplainLoading] = useState(false);
+
+  const [bookInspectionOpen, setBookInspectionOpen] = useState(false);
+  const [bookInspectionSignalId, setBookInspectionSignalId] = useState(null);
+  const [bookInspectionReqPick, setBookInspectionReqPick] = useState('');
+  const [bookInspectionSaving, setBookInspectionSaving] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -239,6 +244,47 @@ export default function PropertyDetailPage() {
       .catch(() => setRiskSignalsData(null))
       .finally(() => setRiskSignalsLoading(false));
   }, [propertyId, hasFeature]);
+
+  const openBookInspectionFromRisk = useCallback(
+    (signalId) => {
+      if (!hasFeature('compliance_engine') || !hasFeature('maintenance_workflows')) return;
+      setBookInspectionSignalId(signalId);
+      setBookInspectionReqPick('');
+      setBookInspectionOpen(true);
+    },
+    [hasFeature],
+  );
+
+  const confirmBookInspectionFromRisk = useCallback(async () => {
+    if (!bookInspectionSignalId || !bookInspectionReqPick) {
+      toast.error('Select a requirement to continue.');
+      return;
+    }
+    const picked = requirements.find((r) => (r.requirement_id || r.id) === bookInspectionReqPick);
+    const reqCode = picked?.requirement_code || picked?.requirement_type || picked?.code;
+    if (!reqCode) {
+      toast.error('Selected requirement has no code.');
+      return;
+    }
+    setBookInspectionSaving(true);
+    try {
+      const res = await clientAPI.arrangeComplianceInspectionFromRiskSignal(bookInspectionSignalId, {
+        requirement_code: String(reqCode),
+        linked_property_requirement_id: bookInspectionReqPick,
+        compliance_purpose: 'inspection',
+      });
+      const wid = res.data?.work_order?.work_order_id;
+      toast.success('Compliance inspection job created. Open Operations → Jobs to request a contractor.');
+      setBookInspectionOpen(false);
+      setBookInspectionSignalId(null);
+      loadRiskSignals();
+      if (wid) navigate(buildSafeQueryPath('/operations/work-orders', { work_order_id: wid }));
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Could not book inspection');
+    } finally {
+      setBookInspectionSaving(false);
+    }
+  }, [bookInspectionSignalId, bookInspectionReqPick, requirements, navigate, loadRiskSignals]);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -1033,8 +1079,11 @@ export default function PropertyDetailPage() {
                             {actions.includes('create_issue') && (
                               <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.createIssueFromRiskSignal(s.signal_id, {}); toast.success('Issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Issue</Button>
                             )}
-                            {actions.includes('schedule_inspection') && (
-                              <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.scheduleInspectionFromRiskSignal(s.signal_id, {}); toast.success('Inspection issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Inspection</Button>
+                            {actions.includes('schedule_inspection') && hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
+                              <Button size="sm" variant="outline" onClick={() => openBookInspectionFromRisk(s.signal_id)}>Book inspection</Button>
+                            )}
+                            {actions.includes('schedule_inspection') && hasFeature('maintenance_workflows') && !hasFeature('compliance_engine') && (
+                              <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {}); toast.success('Inspection issue logged (maintenance)'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Log inspection issue</Button>
                             )}
                             <Button size="sm" variant="ghost" className="text-gray-600" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'acknowledged'); loadRiskSignals(); } catch (_) {} }}>Acknowledge</Button>
                             <Button size="sm" variant="ghost" className="text-gray-600" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'resolved'); loadRiskSignals(); } catch (_) {} }}>Resolve</Button>
@@ -2324,8 +2373,11 @@ export default function PropertyDetailPage() {
                             {actions.includes('create_issue') && (
                               <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.createIssueFromRiskSignal(s.signal_id, {}); toast.success('Issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Create issue</Button>
                             )}
-                            {actions.includes('schedule_inspection') && (
-                              <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.scheduleInspectionFromRiskSignal(s.signal_id, {}); toast.success('Inspection issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Schedule inspection</Button>
+                            {actions.includes('schedule_inspection') && hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
+                              <Button size="sm" variant="outline" onClick={() => openBookInspectionFromRisk(s.signal_id)}>Book inspection</Button>
+                            )}
+                            {actions.includes('schedule_inspection') && hasFeature('maintenance_workflows') && !hasFeature('compliance_engine') && (
+                              <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {}); toast.success('Inspection issue logged (maintenance)'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Log inspection issue</Button>
                             )}
                           </>
                         );
@@ -2619,6 +2671,46 @@ export default function PropertyDetailPage() {
                 disabled={editAssetSaving}
               >
                 {editAssetSaving ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bookInspectionOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !bookInspectionSaving && setBookInspectionOpen(false)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full m-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <h3 className="font-semibold text-midnight-blue text-lg">Book compliance inspection</h3>
+              <button type="button" onClick={() => !bookInspectionSaving && setBookInspectionOpen(false)} className="p-1 rounded hover:bg-gray-100" aria-label="Close">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Select the regulatory obligation this inspection satisfies. A compliance job (not a repair ticket) will be created and linked to this risk signal.
+            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Obligation on this property</label>
+            <select
+              value={bookInspectionReqPick}
+              onChange={(e) => setBookInspectionReqPick(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 mb-4 text-sm"
+              disabled={bookInspectionSaving}
+            >
+              <option value="">— Select —</option>
+              {requirements.map((r) => {
+                const rid = r.requirement_id || r.id;
+                if (!rid) return null;
+                return (
+                  <option key={rid} value={rid}>
+                    {rowTitle(r)}
+                  </option>
+                );
+              })}
+            </select>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setBookInspectionOpen(false)} disabled={bookInspectionSaving}>Cancel</Button>
+              <Button onClick={confirmBookInspectionFromRisk} disabled={bookInspectionSaving || !bookInspectionReqPick}>
+                {bookInspectionSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Book inspection'}
               </Button>
             </div>
           </div>

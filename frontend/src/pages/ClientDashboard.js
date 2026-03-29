@@ -1223,7 +1223,7 @@ const ClientDashboard = () => {
             {hasFeature('predictive_maintenance') && (
               <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/operations/risk-signals')}>
                 <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Predicted risks</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Risk signals</p>
                   <p className="text-xl font-bold text-midnight-blue">{riskSignalsCount}</p>
                 </CardContent>
               </Card>
@@ -1421,7 +1421,7 @@ const ClientDashboard = () => {
               )}
               {hasFeature('predictive_maintenance') && (commandCenter.upcoming_risks?.length ?? 0) > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Active predicted risks</p>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Active risk signals</p>
                   <ul className="space-y-2 text-sm">
                     {commandCenter.upcoming_risks.slice(0, 4).map((r) => (
                       <li key={r.signal_id || r.description} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
@@ -1999,7 +1999,7 @@ const ClientDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl font-bold text-midnight-blue">{riskSignalsCount}</p>
-                  <p className="text-sm text-gray-500 mt-1">Predicted risks across your properties</p>
+                  <p className="text-sm text-gray-500 mt-1">Risk signals across your properties</p>
                   <Button variant="outline" size="sm" className="mt-3 text-electric-teal border-electric-teal" onClick={() => navigate('/operations/risk-signals')}>
                     View risk signals
                   </Button>

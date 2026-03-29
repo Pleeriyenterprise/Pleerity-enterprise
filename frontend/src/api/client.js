@@ -371,6 +371,16 @@ export const clientAPI = {
     }),
   createMaintenanceWorkOrder: (body) => apiClient.post('/client/maintenance/work-orders', body),
   updateMaintenanceWorkOrder: (workOrderId, body) => apiClient.patch(`/client/maintenance/work-orders/${workOrderId}`, body),
+  proposeMaintenanceSchedule: (workOrderId, body) =>
+    apiClient.post(`/client/maintenance/work-orders/${workOrderId}/schedule/propose`, body),
+  confirmMaintenanceSchedule: (workOrderId) =>
+    apiClient.post(`/client/maintenance/work-orders/${workOrderId}/schedule/confirm`, {}),
+  requestMaintenanceScheduleReschedule: (workOrderId, body) =>
+    apiClient.post(`/client/maintenance/work-orders/${workOrderId}/schedule/reschedule-request`, body),
+  cancelMaintenanceSchedule: (workOrderId) =>
+    apiClient.post(`/client/maintenance/work-orders/${workOrderId}/schedule/cancel`, {}),
+  getMaintenanceScheduleIcs: (workOrderId) =>
+    apiClient.get(`/client/maintenance/work-orders/${workOrderId}/schedule/ics`, { responseType: 'blob' }),
   getRecommendContractors: (workOrderId, params = {}) => apiClient.get(`/client/maintenance/work-orders/${workOrderId}/recommend-contractors`, { params }),
   /** Maintenance issues (create issue → triage → create work order). */
   getMaintenanceIssues: (params = {}) => apiClient.get('/client/maintenance/issues', { params }),
@@ -380,6 +390,7 @@ export const clientAPI = {
     apiClient.get(`/client/maintenance/issues/${issueId}/timeline`, { params }),
   createMaintenanceIssue: (body) => apiClient.post('/client/maintenance/issues', body),
   createWorkOrderFromIssue: (issueId) => apiClient.post(`/client/maintenance/issues/${issueId}/create-work-order`),
+  updateMaintenanceIssue: (issueId, body) => apiClient.patch(`/client/maintenance/issues/${issueId}`, body),
   /** Predictive maintenance insights (requires PREDICTIVE_MAINTENANCE). */
   getPredictiveInsights: (params = {}) => apiClient.get('/client/maintenance/predictive-insights', { params }),
   /** Property assets for predictive (requires MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE). */
@@ -401,9 +412,44 @@ export const clientAPI = {
     apiClient.get(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/suggested-actions`),
   createIssueFromRiskSignal: (signalId, body = {}) => apiClient.post(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/create-issue`, body),
   createWorkOrderFromRiskSignal: (signalId, body = {}) => apiClient.post(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/create-work-order`, body),
-  scheduleInspectionFromRiskSignal: (signalId, body = {}) => apiClient.post(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/schedule-inspection`, body),
+  /** Canonical: creates a COMPLIANCE work order (requires obligation fields in body). */
+  arrangeComplianceInspectionFromRiskSignal: (signalId, body) =>
+    apiClient.post(
+      `/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/arrange-compliance-inspection`,
+      body,
+    ),
+  /** Maintenance-only: inspection-flavoured issue, not a compliance job. */
+  logInspectionIssueFromRiskSignal: (signalId, body = {}) =>
+    apiClient.post(`/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/log-inspection-issue`, body),
+  /** @deprecated Use arrangeComplianceInspectionFromRiskSignal (same server behaviour as arrange-compliance-inspection). */
+  scheduleInspectionFromRiskSignal: (signalId, body) =>
+    apiClient.post(
+      `/client/maintenance/risk-signals/${encodeURIComponent(signalId)}/arrange-compliance-inspection`,
+      body,
+    ),
   recalculatePropertyRiskSignals: (propertyId) => apiClient.post(`/client/maintenance/risk-signals/recalculate/${propertyId}`),
-  updateRiskSignalStatus: (signalId, status) => apiClient.patch(`/client/maintenance/risk-signals/${signalId}`, { status }),
+  updateRiskSignalStatus: (signalId, status, dismissReason = null) =>
+    apiClient.patch(`/client/maintenance/risk-signals/${signalId}`, {
+      status,
+      ...(dismissReason ? { dismiss_reason: dismissReason } : {}),
+    }),
+  /** Dismiss a risk signal (resolved) with mandatory reason when no execution closure exists server-side. */
+  dismissRiskSignal: (signalId, dismissReason) =>
+    apiClient.patch(`/client/maintenance/risk-signals/${signalId}`, { status: 'resolved', dismiss_reason: dismissReason }),
+  getMaintenanceContractorRoutingState: (workOrderId) =>
+    apiClient.get(`/client/maintenance/work-orders/${workOrderId}/contractor-routing`),
+  requestMaintenanceContractor: (workOrderId) =>
+    apiClient.post(`/client/maintenance/work-orders/${workOrderId}/contractor-routing/request`),
+  confirmMaintenanceContractorRecommendation: (workOrderId) =>
+    apiClient.post(`/client/maintenance/work-orders/${workOrderId}/contractor-routing/confirm`),
+  /** Compliance execution jobs (COMPLIANCE work orders). Requires COMPLIANCE_ENGINE + MAINTENANCE_WORKFLOWS. */
+  bookComplianceWorkOrder: (body) => apiClient.post('/client/compliance-execution/work-orders/book', body),
+  getComplianceContractorRoutingState: (workOrderId) =>
+    apiClient.get(`/client/compliance-execution/work-orders/${workOrderId}/contractor-routing`),
+  requestComplianceContractor: (workOrderId) =>
+    apiClient.post(`/client/compliance-execution/work-orders/${workOrderId}/contractor-routing/request`),
+  confirmComplianceContractorRecommendation: (workOrderId) =>
+    apiClient.post(`/client/compliance-execution/work-orders/${workOrderId}/contractor-routing/confirm`),
   /** Contractors available to client (requires CONTRACTOR_NETWORK). */
   getContractors: (params = {}) => apiClient.get('/client/contractors', { params }),
   getContractorExplanation: (contractorId) => apiClient.get(`/client/contractors/${encodeURIComponent(contractorId)}/explanation`),
@@ -599,6 +645,16 @@ export function createContractorAPI(accessToken) {
         headers,
         responseType: 'blob',
       }),
+    proposeSchedule: (workOrderId, body) =>
+      apiClient.post(`/contractor/work-orders/${workOrderId}/schedule/propose`, body, { headers }),
+    confirmSchedule: (workOrderId) =>
+      apiClient.post(`/contractor/work-orders/${workOrderId}/schedule/confirm`, {}, { headers }),
+    requestScheduleReschedule: (workOrderId, body) =>
+      apiClient.post(`/contractor/work-orders/${workOrderId}/schedule/reschedule-request`, body, { headers }),
+    cancelSchedule: (workOrderId) =>
+      apiClient.post(`/contractor/work-orders/${workOrderId}/schedule/cancel`, {}, { headers }),
+    getScheduleIcs: (workOrderId) =>
+      apiClient.get(`/contractor/work-orders/${workOrderId}/schedule/ics`, { headers, responseType: 'blob' }),
   };
 }
 
@@ -624,5 +680,10 @@ export function createJobLinkAPI(jobToken) {
         }),
         responseType: 'blob',
       }),
+    proposeSchedule: (body) => apiClient.post('/job/work-order/schedule/propose', body, config()),
+    confirmSchedule: () => apiClient.post('/job/work-order/schedule/confirm', {}, config()),
+    requestScheduleReschedule: (body) => apiClient.post('/job/work-order/schedule/reschedule-request', body, config()),
+    cancelSchedule: () => apiClient.post('/job/work-order/schedule/cancel', {}, config()),
+    getScheduleIcs: () => apiClient.get('/job/work-order/schedule/ics', { ...config(), responseType: 'blob' }),
   };
 }

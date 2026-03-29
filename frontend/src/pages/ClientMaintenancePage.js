@@ -32,7 +32,7 @@ import {
 import { toast } from 'sonner';
 import { issueSeverityLabel, workOrderStatusLabel } from '../domain/presentDomain';
 import { assetIdParts } from '../utils/assetDisplay';
-import { buildSafeQueryPath, normalizeRouteId, resolvePropertyPath } from '../utils/clientPortalNavigation';
+import { buildSafeQueryPath, normalizeRouteId, resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
 
 const WO_STATUS_OPTIONS = [
   { value: 'DRAFT', label: 'Draft' },
@@ -43,9 +43,65 @@ const WO_STATUS_OPTIONS = [
   { value: 'AWAITING_PARTS', label: 'Awaiting parts' },
   { value: 'COMPLETED', label: 'Completed' },
   { value: 'VERIFIED', label: 'Verified' },
-  { value: 'CLOSED', label: 'Closed' },
+  { value: 'CLOSED', label: 'Closed job' },
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
+
+/** True when client must use contractor routing (request → confirm), not direct PATCH assign. */
+function workOrderNeedsContractorRouting(wo, hasComplianceEngine) {
+  if (!wo) return false;
+  const kind = (wo.work_order_kind || '').toUpperCase();
+  if (kind === 'COMPLIANCE') return !!hasComplianceEngine;
+  return !!wo.requires_client_assignment_confirmation;
+}
+
+function complianceBookingStatusLabel(st) {
+  const u = (st || '').toUpperCase();
+  const map = {
+    BOOKING_REQUESTED: 'Booking requested',
+    PENDING_CLIENT_CONFIRMATION: 'Awaiting your contractor confirmation',
+    CONTRACTOR_NOTIFIED: 'Contractor notified',
+    AWAITING_CONTRACTOR_RESPONSE: 'Awaiting contractor response',
+    BOOKING_SCHEDULED: 'Visit scheduled',
+    BOOKING_IN_PROGRESS: 'In progress',
+    OPERATIONAL_COMPLETE: 'Work finished (operational)',
+  };
+  if (map[u]) return map[u];
+  return st ? String(st).replace(/_/g, ' ') : '—';
+}
+
+function complianceProofStatusLabel(st) {
+  const u = (st || '').toUpperCase();
+  if (u === 'VERIFIED') return 'Verified — regulatory proof satisfied (obligation can show as met)';
+  if (u === 'SUBMITTED') return 'Submitted — pending verification';
+  if (u === 'NOT_SUBMITTED') return 'Not submitted';
+  return st || '—';
+}
+
+function scheduleLifecycleLabel(wo) {
+  const st = (wo?.schedule_status || '').toLowerCase();
+  if (st === 'proposed') return 'Proposed visit';
+  if (st === 'confirmed') return 'Confirmed visit';
+  if (st === 'reschedule_requested') return 'Reschedule requested';
+  if (st === 'cancelled') return 'Visit cancelled';
+  if (st === 'completed') return 'Visit completed (job closed)';
+  if (wo?.scheduled_at) return 'Visit time on file';
+  return 'No visit scheduled';
+}
+
+function scheduleProposedByLabel(by) {
+  const b = (by || '').toLowerCase();
+  if (b === 'client') return 'Client';
+  if (b === 'contractor') return 'Contractor';
+  if (b === 'admin') return 'Operations';
+  return by || '—';
+}
+
+function clientMayConfirmSchedule(wo) {
+  if ((wo?.schedule_status || '').toLowerCase() !== 'proposed') return false;
+  const sb = (wo?.scheduled_by || '').toLowerCase();
+  return sb === 'contractor' || sb === 'admin';
+}
 
 function formatDate(s) {
   if (!s) return '—';
@@ -54,6 +110,16 @@ function formatDate(s) {
     return d.toLocaleDateString(undefined, { dateStyle: 'short' });
   } catch {
     return s;
+  }
+}
+
+function formatScheduleInstant(iso, tz) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return `${d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} (${tz || 'UTC'})`;
+  } catch {
+    return String(iso);
   }
 }
 
@@ -135,6 +201,14 @@ function ClientMaintenancePageInner() {
   /** Invoices linked to the open work order drawer (contractor-submitted or client-recorded). */
   const [woLinkedInvoices, setWoLinkedInvoices] = useState(null);
   const [woInvoicesLoading, setWoInvoicesLoading] = useState(false);
+  /** Contractor routing state (maintenance or compliance execution). */
+  const [woRoutingState, setWoRoutingState] = useState(null);
+  const [scheduleForm, setScheduleForm] = useState({
+    datetimeLocal: '',
+    timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London' : 'Europe/London',
+    notes: '',
+  });
+  const [scheduleActionLoading, setScheduleActionLoading] = useState(false);
 
   const loadWorkOrders = useCallback(() => {
     setLoading(true);
@@ -224,15 +298,20 @@ function ClientMaintenancePageInner() {
     }
     setWoDetailLoading(true);
     setWoRecommendList(null);
+    setWoRoutingState(null);
     clientAPI.getMaintenanceWorkOrder(woDetailDrawer)
       .then((res) => {
-        setWoDetailData(res.data || null);
-        if (hasFeature('contractor_network')) {
+        const wo = res.data || null;
+        setWoDetailData(wo);
+        const kind = (wo?.work_order_kind || '').toUpperCase();
+        if (hasFeature('contractor_network') && kind !== 'COMPLIANCE') {
           setWoRecommendLoading(true);
           clientAPI.getRecommendContractors(woDetailDrawer, { limit: 10 })
             .then((r) => setWoRecommendList(r.data?.contractors || []))
             .catch(() => setWoRecommendList([]))
             .finally(() => setWoRecommendLoading(false));
+        } else {
+          setWoRecommendList([]);
         }
       })
       .catch(() => setWoDetailData(null))
@@ -252,6 +331,36 @@ function ClientMaintenancePageInner() {
       .catch(() => setWoLinkedInvoices([]))
       .finally(() => setWoInvoicesLoading(false));
   }, [woDetailData?.work_order_id, hasFeature]);
+
+  useEffect(() => {
+    const wid = woDetailData?.work_order_id;
+    if (!wid || !hasFeature('contractor_network')) {
+      setWoRoutingState(null);
+      return;
+    }
+    const kind = (woDetailData.work_order_kind || '').toUpperCase();
+    let cancelled = false;
+    (async () => {
+      try {
+        if (kind === 'COMPLIANCE') {
+          if (!hasFeature('compliance_engine')) {
+            if (!cancelled) setWoRoutingState(null);
+            return;
+          }
+          const r = await clientAPI.getComplianceContractorRoutingState(wid);
+          if (!cancelled) setWoRoutingState(r.data);
+        } else {
+          const r = await clientAPI.getMaintenanceContractorRoutingState(wid);
+          if (!cancelled) setWoRoutingState(r.data);
+        }
+      } catch {
+        if (!cancelled) setWoRoutingState(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [woDetailData?.work_order_id, woDetailData?.work_order_kind, hasFeature]);
 
   const propertyLabel = useCallback((id) => {
     const p = properties.find((x) => x.property_id === id);
@@ -357,7 +466,155 @@ function ClientMaintenancePageInner() {
       .finally(() => setWoUpdateSaving(false));
   };
 
+  const refreshWoDetail = (wid) => {
+    if (!wid) return Promise.resolve();
+    return clientAPI.getMaintenanceWorkOrder(wid).then((res) => {
+      if (woDetailDrawer === wid) setWoDetailData(res.data);
+    });
+  };
+
+  const handleProposeVisitSchedule = async () => {
+    const wid = woDetailData?.work_order_id;
+    if (!wid || !scheduleForm.datetimeLocal) {
+      toast.error('Choose a visit date and time');
+      return;
+    }
+    const raw = scheduleForm.datetimeLocal.length === 16 ? `${scheduleForm.datetimeLocal}:00` : scheduleForm.datetimeLocal;
+    setScheduleActionLoading(true);
+    try {
+      await clientAPI.proposeMaintenanceSchedule(wid, {
+        scheduled_at: raw,
+        timezone: scheduleForm.timezone,
+        notes: scheduleForm.notes?.trim() || undefined,
+      });
+      toast.success('Visit time proposed');
+      await refreshWoDetail(wid);
+      loadWorkOrders();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Could not propose visit time');
+    } finally {
+      setScheduleActionLoading(false);
+    }
+  };
+
+  const handleConfirmVisitSchedule = async () => {
+    const wid = woDetailData?.work_order_id;
+    if (!wid) return;
+    setScheduleActionLoading(true);
+    try {
+      await clientAPI.confirmMaintenanceSchedule(wid);
+      toast.success('Visit confirmed');
+      await refreshWoDetail(wid);
+      loadWorkOrders();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Could not confirm');
+    } finally {
+      setScheduleActionLoading(false);
+    }
+  };
+
+  const handleRequestVisitReschedule = async () => {
+    const wid = woDetailData?.work_order_id;
+    if (!wid) return;
+    const reason = window.prompt('Reason for reschedule request (optional)') ?? '';
+    setScheduleActionLoading(true);
+    try {
+      await clientAPI.requestMaintenanceScheduleReschedule(wid, { reason: reason.trim() || undefined });
+      toast.success('Reschedule request sent');
+      await refreshWoDetail(wid);
+      loadWorkOrders();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Request failed');
+    } finally {
+      setScheduleActionLoading(false);
+    }
+  };
+
+  const handleCancelVisitSchedule = async () => {
+    const wid = woDetailData?.work_order_id;
+    if (!wid) return;
+    if (!window.confirm('Cancel this scheduled visit?')) return;
+    setScheduleActionLoading(true);
+    try {
+      await clientAPI.cancelMaintenanceSchedule(wid);
+      toast.success('Visit cancelled');
+      await refreshWoDetail(wid);
+      loadWorkOrders();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Could not cancel');
+    } finally {
+      setScheduleActionLoading(false);
+    }
+  };
+
+  const handleDownloadScheduleIcs = async () => {
+    const wid = woDetailData?.work_order_id;
+    if (!wid) return;
+    try {
+      const res = await clientAPI.getMaintenanceScheduleIcs(wid);
+      openBlobApiResponse(res, `visit-${wid}.ics`);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Download failed');
+    }
+  };
+
+  const handleRequestContractorRouting = async () => {
+    const wid = woDetailData?.work_order_id;
+    if (!wid) return;
+    setWoUpdateSaving(true);
+    try {
+      const kind = (woDetailData.work_order_kind || '').toUpperCase();
+      if (kind === 'COMPLIANCE') {
+        await clientAPI.requestComplianceContractor(wid);
+      } else {
+        await clientAPI.requestMaintenanceContractor(wid);
+      }
+      toast.success('Contractor recommendation requested — review and confirm below.');
+      const r =
+        kind === 'COMPLIANCE'
+          ? await clientAPI.getComplianceContractorRoutingState(wid)
+          : await clientAPI.getMaintenanceContractorRoutingState(wid);
+      setWoRoutingState(r.data);
+      loadWorkOrders();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Request failed');
+    } finally {
+      setWoUpdateSaving(false);
+    }
+  };
+
+  const handleConfirmContractorRouting = async () => {
+    const wid = woDetailData?.work_order_id;
+    if (!wid) return;
+    setWoUpdateSaving(true);
+    try {
+      const kind = (woDetailData.work_order_kind || '').toUpperCase();
+      if (kind === 'COMPLIANCE') {
+        await clientAPI.confirmComplianceContractorRecommendation(wid);
+      } else {
+        await clientAPI.confirmMaintenanceContractorRecommendation(wid);
+      }
+      toast.success('Contractor confirmed and assigned');
+      const fresh = await clientAPI.getMaintenanceWorkOrder(wid);
+      setWoDetailData(fresh.data || null);
+      const r =
+        kind === 'COMPLIANCE'
+          ? await clientAPI.getComplianceContractorRoutingState(wid)
+          : await clientAPI.getMaintenanceContractorRoutingState(wid);
+      setWoRoutingState(r.data);
+      loadWorkOrders();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Confirm failed');
+    } finally {
+      setWoUpdateSaving(false);
+    }
+  };
+
   const handleAssignContractor = (workOrderId, contractorId) => {
+    if (woDetailData?.requires_client_assignment_confirmation) {
+      toast.error('Use Request contractor, then Confirm contractor, for this job.');
+      return;
+    }
     setWoUpdateSaving(true);
     clientAPI.updateMaintenanceWorkOrder(workOrderId, { contractor_id: contractorId })
       .then(() => {
@@ -417,7 +674,7 @@ function ClientMaintenancePageInner() {
       <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full min-w-0 client-portal-prose">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 mb-4">
           <Wrench className="w-7 h-7 shrink-0" />
-          Work Orders
+          Maintenance jobs
         </h1>
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-6 flex items-start gap-3">
@@ -438,11 +695,11 @@ function ClientMaintenancePageInner() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-4">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 min-w-0">
           <Wrench className="w-7 h-7 shrink-0" />
-          Work Orders
+          Maintenance jobs
         </h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto lg:shrink-0">
           <Button variant="outline" className="w-full sm:w-auto min-h-11 justify-center" onClick={() => navigate('/operations/issues')}>
-            View Issues
+            View maintenance issues
           </Button>
           <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90">
             <Plus className="w-4 h-4 mr-2 shrink-0" />
@@ -451,7 +708,7 @@ function ClientMaintenancePageInner() {
         </div>
       </div>
       <p className="text-gray-600 mb-6 text-sm sm:text-base break-words">
-        Portfolio-wide work order execution. Track status, assign contractors, and monitor SLA deadlines.
+        Portfolio-wide maintenance and compliance jobs. Track status, request contractors where confirmation is required, and monitor SLA deadlines.
       </p>
 
       {/* Summary KPI row */}
@@ -609,7 +866,7 @@ function ClientMaintenancePageInner() {
                       {hr && <span className={`ml-1 ${hr.overdue ? 'text-red-600 font-medium' : 'text-amber-600'}`}>{hr.text}</span>}
                     </p>
                     <span className={`inline-flex px-2 py-1 rounded text-xs ${statusBadgeClass(wo.status)}`}>{workOrderStatusLabel(wo.status)}</span>
-                    <Button className="w-full min-h-11 mt-2" variant="outline" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View work order</Button>
+                    <Button className="w-full min-h-11 mt-2" variant="outline" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View job</Button>
                   </div>
                 );
               })}
@@ -618,7 +875,7 @@ function ClientMaintenancePageInner() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-gray-600">
-                    <th className="p-2">Work order</th>
+                    <th className="p-2">Job</th>
                     <th className="p-2">Property</th>
                     <th className="p-2">SLA due</th>
                     <th className="p-2">Status</th>
@@ -653,7 +910,7 @@ function ClientMaintenancePageInner() {
       {/* Work orders table */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-base">Work orders</CardTitle>
+          <CardTitle className="text-base">Jobs</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -663,15 +920,15 @@ function ClientMaintenancePageInner() {
             </div>
           ) : workOrders.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-gray-500 mb-4">No work orders have been created across your portfolio yet.</p>
+              <p className="text-gray-500 mb-4">No jobs have been created across your portfolio yet.</p>
               <div className="flex gap-2 justify-center flex-wrap">
-                <Button variant="outline" onClick={() => navigate('/operations/issues')}>View Issues</Button>
+                <Button variant="outline" onClick={() => navigate('/operations/issues')}>View maintenance issues</Button>
                 <Button onClick={() => setCreateOpen(true)} className="bg-electric-teal hover:bg-electric-teal/90">Report issue</Button>
               </div>
             </div>
           ) : !filteredBySearch.length ? (
             <div className="py-8 text-center">
-              <p className="text-gray-500 mb-4">No work orders match your current filters.</p>
+              <p className="text-gray-500 mb-4">No jobs match your current filters.</p>
               <Button variant="outline" onClick={clearFilters}>Clear filters</Button>
             </div>
           ) : (
@@ -688,7 +945,7 @@ function ClientMaintenancePageInner() {
                       </div>
                       <div>
                         <p className="text-xs font-mono text-gray-500 break-all">{wo.work_order_id}</p>
-                        <p className="font-semibold text-midnight-blue mt-1 break-words">{wo.description || 'Work order'}</p>
+                        <p className="font-semibold text-midnight-blue mt-1 break-words">{wo.description || 'Job'}</p>
                         <button
                           type="button"
                           onClick={() => {
@@ -732,10 +989,18 @@ function ClientMaintenancePageInner() {
                       <div className="flex flex-col gap-2 pt-2 border-t border-gray-100">
                         <Button className="w-full min-h-11" variant="default" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View details</Button>
                         {hasFeature('contractor_network') && !wo.contractor_id && (
-                          <Button className="w-full min-h-11" variant="outline" onClick={() => { setWoDetailDrawer(wo.work_order_id); }}>Assign contractor</Button>
+                          <Button className="w-full min-h-11" variant="outline" onClick={() => { setWoDetailDrawer(wo.work_order_id); }}>
+                            {workOrderNeedsContractorRouting(wo, hasFeature('compliance_engine')) ? 'Request contractor' : 'Assign contractor'}
+                          </Button>
                         )}
                         {wo.issue_id && (
-                          <Button className="w-full min-h-11" variant="outline" onClick={() => navigate('/operations/issues')}>View linked issue</Button>
+                          <Button
+                            className="w-full min-h-11"
+                            variant="outline"
+                            onClick={() => navigate(resolveIssueDetailPath(wo.issue_id))}
+                          >
+                            View linked issue
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -779,7 +1044,13 @@ function ClientMaintenancePageInner() {
                           </td>
                           <td className="p-2">
                             {wo.issue_id ? (
-                              <button type="button" onClick={() => navigate('/operations/issues')} className="text-electric-teal hover:underline text-xs truncate max-w-[80px] block">View</button>
+                              <button
+                                type="button"
+                                onClick={() => navigate(resolveIssueDetailPath(wo.issue_id))}
+                                className="text-electric-teal hover:underline text-xs truncate max-w-[80px] block"
+                              >
+                                View
+                              </button>
                             ) : '—'}
                           </td>
                           <td className="p-2 text-gray-600 max-w-[6rem]">
@@ -800,7 +1071,9 @@ function ClientMaintenancePageInner() {
                           <td className="p-2 text-right whitespace-nowrap">
                             <Button size="sm" variant="ghost" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View</Button>
                             {hasFeature('contractor_network') && !wo.contractor_id && (
-                              <Button size="sm" variant="outline" className="ml-1" onClick={() => { setWoDetailDrawer(wo.work_order_id); }}>Assign</Button>
+                              <Button size="sm" variant="outline" className="ml-1" onClick={() => { setWoDetailDrawer(wo.work_order_id); }}>
+                                {workOrderNeedsContractorRouting(wo, hasFeature('compliance_engine')) ? 'Request' : 'Assign'}
+                              </Button>
                             )}
                           </td>
                         </tr>
@@ -820,7 +1093,9 @@ function ClientMaintenancePageInner() {
         <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setWoDetailDrawer(null)}>
           <div className="w-full max-w-lg bg-white shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-semibold text-midnight-blue">Work order details</h3>
+              <h3 className="font-semibold text-midnight-blue">
+                {(woDetailData?.work_order_kind || '').toUpperCase() === 'COMPLIANCE' ? 'Compliance job' : 'Maintenance job'} details
+              </h3>
               <button type="button" onClick={() => setWoDetailDrawer(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-4">
@@ -855,7 +1130,16 @@ function ClientMaintenancePageInner() {
                     <dt className="text-gray-500">Linked issue</dt>
                     <dd>
                       {woDetailData.issue_id ? (
-                        <button type="button" className="text-electric-teal hover:underline" onClick={() => { navigate('/operations/issues'); setWoDetailDrawer(null); }}>View issue</button>
+                        <button
+                          type="button"
+                          className="text-electric-teal hover:underline"
+                          onClick={() => {
+                            navigate(resolveIssueDetailPath(woDetailData.issue_id));
+                            setWoDetailDrawer(null);
+                          }}
+                        >
+                          View issue
+                        </button>
                       ) : '—'}
                     </dd>
                     <dt className="text-gray-500">Property</dt>
@@ -865,7 +1149,119 @@ function ClientMaintenancePageInner() {
                       ) : '—'}
                     </dd>
                     <dt className="text-gray-500">Updated</dt><dd>{formatRelativeTime(woDetailData.updated_at)}</dd>
+                    {(woDetailData.work_order_kind || '').toUpperCase() === 'COMPLIANCE' && (
+                      <>
+                        <dt className="text-gray-500">Booking</dt>
+                        <dd className="text-gray-800">{complianceBookingStatusLabel(woDetailData.compliance_booking_status)}</dd>
+                        <dt className="text-gray-500">Regulatory proof</dt>
+                        <dd className="text-gray-800">{complianceProofStatusLabel(woDetailData.compliance_proof_status)}</dd>
+                        {woDetailData.requirement_code ? (
+                          <>
+                            <dt className="text-gray-500">Requirement code</dt>
+                            <dd className="font-mono text-xs">{woDetailData.requirement_code}</dd>
+                          </>
+                        ) : null}
+                      </>
+                    )}
                   </dl>
+                  {(() => {
+                    const st = (woDetailData.status || '').toUpperCase();
+                    const woTerminal = ['CANCELLED', 'COMPLETED', 'CLOSED', 'VERIFIED'].includes(st);
+                    const ss = (woDetailData.schedule_status || '').toLowerCase();
+                    const canUseSchedule = !!woDetailData.contractor_id && !woTerminal;
+                    const showPropose =
+                      canUseSchedule &&
+                      (!ss || ss === 'cancelled' || ss === 'reschedule_requested' || (!woDetailData.scheduled_at && !ss));
+                    const showReschedule =
+                      canUseSchedule &&
+                      woDetailData.scheduled_at &&
+                      (ss === 'proposed' || ss === 'confirmed');
+                    const showCancel =
+                      canUseSchedule &&
+                      woDetailData.scheduled_at &&
+                      ss !== 'cancelled' &&
+                      ss !== 'completed';
+                    return (
+                      <div className="rounded-lg border border-gray-200 bg-slate-50/90 p-3 mb-4 text-sm">
+                        <p className="font-medium text-gray-900 mb-2">Visit scheduling</p>
+                        <p className="text-gray-800 mb-1">{scheduleLifecycleLabel(woDetailData)}</p>
+                        {woDetailData.scheduled_at ? (
+                          <p className="text-gray-700 text-xs mb-1">
+                            {formatScheduleInstant(woDetailData.scheduled_at, woDetailData.scheduled_timezone)}
+                          </p>
+                        ) : null}
+                        {woDetailData.scheduled_by ? (
+                          <p className="text-gray-600 text-xs mb-2">Proposed by: {scheduleProposedByLabel(woDetailData.scheduled_by)}</p>
+                        ) : (
+                          <p className="text-gray-600 text-xs mb-2">&nbsp;</p>
+                        )}
+                        {!woDetailData.contractor_id ? (
+                          <p className="text-xs text-amber-800">Assign a contractor before proposing a visit time.</p>
+                        ) : null}
+                        {canUseSchedule ? (
+                          <div className="space-y-2 mt-2">
+                            {showPropose ? (
+                              <div className="space-y-2 border-t border-gray-200 pt-2">
+                                <p className="text-xs font-medium text-gray-700">Propose visit time</p>
+                                <input
+                                  type="datetime-local"
+                                  className="border border-gray-200 rounded-md px-2 py-1.5 text-xs w-full max-w-xs"
+                                  value={scheduleForm.datetimeLocal}
+                                  onChange={(e) => setScheduleForm((f) => ({ ...f, datetimeLocal: e.target.value }))}
+                                />
+                                <input
+                                  type="text"
+                                  className="border border-gray-200 rounded-md px-2 py-1.5 text-xs w-full max-w-xs"
+                                  placeholder="IANA timezone (e.g. Europe/London)"
+                                  value={scheduleForm.timezone}
+                                  onChange={(e) => setScheduleForm((f) => ({ ...f, timezone: e.target.value }))}
+                                />
+                                <input
+                                  type="text"
+                                  className="border border-gray-200 rounded-md px-2 py-1.5 text-xs w-full"
+                                  placeholder="Notes (optional)"
+                                  value={scheduleForm.notes}
+                                  onChange={(e) => setScheduleForm((f) => ({ ...f, notes: e.target.value }))}
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  disabled={scheduleActionLoading}
+                                  onClick={handleProposeVisitSchedule}
+                                >
+                                  {scheduleActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                  Propose visit time
+                                </Button>
+                              </div>
+                            ) : null}
+                            <div className="flex flex-wrap gap-2">
+                              {clientMayConfirmSchedule(woDetailData) ? (
+                                <Button type="button" size="sm" disabled={scheduleActionLoading} onClick={handleConfirmVisitSchedule}>
+                                  Confirm visit
+                                </Button>
+                              ) : null}
+                              {showReschedule ? (
+                                <Button type="button" size="sm" variant="outline" disabled={scheduleActionLoading} onClick={handleRequestVisitReschedule}>
+                                  Request change
+                                </Button>
+                              ) : null}
+                              {showCancel ? (
+                                <Button type="button" size="sm" variant="outline" disabled={scheduleActionLoading} onClick={handleCancelVisitSchedule}>
+                                  Cancel visit
+                                </Button>
+                              ) : null}
+                              {woDetailData.scheduled_at ? (
+                                <Button type="button" size="sm" variant="ghost" disabled={scheduleActionLoading} onClick={handleDownloadScheduleIcs}>
+                                  Download .ics
+                                </Button>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
                   {woDetailData.resolution_outcome && <p className="text-sm text-gray-600 mb-2">Outcome: {woDetailData.resolution_outcome}</p>}
                   {(woDetailData.cost_estimate_min != null || woDetailData.cost_estimate_max != null) && (
                     <p className="text-sm text-gray-600 mb-4">Cost estimate: £{woDetailData.cost_estimate_min ?? '—'} – £{woDetailData.cost_estimate_max ?? '—'}</p>
@@ -951,6 +1347,78 @@ function ClientMaintenancePageInner() {
                     <p className="font-medium mb-1">Payment responsibility</p>
                     <p>Contractors are independent service providers engaged by you. You are responsible for paying the contractor. Pleerity does not process contractor payments.</p>
                   </div>
+                  {hasFeature('contractor_network') && !woDetailData.contractor_id && (() => {
+                    const kind = (woDetailData.work_order_kind || '').toUpperCase();
+                    const complianceEligible = kind === 'COMPLIANCE' && hasFeature('compliance_engine');
+                    const needsRouting = complianceEligible || (kind !== 'COMPLIANCE' && woDetailData.requires_client_assignment_confirmation);
+                    if (kind === 'COMPLIANCE' && !hasFeature('compliance_engine')) {
+                      return (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-sm text-amber-900 mb-4">
+                          Compliance contractor assignment requires compliance execution to be enabled for your account.
+                        </div>
+                      );
+                    }
+                    if (!needsRouting) return null;
+                    const actions = woRoutingState?.available_actions || [];
+                    const st = woRoutingState?.assignment_routing_state;
+                    const preview = woRoutingState?.recommended_contractor_preview;
+                    const canRequest = !woRoutingState || actions.includes('generate_recommendation');
+                    const canConfirm =
+                      st === 'PENDING_CLIENT_CONFIRMATION' &&
+                      preview &&
+                      actions.includes('confirm_recommended');
+                    return (
+                      <div className="rounded-lg border border-teal-200 bg-teal-50/50 p-3 text-sm mb-4">
+                        <p className="font-medium text-gray-900 mb-1">Contractor assignment</p>
+                        <p className="text-gray-600 text-xs mb-3">
+                          Request a vetted recommendation, review the contractor below, then confirm. Assignment and contractor notification happen only after you confirm.
+                        </p>
+                        {woRoutingState?.routing_pending_admin ? (
+                          <p className="text-amber-800 text-xs mb-2">
+                            {woRoutingState.routing_decline_note || 'Queued for administrator support.'}
+                          </p>
+                        ) : null}
+                        {st === 'ESCALATED_TO_ADMIN' ? (
+                          <p className="text-amber-800 text-xs mb-2">This job is queued for administrator assignment.</p>
+                        ) : null}
+                        {preview ? (
+                          <div className="rounded border border-gray-200 bg-white p-2 mb-3">
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">Recommended contractor</p>
+                            <p className="font-medium text-gray-900">
+                              {preview.name || preview.contractor_name || preview.contractor_id}
+                            </p>
+                            {woRoutingState?.recommendation_reason_summary ? (
+                              <p className="text-xs text-gray-600 mt-1">{woRoutingState.recommendation_reason_summary}</p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        <div className="flex flex-wrap gap-2">
+                          {canRequest ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={woUpdateSaving}
+                              onClick={() => handleRequestContractorRouting()}
+                            >
+                              Request contractor
+                            </Button>
+                          ) : null}
+                          {canConfirm ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="bg-electric-teal hover:bg-electric-teal/90"
+                              disabled={woUpdateSaving}
+                              onClick={() => handleConfirmContractorRouting()}
+                            >
+                              Confirm contractor
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="space-y-2 mb-4">
                     <label className="block text-sm font-medium text-gray-700">Update status</label>
                     <select
@@ -962,9 +1430,12 @@ function ClientMaintenancePageInner() {
                       {WO_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
-                  {hasFeature('contractor_network') && (
+                  {hasFeature('contractor_network') &&
+                    (woDetailData.work_order_kind || '').toUpperCase() !== 'COMPLIANCE' &&
+                    !woDetailData.requires_client_assignment_confirmation && (
                     <div className="mt-4">
                       <h4 className="font-medium text-gray-700 mb-2">Recommended contractors</h4>
+                      <p className="text-xs text-gray-500 mb-2">Direct assignment when your account does not require routing confirmation for this job.</p>
                       {woRecommendLoading ? <p className="text-sm text-gray-500">Loading…</p> : woRecommendList?.length > 0 ? (
                         <ul className="space-y-2">
                           {woRecommendList.slice(0, 5).map((c) => {
@@ -1007,7 +1478,7 @@ function ClientMaintenancePageInner() {
                                     >
                                       <Info className="w-3 h-3" /> Why this matters {showExplain ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                     </button>
-                                    <Button size="sm" variant="outline" onClick={() => handleAssignContractor(woDetailData.work_order_id, cid)} disabled={woUpdateSaving}>Assign</Button>
+                                    <Button size="sm" variant="outline" onClick={() => handleAssignContractor(woDetailData.work_order_id, cid)} disabled={woUpdateSaving}>Assign contractor</Button>
                                   </div>
                                 </div>
                                 {showExplain && (
@@ -1050,7 +1521,7 @@ function ClientMaintenancePageInner() {
                         <FileText className="w-3 h-3 mr-1" /> Record invoice
                       </Button>
                     )}
-                    <Button size="sm" variant="outline" onClick={() => setWoDetailDrawer(null)}>Close</Button>
+                    <Button size="sm" variant="outline" onClick={() => setWoDetailDrawer(null)}>Close panel</Button>
                   </div>
                 </>
               ) : <p className="text-gray-500 py-4">Could not load work order.</p>}

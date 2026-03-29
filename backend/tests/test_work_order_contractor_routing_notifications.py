@@ -8,7 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from database import database as db_singleton
-from services.work_order_assignment_constants import ASSIGNMENT_ROUTING_PENDING_CLIENT_CONFIRMATION
+from services.work_order_assignment_constants import (
+    ASSIGNMENT_ROUTING_ASSIGNED,
+    ASSIGNMENT_ROUTING_PENDING_CLIENT_CONFIRMATION,
+    ASSIGNMENT_ROUTING_UNASSIGNED,
+)
 from services import maintenance_service
 
 
@@ -288,3 +292,139 @@ def test_update_work_order_allows_assign_when_allow_direct_true():
     assert any(
         c.kwargs.get("template_key") == "CONTRACTOR_ASSIGNED" for c in send_mock.await_args_list
     )
+
+
+def test_scenario_c_chained_request_contractor_then_confirm_assigns_and_notifies():
+    """
+    Scenario C (enterprise): request recommendation updates routing state; confirm assigns contractor
+    and emits CONTRACTOR_ASSIGNED. Uses a mutable in-memory work order document (no real Mongo).
+    """
+    from services import work_order_contractor_routing_service as routing
+
+    woid = "wo-scenario-c"
+    wo_live = {
+        "work_order_id": woid,
+        "client_id": "cli-1",
+        "property_id": "prop-1",
+        "status": "OPEN",
+        "description": "Scenario C maintenance job",
+        "contractor_id": None,
+        "requires_client_assignment_confirmation": True,
+        "work_order_kind": "MAINTENANCE",
+        "assignment_routing_state": ASSIGNMENT_ROUTING_UNASSIGNED,
+        "evidence_keys": [],
+        "sla_breached_at": None,
+        "sla_breach_risk_at": None,
+        "severity": "medium",
+    }
+
+    async def find_one(*args, **kwargs):
+        filt = args[0] if args else {}
+        if filt.get("work_order_id") != woid:
+            return None
+        proj = args[1] if len(args) > 1 else None
+        if proj and isinstance(proj, dict):
+            return {k: wo_live.get(k) for k, v in proj.items() if k != "_id" and v}
+        return dict(wo_live)
+
+    async def update_one(filt, update, *_a, **_kw):
+        if filt.get("work_order_id") != woid:
+            return None
+        if "$set" in update:
+            wo_live.update(update["$set"])
+        return {"modified_count": 1}
+
+    async def find_one_and_update(filt, update, **_kwargs):
+        if filt.get("work_order_id") != woid:
+            return None
+        if "$set" in update:
+            wo_live.update(update["$set"])
+        if "$addToSet" in update:
+            keys = (update["$addToSet"] or {}).get("evidence_keys", {})
+            if isinstance(keys, dict) and "$each" in keys:
+                for k in keys["$each"]:
+                    if k and k not in wo_live.setdefault("evidence_keys", []):
+                        wo_live["evidence_keys"].append(k)
+        out = dict(wo_live)
+        out.pop("_id", None)
+        return out
+
+    async def _run():
+        mock_db = MagicMock()
+        mock_db.work_orders.find_one = AsyncMock(side_effect=find_one)
+        mock_db.work_orders.update_one = AsyncMock(side_effect=update_one)
+        mock_db.work_orders.find_one_and_update = AsyncMock(side_effect=find_one_and_update)
+        mock_db.contractor_assignments.insert_one = AsyncMock()
+        mock_db.contractor_job_tokens.insert_one = AsyncMock()
+        mock_db.contractors.find_one = AsyncMock(return_value={"email": "contractor-scen-c@test.com"})
+        mock_db.properties.find_one = AsyncMock(
+            return_value={"address_line_1": "1 Chain Rd", "city": "Leeds", "postcode": "LS1 1AA"}
+        )
+        cur = MagicMock()
+        cur.to_list = AsyncMock(return_value=[{"auth_email": "owner@test.com", "portal_user_id": "pu-scen-c"}])
+        mock_db.portal_users.find = MagicMock(return_value=cur)
+
+        ranked = {
+            "contractors": [
+                {
+                    "contractor_id": "ctr-scen-c",
+                    "name": "Scenario C Ltd",
+                    "company_name": "Scenario C Ltd",
+                    "reasons": ["Eligible for work order"],
+                }
+            ],
+            "routing": {"assignment_urgency": "normal", "routing_messages": []},
+        }
+        send_mock = AsyncMock(return_value={"ok": True})
+
+        with (
+            patch.object(db_singleton, "get_db", return_value=mock_db),
+            patch(
+                "services.work_order_contractor_routing_service.contractor_service.recommend_contractors_for_work_order",
+                new_callable=AsyncMock,
+                return_value=ranked,
+            ),
+            patch(
+                "services.contractor_service.validate_contractor_for_work_order_assignment",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch("services.notification_orchestrator.notification_orchestrator.send", send_mock),
+            patch("utils.audit.create_audit_log", new_callable=AsyncMock, return_value=None),
+            patch(
+                "services.work_order_contractor_routing_service.create_audit_log",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch("services.order_service.create_in_app_notification", new_callable=AsyncMock, return_value=None),
+            patch("services.webhook_service.fire_work_order_status_changed", new_callable=AsyncMock),
+            patch("auth.generate_secure_token", return_value="scen-c-token-32chars-min___________"),
+            patch("utils.public_app_url.get_frontend_base_url", return_value="https://app.example.com"),
+        ):
+            gen_out = await routing.generate_and_notify_recommendation(
+                woid, "cli-1", actor_portal_user_id="pu-scen-c"
+            )
+            assert gen_out.get("ok") is True
+            assert wo_live.get("assignment_routing_state") == ASSIGNMENT_ROUTING_PENDING_CLIENT_CONFIRMATION
+            assert wo_live.get("recommended_contractor_id") == "ctr-scen-c"
+
+            pre_confirm_sends = len(send_mock.await_args_list)
+
+            conf_out = await routing.confirm_recommended_contractor(
+                woid, "cli-1", actor_portal_user_id="pu-scen-c"
+            )
+            assert conf_out.get("ok") is True
+            assert wo_live.get("contractor_id") == "ctr-scen-c"
+            assert wo_live.get("assignment_routing_state") == ASSIGNMENT_ROUTING_ASSIGNED
+
+        assign_sends = [
+            c
+            for c in send_mock.await_args_list
+            if c.kwargs.get("template_key") == "CONTRACTOR_ASSIGNED"
+        ]
+        assert len(assign_sends) == 1
+        assert assign_sends[0].kwargs.get("context", {}).get("recipient") == "contractor-scen-c@test.com"
+        assert pre_confirm_sends >= 1
+        assert len(send_mock.await_args_list) > pre_confirm_sends
+
+    asyncio.run(_run())

@@ -1519,6 +1519,7 @@ async def get_client_entitlements(request: Request):
             PREDICTIVE_MAINTENANCE,
             CONTRACTOR_NETWORK,
             INVOICING,
+            COMPLIANCE_ENGINE,
         )
 
         entitlements = await plan_registry.get_client_entitlements(user["client_id"])
@@ -1551,6 +1552,13 @@ async def get_client_entitlements(request: Request):
             "name": "Billing & Invoicing",
             "description": "View billing history and invoices.",
             "category": "ops",
+            "minimum_plan": None,
+        }
+        features["compliance_engine"] = {
+            "enabled": bool(flags.get(COMPLIANCE_ENGINE)),
+            "name": "Compliance execution",
+            "description": "Book compliance inspections and renewal jobs with contractor confirmation.",
+            "category": "compliance",
             "minimum_plan": None,
         }
         entitlements["features"] = features

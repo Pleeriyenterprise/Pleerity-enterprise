@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import api, { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
@@ -37,6 +37,8 @@ import {
 
 const DocumentsPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const uploadDeepLinkApplied = useRef('');
   const { user } = useAuth();
   const { hasFeature } = useEntitlements();
   const [documents, setDocuments] = useState([]);
@@ -83,6 +85,23 @@ const DocumentsPage = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    const pid = searchParams.get('property_id');
+    const rid = searchParams.get('requirement_id');
+    if (searchParams.get('focus') !== 'upload' || !pid || !rid) return;
+    const sig = `${pid}:${rid}`;
+    if (uploadDeepLinkApplied.current === sig) {
+      document.getElementById('upload-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    uploadDeepLinkApplied.current = sig;
+    setUploadForm((f) => ({ ...f, property_id: pid, requirement_id: rid }));
+    requestAnimationFrame(() => {
+      document.getElementById('upload-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [loading, searchParams]);
 
   // Pre-fill confirm modal from extraction when document_id is available (e.g. after upload)
   useEffect(() => {
@@ -642,7 +661,7 @@ const DocumentsPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Upload Form */}
           <div className="lg:col-span-1">
-            <Card data-testid="upload-form-card">
+            <Card id="upload-form-anchor" data-testid="upload-form-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Upload className="w-5 h-5" />

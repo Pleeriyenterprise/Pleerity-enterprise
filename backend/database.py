@@ -321,6 +321,13 @@ class Database:
                 )
             except Exception:
                 pass
+            try:
+                await self.db.work_orders.create_index(
+                    [("schedule_status", 1), ("reminder_sent", 1), ("scheduled_at", 1)],
+                    sparse=True,
+                )
+            except Exception:
+                pass
             # Contractor assignments (history when work order is assigned; current assignment remains on work_order)
             await self.db.contractor_assignments.create_index([("work_order_id", 1), ("assigned_at", -1)])
             await self.db.contractor_assignments.create_index("work_order_id")

@@ -5,8 +5,8 @@ List own work orders, create new (client or property manager).
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from fastapi.responses import FileResponse, Response
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 from database import database
@@ -15,8 +15,16 @@ from services import maintenance_service
 from services import maintenance_issues_service
 from services import contractor_service
 from services import work_order_contractor_routing_service as wo_contractor_routing
-from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE, CONTRACTOR_NETWORK
+from services.ops_compliance_feature_flags import (
+    get_effective_flags,
+    MAINTENANCE_WORKFLOWS,
+    PREDICTIVE_MAINTENANCE,
+    CONTRACTOR_NETWORK,
+    COMPLIANCE_ENGINE,
+)
 from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE
+from services import work_order_schedule_service as wo_schedule
+from services.work_order_schedule_constants import SCHEDULE_ACTOR_CLIENT
 from services import property_assets_service
 from services import risk_signal_service
 from services import operational_issue_suggestions_service
@@ -433,20 +441,26 @@ class UpdateIssueBody(BaseModel):
     status: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
+    resolution_note: Optional[str] = None
 
 
 @router.patch("/maintenance/issues/{issue_id}")
 async def update_issue(request: Request, issue_id: str, body: UpdateIssueBody):
     """Update issue status and/or description, category. Requires MAINTENANCE_WORKFLOWS. Audits status changes."""
     user = await _require_maintenance_enabled(request)
-    doc = await maintenance_issues_service.update_issue(
-        issue_id=issue_id,
-        client_id=user["client_id"],
-        status=body.status,
-        description=body.description,
-        category=body.category,
-        updated_by_id=user.get("portal_user_id"),
-    )
+    try:
+        doc = await maintenance_issues_service.update_issue(
+            issue_id=issue_id,
+            client_id=user["client_id"],
+            status=body.status,
+            description=body.description,
+            category=body.category,
+            updated_by_id=user.get("portal_user_id"),
+            resolution_note=body.resolution_note,
+            closed_by="client",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if not doc:
         raise HTTPException(status_code=404, detail="Issue not found")
     return doc
@@ -530,6 +544,10 @@ class UpdateWorkOrderBody(BaseModel):
     resolution_outcome: Optional[str] = None
     cost_estimate_min: Optional[float] = None
     cost_estimate_max: Optional[float] = None
+    scheduled_at: Optional[str] = Field(
+        None,
+        description="Proposed visit datetime (ISO-8601). Persisted on the job; no external calendar engine in v1.",
+    )
 
 
 @router.patch("/maintenance/work-orders/{work_order_id}")
@@ -549,12 +567,135 @@ async def update_my_work_order(request: Request, work_order_id: str, body: Updat
             cost_estimate_min=body.cost_estimate_min,
             cost_estimate_max=body.cost_estimate_max,
             assigned_by=assigned_by,
+            scheduled_at=body.scheduled_at,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not doc:
         raise HTTPException(status_code=404, detail="Work order not found")
     return doc
+
+
+class ScheduleProposeBody(BaseModel):
+    scheduled_at: str = Field(..., description="ISO-8601 local or zoned datetime for the visit")
+    timezone: str = Field(..., description="IANA timezone e.g. Europe/London")
+    notes: Optional[str] = Field(None, max_length=4000)
+
+
+class ScheduleRescheduleRequestBody(BaseModel):
+    reason: Optional[str] = Field(None, max_length=2000)
+
+
+def _client_schedule_actor(request: Request) -> tuple[str, Optional[str], Optional[str]]:
+    user = getattr(request.state, "user", None) or {}
+    actor_id = user.get("portal_user_id") or user.get("email") or user.get("user_id")
+    role = user.get("role")
+    return SCHEDULE_ACTOR_CLIENT, actor_id, role
+
+
+@router.post("/maintenance/work-orders/{work_order_id}/schedule/propose")
+async def client_schedule_propose(request: Request, work_order_id: str, body: ScheduleProposeBody):
+    """Propose a visit time (client). Notifies contractor when assigned."""
+    user = await _require_maintenance_enabled(request)
+    actor_type, actor_id, role = _client_schedule_actor(request)
+    try:
+        return await wo_schedule.propose_schedule(
+            work_order_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            actor_role=role,
+            scheduled_at_raw=body.scheduled_at,
+            timezone_name=body.timezone,
+            notes=body.notes,
+            client_id=user["client_id"],
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/maintenance/work-orders/{work_order_id}/schedule/confirm")
+async def client_schedule_confirm(request: Request, work_order_id: str):
+    """Confirm a proposed visit (client, when contractor proposed; or after admin proposal)."""
+    user = await _require_maintenance_enabled(request)
+    actor_type, actor_id, role = _client_schedule_actor(request)
+    try:
+        return await wo_schedule.confirm_schedule(
+            work_order_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            actor_role=role,
+            client_id=user["client_id"],
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/maintenance/work-orders/{work_order_id}/schedule/reschedule-request")
+async def client_schedule_reschedule_request(request: Request, work_order_id: str, body: ScheduleRescheduleRequestBody):
+    user = await _require_maintenance_enabled(request)
+    actor_type, actor_id, role = _client_schedule_actor(request)
+    try:
+        return await wo_schedule.request_reschedule(
+            work_order_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            actor_role=role,
+            reason=body.reason,
+            client_id=user["client_id"],
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/maintenance/work-orders/{work_order_id}/schedule/cancel")
+async def client_schedule_cancel(request: Request, work_order_id: str):
+    user = await _require_maintenance_enabled(request)
+    actor_type, actor_id, role = _client_schedule_actor(request)
+    try:
+        return await wo_schedule.cancel_schedule(
+            work_order_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            actor_role=role,
+            client_id=user["client_id"],
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/maintenance/work-orders/{work_order_id}/schedule/ics")
+async def client_schedule_ics(request: Request, work_order_id: str):
+    """Download visit as .ics (client)."""
+    user = await _require_maintenance_enabled(request)
+    try:
+        data, filename = await wo_schedule.get_schedule_ics_payload(work_order_id, client_id=user["client_id"])
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return Response(
+        content=data,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/maintenance/work-orders/{work_order_id}/recommend-contractors")
@@ -647,6 +788,12 @@ async def generate_work_order_contractor_recommendation(request: Request, work_o
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/request")
+async def request_contractor_for_maintenance_work_order(http_request: Request, work_order_id: str):
+    """Enterprise alias for POST .../contractor-routing/generate (request contractor recommendation)."""
+    return await generate_work_order_contractor_recommendation(http_request, work_order_id)
 
 
 @router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/confirm")
@@ -1061,15 +1208,22 @@ async def recalculate_property_risk_signals(request: Request, property_id: str):
 
 class UpdateRiskSignalStatusBody(BaseModel):
     status: str  # "acknowledged" | "resolved"
+    dismiss_reason: Optional[str] = None  # required for resolved unless execution already closed the loop
 
 
 @router.patch("/maintenance/risk-signals/{signal_id}")
 async def update_risk_signal_status(request: Request, signal_id: str, body: UpdateRiskSignalStatusBody):
     """Set risk signal status to acknowledged or resolved. Requires PREDICTIVE_MAINTENANCE."""
     user = await _require_predictive_enabled(request)
-    updated = await risk_signal_service.update_signal_status(
-        signal_id=signal_id, client_id=user["client_id"], new_status=body.status.strip().lower()
-    )
+    try:
+        updated = await risk_signal_service.update_signal_status(
+            signal_id=signal_id,
+            client_id=user["client_id"],
+            new_status=body.status.strip().lower(),
+            dismiss_reason=body.dismiss_reason,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if not updated:
         raise HTTPException(status_code=404, detail="Risk signal not found or invalid status")
     return updated
@@ -1113,9 +1267,70 @@ async def create_work_order_from_risk_signal_route(request: Request, signal_id: 
         raise HTTPException(status_code=400, detail=str(e))
 
 
+class ArrangeInspectionBody(BaseModel):
+    """Compliance execution: creates a COMPLIANCE work order (not a maintenance issue)."""
+
+    requirement_code: str
+    linked_property_requirement_id: str
+    compliance_purpose: str = "inspection"
+    description_override: Optional[str] = None
+
+
+async def _arrange_compliance_inspection_from_risk_signal(
+    request: Request, signal_id: str, body: ArrangeInspectionBody
+) -> dict:
+    user = await _require_predictive_enabled(request)
+    await _require_maintenance_enabled(request)
+    flags = await get_effective_flags(user["client_id"])
+    if not flags.get(COMPLIANCE_ENGINE):
+        raise HTTPException(
+            status_code=400,
+            detail="Compliance execution is not enabled. Use a maintenance job or enable compliance execution for your account.",
+        )
+    try:
+        wo = await risk_signal_service.arrange_compliance_inspection_from_risk_signal(
+            signal_id=signal_id,
+            client_id=user["client_id"],
+            requirement_code_raw=body.requirement_code.strip(),
+            linked_property_requirement_id=body.linked_property_requirement_id.strip(),
+            reporter_id=user.get("portal_user_id"),
+            compliance_purpose=(body.compliance_purpose or "inspection").strip().lower(),
+            description_override=body.description_override,
+        )
+        return {"work_order": wo, "execution_domain": "compliance"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/maintenance/risk-signals/{signal_id}/arrange-compliance-inspection")
+async def arrange_compliance_inspection_from_risk_signal_route(
+    request: Request, signal_id: str, body: ArrangeInspectionBody
+):
+    """
+    Book a compliance inspection (COMPLIANCE job + routing flow). Canonical path for client portals.
+    Requires PREDICTIVE_MAINTENANCE, MAINTENANCE_WORKFLOWS, and COMPLIANCE_ENGINE.
+    """
+    return await _arrange_compliance_inspection_from_risk_signal(request, signal_id, body)
+
+
 @router.post("/maintenance/risk-signals/{signal_id}/schedule-inspection")
-async def schedule_inspection_from_risk_signal_route(request: Request, signal_id: str, body: Optional[CreateFromRiskSignalBody] = None):
-    """Create an inspection issue from this risk signal (schedule_inspection action). Requires PREDICTIVE_MAINTENANCE and MAINTENANCE_WORKFLOWS."""
+async def schedule_inspection_from_risk_signal_route(
+    request: Request, signal_id: str, body: ArrangeInspectionBody
+):
+    """
+    Deprecated alias for arrange-compliance-inspection. Prefer POST .../arrange-compliance-inspection.
+    """
+    return await _arrange_compliance_inspection_from_risk_signal(request, signal_id, body)
+
+
+@router.post("/maintenance/risk-signals/{signal_id}/log-inspection-issue")
+async def log_inspection_issue_from_risk_signal_route(
+    request: Request, signal_id: str, body: Optional[CreateFromRiskSignalBody] = None
+):
+    """
+    Explicit maintenance path: create an inspection-labelled maintenance issue (not a compliance job).
+    Use arrange-compliance-inspection to book regulatory inspection work.
+    """
     user = await _require_predictive_enabled(request)
     await _require_maintenance_enabled(request)
     try:
@@ -1125,6 +1340,6 @@ async def schedule_inspection_from_risk_signal_route(request: Request, signal_id
             description_override=body.description_override if body else None,
             reporter_id=user.get("portal_user_id"),
         )
-        return issue
+        return {"issue": issue, "execution_domain": "maintenance_issue"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

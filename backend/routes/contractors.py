@@ -2,7 +2,7 @@
 Admin API for contractors (Ops & Compliance / Contractor Network).
 List, create, update, delete contractors. Optional filter by client_id.
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Query, status
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -44,6 +44,19 @@ class ContractorUpdate(BaseModel):
     region: Optional[str] = None
     execution_capabilities: Optional[str] = None
     supported_requirement_codes: Optional[List[str]] = None
+    declared_execution_capabilities: Optional[str] = None
+    declared_supported_requirement_codes: Optional[List[str]] = None
+    declared_credentials: Optional[List[str]] = None
+    verified_execution_capabilities: Optional[str] = None
+    verified_supported_requirement_codes: Optional[List[str]] = None
+
+
+class ApproveContractorBody(BaseModel):
+    """Capability verification as part of approval (optional). Self-registered contractors need explicit verified_* or accept_declared_capabilities for compliance routing."""
+
+    verified_execution_capabilities: Optional[str] = None
+    verified_supported_requirement_codes: Optional[List[str]] = None
+    accept_declared_capabilities: bool = False
 
 
 class DisablePortalAccessBody(BaseModel):
@@ -215,7 +228,11 @@ async def invite_contractor(request: Request, body: ContractorInviteBody):
 
 
 @router.patch("/contractors/{contractor_id}/approve", dependencies=[Depends(require_owner_or_admin)])
-async def approve_contractor(request: Request, contractor_id: str):
+async def approve_contractor(
+    request: Request,
+    contractor_id: str,
+    body: ApproveContractorBody = Body(default_factory=ApproveContractorBody),
+):
     """Approve contractor (vetted, lifecycle status, portal invite when not yet activated)."""
     user = await admin_route_guard(request)
     admin_id = user.get("user_id") or user.get("email") or user.get("portal_user_id")
@@ -223,6 +240,9 @@ async def approve_contractor(request: Request, contractor_id: str):
         contractor_id,
         approved_by=admin_id,
         approved_by_role=user.get("role"),
+        verified_execution_capabilities=body.verified_execution_capabilities,
+        verified_supported_requirement_codes=body.verified_supported_requirement_codes,
+        accept_declared_capabilities=body.accept_declared_capabilities,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Contractor not found")
@@ -310,6 +330,12 @@ async def update_contractor(request: Request, contractor_id: str, body: Contract
             region=body.region,
             execution_capabilities=body.execution_capabilities,
             supported_requirement_codes=body.supported_requirement_codes,
+            declared_execution_capabilities=body.declared_execution_capabilities,
+            declared_supported_requirement_codes=body.declared_supported_requirement_codes,
+            declared_credentials=body.declared_credentials,
+            verified_execution_capabilities=body.verified_execution_capabilities,
+            verified_supported_requirement_codes=body.verified_supported_requirement_codes,
+            verified_by=user.get("user_id") or user.get("email") or user.get("portal_user_id"),
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))

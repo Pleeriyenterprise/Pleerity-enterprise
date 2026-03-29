@@ -1100,6 +1100,17 @@ async def run_scheduled_admin_communications():
     return await acs.process_due_scheduled_communications()
 
 
+async def run_work_order_schedule_reminders():
+    """Remind client + contractor of confirmed visits starting within the next 24 hours."""
+    try:
+        from services.work_order_schedule_service import run_schedule_reminders_job
+
+        return await run_schedule_reminders_job()
+    except Exception as e:
+        logger.error("Work order schedule reminders job failed: %s", e)
+        raise
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
@@ -1141,4 +1152,5 @@ JOB_RUNNERS = {
     "delivery_reconciliation": run_delivery_reconciliation,
     "contractor_performance_recalc": run_contractor_performance_recalc,
     "scheduled_admin_communications": run_scheduled_admin_communications,
+    "work_order_schedule_reminders": run_work_order_schedule_reminders,
 }

@@ -21,6 +21,8 @@ function ClientIssueDetailPageInner() {
   const [error, setError] = useState(null);
   const [timeline, setTimeline] = useState(null);
   const [timelineLoading, setTimelineLoading] = useState(false);
+  const [closeNote, setCloseNote] = useState('');
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     if (!issueId) return;
@@ -54,13 +56,30 @@ function ClientIssueDetailPageInner() {
     clientAPI
       .createWorkOrderFromIssue(issueId)
       .then((res) => {
-        toast.success('Work order created');
+        toast.success('Maintenance job created');
         const woId = res.data?.work_order_id;
-        if (woId) navigate(`/operations/work-orders`);
+        if (woId) navigate(buildSafeQueryPath('/operations/work-orders', { work_order_id: woId }));
         else navigate('/operations/issues');
       })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Failed to create work order'))
+      .catch((err) => toast.error(err?.response?.data?.detail || 'Failed to create maintenance job'))
       .finally(() => setCreating(false));
+  };
+
+  const handleCloseIssue = () => {
+    if (!issueId) return;
+    setClosing(true);
+    clientAPI
+      .updateMaintenanceIssue(issueId, {
+        status: 'closed',
+        resolution_note: closeNote.trim() || undefined,
+      })
+      .then((res) => {
+        setIssue(res.data);
+        setCloseNote('');
+        toast.success('Maintenance issue closed');
+      })
+      .catch((err) => toast.error(err?.response?.data?.detail || 'Could not close issue'))
+      .finally(() => setClosing(false));
   };
 
   const formatDate = (s) => {
@@ -112,7 +131,7 @@ function ClientIssueDetailPageInner() {
       </Button>
       <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2 mb-2">
         <AlertCircle className="w-7 h-7" />
-        Issue detail
+        Maintenance issue
       </h1>
       <p className="text-sm text-gray-500 mb-6">Created {formatDate(issue.created_at)} · {issue.status}</p>
 
@@ -155,7 +174,7 @@ function ClientIssueDetailPageInner() {
                       className="text-xs text-electric-teal hover:underline mt-1"
                       onClick={() => navigate(buildSafeQueryPath('/operations/work-orders', { work_order_id: row.metadata.work_order_id }))}
                     >
-                      View work order
+                      View job
                     </button>
                   )}
                 </li>
@@ -188,15 +207,39 @@ function ClientIssueDetailPageInner() {
         </CardContent>
       </Card>
 
-      {issue.status !== 'closed' && (
-        <Button
-          onClick={handleCreateWorkOrder}
-          disabled={creating}
-          className="bg-electric-teal hover:bg-electric-teal/90"
-        >
-          {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Wrench className="w-4 h-4 mr-2" />}
-          Create Work Order
-        </Button>
+      {issue.status !== 'closed' && issue.status !== 'cancelled' && (
+        <div className="space-y-4">
+          <Button
+            onClick={handleCreateWorkOrder}
+            disabled={creating}
+            className="bg-electric-teal hover:bg-electric-teal/90"
+          >
+            {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Wrench className="w-4 h-4 mr-2" />}
+            Create maintenance job
+          </Button>
+          <Card className="border-gray-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Close maintenance issue</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-gray-600">
+              <p>
+                You can close this issue after the linked maintenance job is completed, or add a resolution note if it was handled another way.
+              </p>
+              <label className="block text-sm font-medium text-gray-700">Resolution note (required if no completed job)</label>
+              <textarea
+                value={closeNote}
+                onChange={(e) => setCloseNote(e.target.value)}
+                rows={3}
+                className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm"
+                placeholder="e.g. Resolved by contractor visit on …"
+              />
+              <Button type="button" variant="outline" onClick={handleCloseIssue} disabled={closing}>
+                {closing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Close issue
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

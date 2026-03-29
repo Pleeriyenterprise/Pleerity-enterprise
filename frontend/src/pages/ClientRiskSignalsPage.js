@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
-import { buildSafeQueryPath, normalizeRouteId, resolvePropertyPath } from '../utils/clientPortalNavigation';
+import { buildSafeQueryPath, normalizeRouteId, resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -51,6 +51,15 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import { useEntitlements } from '../contexts/EntitlementsContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 import {
   humanRiskType,
   humanSeverity,
@@ -88,6 +97,7 @@ function riskLevelBadgeClass(level) {
 }
 
 function ClientRiskSignalsPageInner() {
+  const { hasFeature } = useEntitlements();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [data, setData] = useState(null);
@@ -102,7 +112,15 @@ function ClientRiskSignalsPageInner() {
   const [drawerLoading, setDrawerLoading] = useState(false);
   /** Read-only GET .../suggested-actions (primary + codes + alternatives); loaded with drawer */
   const [drawerSuggestedView, setDrawerSuggestedView] = useState(null);
-  const [actionFromSignal, setActionFromSignal] = useState(null); // 'issue' | 'work_order'
+  const [actionFromSignal, setActionFromSignal] = useState(null); // 'issue' | 'work_order' | 'schedule_inspection' | 'log_inspection_issue'
+  const [dismissTargetId, setDismissTargetId] = useState(null);
+  const [dismissReason, setDismissReason] = useState('no_action_required');
+  const [dismissSaving, setDismissSaving] = useState(false);
+  const [arrangeOpen, setArrangeOpen] = useState(false);
+  const [arrangePropertyId, setArrangePropertyId] = useState('');
+  const [arrangeRequirements, setArrangeRequirements] = useState([]);
+  const [arrangeReqPick, setArrangeReqPick] = useState('');
+  const [arrangeLoading, setArrangeLoading] = useState(false);
   const [filters, setFilters] = useState({
     risk_level: '',
     risk_type: '',
@@ -248,13 +266,75 @@ function ClientRiskSignalsPageInner() {
     }
   };
 
-  const handleResolve = async (signalId) => {
+  const openDismissDialog = (signalId) => {
+    setDismissTargetId(signalId);
+    setDismissReason('no_action_required');
+  };
+
+  const confirmDismissSignal = async () => {
+    if (!dismissTargetId) return;
+    setDismissSaving(true);
     try {
-      await clientAPI.updateRiskSignalStatus(signalId, 'resolved');
-      toast.success('Signal resolved');
+      await clientAPI.dismissRiskSignal(dismissTargetId, dismissReason);
+      toast.success('Risk signal dismissed');
+      setDismissTargetId(null);
       refreshAfterStatusChange();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Failed to resolve');
+      toast.error(e?.response?.data?.detail || 'Could not dismiss signal');
+    } finally {
+      setDismissSaving(false);
+    }
+  };
+
+  const openArrangeInspection = async (propertyId) => {
+    if (!hasFeature('compliance_engine') || !hasFeature('maintenance_workflows')) {
+      toast.error('Booking a compliance inspection requires compliance execution and maintenance workflows.');
+      return;
+    }
+    setArrangePropertyId(propertyId);
+    setArrangeReqPick('');
+    setArrangeOpen(true);
+    setArrangeLoading(true);
+    try {
+      const res = await clientAPI.getPropertyRequirements(propertyId);
+      const rows = res.data?.requirements || [];
+      setArrangeRequirements(Array.isArray(rows) ? rows : []);
+    } catch {
+      setArrangeRequirements([]);
+      toast.error('Could not load obligations for this property.');
+    } finally {
+      setArrangeLoading(false);
+    }
+  };
+
+  const confirmArrangeInspection = async () => {
+    if (!drawerSignalId || !arrangeReqPick) {
+      toast.error('Select an obligation to continue.');
+      return;
+    }
+    const picked = arrangeRequirements.find((r) => (r.requirement_id || r.id) === arrangeReqPick);
+    const reqCode = picked?.requirement_code || picked?.requirement_type || picked?.code;
+    if (!reqCode) {
+      toast.error('Selected row has no requirement code.');
+      return;
+    }
+    setActionFromSignal('schedule_inspection');
+    try {
+      const res = await clientAPI.arrangeComplianceInspectionFromRiskSignal(drawerSignalId, {
+        requirement_code: String(reqCode),
+        linked_property_requirement_id: arrangeReqPick,
+        compliance_purpose: 'inspection',
+      });
+      const wid = res.data?.work_order?.work_order_id;
+      toast.success('Compliance inspection job created. Request a contractor from the work order.');
+      setArrangeOpen(false);
+      setDrawerSignalId(null);
+      load();
+      if (wid) navigate(buildSafeQueryPath('/operations/work-orders', { work_order_id: wid }));
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Could not arrange inspection');
+    } finally {
+      setActionFromSignal(null);
     }
   };
 
@@ -304,10 +384,10 @@ function ClientRiskSignalsPageInner() {
     <div className="p-4 sm:p-6 max-w-[1400px] mx-auto w-full min-w-0 client-portal-prose">
       <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 mb-2">
         <TrendingUp className="w-7 h-7 shrink-0" />
-        Property health insights
+        Risk signals
       </h1>
       <p className="text-gray-600 mb-6 text-sm sm:text-base break-words">
-        Clear, practical issue summaries with recommended next steps and deadlines.
+        Informational signals from your portfolio — not work tickets until you start a maintenance or compliance job.
       </p>
 
       {(() => {
@@ -321,7 +401,7 @@ function ClientRiskSignalsPageInner() {
               <CardTitle className="text-base">At-a-glance summary</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-gray-700 space-y-1">
-              <p>{signals.length} active issues across {grouped.length} properties.</p>
+              <p>{signals.length} active risk signals across {grouped.length} properties.</p>
               <p>{urgent} urgent, {medium} needs attention, and {Math.max(signals.length - urgent - medium, 0)} monitor.</p>
               <p>Most affected properties: {top || 'None currently flagged'}.</p>
             </CardContent>
@@ -631,8 +711,8 @@ function ClientRiskSignalsPageInner() {
                           <Button variant="outline" className="min-h-11 text-xs" onClick={() => handleAcknowledge(s.signal_id)}>
                             <CheckCircle className="w-4 h-4 mr-1 shrink-0" /> Acknowledge
                           </Button>
-                          <Button variant="outline" className="min-h-11 text-xs" onClick={() => handleResolve(s.signal_id)}>
-                            <XCircle className="w-4 h-4 mr-1 shrink-0" /> Resolve
+                          <Button variant="outline" className="min-h-11 text-xs" onClick={() => openDismissDialog(s.signal_id)}>
+                            <XCircle className="w-4 h-4 mr-1 shrink-0" /> Dismiss signal
                           </Button>
                         </div>
                       )}
@@ -703,8 +783,8 @@ function ClientRiskSignalsPageInner() {
                                 <Button size="sm" variant="ghost" className="text-gray-600" onClick={() => handleAcknowledge(s.signal_id)}>
                                   <CheckCircle className="w-4 h-4 mr-1" /> Acknowledge
                                 </Button>
-                                <Button size="sm" variant="ghost" className="text-gray-600" onClick={() => handleResolve(s.signal_id)}>
-                                  <XCircle className="w-4 h-4 mr-1" /> Resolve
+                                <Button size="sm" variant="ghost" className="text-gray-600" onClick={() => openDismissDialog(s.signal_id)}>
+                                  <XCircle className="w-4 h-4 mr-1" /> Dismiss
                                 </Button>
                               </>
                             )}
@@ -903,7 +983,7 @@ function ClientRiskSignalsPageInner() {
                               try {
                                 const res = await clientAPI.createIssueFromRiskSignal(drawerSignalId, {});
                                 toast.success('Issue created. You can view it in Operations → Issues.');
-                                if (res?.data?.issue_id) navigate(buildSafeQueryPath('/operations/issues', { highlight: res.data.issue_id }));
+                                if (res?.data?.issue_id) navigate(resolveIssueDetailPath(res.data.issue_id));
                                 setDrawerSignalId(null);
                                 load();
                               } catch (e) {
@@ -938,31 +1018,41 @@ function ClientRiskSignalsPageInner() {
                             }}
                           >
                             {actionFromSignal === 'work_order' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Wrench className="w-4 h-4 mr-1" />}
-                            Create work order
+                            Create maintenance job
                           </Button>
                         )}
-                        {actions.includes('schedule_inspection') && (
+                        {actions.includes('schedule_inspection') && hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
                           <Button
                             size="sm"
                             variant="default"
+                            disabled={!!actionFromSignal || !drawerSignal?.property_id}
+                            onClick={() => openArrangeInspection(drawerSignal.property_id)}
+                          >
+                            <ClipboardCheck className="w-4 h-4 mr-1" />
+                            Book inspection
+                          </Button>
+                        )}
+                        {actions.includes('schedule_inspection') && hasFeature('maintenance_workflows') && !hasFeature('compliance_engine') && (
+                          <Button
+                            size="sm"
+                            variant="outline"
                             disabled={!!actionFromSignal}
                             onClick={async () => {
-                              setActionFromSignal('schedule_inspection');
+                              setActionFromSignal('log_inspection_issue');
                               try {
-                                const res = await clientAPI.scheduleInspectionFromRiskSignal(drawerSignalId, {});
-                                toast.success('Inspection issue created.');
-                                if (res?.data?.issue_id) navigate(buildSafeQueryPath('/operations/issues', { highlight: res.data.issue_id }));
+                                await clientAPI.logInspectionIssueFromRiskSignal(drawerSignalId, {});
+                                toast.success('Inspection issue logged (maintenance).');
                                 setDrawerSignalId(null);
                                 load();
                               } catch (e) {
-                                toast.error(e?.response?.data?.detail || 'Failed to create inspection');
+                                toast.error(e?.response?.data?.detail || 'Failed to log inspection issue');
                               } finally {
                                 setActionFromSignal(null);
                               }
                             }}
                           >
-                            {actionFromSignal === 'schedule_inspection' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ClipboardCheck className="w-4 h-4 mr-1" />}
-                            Schedule inspection
+                            {actionFromSignal === 'log_inspection_issue' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ClipboardCheck className="w-4 h-4 mr-1" />}
+                            Log inspection issue
                           </Button>
                         )}
                       </>
@@ -988,7 +1078,7 @@ function ClientRiskSignalsPageInner() {
                     variant="outline"
                     onClick={() => openCreateWorkOrder(drawerSignal.property_id, drawerSignal.recommended_action)}
                   >
-                    <Wrench className="w-4 h-4 mr-1" /> Create work order (manual)
+                    <Wrench className="w-4 h-4 mr-1" /> Create maintenance job (manual)
                   </Button>
                 </div>
               </div>
@@ -1002,14 +1092,91 @@ function ClientRiskSignalsPageInner() {
                 <Button variant="outline" onClick={() => handleAcknowledge(drawerSignalId)}>
                   <CheckCircle className="w-4 h-4 mr-2" /> Acknowledge
                 </Button>
-                <Button variant="default" onClick={() => handleResolve(drawerSignalId)}>
-                  <XCircle className="w-4 h-4 mr-2" /> Mark resolved
+                <Button variant="default" onClick={() => openDismissDialog(drawerSignalId)}>
+                  <XCircle className="w-4 h-4 mr-2" /> Dismiss signal
                 </Button>
               </>
             )}
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <Dialog open={Boolean(dismissTargetId)} onOpenChange={(o) => !o && setDismissTargetId(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Dismiss risk signal</DialogTitle>
+            <DialogDescription>
+              Dismiss only after you have handled the situation or decided no action is needed. If linked maintenance or
+              compliance work is already complete, you can dismiss without choosing a reason.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label className="text-sm font-medium text-gray-700">Reason (if no completed work in the platform)</label>
+            <select
+              value={dismissReason}
+              onChange={(e) => setDismissReason(e.target.value)}
+              className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm"
+            >
+              <option value="no_action_required">No action required</option>
+              <option value="handled_externally">Handled outside the platform</option>
+              <option value="duplicate">Duplicate / not applicable</option>
+            </select>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={() => setDismissTargetId(null)} disabled={dismissSaving}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={confirmDismissSignal} disabled={dismissSaving}>
+              {dismissSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm dismiss'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={arrangeOpen} onOpenChange={(o) => !o && setArrangeOpen(false)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Book compliance inspection</DialogTitle>
+            <DialogDescription>
+              Select the regulatory obligation this inspection satisfies. A compliance job (not a general repair ticket) will
+              be created and linked to this risk signal.
+            </DialogDescription>
+          </DialogHeader>
+          {arrangeLoading ? (
+            <p className="text-sm text-gray-500 flex items-center gap-2 py-4">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading obligations…
+            </p>
+          ) : (
+            <div className="space-y-2 py-2">
+              <label className="text-sm font-medium text-gray-700">Obligation on this property</label>
+              <select
+                value={arrangeReqPick}
+                onChange={(e) => setArrangeReqPick(e.target.value)}
+                className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="">— Select —</option>
+                {arrangeRequirements.map((r) => {
+                  const rid = r.requirement_id || r.id;
+                  const label = r.title || r.requirement_code || r.requirement_type || rid;
+                  return (
+                    <option key={rid} value={rid}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={() => setArrangeOpen(false)} disabled={!!actionFromSignal}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={confirmArrangeInspection} disabled={!!actionFromSignal || arrangeLoading}>
+              {actionFromSignal === 'schedule_inspection' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Book inspection'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

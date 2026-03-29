@@ -65,6 +65,9 @@ def test_compliance_work_order_scoring_uses_requirement_match():
         "trade_types": ["electrical"],
         "credentials": ["eicr"],
         "execution_capabilities": "compliance",
+        "supported_requirement_codes": ["eicr"],
+        "verified_execution_capabilities": "compliance",
+        "verified_supported_requirement_codes": ["eicr"],
     }
     prop = {"postcode": "SW1A 1AA"}
     r = recommend_contractors(wo_c, prop, [c1], eligible_only=False)
@@ -90,7 +93,9 @@ def test_create_compliance_booking_service_mocked():
     async def _run():
         mock_db = MagicMock()
         mock_db.properties.find_one = AsyncMock(return_value={"_id": 1})
-        mock_db.requirements.find_one = AsyncMock(return_value=None)
+        mock_db.requirements.find_one = AsyncMock(
+            return_value={"requirement_code": "gas_safety", "requirement_type": "gas_safety"}
+        )
         mock_db.requirements_catalog.find_one = AsyncMock(return_value={"title": "Gas Safety"})
         inserted = {}
 
@@ -115,6 +120,7 @@ def test_create_compliance_booking_service_mocked():
                 compliance_purpose="inspection",
                 compliance_generated_from="manual",
                 actor_portal_user_id="u1",
+                linked_property_requirement_id="req-row-1",
             )
         return inserted
 

@@ -115,6 +115,7 @@ from job_runner import (
     run_notification_failure_spike_monitor,
     run_notification_retry_worker,
     run_pending_payment_lifecycle,
+    run_work_order_schedule_reminders,
 )
 
 # Lifespan context manager for startup/shutdown
@@ -405,6 +406,20 @@ async def lifespan(app: FastAPI):
             name="Daily Compliance Reminders",
             replace_existing=True,
             args=["daily_reminders"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
+
+        # Confirmed work-order visits in the next 24h (hourly)
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute=20, timezone=SCHEDULER_TIMEZONE),
+            id="work_order_schedule_reminders",
+            name="Work order visit reminders (24h window)",
+            replace_existing=True,
+            args=["work_order_schedule_reminders"],
             kwargs={"run_type": "schedule"},
             misfire_grace_time=300,
             coalesce=True,

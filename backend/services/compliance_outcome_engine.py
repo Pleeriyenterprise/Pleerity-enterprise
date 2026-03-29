@@ -206,7 +206,9 @@ async def apply_action_outcome(event: Dict[str, Any]) -> Dict[str, Any]:
         await _set_requirement_compliant(event)
         await _mark_related_risk_resolved(event)
     elif event_type == EVENT_WORK_ORDER_COMPLETED:
-        await _mark_related_risk_resolved(event)
+        meta = event.get("metadata") or {}
+        if meta.get("resolve_linked_compliance_risks"):
+            await _mark_related_risk_resolved(event)
     elif event_type == EVENT_ISSUE_RESOLVED:
         await _mark_related_risk_acknowledged(event)
     elif event_type == EVENT_RISK_SIGNAL_ACKNOWLEDGED:

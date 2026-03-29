@@ -3,8 +3,8 @@ Admin API for maintenance work orders (Ops & Compliance).
 List, get, update, assign contractor. Owner/Admin for write.
 """
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from fastapi.responses import FileResponse, Response
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 from database import database
@@ -12,6 +12,8 @@ from middleware import admin_route_guard, require_owner_or_admin
 from services import maintenance_service
 from services import contractor_service
 from services import contractor_evidence_service
+from services import work_order_schedule_service as wo_schedule
+from services.work_order_schedule_constants import SCHEDULE_ACTOR_ADMIN
 from services.risk_signal_regen_queue import get_regen_queue_summary
 from utils.audit import create_audit_log
 from models import AuditAction
@@ -230,3 +232,110 @@ async def update_work_order(request: Request, work_order_id: str, body: WorkOrde
     if not doc:
         raise HTTPException(status_code=404, detail="Work order not found")
     return doc
+
+
+class AdminScheduleProposeBody(BaseModel):
+    scheduled_at: str
+    timezone: str = Field(..., description="IANA timezone e.g. Europe/London")
+    notes: Optional[str] = Field(None, max_length=4000)
+
+
+class AdminScheduleRescheduleBody(BaseModel):
+    reason: Optional[str] = Field(None, max_length=2000)
+
+
+def _admin_schedule_actor(request: Request) -> tuple[Optional[str], Optional[str]]:
+    user = getattr(request.state, "user", None) or {}
+    return user.get("portal_user_id") or user.get("email") or user.get("user_id"), user.get("role")
+
+
+@router.post("/work-orders/{work_order_id}/schedule/propose", dependencies=[Depends(require_owner_or_admin)])
+async def admin_schedule_propose(request: Request, work_order_id: str, body: AdminScheduleProposeBody):
+    await admin_route_guard(request)
+    actor_id, role = _admin_schedule_actor(request)
+    try:
+        return await wo_schedule.propose_schedule(
+            work_order_id,
+            actor_type=SCHEDULE_ACTOR_ADMIN,
+            actor_id=actor_id,
+            actor_role=role,
+            scheduled_at_raw=body.scheduled_at,
+            timezone_name=body.timezone,
+            notes=body.notes,
+            admin=True,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/work-orders/{work_order_id}/schedule/confirm", dependencies=[Depends(require_owner_or_admin)])
+async def admin_schedule_confirm(request: Request, work_order_id: str):
+    await admin_route_guard(request)
+    actor_id, role = _admin_schedule_actor(request)
+    try:
+        return await wo_schedule.confirm_schedule(
+            work_order_id,
+            actor_type=SCHEDULE_ACTOR_ADMIN,
+            actor_id=actor_id,
+            actor_role=role,
+            admin=True,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/work-orders/{work_order_id}/schedule/reschedule-request", dependencies=[Depends(require_owner_or_admin)])
+async def admin_schedule_reschedule_request(request: Request, work_order_id: str, body: AdminScheduleRescheduleBody):
+    await admin_route_guard(request)
+    actor_id, role = _admin_schedule_actor(request)
+    try:
+        return await wo_schedule.request_reschedule(
+            work_order_id,
+            actor_type=SCHEDULE_ACTOR_ADMIN,
+            actor_id=actor_id,
+            actor_role=role,
+            reason=body.reason,
+            admin=True,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/work-orders/{work_order_id}/schedule/cancel", dependencies=[Depends(require_owner_or_admin)])
+async def admin_schedule_cancel(request: Request, work_order_id: str):
+    await admin_route_guard(request)
+    actor_id, role = _admin_schedule_actor(request)
+    try:
+        return await wo_schedule.cancel_schedule(
+            work_order_id,
+            actor_type=SCHEDULE_ACTOR_ADMIN,
+            actor_id=actor_id,
+            actor_role=role,
+            admin=True,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/work-orders/{work_order_id}/schedule/ics")
+async def admin_schedule_ics(request: Request, work_order_id: str):
+    await admin_route_guard(request)
+    try:
+        data, filename = await wo_schedule.get_schedule_ics_payload(work_order_id, admin=True)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return Response(
+        content=data,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

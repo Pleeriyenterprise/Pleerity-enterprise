@@ -5,8 +5,8 @@ All routes require a valid job token (query ?token= or header X-Job-Token).
 """
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Query, UploadFile, status
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from fastapi.responses import FileResponse, Response
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 from database import database
@@ -14,11 +14,62 @@ from services import maintenance_service
 from services import invoice_service
 from services import contractor_service
 from services import contractor_evidence_service
+from services.work_order_execution_constants import (
+    COMPLIANCE_BOOKING_AWAITING_CONTRACTOR_RESPONSE,
+    COMPLIANCE_BOOKING_BOOKING_REQUESTED,
+    COMPLIANCE_BOOKING_CONTRACTOR_NOTIFIED,
+    COMPLIANCE_BOOKING_IN_PROGRESS,
+    COMPLIANCE_BOOKING_OPERATIONALLY_COMPLETE,
+    COMPLIANCE_BOOKING_PENDING_CLIENT_CONFIRMATION,
+    COMPLIANCE_BOOKING_SCHEDULED,
+    COMPLIANCE_PROOF_NOT_SUBMITTED,
+    COMPLIANCE_PROOF_SUBMITTED,
+    COMPLIANCE_PROOF_VERIFIED,
+)
 from models import AuditAction
 from utils.audit import create_audit_log
 from auth import hash_token
+from services import work_order_schedule_service as wo_schedule
+from services.work_order_schedule_constants import SCHEDULE_ACTOR_CONTRACTOR
 
 router = APIRouter(prefix="/api/job", tags=["contractor-job-link"])
+
+
+def _compliance_booking_status_contractor_hint(status: Optional[str]) -> str:
+    s = (status or "").strip().upper()
+    if s == COMPLIANCE_BOOKING_AWAITING_CONTRACTOR_RESPONSE:
+        return (
+            "The client confirmed you for this compliance job. Add a visit time (scheduled date/time) or update "
+            "status as you progress."
+        )
+    if s == COMPLIANCE_BOOKING_CONTRACTOR_NOTIFIED:
+        return "You have been assigned; add a proposed visit time or update the job status when you start."
+    if s == COMPLIANCE_BOOKING_PENDING_CLIENT_CONFIRMATION:
+        return "The client is still confirming a contractor — you may receive this link after they confirm."
+    if s == COMPLIANCE_BOOKING_BOOKING_REQUESTED:
+        return "This compliance job is being set up."
+    if s == COMPLIANCE_BOOKING_SCHEDULED:
+        return "A visit time is on file. Update status when work is underway or complete."
+    if s == COMPLIANCE_BOOKING_IN_PROGRESS:
+        return "Work is in progress. Upload the required certificate or evidence when finished."
+    if s == COMPLIANCE_BOOKING_OPERATIONALLY_COMPLETE:
+        return "Operational work is marked complete; the client or platform may still verify evidence."
+    return "Use the job actions to schedule, progress, and complete this compliance work."
+
+
+def _compliance_proof_status_contractor_hint(status: Optional[str]) -> str:
+    s = (status or "").strip().upper()
+    if s == COMPLIANCE_PROOF_VERIFIED:
+        return (
+            "Certificate or evidence for this job has been verified. The client’s regulatory obligation can show as satisfied."
+        )
+    if s == COMPLIANCE_PROOF_SUBMITTED:
+        return (
+            "Evidence is on file but may still need client or platform verification before the obligation is fully satisfied."
+        )
+    if s == COMPLIANCE_PROOF_NOT_SUBMITTED:
+        return "Required certificate or evidence has not been submitted yet."
+    return "Proof status is being tracked; upload the expected certificate when the work is done."
 
 
 async def get_job_context(
@@ -87,6 +138,24 @@ async def get_work_order(request: Request, ctx: dict = Depends(job_context_dep))
             wo["property_address"] = prop.get("nickname") or ", ".join(
                 p for p in [prop.get("address_line_1"), prop.get("city"), prop.get("postcode")] if p
             ) or wo["property_id"]
+    if (wo.get("work_order_kind") or "").strip().upper() == "COMPLIANCE":
+        proof_st = wo.get("compliance_proof_status")
+        booking_st = wo.get("compliance_booking_status")
+        wo["compliance_execution"] = {
+            "requirement_code": wo.get("requirement_code"),
+            "compliance_purpose": wo.get("compliance_purpose"),
+            "expected_output_document_type": wo.get("expected_output_document_type"),
+            "compliance_booking_status": booking_st,
+            "compliance_booking_status_hint": _compliance_booking_status_contractor_hint(
+                booking_st if isinstance(booking_st, str) else None
+            ),
+            "compliance_proof_status": proof_st,
+            "compliance_proof_status_hint": _compliance_proof_status_contractor_hint(
+                proof_st if isinstance(proof_st, str) else None
+            ),
+            "scheduled_at": wo.get("scheduled_at"),
+            "linked_property_requirement_id": wo.get("linked_property_requirement_id"),
+        }
     return wo
 
 
@@ -95,6 +164,7 @@ class UpdateWorkOrderBody(BaseModel):
     contractor_notes: Optional[str] = None
     completion_notes: Optional[str] = None
     evidence_keys: Optional[List[str]] = None
+    scheduled_at: Optional[str] = None
 
 
 @router.patch("/work-order")
@@ -122,6 +192,7 @@ async def update_work_order(request: Request, body: UpdateWorkOrderBody, ctx: di
         contractor_notes=body.contractor_notes,
         completion_notes=body.completion_notes,
         evidence_keys_append=body.evidence_keys or [],
+        scheduled_at=body.scheduled_at,
     )
     if not updated:
         raise HTTPException(status_code=500, detail="Update failed")
@@ -144,6 +215,116 @@ async def update_work_order(request: Request, body: UpdateWorkOrderBody, ctx: di
             metadata={"keys_count": len(body.evidence_keys), "via": "job_link"},
         )
     return updated
+
+
+class JobScheduleProposeBody(BaseModel):
+    scheduled_at: str
+    timezone: str = Field(..., description="IANA timezone e.g. Europe/London")
+    notes: Optional[str] = Field(None, max_length=4000)
+
+
+class JobScheduleRescheduleBody(BaseModel):
+    reason: Optional[str] = Field(None, max_length=2000)
+
+
+@router.post("/work-order/schedule/propose")
+async def job_schedule_propose(request: Request, body: JobScheduleProposeBody, ctx: dict = Depends(job_context_dep)):
+    actor_id = ctx["contractor_id"]
+    try:
+        return await wo_schedule.propose_schedule(
+            ctx["work_order_id"],
+            actor_type=SCHEDULE_ACTOR_CONTRACTOR,
+            actor_id=actor_id,
+            actor_role="job_token",
+            scheduled_at_raw=body.scheduled_at,
+            timezone_name=body.timezone,
+            notes=body.notes,
+            contractor_id=ctx["contractor_id"],
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/work-order/schedule/confirm")
+async def job_schedule_confirm(request: Request, ctx: dict = Depends(job_context_dep)):
+    actor_id = ctx["contractor_id"]
+    try:
+        return await wo_schedule.confirm_schedule(
+            ctx["work_order_id"],
+            actor_type=SCHEDULE_ACTOR_CONTRACTOR,
+            actor_id=actor_id,
+            actor_role="job_token",
+            contractor_id=ctx["contractor_id"],
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/work-order/schedule/reschedule-request")
+async def job_schedule_reschedule_request(request: Request, body: JobScheduleRescheduleBody, ctx: dict = Depends(job_context_dep)):
+    actor_id = ctx["contractor_id"]
+    try:
+        return await wo_schedule.request_reschedule(
+            ctx["work_order_id"],
+            actor_type=SCHEDULE_ACTOR_CONTRACTOR,
+            actor_id=actor_id,
+            actor_role="job_token",
+            reason=body.reason,
+            contractor_id=ctx["contractor_id"],
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/work-order/schedule/cancel")
+async def job_schedule_cancel(request: Request, ctx: dict = Depends(job_context_dep)):
+    actor_id = ctx["contractor_id"]
+    try:
+        return await wo_schedule.cancel_schedule(
+            ctx["work_order_id"],
+            actor_type=SCHEDULE_ACTOR_CONTRACTOR,
+            actor_id=actor_id,
+            actor_role="job_token",
+            contractor_id=ctx["contractor_id"],
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/work-order/schedule/ics")
+async def job_schedule_ics(request: Request, ctx: dict = Depends(job_context_dep)):
+    try:
+        data, filename = await wo_schedule.get_schedule_ics_payload(
+            ctx["work_order_id"],
+            contractor_id=ctx["contractor_id"],
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return Response(
+        content=data,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/work-order/accept")

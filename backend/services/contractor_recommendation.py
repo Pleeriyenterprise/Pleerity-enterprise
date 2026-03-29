@@ -6,9 +6,10 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from services.compliance_contractor_capability import (
-    compliance_match_reasons,
-    contractor_qualifies_for_requirement,
+    compliance_match_reasons_verified,
+    contractor_verified_qualifies_for_requirement,
     parse_execution_capabilities,
+    parse_verified_execution_capabilities,
 )
 from services.contractor_recommendation_config import (
     DEFAULT_WEIGHTS,
@@ -334,10 +335,10 @@ def _compliance_requirement_match_score(
     code = (wo.get("requirement_code") or "").strip().lower()
     if not code:
         return 0, []
-    if not contractor_qualifies_for_requirement(c, code):
+    if not contractor_verified_qualifies_for_requirement(c, code):
         return 0, []
     w = weights.get("compliance_requirement_match", 40)
-    reasons = compliance_match_reasons(c, code) or [f"Qualified for compliance requirement {code}"]
+    reasons = compliance_match_reasons_verified(c, code) or [f"Verified capability for compliance requirement {code}"]
     return w, reasons
 
 
@@ -349,12 +350,12 @@ def _should_exclude_compliance(
         return "Suspended"
     if status and status != "active":
         return "Inactive"
-    caps = parse_execution_capabilities(c)
+    caps = parse_verified_execution_capabilities(c)
     if EXECUTION_CAPABILITY_COMPLIANCE not in caps:
         return "Contractor is not enabled for compliance execution work"
     code = (wo.get("requirement_code") or "").strip().lower()
-    if code and not contractor_qualifies_for_requirement(c, code):
-        return "Contractor does not meet this compliance requirement"
+    if code and not contractor_verified_qualifies_for_requirement(c, code):
+        return "Contractor does not meet this compliance requirement (verified codes)"
     trades = [_normalize(t) for t in (c.get("trade_types") or [])]
     if not trades:
         return "No trade types"

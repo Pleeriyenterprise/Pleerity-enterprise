@@ -80,22 +80,24 @@ async def create_compliance_execution_work_order(
     if not prop:
         raise ValueError("Property not found for this client")
 
-    if linked_property_requirement_id:
-        req_row = await db.requirements.find_one(
-            {
-                "requirement_id": linked_property_requirement_id.strip(),
-                "client_id": client_id.strip(),
-                "property_id": property_id.strip(),
-            },
-            {"_id": 0, "requirement_code": 1, "requirement_type": 1},
-        )
-        if not req_row:
-            raise ValueError("Linked property requirement not found for this property")
-        row_code = normalize_requirement_code_strict(
-            req_row.get("requirement_code") or req_row.get("requirement_type") or ""
-        )[0]
-        if row_code and row_code != canon:
-            raise ValueError("requirement_code does not match linked property requirement")
+    lpr = (linked_property_requirement_id or "").strip()
+    if not lpr:
+        raise ValueError("linked_property_requirement_id is required for compliance execution booking")
+    req_row = await db.requirements.find_one(
+        {
+            "requirement_id": lpr,
+            "client_id": client_id.strip(),
+            "property_id": property_id.strip(),
+        },
+        {"_id": 0, "requirement_code": 1, "requirement_type": 1},
+    )
+    if not req_row:
+        raise ValueError("Linked property requirement not found for this property")
+    row_code = normalize_requirement_code_strict(
+        req_row.get("requirement_code") or req_row.get("requirement_type") or ""
+    )[0]
+    if row_code and row_code != canon:
+        raise ValueError("requirement_code does not match linked property requirement")
 
     cat = await db.requirements_catalog.find_one({"code": canon}, {"_id": 0, "title": 1})
     title = (cat or {}).get("title") or canon.replace("_", " ").title()

@@ -510,6 +510,12 @@ class ContractorRegisterBody(BaseModel):
     certifications: Optional[List[str]] = None
     credentials: Optional[List[str]] = None
     insurance_details: Optional[str] = Field(None, max_length=1000)
+    # Declared-only (not trusted for compliance routing until admin verifies)
+    declared_execution_capabilities: Optional[str] = Field(
+        None,
+        description="Self-declared: maintenance | compliance | both (stored as declared_* only)",
+    )
+    declared_supported_requirement_codes: Optional[List[str]] = None
 
 
 @contractor_public_router.post("/register")
@@ -540,6 +546,8 @@ async def register_contractor_public(body: ContractorRegisterBody, request: Requ
             registration_postcode=pc,
             certifications=certs,
             insurance_details=body.insurance_details.strip() if body.insurance_details else None,
+            declared_execution_capabilities=body.declared_execution_capabilities,
+            declared_supported_requirement_codes=body.declared_supported_requirement_codes,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

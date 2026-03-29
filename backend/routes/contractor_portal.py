@@ -4,8 +4,8 @@ All routes require contractor_route_guard (JWT with role=ROLE_CONTRACTOR and con
 Contractors only see and act on work orders where contractor_id matches their own.
 """
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from fastapi.responses import FileResponse, Response
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 from database import database
@@ -16,6 +16,8 @@ from services import contractor_service
 from services import contractor_evidence_service
 from models import AuditAction
 from utils.audit import create_audit_log
+from services import work_order_schedule_service as wo_schedule
+from services.work_order_schedule_constants import SCHEDULE_ACTOR_CONTRACTOR
 
 router = APIRouter(prefix="/api/contractor", tags=["contractor-portal"], dependencies=[Depends(contractor_route_guard)])
 
@@ -128,6 +130,127 @@ async def update_my_work_order(request: Request, work_order_id: str, body: Updat
             metadata={"keys_count": len(body.evidence_keys)},
         )
     return updated
+
+
+class ContractorScheduleProposeBody(BaseModel):
+    scheduled_at: str
+    timezone: str = Field(..., description="IANA timezone e.g. Europe/London")
+    notes: Optional[str] = Field(None, max_length=4000)
+
+
+class ContractorScheduleRescheduleBody(BaseModel):
+    reason: Optional[str] = Field(None, max_length=2000)
+
+
+@router.post("/work-orders/{work_order_id}/schedule/propose")
+async def contractor_schedule_propose(request: Request, work_order_id: str, body: ContractorScheduleProposeBody):
+    user = await contractor_route_guard(request)
+    contractor_id = user.get("contractor_id")
+    role = user.get("role")
+    actor_id = user.get("portal_user_id") or user.get("email") or user.get("user_id") or contractor_id
+    try:
+        return await wo_schedule.propose_schedule(
+            work_order_id,
+            actor_type=SCHEDULE_ACTOR_CONTRACTOR,
+            actor_id=actor_id,
+            actor_role=role,
+            scheduled_at_raw=body.scheduled_at,
+            timezone_name=body.timezone,
+            notes=body.notes,
+            contractor_id=contractor_id,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/work-orders/{work_order_id}/schedule/confirm")
+async def contractor_schedule_confirm(request: Request, work_order_id: str):
+    user = await contractor_route_guard(request)
+    contractor_id = user.get("contractor_id")
+    role = user.get("role")
+    actor_id = user.get("portal_user_id") or user.get("email") or user.get("user_id") or contractor_id
+    try:
+        return await wo_schedule.confirm_schedule(
+            work_order_id,
+            actor_type=SCHEDULE_ACTOR_CONTRACTOR,
+            actor_id=actor_id,
+            actor_role=role,
+            contractor_id=contractor_id,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/work-orders/{work_order_id}/schedule/reschedule-request")
+async def contractor_schedule_reschedule_request(request: Request, work_order_id: str, body: ContractorScheduleRescheduleBody):
+    user = await contractor_route_guard(request)
+    contractor_id = user.get("contractor_id")
+    role = user.get("role")
+    actor_id = user.get("portal_user_id") or user.get("email") or user.get("user_id") or contractor_id
+    try:
+        return await wo_schedule.request_reschedule(
+            work_order_id,
+            actor_type=SCHEDULE_ACTOR_CONTRACTOR,
+            actor_id=actor_id,
+            actor_role=role,
+            reason=body.reason,
+            contractor_id=contractor_id,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/work-orders/{work_order_id}/schedule/cancel")
+async def contractor_schedule_cancel(request: Request, work_order_id: str):
+    user = await contractor_route_guard(request)
+    contractor_id = user.get("contractor_id")
+    role = user.get("role")
+    actor_id = user.get("portal_user_id") or user.get("email") or user.get("user_id") or contractor_id
+    try:
+        return await wo_schedule.cancel_schedule(
+            work_order_id,
+            actor_type=SCHEDULE_ACTOR_CONTRACTOR,
+            actor_id=actor_id,
+            actor_role=role,
+            contractor_id=contractor_id,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/work-orders/{work_order_id}/schedule/ics")
+async def contractor_schedule_ics(request: Request, work_order_id: str):
+    user = await contractor_route_guard(request)
+    contractor_id = user.get("contractor_id")
+    try:
+        data, filename = await wo_schedule.get_schedule_ics_payload(work_order_id, contractor_id=contractor_id)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return Response(
+        content=data,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/work-orders/{work_order_id}/accept")

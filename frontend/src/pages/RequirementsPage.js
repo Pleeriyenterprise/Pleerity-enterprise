@@ -3,8 +3,9 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import api from '../api/client';
 import { toast } from 'sonner';
-import { 
-  FileCheck, 
+import { useEntitlements } from '../contexts/EntitlementsContext';
+import {
+  FileCheck,
   Calendar,
   Building2,
   ArrowLeft,
@@ -14,9 +15,11 @@ import {
   ChevronRight,
   Pencil,
   AlertCircle,
+  Loader2,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { resolveDocumentsPath } from '../utils/clientPortalNavigation';
+import { buildSafeQueryPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
 import { getEvidenceStatus } from '../utils/evidenceStatus';
 import {
   Accordion,
@@ -37,6 +40,7 @@ const NOT_REQUIRED_REASONS = [
 
 const RequirementsPage = () => {
   const navigate = useNavigate();
+  const { hasFeature } = useEntitlements();
   const [searchParams] = useSearchParams();
   const [requirements, setRequirements] = useState([]);
   const [properties, setProperties] = useState([]);
@@ -49,6 +53,7 @@ const RequirementsPage = () => {
   const [editForm, setEditForm] = useState({ confirmed_expiry_date: '', applicability: '', not_required_reason: '' });
   const [documentCountByRequirementId, setDocumentCountByRequirementId] = useState({});
   const [requirementsPresentation, setRequirementsPresentation] = useState(null);
+  const [complianceBookingKey, setComplianceBookingKey] = useState(null);
 
   // Get filter from URL params
   const statusFilter = searchParams.get('status') || 'all';
@@ -124,6 +129,33 @@ const RequirementsPage = () => {
       not_required_reason: req.not_required_reason || '',
     });
     setEditModal({ requirement: req, property: getPropertyById(req.property_id) });
+  };
+
+  const bookComplianceFromRequirement = async (req, purpose) => {
+    const key = `${req.requirement_id}:${purpose}`;
+    setComplianceBookingKey(key);
+    try {
+      const code = req.requirement_code || req.requirement_type;
+      if (!code) {
+        toast.error('This item has no requirement code; contact support.');
+        return;
+      }
+      const res = await clientAPI.bookComplianceWorkOrder({
+        property_id: req.property_id,
+        requirement_code: code,
+        compliance_purpose: purpose,
+        compliance_generated_from: 'requirement',
+        linked_property_requirement_id: req.requirement_id,
+      });
+      const woId = res.data?.work_order?.work_order_id;
+      toast.success('Compliance job created. Open the job to request a contractor.');
+      if (woId) navigate(buildSafeQueryPath('/operations/work-orders', { work_order_id: woId }));
+      else navigate('/operations/work-orders');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Could not create compliance job');
+    } finally {
+      setComplianceBookingKey(null);
+    }
   };
 
   const handleEditSubmit = async () => {
@@ -251,6 +283,53 @@ const RequirementsPage = () => {
             </Button>
           </div>
         </div>
+        {hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-xs h-8"
+              disabled={complianceBookingKey !== null}
+              onClick={() => bookComplianceFromRequirement(req, 'inspection')}
+              data-testid={`compliance-inspection-${req.requirement_id}`}
+            >
+              {complianceBookingKey === `${req.requirement_id}:inspection` ? (
+                <Loader2 className="w-3 h-3 animate-spin mr-1" />
+              ) : (
+                <ClipboardCheck className="w-3 h-3 mr-1" />
+              )}
+              Arrange compliance inspection
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-xs h-8"
+              disabled={complianceBookingKey !== null}
+              onClick={() => bookComplianceFromRequirement(req, 'renewal')}
+              data-testid={`compliance-renewal-${req.requirement_id}`}
+            >
+              {complianceBookingKey === `${req.requirement_id}:renewal` ? (
+                <Loader2 className="w-3 h-3 animate-spin mr-1" />
+              ) : null}
+              Start renewal
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-xs h-8"
+              onClick={() =>
+                navigate(resolveDocumentsPath(req.property_id, { requirement_id: req.requirement_id, focus: 'upload' }))
+              }
+              data-testid={`compliance-upload-${req.requirement_id}`}
+            >
+              <FileText className="w-3 h-3 mr-1" />
+              Upload compliance evidence
+            </Button>
+          </div>
+        )}
       </div>
     );
   };

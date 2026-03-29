@@ -58,7 +58,7 @@ class ComplianceBookingBody(BaseModel):
     )
     description_override: Optional[str] = None
     compliance_due_at: Optional[str] = None
-    linked_property_requirement_id: Optional[str] = None
+    linked_property_requirement_id: str = Field(..., description="requirements.requirement_id for this property")
     risk_signal_id: Optional[str] = None
     issue_id: Optional[str] = None
 
@@ -157,6 +157,12 @@ async def generate_compliance_contractor_recommendation(request: Request, work_o
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/compliance-execution/work-orders/{work_order_id}/contractor-routing/request")
+async def request_contractor_for_compliance_work_order(http_request: Request, work_order_id: str):
+    """Enterprise alias for POST .../contractor-routing/generate (request contractor recommendation)."""
+    return await generate_compliance_contractor_recommendation(http_request, work_order_id)
 
 
 @router.post("/compliance-execution/work-orders/{work_order_id}/contractor-routing/confirm")

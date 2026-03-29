@@ -44,6 +44,9 @@ STATUS_ACKNOWLEDGED = "acknowledged"
 STATUS_RESOLVED = "resolved"
 SOURCE_HEURISTIC = "heuristic"
 
+# Client dismiss without execution closure (informational risk layer only)
+RISK_DISMISS_REASONS = frozenset({"no_action_required", "handled_externally", "duplicate"})
+
 # Rolling windows (days)
 ROLLING_12_MONTHS_DAYS = 365
 ROLLING_6_MONTHS_DAYS = 183
@@ -1230,18 +1233,95 @@ async def create_work_order_from_risk_signal(
     return wo
 
 
+async def arrange_compliance_inspection_from_risk_signal(
+    signal_id: str,
+    client_id: str,
+    requirement_code_raw: str,
+    linked_property_requirement_id: str,
+    reporter_id: Optional[str] = None,
+    compliance_purpose: str = "inspection",
+    description_override: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Start compliance execution (COMPLIANCE work order) from a risk signal — not a maintenance issue placeholder.
+    Requires the same booking rules as POST /compliance-execution/work-orders/book.
+    """
+    doc = await get_risk_signal_by_id(signal_id=signal_id, client_id=client_id)
+    if not doc:
+        raise ValueError("Risk signal not found or does not belong to this client")
+    property_id = doc.get("property_id")
+    if not property_id:
+        raise ValueError("Risk signal has no property_id")
+    from services.compliance_booking_service import create_compliance_execution_work_order
+
+    return await create_compliance_execution_work_order(
+        client_id=client_id,
+        property_id=str(property_id).strip(),
+        requirement_code_raw=requirement_code_raw,
+        compliance_purpose=compliance_purpose,
+        compliance_generated_from="risk_signal",
+        actor_portal_user_id=reporter_id,
+        description_override=description_override,
+        compliance_due_at=None,
+        linked_property_requirement_id=linked_property_requirement_id.strip(),
+        risk_signal_id=signal_id,
+        issue_id=None,
+    )
+
+
+async def _risk_signal_has_execution_closure(db, signal_id: str, client_id: str) -> bool:
+    """True if a linked maintenance issue or work order shows the signal was operationally closed."""
+    if await db.maintenance_issues.find_one(
+        {
+            "client_id": client_id,
+            "risk_signal_id": signal_id,
+            "status": {"$in": ["closed", "cancelled", "resolved"]},
+        },
+        {"_id": 1},
+    ):
+        return True
+    if await db.work_orders.find_one(
+        {
+            "client_id": client_id,
+            "risk_signal_id": signal_id,
+            "status": {"$in": ["COMPLETED", "VERIFIED", "CLOSED"]},
+        },
+        {"_id": 1},
+    ):
+        return True
+    return False
+
+
 async def update_signal_status(
-    signal_id: str, client_id: str, new_status: str
+    signal_id: str,
+    client_id: str,
+    new_status: str,
+    dismiss_reason: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Set status to acknowledged or resolved. Returns updated doc or None."""
+    """Set status to acknowledged or resolved. Resolved requires execution closure or an explicit dismiss_reason."""
     if new_status not in (STATUS_ACKNOWLEDGED, STATUS_RESOLVED):
         return None
     db = database.get_db()
     now_iso = _iso(_now())
+    set_doc: Dict[str, Any] = {"status": new_status, "updated_at": now_iso}
+    if new_status == STATUS_RESOLVED:
+        if not await _risk_signal_has_execution_closure(db, signal_id, client_id):
+            dr = (dismiss_reason or "").strip().lower()
+            if dr not in RISK_DISMISS_REASONS:
+                raise ValueError(
+                    "To dismiss this risk signal, choose a reason (no_action_required, handled_externally, duplicate) "
+                    "or complete linked maintenance work (issue or work order) first."
+                )
+            set_doc["dismiss_reason"] = dr
+        else:
+            set_doc["dismiss_reason"] = None
+    else:
+        set_doc["dismiss_reason"] = None
+
     action = AuditAction.RISK_SIGNAL_ACKNOWLEDGED if new_status == STATUS_ACKNOWLEDGED else AuditAction.RISK_SIGNAL_RESOLVED
     result = await db.risk_signals.find_one_and_update(
         {"signal_id": signal_id, "client_id": client_id},
-        {"$set": {"status": new_status, "updated_at": now_iso}},
+        {"$set": set_doc},
         return_document=True,
     )
     if result:
@@ -1252,7 +1332,11 @@ async def update_signal_status(
                 client_id=client_id,
                 resource_type="risk_signal",
                 resource_id=signal_id,
-                metadata={"property_id": result.get("property_id"), "new_status": new_status},
+                metadata={
+                    "property_id": result.get("property_id"),
+                    "new_status": new_status,
+                    "dismiss_reason": result.get("dismiss_reason"),
+                },
             )
         except Exception as e:
             logger.warning("Audit log for risk signal status update failed: %s", e)

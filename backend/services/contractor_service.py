@@ -8,8 +8,9 @@ from database import database
 import logging
 
 from services.compliance_contractor_capability import (
-    contractor_qualifies_for_requirement,
+    contractor_verified_qualifies_for_requirement,
     parse_execution_capabilities,
+    parse_verified_execution_capabilities,
 )
 from services.requirement_code_registry import CANONICAL_REQUIREMENT_CODES, normalize_requirement_code
 from services.work_order_execution_constants import (
@@ -89,17 +90,18 @@ def _coerce_supported_requirement_codes(raw: Optional[List[str]]) -> List[str]:
 def contractor_passes_work_order_execution_gate(contractor: Dict[str, Any], wo: Dict[str, Any]) -> bool:
     """Backend gate: maintenance vs compliance capability must match work order kind."""
     kind = (wo.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
-    caps = parse_execution_capabilities(contractor)
     if kind == WORK_ORDER_KIND_COMPLIANCE:
-        if EXECUTION_CAPABILITY_COMPLIANCE not in caps:
+        caps_v = parse_verified_execution_capabilities(contractor)
+        if EXECUTION_CAPABILITY_COMPLIANCE not in caps_v:
             return False
         code = (wo.get("requirement_code") or "").strip().lower()
-        if code and not contractor_qualifies_for_requirement(contractor, code):
+        if code and not contractor_verified_qualifies_for_requirement(contractor, code):
             return False
         return True
-    if caps == {EXECUTION_CAPABILITY_COMPLIANCE}:
+    caps_m = parse_execution_capabilities(contractor)
+    if caps_m == {EXECUTION_CAPABILITY_COMPLIANCE}:
         return False
-    return EXECUTION_CAPABILITY_MAINTENANCE in caps
+    return EXECUTION_CAPABILITY_MAINTENANCE in caps_m
 
 
 def normalize_lifecycle_status(status: Optional[str]) -> str:
@@ -412,6 +414,11 @@ async def create_contractor(
     skip_email_duplicate_check: bool = False,
     execution_capabilities: Optional[str] = None,
     supported_requirement_codes: Optional[List[str]] = None,
+    declared_execution_capabilities: Optional[str] = None,
+    declared_supported_requirement_codes: Optional[List[str]] = None,
+    declared_credentials: Optional[List[str]] = None,
+    verified_execution_capabilities: Optional[str] = None,
+    verified_supported_requirement_codes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Create a new contractor. Sets source_type/status when provided; defaults for backward compat."""
     from datetime import datetime, timezone
@@ -467,6 +474,29 @@ async def create_contractor(
         "execution_capabilities": eff_exec,
         "supported_requirement_codes": eff_req_codes,
     }
+    if declared_execution_capabilities is not None:
+        doc["declared_execution_capabilities"] = _coerce_execution_capabilities(declared_execution_capabilities)
+    if declared_supported_requirement_codes is not None:
+        doc["declared_supported_requirement_codes"] = _coerce_supported_requirement_codes(
+            declared_supported_requirement_codes
+        )
+    if declared_credentials is not None:
+        doc["declared_credentials"] = list(declared_credentials)
+    if vetted:
+        ve_src = (
+            verified_execution_capabilities
+            if verified_execution_capabilities is not None
+            else execution_capabilities
+        )
+        vc_src = (
+            verified_supported_requirement_codes
+            if verified_supported_requirement_codes is not None
+            else supported_requirement_codes
+        )
+        doc["verified_execution_capabilities"] = _coerce_execution_capabilities(ve_src)
+        doc["verified_supported_requirement_codes"] = _coerce_supported_requirement_codes(vc_src)
+        doc["verified_at"] = now
+        doc["verified_by"] = "system_on_create"
     if client_id and (source_type or "").strip().lower() == SOURCE_LANDLORD_ADDED:
         doc["visibility_scope"] = "private"
     elif not client_id and (source_type or "").strip().lower() == SOURCE_PLATFORM_NETWORK:
@@ -513,12 +543,25 @@ async def update_contractor(
     registration_postcode: Optional[str] = None,
     execution_capabilities: Optional[str] = None,
     supported_requirement_codes: Optional[List[str]] = None,
+    declared_execution_capabilities: Optional[str] = None,
+    declared_supported_requirement_codes: Optional[List[str]] = None,
+    declared_credentials: Optional[List[str]] = None,
+    verified_execution_capabilities: Optional[str] = None,
+    verified_supported_requirement_codes: Optional[List[str]] = None,
+    verified_at: Optional[str] = None,
+    verified_by: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Update a contractor. Only provided fields are updated."""
     from datetime import datetime, timezone
 
     db = database.get_db()
     update = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    verified_touched = (
+        verified_execution_capabilities is not None or verified_supported_requirement_codes is not None
+    )
+    cur_snapshot: Optional[Dict[str, Any]] = None
+    if verified_touched:
+        cur_snapshot = await db.contractors.find_one({"contractor_id": contractor_id})
     if name is not None:
         update["name"] = name
     if trade_types is not None:
@@ -591,6 +634,38 @@ async def update_contractor(
         update["execution_capabilities"] = _coerce_execution_capabilities(execution_capabilities)
     if supported_requirement_codes is not None:
         update["supported_requirement_codes"] = _coerce_supported_requirement_codes(supported_requirement_codes)
+    if declared_execution_capabilities is not None:
+        update["declared_execution_capabilities"] = _coerce_execution_capabilities(declared_execution_capabilities)
+    if declared_supported_requirement_codes is not None:
+        update["declared_supported_requirement_codes"] = _coerce_supported_requirement_codes(
+            declared_supported_requirement_codes
+        )
+    if declared_credentials is not None:
+        update["declared_credentials"] = declared_credentials
+    if verified_execution_capabilities is not None:
+        update["verified_execution_capabilities"] = _coerce_execution_capabilities(verified_execution_capabilities)
+    if verified_supported_requirement_codes is not None:
+        update["verified_supported_requirement_codes"] = _coerce_supported_requirement_codes(
+            verified_supported_requirement_codes
+        )
+    if verified_touched and cur_snapshot is not None:
+        eff_ve = (
+            update["verified_execution_capabilities"]
+            if "verified_execution_capabilities" in update
+            else cur_snapshot.get("verified_execution_capabilities")
+        )
+        eff_vc = (
+            update["verified_supported_requirement_codes"]
+            if "verified_supported_requirement_codes" in update
+            else cur_snapshot.get("verified_supported_requirement_codes")
+        )
+        if eff_ve is not None:
+            update["execution_capabilities"] = _coerce_execution_capabilities(eff_ve)
+        if eff_vc is not None:
+            update["supported_requirement_codes"] = list(eff_vc)
+        update["verified_at"] = verified_at or datetime.now(timezone.utc).isoformat()
+        if verified_by is not None:
+            update["verified_by"] = verified_by
 
     result = await db.contractors.find_one_and_update(
         {"contractor_id": contractor_id},
@@ -736,8 +811,13 @@ async def create_contractor_self_registered(
     coverage_regions: Optional[List[str]] = None,
     credentials: Optional[List[str]] = None,
     insurance_details: Optional[str] = None,
+    declared_execution_capabilities: Optional[str] = None,
+    declared_supported_requirement_codes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Self-registration: client_id=null, vetted=False, status=pending_approval, source_type=self_registered."""
+    creds = list(credentials) if credentials else []
+    decl_exec = declared_execution_capabilities or EXECUTION_CAPABILITY_MAINTENANCE
+    decl_codes = declared_supported_requirement_codes if declared_supported_requirement_codes is not None else []
     return await create_contractor(
         name=contact_name,
         company_name=company_name,
@@ -750,13 +830,18 @@ async def create_contractor_self_registered(
         notes=None,
         source_type=SOURCE_SELF_REGISTERED,
         status=LC_PENDING_APPROVAL,
-        credentials=credentials,
+        credentials=creds,
         insurance_details=insurance_details,
         contact_name=contact_name,
         region=coverage_regions[0] if coverage_regions else None,
         portal_access_status=PORTAL_ACCESS_NOT_INVITED,
         vetting_status=LC_PENDING_APPROVAL,
         coverage_area=coverage_regions,
+        execution_capabilities=EXECUTION_CAPABILITY_MAINTENANCE,
+        supported_requirement_codes=[],
+        declared_execution_capabilities=decl_exec,
+        declared_supported_requirement_codes=decl_codes,
+        declared_credentials=creds,
     )
 
 
@@ -956,6 +1041,8 @@ async def register_contractor_public(
     registration_postcode: str,
     certifications: Optional[List[str]] = None,
     insurance_details: Optional[str] = None,
+    declared_execution_capabilities: Optional[str] = None,
+    declared_supported_requirement_codes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Public self-registration: pending approval, notify admin, acknowledgment email to applicant."""
     norm = normalize_email_for_lookup(email)
@@ -977,6 +1064,8 @@ async def register_contractor_public(
         coverage_regions=[pc.upper()],
         credentials=creds,
         insurance_details=(insurance_details or "").strip() or None,
+        declared_execution_capabilities=declared_execution_capabilities,
+        declared_supported_requirement_codes=declared_supported_requirement_codes,
     )
     doc = await update_contractor(
         doc["contractor_id"],
@@ -1164,9 +1253,20 @@ async def list_assignable_contractors_for_work_order(
     return {"contractors": page, "total": total, "skip": skip, "limit": limit}
 
 
-async def approve_contractor(contractor_id: str, *, approved_by: Optional[str] = None, approved_by_role: Optional[str] = None) -> Optional[Dict[str, Any]]:
+async def approve_contractor(
+    contractor_id: str,
+    *,
+    approved_by: Optional[str] = None,
+    approved_by_role: Optional[str] = None,
+    verified_execution_capabilities: Optional[str] = None,
+    verified_supported_requirement_codes: Optional[List[str]] = None,
+    accept_declared_capabilities: bool = False,
+) -> Optional[Dict[str, Any]]:
     """
-    Approve a contractor for operations: vetted=True, status active if portal already activated else approved, and send portal invite when needed.
+    Approve a contractor for operations: vetted=True, status active if portal already activated else approved,
+    and send portal invite when needed. Optional verified_* (or accept_declared_capabilities) records trusted
+    compliance capability for routing; omitting them leaves verified layer unchanged (e.g. self-reg stays
+    maintenance-only in legacy fields until admin sets verified compliance).
     """
     from utils.audit import create_audit_log
     from models import AuditAction
@@ -1178,12 +1278,38 @@ async def approve_contractor(contractor_id: str, *, approved_by: Optional[str] =
     cur = _sanitize_doc(raw)
     portal_on = portal_access_is_activated(cur)
     new_status = LC_ACTIVE if portal_on else LC_APPROVED
-    updated = await update_contractor(
-        contractor_id,
-        status=new_status,
-        vetted=True,
-        vetting_status="approved",
-    )
+    patch_kw: Dict[str, Any] = {
+        "contractor_id": contractor_id,
+        "status": new_status,
+        "vetted": True,
+        "vetting_status": "approved",
+    }
+    if accept_declared_capabilities:
+        de = cur.get("declared_execution_capabilities") or EXECUTION_CAPABILITY_MAINTENANCE
+        patch_kw["verified_execution_capabilities"] = _coerce_execution_capabilities(str(de))
+        patch_kw["verified_supported_requirement_codes"] = _coerce_supported_requirement_codes(
+            cur.get("declared_supported_requirement_codes") or []
+        )
+        patch_kw["verified_by"] = approved_by or "admin_accept_declared"
+    else:
+        if verified_execution_capabilities is not None:
+            patch_kw["verified_execution_capabilities"] = verified_execution_capabilities
+        if verified_supported_requirement_codes is not None:
+            patch_kw["verified_supported_requirement_codes"] = verified_supported_requirement_codes
+        if verified_execution_capabilities is not None or verified_supported_requirement_codes is not None:
+            patch_kw["verified_by"] = approved_by or "admin"
+        else:
+            st = (cur.get("source_type") or "").strip().lower()
+            if st != SOURCE_SELF_REGISTERED and "verified_execution_capabilities" not in raw:
+                le = cur.get("execution_capabilities")
+                if le is not None and str(le).strip():
+                    patch_kw["verified_execution_capabilities"] = le
+                lsup = cur.get("supported_requirement_codes")
+                if lsup is not None:
+                    patch_kw["verified_supported_requirement_codes"] = list(lsup)
+                if "verified_execution_capabilities" in patch_kw or "verified_supported_requirement_codes" in patch_kw:
+                    patch_kw["verified_by"] = approved_by or "legacy_mirror_on_approve"
+    updated = await update_contractor(**patch_kw)
     if not updated:
         return None
     try:
@@ -1697,3 +1823,70 @@ async def compute_rework_rate(contractor_id: str, client_id: str, rework_days: i
         {"$set": {"rework_rate": rate, "updated_at": now}},
     )
     return rate
+
+
+async def backfill_verified_capabilities_from_legacy(
+    *,
+    dry_run: bool = False,
+    include_vetted_self_registered_legacy_trusted: bool = False,
+) -> Dict[str, Any]:
+    """
+    One-time / ops migration: copy legacy execution_capabilities and supported_requirement_codes into
+    verified_* for documents that never had verified_execution_capabilities stored.
+
+    Assumptions:
+    - Non-self_registered rows were admin- or org-managed; mirroring legacy into verified preserves
+      pre–declared-vs-verified behaviour after routing starts requiring verified fields for self_reg.
+    - self_registered is skipped by default so unverified marketplace applicants do not gain trusted
+      compliance from legacy fields alone. Set include_vetted_self_registered_legacy_trusted=True only
+      if historical data was already treated as admin-trusted (e.g. post-incident repair).
+    """
+    db = database.get_db()
+    q: Dict[str, Any] = {"verified_execution_capabilities": {"$exists": False}}
+    touched = 0
+    skipped = 0
+    async for raw in db.contractors.find(q):
+        st = (raw.get("source_type") or "").strip().lower()
+        if st == SOURCE_SELF_REGISTERED and not include_vetted_self_registered_legacy_trusted:
+            skipped += 1
+            continue
+        if st == SOURCE_SELF_REGISTERED and include_vetted_self_registered_legacy_trusted:
+            if not raw.get("vetted"):
+                skipped += 1
+                continue
+        le = raw.get("execution_capabilities")
+        lsup = raw.get("supported_requirement_codes")
+        if le is None and lsup is None:
+            skipped += 1
+            continue
+        now = datetime.now(timezone.utc).isoformat()
+        set_doc: Dict[str, Any] = {
+            "updated_at": now,
+            "verified_at": now,
+            "verified_by": "migration_backfill_legacy",
+        }
+        if le is not None and str(le).strip():
+            try:
+                set_doc["verified_execution_capabilities"] = _coerce_execution_capabilities(str(le))
+            except ValueError:
+                skipped += 1
+                continue
+        if lsup is not None:
+            try:
+                set_doc["verified_supported_requirement_codes"] = _coerce_supported_requirement_codes(list(lsup))
+            except ValueError:
+                skipped += 1
+                continue
+        if "verified_execution_capabilities" not in set_doc and "verified_supported_requirement_codes" not in set_doc:
+            skipped += 1
+            continue
+        if "verified_execution_capabilities" in set_doc:
+            set_doc["execution_capabilities"] = set_doc["verified_execution_capabilities"]
+        if "verified_supported_requirement_codes" in set_doc:
+            set_doc["supported_requirement_codes"] = set_doc["verified_supported_requirement_codes"]
+        if dry_run:
+            touched += 1
+            continue
+        await db.contractors.update_one({"contractor_id": raw["contractor_id"]}, {"$set": set_doc})
+        touched += 1
+    return {"updated": touched, "skipped": skipped, "dry_run": dry_run}

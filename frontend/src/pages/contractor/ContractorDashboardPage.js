@@ -29,6 +29,41 @@ function formatDate(s) {
   }
 }
 
+function formatScheduleInstant(iso, tz) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return `${d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} (${tz || 'UTC'})`;
+  } catch {
+    return String(iso);
+  }
+}
+
+function scheduleLifecycleLabel(wo) {
+  const st = (wo?.schedule_status || '').toLowerCase();
+  if (st === 'proposed') return 'Proposed visit';
+  if (st === 'confirmed') return 'Confirmed visit';
+  if (st === 'reschedule_requested') return 'Reschedule requested';
+  if (st === 'cancelled') return 'Visit cancelled';
+  if (st === 'completed') return 'Visit completed (job closed)';
+  if (wo?.scheduled_at) return 'Visit time on file';
+  return 'No visit scheduled';
+}
+
+function scheduleProposedByLabel(by) {
+  const b = (by || '').toLowerCase();
+  if (b === 'client') return 'Client';
+  if (b === 'contractor') return 'You / contractor';
+  if (b === 'admin') return 'Operations';
+  return by || '—';
+}
+
+function contractorMayConfirmSchedule(wo) {
+  if ((wo?.schedule_status || '').toLowerCase() !== 'proposed') return false;
+  const sb = (wo?.scheduled_by || '').toLowerCase();
+  return sb === 'client' || sb === 'admin';
+}
+
 const STATUS_OPTIONS = [
   { value: 'SCHEDULED', label: 'Scheduled' },
   { value: 'IN_PROGRESS', label: 'In progress' },
@@ -59,6 +94,12 @@ export default function ContractorDashboardPage() {
   const [notesForm, setNotesForm] = useState({ contractor_notes: '', completion_notes: '' });
   const [evidenceUploading, setEvidenceUploading] = useState(false);
   const [evidenceFileLoadingKey, setEvidenceFileLoadingKey] = useState(null);
+  const [scheduleForm, setScheduleForm] = useState({
+    datetimeLocal: '',
+    timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London' : 'Europe/London',
+    notes: '',
+  });
+  const [scheduleActionLoading, setScheduleActionLoading] = useState(false);
 
   useEffect(() => {
     const t = getContractorToken();
@@ -233,6 +274,86 @@ export default function ContractorDashboardPage() {
       })
       .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
       .finally(() => setActionLoading(null));
+  };
+
+  const refreshContractorDetail = (id) => {
+    if (!api || !id) return Promise.resolve();
+    return api.getWorkOrder(id).then((r) => setDetail(r.data));
+  };
+
+  const handleProposeVisitSchedule = () => {
+    if (!detail || !api) return;
+    if (!scheduleForm.datetimeLocal) {
+      toast.error('Choose a visit date and time');
+      return;
+    }
+    const raw = scheduleForm.datetimeLocal.length === 16 ? `${scheduleForm.datetimeLocal}:00` : scheduleForm.datetimeLocal;
+    setScheduleActionLoading(true);
+    api
+      .proposeSchedule(detail.work_order_id, {
+        scheduled_at: raw,
+        timezone: scheduleForm.timezone,
+        notes: scheduleForm.notes?.trim() || undefined,
+      })
+      .then(() => {
+        toast.success('Visit time proposed');
+        return refreshContractorDetail(detail.work_order_id);
+      })
+      .then(() => loadWorkOrders())
+      .catch((e) => toast.error(e.response?.data?.detail || 'Could not propose visit time'))
+      .finally(() => setScheduleActionLoading(false));
+  };
+
+  const handleConfirmVisitSchedule = () => {
+    if (!detail || !api) return;
+    setScheduleActionLoading(true);
+    api
+      .confirmSchedule(detail.work_order_id)
+      .then(() => {
+        toast.success('Visit confirmed');
+        return refreshContractorDetail(detail.work_order_id);
+      })
+      .then(() => loadWorkOrders())
+      .catch((e) => toast.error(e.response?.data?.detail || 'Could not confirm'))
+      .finally(() => setScheduleActionLoading(false));
+  };
+
+  const handleRequestVisitReschedule = () => {
+    if (!detail || !api) return;
+    const reason = window.prompt('Reason for reschedule request (optional)') ?? '';
+    setScheduleActionLoading(true);
+    api
+      .requestScheduleReschedule(detail.work_order_id, { reason: reason.trim() || undefined })
+      .then(() => {
+        toast.success('Reschedule request sent');
+        return refreshContractorDetail(detail.work_order_id);
+      })
+      .then(() => loadWorkOrders())
+      .catch((e) => toast.error(e.response?.data?.detail || 'Request failed'))
+      .finally(() => setScheduleActionLoading(false));
+  };
+
+  const handleCancelVisitSchedule = () => {
+    if (!detail || !api) return;
+    if (!window.confirm('Cancel this scheduled visit?')) return;
+    setScheduleActionLoading(true);
+    api
+      .cancelSchedule(detail.work_order_id)
+      .then(() => {
+        toast.success('Visit cancelled');
+        return refreshContractorDetail(detail.work_order_id);
+      })
+      .then(() => loadWorkOrders())
+      .catch((e) => toast.error(e.response?.data?.detail || 'Could not cancel'))
+      .finally(() => setScheduleActionLoading(false));
+  };
+
+  const handleDownloadScheduleIcs = () => {
+    if (!detail || !api) return;
+    api
+      .getScheduleIcs(detail.work_order_id)
+      .then((res) => openBlobApiResponse(res, `visit-${detail.work_order_id}.ics`))
+      .catch((e) => toast.error(e.response?.data?.detail || 'Download failed'));
   };
 
   const onEvidenceSelected = (e) => {
@@ -446,6 +567,98 @@ export default function ContractorDashboardPage() {
                       <dt className="text-gray-500">SLA complete by</dt>
                       <dd>{formatDate(detail.sla_complete_by)}</dd>
                     </dl>
+                    {(() => {
+                      const st = (detail.status || '').toUpperCase();
+                      const woTerminal = ['CANCELLED', 'COMPLETED', 'CLOSED', 'VERIFIED'].includes(st);
+                      const ss = (detail.schedule_status || '').toLowerCase();
+                      const canUseSchedule = !woTerminal;
+                      const showPropose =
+                        canUseSchedule &&
+                        (!ss || ss === 'cancelled' || ss === 'reschedule_requested' || (!detail.scheduled_at && !ss));
+                      const showReschedule =
+                        canUseSchedule && detail.scheduled_at && (ss === 'proposed' || ss === 'confirmed');
+                      const showCancel =
+                        canUseSchedule &&
+                        detail.scheduled_at &&
+                        ss !== 'cancelled' &&
+                        ss !== 'completed';
+                      return (
+                        <div className="rounded-lg border border-gray-200 bg-slate-50/90 p-3 mb-4 text-sm">
+                          <p className="font-medium text-gray-900 mb-2">Visit scheduling</p>
+                          <p className="text-gray-800 mb-1">{scheduleLifecycleLabel(detail)}</p>
+                          {detail.scheduled_at ? (
+                            <p className="text-gray-700 text-xs mb-1">
+                              {formatScheduleInstant(detail.scheduled_at, detail.scheduled_timezone)}
+                            </p>
+                          ) : null}
+                          {detail.scheduled_by ? (
+                            <p className="text-gray-600 text-xs mb-2">Set by: {scheduleProposedByLabel(detail.scheduled_by)}</p>
+                          ) : (
+                            <p className="text-gray-600 text-xs mb-2">&nbsp;</p>
+                          )}
+                          {canUseSchedule ? (
+                            <div className="space-y-2 mt-2">
+                              {showPropose ? (
+                                <div className="space-y-2 border-t border-gray-200 pt-2">
+                                  <p className="text-xs font-medium text-gray-700">Propose visit time</p>
+                                  <input
+                                    type="datetime-local"
+                                    className="border border-gray-200 rounded-md px-2 py-1.5 text-xs w-full max-w-xs"
+                                    value={scheduleForm.datetimeLocal}
+                                    onChange={(e) => setScheduleForm((f) => ({ ...f, datetimeLocal: e.target.value }))}
+                                  />
+                                  <input
+                                    type="text"
+                                    className="border border-gray-200 rounded-md px-2 py-1.5 text-xs w-full max-w-xs"
+                                    placeholder="IANA timezone (e.g. Europe/London)"
+                                    value={scheduleForm.timezone}
+                                    onChange={(e) => setScheduleForm((f) => ({ ...f, timezone: e.target.value }))}
+                                  />
+                                  <input
+                                    type="text"
+                                    className="border border-gray-200 rounded-md px-2 py-1.5 text-xs w-full"
+                                    placeholder="Notes (optional)"
+                                    value={scheduleForm.notes}
+                                    onChange={(e) => setScheduleForm((f) => ({ ...f, notes: e.target.value }))}
+                                  />
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    disabled={scheduleActionLoading}
+                                    onClick={handleProposeVisitSchedule}
+                                  >
+                                    Propose visit time
+                                  </Button>
+                                </div>
+                              ) : null}
+                              <div className="flex flex-wrap gap-2">
+                                {contractorMayConfirmSchedule(detail) ? (
+                                  <Button type="button" size="sm" disabled={scheduleActionLoading} onClick={handleConfirmVisitSchedule}>
+                                    Confirm visit
+                                  </Button>
+                                ) : null}
+                                {showReschedule ? (
+                                  <Button type="button" size="sm" variant="outline" disabled={scheduleActionLoading} onClick={handleRequestVisitReschedule}>
+                                    Request change
+                                  </Button>
+                                ) : null}
+                                {showCancel ? (
+                                  <Button type="button" size="sm" variant="outline" disabled={scheduleActionLoading} onClick={handleCancelVisitSchedule}>
+                                    Cancel visit
+                                  </Button>
+                                ) : null}
+                                {detail.scheduled_at ? (
+                                  <Button type="button" size="sm" variant="ghost" disabled={scheduleActionLoading} onClick={handleDownloadScheduleIcs}>
+                                    Download .ics
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                     <div className="space-y-2 mb-4">
                       <span className="block text-sm font-medium text-gray-700">Your notes</span>
                       <Input

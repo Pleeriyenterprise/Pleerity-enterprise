@@ -25,6 +25,7 @@ from services.work_order_assignment_constants import (
     PENDING_STATES,
 )
 from services.work_order_execution_constants import (
+    COMPLIANCE_BOOKING_PENDING_CLIENT_CONFIRMATION,
     EXECUTION_CAPABILITY_COMPLIANCE,
     WORK_ORDER_KIND_COMPLIANCE,
 )
@@ -201,6 +202,9 @@ async def generate_and_notify_recommendation(
     deadline = (datetime.now(timezone.utc) + timedelta(hours=hours)).isoformat()
     now = datetime.now(timezone.utc).isoformat()
     db = database.get_db()
+    booking_extra = {}
+    if (wo.get("work_order_kind") or "").strip().upper() == WORK_ORDER_KIND_COMPLIANCE:
+        booking_extra["compliance_booking_status"] = COMPLIANCE_BOOKING_PENDING_CLIENT_CONFIRMATION
     await db.work_orders.update_one(
         {"work_order_id": work_order_id},
         {
@@ -217,6 +221,7 @@ async def generate_and_notify_recommendation(
                 "routing_pending_admin": False,
                 "routing_invalidation_reason": None,
                 "updated_at": now,
+                **booking_extra,
             },
         },
     )
