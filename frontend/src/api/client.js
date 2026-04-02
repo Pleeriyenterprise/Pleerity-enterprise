@@ -197,6 +197,32 @@ apiClient.interceptors.response.use(
 
 export { API_URL, setLastApiError };
 
+/**
+ * Map axios/FastAPI errors to a short, actionable message (retry / support / refresh where relevant).
+ */
+export function parseApiError(err, fallback = 'Something went wrong. Please try again or refresh the page.') {
+  if (!err || !err.response) {
+    if (err && err.message === 'Network Error') {
+      return 'Network error — check your connection and try again.';
+    }
+    return fallback;
+  }
+  const status = err.response.status;
+  const d = err.response.data?.detail;
+  if (typeof d === 'string' && d.trim()) return d.trim();
+  if (d && typeof d === 'object') {
+    if (typeof d.message === 'string' && d.message.trim()) {
+      let msg = d.message.trim();
+      if (d.retry_suggested === true) msg = `${msg} You can try again.`;
+      return msg;
+    }
+    if (typeof d.error === 'string' && d.error.trim()) return d.error.trim();
+  }
+  if (status === 429) return 'Too many requests. Please wait a moment and try again.';
+  if (status >= 500) return 'The service is temporarily unavailable. Please retry shortly or contact support.';
+  return fallback;
+}
+
 export default apiClient;
 
 /** Storage keys for files uploaded via contractor multipart evidence (path contains this segment). */
@@ -289,6 +315,11 @@ export const clientAPI = {
   getProtectionSnapshot: (params = {}) => apiClient.get('/client/protection-snapshot', { params }),
   /** Phase 2: snooze | dismiss | done | restore (inbox overlay). */
   postTaskOverride: (body) => apiClient.post('/client/tasks/override', body),
+  /** Audited navigation intent from Today (before SPA route change). */
+  recordTaskNavigationIntent: (body) => apiClient.post('/client/tasks/record-intent', body),
+  /** Start a COMPLIANCE work order directly from tenant request. */
+  startTenantRequestComplianceJob: (requestId, body = {}) =>
+    apiClient.post(`/client/tenant-requests/${encodeURIComponent(requestId)}/start-compliance-job`, body),
   getTasksActivity: (params = {}) => apiClient.get('/client/tasks/activity', { params }),
   /** Deltas since last acknowledged dashboard visit (cursor advanced via acknowledgeActivitySince). */
   getActivitySince: () => apiClient.get('/client/activity-since'),
@@ -358,6 +389,8 @@ export const clientAPI = {
   /** Mark a checklist item complete (server-validates). */
   completeOnboardingItem: (itemId) =>
     apiClient.post(`/client/onboarding/checklist/items/${encodeURIComponent(itemId)}/complete`),
+  /** Achievements, at-risk counts, plan unlock copy (billing-backed entitlements). */
+  getValueInsights: () => apiClient.get('/client/value-insights'),
   /** Jurisdiction settings (default + enabled list). */
   getJurisdictionSettings: () => apiClient.get('/client/settings/jurisdiction'),
   updateJurisdictionSettings: (body) => apiClient.patch('/client/settings/jurisdiction', body),
@@ -468,8 +501,11 @@ export const clientAPI = {
   exportApprovals: (params = {}) => apiClient.get('/client/approvals/export', { params, responseType: 'blob' }),
   /** In-app notifications (portal user). */
   getInAppNotifications: (params = {}) => apiClient.get('/profile/in-app-notifications', { params }),
+  getInAppNotificationsUnreadCount: () => apiClient.get('/profile/in-app-notifications/unread-count'),
   markInAppNotificationRead: (notificationId) =>
     apiClient.patch(`/profile/in-app-notifications/${encodeURIComponent(notificationId)}/read`),
+  /** Server time + last audit activity (trust / freshness for portal shell). */
+  getPortalContext: () => apiClient.get('/client/portal-context'),
   /** Active system banners (auth only; visible before full provisioning). */
   getActiveSystemBanners: () => apiClient.get('/profile/system-banners/active'),
   dismissSystemBanner: (bannerId) => apiClient.post(`/profile/system-banners/${encodeURIComponent(bannerId)}/dismiss`),
@@ -554,7 +590,11 @@ export const adminAPI = {
     apiClient.post(`/admin/security/incidents/${encodeURIComponent(incidentKey)}/resolve`, note != null ? { note } : {}),
   /** Unified Control Centre (health, automation, security, revenue, engagement, alerts). */
   getControlCentreSnapshot: () => apiClient.get('/admin/control-centre/snapshot'),
-  runJobNow: (jobId) => apiClient.post('/admin/jobs/run', { job: jobId }),
+  /** Run a background job; pass a string job id or { job, client_id?, property_id? } for scoped runs (e.g. monthly_digest + client_id). */
+  runJobNow: (jobOrBody) =>
+    typeof jobOrBody === 'string'
+      ? apiClient.post('/admin/jobs/run', { job: jobOrBody })
+      : apiClient.post('/admin/jobs/run', jobOrBody),
   // Operations & Compliance
   getOpsOverview: () => apiClient.get('/admin/ops/overview'),
   /** Admin priority actions (action queue / operational priorities). */
@@ -612,6 +652,8 @@ export const adminAPI = {
   communicationsSchedule: (body) => apiClient.post('/admin/communications/schedule', body),
   communicationsMessages: (params = {}) => apiClient.get('/admin/communications/messages', { params }),
   communicationsMessage: (communicationId) => apiClient.get(`/admin/communications/messages/${encodeURIComponent(communicationId)}`),
+  communicationsResendDeliveryEmail: (deliveryId) =>
+    apiClient.post(`/admin/communications/deliveries/${encodeURIComponent(deliveryId)}/resend-email`),
   communicationsTemplates: () => apiClient.get('/admin/communications/templates'),
   communicationsTemplateCreate: (body) => apiClient.post('/admin/communications/templates', body),
   communicationsTemplateUpdate: (templateId, body) =>

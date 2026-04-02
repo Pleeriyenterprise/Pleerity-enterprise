@@ -4,9 +4,13 @@ GET /api/portal/setup-status - Read-only; JWT optional, client_id query for post
 POST /api/portal/resend-activation - Resend activation (password setup) email; same auth as setup-status.
 GET /api/portal/digests - List monthly digests for the authenticated client (portal JWT required).
 GET /api/portal/digests/{id} - Get a single digest by id (portal JWT required).
+GET /api/portal/digests/{id}/pdf - Download stored PDF audit report when available.
 """
 import os
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException, Request, Query, Body, status
+from fastapi.responses import FileResponse
 from datetime import datetime, timezone
 from pydantic import BaseModel
 
@@ -440,6 +444,9 @@ async def list_portal_digests(
             d["digest_period_start"] = d["digest_period_start"].isoformat()
         if isinstance(d.get("digest_period_end"), datetime):
             d["digest_period_end"] = d["digest_period_end"].isoformat()
+        rel = d.get("pdf_storage_relpath")
+        st = d.get("delivery_status")
+        d["pdf_download_available"] = bool(rel) and (st in (None, "sent"))
     return {"digests": items}
 
 
@@ -463,4 +470,37 @@ async def get_portal_digest(request: Request, digest_id: str):
         doc["digest_period_start"] = doc["digest_period_start"].isoformat()
     if isinstance(doc.get("digest_period_end"), datetime):
         doc["digest_period_end"] = doc["digest_period_end"].isoformat()
+    rel = doc.get("pdf_storage_relpath")
+    st = doc.get("delivery_status")
+    doc["pdf_download_available"] = bool(rel) and (st in (None, "sent"))
     return doc
+
+
+@router.get("/digests/{digest_id}/pdf")
+async def download_portal_digest_pdf(request: Request, digest_id: str):
+    """
+    Download the PDF audit report for a digest sent to this client.
+    File is served only when a stored path exists under DATA_DIR.
+    """
+    user = await client_route_guard(request)
+    client_id = user["client_id"]
+    db = database.get_db()
+    doc = await db.digest_logs.find_one(
+        {"digest_id": digest_id, "client_id": client_id},
+        {"_id": 0, "pdf_storage_relpath": 1, "delivery_status": 1, "email_subject": 1},
+    )
+    if not doc or doc.get("delivery_status") not in (None, "sent"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Digest not found")
+    rel = (doc.get("pdf_storage_relpath") or "").strip().replace("\\", "/")
+    if not rel or ".." in rel or rel.startswith("/"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PDF not available")
+    data_dir = Path(os.getenv("DATA_DIR", "/tmp"))
+    full_path = (data_dir / rel).resolve()
+    try:
+        full_path.relative_to(data_dir.resolve())
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PDF not available")
+    if not full_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PDF file missing on server")
+    fname = f"compliance-summary-{digest_id[:8]}.pdf"
+    return FileResponse(path=str(full_path), filename=fname, media_type="application/pdf")

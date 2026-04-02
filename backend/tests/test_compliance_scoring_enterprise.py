@@ -14,6 +14,27 @@ if str(backend_root) not in sys.path:
     sys.path.insert(0, str(backend_root))
 
 
+def _attach_v2_score_count_mocks(db):
+    """Async count helpers for calculate_property_compliance (v2)."""
+    db.clients.find_one = AsyncMock(
+        return_value={"client_id": "c1", "default_jurisdiction": None, "enabled_jurisdictions": []}
+    )
+    db.maintenance_issues = MagicMock()
+    db.maintenance_issues.count_documents = AsyncMock(return_value=0)
+    db.work_orders = MagicMock()
+    db.work_orders.count_documents = AsyncMock(return_value=0)
+    db.risk_signals = MagicMock()
+    db.risk_signals.count_documents = AsyncMock(return_value=0)
+
+
+def _attach_v2_score_db_mocks(db, property_doc, requirements, documents):
+    """Motor-style async helpers used by calculate_property_compliance (v2 path)."""
+    db.properties.find_one = AsyncMock(return_value=property_doc)
+    db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=requirements)))
+    db.documents.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=documents)))
+    _attach_v2_score_count_mocks(db)
+
+
 @pytest.fixture
 def mock_db_property_single():
     """One property, 3 requirements, 2 docs (one VERIFIED)."""
@@ -41,9 +62,7 @@ class TestCalculatePropertyComplianceDeterminism:
 
         properties, requirements, documents = mock_db_property_single
         db = MagicMock()
-        db.properties.find_one = AsyncMock(return_value=properties[0])
-        db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=requirements)))
-        db.documents.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=documents)))
+        _attach_v2_score_db_mocks(db, properties[0], requirements, documents)
 
         with patch("services.compliance_scoring_service.database.get_db", return_value=db):
             result1 = await calculate_property_compliance("p1", as_of_date=date(2026, 2, 12))
@@ -59,9 +78,7 @@ class TestCalculatePropertyComplianceDeterminism:
 
         properties, requirements, documents = mock_db_property_single
         db = MagicMock()
-        db.properties.find_one = AsyncMock(return_value=properties[0])
-        db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=requirements)))
-        db.documents.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=documents)))
+        _attach_v2_score_db_mocks(db, properties[0], requirements, documents)
 
         with patch("services.compliance_scoring_service.database.get_db", return_value=db):
             result = await calculate_property_compliance("p1")
@@ -81,20 +98,29 @@ class TestRecalculateAndPersist:
 
         properties, requirements, documents = mock_db_property_single
         db = MagicMock()
-        db.properties.find_one = AsyncMock(return_value={**properties[0], "compliance_score": None, "compliance_breakdown": None})
+        prop = {**properties[0], "compliance_score": None, "compliance_breakdown": None}
+        db.properties.find_one = AsyncMock(side_effect=[prop, properties[0]])
         db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=requirements)))
         db.documents.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=documents)))
+        _attach_v2_score_count_mocks(db)
+        db.score_change_log = MagicMock()
+        db.score_change_log.insert_one = AsyncMock()
         db.properties.update_one = AsyncMock()
         db.property_compliance_score_history.insert_one = AsyncMock()
 
         with patch("services.compliance_scoring_service.database.get_db", return_value=db):
-            with patch("services.compliance_scoring_service.create_audit_log", new_callable=AsyncMock) as audit:
-                result = await recalculate_and_persist(
-                    "p1",
-                    REASON_DOCUMENT_UPLOADED,
-                    {"id": "u1", "role": "ROLE_CLIENT_ADMIN"},
-                    {"document_id": "d1"},
-                )
+            with patch("utils.audit.create_audit_log", new_callable=AsyncMock) as audit:
+                with patch("services.score_ledger_service.log_score_change", new_callable=AsyncMock):
+                    with patch(
+                        "services.risk_signal_regen_queue.enqueue_risk_signal_regen",
+                        new_callable=AsyncMock,
+                    ):
+                        result = await recalculate_and_persist(
+                            "p1",
+                            REASON_DOCUMENT_UPLOADED,
+                            {"id": "u1", "role": "ROLE_CLIENT_ADMIN"},
+                            {"document_id": "d1"},
+                        )
         assert result.get("score") is not None
         db.properties.update_one.assert_called_once()
         call = db.properties.update_one.call_args
@@ -138,7 +164,7 @@ class TestExpiryRolloverJob:
         db.requirements.find = MagicMock(return_value=AsyncIterCursor())
         db.properties.find_one = AsyncMock(side_effect=[{"client_id": "c1"}, {"client_id": "c2"}])
 
-        with patch("job_runner.database.get_db", return_value=db):
+        with patch("database.database.get_db", return_value=db):
             with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock, return_value=True) as enqueue:
                 result = await run_expiry_rollover_recalc()
         assert enqueue.await_count == 2
@@ -160,9 +186,15 @@ class TestDashboardReadsStoredScore:
         ]
         db.properties.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=properties_with_stored)))
         db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+        db.documents.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
 
         with patch("services.compliance_score.database.get_db", return_value=db):
-            result = await calculate_compliance_score("c1")
+            with patch(
+                "services.catalog_compliance.get_portfolio_compliance_from_catalog",
+                new_callable=AsyncMock,
+                return_value=None,
+            ):
+                result = await calculate_compliance_score("c1")
         assert result["score"] == 80
         assert "breakdown" in result
         db.properties.find.assert_called()
@@ -184,7 +216,11 @@ class TestValidateComplianceScoreEndpoint:
 
         with patch("routes.admin.admin_route_guard", new_callable=AsyncMock, return_value={"portal_user_id": "admin1"}):
             with patch("routes.admin.database.get_db", return_value=db):
-                with patch("services.compliance_scoring_service.calculate_property_compliance", new_callable=AsyncMock, return_value=computed):
+                with patch(
+                    "services.compliance_scoring_service.calculate_property_compliance",
+                    new_callable=AsyncMock,
+                    return_value=computed,
+                ):
                     with patch("routes.admin.create_audit_log", new_callable=AsyncMock) as audit:
                         body = ValidateComplianceScoreRequest(fix=False)
                         result = await validate_compliance_score(request, "p1", body)
@@ -209,7 +245,11 @@ class TestValidateComplianceScoreEndpoint:
 
         with patch("routes.admin.admin_route_guard", new_callable=AsyncMock, return_value={"portal_user_id": "admin1"}):
             with patch("routes.admin.database.get_db", return_value=db):
-                with patch("services.compliance_scoring_service.calculate_property_compliance", new_callable=AsyncMock, return_value=computed):
+                with patch(
+                    "services.compliance_scoring_service.calculate_property_compliance",
+                    new_callable=AsyncMock,
+                    return_value=computed,
+                ):
                     with patch("routes.admin.create_audit_log", new_callable=AsyncMock) as audit:
                         body = ValidateComplianceScoreRequest(fix=False)
                         result = await validate_compliance_score(request, "p1", body)
@@ -236,10 +276,15 @@ class TestValidateComplianceScoreEndpoint:
 
         with patch("routes.admin.admin_route_guard", new_callable=AsyncMock, return_value={"portal_user_id": "admin1"}):
             with patch("routes.admin.database.get_db", return_value=db):
-                with patch("services.compliance_scoring_service.calculate_property_compliance", new_callable=AsyncMock, return_value=computed):
+                with patch(
+                    "services.compliance_scoring_service.calculate_property_compliance",
+                    new_callable=AsyncMock,
+                    return_value=computed,
+                ):
                     with patch("routes.admin.create_audit_log", new_callable=AsyncMock) as audit:
-                        body = ValidateComplianceScoreRequest(fix=True)
-                        result = await validate_compliance_score(request, "p1", body)
+                        with patch("services.score_ledger_service.log_score_change", new_callable=AsyncMock):
+                            body = ValidateComplianceScoreRequest(fix=True)
+                            result = await validate_compliance_score(request, "p1", body)
         assert result["match"] is False
         assert result["repaired"] is True
         db.properties.update_one.assert_called_once()

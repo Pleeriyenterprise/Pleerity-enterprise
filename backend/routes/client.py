@@ -14,6 +14,8 @@ import io
 import os
 import uuid
 
+from utils.api_errors import log_api_error, structured_error
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/client", tags=["client"], dependencies=[Depends(client_route_guard)])
 
@@ -546,16 +548,23 @@ async def get_client_priority_actions(
     property_id: Optional[str] = Query(None, description="Filter by property"),
     limit: int = Query(20, ge=1, le=50),
 ):
-    """Get ranked priority actions for the authenticated client (orchestration/copilot layer)."""
+    """Compatibility endpoint: routes through command center urgent actions only."""
     user = await client_route_guard(request)
     try:
-        from services.priority_actions import get_priority_actions_for_client
-        result = await get_priority_actions_for_client(
+        from services.command_center_service import get_command_center_bundle
+        from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
+
+        flags = await get_effective_flags(
+            client_id=user["client_id"],
+        )
+        result = await get_command_center_bundle(
             client_id=user["client_id"],
             property_id_filter=property_id,
-            limit=limit,
+            predictive_enabled=bool(flags.get(PREDICTIVE_MAINTENANCE)),
+            portal_user_id=user.get("portal_user_id"),
         )
-        return result
+        actions = (result.get("urgent_actions") or [])[:limit]
+        return {"actions": actions, "total": len(actions), "source": "command_center"}
     except Exception as e:
         logger.error("Priority actions error for client %s: %s", user.get("client_id"), e)
         raise HTTPException(
@@ -1099,7 +1108,7 @@ async def download_client_evidence_pack_file(request: Request, job_id: str):
 
 
 class ClientTaskOverrideBody(BaseModel):
-    """Phase 2: snooze | dismiss | done | restore on unified Command Centre tasks (inbox overlay only)."""
+    """Inbox triage: snooze | dismiss (reason required) | reviewed | done (legacy) | restore. Does not satisfy compliance."""
 
     task_id: str
     action: str
@@ -1107,6 +1116,53 @@ class ClientTaskOverrideBody(BaseModel):
     title: Optional[str] = None
     source_type: Optional[str] = None
     property_id: Optional[str] = None
+    dismiss_reason: Optional[str] = None
+    business_outcome: Optional[str] = None
+
+
+class ClientTaskNavigationIntentBody(BaseModel):
+    """Audited server-side record of a Today / Command Centre navigation (before client-side route change)."""
+
+    task_id: str
+    intent_kind: str = "primary"
+    target_path: str = ""
+    source_type: Optional[str] = None
+    action_context_type: Optional[str] = None
+
+
+@router.post("/tasks/record-intent")
+async def post_client_task_navigation_intent(request: Request, body: ClientTaskNavigationIntentBody):
+    """Persist an audit trail row when the user follows a task deep-link from Today (analytics complement)."""
+    user = await client_route_guard(request)
+    from services.client_task_state_service import is_valid_task_id
+    from utils.audit import create_audit_log
+    from models import AuditAction
+
+    tid = (body.task_id or "").strip()
+    if not is_valid_task_id(tid):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid task_id")
+    kind = (body.intent_kind or "primary").strip().lower()
+    if kind not in ("primary", "secondary"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="intent_kind must be primary or secondary")
+    try:
+        await create_audit_log(
+            action=AuditAction.CLIENT_PORTAL_TODAY_NAVIGATION_INTENT,
+            actor_id=user.get("portal_user_id"),
+            actor_role=user.get("role"),
+            client_id=user.get("client_id"),
+            resource_type="client_task",
+            resource_id=tid,
+            metadata={
+                "task_id": tid,
+                "intent_kind": kind,
+                "target_path": (body.target_path or "")[:500],
+                "source_type": body.source_type,
+                "action_context_type": body.action_context_type,
+            },
+        )
+    except Exception as e:
+        logger.warning("Today navigation intent audit failed: %s", e)
+    return {"ok": True}
 
 
 @router.post("/tasks/override")
@@ -1125,6 +1181,8 @@ async def post_client_task_override(request: Request, body: ClientTaskOverrideBo
             title_snapshot=body.title,
             source_type_snapshot=body.source_type,
             property_id_snapshot=body.property_id,
+            dismiss_reason=body.dismiss_reason,
+            business_outcome=body.business_outcome,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -1158,7 +1216,57 @@ async def get_onboarding_checklist(request: Request):
     """Get server-driven onboarding checklist (items + completion)."""
     user = await client_route_guard(request)
     from services.onboarding_checklist_service import get_checklist_state
-    return await get_checklist_state(user["client_id"])
+    return await get_checklist_state(user["client_id"], portal_user_id=user.get("portal_user_id"))
+
+
+@router.get("/value-insights")
+async def get_client_value_insights(request: Request):
+    """Plan-aware achievements, risk snapshot, and upgrade unlock copy (entitlements from billing plan)."""
+    user = await client_route_guard(request)
+    from services.client_value_insights_service import get_value_insights
+
+    return await get_value_insights(user["client_id"])
+
+
+@router.get("/portal-context")
+async def get_portal_context(request: Request):
+    """Server time + last recorded client audit activity (trust / freshness signals for the portal shell)."""
+    user = await client_route_guard(request)
+    try:
+        db = database.get_db()
+        last = await db.audit_logs.find_one(
+            {"client_id": user["client_id"]},
+            {"_id": 0, "timestamp": 1},
+            sort=[("timestamp", -1)],
+        )
+        last_ts = None
+        if last:
+            raw = last.get("timestamp")
+            if hasattr(raw, "isoformat"):
+                last_ts = raw.isoformat()
+            else:
+                last_ts = str(raw) if raw is not None else None
+        return {
+            "server_time": datetime.now(timezone.utc).isoformat(),
+            "last_recorded_activity_at": last_ts,
+        }
+    except Exception as e:
+        log_api_error(
+            logger,
+            endpoint="/client/portal-context",
+            error_type=type(e).__name__,
+            message=str(e),
+            user_id=user.get("portal_user_id"),
+            exc=e,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=structured_error(
+                "PORTAL_CONTEXT_UNAVAILABLE",
+                "Could not load portal status. Please try again.",
+                retry_suggested=True,
+            ),
+        )
 
 
 @router.post("/onboarding/checklist/items/{item_id}/complete")
@@ -1172,7 +1280,11 @@ async def complete_onboarding_item(request: Request, item_id: str):
     if not result.get("ok"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result.get("error", "Cannot complete this item"),
+            detail=structured_error(
+                "ONBOARDING_ITEM_NOT_READY",
+                str(result.get("error") or "Cannot complete this item until the step is done in the app."),
+                retry_suggested=False,
+            ),
         )
     await create_audit_log(
         action=AuditAction.ONBOARDING_CHECKLIST_ITEM_COMPLETED,
@@ -2151,13 +2263,69 @@ async def list_tenant_requests(request: Request):
     db = database.get_db()
     cursor = db.tenant_requests.find(
         {"client_id": user["client_id"]},
-        {"_id": 0, "request_id": 1, "tenant_name": 1, "tenant_email": 1, "property_id": 1, "property_address": 1, "certificate_type": 1, "message": 1, "status": 1, "created_at": 1},
+        {
+            "_id": 0,
+            "request_id": 1,
+            "tenant_name": 1,
+            "tenant_email": 1,
+            "property_id": 1,
+            "property_address": 1,
+            "certificate_type": 1,
+            "requirement_code": 1,
+            "requirement_id": 1,
+            "linked_work_order_id": 1,
+            "message": 1,
+            "status": 1,
+            "created_at": 1,
+        },
     ).sort("created_at", -1)
     requests_list = await cursor.to_list(200)
     for r in requests_list:
         if r.get("created_at"):
             r["created_at"] = r["created_at"].isoformat()
     return {"requests": requests_list}
+
+
+class TenantRequestStartComplianceJobBody(BaseModel):
+    allow_duplicate: bool = False
+
+
+@router.post("/tenant-requests/{request_id}/start-compliance-job")
+async def start_tenant_request_compliance_job(
+    request: Request,
+    request_id: str,
+    body: Optional[TenantRequestStartComplianceJobBody] = None,
+):
+    """Create a COMPLIANCE work order directly from a tenant request (real execution, audited)."""
+    user = await client_route_guard(request)
+    from services.plan_registry import plan_registry
+
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True},
+        )
+    if user.get("role") not in ["ROLE_CLIENT", "ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    from services import tenant_request_compliance_service as trc
+
+    try:
+        return await trc.start_compliance_job_from_tenant_request(
+            client_id=user["client_id"],
+            tenant_request_id=request_id,
+            actor_portal_user_id=user.get("portal_user_id"),
+            actor_role=user.get("role"),
+            allow_duplicate=bool((body or TenantRequestStartComplianceJobBody()).allow_duplicate),
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error("tenant request -> compliance job failed: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to start compliance job")
 
 
 @router.patch("/tenant-requests/{request_id}")
@@ -2188,6 +2356,55 @@ async def update_tenant_request_status(request: Request, request_id: str):
     from utils.audit import create_audit_log
     from models import AuditAction
     now = datetime.now(timezone.utc)
+    req_id = (doc.get("requirement_id") or "").strip()
+    req_satisfied = False
+    verified_evidence_exists = False
+    completed_compliance_job_exists = False
+    if status_value == "DONE":
+        await create_audit_log(
+            action=AuditAction.TENANT_REQUEST_RESOLUTION_ATTEMPT,
+            client_id=user["client_id"],
+            actor_id=user.get("portal_user_id"),
+            resource_type="tenant_request",
+            resource_id=request_id,
+            metadata={"attempted_status": "DONE", "requirement_id": req_id or None},
+        )
+        if req_id:
+            req = await db.requirements.find_one(
+                {"client_id": user["client_id"], "requirement_id": req_id},
+                {"_id": 0, "status": 1},
+            )
+            req_satisfied = ((req or {}).get("status") or "").strip().upper() in ("COMPLIANT", "VALID")
+            verified_evidence_exists = (
+                await db.documents.count_documents(
+                    {
+                        "client_id": user["client_id"],
+                        "requirement_id": req_id,
+                        "status": "VERIFIED",
+                    }
+                )
+                > 0
+            )
+            completed_compliance_job_exists = (
+                await db.work_orders.count_documents(
+                    {
+                        "client_id": user["client_id"],
+                        "work_order_kind": "COMPLIANCE",
+                        "status": {"$in": ["COMPLETED", "VERIFIED"]},
+                        "$or": [
+                            {"linked_property_requirement_id": req_id},
+                            {"requirement_code": doc.get("requirement_code")},
+                        ],
+                    }
+                )
+                > 0
+            )
+        if not (req_satisfied or verified_evidence_exists or completed_compliance_job_exists):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot mark as DONE without resolving the underlying compliance requirement",
+            )
+
     await db.tenant_requests.update_one(
         {"request_id": request_id, "client_id": user["client_id"]},
         {"$set": {"status": status_value, "updated_at": now}},
@@ -2198,8 +2415,32 @@ async def update_tenant_request_status(request: Request, request_id: str):
         actor_id=user.get("portal_user_id"),
         resource_type="tenant_request",
         resource_id=request_id,
-        metadata={"status": status_value, "actor_role": user.get("role")},
+        metadata={"status": status_value, "actor_role": user.get("role"), "requirement_id": req_id or None},
     )
+    if status_value == "IN_PROGRESS" and req_id:
+        await create_audit_log(
+            action=AuditAction.REQUIREMENT_ACTION_TRIGGERED,
+            client_id=user["client_id"],
+            actor_id=user.get("portal_user_id"),
+            resource_type="requirement",
+            resource_id=req_id,
+            metadata={"source": "tenant_request", "request_id": request_id, "actor_role": user.get("role")},
+        )
+    if status_value == "DONE":
+        await create_audit_log(
+            action=AuditAction.TENANT_REQUEST_RESOLVED,
+            client_id=user["client_id"],
+            actor_id=user.get("portal_user_id"),
+            resource_type="tenant_request",
+            resource_id=request_id,
+            metadata={
+                "status": "DONE",
+                "requirement_id": req_id or None,
+                "req_satisfied": req_satisfied,
+                "verified_evidence_exists": verified_evidence_exists,
+                "completed_compliance_job_exists": completed_compliance_job_exists,
+            },
+        )
     return {"request_id": request_id, "status": status_value}
 
 

@@ -1,93 +1,241 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ChevronLeft, 
+import {
+  ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
   AlertCircle,
   Clock,
   Building2,
   ArrowLeft,
-  Filter,
   List,
   Grid,
-  RefreshCw
+  RefreshCw,
+  Wrench,
+  Shield,
+  Download,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent } from '../components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '../components/ui/dialog';
 import { toast } from 'sonner';
-import api from '../api/client';
-import { resolveDocumentsPath } from '../utils/clientPortalNavigation';
+import api, { openBlobApiResponse } from '../api/client';
+import { buildEntityRoute, resolveClientPortalPath } from '../utils/clientPortalNavigation';
+import { portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
+
+const FILTER_OPTIONS = [
+  { key: 'requirement', label: 'Requirements', param: 'requirements' },
+  { key: 'scheduled_job', label: 'Maintenance jobs', param: 'scheduled_jobs' },
+  { key: 'compliance_job', label: 'Compliance jobs', param: 'compliance_jobs' },
+];
+
+function initialViewMode() {
+  if (typeof window === 'undefined') return 'calendar';
+  return window.matchMedia('(max-width: 767px)').matches ? 'list' : 'calendar';
+}
+
+function eventChipClass(event) {
+  const cat = event.event_category;
+  const sev = event.severity;
+  if (sev === 'critical') return 'bg-red-100 text-red-800 border-red-200';
+  if (sev === 'high') return 'bg-amber-100 text-amber-900 border-amber-200';
+  if (cat === 'compliance_job') return 'bg-teal-50 text-teal-900 border-teal-200';
+  if (cat === 'scheduled_job') return 'bg-indigo-50 text-indigo-900 border-indigo-200';
+  if (event.status === 'COMPLIANT' || event.event_type === 'requirement_valid') return 'bg-green-100 text-green-800 border-green-200';
+  return 'bg-slate-100 text-slate-800 border-slate-200';
+}
+
+function navigateForEvent(navigate, event) {
+  const route = (event.primary_route || '').trim();
+  if (route && route.startsWith('/')) {
+    navigate(resolveClientPortalPath(route, '/calendar'));
+    return;
+  }
+  const meta = event.metadata || {};
+  const wid = meta.work_order_id;
+  const rid = meta.requirement_id;
+  const pid = meta.property_id || event.property_id;
+  if (wid) {
+    navigate(resolveClientPortalPath(buildEntityRoute({ work_order_id: wid, mode: 'review' }, '/operations/work-orders'), '/operations/work-orders'));
+    return;
+  }
+  if (rid && pid) {
+    navigate(
+      resolveClientPortalPath(
+        buildEntityRoute({ requirement_id: rid, property_id: pid, mode: 'upload' }, '/documents'),
+        '/documents'
+      )
+    );
+    return;
+  }
+  navigate('/calendar');
+}
+
+/** Month cells show a capped list; sort so critical/high appear first and are not hidden behind "+N more". */
+function sortEventsForMonthCell(events) {
+  const order = { critical: 0, high: 1, medium: 2, low: 3 };
+  return [...events].sort((a, b) => {
+    const da = order[a.severity] ?? 4;
+    const db = order[b.severity] ?? 4;
+    if (da !== db) return da - db;
+    return String(a.title || '').localeCompare(String(b.title || ''), undefined, { sensitivity: 'base' });
+  });
+}
+
+function timelineCategoryLabel(category) {
+  if (category === 'requirement') return 'Requirement';
+  if (category === 'scheduled_job') return 'Repair';
+  if (category === 'compliance_job') return 'Compliance';
+  return String(category || '').replace(/_/g, ' ') || 'Event';
+}
+
+function formatEventWhen(event) {
+  if (event.datetime_utc) {
+    try {
+      const d = new Date(event.datetime_utc);
+      if (!Number.isNaN(d.getTime())) {
+        const datePart = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+        const isMidnight = d.getUTCHours() === 0 && d.getUTCMinutes() === 0;
+        if (isMidnight && !event.timezone) return datePart;
+        return `${datePart} · ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return event.date || '—';
+}
 
 const CalendarPage = () => {
   const navigate = useNavigate();
-  const [view, setView] = useState('calendar'); // 'calendar' or 'list'
+  const [view, setView] = useState(initialViewMode);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarData, setCalendarData] = useState(null);
-  const [upcomingData, setUpcomingData] = useState(null);
+  const [timelineData, setTimelineData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [daysAhead, setDaysAhead] = useState(90);
+  const [filtersEnabled, setFiltersEnabled] = useState(() => new Set(['requirement', 'scheduled_job', 'compliance_job']));
+  const [urgentOnly, setUrgentOnly] = useState(false);
+  const [visiblePerDay, setVisiblePerDay] = useState(3);
+  const [dayDialogOpen, setDayDialogOpen] = useState(false);
+  const [dayDialogDateKey, setDayDialogDateKey] = useState(null);
+  const [dayDialogEvents, setDayDialogEvents] = useState([]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mq = window.matchMedia('(max-width: 639px)');
+    const apply = () => setVisiblePerDay(mq.matches ? 2 : 3);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
+
+  const openDayDetails = (dateKey, events) => {
+    if (!dateKey || !events?.length) return;
+    setDayDialogDateKey(dateKey);
+    setDayDialogEvents(events);
+    setDayDialogOpen(true);
+  };
 
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth() + 1;
 
+  const filtersQuery = useMemo(() => {
+    const parts = FILTER_OPTIONS.filter((f) => filtersEnabled.has(f.key)).map((f) => f.param);
+    return parts.length === FILTER_OPTIONS.length || parts.length === 0 ? '' : parts.join(',');
+  }, [filtersEnabled]);
+
+  const handleDownloadIcs = useCallback(async () => {
+    try {
+      const params = { days: 365, lookback_days: 365 };
+      if (filtersQuery) params.filters = filtersQuery;
+      if (urgentOnly) params.urgent_only = true;
+      const res = await api.get('/calendar/export.ics', { params, responseType: 'blob' });
+      const cd = res.headers['content-disposition'];
+      let fname = 'compliance_timeline.ics';
+      if (cd && typeof cd === 'string') {
+        const quoted = cd.match(/filename="([^"]+)"/i);
+        const plain = cd.match(/filename=([^;\s]+)/i);
+        const raw = quoted?.[1] || plain?.[1];
+        if (raw) fname = raw.replace(/['"]/g, '').trim();
+      }
+      openBlobApiResponse(res, { download: true, fallbackFilename: fname });
+    } catch {
+      toast.error('Failed to download calendar');
+    }
+  }, [filtersQuery, urgentOnly]);
+
   const fetchCalendarData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get(`/calendar/events?year=${currentYear}&month=${currentMonth}`);
-      const data = response.data;
-      // Derive summary counts and UI shape from events endpoint (status, requirement_type, property_name)
+      const params = { year: currentYear, month: currentMonth };
+      if (filtersQuery) params.filters = filtersQuery;
+      if (urgentOnly) params.urgent_only = true;
+      const response = await api.get('/calendar/events', { params });
+      const data = response.data || {};
       const eventsByDate = data.events_by_date || {};
-      let overdueCount = 0;
-      let expiringSoonCount = 0;
-      const eventsByDateWithUi = {};
-      Object.keys(eventsByDate).forEach((dateKey) => {
-        const events = (eventsByDate[dateKey] || []).map((e) => {
-          if (e.status === 'OVERDUE') overdueCount += 1;
-          else if (e.status === 'EXPIRING_SOON') expiringSoonCount += 1;
-          const statusColor = e.status === 'OVERDUE' ? 'red' : e.status === 'EXPIRING_SOON' ? 'amber' : e.status === 'COMPLIANT' ? 'green' : 'blue';
-          const description = e.requirement_type ? e.requirement_type.replace(/_/g, ' ') : 'Certificate';
-          return { ...e, status_color: statusColor, description, property_address: e.property_name };
-        });
-        eventsByDateWithUi[dateKey] = events;
-      });
       setCalendarData({
-        events_by_date: eventsByDateWithUi,
-        summary: {
-          total_events: data.summary?.total_events ?? Object.values(eventsByDateWithUi).reduce((s, arr) => s + arr.length, 0),
-          overdue_count: overdueCount,
-          expiring_soon_count: expiringSoonCount,
-          dates_with_events: data.summary?.dates_with_events ?? Object.keys(eventsByDateWithUi).length
-        },
+        events_by_date: eventsByDate,
+        summary: data.summary || {},
         year: data.year,
-        month: data.month
+        month: data.month,
+        model_version: data.model_version,
       });
     } catch (error) {
       toast.error('Failed to load calendar data');
     } finally {
       setLoading(false);
     }
-  }, [currentYear, currentMonth]);
+  }, [currentYear, currentMonth, filtersQuery, urgentOnly]);
 
-  const fetchUpcomingData = useCallback(async () => {
+  const fetchTimelineData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get(`/calendar/upcoming?days=${daysAhead}`);
-      setUpcomingData(response.data);
+      const params = { days: daysAhead };
+      if (filtersQuery) params.filters = filtersQuery;
+      if (urgentOnly) params.urgent_only = true;
+      const response = await api.get('/calendar/upcoming', { params });
+      const data = response.data || {};
+      setTimelineData({
+        events: data.timeline_events || [],
+        summary: data.summary || {},
+        days_ahead: data.days_ahead,
+        model_version: data.model_version,
+      });
     } catch (error) {
-      toast.error('Failed to load upcoming expiries');
+      toast.error('Failed to load timeline');
     } finally {
       setLoading(false);
     }
-  }, [daysAhead]);
+  }, [daysAhead, filtersQuery, urgentOnly]);
 
   useEffect(() => {
     if (view === 'calendar') {
       fetchCalendarData();
     } else {
-      fetchUpcomingData();
+      fetchTimelineData();
     }
-  }, [view, fetchCalendarData, fetchUpcomingData]);
+  }, [view, fetchCalendarData, fetchTimelineData]);
+
+  const toggleFilter = (key) => {
+    setFiltersEnabled((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        if (next.size <= 1) return prev;
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
 
   const navigateMonth = (direction) => {
     const newDate = new Date(currentDate);
@@ -99,55 +247,32 @@ const CalendarPage = () => {
     setCurrentDate(new Date());
   };
 
-  // Generate calendar days
   const generateCalendarDays = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    
+
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startingDay = firstDay.getDay(); // 0 = Sunday
-    
+    const startingDay = firstDay.getDay();
+
     const days = [];
-    
-    // Add empty cells for days before the first of the month
-    for (let i = 0; i < startingDay; i++) {
+    for (let i = 0; i < startingDay; i += 1) {
       days.push({ day: null, date: null });
     }
-    
-    // Add days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
+    for (let day = 1; day <= daysInMonth; day += 1) {
       const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const events = calendarData?.events_by_date?.[dateKey] || [];
+      const raw = calendarData?.events_by_date?.[dateKey] || [];
+      const events = sortEventsForMonthCell(raw);
       days.push({ day, date: dateKey, events });
     }
-    
     return days;
-  };
-
-  const getEventDotColor = (event) => {
-    switch (event.status_color) {
-      case 'red': return 'bg-red-500';
-      case 'amber': return 'bg-amber-500';
-      case 'green': return 'bg-green-500';
-      default: return 'bg-blue-500';
-    }
-  };
-
-  const getUrgencyColor = (urgency) => {
-    switch (urgency) {
-      case 'high': return 'text-red-600 bg-red-50 border-red-200';
-      case 'medium': return 'text-amber-600 bg-amber-50 border-amber-200';
-      default: return 'text-blue-600 bg-blue-50 border-blue-200';
-    }
   };
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'July', 'August', 'September', 'October', 'November', 'December',
   ];
-
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const today = new Date();
@@ -156,182 +281,224 @@ const CalendarPage = () => {
     return dateKey === todayKey;
   };
 
+  const summary = view === 'calendar' ? calendarData?.summary : timelineData?.summary;
+
   return (
-    <div className="min-h-screen bg-gray-50" data-testid="calendar-page">
-      {/* Header */}
+    <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="calendar-page">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => navigate('/app/dashboard')}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
                 data-testid="back-to-dashboard"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
-              <div>
-                <h1 className="text-xl font-semibold text-midnight-blue flex items-center gap-2">
-                  <CalendarIcon className="w-6 h-6 text-electric-teal" />
-                  Compliance Calendar
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-semibold text-midnight-blue flex items-center gap-2">
+                  <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-electric-teal shrink-0" />
+                  <span className="truncate">Compliance timeline</span>
                 </h1>
-                <p className="text-sm text-gray-500">Track certificate expiry dates. Tracked items may apply depending on your situation.</p>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                  Obligation dates follow requirement evidence (confirmed, then extracted, then legacy due). Visits appear only when a work order has a stored scheduled visit time.
+                </p>
               </div>
             </div>
-            
-            {/* View Toggle */}
-            <div className="flex items-center gap-2">
+
+            <div className="flex flex-wrap items-center gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-[44px] gap-2 border-gray-200"
+                onClick={handleDownloadIcs}
+                data-testid="download-calendar-ics"
+              >
+                <Download className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Download .ics</span>
+                <span className="sm:hidden">ICS</span>
+              </Button>
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
+                  type="button"
                   onClick={() => setView('calendar')}
-                  className={`p-2 rounded-lg transition-colors ${view === 'calendar' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
+                  className={`p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${view === 'calendar' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
                   data-testid="view-calendar"
+                  aria-label="Month view"
                 >
                   <Grid className="w-4 h-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setView('list')}
-                  className={`p-2 rounded-lg transition-colors ${view === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
+                  className={`p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${view === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
                   data-testid="view-list"
+                  aria-label="List view"
                 >
                   <List className="w-4 h-4" />
                 </button>
               </div>
             </div>
           </div>
+
+          <div className="mt-3 flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-center">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Show</span>
+            <div className="flex flex-wrap gap-2">
+              {FILTER_OPTIONS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => toggleFilter(f.key)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors min-h-[36px] ${
+                    filtersEnabled.has(f.key)
+                      ? 'bg-electric-teal/15 border-electric-teal text-midnight-blue'
+                      : 'bg-white border-gray-200 text-gray-500'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer ml-0 sm:ml-2">
+              <input
+                type="checkbox"
+                checked={urgentOnly}
+                onChange={(e) => setUrgentOnly(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              Urgent only
+            </label>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {view === 'calendar' ? (
-          /* Calendar View */
           <div className="space-y-4">
-            {/* Calendar Navigation */}
-            <div className="flex items-center justify-between bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+            <div className="flex items-center justify-between bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-200 gap-2">
               <button
+                type="button"
                 onClick={() => navigateMonth(-1)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                 data-testid="prev-month"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              
-              <div className="flex items-center gap-4">
-                <h2 className="text-xl font-semibold text-midnight-blue">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-center">
+                <h2 className="text-lg sm:text-xl font-semibold text-midnight-blue">
                   {monthNames[currentMonth - 1]} {currentYear}
                 </h2>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToToday}
-                  className="text-xs"
-                >
+                <Button variant="outline" size="sm" onClick={goToToday} className="text-xs">
                   Today
                 </Button>
               </div>
-              
               <button
+                type="button"
                 onClick={() => navigateMonth(1)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                 data-testid="next-month"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Summary Stats */}
-            {calendarData?.summary && (
-              <div className="grid grid-cols-4 gap-4">
-                <div className="bg-white rounded-xl p-4 border border-gray-200">
-                  <p className="text-2xl font-bold text-midnight-blue">{calendarData.summary.total_events}</p>
-                  <p className="text-sm text-gray-500">Total Expiries</p>
+            {summary && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+                <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200">
+                  <p className="text-xl sm:text-2xl font-bold text-midnight-blue">{summary.total_events ?? 0}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Events</p>
                 </div>
-                <div className="bg-red-50 rounded-xl p-4 border border-red-200">
-                  <p className="text-2xl font-bold text-red-600">{calendarData.summary.overdue_count}</p>
-                  <p className="text-sm text-red-700">Overdue</p>
+                <div className="bg-red-50 rounded-xl p-3 sm:p-4 border border-red-200">
+                  <p className="text-xl sm:text-2xl font-bold text-red-600">{summary.overdue_count ?? 0}</p>
+                  <p className="text-xs sm:text-sm text-red-800">Overdue obligations</p>
                 </div>
-                <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
-                  <p className="text-2xl font-bold text-amber-600">{calendarData.summary.expiring_soon_count}</p>
-                  <p className="text-sm text-amber-700">Expiring Soon</p>
+                <div className="bg-amber-50 rounded-xl p-3 sm:p-4 border border-amber-200">
+                  <p className="text-xl sm:text-2xl font-bold text-amber-600">{summary.expiring_soon_count ?? 0}</p>
+                  <p className="text-xs sm:text-sm text-amber-900">Expiring soon</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                  <p className="text-2xl font-bold text-gray-600">{calendarData.summary.dates_with_events}</p>
-                  <p className="text-sm text-gray-500">Days with Events</p>
+                <div className="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-200">
+                  <p className="text-xl sm:text-2xl font-bold text-gray-600">{summary.dates_with_events ?? 0}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Days with events</p>
                 </div>
               </div>
             )}
 
-            {/* Empty state: no events — explain data source and how to populate */}
-            {!loading && (!calendarData?.summary || calendarData.summary.total_events === 0) && (
+            {!loading && summary && summary.total_events === 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium text-amber-800">No expiry events this month</p>
-                  <p className="text-sm text-amber-700 mt-1">
-                    Events appear when requirements have an expiry date (from uploaded documents or manual entry). Upload documents and confirm expiry dates in <button type="button" onClick={() => navigate('/documents')} className="underline font-medium text-amber-900 hover:text-amber-950">Documents</button> or set dates in <button type="button" onClick={() => navigate('/requirements')} className="underline font-medium text-amber-900 hover:text-amber-950">Requirements</button>.
+                  <p className="font-medium text-amber-800">No events in this range</p>
+                  <p className="text-sm text-amber-800 mt-1">
+                    Adjust filters or add requirement dates (confirmed or extracted) and scheduled visits on work orders.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Calendar Grid */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               {loading ? (
-                <div className="flex items-center justify-center h-96">
+                <div className="flex items-center justify-center h-64 sm:h-96">
                   <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
                 </div>
               ) : (
                 <>
-                  {/* Day Headers */}
                   <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
-                    {dayNames.map(day => (
-                      <div key={day} className="p-3 text-center text-sm font-medium text-gray-600">
+                    {dayNames.map((day) => (
+                      <div key={day} className="p-2 sm:p-3 text-center text-xs sm:text-sm font-medium text-gray-600">
                         {day}
                       </div>
                     ))}
                   </div>
-                  
-                  {/* Calendar Days */}
                   <div className="grid grid-cols-7">
                     {generateCalendarDays().map((dayInfo, index) => (
                       <div
                         key={index}
-                        className={`min-h-24 p-2 border-b border-r border-gray-100 ${
+                        className={`min-h-[5.5rem] sm:min-h-24 p-1 sm:p-2 border-b border-r border-gray-100 ${
                           dayInfo.day === null ? 'bg-gray-50' : ''
-                        } ${isToday(dayInfo.date) ? 'bg-teal-50' : ''}`}
+                        } ${isToday(dayInfo.date) ? 'bg-teal-50/60' : ''}`}
                       >
                         {dayInfo.day && (
                           <>
-                            <div className={`text-sm font-medium mb-1 ${
-                              isToday(dayInfo.date) ? 'text-electric-teal' : 'text-gray-600'
-                            }`}>
+                            <button
+                              type="button"
+                              className={`text-xs sm:text-sm font-medium mb-1 w-full text-left rounded px-0.5 min-h-[28px] ${
+                                isToday(dayInfo.date) ? 'text-electric-teal' : 'text-gray-600'
+                              } ${dayInfo.events.length ? 'hover:bg-gray-100' : ''}`}
+                              onClick={() => dayInfo.events.length && openDayDetails(dayInfo.date, dayInfo.events)}
+                              aria-label={
+                                dayInfo.events.length
+                                  ? `Day ${dayInfo.day}, ${dayInfo.events.length} events, open list`
+                                  : `Day ${dayInfo.day}`
+                              }
+                            >
                               {dayInfo.day}
-                            </div>
-                            
-                            {/* Event Dots — clickable: go to Documents filtered by this requirement */}
+                            </button>
                             {dayInfo.events.length > 0 && (
                               <div className="space-y-1">
-                                {dayInfo.events.slice(0, 3).map((event, idx) => (
+                                {dayInfo.events.slice(0, visiblePerDay).map((event) => (
                                   <button
-                                    key={idx}
+                                    key={event.event_id}
                                     type="button"
-                                    onClick={() => navigate(resolveDocumentsPath(event.property_id, { requirement_id: event.requirement_id }))}
-                                    className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate cursor-pointer hover:ring-1 hover:ring-offset-0 ${
-                                      event.status_color === 'red' ? 'bg-red-100 text-red-700 hover:bg-red-200' :
-                                      event.status_color === 'amber' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' :
-                                      event.status_color === 'green' ? 'bg-green-100 text-green-700 hover:bg-green-200' :
-                                      'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                                    }`}
-                                    title={`${event.description} - ${event.property_name || event.property_address}. Click to view documents.`}
-                                    data-testid={`calendar-event-${event.requirement_id}-${idx}`}
+                                    onClick={() => navigateForEvent(navigate, event)}
+                                    className={`w-full text-left text-[10px] sm:text-xs px-1 py-0.5 rounded border truncate cursor-pointer active:opacity-80 ${eventChipClass(event)}`}
+                                    title={`${event.title} — ${event.property_name || ''}`}
+                                    data-testid={`calendar-event-${event.event_id}`}
                                   >
-                                    {event.description.split(' ')[0]}
+                                    <span className="block truncate">{event.title}</span>
                                   </button>
                                 ))}
-                                {dayInfo.events.length > 3 && (
-                                  <div className="text-xs text-gray-500">
-                                    +{dayInfo.events.length - 3} more
-                                  </div>
+                                {dayInfo.events.length > visiblePerDay && (
+                                  <button
+                                    type="button"
+                                    className="w-full text-left text-[10px] sm:text-xs text-electric-teal font-medium py-1 px-0.5 rounded hover:bg-teal-50 min-h-[32px]"
+                                    onClick={() => openDayDetails(dayInfo.date, dayInfo.events)}
+                                    data-testid={`calendar-day-more-${dayInfo.date}`}
+                                  >
+                                    +{dayInfo.events.length - visiblePerDay} more — all events
+                                  </button>
                                 )}
                               </div>
                             )}
@@ -344,103 +511,98 @@ const CalendarPage = () => {
               )}
             </div>
 
-            {/* Legend */}
-            <div className="flex items-center gap-6 text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span>Overdue</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                <span>Expiring Soon</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                <span>Pending</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span>Valid</span>
-              </div>
-            </div>
+            <Card className="border-gray-200">
+              <CardContent className="p-4 text-sm text-gray-600 flex flex-wrap gap-4 items-center">
+                <span className="font-medium text-midnight-blue w-full sm:w-auto">Legend</span>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-red-500 shrink-0" />
+                  <span>Overdue</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-amber-500 shrink-0" />
+                  <span>Expiring / urgent</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-teal-600 shrink-0" />
+                  <span>Compliance inspections & jobs</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Wrench className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <span>Repair visits</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-green-500 shrink-0" />
+                  <span>Valid obligation</span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         ) : (
-          /* List View */
           <div className="space-y-4">
-            {/* Days Ahead Filter */}
-            <div className="flex items-center justify-between bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-              <h2 className="text-lg font-semibold text-midnight-blue">Upcoming Expiries</h2>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">Show next:</span>
-                {[30, 60, 90, 180].map(days => (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+              <h2 className="text-lg font-semibold text-midnight-blue">Upcoming timeline</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-gray-500">Next</span>
+                {[30, 60, 90, 180].map((days) => (
                   <button
                     key={days}
+                    type="button"
                     onClick={() => setDaysAhead(days)}
-                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                      daysAhead === days 
-                        ? 'bg-electric-teal text-white' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors min-h-[40px] ${
+                      daysAhead === days ? 'bg-electric-teal text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                     data-testid={`days-filter-${days}`}
                   >
-                    {days} days
+                    {days}d
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Upcoming List */}
             {loading ? (
               <div className="flex items-center justify-center h-64 bg-white rounded-xl">
                 <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
               </div>
-            ) : upcomingData?.upcoming?.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+            ) : !timelineData?.events?.length ? (
+              <div className="text-center py-12 bg-white rounded-xl border border-gray-200 px-4">
                 <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">No expiries in the next {daysAhead} days</p>
+                <p className="text-gray-500">No events in this window</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {upcomingData?.upcoming?.map((item) => (
+                {timelineData.events.map((event) => (
                   <button
                     type="button"
-                    key={item.requirement_id}
-                    onClick={() => navigate(resolveDocumentsPath(item.property_id, { requirement_id: item.requirement_id }))}
-                    className={`w-full text-left bg-white rounded-xl p-4 border-2 transition-colors hover:ring-2 hover:ring-electric-teal hover:ring-offset-2 ${getUrgencyColor(item.urgency)}`}
-                    data-testid={`upcoming-item-${item.requirement_id}`}
+                    key={event.event_id}
+                    onClick={() => navigateForEvent(navigate, event)}
+                    className={`w-full text-left rounded-xl p-4 border-2 transition-colors hover:ring-2 hover:ring-electric-teal hover:ring-offset-2 ${eventChipClass(event)}`}
+                    data-testid={`timeline-event-${event.event_id}`}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-midnight-blue">{item.description}</h3>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            item.urgency === 'high' ? 'bg-red-100 text-red-700' :
-                            item.urgency === 'medium' ? 'bg-amber-100 text-amber-700' :
-                            'bg-blue-100 text-blue-700'
-                          }`}>
-                            {item.urgency === 'high' ? 'Urgent' : item.urgency === 'medium' ? 'Soon' : 'Upcoming'}
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-midnight-blue break-words">{event.title}</h3>
+                          <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/80 border border-current/20">
+                            {timelineCategoryLabel(event.event_category)}
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                          <span className="flex items-center gap-1">
-                            <Building2 className="w-4 h-4" />
-                            {item.property_address}, {item.property_city}
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-700">
+                          <span className="flex items-center gap-1 min-w-0">
+                            <Building2 className="w-4 h-4 shrink-0" />
+                            <span className="truncate">{event.property_name || event.property_id || '—'}</span>
                           </span>
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1 shrink-0">
                             <Clock className="w-4 h-4" />
-                            Due: {new Date(item.due_date).toLocaleDateString()}
+                            {formatEventWhen(event)}
                           </span>
                         </div>
+                        {event.date_source && (
+                          <p className="text-xs text-gray-500 mt-1">Date source: {event.date_source}</p>
+                        )}
                       </div>
-                      <div className="text-right">
-                        <p className={`text-2xl font-bold ${
-                          item.days_until_due <= 7 ? 'text-red-600' :
-                          item.days_until_due <= 30 ? 'text-amber-600' :
-                          'text-gray-600'
-                        }`}>
-                          {item.days_until_due}
-                        </p>
-                        <p className="text-xs text-gray-500">days left</p>
+                      <div className="text-left sm:text-right shrink-0">
+                        <p className="text-sm font-medium capitalize">{String(event.status || '').replace(/_/g, ' ') || '—'}</p>
+                        <p className="text-xs text-gray-500 mt-1">Tap for details</p>
                       </div>
                     </div>
                   </button>
@@ -450,6 +612,34 @@ const CalendarPage = () => {
           </div>
         )}
       </main>
+
+      <Dialog open={dayDialogOpen} onOpenChange={setDayDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Events on {dayDialogDateKey}</DialogTitle>
+            <DialogDescription>
+              All events for this day. Tap an item to open details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 mt-2">
+            {dayDialogEvents.map((event) => (
+              <button
+                key={event.event_id}
+                type="button"
+                onClick={() => {
+                  setDayDialogOpen(false);
+                  navigateForEvent(navigate, event);
+                }}
+                className={`w-full text-left rounded-lg border p-3 flex flex-col gap-1 active:opacity-90 ${eventChipClass(event)}`}
+              >
+                <span className="font-medium text-sm break-words">{event.title}</span>
+                <span className="text-xs opacity-90 truncate">{event.property_name || event.property_id || '—'}</span>
+                <span className="text-xs opacity-90">{formatEventWhen(event)}</span>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

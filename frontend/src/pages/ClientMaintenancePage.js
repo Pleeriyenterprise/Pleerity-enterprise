@@ -10,6 +10,7 @@ import {
   openBlobApiResponse,
   contractorEvidenceFilenameFromKey,
   isContractorFileEvidenceKey,
+  parseApiError,
 } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
@@ -226,12 +227,12 @@ function ClientMaintenancePageInner() {
         setTotal(res.data?.total ?? 0);
       })
       .catch((err) => {
-        const detail = err?.response?.data?.detail;
+        const detail = parseApiError(err, 'Failed to load work orders');
         if (err?.response?.status === 403) {
           setMaintenanceError(detail || 'Maintenance workflows are not enabled for your account.');
         } else {
           setMaintenanceError('Failed to load work orders.');
-          toast.error(detail || 'Failed to load work orders');
+          toast.error(detail);
         }
         setWorkOrders([]);
         setTotal(0);
@@ -385,8 +386,7 @@ function ClientMaintenancePageInner() {
           fallbackFilename: contractorEvidenceFilenameFromKey(storageKey),
         });
       } catch (err) {
-        const d = err?.response?.data?.detail;
-        toast.error(typeof d === 'string' ? d : 'Could not open evidence file');
+        toast.error(parseApiError(err, 'Could not open evidence file'));
       } finally {
         setContractorEvidenceLoadingKey(null);
       }
@@ -462,7 +462,7 @@ function ClientMaintenancePageInner() {
         if (woDetailDrawer === workOrderId) setWoDetailData((d) => (d ? { ...d, status: newStatus } : null));
         loadWorkOrders();
       })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Update failed'))
+      .catch((err) => toast.error(parseApiError(err, 'Update failed')))
       .finally(() => setWoUpdateSaving(false));
   };
 
@@ -491,7 +491,7 @@ function ClientMaintenancePageInner() {
       await refreshWoDetail(wid);
       loadWorkOrders();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Could not propose visit time');
+      toast.error(parseApiError(err, 'Could not propose visit time'));
     } finally {
       setScheduleActionLoading(false);
     }
@@ -507,7 +507,7 @@ function ClientMaintenancePageInner() {
       await refreshWoDetail(wid);
       loadWorkOrders();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Could not confirm');
+      toast.error(parseApiError(err, 'Could not confirm'));
     } finally {
       setScheduleActionLoading(false);
     }
@@ -524,7 +524,7 @@ function ClientMaintenancePageInner() {
       await refreshWoDetail(wid);
       loadWorkOrders();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Request failed');
+      toast.error(parseApiError(err, 'Request failed'));
     } finally {
       setScheduleActionLoading(false);
     }
@@ -541,7 +541,7 @@ function ClientMaintenancePageInner() {
       await refreshWoDetail(wid);
       loadWorkOrders();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Could not cancel');
+      toast.error(parseApiError(err, 'Could not cancel'));
     } finally {
       setScheduleActionLoading(false);
     }
@@ -554,7 +554,7 @@ function ClientMaintenancePageInner() {
       const res = await clientAPI.getMaintenanceScheduleIcs(wid);
       openBlobApiResponse(res, `visit-${wid}.ics`);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Download failed');
+      toast.error(parseApiError(err, 'Download failed'));
     }
   };
 
@@ -577,7 +577,7 @@ function ClientMaintenancePageInner() {
       setWoRoutingState(r.data);
       loadWorkOrders();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Request failed');
+      toast.error(parseApiError(err, 'Request failed'));
     } finally {
       setWoUpdateSaving(false);
     }
@@ -604,7 +604,7 @@ function ClientMaintenancePageInner() {
       setWoRoutingState(r.data);
       loadWorkOrders();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Confirm failed');
+      toast.error(parseApiError(err, 'Confirm failed'));
     } finally {
       setWoUpdateSaving(false);
     }
@@ -625,7 +625,7 @@ function ClientMaintenancePageInner() {
         }
         loadWorkOrders();
       })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Assign failed'))
+      .catch((err) => toast.error(parseApiError(err, 'Assign failed')))
       .finally(() => setWoUpdateSaving(false));
   };
 
@@ -648,7 +648,7 @@ function ClientMaintenancePageInner() {
         setCreateForm({ property_id: '', description: '', category: 'general', severity: 'medium' });
         loadWorkOrders();
       })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Create failed'))
+      .catch((err) => toast.error(parseApiError(err, 'Create failed')))
       .finally(() => setCreateSaving(false));
   };
 
@@ -910,7 +910,7 @@ function ClientMaintenancePageInner() {
       {/* Work orders table */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-base">Jobs</CardTitle>
+          <CardTitle className="text-base">Maintenance and compliance jobs</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -1559,7 +1559,7 @@ function ClientMaintenancePageInner() {
                   setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
                   navigate('/operations/approvals');
                 } catch (err) {
-                  toast.error(err?.response?.data?.detail || 'Failed to create invoice');
+                  toast.error(parseApiError(err, 'Failed to create invoice'));
                 } finally {
                   setInvoiceSaving(false);
                 }

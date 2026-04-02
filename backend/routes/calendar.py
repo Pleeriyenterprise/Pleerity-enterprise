@@ -4,6 +4,7 @@ Uses deterministic expiry: confirmed_expiry_date else extracted_expiry_date else
 Excludes applicability=NOT_REQUIRED from events.
 """
 from fastapi import APIRouter, HTTPException, Request, status, Query
+from fastapi.responses import JSONResponse, Response
 from database import database
 from middleware import client_route_guard
 from datetime import datetime, timezone, timedelta
@@ -12,8 +13,34 @@ import logging
 
 from utils.expiry_utils import get_effective_expiry_date, get_computed_status, is_included_for_calendar
 
+from services.client_calendar_timeline_service import (
+    build_ical_from_timeline_events,
+    filter_timeline_events,
+    get_timeline_events_for_range,
+    group_events_by_date,
+    summarize_events,
+)
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
+
+_FILTER_ALIASES = {
+    "requirements": "requirement",
+    "scheduled_jobs": "scheduled_job",
+    "compliance_jobs": "compliance_job",
+    "compliance": "compliance_job",
+}
+
+
+def _parse_filter_categories(filters: Optional[str]) -> Optional[set]:
+    if not filters or not str(filters).strip():
+        return None
+    out = set()
+    for part in str(filters).split(","):
+        key = part.strip().lower()
+        if key in _FILTER_ALIASES:
+            out.add(_FILTER_ALIASES[key])
+    return out or None
 
 
 @router.get("/events")
@@ -21,13 +48,14 @@ async def get_calendar_events(
     request: Request,
     year: Optional[int] = Query(default=None),
     month: Optional[int] = Query(default=None, ge=1, le=12),
+    filters: Optional[str] = Query(default=None, description="Comma-separated: requirements,scheduled_jobs,compliance_jobs"),
+    urgent_only: bool = Query(default=False),
 ):
     """
-    Get calendar events grouped by date. Deterministic expiry; excludes NOT_REQUIRED.
-    Returns: property_id, property_name, requirement_type, due_date, status, document_id (if any).
+    Unified timeline events for the month (requirements + scheduled work orders + compliance milestones).
+    Obligation dates use requirement truth (effective expiry); visits use work_orders.scheduled_at + schedule_status.
     """
     user = await client_route_guard(request)
-    db = database.get_db()
     now = datetime.now(timezone.utc)
     year = year or now.year
     if month:
@@ -37,77 +65,35 @@ async def get_calendar_events(
         start = datetime(year, 1, 1, tzinfo=timezone.utc)
         end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
 
-    properties = await db.properties.find(
-        {"client_id": user["client_id"]},
-        {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1}
-    ).to_list(100)
-    property_map = {p["property_id"]: p for p in properties}
-    property_ids = list(property_map.keys())
+    raw = await get_timeline_events_for_range(user["client_id"], start, end, include_work_orders=True)
+    cats = _parse_filter_categories(filters)
+    events = filter_timeline_events(raw, categories=cats, urgent_only=urgent_only)
+    events_by_date = group_events_by_date(events)
+    summary = summarize_events(events)
 
-    requirements = await db.requirements.find(
-        {"property_id": {"$in": property_ids}},
-        {"_id": 0}
-    ).to_list(500)
-
-    # Resolve document_id per requirement (first linked document)
-    requirement_ids = [r["requirement_id"] for r in requirements]
-    doc_cursor = db.documents.find(
-        {"requirement_id": {"$in": requirement_ids}, "client_id": user["client_id"]},
-        {"_id": 0, "requirement_id": 1, "document_id": 1}
-    ).limit(1000)
-    req_to_doc = {}
-    async for doc in doc_cursor:
-        rid = doc.get("requirement_id")
-        if rid and rid not in req_to_doc:
-            req_to_doc[rid] = doc.get("document_id")
-
-    events_by_date = {}
-    for req in requirements:
-        if not is_included_for_calendar(req):
-            continue
-        effective = get_effective_expiry_date(req)
-        if effective is None:
-            continue
-        if not (start <= effective < end):
-            continue
-        date_key = effective.strftime("%Y-%m-%d")
-        status = get_computed_status(req)
-        prop = property_map.get(req["property_id"], {})
-        if date_key not in events_by_date:
-            events_by_date[date_key] = []
-        events_by_date[date_key].append({
-            "property_id": req["property_id"],
-            "property_name": prop.get("address_line_1", "Unknown") or (f"{prop.get('city', '')} {prop.get('postcode', '')}".strip() or "Unknown"),
-            "requirement_type": req.get("requirement_type", ""),
-            "due_date": date_key,
-            "status": status,
-            "document_id": req_to_doc.get(req["requirement_id"]),
-            "requirement_id": req["requirement_id"],
-        })
-
-    for date_key in events_by_date:
-        # Urgent first: OVERDUE then EXPIRING_SOON then rest (False < True, so != gives overdue smallest)
-        events_by_date[date_key].sort(key=lambda e: (e["status"] != "OVERDUE", e["status"] != "EXPIRING_SOON", e["due_date"]))
-
-    total = sum(len(v) for v in events_by_date.values())
     return {
+        "model_version": 2,
         "events_by_date": events_by_date,
-        "summary": {"total_events": total, "dates_with_events": len(events_by_date)},
+        "summary": summary,
         "year": year,
         "month": month,
     }
 
 
-@router.get("/expiries")
+@router.get("/expiries", deprecated=True)
 async def get_expiry_calendar(
     request: Request,
     year: int = Query(default=None, description="Year to fetch (defaults to current year)"),
     month: Optional[int] = Query(default=None, ge=1, le=12, description="Month to fetch (1-12, optional)")
 ):
-    """Get calendar data for certificate expirations.
-    
-    Returns requirements grouped by date for calendar visualization.
-    Can filter by year and optionally by month.
+    """**Deprecated** — legacy requirement-only calendar JSON (status_color, no work orders).
+
+    Use ``GET /api/calendar/events`` for the unified timeline (requirements + scheduled visits + compliance milestones).
+
+    **Differs from unified model:** no ``event_id`` / ``event_type``; no work-order schedule overlay;
+    same underlying requirement *dates* as unified (effective expiry via ``get_effective_expiry_date``).
+
+    Remaining consumers: external/integration tests and docs; do not add new client-portal usage.
     """
     user = await client_route_guard(request)
     db = database.get_db()
@@ -188,7 +174,7 @@ async def get_expiry_calendar(
             for e in events if e["status"] == "EXPIRING_SOON"
         )
         
-        return {
+        payload = {
             "year": year,
             "month": month,
             "start_date": start_date.isoformat(),
@@ -198,10 +184,19 @@ async def get_expiry_calendar(
                 "total_events": total_events,
                 "overdue_count": overdue_count,
                 "expiring_soon_count": expiring_soon_count,
-                "dates_with_events": len(events_by_date)
-            }
+                "dates_with_events": len(events_by_date),
+            },
+            "deprecated": True,
+            "successor": "/api/calendar/events",
         }
-    
+        return JSONResponse(
+            content=payload,
+            headers={
+                "Deprecation": "true",
+                "Link": "</api/calendar/events>; rel=\"successor-version\"",
+            },
+        )
+
     except HTTPException:
         raise
     except Exception as e:
@@ -215,66 +210,61 @@ async def get_expiry_calendar(
 @router.get("/upcoming")
 async def get_upcoming_expiries(
     request: Request,
-    days: int = Query(default=90, ge=7, le=365, description="Number of days to look ahead")
+    days: int = Query(default=90, ge=7, le=365, description="Number of days to look ahead"),
+    filters: Optional[str] = Query(default=None, description="Comma-separated: requirements,scheduled_jobs,compliance_jobs"),
+    urgent_only: bool = Query(default=False),
 ):
-    """Get upcoming certificate expirations for the next N days.
-    
-    Returns a list of requirements sorted by due date.
-    """
+    """Unified timeline for list/agenda view: obligations + visits in range (includes overdue obligations)."""
     user = await client_route_guard(request)
-    db = database.get_db()
-    
     try:
-        client_id = user["client_id"]
-        
         now = datetime.now(timezone.utc)
-        end_date = now + timedelta(days=days)
-        
-        # Get all properties for this client
-        properties = await db.properties.find(
-            {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1}
-        ).to_list(100)
-        
-        property_map = {p["property_id"]: p for p in properties}
-        property_ids = list(property_map.keys())
-        
-        # Get all requirements for properties; filter by effective due date and exclude NOT_REQUIRED
-        requirements = await db.requirements.find(
-            {"property_id": {"$in": property_ids}},
-            {"_id": 0}
-        ).to_list(500)
+        lookback_days = 730
+        start = now - timedelta(days=lookback_days)
+        end = now + timedelta(days=days)
 
-        upcoming = []
-        for req in requirements:
-            if not is_included_for_calendar(req):
+        raw = await get_timeline_events_for_range(user["client_id"], start, end, include_work_orders=True)
+        cats = _parse_filter_categories(filters)
+        events = filter_timeline_events(raw, categories=cats, urgent_only=urgent_only)
+        events.sort(key=lambda e: (e.get("date") or "", e.get("datetime_utc") or "", e.get("title") or ""))
+
+        # Legacy shape for consumers that still expect requirement-only rows
+        upcoming_legacy = []
+        for e in events:
+            if e.get("event_category") != "requirement":
                 continue
-            due_date = get_effective_expiry_date(req)
-            if due_date is None or due_date > end_date or due_date < now:
+            rid = (e.get("metadata") or {}).get("requirement_id")
+            if not rid:
                 continue
-            property_info = property_map.get(req["property_id"], {})
-            days_until_due = (due_date - now).days
-            status = get_computed_status(req)
-            upcoming.append({
-                "requirement_id": req["requirement_id"],
-                "requirement_type": req.get("requirement_type", ""),
-                "description": req.get("description", ""),
-                "status": status,
-                "due_date": due_date.isoformat(),
-                "days_until_due": days_until_due,
-                "property_id": req["property_id"],
-                "property_address": property_info.get("address_line_1", "Unknown"),
-                "property_city": property_info.get("city", ""),
-                "urgency": "high" if days_until_due <= 7 else ("medium" if days_until_due <= 30 else "low")
-            })
-        upcoming.sort(key=lambda x: (x["days_until_due"], x["property_address"]))
-        
+            try:
+                due_dt = datetime.fromisoformat(str(e.get("datetime_utc") or "").replace("Z", "+00:00"))
+            except Exception:
+                due_dt = now
+            days_until = (due_dt - now).days
+            upcoming_legacy.append(
+                {
+                    "requirement_id": rid,
+                    "requirement_type": e.get("requirement_type") or "",
+                    "description": e.get("title") or "",
+                    "status": e.get("status"),
+                    "due_date": due_dt.isoformat(),
+                    "days_until_due": days_until,
+                    "property_id": e.get("property_id"),
+                    "property_address": e.get("property_name") or "",
+                    "property_city": "",
+                    "urgency": e.get("urgency")
+                    or ("high" if days_until <= 7 else "medium" if days_until <= 30 else "low"),
+                }
+            )
+
         return {
+            "model_version": 2,
             "days_ahead": days,
-            "count": len(upcoming),
-            "upcoming": upcoming
+            "count": len(events),
+            "timeline_events": events,
+            "summary": summarize_events(events),
+            "upcoming": upcoming_legacy,
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -288,19 +278,24 @@ async def get_upcoming_expiries(
 @router.get("/export.ics")
 async def export_ical_calendar(
     request: Request,
-    days: int = Query(default=365, ge=30, le=730, description="Days of events to include")
+    days: int = Query(default=365, ge=30, le=730, description="Days of events to include"),
+    lookback_days: int = Query(
+        default=365,
+        ge=0,
+        le=1095,
+        description="Days before today to include (obligations and visits in the past window)",
+    ),
+    filters: Optional[str] = Query(
+        default=None,
+        description="Same as /calendar/events: comma-separated requirements,scheduled_jobs,compliance_jobs",
+    ),
+    urgent_only: bool = Query(default=False, description="Same as /calendar/events: only overdue / expiring-soon requirements"),
 ):
-    """Export compliance expiry dates as an iCal calendar file.
-    
-    Generates an iCal (.ics) file that can be subscribed to by external
-    calendar applications (Google Calendar, Outlook, Apple Calendar).
-    
-    Plan gating: Requires Growth plan (PLAN_2_5) or higher.
-    
-    Returns:
-        iCal file with VEVENT entries for each requirement expiry
+    """Export unified timeline as iCal (.ics): same pipeline as ``/calendar/events`` (including filters).
+
+    Uses ``get_timeline_events_for_range`` then ``filter_timeline_events`` so exports match the client
+    calendar when the same ``filters`` and ``urgent_only`` query params are used.
     """
-    from fastapi.responses import Response
     from services.plan_registry import plan_registry
 
     user = await client_route_guard(request)
@@ -329,104 +324,30 @@ async def export_ical_calendar(
         client = await db.clients.find_one(
             {"client_id": client_id},
             {"_id": 0, "full_name": 1, "company_name": 1, "customer_reference": 1}
-        )
-        
+        ) or {}
+
         calendar_name = client.get("company_name") or client.get("full_name") or "Compliance"
         crn = client.get("customer_reference", "")
-        
+
         now = datetime.now(timezone.utc)
-        end_date = now + timedelta(days=days)
-        
-        # Get all properties for this client
-        properties = await db.properties.find(
-            {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1}
-        ).to_list(100)
-        
-        property_map = {p["property_id"]: p for p in properties}
-        property_ids = list(property_map.keys())
-        
-        # Get requirements within date range
-        requirements = await db.requirements.find(
-            {
-                "property_id": {"$in": property_ids},
-                "due_date": {
-                    "$gte": now.isoformat(),
-                    "$lte": end_date.isoformat()
-                }
-            },
-            {"_id": 0}
-        ).sort("due_date", 1).to_list(500)
-        
-        # Build iCal content
-        ical_lines = [
-            "BEGIN:VCALENDAR",
-            "VERSION:2.0",
-            "PRODID:-//Compliance Vault Pro//Pleerity Enterprise Ltd//EN",
-            f"X-WR-CALNAME:{calendar_name} - Compliance Expiries",
-            "CALSCALE:GREGORIAN",
-            "METHOD:PUBLISH"
-        ]
-        
-        for req in requirements:
-            property_info = property_map.get(req["property_id"], {})
-            due_date_str = req.get("due_date", "")
-            
-            try:
-                due_date = datetime.fromisoformat(due_date_str.replace('Z', '+00:00')) if isinstance(due_date_str, str) else due_date_str
-            except:
-                continue
-            
-            # Create unique event ID
-            event_uid = f"{req['requirement_id']}@pleerityenterprise.co.uk"
-            
-            # Format dates for iCal (YYYYMMDD for all-day events)
-            dtstart = due_date.strftime("%Y%m%d")
-            
-            # Build location string
-            location = f"{property_info.get('address_line_1', '')}, {property_info.get('city', '')} {property_info.get('postcode', '')}".strip(", ")
-            
-            # Build description
-            description = f"Requirement: {req.get('requirement_type', 'Unknown')}\\n"
-            description += f"Property: {location}\\n"
-            description += f"Status: {req.get('status', 'PENDING')}\\n"
-            description += f"Description: {req.get('description', '')}\\n"
-            if crn:
-                description += f"CRN: {crn}"
-            
-            # Clean description for iCal (escape special chars)
-            description = description.replace(",", "\\,").replace(";", "\\;")
-            
-            # Determine alarm based on status
-            alarm_days = 7 if req.get("status") == "EXPIRING_SOON" else 30
-            
-            # Build event
-            ical_lines.extend([
-                "BEGIN:VEVENT",
-                f"UID:{event_uid}",
-                f"DTSTAMP:{now.strftime('%Y%m%dT%H%M%SZ')}",
-                f"DTSTART;VALUE=DATE:{dtstart}",
-                f"SUMMARY:{req.get('requirement_type', 'Compliance')} Expiry - {property_info.get('address_line_1', 'Property')}",
-                f"DESCRIPTION:{description}",
-                f"LOCATION:{location}",
-                "CATEGORIES:Compliance,Expiry",
-                "STATUS:CONFIRMED",
-                # Add alarm
-                "BEGIN:VALARM",
-                "ACTION:DISPLAY",
-                f"DESCRIPTION:Compliance expiry reminder - {req.get('requirement_type', '')}",
-                f"TRIGGER:-P{alarm_days}D",
-                "END:VALARM",
-                "END:VEVENT"
-            ])
-        
-        ical_lines.append("END:VCALENDAR")
-        
-        # Join with CRLF as per iCal spec
-        ical_content = "\r\n".join(ical_lines)
-        
-        # Generate filename
-        filename = f"compliance_expiries_{crn or client_id}.ics"
+        start = now - timedelta(days=lookback_days)
+        end = now + timedelta(days=days)
+
+        raw_timeline = await get_timeline_events_for_range(client_id, start, end, include_work_orders=True)
+        cats = _parse_filter_categories(filters)
+        timeline_events = filter_timeline_events(
+            raw_timeline,
+            categories=cats,
+            urgent_only=urgent_only,
+        )
+        ical_content = build_ical_from_timeline_events(
+            timeline_events,
+            calendar_name=str(calendar_name),
+            client_ref=str(crn or client_id or ""),
+            now_utc=now,
+        )
+
+        filename = f"compliance_timeline_{crn or client_id}.ics"
         
         return Response(
             content=ical_content,
@@ -491,7 +412,11 @@ async def get_calendar_subscription_url(request: Request):
         return {
             "subscription_url": subscription_url,
             "format": "iCal (.ics)",
-            "note": "This URL requires authentication. For external calendar subscriptions, use the Download option.",
+            "note": (
+                "This URL requires authentication. Default feed includes all categories; add "
+                "filters=requirements,scheduled_jobs,compliance_jobs and/or urgent_only=true to match "
+                "the client calendar. For a filtered export from the portal, use Download on the calendar page."
+            ),
             "instructions": {
                 "google_calendar": "Settings → Add calendar → From URL → Paste URL",
                 "outlook": "Add calendar → Subscribe from web → Paste URL",

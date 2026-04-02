@@ -50,7 +50,7 @@ const PORTAL_TABS = [
   { path: '/today', label: 'Today', icon: ListTodo },
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/properties', label: 'Properties', icon: Building2 },
-  { path: '/requirements', label: 'Compliance', icon: FileCheck },
+  { path: '/requirements', label: 'Requirements', icon: FileCheck },
   { path: '/documents', label: 'Documents', icon: FileText },
   { path: '/calendar', label: 'Calendar', icon: Calendar },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
@@ -86,22 +86,58 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifItems, setNotifItems] = useState([]);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [notifUnreadCount, setNotifUnreadCount] = useState(0);
+  const [portalTrust, setPortalTrust] = useState(null);
+  const [portalTrustLoading, setPortalTrustLoading] = useState(false);
+  const [portalTrustError, setPortalTrustError] = useState(false);
 
   const loadInAppNotifications = () => {
     if (isTenant || !isClient) return;
     setNotifLoading(true);
     clientAPI
       .getInAppNotifications({ limit: 50 })
-      .then((r) => setNotifItems(r.data.items || []))
+      .then((r) => {
+        const items = r.data.items || [];
+        setNotifItems(items);
+        setNotifUnreadCount(items.filter((n) => !n.is_read).length);
+      })
       .catch(() => {})
       .finally(() => setNotifLoading(false));
+  };
+
+  const loadPortalTrust = async () => {
+    if (isTenant || !isClient) return;
+    setPortalTrustLoading(true);
+    setPortalTrustError(false);
+    const maxAttempts = 4;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const r = await clientAPI.getPortalContext();
+        setPortalTrust(r.data || null);
+        setPortalTrustError(false);
+        setPortalTrustLoading(false);
+        return;
+      } catch {
+        setPortalTrustError(true);
+        if (attempt < maxAttempts - 1) {
+          await sleep(600 * (attempt + 1));
+        }
+      }
+    }
+    setPortalTrustLoading(false);
   };
 
   useEffect(() => {
     if (!isClient || isTenant) return;
     loadInAppNotifications();
+    loadPortalTrust();
     const t = setInterval(loadInAppNotifications, 120000);
-    return () => clearInterval(t);
+    const t2 = setInterval(loadPortalTrust, 180000);
+    return () => {
+      clearInterval(t);
+      clearInterval(t2);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient, isTenant, user?.portal_user_id]);
 
@@ -286,8 +322,13 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                     aria-expanded={notifOpen}
                   >
                     <Bell className="w-5 h-5" />
-                    {notifItems.some((n) => !n.is_read) && (
-                      <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-amber-400" aria-hidden />
+                    {notifUnreadCount > 0 && (
+                      <span
+                        className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-0.5 rounded-full bg-amber-400 text-[10px] font-bold text-midnight-blue flex items-center justify-center leading-none"
+                        aria-label={`${notifUnreadCount} unread`}
+                      >
+                        {notifUnreadCount > 99 ? '99+' : notifUnreadCount}
+                      </span>
                     )}
                   </button>
                   {notifOpen && (
@@ -319,11 +360,15 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                                 onClick={async () => {
                                   try {
                                     await clientAPI.markInAppNotificationRead(n.notification_id);
+                                    const wasUnread = !n.is_read;
                                     setNotifItems((prev) =>
                                       prev.map((x) =>
                                         x.notification_id === n.notification_id ? { ...x, is_read: true } : x
                                       )
                                     );
+                                    if (wasUnread) {
+                                      setNotifUnreadCount((c) => Math.max(0, c - 1));
+                                    }
                                   } catch (_) {
                                     /* ignore */
                                   }
@@ -475,6 +520,38 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
           </div>
         </nav>
       </header>
+
+      {!isTenant && isClient && (
+        <div className="border-b border-gray-200 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-1.5 text-xs text-gray-600">
+            {portalTrustLoading && !portalTrust ? (
+              <span className="text-gray-600">
+                {portalTrustError
+                  ? 'Unable to sync portal status. Retrying…'
+                  : 'Syncing portal status…'}
+              </span>
+            ) : portalTrustError && !portalTrust ? (
+              <span className="text-amber-800">
+                Status line temporarily unavailable. We&apos;ll keep retrying in the background — refresh if this persists.
+              </span>
+            ) : (
+              <>
+                <span title="Server time when this snapshot was taken">
+                  Last updated:{' '}
+                  {portalTrust?.server_time
+                    ? new Date(portalTrust.server_time).toLocaleString()
+                    : '—'}
+                </span>
+                {portalTrust?.last_recorded_activity_at && (
+                  <span className="block sm:inline sm:ml-3 mt-0.5 sm:mt-0" title="Latest audited activity for your organisation">
+                    · Last recorded activity: {new Date(portalTrust.last_recorded_activity_at).toLocaleString()}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {impersonation?.active && (
         <div className="bg-amber-100 border-y border-amber-300 px-3 sm:px-4 py-2">

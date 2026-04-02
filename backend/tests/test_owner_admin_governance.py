@@ -69,6 +69,10 @@ class TestAdminDoesNotBypassPlanGating:
             "billing_plan": "PLAN_1_SOLO",
             "subscription_status": "ACTIVE",
         })
+        db.client_billing = MagicMock()
+        db.client_billing.find_one = AsyncMock(
+            return_value={"billing_lifecycle_state": "active", "subscription_status": "ACTIVE"}
+        )
 
         with patch("middleware.feature_gating.database.get_db", return_value=db), \
              patch("services.plan_registry.plan_registry") as pr:
@@ -110,11 +114,13 @@ class TestLastOwnerCannotBeRemoved:
             })
 
             with patch("routes.admin.database.get_db", return_value=db), \
+                 patch("routes.admin.require_recent_step_up", new_callable=AsyncMock), \
                  patch("routes.admin.create_audit_log", new_callable=AsyncMock):
                 with pytest.raises(HTTPException) as exc:
                     await deactivate_admin(request, "owner-1")
                 assert exc.value.status_code == 403
-                assert "OWNER" in exc.value.detail
+                detail = exc.value.detail
+                assert "OWNER" in (detail if isinstance(detail, str) else str(detail))
 
 
 class TestBreakGlassAuditAndForceLogout:
@@ -128,7 +134,7 @@ class TestBreakGlassAuditAndForceLogout:
 
         request = MagicMock()
         request.headers = {
-            "Content-Type": "application/json",
+            "content-type": "application/json",
             "X-Break-Glass-Secret": "secret123",
         }
         request.json = AsyncMock(return_value={"new_password": "NewSecure1!"})
@@ -153,8 +159,9 @@ class TestBreakGlassAuditAndForceLogout:
                 assert result.get("message") and "invalidated" in result.get("message", "")
                 update_call = db.portal_users.update_one.call_args
                 assert update_call is not None
-                set_part = update_call[1].get("$set", {})
-                inc_part = update_call[1].get("$inc", {})
+                payload = update_call[0][1] if len(update_call[0]) > 1 else {}
+                set_part = payload.get("$set", {})
+                inc_part = payload.get("$inc", {})
                 assert "password_hash" in set_part
                 assert inc_part.get("session_version") == 1
                 assert any(
@@ -190,6 +197,10 @@ class TestPlanGatingEnforcedForNormalClients:
             "billing_plan": "PLAN_1_SOLO",
             "subscription_status": "ACTIVE",
         })
+        db.client_billing = MagicMock()
+        db.client_billing.find_one = AsyncMock(
+            return_value={"billing_lifecycle_state": "active", "subscription_status": "ACTIVE"}
+        )
 
         with patch("middleware.feature_gating.database.get_db", return_value=db), \
              patch("services.plan_registry.plan_registry") as pr, \

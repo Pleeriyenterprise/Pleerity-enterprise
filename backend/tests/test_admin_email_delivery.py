@@ -150,10 +150,18 @@ async def test_email_delivery_filters_produce_correct_queries():
             skip=0,
         )
 
-    # message_logs find: query should have template_alias, client_id, created_at $gte
+    # message_logs find: template filter is $and + $or (alias or template_key); client_id + created_at on root
     msg_call = db.message_logs.find.call_args
     q = msg_call[0][0]
-    assert q.get("template_alias") == "monthly_digest"
+    and_clause = q.get("$and") or []
+    assert any(
+        "$or" in clause and any(
+            cond.get("template_alias") == "monthly_digest" or cond.get("template_key") == "monthly_digest"
+            for cond in clause.get("$or", [])
+        )
+        for clause in and_clause
+        if isinstance(clause, dict)
+    ), q
     assert q.get("client_id") == "client-xyz"
     assert "created_at" in q
     assert q["created_at"]["$gte"]  # since ISO string
@@ -205,5 +213,5 @@ async def test_email_delivery_status_filter_failed_only_queries_message_logs():
 
     db.message_logs.find.assert_called_once()
     q = db.message_logs.find.call_args[0][0]
-    assert q.get("status") == "failed"
+    assert q.get("status") == {"$in": ["failed", "FAILED"]}
     db.audit_logs.find.assert_not_called()

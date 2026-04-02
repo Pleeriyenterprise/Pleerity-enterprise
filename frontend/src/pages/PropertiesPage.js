@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { resolvePropertyPath } from '../utils/clientPortalNavigation';
-import api from '../api/client';
+import api, { clientAPI, parseApiError } from '../api/client';
 import { toast } from 'sonner';
 import { 
   Building2, 
@@ -16,23 +15,23 @@ import {
   MapPin,
   Users,
   FileText,
-  LogOut,
-  Home,
   Calendar,
   BarChart3,
   Sparkles,
   RefreshCw
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { PORTAL_COPY } from '../utils/clientPortalCopy';
 
 const PropertiesPage = () => {
-  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [clientData, setClientData] = useState(null);
+  const [valueInsights, setValueInsights] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -41,11 +40,16 @@ const PropertiesPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/client/dashboard');
+      const [response, insightsRes] = await Promise.all([
+        api.get('/client/dashboard'),
+        clientAPI.getValueInsights().catch(() => null),
+      ]);
       setClientData(response.data);
       setProperties(response.data.properties || []);
+      if (insightsRes?.data) setValueInsights(insightsRes.data);
+      else setValueInsights(null);
     } catch (error) {
-      toast.error('Failed to load properties');
+      toast.error(parseApiError(error, 'Failed to load properties'));
     } finally {
       setLoading(false);
     }
@@ -86,19 +90,24 @@ const PropertiesPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
+      <div className={portalPageRoot}>
+        <PortalLoadingPanel message={PORTAL_COPY.loadingProperties} />
       </div>
     );
   }
 
   return (
-    <div>
+    <div className={portalPageRoot}>
         {/* Page Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6">
+          <div className="min-w-0">
             <h2 className="text-2xl font-bold text-midnight-blue">Properties</h2>
             <p className="text-gray-500 mt-1">Manage your property portfolio</p>
+            {valueInsights?.generated_at && (
+              <p className="text-xs text-gray-400 mt-1">
+                Usage insights refreshed: {new Date(valueInsights.generated_at).toLocaleString()}
+              </p>
+            )}
           </div>
           <Button
             onClick={() => navigate('/properties/create')}
@@ -109,6 +118,34 @@ const PropertiesPage = () => {
             Add Property
           </Button>
         </div>
+
+        {valueInsights &&
+          (valueInsights.upgrade_nudge_reasons || []).length > 0 &&
+          !valueInsights.upgrade_path?.at_highest_public_tier && (
+            <div
+              className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"
+              data-testid="properties-upgrade-nudge"
+            >
+              <p className="font-semibold text-amber-900">Why upgrade right now</p>
+              <ul className="mt-2 list-disc pl-4 space-y-2">
+                {(valueInsights.upgrade_nudge_reasons || []).map((r) => (
+                  <li key={r.code}>
+                    <span className="font-medium">{r.headline}</span>
+                    <span className="block text-amber-900 mt-0.5">{r.why_now}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3 border-amber-400 text-amber-900 hover:bg-amber-100"
+                onClick={() => navigate('/settings/billing')}
+              >
+                Review plans and limits
+              </Button>
+            </div>
+          )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -247,11 +284,11 @@ const PropertiesPage = () => {
                   <Link
                     key={property.property_id}
                     to={resolvePropertyPath(property.property_id)}
-                    className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                    className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 hover:bg-gray-50 transition-colors"
                     data-testid={`property-row-${property.property_id}`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
                         property.compliance_status === 'GREEN' ? 'bg-green-100' :
                         property.compliance_status === 'AMBER' ? 'bg-amber-100' : 'bg-red-100'
                       }`}>
@@ -260,11 +297,11 @@ const PropertiesPage = () => {
                           property.compliance_status === 'AMBER' ? 'text-amber-600' : 'text-red-600'
                         }`} />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-midnight-blue">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-midnight-blue truncate">
                           {property.nickname || property.address_line_1 || 'Unnamed Property'}
                         </h3>
-                        <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
                           <span className="flex items-center gap-1">
                             <MapPin className="w-3 h-3" />
                             {property.postcode}
@@ -278,7 +315,7 @@ const PropertiesPage = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 shrink-0 self-end sm:self-auto">
                       <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${statusBadge.className}`}>
                         <StatusIcon className="w-4 h-4" />
                         {statusBadge.text}

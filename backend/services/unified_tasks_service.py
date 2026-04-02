@@ -15,8 +15,8 @@ import logging
 from database import database
 from presentation.label_service import compliance_requirement_status_label, requirement_label
 
-from services.priority_actions import (
-    _fetch_client_actions,
+from services.client_priority_stream import (
+    fetch_client_priority_actions,
     ACTION_OVERDUE_COMPLIANCE,
     ACTION_CERT_EXPIRING_SOON,
     ACTION_MISSING_DOCUMENT,
@@ -29,6 +29,10 @@ from services.priority_actions import (
 )
 from services.catalog_compliance import get_portfolio_compliance_from_catalog
 from services import client_task_state_service as client_task_state
+from services.requirement_code_registry import (
+    is_bookable_compliance_requirement,
+    normalize_requirement_code_strict,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +131,18 @@ def _impact_score(action_type: str, priority: int, overdue_days: Optional[int]) 
     return min(200, base)
 
 
+def _secondary_nav_label(source_type: str) -> str:
+    return {
+        "requirement": "View requirement",
+        "risk_signal": "View risk signal",
+        "work_order": "View job details",
+        "issue": "View issue",
+        "approval": "View approval",
+        "tenant_message": "Open tenant inbox",
+        "priority_action": "View details",
+    }.get(source_type, "View details")
+
+
 def _primary_action_fields(a: Dict[str, Any], source_type: str) -> Tuple[str, str, str, bool]:
     """primary_action_type, label, url, inline_supported"""
     url = (a.get("recommended_url") or "").strip() or "/dashboard"
@@ -178,6 +194,35 @@ def _section_for_action(
     return "upcoming"
 
 
+def _compliance_execution_booking_meta(action_type: str, a: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Payload for POST /compliance-execution/work-orders/book when requirement is bookable.
+    """
+    if action_type not in (ACTION_OVERDUE_COMPLIANCE, ACTION_CERT_EXPIRING_SOON, ACTION_MISSING_DOCUMENT):
+        return None
+    prop_id = (a.get("related_property_id") or "").strip()
+    rid = (a.get("related_requirement_id") or "").strip()
+    code_raw = a.get("requirement_code")
+    if not prop_id or not rid or code_raw is None or not str(code_raw).strip():
+        return None
+    canon, err = normalize_requirement_code_strict(str(code_raw).strip())
+    eligible = bool(canon and not err and is_bookable_compliance_requirement(canon))
+    if action_type == ACTION_CERT_EXPIRING_SOON:
+        purpose = "renewal"
+    elif action_type == ACTION_MISSING_DOCUMENT:
+        purpose = "certification"
+    else:
+        purpose = "inspection"
+    return {
+        "eligible": eligible,
+        "property_id": prop_id,
+        "requirement_code": canon or str(code_raw).strip(),
+        "linked_property_requirement_id": rid,
+        "compliance_purpose": purpose,
+        "compliance_generated_from": "requirement",
+    }
+
+
 def _stable_source_id(a: Dict[str, Any], source_type: str) -> str:
     if source_type == "requirement" and a.get("related_requirement_id"):
         return str(a["related_requirement_id"])
@@ -211,6 +256,23 @@ def _action_to_task(
     pri_type, pri_label, pri_url, inline_ok = _primary_action_fields(a, source_type)
     freshness = a.get("source_updated_at")
 
+    task_metadata: Dict[str, Any] = {
+        "action_type": action_type,
+        "severity": severity,
+        "timing_label": None,
+        "requirement_code": a.get("requirement_code"),
+        "related_risk_signal_id": a.get("related_risk_signal_id"),
+        "related_invoice_id": a.get("related_invoice_id"),
+        "related_work_order_id": a.get("related_work_order_id"),
+        "related_issue_id": a.get("related_issue_id"),
+    }
+    ce_book = _compliance_execution_booking_meta(action_type, a)
+    if ce_book:
+        task_metadata["compliance_execution_booking"] = ce_book
+    if action_type == ACTION_PENDING_APPROVAL:
+        task_metadata["domain"] = "billing"
+        task_metadata["billing_milestone_type"] = "pending_invoice_approval"
+
     timing_label = None
     if overdue_days and overdue_days > 0:
         timing_label = f"Overdue by {overdue_days} day{'s' if overdue_days != 1 else ''}"
@@ -223,10 +285,16 @@ def _action_to_task(
             elif days == 0:
                 timing_label = "Due today"
 
+    task_metadata["timing_label"] = timing_label
+
     return {
         "id": task_id,
         "source_type": source_type,
         "source_id": source_id,
+        "source_entity_type": source_type,
+        "source_entity_id": source_id,
+        "action_context_type": pri_type,
+        "primary_recommended_action": pri_label,
         "title": a.get("title") or "Task",
         "description": (a.get("description") or "").strip(),
         "property_id": prop_id,
@@ -242,18 +310,9 @@ def _action_to_task(
         "primary_action_label": pri_label,
         "primary_action_url": pri_url,
         "inline_action_supported": inline_ok,
-        "secondary_action_label": "View details",
+        "secondary_action_label": _secondary_nav_label(source_type),
         "secondary_action_url": pri_url,
-        "metadata": {
-            "action_type": action_type,
-            "severity": severity,
-            "timing_label": timing_label,
-            "requirement_code": a.get("requirement_code"),
-            "related_risk_signal_id": a.get("related_risk_signal_id"),
-            "related_invoice_id": a.get("related_invoice_id"),
-            "related_work_order_id": a.get("related_work_order_id"),
-            "related_issue_id": a.get("related_issue_id"),
-        },
+        "metadata": task_metadata,
         "why_matters": a.get("why_matters"),
         "recommended_action": a.get("recommended_action_detail") or a.get("description"),
         "freshness_timestamp": freshness,
@@ -275,6 +334,8 @@ def _filter_tags(source_type: str, action_type: str, overdue_days: Optional[int]
         tags.append("operations")
     if source_type == "approval":
         tags.append("approvals")
+    if action_type == ACTION_PENDING_APPROVAL:
+        tags.append("billing")
     if source_type == "risk_signal":
         tags.append("risks")
     if overdue_days and overdue_days > 0:
@@ -339,6 +400,10 @@ async def _tenant_message_tasks(
             "id": f"tenant_message:{mid}",
             "source_type": "tenant_message",
             "source_id": str(mid),
+            "source_entity_type": "tenant_message",
+            "source_entity_id": str(mid),
+            "action_context_type": "view",
+            "primary_recommended_action": "Open tenant inbox",
             "title": title,
             "description": desc,
             "property_id": pid,
@@ -384,6 +449,91 @@ async def _load_property_labels(client_id: str, property_ids: List[str]) -> Dict
     return out
 
 
+async def _tenant_request_tasks(
+    client_id: str,
+    property_id_filter: Optional[str] = None,
+    limit: int = 20,
+) -> List[Dict[str, Any]]:
+    """
+    Surface actionable tenant certificate requests in unified tasks so dashboard and today
+    priorities derive from the same command-center read model.
+    """
+    db = database.get_db()
+    q: Dict[str, Any] = {"client_id": client_id, "status": {"$in": ["PENDING", "IN_PROGRESS"]}}
+    if property_id_filter:
+        q["property_id"] = property_id_filter
+    try:
+        rows = await db.tenant_requests.find(
+            q,
+            {
+                "_id": 0,
+                "request_id": 1,
+                "property_id": 1,
+                "status": 1,
+                "requested_doc_type": 1,
+                "requirement_id": 1,
+                "requirement_code": 1,
+                "created_at": 1,
+                "updated_at": 1,
+            },
+        ).sort("updated_at", -1).limit(max(1, min(int(limit), 50))).to_list(length=max(1, min(int(limit), 50)))
+    except Exception as e:
+        logger.debug("unified_tasks: tenant_requests load failed: %s", e)
+        return []
+
+    prop_ids = [str(r.get("property_id")) for r in rows if r.get("property_id")]
+    labels = await _load_property_labels(client_id, prop_ids)
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        rid = str(r.get("request_id") or "").strip()
+        if not rid:
+            continue
+        prop_id = str(r.get("property_id") or "").strip() or None
+        req_id = str(r.get("requirement_id") or "").strip() or None
+        req_code = str(r.get("requirement_code") or r.get("requested_doc_type") or "").strip()
+        status = str(r.get("status") or "").upper()
+        in_prog = status == "IN_PROGRESS"
+        title = f"Tenant certificate request: {requirement_label(req_code) if req_code else 'Certificate'}"
+        out.append(
+            {
+                "id": f"tenant_request:{rid}",
+                "source_type": "tenant_request",
+                "source_id": rid,
+                "source_entity_type": "tenant_request",
+                "source_entity_id": rid,
+                "property_id": prop_id,
+                "requirement_id": req_id,
+                "work_order_id": None,
+                "property_label": labels.get(prop_id) if prop_id else None,
+                "title": title,
+                "description": "Tenant is waiting for compliance evidence or a compliance job.",
+                "section": "in_progress" if in_prog else "upcoming",
+                "urgency_level": "medium" if in_prog else "low",
+                "impact_score": 46 if in_prog else 34,
+                "due_date": None,
+                "overdue_days": None,
+                "primary_action_type": "upload_evidence",
+                "primary_action_label": "Upload document",
+                "primary_action_url": (
+                    f"/documents?property_id={prop_id}&requirement_id={req_id}" if (prop_id and req_id) else "/tenants"
+                ),
+                "secondary_action_label": "View details",
+                "secondary_action_url": "/tenants",
+                "action_context_type": "tenant_request_certificate",
+                "primary_recommended_action": "Upload document",
+                "metadata": {
+                    "domain": "tenant",
+                    "tenant_request_id": rid,
+                    "requirement_id": req_id,
+                    "requirement_code": req_code or None,
+                    "related_property_id": prop_id,
+                },
+                "filter_tags": ["tenant", "compliance"],
+            }
+        )
+    return out
+
+
 async def _recently_completed_tasks(client_id: str, limit: int = 15) -> List[Dict[str, Any]]:
     """Lightweight completion feed from requirements and invoices (last state transitions)."""
     db = database.get_db()
@@ -422,6 +572,10 @@ async def _recently_completed_tasks(client_id: str, limit: int = 15) -> List[Dic
             "id": f"requirement_completed:{rid}",
             "source_type": "requirement",
             "source_id": str(rid),
+            "source_entity_type": "requirement",
+            "source_entity_id": str(rid),
+            "action_context_type": "view",
+            "primary_recommended_action": "View property",
             "title": f"Requirement satisfied: {disp}",
             "description": f"Status is now {compliance_requirement_status_label(r.get('status') or 'COMPLIANT')}.",
             "property_id": pid,
@@ -477,6 +631,10 @@ async def _recently_completed_tasks(client_id: str, limit: int = 15) -> List[Dic
             "id": f"invoice_{st}:{iid}",
             "source_type": "approval",
             "source_id": str(iid),
+            "source_entity_type": "approval",
+            "source_entity_id": str(iid),
+            "action_context_type": "review_approval",
+            "primary_recommended_action": "View in approvals",
             "title": title,
             "description": "Approval workspace update.",
             "property_id": pid,
@@ -575,7 +733,7 @@ async def get_unified_tasks_for_client(
     Prioritization: impact_score (overdue, SLA, engine priority) then urgency tier then title.
     """
     now = datetime.now(timezone.utc)
-    actions = await _fetch_client_actions(client_id, property_id_filter, raw_limit)
+    actions = await fetch_client_priority_actions(client_id, property_id_filter, raw_limit)
     prop_ids = [a.get("related_property_id") for a in actions if a.get("related_property_id")]
     property_labels = await _load_property_labels(client_id, [str(x) for x in prop_ids if x])
 
@@ -593,6 +751,11 @@ async def get_unified_tasks_for_client(
             continue
         seen.add(tm["id"])
         tasks.append(tm)
+    for tr in await _tenant_request_tasks(client_id, property_id_filter, limit=16):
+        if tr["id"] in seen:
+            continue
+        seen.add(tr["id"])
+        tasks.append(tr)
 
     overrides = await client_task_state.load_active_overrides(client_id, portal_user_id=portal_user_id)
     visible, snoozed = client_task_state.partition_tasks_by_override(tasks, overrides, now)
@@ -625,7 +788,11 @@ async def get_unified_tasks_for_client(
     ack_7d = await client_task_state.count_activity_since(
         client_id,
         seven_ago,
-        [client_task_state.ACTION_DISMISS, client_task_state.ACTION_DONE],
+        [
+            client_task_state.ACTION_DISMISS,
+            client_task_state.ACTION_DONE,
+            client_task_state.ACTION_REVIEWED,
+        ],
         portal_user_id=portal_user_id,
     )
 

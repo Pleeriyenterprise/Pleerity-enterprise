@@ -44,7 +44,7 @@ const UpgradePrompt = ({
     if (onUpgrade) {
       onUpgrade();
     }
-    navigate(buildSafeQueryPath('/app/billing', { upgrade_to: requiredPlan }));
+    navigate(buildSafeQueryPath('/settings/billing', { upgrade_to: requiredPlan }));
   };
 
   // Inline variant - minimal, fits within existing UI
@@ -267,7 +267,7 @@ export const PropertyLimitPrompt = ({
     if (switchPlanOnly) {
       return; // Intake flow: only change plan selection; no navigation, no entitlement
     }
-    navigate(buildSafeQueryPath('/app/billing', { upgrade_to: upgradePlan }));
+    navigate(buildSafeQueryPath('/settings/billing', { upgrade_to: upgradePlan }));
   };
 
   return (

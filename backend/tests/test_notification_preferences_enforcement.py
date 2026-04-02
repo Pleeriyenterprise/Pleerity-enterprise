@@ -35,10 +35,11 @@ def test_daily_reminder_skipped_when_daily_reminder_enabled_false():
     scheduler._maybe_send_reminder_sms = AsyncMock()
 
     with patch("services.plan_registry.plan_registry", MagicMock(enforce_feature=AsyncMock(return_value=(False, None, None)))):
-        count = asyncio.run(scheduler.send_daily_reminders())
+        result = asyncio.run(scheduler.send_daily_reminders())
 
     scheduler._send_reminder_email.assert_not_called()
-    assert count == 0
+    assert result["count"] == 0
+    assert result["outcome_status"] == "success"
 
 
 def test_daily_reminder_skipped_when_expiry_reminders_false():
@@ -61,10 +62,11 @@ def test_daily_reminder_skipped_when_expiry_reminders_false():
     ])))
     scheduler._send_reminder_email = AsyncMock()
 
-    count = asyncio.run(scheduler.send_daily_reminders())
+    result = asyncio.run(scheduler.send_daily_reminders())
 
     scheduler._send_reminder_email.assert_not_called()
-    assert count == 0
+    assert result["count"] == 0
+    assert result["outcome_status"] == "success"
 
 
 def test_is_in_quiet_hours_returns_false_when_disabled():
@@ -94,11 +96,25 @@ def test_sms_reminder_skipped_when_sms_urgent_alerts_only_and_no_overdue():
         "sms_urgent_alerts_only": True,
     })
     # Expiring but not overdue (due in 14 days)
-    scheduler.db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[
-        {"requirement_id": "r1", "due_date": _due_in_days(14), "description": "Gas", "property_id": "p1", "status": "PENDING"},
-    ])))
+    req_row = {
+        "requirement_id": "r1",
+        "client_id": "c1",
+        "due_date": _due_in_days(14),
+        "description": "Gas",
+        "property_id": "p1",
+        "status": "PENDING",
+    }
+    scheduler.db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[req_row])))
+    scheduler.db.requirements.find_one = AsyncMock(return_value=req_row)
     scheduler.db.requirements.update_one = AsyncMock()
     scheduler.db.properties.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+    ris = MagicMock()
+    ris.find_one = AsyncMock(return_value=None)
+    ris.update_one = AsyncMock()
+    scheduler.db.reminder_item_state = ris
+    rel = MagicMock()
+    rel.insert_one = AsyncMock()
+    scheduler.db.reminder_evaluation_log = rel
     scheduler.db.audit_logs = MagicMock()
     scheduler.db.audit_logs.insert_one = AsyncMock()
     scheduler._send_reminder_email = AsyncMock()

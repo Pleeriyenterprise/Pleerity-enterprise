@@ -13,6 +13,7 @@ from middleware import admin_route_guard, require_owner_or_admin
 from models import AuditAction
 from services import admin_communications_service as acs
 from utils.audit import create_audit_log
+from utils.api_errors import conflict_error_detail, validation_error_detail
 
 router = APIRouter(
     prefix="/api/admin/communications",
@@ -158,7 +159,7 @@ async def preview_communication(request: Request, body: PreviewRequest):
             "preview_checksum": preview_checksum,
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=validation_error_detail(str(e), error_code="COMMUNICATION_PREVIEW_INVALID"))
 
 
 @router.post("/send", dependencies=[Depends(require_owner_or_admin)])
@@ -188,9 +189,21 @@ async def send_communication(request: Request, body: SendRequest):
         )
         return result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=validation_error_detail(str(e), error_code="COMMUNICATION_SEND_INVALID"))
     except RuntimeError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail=conflict_error_detail(str(e), error_code="COMMUNICATION_SEND_CONFLICT"))
+
+
+@router.post("/deliveries/{delivery_id}/resend-email", dependencies=[Depends(require_owner_or_admin)])
+async def resend_communication_delivery_email_route(request: Request, delivery_id: str):
+    user = await require_owner_or_admin(request)
+    try:
+        return await acs.resend_failed_communication_delivery_email(
+            delivery_id=delivery_id,
+            admin_user=user,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=validation_error_detail(str(e), error_code="COMMUNICATION_RESEND_INVALID"))
 
 
 @router.post("/drafts", dependencies=[Depends(require_owner_or_admin)])
@@ -217,7 +230,7 @@ async def upsert_communication_draft_route(request: Request, body: DraftUpsertRe
         )
         return {"communication_id": cid}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=validation_error_detail(str(e), error_code="COMMUNICATION_DRAFT_INVALID"))
 
 
 @router.get("/drafts")
@@ -263,7 +276,7 @@ async def schedule_communication_route(request: Request, body: ScheduleRequest):
         )
         return {"communication_id": cid, "status": "SCHEDULED"}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=validation_error_detail(str(e), error_code="COMMUNICATION_SCHEDULE_INVALID"))
 
 
 @router.get("/messages")

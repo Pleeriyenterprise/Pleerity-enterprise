@@ -30,7 +30,6 @@ import {
   Eye,
   Download,
   Link2,
-  Zap,
   ChevronDown,
   ChevronUp,
   Info,
@@ -48,6 +47,17 @@ import {
 } from '../domain/presentDomain';
 import { toast } from 'sonner';
 import { buildSafeQueryPath, resolveClientPortalPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
+import { cn } from '../lib/utils';
+import {
+  PortalLoadingPanel,
+  PortalFilterStack,
+  portalPageRoot,
+  portalPrimaryButtonClass,
+  portalSecondaryButtonClass,
+  portalDrawerPanelClass,
+} from '../components/client/ClientPortalPatterns';
+import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import PropertyOperatingHub from '../components/property/PropertyOperatingHub';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -56,7 +66,8 @@ const NOT_REQUIRED_REASONS = [
   { value: 'other', label: 'Other' },
 ];
 
-const TAB_OVERVIEW = 'overview';
+/** Default landing: single-property operating hub (not a mini-dashboard). */
+const TAB_OPERATING = 'operating';
 const TAB_COMPLIANCE = 'compliance';
 const TAB_MAINTENANCE = 'maintenance';
 const TAB_EVIDENCE = 'evidence';
@@ -69,7 +80,7 @@ export default function PropertyDetailPage() {
   const { propertyId } = useParams();
   const navigate = useNavigate();
   const { hasFeature } = useEntitlements();
-  const [activeTab, setActiveTab] = useState(TAB_OVERVIEW);
+  const [activeTab, setActiveTab] = useState(TAB_OPERATING);
   const [property, setProperty] = useState(null);
   const [requirements, setRequirements] = useState([]);
   const [complianceDetail, setComplianceDetail] = useState(null);
@@ -138,6 +149,8 @@ export default function PropertyDetailPage() {
   const [urgentExplainKey, setUrgentExplainKey] = useState(null);
   const [urgentExplainData, setUrgentExplainData] = useState(null);
   const [urgentExplainLoading, setUrgentExplainLoading] = useState(false);
+  const [operatingFeedItems, setOperatingFeedItems] = useState([]);
+  const [operatingFeedLoading, setOperatingFeedLoading] = useState(false);
 
   const [bookInspectionOpen, setBookInspectionOpen] = useState(false);
   const [bookInspectionSignalId, setBookInspectionSignalId] = useState(null);
@@ -288,8 +301,11 @@ export default function PropertyDetailPage() {
 
   useEffect(() => {
     if (!propertyId) return;
-    clientAPI.getPriorityActions({ property_id: propertyId, limit: 10 })
-      .then((res) => setPriorityActions({ actions: res.data?.actions || [], total: res.data?.total ?? 0 }))
+    clientAPI.getCommandCenter({ property_id: propertyId })
+      .then((res) => {
+        const urgent = Array.isArray(res.data?.urgent_actions) ? res.data.urgent_actions : [];
+        setPriorityActions({ actions: urgent, total: urgent.length });
+      })
       .catch(() => setPriorityActions({ actions: [], total: 0 }));
   }, [propertyId]);
 
@@ -418,7 +434,7 @@ export default function PropertyDetailPage() {
 
   useEffect(() => {
     if (!propertyId) return;
-    if (activeTab === TAB_COMPLIANCE || activeTab === TAB_OVERVIEW) {
+    if (activeTab === TAB_COMPLIANCE || activeTab === TAB_OPERATING) {
       loadComplianceExplainability();
     }
   }, [propertyId, activeTab, loadComplianceExplainability]);
@@ -462,9 +478,33 @@ export default function PropertyDetailPage() {
       .finally(() => setTimelineLoading(false));
   }, [propertyId, timelineFilters.category, timelineFilters.dateRange, timelineFilters.actor_type]);
 
+  const loadOperatingFeed = useCallback(() => {
+    if (!propertyId) return;
+    setOperatingFeedLoading(true);
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 30);
+    clientAPI
+      .getPropertyTimeline(propertyId, {
+        limit: 8,
+        from_date: from.toISOString().slice(0, 10),
+        to_date: to.toISOString().slice(0, 10),
+      })
+      .then((res) => setOperatingFeedItems(res.data?.items || []))
+      .catch(() => setOperatingFeedItems([]))
+      .finally(() => setOperatingFeedLoading(false));
+  }, [propertyId]);
+
   useEffect(() => {
     if (propertyId && activeTab === TAB_TIMELINE) loadTimeline();
   }, [propertyId, activeTab, loadTimeline]);
+
+  useEffect(() => {
+    if (!propertyId || activeTab !== TAB_OPERATING) return;
+    loadOperatingFeed();
+    loadEvidence();
+    loadDocuments();
+  }, [propertyId, activeTab, loadOperatingFeed, loadEvidence, loadDocuments]);
 
   const handleCreateWorkOrder = (e) => {
     e.preventDefault();
@@ -693,12 +733,38 @@ export default function PropertyDetailPage() {
     });
   };
 
+  const hubPrioritizedRequirements = useMemo(() => {
+    const rank = (s) => {
+      const u = String(s || '').toUpperCase();
+      if (u === 'OVERDUE' || u === 'EXPIRED') return 0;
+      if (u === 'EXPIRING_SOON') return 1;
+      if (u === 'MISSING' || u === 'PENDING') return 2;
+      return 9;
+    };
+    return [...requirements]
+      .filter((r) => ['OVERDUE', 'EXPIRED', 'EXPIRING_SOON', 'MISSING', 'PENDING'].includes((r.status || '').toUpperCase()))
+      .sort((a, b) => rank(a.status) - rank(b.status) || String(rowExpiry(a) || '').localeCompare(String(rowExpiry(b) || '')))
+      .slice(0, 8);
+  }, [requirements]);
+
+  const hubActiveWorkOrders = useMemo(() => {
+    const terminal = ['COMPLETED', 'CANCELLED', 'CLOSED', 'VERIFIED'];
+    return workOrders.filter((wo) => !terminal.includes(wo.status || ''));
+  }, [workOrders]);
+
+  const hubLatestDocuments = useMemo(() => {
+    if (evidenceData?.documents?.length) {
+      return [...evidenceData.documents]
+        .sort((a, b) => new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0))
+        .slice(0, 4);
+    }
+    return [...documents]
+      .sort((a, b) => new Date(b.uploaded_at || b.created_at || 0) - new Date(a.uploaded_at || a.created_at || 0))
+      .slice(0, 4);
+  }, [evidenceData, documents]);
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
-      </div>
-    );
+    return <PortalLoadingPanel message="Loading property…" />;
   }
 
   if (!propertyId || propertyId === 'undefined' || propertyId === 'null') {
@@ -730,7 +796,7 @@ export default function PropertyDetailPage() {
     : 'Property';
 
   return (
-    <div>
+    <div className={portalPageRoot}>
       <div className="flex items-center justify-between gap-4 mb-4">
         <Button variant="ghost" size="sm" className="-ml-2" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/properties'))}>
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -749,72 +815,103 @@ export default function PropertyDetailPage() {
         </Button>
       </div>
 
-      {/* Property header card – executive summary + actions */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 mb-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-midnight-blue">{address}</h1>
-            <div className="flex flex-wrap gap-2 mt-2 text-sm text-gray-600">
+      {/* A — Property header: identity, compliance snapshot, primary actions only */}
+      <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6 mb-4 min-w-0">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between min-w-0">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-midnight-blue leading-snug">{address}</h1>
+            {complianceDetail ? (
+              <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                <p className="text-sm text-midnight-blue">
+                  <span className="font-semibold">{(complianceDetail.score ?? complianceDetail.property_score) ?? '—'}/100</span>
+                  <span className="text-gray-500"> · </span>
+                  <span>{formatRiskLabel(complianceDetail.risk_level)}</span>
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Evidence-based position for this property — not legal advice.</p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-electric-teal h-9 px-2 -ml-2"
+                    onClick={() => setActiveTab(TAB_COMPLIANCE)}
+                  >
+                    {PORTAL_COPY.viewDetails} (obligations)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-600 h-9 px-2"
+                    onClick={() => navigate('/reports')}
+                  >
+                    {PORTAL_COPY.viewReports}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 mt-2">Compliance detail is not available for this property yet.</p>
+            )}
+            <details className="mt-3 sm:hidden rounded-lg border border-gray-100 bg-white px-3 py-2 text-sm">
+              <summary className="cursor-pointer font-medium text-midnight-blue">Property details</summary>
+              <div className="flex flex-wrap gap-2 mt-2 text-gray-600">
+                {property?.property_type && <span>{property.property_type}</span>}
+                {property?.jurisdiction && <span>{property.jurisdiction}</span>}
+                {property?.is_hmo && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">HMO</span>}
+                {property?.occupancy != null && <span>Occupancy: {property.occupancy}</span>}
+                {property?.has_gas !== undefined && <span>{property.has_gas ? 'Gas' : 'No gas'}</span>}
+              </div>
+            </details>
+            <div className="hidden sm:flex flex-wrap gap-2 mt-2 text-sm text-gray-600">
               {property?.property_type && <span>{property.property_type}</span>}
               {property?.jurisdiction && <span>{property.jurisdiction}</span>}
               {property?.is_hmo && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded">HMO</span>}
               {property?.occupancy != null && <span>Occupancy: {property.occupancy}</span>}
               {property?.has_gas !== undefined && <span>{property.has_gas ? 'Gas' : 'No gas'}</span>}
             </div>
-            <div className="flex flex-wrap gap-4 mt-3 text-sm">
-              {complianceDetail && (
-                <span className="font-medium text-midnight-blue">
-                  Score: {(complianceDetail.score ?? complianceDetail.property_score) ?? '—'}/100 · {formatRiskLabel(complianceDetail.risk_level)}
-                </span>
-              )}
-              {hasFeature('maintenance_workflows') && (
-                <span>Open work orders: {workOrders.filter((wo) => ['OPEN', 'ASSIGNED'].includes(wo.status)).length}</span>
-              )}
-              {(() => {
-                const nextDue = requirements
-                  .filter((r) => (r.expiry_date || r.due_date) && ['OVERDUE', 'EXPIRING_SOON', 'PENDING', 'MISSING'].includes((r.status || '').toUpperCase()))
-                  .sort((a, b) => new Date(a.expiry_date || a.due_date) - new Date(b.expiry_date || b.due_date))[0];
-                return nextDue ? (
-                  <span className="text-amber-700">Next due: {rowTitle(nextDue)} — {formatDate(nextDue.expiry_date || nextDue.due_date)}</span>
-                ) : null;
-              })()}
-              {complianceDetail?.last_updated_at && (
-                <span className="text-gray-500">Updated: {new Date(complianceDetail.last_updated_at).toLocaleDateString()}</span>
-              )}
-            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" className="border-gray-200" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
-              <Upload className="w-4 h-4 mr-1.5" />
-              Upload Evidence
+          <div className="flex flex-col gap-2 w-full lg:w-auto lg:min-w-[220px] shrink-0">
+            <Button type="button" className={cn(portalPrimaryButtonClass, 'w-full justify-center')} onClick={() => navigate(resolveDocumentsPath(propertyId))}>
+              <Upload className="w-4 h-4 mr-2 shrink-0" />
+              {PORTAL_COPY.uploadDocument}
             </Button>
             {hasFeature('maintenance_workflows') ? (
-              <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); }}>
-                <Plus className="w-4 h-4 mr-1.5" />
-                Add Issue
+              <Button
+                type="button"
+                className={cn(portalPrimaryButtonClass, 'w-full justify-center bg-electric-teal hover:bg-electric-teal/90')}
+                onClick={() => {
+                  setActiveTab(TAB_MAINTENANCE);
+                  setCreateWoOpen(true);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-2 shrink-0" />
+                {PORTAL_COPY.addWorkOrder}
               </Button>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => navigate('/app/billing?upgrade_to=PLAN_2_PORTFOLIO')}>
-                <Lock className="w-4 h-4 mr-1.5" />
-                Add Issue
+              <Button type="button" variant="outline" className={cn(portalSecondaryButtonClass, 'w-full justify-center')} onClick={() => navigate('/settings/billing?upgrade_to=PLAN_2_PORTFOLIO')}>
+                <Lock className="w-4 h-4 mr-2 shrink-0" />
+                {PORTAL_COPY.upgradeForWorkOrders}
               </Button>
             )}
-            <Button variant="outline" size="sm" className="border-gray-200" onClick={() => navigate('/reports')}>
-              <BarChart3 className="w-4 h-4 mr-1.5" />
-              View Reports
-            </Button>
+            {hasFeature('maintenance_workflows') && (
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(portalSecondaryButtonClass, 'w-full justify-center text-sm')}
+                onClick={() => navigate(buildSafeQueryPath('/operations/work-orders', { property_id: propertyId }))}
+              >
+                <Wrench className="w-4 h-4 mr-2 shrink-0" />
+                {PORTAL_COPY.workOrders}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      <p className="text-sm text-gray-500 mb-4">
-        This is an evidence-based status summary. It is not legal advice.
-      </p>
-
-      {/* Tab navigation – all 8 tabs; locked icon when feature disabled */}
-      <nav className="flex flex-wrap gap-1 border-b border-gray-200 mb-6">
+      {/* Tab navigation — wrap on small screens (no horizontal tab strip) */}
+      <nav className="flex flex-wrap gap-1 border-b border-gray-200 mb-6 pb-px" aria-label="Property sections">
         {[
-          { id: TAB_OVERVIEW, label: 'Overview', icon: Building2, feature: null },
+          { id: TAB_OPERATING, label: 'Operating', icon: Building2, feature: null },
           { id: TAB_COMPLIANCE, label: 'Compliance', icon: ClipboardCheck, feature: null },
           { id: TAB_MAINTENANCE, label: 'Maintenance', icon: Wrench, feature: 'maintenance_workflows' },
           { id: TAB_EVIDENCE, label: 'Evidence', icon: FileText, feature: null },
@@ -831,9 +928,9 @@ export default function PropertyDetailPage() {
               key={id}
               type="button"
               onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              className={`flex items-center gap-2 px-3 sm:px-4 py-3 min-h-11 text-sm font-medium border-b-2 -mb-px transition-colors rounded-t-md ${
                 activeTab === id
-                  ? 'border-electric-teal text-electric-teal'
+                  ? 'border-electric-teal text-electric-teal bg-electric-teal/5'
                   : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
               }`}
             >
@@ -845,278 +942,49 @@ export default function PropertyDetailPage() {
         })}
       </nav>
 
-      {/* Tab: Overview */}
-      {activeTab === TAB_OVERVIEW && (
-        <div className="space-y-6">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {complianceDetail && (
-              <Card className="border border-gray-200">
-                <CardContent className="pt-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Compliance score</p>
-                  <p className="text-2xl font-bold text-midnight-blue">{(complianceDetail.score ?? complianceDetail.property_score) ?? '—'}/100</p>
-                  <p className="text-sm text-gray-600 mt-0.5">{formatRiskLabel(complianceDetail.risk_level)}</p>
-                  <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_COMPLIANCE)}>View compliance →</Button>
-                </CardContent>
-              </Card>
-            )}
-            <Card className="border border-gray-200">
-              <CardContent className="pt-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Maintenance risk</p>
-                <p className="text-2xl font-bold text-midnight-blue">{complianceDetail ? formatRiskLabel(complianceDetail.risk_level) : '—'}</p>
-                {hasFeature('maintenance_workflows') && (
-                  <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_MAINTENANCE)}>View maintenance →</Button>
-                )}
-              </CardContent>
-            </Card>
-            {hasFeature('maintenance_workflows') && (
-              <Card className="border border-gray-200">
-                <CardContent className="pt-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Open work orders</p>
-                  <p className="text-2xl font-bold text-midnight-blue">{workOrders.filter((wo) => ['OPEN', 'ASSIGNED'].includes(wo.status)).length}</p>
-                  <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_MAINTENANCE)}>View maintenance →</Button>
-                </CardContent>
-              </Card>
-            )}
-            <Card className="border border-gray-200">
-              <CardContent className="pt-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Upcoming compliance</p>
-                <p className="text-2xl font-bold text-midnight-blue">{requirements.filter((r) => ['OVERDUE', 'EXPIRING_SOON', 'PENDING', 'MISSING'].includes((r.status || '').toUpperCase())).length}</p>
-                <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_COMPLIANCE)}>View requirements →</Button>
-              </CardContent>
-            </Card>
-            {hasFeature('predictive_maintenance') && (
-              <Card className="border border-gray-200">
-                <CardContent className="pt-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Risk signals</p>
-                  <p className="text-2xl font-bold text-midnight-blue">{(riskSignalsData?.summary?.total ?? predictiveInsights?.insights?.length) ?? 0}</p>
-                  <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_RISK_SIGNALS)}>View risk signals →</Button>
-                </CardContent>
-              </Card>
-            )}
-            {hasFeature('contractor_network') && (
-              <Card className="border border-gray-200">
-                <CardContent className="pt-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Contractor activity</p>
-                  <p className="text-sm text-gray-600">View contractors and jobs</p>
-                  <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_CONTRACTORS)}>View contractors →</Button>
-                </CardContent>
-              </Card>
-            )}
-            <Card className="border border-gray-200">
-              <CardContent className="pt-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Evidence & documents</p>
-                <Button variant="outline" size="sm" className="mt-2 text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_EVIDENCE)}>View documents →</Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Current Alerts */}
-          {(() => {
-            const overdueReqs = requirements.filter((r) => (r.status || '').toUpperCase() === 'OVERDUE');
-            const expiringReqs = requirements.filter((r) => (r.status || '').toUpperCase() === 'EXPIRING_SOON');
-            const highRiskSignals = riskSignalsData?.signals?.filter((s) => ['high', 'critical'].includes((s.risk_level || '').toLowerCase())) ?? (predictiveInsights?.insights || []).filter((i) => (i.risk || '').toLowerCase() === 'high' || (i.risk || '').toLowerCase() === 'urgent');
-            const openWOs = workOrders.filter((wo) => ['OPEN', 'ASSIGNED'].includes(wo.status));
-            const hasAlerts = overdueReqs.length > 0 || expiringReqs.length > 0 || highRiskSignals.length > 0 || openWOs.length > 0;
-            if (!hasAlerts) return null;
-            return (
-              <Card className="border border-amber-200 bg-amber-50/50">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2"><AlertCircle className="w-4 h-4 text-amber-600" />Current alerts</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm">
-                    {overdueReqs.length > 0 && (
-                      <li>
-                        <button type="button" className="text-left text-amber-800 hover:underline font-medium" onClick={() => setActiveTab(TAB_COMPLIANCE)}>
-                          {overdueReqs.length} requirement{overdueReqs.length !== 1 ? 's' : ''} overdue
-                        </button>
-                        <span className="text-amber-700"> — fix in Compliance</span>
-                      </li>
-                    )}
-                    {expiringReqs.length > 0 && (
-                      <li>
-                        <button type="button" className="text-left text-amber-800 hover:underline font-medium" onClick={() => setActiveTab(TAB_COMPLIANCE)}>
-                          {expiringReqs.length} expiring soon
-                        </button>
-                        <span className="text-amber-700"> — review in Compliance</span>
-                      </li>
-                    )}
-                    {highRiskSignals.length > 0 && hasFeature('predictive_maintenance') && (
-                      <li>
-                        <button type="button" className="text-left text-amber-800 hover:underline font-medium" onClick={() => setActiveTab(TAB_RISK_SIGNALS)}>
-                          {highRiskSignals.length} elevated risk signal{highRiskSignals.length !== 1 ? 's' : ''}
-                        </button>
-                        <span className="text-amber-700"> — view Risk Signals</span>
-                      </li>
-                    )}
-                    {openWOs.length > 0 && hasFeature('maintenance_workflows') && (
-                      <li>
-                        <button type="button" className="text-left text-amber-800 hover:underline font-medium" onClick={() => setActiveTab(TAB_MAINTENANCE)}>
-                          {openWOs.length} open work order{openWOs.length !== 1 ? 's' : ''}
-                        </button>
-                        <span className="text-amber-700"> — manage in Maintenance</span>
-                      </li>
-                    )}
-                  </ul>
-                </CardContent>
-              </Card>
-            );
-          })()}
-
-          {/* Priority actions for this property (orchestration layer) */}
-          {priorityActions.actions?.length > 0 && (
-            <Card className="border border-electric-teal/30 bg-white" data-testid="property-priority-actions-panel">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2 text-midnight-blue">
-                  <Zap className="w-4 h-4 text-electric-teal" />
-                  Priority actions
-                </CardTitle>
-                <CardDescription>Next steps for this property</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  {priorityActions.actions.map((action, idx) => (
-                    <li key={idx} className="flex items-start justify-between gap-4 py-2 border-b border-gray-100 last:border-0">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-midnight-blue">{action.title}</p>
-                        {action.description && (
-                          <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{action.description}</p>
-                        )}
-                      </div>
-                      {action.recommended_url ? (
-                        <Link
-                          to={resolveClientPortalPath(action.recommended_url, propertyId ? `/properties/${propertyId}` : '/properties')}
-                          className="shrink-0 inline-flex items-center justify-center px-3 py-1.5 bg-electric-teal hover:bg-electric-teal/90 text-white rounded-md text-sm font-medium no-underline cursor-pointer"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {action.recommended_action_label || 'View'}
-                        </Link>
-                      ) : (
-                        <span className="shrink-0 px-3 py-1.5 bg-gray-200 text-gray-500 rounded-md text-sm">—</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Recommended Next Actions */}
-          {(() => {
-            const actions = [];
-            requirements.filter((r) => ['OVERDUE', 'EXPIRING_SOON', 'MISSING', 'PENDING'].includes((r.status || '').toUpperCase())).slice(0, 3).forEach((r) => {
-              if (r.evidence_doc_id) actions.push({ label: `Confirm expiry for ${rowTitle(r)}`, tab: TAB_EVIDENCE });
-              else actions.push({ label: `Upload evidence for ${rowTitle(r)}`, tab: TAB_EVIDENCE });
-            });
-            (riskSignalsData?.signals || predictiveInsights?.insights || []).filter((s) => ['high', 'critical'].includes((s.risk_level || s.risk || '').toLowerCase())).slice(0, 2).forEach((i) => {
-              actions.push({ label: i.recommended_action || i.recommendation || 'Create inspection for risk', tab: TAB_RISK_SIGNALS });
-            });
-            if (actions.length === 0) return null;
-            return (
-              <Card className="border border-gray-200">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Recommended next actions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm">
-                    {actions.slice(0, 5).map((a, i) => (
-                      <li key={i}>
-                        <button type="button" className="text-electric-teal hover:underline font-medium" onClick={() => setActiveTab(a.tab)}>
-                          {a.label}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            );
-          })()}
-
-          {/* Suggested Actions — active risk signals with action buttons */}
-          {hasFeature('predictive_maintenance') && (riskSignalsData?.signals || []).filter((s) => (s.status || 'active') === 'active').length > 0 && (
-            <Card className="border border-electric-teal/30 bg-white">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">Suggested actions</CardTitle>
-                <CardDescription>Active risk signals — trigger an action or resolve</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  {(riskSignalsData.signals || []).filter((s) => (s.status || 'active') === 'active').slice(0, 5).map((s) => {
-                    const actions = Array.isArray(s.suggested_actions) ? s.suggested_actions : ['create_issue', 'create_work_order'];
-                    return (
-                      <li key={s.signal_id} className="p-3 rounded-lg border border-gray-100 bg-gray-50/80">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <p className="font-medium text-gray-900">{humanRiskType(s)}</p>
-                            <p className="text-sm text-gray-600 mt-0.5">{humanAction(s.recommended_action, s)}</p>
-                            <span className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded ${['high', 'critical'].includes((s.risk_level || '').toLowerCase()) ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
-                              {humanSeverity(s.risk_level)}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5 shrink-0">
-                            {actions.includes('create_work_order') && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={async () => {
-                                  if (hasFeature('maintenance_workflows')) {
-                                    try {
-                                      await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
-                                      toast.success('Work order created');
-                                      loadRiskSignals();
-                                      setActiveTab(TAB_MAINTENANCE);
-                                    } catch (e) {
-                                      toast.error(e?.response?.data?.detail || 'Failed');
-                                    }
-                                  } else {
-                                    setActiveTab(TAB_MAINTENANCE);
-                                    setCreateWoOpen(true);
-                                    setCreateWoForm((f) => ({ ...f, description: s.recommended_action }));
-                                  }
-                                }}
-                              ><Wrench className="w-3 h-3 mr-1" /> Work order</Button>
-                            )}
-                            {actions.includes('create_issue') && (
-                              <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.createIssueFromRiskSignal(s.signal_id, {}); toast.success('Issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Issue</Button>
-                            )}
-                            {actions.includes('schedule_inspection') && hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
-                              <Button size="sm" variant="outline" onClick={() => openBookInspectionFromRisk(s.signal_id)}>Book inspection</Button>
-                            )}
-                            {actions.includes('schedule_inspection') && hasFeature('maintenance_workflows') && !hasFeature('compliance_engine') && (
-                              <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {}); toast.success('Inspection issue logged (maintenance)'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Log inspection issue</Button>
-                            )}
-                            <Button size="sm" variant="ghost" className="text-gray-600" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'acknowledged'); loadRiskSignals(); } catch (_) {} }}>Acknowledge</Button>
-                            <Button size="sm" variant="ghost" className="text-gray-600" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'resolved'); loadRiskSignals(); } catch (_) {} }}>Resolve</Button>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })})}
-                </ul>
-                <Button variant="outline" size="sm" className="mt-3 border-electric-teal text-electric-teal" onClick={() => setActiveTab(TAB_RISK_SIGNALS)}>View all risk signals</Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {requirements.filter((r) => ['OVERDUE', 'EXPIRING_SOON', 'PENDING', 'MISSING'].includes((r.status || '').toUpperCase())).length > 0 && (
-            <Card className="border border-amber-200 bg-amber-50/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2"><AlertCircle className="w-4 h-4 text-amber-600" />Next due / action needed</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-1 text-sm">
-                  {requirements.filter((r) => ['OVERDUE', 'EXPIRING_SOON', 'PENDING', 'MISSING'].includes((r.status || '').toUpperCase())).slice(0, 5).map((r, i) => (
-                    <li key={i} className="flex items-center justify-between">
-                      <span>{rowTitle(r)}</span>
-                      <span className="text-amber-700 font-medium">{complianceRequirementStatusLabel(r.status)}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button variant="outline" size="sm" className="mt-3 border-amber-300 text-amber-800" onClick={() => setActiveTab(TAB_COMPLIANCE)}>View all requirements</Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+      {activeTab === TAB_OPERATING && (
+        <PropertyOperatingHub
+          propertyId={propertyId}
+          hasFeature={hasFeature}
+          tabs={{
+            compliance: TAB_COMPLIANCE,
+            maintenance: TAB_MAINTENANCE,
+            evidence: TAB_EVIDENCE,
+            timeline: TAB_TIMELINE,
+            riskSignals: TAB_RISK_SIGNALS,
+            contractors: TAB_CONTRACTORS,
+          }}
+          onSelectTab={setActiveTab}
+          priorityActions={priorityActions}
+          riskSignalsData={riskSignalsData}
+          loadRiskSignals={loadRiskSignals}
+          loadWorkOrders={loadWorkOrders}
+          hubPrioritizedRequirements={hubPrioritizedRequirements}
+          getComplianceSummary={getComplianceSummary}
+          hubActiveWorkOrders={hubActiveWorkOrders}
+          workOrdersLoading={workOrdersLoading}
+          evidenceData={evidenceData}
+          evidenceLoading={evidenceLoading}
+          hubLatestDocuments={hubLatestDocuments}
+          operatingFeedItems={operatingFeedItems}
+          operatingFeedLoading={operatingFeedLoading}
+          setComplianceStatusFilter={setComplianceStatusFilter}
+          openBookInspectionFromRisk={openBookInspectionFromRisk}
+          onOpenNotApplicable={(payload) => {
+            setNotApplicableModal(payload);
+            setNotApplicableReason('not_applicable');
+          }}
+          setWoDetailDrawer={setWoDetailDrawer}
+          onAddWorkOrder={() => {
+            setActiveTab(TAB_MAINTENANCE);
+            setCreateWoOpen(true);
+          }}
+          onCreateWoFromRiskDescription={(description) => {
+            setActiveTab(TAB_MAINTENANCE);
+            setCreateWoOpen(true);
+            setCreateWoForm((f) => ({ ...f, description }));
+          }}
+        />
       )}
 
       {/* Tab: Compliance */}
@@ -1236,64 +1104,105 @@ export default function PropertyDetailPage() {
                   {Array.isArray(complianceExplainability.score_breakdown) && complianceExplainability.score_breakdown.length > 0 && (
                     <div>
                       <p className="text-sm font-medium text-midnight-blue mb-1">Requirement breakdown</p>
-                      <div className="overflow-x-auto rounded-lg border border-gray-200">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="bg-gray-50 text-left text-gray-600">
-                              <th className="px-3 py-2">Requirement</th>
-                              <th className="px-3 py-2">Status</th>
-                              <th className="px-3 py-2">Risk if failed</th>
-                              <th className="px-3 py-2">Expiry</th>
-                              <th className="px-3 py-2 text-right">Missing points</th>
-                              <th className="px-3 py-2 text-right">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {complianceExplainability.score_breakdown
-                              .filter((r) => r?.applies_if)
-                              .sort((a, b) => {
-                                const aMiss = Number(a?.applicable_points || 0) - Number(a?.earned_points || 0);
-                                const bMiss = Number(b?.applicable_points || 0) - Number(b?.earned_points || 0);
-                                return bMiss - aMiss;
-                              })
-                              .slice(0, 8)
-                              .map((r, idx) => {
+                      {(() => {
+                        const breakdownRows = complianceExplainability.score_breakdown
+                          .filter((r) => r?.applies_if)
+                          .sort((a, b) => {
+                            const aMiss = Number(a?.applicable_points || 0) - Number(a?.earned_points || 0);
+                            const bMiss = Number(b?.applicable_points || 0) - Number(b?.earned_points || 0);
+                            return bMiss - aMiss;
+                          })
+                          .slice(0, 8);
+                        return (
+                          <>
+                            <div className="md:hidden space-y-2 mb-3">
+                              {breakdownRows.map((r, idx) => {
                                 const missing = Math.max(0, Number(r?.applicable_points || 0) - Number(r?.earned_points || 0));
                                 const status = String(r?.status || '').toUpperCase();
                                 const isMissingOrExpired = ['MISSING', 'MISSING_EVIDENCE', 'EXPIRED'].includes(status);
-                                const actionLabel = isMissingOrExpired ? 'Upload' : 'Review';
+                                const actionLabel = isMissingOrExpired ? PORTAL_COPY.uploadDocument : PORTAL_COPY.viewDetails;
                                 const requirementCode = String(r?.requirement_code || '').toLowerCase();
                                 return (
-                                  <tr key={`${r?.requirement_code || 'req'}-${idx}`} className="border-t border-gray-100">
-                                    <td className="px-3 py-2 font-medium text-midnight-blue">
+                                  <Card key={`${r?.requirement_code || 'req'}-m-${idx}`} className="border border-gray-200 p-3">
+                                    <p className="font-medium text-midnight-blue text-sm">
                                       {r?.requirement_code ? requirementLabel(r.requirement_code) : '—'}
-                                    </td>
-                                    <td className="px-3 py-2 text-gray-700">{complianceRequirementStatusLabel(r?.status)}</td>
-                                    <td className="px-3 py-2 text-gray-700">{String(r?.risk_level_if_failed || '—')}</td>
-                                    <td className="px-3 py-2 text-gray-600">
+                                    </p>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      {complianceRequirementStatusLabel(r?.status)} · Risk if failed: {String(r?.risk_level_if_failed || '—')}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
                                       {r?.expiry_date
                                         ? r?.date_source === 'SYSTEM_ESTIMATED'
                                           ? `Est. ${formatDate(r.expiry_date)}`
                                           : formatDate(r.expiry_date)
                                         : '—'}
-                                    </td>
-                                    <td className="px-3 py-2 text-right text-gray-700">{missing.toFixed(1)}</td>
-                                    <td className="px-3 py-2 text-right">
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="text-electric-teal border-electric-teal"
-                                        onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_code: requirementCode }))}
-                                      >
-                                        {actionLabel}
-                                      </Button>
-                                    </td>
-                                  </tr>
+                                      {' · '}Missing pts: {missing.toFixed(1)}
+                                    </p>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-electric-teal border-electric-teal mt-2 min-h-11 w-full sm:w-auto"
+                                      onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_code: requirementCode }))}
+                                    >
+                                      {actionLabel}
+                                    </Button>
+                                  </Card>
                                 );
                               })}
-                          </tbody>
-                        </table>
-                      </div>
+                            </div>
+                            <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="bg-gray-50 text-left text-gray-600">
+                                    <th className="px-3 py-2">Requirement</th>
+                                    <th className="px-3 py-2">Status</th>
+                                    <th className="px-3 py-2">Risk if failed</th>
+                                    <th className="px-3 py-2">Expiry</th>
+                                    <th className="px-3 py-2 text-right">Missing points</th>
+                                    <th className="px-3 py-2 text-right">Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {breakdownRows.map((r, idx) => {
+                                    const missing = Math.max(0, Number(r?.applicable_points || 0) - Number(r?.earned_points || 0));
+                                    const status = String(r?.status || '').toUpperCase();
+                                    const isMissingOrExpired = ['MISSING', 'MISSING_EVIDENCE', 'EXPIRED'].includes(status);
+                                    const actionLabel = isMissingOrExpired ? 'Upload' : 'Review';
+                                    const requirementCode = String(r?.requirement_code || '').toLowerCase();
+                                    return (
+                                      <tr key={`${r?.requirement_code || 'req'}-${idx}`} className="border-t border-gray-100">
+                                        <td className="px-3 py-2 font-medium text-midnight-blue">
+                                          {r?.requirement_code ? requirementLabel(r.requirement_code) : '—'}
+                                        </td>
+                                        <td className="px-3 py-2 text-gray-700">{complianceRequirementStatusLabel(r?.status)}</td>
+                                        <td className="px-3 py-2 text-gray-700">{String(r?.risk_level_if_failed || '—')}</td>
+                                        <td className="px-3 py-2 text-gray-600">
+                                          {r?.expiry_date
+                                            ? r?.date_source === 'SYSTEM_ESTIMATED'
+                                              ? `Est. ${formatDate(r.expiry_date)}`
+                                              : formatDate(r.expiry_date)
+                                            : '—'}
+                                        </td>
+                                        <td className="px-3 py-2 text-right text-gray-700">{missing.toFixed(1)}</td>
+                                        <td className="px-3 py-2 text-right">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-electric-teal border-electric-teal"
+                                            onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_code: requirementCode }))}
+                                          >
+                                            {actionLabel}
+                                          </Button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1378,7 +1287,7 @@ export default function PropertyDetailPage() {
                   <CardContent className="py-6 text-center">
                     <p className="text-gray-700 mb-2">No evidence has been uploaded for this property yet.</p>
                     <div className="flex flex-wrap justify-center gap-2">
-                      <Button className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(resolveDocumentsPath(propertyId))}>Upload Evidence</Button>
+                      <Button className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11" onClick={() => navigate(resolveDocumentsPath(propertyId))}>{PORTAL_COPY.uploadDocument}</Button>
                       <Button variant="outline" onClick={() => setActiveTab(TAB_EVIDENCE)}>View Evidence tab</Button>
                     </div>
                   </CardContent>
@@ -1631,13 +1540,13 @@ export default function PropertyDetailPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-lg font-semibold text-midnight-blue">Maintenance</h2>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setCreateIssueOpen(true)}>
+              <Button size="sm" variant="outline" className="min-h-11" onClick={() => setCreateIssueOpen(true)}>
                 <FileText className="w-4 h-4 mr-2" />
-                Report issue
+                {PORTAL_COPY.reportIssue}
               </Button>
-              <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => setCreateWoOpen(true)}>
+              <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90 min-h-11" onClick={() => setCreateWoOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
-                Add work order
+                {PORTAL_COPY.addWorkOrder}
               </Button>
             </div>
           </div>
@@ -1655,19 +1564,19 @@ export default function PropertyDetailPage() {
           {/* Issues queue */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Issues</CardTitle>
-              <div className="flex flex-wrap gap-2 mt-2">
-                <select value={maintenanceIssueFilter.status} onChange={(e) => setMaintenanceIssueFilter((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
+              <CardTitle className="text-base">{PORTAL_COPY.maintenanceIssue}s</CardTitle>
+              <PortalFilterStack className="mt-2">
+                <select value={maintenanceIssueFilter.status} onChange={(e) => setMaintenanceIssueFilter((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-2 text-sm min-h-11 w-full md:w-auto">
                   <option value="">All statuses</option><option value="new">New</option><option value="triaged">Triaged</option><option value="ready_for_work_order">{issueStatusLabel('ready_for_work_order')}</option><option value="closed">Closed</option>
                 </select>
-                <select value={maintenanceIssueFilter.severity} onChange={(e) => setMaintenanceIssueFilter((f) => ({ ...f, severity: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
+                <select value={maintenanceIssueFilter.severity} onChange={(e) => setMaintenanceIssueFilter((f) => ({ ...f, severity: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-2 text-sm min-h-11 w-full md:w-auto">
                   <option value="">All severities</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option>
                 </select>
-                <select value={maintenanceIssueFilter.category} onChange={(e) => setMaintenanceIssueFilter((f) => ({ ...f, category: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
+                <select value={maintenanceIssueFilter.category} onChange={(e) => setMaintenanceIssueFilter((f) => ({ ...f, category: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-2 text-sm min-h-11 w-full md:w-auto">
                   <option value="">All categories</option><option value="general">General</option><option value="plumbing">Plumbing</option><option value="electrical">Electrical</option><option value="heating">Heating</option>
                 </select>
-                <Button size="sm" variant="ghost" onClick={loadMaintenanceIssues}>Refresh</Button>
-              </div>
+                <Button size="sm" variant="ghost" className="min-h-11 w-full md:w-auto" onClick={loadMaintenanceIssues}>Refresh</Button>
+              </PortalFilterStack>
             </CardHeader>
             <CardContent>
               {(workOrdersLoading && maintenanceIssues.length === 0) || maintenanceIssuesLoading ? (
@@ -1681,31 +1590,52 @@ export default function PropertyDetailPage() {
                   </div>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b text-left text-gray-600"><th className="p-2">Summary</th><th className="p-2">Category</th><th className="p-2">Severity</th><th className="p-2">Priority</th><th className="p-2">Asset</th><th className="p-2">Source</th><th className="p-2">Status</th><th className="p-2">Created</th><th className="p-2 text-right">Actions</th></tr></thead>
-                    <tbody>
-                      {maintenanceIssues.map((iss) => (
-                        <tr key={iss.issue_id} className="border-b hover:bg-gray-50">
-                          <td className="p-2 font-medium max-w-[180px] truncate" title={iss.description}>{iss.description || '—'}</td>
-                          <td className="p-2 text-gray-600">{(iss.category || '—').replace(/_/g, ' ')}</td>
-                          <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${(iss.severity || '').toLowerCase() === 'urgent' ? 'bg-red-100 text-red-800' : (iss.severity || '').toLowerCase() === 'high' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>{iss.severity || '—'}</span></td>
-                          <td className="p-2">{iss.priority_score != null ? iss.priority_score : '—'}</td>
-                          <td className="p-2 text-gray-600">{assetLabel(iss.asset_id)}</td>
-                          <td className="p-2 text-gray-600">{iss.source || '—'}</td>
-                          <td className="p-2">{issueStatusLabel(iss.status)}</td>
-                          <td className="p-2 text-gray-600">{iss.created_at ? formatDate(iss.created_at) : '—'}</td>
-                          <td className="p-2 text-right">
-                            <Button size="sm" variant="ghost" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
-                            {iss.status !== 'ready_for_work_order' && iss.status !== 'closed' && (
-                              <Button size="sm" variant="outline" className="ml-1" onClick={() => handleCreateWoFromIssue(iss.issue_id)}>Create WO</Button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  <div className="md:hidden space-y-3">
+                    {maintenanceIssues.map((iss) => (
+                      <Card key={iss.issue_id} className="border border-gray-200 p-3">
+                        <p className="font-medium text-midnight-blue text-sm">{iss.description || '—'}</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {(iss.category || '—').replace(/_/g, ' ')} · {iss.severity || '—'} · {issueStatusLabel(iss.status)}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {iss.created_at ? formatDate(iss.created_at) : '—'} · {assetLabel(iss.asset_id)}
+                        </p>
+                        <div className="flex flex-col gap-2 mt-3">
+                          <Button size="sm" variant="outline" className="min-h-11 w-full" onClick={() => setIssueDetailDrawer(iss.issue_id)}>{PORTAL_COPY.viewDetails}</Button>
+                          {iss.status !== 'ready_for_work_order' && iss.status !== 'closed' && (
+                            <Button size="sm" className="min-h-11 w-full bg-electric-teal hover:bg-electric-teal/90" onClick={() => handleCreateWoFromIssue(iss.issue_id)}>{PORTAL_COPY.addWorkOrder}</Button>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b text-left text-gray-600"><th className="p-2">Summary</th><th className="p-2">Category</th><th className="p-2">Severity</th><th className="p-2">Priority</th><th className="p-2">Asset</th><th className="p-2">Source</th><th className="p-2">Status</th><th className="p-2">Created</th><th className="p-2 text-right">Actions</th></tr></thead>
+                      <tbody>
+                        {maintenanceIssues.map((iss) => (
+                          <tr key={iss.issue_id} className="border-b hover:bg-gray-50">
+                            <td className="p-2 font-medium max-w-[180px] truncate" title={iss.description}>{iss.description || '—'}</td>
+                            <td className="p-2 text-gray-600">{(iss.category || '—').replace(/_/g, ' ')}</td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${(iss.severity || '').toLowerCase() === 'urgent' ? 'bg-red-100 text-red-800' : (iss.severity || '').toLowerCase() === 'high' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>{iss.severity || '—'}</span></td>
+                            <td className="p-2">{iss.priority_score != null ? iss.priority_score : '—'}</td>
+                            <td className="p-2 text-gray-600">{assetLabel(iss.asset_id)}</td>
+                            <td className="p-2 text-gray-600">{iss.source || '—'}</td>
+                            <td className="p-2">{issueStatusLabel(iss.status)}</td>
+                            <td className="p-2 text-gray-600">{iss.created_at ? formatDate(iss.created_at) : '—'}</td>
+                            <td className="p-2 text-right">
+                              <Button size="sm" variant="ghost" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
+                              {iss.status !== 'ready_for_work_order' && iss.status !== 'closed' && (
+                                <Button size="sm" variant="outline" className="ml-1" onClick={() => handleCreateWoFromIssue(iss.issue_id)}>Create WO</Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -1713,13 +1643,13 @@ export default function PropertyDetailPage() {
           {/* Work orders queue */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Work orders</CardTitle>
-              <div className="flex flex-wrap gap-2 mt-2">
-                <select value={maintenanceWoFilter.status} onChange={(e) => setMaintenanceWoFilter((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-1 text-sm">
+              <CardTitle className="text-base">{PORTAL_COPY.workOrders}</CardTitle>
+              <PortalFilterStack className="mt-2">
+                <select value={maintenanceWoFilter.status} onChange={(e) => setMaintenanceWoFilter((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-2 text-sm min-h-11 w-full md:w-auto">
                   <option value="">All statuses</option><option value="OPEN">Open</option><option value="ASSIGNED">Assigned</option><option value="IN_PROGRESS">In progress</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option>
                 </select>
-                <Button size="sm" variant="ghost" onClick={loadWorkOrders}>Refresh</Button>
-              </div>
+                <Button size="sm" variant="ghost" className="min-h-11 w-full md:w-auto" onClick={loadWorkOrders}>Refresh</Button>
+              </PortalFilterStack>
             </CardHeader>
             <CardContent>
               {workOrdersLoading && workOrders.length === 0 ? (
@@ -1733,25 +1663,48 @@ export default function PropertyDetailPage() {
                   </div>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b text-left text-gray-600"><th className="p-2">Description</th><th className="p-2">Linked issue</th><th className="p-2">Asset</th><th className="p-2">Severity</th><th className="p-2">Status</th><th className="p-2">SLA due</th><th className="p-2">Updated</th><th className="p-2 text-right">Actions</th></tr></thead>
-                    <tbody>
-                      {filteredWorkOrders.map((wo) => (
-                        <tr key={wo.work_order_id} className="border-b hover:bg-gray-50">
-                          <td className="p-2 font-medium max-w-[180px] truncate" title={wo.description}>{wo.description || '—'}</td>
-                          <td className="p-2 text-gray-600">{wo.issue_id ? <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>Issue</button> : '—'}</td>
-                          <td className="p-2 text-gray-600">{assetLabel(wo.asset_id)}</td>
-                          <td className="p-2"><span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700">{wo.severity || '—'}</span></td>
-                          <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${wo.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : wo.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800'}`}>{wo.status || '—'}</span></td>
-                          <td className="p-2 text-gray-600">{wo.sla_complete_by ? formatDate(wo.sla_complete_by) : '—'}</td>
-                          <td className="p-2 text-gray-600">{wo.updated_at ? formatRelativeTime(wo.updated_at) : '—'}</td>
-                          <td className="p-2 text-right"><Button size="sm" variant="ghost" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View</Button></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  <div className="md:hidden space-y-3">
+                    {filteredWorkOrders.map((wo) => (
+                      <Card key={wo.work_order_id} className="border border-gray-200 p-3">
+                        <p className="font-medium text-midnight-blue text-sm">{wo.description || '—'}</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {wo.status || '—'} · {wo.severity || '—'}
+                          {wo.sla_complete_by ? ` · SLA ${formatDate(wo.sla_complete_by)}` : ''}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {wo.updated_at ? formatRelativeTime(wo.updated_at) : '—'} · {assetLabel(wo.asset_id)}
+                          {wo.issue_id ? (
+                            <>
+                              {' · '}
+                              <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>{PORTAL_COPY.maintenanceIssue}</button>
+                            </>
+                          ) : null}
+                        </p>
+                        <Button size="sm" variant="outline" className="min-h-11 w-full mt-3" onClick={() => setWoDetailDrawer(wo.work_order_id)}>{PORTAL_COPY.viewDetails}</Button>
+                      </Card>
+                    ))}
+                  </div>
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b text-left text-gray-600"><th className="p-2">Description</th><th className="p-2">Linked issue</th><th className="p-2">Asset</th><th className="p-2">Severity</th><th className="p-2">Status</th><th className="p-2">SLA due</th><th className="p-2">Updated</th><th className="p-2 text-right">Actions</th></tr></thead>
+                      <tbody>
+                        {filteredWorkOrders.map((wo) => (
+                          <tr key={wo.work_order_id} className="border-b hover:bg-gray-50">
+                            <td className="p-2 font-medium max-w-[180px] truncate" title={wo.description}>{wo.description || '—'}</td>
+                            <td className="p-2 text-gray-600">{wo.issue_id ? <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>Issue</button> : '—'}</td>
+                            <td className="p-2 text-gray-600">{assetLabel(wo.asset_id)}</td>
+                            <td className="p-2"><span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700">{wo.severity || '—'}</span></td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${wo.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : wo.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800'}`}>{wo.status || '—'}</span></td>
+                            <td className="p-2 text-gray-600">{wo.sla_complete_by ? formatDate(wo.sla_complete_by) : '—'}</td>
+                            <td className="p-2 text-gray-600">{wo.updated_at ? formatRelativeTime(wo.updated_at) : '—'}</td>
+                            <td className="p-2 text-right"><Button size="sm" variant="ghost" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View</Button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -1787,7 +1740,7 @@ export default function PropertyDetailPage() {
 
           {createWoOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setCreateWoOpen(false)}>
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[min(90dvh,90vh)] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Add work order</h2>
                 <form onSubmit={handleCreateWorkOrder} className="space-y-4">
                   <div>
@@ -1805,7 +1758,7 @@ export default function PropertyDetailPage() {
 
           {createIssueOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setCreateIssueOpen(false)}>
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[min(90dvh,90vh)] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Report issue (triaged)</h2>
                 <form onSubmit={handleCreateIssue} className="space-y-4">
                   <div>
@@ -1832,7 +1785,7 @@ export default function PropertyDetailPage() {
       {/* Issue detail drawer */}
       {issueDetailDrawer && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setIssueDetailDrawer(null)}>
-          <div className="w-full max-w-lg bg-white shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className={cn(portalDrawerPanelClass, 'max-w-lg')} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="font-semibold text-midnight-blue">Issue details</h3>
               <button type="button" onClick={() => setIssueDetailDrawer(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
@@ -1878,7 +1831,7 @@ export default function PropertyDetailPage() {
       {/* Work order detail drawer */}
       {woDetailDrawer && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setWoDetailDrawer(null)}>
-          <div className="w-full max-w-lg bg-white shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className={cn(portalDrawerPanelClass, 'max-w-lg')} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="font-semibold text-midnight-blue">Work order details</h3>
               <button type="button" onClick={() => setWoDetailDrawer(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
@@ -1950,15 +1903,15 @@ export default function PropertyDetailPage() {
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-lg font-semibold text-midnight-blue">Evidence vault</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <Button
-                className="bg-electric-teal text-white hover:bg-electric-teal/90"
+                className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11"
                 onClick={() => navigate(resolveDocumentsPath(propertyId))}
               >
                 <Upload className="w-4 h-4 mr-2" />
-                Upload Evidence
+                {PORTAL_COPY.uploadDocument}
               </Button>
-              <Button variant="outline" size="sm" className="border-gray-200" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
+              <Button variant="outline" size="sm" className="border-gray-200 min-h-11" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
                 Open full list
               </Button>
             </div>
@@ -1966,10 +1919,7 @@ export default function PropertyDetailPage() {
           <p className="text-sm text-gray-500">Need help? See: <Link to="/help?article=uploading-evidence" className="text-electric-teal hover:underline">Uploading Evidence guide</Link> in Help Centre.</p>
 
           {evidenceLoading ? (
-            <div className="flex items-center gap-2 text-gray-500 py-8">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Loading…
-            </div>
+            <PortalLoadingPanel message="Loading evidence…" />
           ) : !evidenceData ? (
             <Card className="border border-gray-200">
               <CardContent className="py-8 text-center text-gray-500">
@@ -1994,10 +1944,10 @@ export default function PropertyDetailPage() {
               {/* Missing critical CTA */}
               {(evidenceData.summary?.missingCriticalEvidence ?? 0) > 0 && (
                 <Card className="border-amber-200 bg-amber-50/50">
-                  <CardContent className="py-3 flex items-center justify-between gap-4">
+                  <CardContent className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <span className="text-sm text-amber-800">Some requirements are missing evidence. Upload documents to update score and risk.</span>
-                    <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
-                      Upload required evidence
+                    <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11 shrink-0 w-full sm:w-auto" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
+                      {PORTAL_COPY.uploadDocument}
                     </Button>
                   </CardContent>
                 </Card>
@@ -2011,8 +1961,8 @@ export default function PropertyDetailPage() {
                     <CardContent className="py-12 text-center">
                       <p className="text-gray-600 mb-2">No evidence has been uploaded for this property yet.</p>
                       <div className="flex flex-wrap justify-center gap-2">
-                        <Button className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
-                          Upload Evidence
+                        <Button className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
+                          {PORTAL_COPY.uploadDocument}
                         </Button>
                         <Button variant="outline" onClick={() => setActiveTab(TAB_COMPLIANCE)}>
                           View Compliance Requirements
@@ -2230,19 +2180,19 @@ export default function PropertyDetailPage() {
                 <Calendar className="w-12 h-12 mx-auto text-gray-400 mb-3" />
                 <p className="text-gray-700 font-medium">No activity has been recorded for this property yet.</p>
                 <p className="text-sm text-gray-500 mt-1 mb-4">Upload evidence, report an issue, or complete property setup to see events here.</p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
+                <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2">
+                  <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal min-h-11" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
                     <Upload className="w-4 h-4 mr-2" />
-                    Upload Evidence
+                    {PORTAL_COPY.uploadDocument}
                   </Button>
                   {hasFeature('maintenance_workflows') && (
-                    <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); }}>
+                    <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90 min-h-11" onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); }}>
                       <Plus className="w-4 h-4 mr-2" />
-                      Add Issue
+                      {PORTAL_COPY.addWorkOrder}
                     </Button>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => setActiveTab(TAB_OVERVIEW)}>
-                    View property setup
+                  <Button variant="outline" size="sm" onClick={() => setActiveTab(TAB_OPERATING)}>
+                    Property operating view
                   </Button>
                 </div>
               </CardContent>
@@ -2482,7 +2432,7 @@ export default function PropertyDetailPage() {
                 </div>
               )}
               {/* B) Asset Table */}
-              <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+              <div className="hidden md:block rounded-xl border border-gray-200 bg-white overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -2573,7 +2523,7 @@ export default function PropertyDetailPage() {
       {/* Asset Detail Drawer */}
       {assetDetailDrawer && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setAssetDetailDrawer(null)}>
-          <div className="w-full max-w-md bg-white shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className={cn(portalDrawerPanelClass, 'max-w-md')} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="font-semibold text-midnight-blue">Asset details</h3>
               <button type="button" onClick={() => setAssetDetailDrawer(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
@@ -2725,13 +2675,14 @@ export default function PropertyDetailPage() {
               <h3 className="font-semibold text-midnight-blue">Score change history</h3>
               <button type="button" onClick={() => setScoreHistoryModal(false)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
             </div>
-            <div className="p-4 overflow-auto max-h-[60vh]">
+            <div className="p-4 overflow-auto max-h-[60vh] max-w-full min-w-0">
               {scoreHistoryLoading ? (
                 <p className="text-gray-500">Loading…</p>
               ) : scoreHistoryEntries.length === 0 ? (
                 <p className="text-gray-500">No score change history yet.</p>
               ) : (
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto -mx-1 px-1">
+                <table className="w-full text-sm min-w-[480px]">
                   <thead>
                     <tr className="border-b text-left text-gray-600">
                       <th className="p-2">Date</th>
@@ -2753,6 +2704,7 @@ export default function PropertyDetailPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </div>
@@ -2764,7 +2716,7 @@ export default function PropertyDetailPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full m-4 p-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-midnight-blue mb-2">Mark as not applicable</h3>
             <p className="text-sm text-gray-600 mb-3">
-              &ldquo;{notApplicableModal.title}&rdquo; will be excluded from this property&apos;s score and requirements list. You can change this later from the Requirements tab.
+              &ldquo;{notApplicableModal.title}&rdquo; will be excluded from this property&apos;s score and obligations list. You can change this later from the Compliance tab.
             </p>
             <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
             <select

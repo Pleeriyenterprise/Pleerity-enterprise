@@ -153,6 +153,7 @@ const AdminClientControlPanelPage = () => {
   const billing = data?.subscription_billing || {};
   const compliance = data?.compliance_overview || {};
   const ops = data?.operations || {};
+  const operationalSnapshot = data?.operational_snapshot || {};
 
   const runAction = async (label, call) => {
     setIsBusy(true);
@@ -427,6 +428,63 @@ const AdminClientControlPanelPage = () => {
               <Row label="Onboarding stage" value={account.onboarding_stage} />
               <Row label="Activation email sent" value={account.activation_email_sent ? 'Yes' : 'No'} />
               <Row label="Dashboard ready sent" value={account.dashboard_ready_sent ? 'Yes' : 'No'} />
+            </SectionCard>
+
+            <SectionCard title="Operational snapshot">
+              <p className="text-xs text-gray-500 mb-3">
+                Onboarding progress, last monthly digest, latest admin broadcast delivery, and recent audit highlights for instant client state.
+              </p>
+              {operationalSnapshot.onboarding_checklist?.unavailable ? (
+                <p className="text-sm text-amber-800">Onboarding checklist unavailable.</p>
+              ) : (
+                <div className="space-y-2 text-sm border-b border-gray-100 pb-3 mb-3">
+                  <div className="font-medium text-gray-900">Onboarding</div>
+                  <Row label="Status" value={operationalSnapshot.onboarding_checklist?.onboarding_status ?? '-'} />
+                  <Row label="Phase" value={operationalSnapshot.onboarding_checklist?.phase_status ?? '-'} />
+                  <Row
+                    label="Progress"
+                    value={
+                      (() => {
+                        const p = operationalSnapshot.onboarding_checklist?.progress;
+                        if (p == null) return '-';
+                        if (typeof p === 'object') {
+                          return `${p.completed ?? 0}/${p.total ?? 0} (${p.percent ?? 0}%)`;
+                        }
+                        return `${p}%`;
+                      })()
+                    }
+                  />
+                  <Row label="Next step" value={operationalSnapshot.onboarding_checklist?.next_step?.label || operationalSnapshot.onboarding_checklist?.next_step?.id || '-'} />
+                  <Row label="Completed at" value={fmtDate(operationalSnapshot.onboarding_checklist?.completed_at)} />
+                </div>
+              )}
+              <div className="space-y-2 text-sm border-b border-gray-100 pb-3 mb-3">
+                <div className="font-medium text-gray-900">Digest & broadcasts</div>
+                <Row label="Last monthly digest sent" value={fmtDate(operationalSnapshot.last_monthly_digest?.sent_at)} />
+                <Row label="Last broadcast delivery" value={fmtDate(operationalSnapshot.last_broadcast_delivery?.created_at)} />
+                <Row label="Email status (last)" value={operationalSnapshot.last_broadcast_delivery?.email_status || '-'} />
+                <Row label="In-app status (last)" value={operationalSnapshot.last_broadcast_delivery?.in_app_status || '-'} />
+              </div>
+              <div className="text-sm">
+                <div className="font-medium text-gray-900 mb-2">Recent audit (sample)</div>
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {!(operationalSnapshot.recent_audit_highlights || []).length ? (
+                    <p className="text-gray-500 text-xs">No audit rows in sample window.</p>
+                  ) : (
+                    operationalSnapshot.recent_audit_highlights.map((ev, idx) => (
+                      <div key={`${ev.action}-${idx}`} className="border-b border-gray-50 pb-2 last:border-0">
+                        <div className="text-xs text-gray-500">{fmtDate(ev.timestamp)}</div>
+                        <div className="text-gray-900 font-mono text-xs">{ev.action || '—'}</div>
+                        {ev.metadata_preview && Object.keys(ev.metadata_preview).length > 0 && (
+                          <pre className="text-[10px] text-gray-600 mt-1 whitespace-pre-wrap break-words max-h-20 overflow-hidden">
+                            {JSON.stringify(ev.metadata_preview)}
+                          </pre>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </SectionCard>
 
             <SectionCard title="Subscription & Billing">

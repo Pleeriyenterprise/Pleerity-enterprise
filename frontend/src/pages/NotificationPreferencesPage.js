@@ -24,6 +24,8 @@ import { toast } from 'sonner';
 import api from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import UpgradePrompt from '../components/UpgradePrompt';
+import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
 
 // SMS Notifications Section Component
 const SMSNotificationsSection = ({ preferences, setPreferences, handleToggle, setHasChanges, originalPreferences }) => {
@@ -360,17 +362,14 @@ const NotificationPreferencesPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-electric-teal mx-auto mb-3" />
-          <p className="text-gray-600">Loading preferences...</p>
-        </div>
+      <div className={portalPageRoot}>
+        <PortalLoadingPanel message="Loading notification preferences…" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" data-testid="notification-preferences-page">
+    <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="notification-preferences-page">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-4">

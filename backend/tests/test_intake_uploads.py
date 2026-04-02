@@ -9,9 +9,6 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
-# Async tests with database
-pytestmark = pytest.mark.asyncio
-
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 os.chdir(BACKEND_DIR)
 import sys
@@ -24,112 +21,108 @@ from models.intake_uploads import IntakeUploadStatus
 class TestIntakeUploadValidation:
     """Server-side validation: file types, size, session bytes, and scoped deletion."""
 
-    @pytest.fixture
-    def app_client(self):
-        from fastapi.testclient import TestClient
-        from server import app
-        return TestClient(app)
-
-    def test_upload_accepts_safe_text_file_type(self, app_client):
+    def test_upload_accepts_safe_text_file_type(self, client):
         """Safe extension uploads (e.g. .txt) are accepted when ClamAV returns CLEAN."""
         session_id = str(uuid.uuid4())
         files = [("files", ("notes.txt", io.BytesIO(b"plain text"), "text/plain"))]
         data = {"intake_session_id": session_id}
         with patch("services.clamav_scanner.scan_file", return_value=("CLEAN", None)):
-            r = app_client.post("/api/intake/uploads/upload", data=data, files=files)
+            r = client.post("/api/intake/uploads/upload", data=data, files=files)
         assert r.status_code == 200
         assert r.json().get("success") is True
         assert len(r.json().get("uploaded", [])) == 1
         assert r.json()["uploaded"][0]["status"] == "CLEAN"
 
-    def test_upload_rejects_disallowed_extension(self, app_client):
+    def test_upload_rejects_disallowed_extension(self, client):
         """Executable-like extensions are rejected server-side."""
         session_id = str(uuid.uuid4())
         files = [("files", ("payload.exe", io.BytesIO(b"MZ\x00\x00"), "application/octet-stream"))]
         data = {"intake_session_id": session_id}
-        r = app_client.post("/api/intake/uploads/upload", data=data, files=files)
+        r = client.post("/api/intake/uploads/upload", data=data, files=files)
         assert r.status_code == 400
         body = r.json()
         detail = body.get("detail") or {}
         assert isinstance(detail, dict)
         assert detail.get("error_code") == "FILE_TYPE_NOT_ALLOWED"
 
-    def test_upload_rejects_file_over_20mb(self, app_client):
+    def test_upload_rejects_file_over_20mb(self, client):
         """Upload with file > 20MB returns 413."""
         session_id = str(uuid.uuid4())
         big = io.BytesIO(b"x" * (21 * 1024 * 1024))
         big.name = "large.pdf"
         files = [("files", ("large.pdf", big, "application/pdf"))]
         data = {"intake_session_id": session_id}
-        r = app_client.post("/api/intake/uploads/upload", data=data, files=files)
+        r = client.post("/api/intake/uploads/upload", data=data, files=files)
         assert r.status_code == 413
         body = r.json()
         assert "detail" in body
 
-    def test_upload_accepts_pdf(self, app_client):
+    def test_upload_accepts_pdf(self, client):
         """Upload with PDF is accepted (200) when ClamAV returns CLEAN."""
         session_id = str(uuid.uuid4())
         content = b"%PDF-1.4 minimal"
         files = [("files", ("test.pdf", io.BytesIO(content), "application/pdf"))]
         data = {"intake_session_id": session_id}
         with patch("services.clamav_scanner.scan_file", return_value=("CLEAN", None)):
-            r = app_client.post("/api/intake/uploads/upload", data=data, files=files)
+            r = client.post("/api/intake/uploads/upload", data=data, files=files)
         assert r.status_code == 200
         assert r.json().get("success") is True
         assert len(r.json().get("uploaded", [])) == 1
         assert r.json()["uploaded"][0]["status"] == "CLEAN"
 
-    def test_upload_accepts_many_files_no_count_limit(self, app_client):
+    def test_upload_accepts_many_files_no_count_limit(self, client):
         """No document count limit; many files in one request accepted (subject to size limits)."""
         session_id = str(uuid.uuid4())
         content = b"%PDF-1.4 minimal"
         files = [("files", (f"f{i}.pdf", io.BytesIO(content), "application/pdf")) for i in range(25)]
         data = {"intake_session_id": session_id}
         with patch("services.clamav_scanner.scan_file", return_value=("CLEAN", None)):
-            r = app_client.post("/api/intake/uploads/upload", data=data, files=files)
+            r = client.post("/api/intake/uploads/upload", data=data, files=files)
         assert r.status_code == 200
         assert r.json().get("success") is True
         assert len(r.json().get("uploaded", [])) == 25
 
-    def test_scanner_unavailable_marks_quarantined_not_clean(self, app_client):
+    def test_scanner_unavailable_marks_quarantined_not_clean(self, client):
         """When ClamAV is unavailable or scan errors, file is QUARANTINED and never CLEAN."""
         session_id = str(uuid.uuid4())
         content = b"%PDF-1.4 minimal"
         files = [("files", ("test.pdf", io.BytesIO(content), "application/pdf"))]
         data = {"intake_session_id": session_id}
         with patch("services.clamav_scanner.scan_file", return_value=("QUARANTINED", "ClamAV not installed")):
-            r = app_client.post("/api/intake/uploads/upload", data=data, files=files)
+            r = client.post("/api/intake/uploads/upload", data=data, files=files)
         assert r.status_code == 200
         assert r.json().get("success") is True
         assert len(r.json().get("uploaded", [])) == 1
         assert r.json()["uploaded"][0]["status"] == "QUARANTINED"
         assert r.json()["uploaded"][0].get("error")
 
-    def test_delete_requires_matching_intake_session(self, app_client):
+    def test_delete_requires_matching_intake_session(self, client):
         """Delete must be scoped to the same intake_session_id to prevent cross-session deletion."""
         session_id = str(uuid.uuid4())
         data = {"intake_session_id": session_id}
         files = [("files", ("test.pdf", io.BytesIO(b"%PDF-1.4 minimal"), "application/pdf"))]
         with patch("services.clamav_scanner.scan_file", return_value=("CLEAN", None)):
-            up = app_client.post("/api/intake/uploads/upload", data=data, files=files)
+            up = client.post("/api/intake/uploads/upload", data=data, files=files)
         assert up.status_code == 200
         upload_id = up.json()["uploaded"][0]["upload_id"]
 
         # Wrong session id should not be able to delete.
-        wrong = app_client.delete(f"/api/intake/uploads/{upload_id}?intake_session_id={uuid.uuid4()}")
+        wrong = client.delete(f"/api/intake/uploads/{upload_id}?intake_session_id={uuid.uuid4()}")
         assert wrong.status_code == 404
 
         # Correct session id can delete.
-        ok = app_client.delete(f"/api/intake/uploads/{upload_id}?intake_session_id={session_id}")
+        ok = client.delete(f"/api/intake/uploads/{upload_id}?intake_session_id={session_id}")
         assert ok.status_code == 200
 
 
+@pytest.mark.asyncio
 class TestIntakeUploadMigrationIdempotency:
     """Migration is idempotent: do not duplicate Documents or re-migrate."""
 
     @pytest.fixture
     async def db(self):
-        await database.connect()
+        if database.get_db() is None:
+            await database.connect()
         yield database.get_db()
         # teardown optional
 
@@ -209,12 +202,14 @@ class TestIntakeUploadMigrationIdempotency:
             await db.documents.delete_many({"client_id": client_id})
 
 
+@pytest.mark.asyncio
 class TestQuarantinedNeverMigrate:
     """QUARANTINED uploads must never be migrated."""
 
     @pytest.fixture
     async def db(self):
-        await database.connect()
+        if database.get_db() is None:
+            await database.connect()
         yield database.get_db()
 
     async def test_migrate_ignores_quarantined(self, db):

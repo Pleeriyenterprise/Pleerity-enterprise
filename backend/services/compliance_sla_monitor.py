@@ -39,7 +39,10 @@ def _parse_iso(s: Optional[str]) -> Optional[datetime]:
     if not s:
         return None
     try:
-        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+        # Use datetime submodule so tests can patch module-level `datetime` for `now()` without breaking parsing.
+        import datetime as dt_mod
+
+        return dt_mod.datetime.fromisoformat(s.replace("Z", "+00:00"))
     except Exception:
         return None
 
@@ -76,11 +79,12 @@ async def _upsert_alert_and_maybe_send(
     details: Dict[str, Any],
     now: datetime,
 ) -> None:
-    cooldown_end = (now - timedelta(seconds=ALERT_COOLDOWN_SECONDS)).isoformat()
+    cooldown_boundary = now - timedelta(seconds=ALERT_COOLDOWN_SECONDS)
     existing = await db.compliance_sla_alerts.find_one(
         {"property_id": property_id, "alert_type": alert_type}
     )
-    if existing and existing.get("active") and (existing.get("last_sent_at") or "") > cooldown_end:
+    last_sent_dt = _parse_iso(existing.get("last_sent_at")) if existing else None
+    if existing and existing.get("active") and last_sent_dt and last_sent_dt > cooldown_boundary:
         # Within cooldown: only update last_detected_at and count
         await db.compliance_sla_alerts.update_one(
             {"property_id": property_id, "alert_type": alert_type},

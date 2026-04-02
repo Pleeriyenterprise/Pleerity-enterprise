@@ -20,6 +20,8 @@ import {
   Trash2,
   Plus
 } from 'lucide-react';
+import { portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
 
 const BulkPropertyImportPage = () => {
   const navigate = useNavigate();
@@ -163,20 +165,22 @@ const BulkPropertyImportPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" data-testid="bulk-property-import-page">
+    <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="bulk-property-import-page">
       {/* Header */}
       <header className="bg-midnight-blue text-white py-4">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4 min-w-0">
               <button 
-                onClick={() => navigate('/app/dashboard')} 
-                className="text-gray-300 hover:text-white"
+                type="button"
+                onClick={() => navigate('/dashboard')} 
+                className="text-gray-300 hover:text-white p-2 min-h-11 min-w-11 flex items-center justify-center rounded-lg hover:bg-white/10 shrink-0"
                 data-testid="back-btn"
+                aria-label="Back"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <div>
+              <div className="min-w-0">
                 <h1 className="text-xl font-bold">Bulk Property Import</h1>
                 <p className="text-sm text-gray-300">Import multiple properties from a CSV file</p>
               </div>
@@ -184,7 +188,7 @@ const BulkPropertyImportPage = () => {
             <Button
               variant="outline"
               onClick={downloadTemplate}
-              className="bg-transparent border-white/30 text-white hover:bg-white/10"
+              className="bg-transparent border-white/30 text-white hover:bg-white/10 min-h-11 w-full sm:w-auto shrink-0"
               data-testid="download-template-btn"
             >
               <Download className="w-4 h-4 mr-2" />
@@ -272,19 +276,66 @@ const BulkPropertyImportPage = () => {
         {parsedData.length > 0 && (
           <Card className="mb-6" data-testid="preview-card">
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <Building2 className="w-5 h-5" />
+                  <Building2 className="w-5 h-5 shrink-0" />
                   Properties to Import ({parsedData.length})
                 </CardTitle>
-                <Button variant="ghost" size="sm" onClick={clearAll} data-testid="clear-all-btn">
+                <Button variant="ghost" size="sm" className="min-h-11 w-full sm:w-auto shrink-0" onClick={clearAll} data-testid="clear-all-btn">
                   <Trash2 className="w-4 h-4 mr-1" />
                   Clear All
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              <div className="md:hidden space-y-3" data-testid="preview-cards-mobile">
+                {parsedData.map((prop, idx) => {
+                  const hasError = errors.some((e) => e.row === prop._rowIndex);
+                  return (
+                    <div
+                      key={idx}
+                      className={`rounded-lg border p-3 ${hasError ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}
+                      data-testid={`row-card-${idx}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-xs text-gray-500 font-medium tabular-nums">#{idx + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeProperty(idx)}
+                          className="min-h-11 min-w-11 flex items-center justify-center rounded-md text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0"
+                          aria-label={`Remove row ${idx + 1}`}
+                          data-testid={`remove-${idx}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="font-medium text-midnight-blue text-sm mt-1">
+                        {prop.address_line_1}
+                        {prop.address_line_2 ? <span className="text-gray-500 font-normal">, {prop.address_line_2}</span> : null}
+                      </p>
+                      <dl className="mt-2 space-y-1 text-sm text-gray-600">
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">City</dt>
+                          <dd className="text-right">{prop.city || <span className="text-red-600 font-medium">Missing</span>}</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">Postcode</dt>
+                          <dd className="text-right">{prop.postcode || <span className="text-red-600 font-medium">Missing</span>}</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">Type</dt>
+                          <dd className="text-right capitalize">{prop.property_type || '—'}</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">Units</dt>
+                          <dd className="text-right">{prop.number_of_units ?? '—'}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm" data-testid="preview-table">
                   <thead className="bg-gray-50">
                     <tr>
@@ -317,9 +368,11 @@ const BulkPropertyImportPage = () => {
                           <td className="px-3 py-2">{prop.number_of_units}</td>
                           <td className="px-3 py-2 text-center">
                             <button
+                              type="button"
                               onClick={() => removeProperty(idx)}
-                              className="text-red-500 hover:text-red-700"
-                              data-testid={`remove-${idx}`}
+                              className="min-h-11 min-w-11 inline-flex items-center justify-center text-red-500 hover:text-red-700 rounded-md hover:bg-red-50"
+                              aria-label={`Remove row ${idx + 1}`}
+                              data-testid={`remove-table-${idx}`}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -344,7 +397,7 @@ const BulkPropertyImportPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4 text-center mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center mb-6">
                 <div>
                   <div className="text-2xl font-bold text-midnight-blue">{importResults.total}</div>
                   <div className="text-sm text-gray-500">Total</div>
@@ -390,11 +443,11 @@ const BulkPropertyImportPage = () => {
                 </div>
               )}
               
-              <div className="flex gap-3">
-                <Button onClick={() => navigate('/app/dashboard')} className="flex-1" data-testid="view-dashboard-btn">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button onClick={() => navigate('/dashboard')} className="flex-1 min-h-11" data-testid="view-dashboard-btn">
                   View Dashboard
                 </Button>
-                <Button variant="outline" onClick={clearAll} data-testid="import-more-btn">
+                <Button variant="outline" onClick={clearAll} className="flex-1 sm:flex-initial min-h-11" data-testid="import-more-btn">
                   Import More
                 </Button>
               </div>

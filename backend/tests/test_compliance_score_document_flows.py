@@ -119,15 +119,16 @@ class TestAdminActionsBehaveIdentically:
                 with patch("routes.documents.regenerate_requirement_due_date", new_callable=AsyncMock):
                     with patch("services.provisioning.provisioning_service") as prov:
                         prov._update_property_compliance = AsyncMock()
-                        with patch("builtins.open", MagicMock()), \
-                             patch("routes.documents.Path") as path_cls:
-                            path_cls.return_value.parent.mkdir = MagicMock()
-                            path_cls.return_value.__str__ = lambda _: "/tmp/f"
-                            file = MagicMock()
-                            file.filename = "cert.pdf"
-                            file.read = AsyncMock(return_value=b"x")
-                            file.content_type = "application/pdf"
-                            await admin_upload_document(
-                                MagicMock(), file=file, client_id="c1", property_id="p1", requirement_id="r1"
-                            )
-                        prov._update_property_compliance.assert_called_once_with("p1")
+                        with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock):
+                            with patch("builtins.open", MagicMock()), \
+                                 patch("routes.documents.Path") as path_cls:
+                                path_cls.return_value.parent.mkdir = MagicMock()
+                                path_cls.return_value.__str__ = lambda _: "/tmp/f"
+                                file = MagicMock()
+                                file.filename = "cert.pdf"
+                                file.read = AsyncMock(return_value=b"x")
+                                file.content_type = "application/pdf"
+                                await admin_upload_document(
+                                    MagicMock(), file=file, client_id="c1", property_id="p1", requirement_id="r1"
+                                )
+                            prov._update_property_compliance.assert_called_once_with("p1")

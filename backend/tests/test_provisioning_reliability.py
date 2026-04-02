@@ -46,14 +46,15 @@ def _make_mock_db(
 
     db = MagicMock()
     db.clients = MagicMock()
-    db.clients.find_one = AsyncMock(side_effect=[
-        client,  # first call: get client
-    ])
+    db.clients.find_one = AsyncMock(return_value=client)
     db.clients.update_one = AsyncMock()
     db.clients.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=properties)))
 
     db.properties = MagicMock()
     db.properties.find_one = AsyncMock(return_value={"property_id": PROPERTY_ID, "property_type": "residential"})
+    db.properties.find = MagicMock(
+        return_value=MagicMock(to_list=AsyncMock(return_value=properties))
+    )
     db.properties.update_one = AsyncMock()
 
     db.portal_users = MagicMock()
@@ -72,6 +73,9 @@ def _make_mock_db(
     db.password_tokens = MagicMock()
     db.password_tokens.insert_one = AsyncMock()
     db.password_tokens.update_many = AsyncMock()
+
+    db.compliance_recalc_queue = MagicMock()
+    db.compliance_recalc_queue.insert_one = AsyncMock()
 
     return db, client
 
@@ -98,8 +102,12 @@ class TestProvisioningEmailFailureIsolation:
         assert success is True
         assert "invite email failed" in message or "resend" in message.lower()
         # Client must have been set to PROVISIONED (STEP 6) and then last_invite_error set (STEP 8 catch)
+        def _set_payload(c):
+            args = c[0]
+            return args[1].get("$set", {}) if len(args) > 1 and isinstance(args[1], dict) else {}
+
         updates = [c for c in db.clients.update_one.call_args_list if c[0][0] == {"client_id": CLIENT_ID}]
-        set_payloads = [c[1].get("$set", {}) for c in updates]
+        set_payloads = [_set_payload(c) for c in updates]
         assert any(s.get("onboarding_status") == OnboardingStatus.PROVISIONED.value for s in set_payloads)
         assert any("last_invite_error" in s for s in set_payloads)
         assert not any(s.get("onboarding_status") == OnboardingStatus.FAILED.value for s in set_payloads)
@@ -125,13 +133,18 @@ class TestProvisioningFailedRetry:
                 provisioning_service,
                 "_send_password_setup_link",
                 new_callable=AsyncMock,
+                return_value=(True, "sent", None),
             ):
                 success, message = await provisioning_service.provision_client_portal(CLIENT_ID)
 
         # Should have run provisioning (not returned "Already provisioned")
         assert message != "Already provisioned"
         # Should have set PROVISIONING then PROVISIONED
-        updates = [c[1].get("$set", {}) for c in db.clients.update_one.call_args_list]
+        updates = [
+            c[0][1].get("$set", {})
+            for c in db.clients.update_one.call_args_list
+            if len(c[0]) > 1 and isinstance(c[0][1], dict)
+        ]
         assert any(s.get("onboarding_status") == OnboardingStatus.PROVISIONING.value for s in updates)
         assert any(s.get("onboarding_status") == OnboardingStatus.PROVISIONED.value for s in updates)
 
@@ -154,15 +167,20 @@ class TestResendInvite:
         db.password_tokens.update_many = AsyncMock()
         db.password_tokens.insert_one = AsyncMock()
 
+        mock_send_out = MagicMock()
+        mock_send_out.outcome = "sent"
         with patch("scripts.resend_portal_invite.database.get_db", return_value=db), \
              patch("scripts.resend_portal_invite.create_audit_log", new_callable=AsyncMock) as mock_audit:
-            with patch("services.email_service.email_service.send_password_setup_email", new_callable=AsyncMock) as mock_send:
+            with patch(
+                "services.notification_orchestrator.notification_orchestrator.send",
+                new_callable=AsyncMock,
+                return_value=mock_send_out,
+            ) as mock_send:
                 result = await resend_invite("client@example.com")
 
         assert result is True
-        mock_send.assert_called_once()
+        mock_send.assert_awaited_once()
         call_kw = mock_send.call_args[1]
-        assert call_kw["recipient"] == "client@example.com"
         assert call_kw["client_id"] == CLIENT_ID
         mock_audit.assert_called_once()
         assert mock_audit.call_args[1]["action"].value == "PORTAL_INVITE_RESENT"

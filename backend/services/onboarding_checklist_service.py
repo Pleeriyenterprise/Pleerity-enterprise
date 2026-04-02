@@ -16,6 +16,8 @@ ITEM_CONFIRM_PROPERTY_ATTRIBUTES = "confirm_property_attributes"
 ITEM_INVITE_TEAM = "invite_team"
 ITEM_UPLOAD_CERTIFICATES = "upload_certificates"
 ITEM_ENABLE_MAINTENANCE = "enable_maintenance"
+ITEM_REVIEW_REQUIREMENTS = "review_requirements"
+ITEM_UPLOAD_OR_COMPLIANCE_ACTION = "upload_or_compliance_action"
 
 UK_JURISDICTIONS = ["Scotland", "England", "Wales", "Northern Ireland"]
 
@@ -69,10 +71,19 @@ async def get_checklist_items_for_client(client_id: str) -> List[Dict[str, Any]]
     # Recommended: Confirm property attributes
     items.append({
         "id": ITEM_CONFIRM_PROPERTY_ATTRIBUTES,
-        "label": "Confirm property attributes (hasGas, floors, property type)",
+        "label": "Confirm property details (type, gas, occupancy)",
         "required": False,
         "deep_link": "/properties",
         "completed_at": completed_map.get(ITEM_CONFIRM_PROPERTY_ATTRIBUTES),
+    })
+
+    # Review requirements (once portfolio exists)
+    items.append({
+        "id": ITEM_REVIEW_REQUIREMENTS,
+        "label": "Review compliance requirements for your properties",
+        "required": False,
+        "deep_link": "/requirements",
+        "completed_at": completed_map.get(ITEM_REVIEW_REQUIREMENTS),
     })
 
     # Recommended: Invite team (Portfolio/Pro)
@@ -85,14 +96,14 @@ async def get_checklist_items_for_client(client_id: str) -> List[Dict[str, Any]]
             "completed_at": completed_map.get(ITEM_INVITE_TEAM),
         })
 
-    # If compliance flags on: Upload existing certificates
+    # If compliance flags on: first evidence or compliance job
     if flags.get("COMPLIANCE_ENGINE") or flags.get("COMPLIANCE_PACKS"):
         items.append({
-            "id": ITEM_UPLOAD_CERTIFICATES,
-            "label": "Upload existing certificates",
+            "id": ITEM_UPLOAD_OR_COMPLIANCE_ACTION,
+            "label": "Upload your first document or start a compliance / maintenance job",
             "required": False,
             "deep_link": "/documents",
-            "completed_at": completed_map.get(ITEM_UPLOAD_CERTIFICATES),
+            "completed_at": completed_map.get(ITEM_UPLOAD_OR_COMPLIANCE_ACTION) or completed_map.get(ITEM_UPLOAD_CERTIFICATES),
         })
 
     # If maintenance available: Enable maintenance workflows
@@ -122,6 +133,15 @@ async def validate_item_completion(client_id: str, item_id: str) -> bool:
         if not client:
             return False
         return bool(client.get("default_jurisdiction") and client.get("enabled_jurisdictions"))
+    if item_id == ITEM_REVIEW_REQUIREMENTS:
+        n = await db.requirements.count_documents({"client_id": client_id})
+        return n >= 1
+    if item_id in (ITEM_UPLOAD_OR_COMPLIANCE_ACTION, ITEM_UPLOAD_CERTIFICATES):
+        doc_n = await db.documents.count_documents({"client_id": client_id})
+        if doc_n >= 1:
+            return True
+        wo_n = await db.work_orders.count_documents({"client_id": client_id})
+        return wo_n >= 1
     # Other items: allow mark complete (recommended/optional)
     return True
 
@@ -157,6 +177,10 @@ async def mark_item_complete(
     )
     completed_at = now if required_done else None
 
+    phase = _derive_onboarding_status(
+        [{"id": x["id"], "completed_at": x.get("completed_at")} for x in new_items if x.get("id")],
+        completed_at,
+    )
     await db.clients.update_one(
         {"client_id": client_id},
         {
@@ -164,6 +188,7 @@ async def mark_item_complete(
                 "onboarding_checklist.items": new_items,
                 "onboarding_checklist.completed_at": completed_at,
                 "onboarding_checklist.updated_at": now,
+                "onboarding_checklist.phase_status": phase,
             }
         },
     )
@@ -176,20 +201,138 @@ async def mark_item_complete(
     }
 
 
-async def get_checklist_state(client_id: str) -> Dict[str, Any]:
-    """Full checklist state for client dashboard: items (with completion) + overall completed_at."""
+async def sync_auto_completed_items(client_id: str, *, portal_user_id: Optional[str] = None) -> List[str]:
+    """
+    Mark checklist steps complete when server-side validation already passes (e.g. user added a property
+    but never clicked Mark done). Audited as a single sync event with the list of item ids updated.
+    """
     db = database.get_db()
+    client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "onboarding_checklist": 1})
+    if not client:
+        return []
+    o_prev = client.get("onboarding_checklist") or {}
+    existing_items = o_prev.get("items") or []
+    items_by_id: Dict[str, Any] = {item["id"]: dict(item) for item in existing_items if item.get("id")}
+    checklist_defs = await get_checklist_items_for_client(client_id)
+    now = datetime.now(timezone.utc).isoformat()
+    updated_ids: List[str] = []
+    for defn in checklist_defs:
+        iid = defn["id"]
+        if items_by_id.get(iid, {}).get("completed_at"):
+            continue
+        try:
+            ok = await validate_item_completion(client_id, iid)
+        except Exception as e:
+            logger.warning("sync_auto_completed_items validate failed client=%s item=%s: %s", client_id, iid, e)
+            continue
+        if ok:
+            row = {**items_by_id.get(iid, {"id": iid}), "id": iid, "completed_at": now, "completed_via": "auto_sync"}
+            items_by_id[iid] = row
+            updated_ids.append(iid)
+    if not updated_ids:
+        return []
+
+    new_items = list(items_by_id.values())
+    all_required_ids = {ITEM_ADD_PROPERTIES, ITEM_SET_JURISDICTIONS}
+    required_done = all(items_by_id.get(rid, {}).get("completed_at") for rid in all_required_ids)
+    checklist_completed_at = now if required_done else None
+
+    phase = _derive_onboarding_status(
+        [{"id": x["id"], "completed_at": x.get("completed_at")} for x in new_items if x.get("id")],
+        checklist_completed_at,
+    )
+    await db.clients.update_one(
+        {"client_id": client_id},
+        {
+            "$set": {
+                "onboarding_checklist.items": new_items,
+                "onboarding_checklist.completed_at": checklist_completed_at,
+                "onboarding_checklist.updated_at": now,
+                "onboarding_checklist.phase_status": phase,
+                "onboarding_progress": {
+                    "last_auto_sync_at": now,
+                    "auto_completed_item_ids": updated_ids,
+                    "checklist_phase_status": phase,
+                },
+            }
+        },
+    )
+    try:
+        from utils.audit import create_audit_log
+        from models import AuditAction
+
+        await create_audit_log(
+            action=AuditAction.ONBOARDING_CHECKLIST_PROGRESS_SYNCED,
+            actor_id=portal_user_id,
+            client_id=client_id,
+            resource_type="onboarding_checklist",
+            resource_id=client_id,
+            metadata={"item_ids": updated_ids, "required_complete": bool(required_done)},
+        )
+    except Exception as e:
+        logger.warning("onboarding sync audit failed: %s", e)
+    logger.info("Onboarding auto-sync client_id=%s items=%s", client_id, updated_ids)
+    return updated_ids
+
+
+def _derive_onboarding_status(items: List[Dict[str, Any]], completed_at: Optional[str]) -> str:
+    if completed_at:
+        return "completed"
+    if not items:
+        return "not_started"
+    prop_done = any(i.get("id") == ITEM_ADD_PROPERTIES and i.get("completed_at") for i in items)
+    if not prop_done:
+        return "not_started"
+    return "in_progress"
+
+
+async def get_checklist_state(client_id: str, *, portal_user_id: Optional[str] = None) -> Dict[str, Any]:
+    """Full checklist state: items, completed_at, progress, onboarding_status. Auto-syncs validated steps first."""
+    db = database.get_db()
+    if not await db.clients.find_one({"client_id": client_id}, {"_id": 1}):
+        return {
+            "items": [],
+            "completed_at": None,
+            "progress": None,
+            "onboarding_status": "not_started",
+            "next_step": None,
+            "phase_status": "not_started",
+            "onboarding_progress": None,
+        }
+    await sync_auto_completed_items(client_id, portal_user_id=portal_user_id)
     client = await db.clients.find_one(
         {"client_id": client_id},
-        {"_id": 0, "onboarding_checklist": 1},
+        {"_id": 0, "onboarding_checklist": 1, "onboarding_progress": 1},
     )
-    if not client:
-        return {"items": [], "completed_at": None}
     items = await get_checklist_items_for_client(client_id)
-    o = client.get("onboarding_checklist") or {}
+    o = (client or {}).get("onboarding_checklist") or {}
+    completed_at = o.get("completed_at")
+    done = sum(1 for i in items if i.get("completed_at"))
+    total = len(items)
+    pct = int(round(100 * done / total)) if total else 0
+    status = _derive_onboarding_status(items, completed_at)
+    next_step = None
+    for i in items:
+        if not i.get("completed_at"):
+            next_step = {
+                "id": i.get("id"),
+                "label": i.get("label"),
+                "deep_link": i.get("deep_link"),
+                "required": bool(i.get("required")),
+            }
+            break
     return {
         "items": items,
-        "completed_at": o.get("completed_at"),
+        "completed_at": completed_at,
+        "onboarding_status": status,
+        "progress": {
+            "completed": done,
+            "total": total,
+            "percent": pct,
+        },
+        "onboarding_progress": (client or {}).get("onboarding_progress"),
+        "next_step": next_step,
+        "phase_status": (o or {}).get("phase_status") or status,
     }
 
 

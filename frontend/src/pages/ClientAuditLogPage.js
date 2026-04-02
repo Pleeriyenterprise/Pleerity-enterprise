@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { History, FileText, Mail, Shield, Activity, Download, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
 
 const TAB_SCORE_HISTORY = 'score-history';
 const TAB_ACTIVITY_LOG = 'activity-log';
@@ -126,8 +128,28 @@ export default function ClientAuditLogPage() {
     return String(d);
   };
 
+  const ledgerDetailGrid = (row) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 max-w-2xl text-xs text-gray-600">
+      <div><strong>Rule version:</strong> {row.rule_version ?? '—'}</div>
+      {row.requirement_id && <div><strong>Requirement ID:</strong> {row.requirement_id}</div>}
+      {row.document_id && <div><strong>Document ID:</strong> {row.document_id}</div>}
+      {row.drivers_before && (
+        <div>
+          <strong>Drivers before:</strong>{' '}
+          status={row.drivers_before.status ?? '—'}, timeline={row.drivers_before.timeline ?? '—'}, documents={row.drivers_before.documents ?? '—'}, overdue_penalty={row.drivers_before.overdue_penalty ?? '—'}
+        </div>
+      )}
+      {row.drivers_after && (
+        <div>
+          <strong>Drivers after:</strong>{' '}
+          status={row.drivers_after.status ?? '—'}, timeline={row.drivers_after.timeline ?? '—'}, documents={row.drivers_after.documents ?? '—'}, overdue_penalty={row.drivers_after.overdue_penalty ?? '—'}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
+    <div className={cn(portalPageRoot, 'space-y-6')}>
       <div>
         <h2 className="text-2xl font-bold text-midnight-blue flex items-center gap-2">
           <History className="w-7 h-7" />
@@ -137,8 +159,8 @@ export default function ClientAuditLogPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-4">
+      <div className="border-b border-gray-200 -mx-1 px-1">
+        <nav className="flex flex-nowrap overflow-x-auto gap-4" aria-label="Audit sections">
           <button
             type="button"
             onClick={() => {
@@ -149,7 +171,7 @@ export default function ClientAuditLogPage() {
                 return next;
               }, { replace: true });
             }}
-            className={`py-3 px-1 border-b-2 font-medium text-sm ${
+            className={`shrink-0 py-3 px-1 min-h-11 border-b-2 font-medium text-sm ${
               activeTab === TAB_SCORE_HISTORY
                 ? 'border-electric-teal text-electric-teal'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -167,7 +189,7 @@ export default function ClientAuditLogPage() {
                 return next;
               }, { replace: true });
             }}
-            className={`py-3 px-1 border-b-2 font-medium text-sm ${
+            className={`shrink-0 py-3 px-1 min-h-11 border-b-2 font-medium text-sm ${
               activeTab === TAB_ACTIVITY_LOG
                 ? 'border-electric-teal text-electric-teal'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -180,50 +202,50 @@ export default function ClientAuditLogPage() {
 
       {activeTab === TAB_SCORE_HISTORY && (
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-3 items-end">
-            <div>
+          <PortalFilterStack className="items-stretch md:items-end">
+            <div className="w-full md:w-44">
               <label className="block text-xs text-gray-500 mb-1">Property ID</label>
               <input
                 type="text"
                 placeholder="Filter by property"
                 value={ledgerFilters.property_id}
                 onChange={(e) => setLedgerFilters((f) => ({ ...f, property_id: e.target.value }))}
-                className="border border-gray-300 rounded px-2 py-1.5 text-sm w-40"
+                className="border border-gray-300 rounded px-2 py-2 text-sm w-full min-h-11"
               />
             </div>
-            <div>
+            <div className="w-full md:w-48">
               <label className="block text-xs text-gray-500 mb-1">Trigger type</label>
               <input
                 type="text"
                 placeholder="e.g. DOCUMENT_UPLOADED"
                 value={ledgerFilters.trigger_type}
                 onChange={(e) => setLedgerFilters((f) => ({ ...f, trigger_type: e.target.value }))}
-                className="border border-gray-300 rounded px-2 py-1.5 text-sm w-44"
+                className="border border-gray-300 rounded px-2 py-2 text-sm w-full min-h-11"
               />
             </div>
-            <div>
+            <div className="w-full md:w-auto">
               <label className="block text-xs text-gray-500 mb-1">From date</label>
               <input
                 type="date"
                 value={ledgerFilters.from_date}
                 onChange={(e) => setLedgerFilters((f) => ({ ...f, from_date: e.target.value }))}
-                className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+                className="border border-gray-300 rounded px-2 py-2 text-sm w-full min-h-11"
               />
             </div>
-            <div>
+            <div className="w-full md:w-auto">
               <label className="block text-xs text-gray-500 mb-1">To date</label>
               <input
                 type="date"
                 value={ledgerFilters.to_date}
                 onChange={(e) => setLedgerFilters((f) => ({ ...f, to_date: e.target.value }))}
-                className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+                className="border border-gray-300 rounded px-2 py-2 text-sm w-full min-h-11"
               />
             </div>
             <button
               type="button"
               onClick={() => loadLedger()}
               disabled={ledgerLoading}
-              className="px-3 py-1.5 bg-midnight-blue text-white rounded text-sm hover:bg-midnight-blue/90 disabled:opacity-50"
+              className="px-3 py-2 min-h-11 bg-midnight-blue text-white rounded text-sm hover:bg-midnight-blue/90 disabled:opacity-50 w-full md:w-auto"
             >
               {ledgerLoading ? 'Loading…' : 'Apply'}
             </button>
@@ -231,20 +253,18 @@ export default function ClientAuditLogPage() {
               type="button"
               onClick={handleExportCsv}
               disabled={exportingCsv}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-11 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 w-full md:w-auto"
             >
               <Download className="w-4 h-4" />
               {exportingCsv ? 'Exporting…' : 'Export CSV'}
             </button>
-          </div>
+          </PortalFilterStack>
           {ledgerError && (
             <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3">{ledgerError}</div>
           )}
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             {ledgerLoading && ledger.items.length === 0 ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-10 w-10 border-2 border-electric-teal border-t-transparent" />
-              </div>
+              <PortalLoadingPanel message="Loading score history…" />
             ) : ledger.items.length === 0 ? (
               <div className="px-4 py-8 text-center">
                 <p className="text-gray-600 font-medium">No score history entries found</p>
@@ -255,7 +275,47 @@ export default function ClientAuditLogPage() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="md:hidden space-y-3 p-3">
+                {ledger.items.map((row, idx) => {
+                  const isExpanded = expandedRow === idx;
+                  return (
+                    <div
+                      key={idx}
+                      className="rounded-lg border border-gray-200 bg-white p-3"
+                    >
+                      <button
+                        type="button"
+                        className="w-full text-left"
+                        onClick={() => setExpandedRow(isExpanded ? null : idx)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs text-gray-500">{formatDate(row.created_at)}</p>
+                            <p className="font-medium text-midnight-blue mt-1">
+                              {row.trigger_label || row.trigger_type || '—'}
+                            </p>
+                            <p className="text-xs font-mono text-gray-600 mt-1 break-all">{row.property_id || '—'}</p>
+                            <p className="text-sm text-gray-700 mt-2">
+                              {row.before_score != null ? row.before_score : '—'} → {row.after_score ?? '—'}
+                              <span className={`ml-2 ${row.delta != null && row.delta < 0 ? 'text-red-600' : row.delta > 0 ? 'text-green-600' : ''}`}>
+                                ({deltaStr(row.delta)})
+                              </span>
+                            </p>
+                          </div>
+                          {isExpanded ? <ChevronDown className="w-5 h-5 shrink-0 text-gray-400" /> : <ChevronRight className="w-5 h-5 shrink-0 text-gray-400" />}
+                        </div>
+                      </button>
+                      {isExpanded && (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          {ledgerDetailGrid(row)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 text-sm">
                   <thead className="bg-gray-50">
                     <tr>
@@ -307,23 +367,7 @@ export default function ClientAuditLogPage() {
                           {isExpanded && (
                             <tr className="bg-gray-50">
                               <td colSpan={8} className="px-4 py-3 text-xs text-gray-600">
-                                <div className="grid grid-cols-2 gap-x-6 gap-y-2 max-w-2xl">
-                                  <div><strong>Rule version:</strong> {row.rule_version ?? '—'}</div>
-                                  {row.requirement_id && <div><strong>Requirement ID:</strong> {row.requirement_id}</div>}
-                                  {row.document_id && <div><strong>Document ID:</strong> {row.document_id}</div>}
-                                  {row.drivers_before && (
-                                    <div>
-                                      <strong>Drivers before:</strong>{' '}
-                                      status={row.drivers_before.status ?? '—'}, timeline={row.drivers_before.timeline ?? '—'}, documents={row.drivers_before.documents ?? '—'}, overdue_penalty={row.drivers_before.overdue_penalty ?? '—'}
-                                    </div>
-                                  )}
-                                  {row.drivers_after && (
-                                    <div>
-                                      <strong>Drivers after:</strong>{' '}
-                                      status={row.drivers_after.status ?? '—'}, timeline={row.drivers_after.timeline ?? '—'}, documents={row.drivers_after.documents ?? '—'}, overdue_penalty={row.drivers_after.overdue_penalty ?? '—'}
-                                    </div>
-                                  )}
-                                </div>
+                                {ledgerDetailGrid(row)}
                               </td>
                             </tr>
                           )}
@@ -333,6 +377,7 @@ export default function ClientAuditLogPage() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </div>
           {ledger.has_more && (
@@ -353,9 +398,7 @@ export default function ClientAuditLogPage() {
       {activeTab === TAB_ACTIVITY_LOG && (
         <>
           {timelineLoading && (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-10 w-10 border-2 border-electric-teal border-t-transparent" />
-            </div>
+            <PortalLoadingPanel message="Loading activity log…" />
           )}
           {timelineError && (
             <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3">{timelineError}</div>

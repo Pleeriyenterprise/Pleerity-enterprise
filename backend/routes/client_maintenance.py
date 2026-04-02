@@ -30,6 +30,7 @@ from services import risk_signal_service
 from services import operational_issue_suggestions_service
 from services import contractor_evidence_service
 from utils.audit import create_audit_log
+from utils.api_errors import log_api_error, structured_error
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from config.security_limits import security_limits
 from models import AuditAction, UserRole
@@ -187,7 +188,13 @@ async def create_work_order(request: Request, body: CreateWorkOrderBody):
         {"_id": 1, "property_id": 1},
     )
     if not prop:
-        raise HTTPException(status_code=404, detail="Property not found")
+        raise HTTPException(
+            status_code=404,
+            detail=structured_error(
+                "PROPERTY_NOT_FOUND",
+                "Property not found or not in your account.",
+            ),
+        )
 
     wo_created_from = "manual"
     wo_triggering = "client_api_work_order"
@@ -208,23 +215,58 @@ async def create_work_order(request: Request, body: CreateWorkOrderBody):
         if effective_asset_id is None and aid:
             effective_asset_id = aid
 
-    doc = await maintenance_service.create_work_order(
-        client_id=client_id,
-        property_id=body.property_id,
-        description=body.description,
-        source=maintenance_service.SOURCE_CLIENT,
-        reporter_id=user.get("portal_user_id"),
-        category=body.category,
-        severity=body.severity,
-        asset_id=effective_asset_id,
-        issue_id=body.issue_id,
-        risk_signal_id=wo_risk_id,
-        cost_estimate_min=body.cost_estimate_min,
-        cost_estimate_max=body.cost_estimate_max,
-        created_from=wo_created_from,
-        triggering_rule=wo_triggering,
-        operational_root_key=wo_root,
-    )
+    try:
+        doc = await maintenance_service.create_work_order(
+            client_id=client_id,
+            property_id=body.property_id,
+            description=body.description,
+            source=maintenance_service.SOURCE_CLIENT,
+            reporter_id=user.get("portal_user_id"),
+            category=body.category,
+            severity=body.severity,
+            asset_id=effective_asset_id,
+            issue_id=body.issue_id,
+            risk_signal_id=wo_risk_id,
+            cost_estimate_min=body.cost_estimate_min,
+            cost_estimate_max=body.cost_estimate_max,
+            created_from=wo_created_from,
+            triggering_rule=wo_triggering,
+            operational_root_key=wo_root,
+        )
+    except ValueError as e:
+        log_api_error(
+            logger,
+            endpoint="POST /client/maintenance/work-orders",
+            error_type="WORK_ORDER_VALIDATION",
+            message=str(e),
+            user_id=user.get("portal_user_id"),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=structured_error(
+                "WORK_ORDER_CREATE_INVALID",
+                str(e),
+                retry_suggested=False,
+            ),
+        ) from e
+    except Exception as e:
+        log_api_error(
+            logger,
+            endpoint="POST /client/maintenance/work-orders",
+            error_type=type(e).__name__,
+            message=str(e),
+            user_id=user.get("portal_user_id"),
+            exc=e,
+            level=logging.ERROR,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=structured_error(
+                "WORK_ORDER_CREATE_FAILED",
+                "We could not create the work order. Please try again.",
+                retry_suggested=True,
+            ),
+        ) from e
     return doc
 
 

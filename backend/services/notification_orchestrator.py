@@ -817,6 +817,22 @@ class NotificationOrchestrator:
             text = svc._build_text_body(EmailTemplateAlias.CLIENT_OPERATIONAL_NOTICE, model)
             subj = (context.get("subject") or default_subject).strip()
             return html, text, subj
+        # Monthly digest: always code-built (action email + PDF); avoids DB template placeholder leakage.
+        if alias_str == "monthly-digest":
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.MONTHLY_DIGEST, model)
+            text = svc._build_text_body(EmailTemplateAlias.MONTHLY_DIGEST, model)
+            subj = (context.get("subject") or default_subject).strip()
+            for k, v in (context or {}).items():
+                if str(k).startswith("_") or isinstance(v, (dict, list, set)):
+                    continue
+                placeholder = "{{" + str(k) + "}}"
+                subj = subj.replace(placeholder, str(v))
+            return html, text, subj
         db_template = await db.email_templates.find_one({"alias": alias_str, "is_active": True}, {"_id": 0})
         if db_template:
             from services.branding_resolver_service import finalize_db_email_html

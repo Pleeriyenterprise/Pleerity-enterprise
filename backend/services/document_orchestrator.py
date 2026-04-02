@@ -644,6 +644,31 @@ class DocumentOrchestrator:
             {"$set": {"orchestration_status": OrchestrationStatus.INTAKE_LOCKED.value}}
         )
         
+        if using_managed_prompt and "{{INPUT_DATA_JSON}}" not in (prompt_def.user_prompt_template or ""):
+            err = (
+                "Managed prompt configuration error: template must include {{INPUT_DATA_JSON}} "
+                "for JSON intake injection."
+            )
+            await self._mark_orchestration_failed(
+                order_id=order_id,
+                service_code=service_code,
+                doc_type=doc_type,
+                prompt_version_used=prompt_version_used,
+                stage="prompt_build",
+                error_code="MANAGED_PROMPT_MISSING_INPUT_DATA_JSON",
+                error_message=err,
+                execution_id=execution_id,
+                idempotency_key=idempotency_key,
+            )
+            return OrchestrationResult(
+                success=False,
+                status=OrchestrationStatus.FAILED,
+                service_code=service_code,
+                order_id=order_id,
+                error_message=err,
+                execution_id=execution_id,
+            )
+
         # ================================================================
         # STEP 5: Build the prompt
         # Supports {{INPUT_DATA_JSON}} (JSON injection) or {field_name} (named prefill).

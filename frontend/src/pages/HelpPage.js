@@ -12,6 +12,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
+import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
 
 export default function HelpPage() {
   const navigate = useNavigate();
@@ -147,7 +149,7 @@ export default function HelpPage() {
             <ArrowLeft className="h-4 w-4" /> Back to articles
           </Button>
           {articleLoading ? (
-            <div className="text-gray-500 py-8">Loading...</div>
+            <PortalLoadingPanel message="Loading article…" />
           ) : (
             <Card>
               <CardContent className="pt-6">
@@ -193,16 +195,16 @@ export default function HelpPage() {
               <p className="text-sm text-gray-600 mb-3">
                 Answers are based only on published help articles. No account data is used.
               </p>
-              <form onSubmit={handleAskSubmit} className="flex gap-2">
+              <form onSubmit={handleAskSubmit} className="flex flex-col sm:flex-row gap-2">
                 <Input
                   placeholder="e.g. How do I upload a certificate?"
                   value={askQuery}
                   onChange={(e) => setAskQuery(e.target.value)}
                   maxLength={500}
-                  className="flex-1"
+                  className="flex-1 min-h-11"
                   disabled={askLoading}
                 />
-                <Button type="submit" disabled={!askQuery.trim() || askLoading} className="bg-electric-teal hover:bg-teal-600">
+                <Button type="submit" disabled={!askQuery.trim() || askLoading} className="bg-electric-teal hover:bg-teal-600 min-h-11 w-full sm:w-auto shrink-0">
                   {askLoading ? 'Searching...' : 'Search'}
                 </Button>
               </form>
@@ -245,21 +247,21 @@ export default function HelpPage() {
             </CardContent>
           </Card>
 
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <PortalFilterStack className="mb-6">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               <Input
                 placeholder="Search help articles..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && fetchArticles()}
-                className="pl-10"
+                className="pl-10 min-h-11 w-full"
               />
             </div>
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="border rounded-md px-3 py-2 text-sm min-w-[180px]"
+              className="border rounded-md px-3 py-2 text-sm w-full md:min-w-[180px] min-h-11"
             >
               <option value="">All categories</option>
               {categories.map((c) => (
@@ -268,11 +270,11 @@ export default function HelpPage() {
                 </option>
               ))}
             </select>
-            <Button onClick={fetchArticles}>Search</Button>
-          </div>
+            <Button className="min-h-11 w-full md:w-auto" onClick={fetchArticles}>Search</Button>
+          </PortalFilterStack>
 
           {loading ? (
-            <div className="text-gray-500 py-8">Loading articles...</div>
+            <PortalLoadingPanel message="Loading articles…" />
           ) : articles.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-gray-500">

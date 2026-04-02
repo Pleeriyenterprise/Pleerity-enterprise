@@ -71,6 +71,37 @@ export function resolveDocumentsPath(propertyId, extraQuery = {}) {
   return resolveClientPortalPath(`/documents?${q.toString()}`, '/documents');
 }
 
+/**
+ * Build a strict entity-scoped client route for corrective actions.
+ * For fix/review/upload/resolve actions, call this instead of inline strings.
+ */
+export function buildEntityRoute(
+  { requirement_id, property_id, work_order_id, mode = 'upload' } = {},
+  fallback = '/today'
+) {
+  const rid = normalizeRouteId(requirement_id);
+  const pid = normalizeRouteId(property_id);
+  const wid = normalizeRouteId(work_order_id);
+
+  if (wid) {
+    return buildSafeQueryPath('/operations/work-orders', { work_order_id: wid });
+  }
+  if (rid && pid) {
+    if (mode === 'requirement' || mode === 'review') {
+      return buildSafeQueryPath('/requirements', { highlight: rid, property_id: pid });
+    }
+    return buildSafeQueryPath('/documents', { property_id: pid, requirement_id: rid });
+  }
+  if (rid) {
+    return buildSafeQueryPath('/requirements', { highlight: rid });
+  }
+  if (pid) {
+    return buildSafeQueryPath('/requirements', { property_id: pid });
+  }
+  if (fallback === '') return '';
+  return resolveClientPortalPath(fallback, '/today');
+}
+
 export function resolveIssueDetailPath(issueId) {
   const id = normalizeRouteId(issueId);
   if (!id) return '/operations/issues';

@@ -4374,6 +4374,26 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-midnight-blue">Dashboard Overview</h2>
 
+      {Array.isArray(stats?.operational_alerts) && stats.operational_alerts.length > 0 && (
+        <div
+          className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2"
+          data-testid="admin-operational-alerts"
+        >
+          <h3 className="text-sm font-semibold text-amber-900 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            Operational signals
+          </h3>
+          <ul className="space-y-2 text-sm text-amber-950">
+            {stats.operational_alerts.map((a) => (
+              <li key={a.code} className="border-b border-amber-100 last:border-0 pb-2 last:pb-0">
+                <span className="font-medium">{a.message}</span>
+                {a.hint && <p className="text-amber-900 mt-0.5">{a.hint}</p>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Operational Priorities / Action Queue */}
       <div className="bg-white rounded-xl border border-gray-200 p-6" data-testid="admin-priority-actions-panel">
         <h3 className="text-lg font-semibold text-midnight-blue mb-2">Operational Priorities</h3>

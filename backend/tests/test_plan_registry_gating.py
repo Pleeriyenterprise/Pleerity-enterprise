@@ -246,8 +246,23 @@ class TestCheckFeatureAccessSoloPortfolioPro:
         assert allowed_solo is False
         assert allowed_portfolio is True
 
+    def test_sms_reminders_solo_denied_portfolio_and_pro_allowed(self):
+        """sms_reminders: Solo denied; Portfolio and Pro allowed (FEATURE_MATRIX)."""
+        allowed_solo, _, _ = plan_registry.check_feature_access(
+            PlanCode.PLAN_1_SOLO, "sms_reminders"
+        )
+        allowed_portfolio, _, _ = plan_registry.check_feature_access(
+            PlanCode.PLAN_2_PORTFOLIO, "sms_reminders"
+        )
+        allowed_pro, _, _ = plan_registry.check_feature_access(
+            PlanCode.PLAN_3_PRO, "sms_reminders"
+        )
+        assert allowed_solo is False
+        assert allowed_portfolio is True
+        assert allowed_pro is True
+
     def test_feature_matrix_honored_per_plan(self):
-        """Feature matrix aligned to pricing: Solo core+basic; Portfolio +zip, PDF, scheduled; Pro +rest."""
+        """Feature matrix aligned to pricing: Solo core+basic; Portfolio +zip, PDF, scheduled, SMS; Pro +rest."""
         solo = plan_registry.get_features(PlanCode.PLAN_1_SOLO)
         assert solo.get("compliance_dashboard") is True
         assert solo.get("zip_upload") is False
@@ -265,7 +280,7 @@ class TestCheckFeatureAccessSoloPortfolioPro:
         assert portfolio.get("webhooks") is False
         assert portfolio.get("audit_log_export") is False
         assert portfolio.get("reports_csv") is False
-        assert portfolio.get("sms_reminders") is False
+        assert portfolio.get("sms_reminders") is True
         assert portfolio.get("tenant_portal") is False
         assert portfolio.get("ai_extraction_advanced") is False
         pro = plan_registry.get_features(PlanCode.PLAN_3_PRO)

@@ -312,12 +312,12 @@ class TestIntakeDraftAPI:
         assert data["service_code"] == "DOC_PACK_ESSENTIAL"
         assert data["status"] == "DRAFT"
     
-    def test_create_draft_for_doc_pack_tenancy(self, client):
-        """POST /api/intake/draft creates draft for DOC_PACK_TENANCY (intake service code)."""
+    def test_create_draft_for_doc_pack_plus(self, client):
+        """POST /api/intake/draft creates draft for DOC_PACK_PLUS (Tenancy tier in pack_registry)."""
         response = client.post(
             "/api/intake/draft",
             json={
-                "service_code": "DOC_PACK_TENANCY",
+                "service_code": "DOC_PACK_PLUS",
                 "category": "document_pack"
             }
         )
@@ -325,14 +325,14 @@ class TestIntakeDraftAPI:
         assert response.status_code in [200, 201]
         data = response.json()
         
-        assert data["service_code"] == "DOC_PACK_TENANCY"
+        assert data["service_code"] == "DOC_PACK_PLUS"
     
-    def test_create_draft_for_doc_pack_ultimate(self, client):
-        """POST /api/intake/draft creates draft for DOC_PACK_ULTIMATE (intake service code)."""
+    def test_create_draft_for_doc_pack_pro(self, client):
+        """POST /api/intake/draft creates draft for DOC_PACK_PRO (Ultimate tier in pack_registry)."""
         response = client.post(
             "/api/intake/draft",
             json={
-                "service_code": "DOC_PACK_ULTIMATE",
+                "service_code": "DOC_PACK_PRO",
                 "category": "document_pack"
             }
         )
@@ -340,7 +340,7 @@ class TestIntakeDraftAPI:
         assert response.status_code in [200, 201]
         data = response.json()
         
-        assert data["service_code"] == "DOC_PACK_ULTIMATE"
+        assert data["service_code"] == "DOC_PACK_PRO"
 
 
 # ============================================================================
@@ -360,10 +360,8 @@ class TestIntakeServicesAPI:
         assert "services" in data
         service_codes = [s["service_code"] for s in data["services"]]
         
-        # Check document packs are available (intake uses different codes)
-        # Intake: DOC_PACK_ESSENTIAL, DOC_PACK_TENANCY, DOC_PACK_ULTIMATE
-        # Checkout: DOC_PACK_ESSENTIAL, DOC_PACK_PLUS, DOC_PACK_PRO
-        doc_pack_codes = ["DOC_PACK_ESSENTIAL", "DOC_PACK_TENANCY", "DOC_PACK_ULTIMATE"]
+        # Intake and checkout both use ESSENTIAL, PLUS (tenancy), PRO (ultimate).
+        doc_pack_codes = ["DOC_PACK_ESSENTIAL", "DOC_PACK_PLUS", "DOC_PACK_PRO"]
         for code in doc_pack_codes:
             assert code in service_codes, f"Missing {code} in intake services"
     

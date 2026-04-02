@@ -4,6 +4,7 @@ from database import database
 from middleware import client_route_guard, admin_route_guard
 from models import Document, DocumentStatus, RequirementStatus, AuditAction
 from utils.audit import create_audit_log
+from utils.api_errors import log_api_error, structured_error
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from config.security_limits import security_limits
 from datetime import datetime, timedelta, timezone
@@ -54,6 +55,9 @@ async def _validate_optional_work_order_document_link(
     requirement_id: Optional[str],
 ) -> Optional[str]:
     """If work_order_id is set, ensure it is a compliance WO for this client/property (and requirement when linked)."""
+    # Direct calls (unit tests) may pass FastAPI Form(...) defaults instead of bound values
+    if work_order_id is not None and not isinstance(work_order_id, str):
+        work_order_id = None
     if not (work_order_id or "").strip():
         return None
     wid = work_order_id.strip()
@@ -971,7 +975,10 @@ async def upload_document(
         if not property_doc:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Property not found"
+                detail=structured_error(
+                    "PROPERTY_NOT_FOUND",
+                    "Property not found or not linked to your account.",
+                ),
             )
         # Archived (read-only) properties: no new uploads after downgrade
         if property_doc.get("is_active") is False:
@@ -1032,9 +1039,9 @@ async def upload_document(
             mime_type=file.content_type or "application/octet-stream",
             status=DocumentStatus.UPLOADED,
             uploaded_by=user["portal_user_id"],
-            document_type=document_type.strip() if document_type and isinstance(document_type, str) else None,
-            source=(source or "portal").strip() if source else "portal",
-            notes=notes.strip() if notes and isinstance(notes, str) else None,
+            document_type=document_type.strip() if isinstance(document_type, str) else None,
+            source=(source.strip() if isinstance(source, str) and source.strip() else None) or "portal",
+            notes=notes.strip() if isinstance(notes, str) else None,
         )
         
         doc = document.model_dump()
@@ -1132,10 +1139,22 @@ async def upload_document(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Document upload error: {e}")
+        log_api_error(
+            logger,
+            endpoint="POST /api/documents/upload",
+            error_type=type(e).__name__,
+            message=str(e),
+            user_id=user.get("portal_user_id"),
+            exc=e,
+            level=logging.ERROR,
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to upload document"
+            detail=structured_error(
+                "DOCUMENT_UPLOAD_FAILED",
+                "We could not save your file. Check the file size and format, then try again.",
+                retry_suggested=True,
+            ),
         )
 
 @router.post("/admin/upload")
@@ -1212,9 +1231,9 @@ async def admin_upload_document(
             status=DocumentStatus.UPLOADED,
             uploaded_by=user["portal_user_id"],
             manual_review_flag=False,
-            document_type=document_type.strip() if document_type and isinstance(document_type, str) else None,
-            source=(source or "admin").strip() if source else "admin",
-            notes=notes.strip() if notes and isinstance(notes, str) else None,
+            document_type=document_type.strip() if isinstance(document_type, str) else None,
+            source=(source.strip() if isinstance(source, str) and source.strip() else None) or "admin",
+            notes=notes.strip() if isinstance(notes, str) else None,
         )
         
         doc = document.model_dump()

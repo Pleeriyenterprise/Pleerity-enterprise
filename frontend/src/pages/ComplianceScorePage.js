@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import UpgradePrompt from '../components/UpgradePrompt';
 import api from '../api/client';
@@ -20,8 +19,6 @@ import {
   Target,
   Calendar,
   RefreshCw,
-  LogOut,
-  Home,
   Sparkles,
   Zap,
   HelpCircle,
@@ -35,10 +32,12 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../components/ui/tooltip';
 import { Skeleton } from '../components/ui/skeleton';
-import { recordClientPortalInteraction, resolveClientPortalPath } from '../utils/clientPortalNavigation';
+import { buildEntityRoute, recordClientPortalInteraction, resolveClientPortalPath } from '../utils/clientPortalNavigation';
+import { resolveTaskCta } from '../utils/ctaRegistry';
+import { portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
 
 const ComplianceScorePage = () => {
-  const { user, logout } = useAuth();
   const { hasFeature } = useEntitlements();
   const navigate = useNavigate();
   const canExportScore = hasFeature('reports_pdf'); // Portfolio and Professional only
@@ -134,6 +133,26 @@ const ComplianceScorePage = () => {
     }
   };
 
+  const navigateDriverAction = (driver, action) => {
+    if (!driver?.property_id || !driver?.requirement_id) return;
+    const task = {
+      source_type: 'requirement',
+      source_id: driver.requirement_id,
+      requirement_id: driver.requirement_id,
+      property_id: driver.property_id,
+      primary_action_type: action === 'VIEW' ? 'review_requirement' : 'upload_evidence',
+      primary_action_url:
+        action === 'VIEW'
+          ? buildEntityRoute(
+              { requirement_id: driver.requirement_id, property_id: driver.property_id, mode: 'requirement' },
+              '/requirements'
+            )
+          : `/documents?property_id=${encodeURIComponent(driver.property_id)}&requirement_id=${encodeURIComponent(driver.requirement_id)}`,
+    };
+    const cta = resolveTaskCta(task, 'primary');
+    navigate(resolveClientPortalPath(cta.route, action === 'VIEW' ? '/requirements' : '/documents'));
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -177,102 +196,43 @@ const ComplianceScorePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-midnight-blue text-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex justify-between items-center">
-              <Skeleton className="h-8 w-48 bg-white/20" />
-              <Skeleton className="h-6 w-24 bg-white/20" />
-            </div>
+      <TooltipProvider>
+        <div className={cn(portalPageRoot, 'py-2 space-y-4')} data-testid="compliance-score-page-loading">
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <Skeleton className="h-10 w-full sm:w-48" />
+            <Skeleton className="h-10 w-full sm:w-44" />
           </div>
-        </header>
-        <nav className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex space-x-8">
-              <Skeleton className="h-10 w-24" />
-              <Skeleton className="h-10 w-36" />
-            </div>
-          </div>
-        </nav>
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex justify-end gap-2 mb-4">
-            <Skeleton className="h-9 w-48" />
-            <Skeleton className="h-9 w-44" />
-          </div>
-          <Button variant="ghost" size="sm" className="mb-6" disabled>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
-          <Card className="mb-6 border-2 border-gray-200">
+          <Card className="border-2 border-gray-200">
             <CardContent className="pt-6">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                <div className="flex items-center gap-6">
-                  <Skeleton className="w-32 h-32 rounded-full shrink-0" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-8 w-32" />
-                    <Skeleton className="h-5 w-64" />
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-4 w-56" />
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  <Skeleton className="w-28 h-28 sm:w-32 sm:h-32 rounded-full shrink-0" />
+                  <div className="space-y-2 w-full">
+                    <Skeleton className="h-8 w-40 mx-auto sm:mx-0" />
+                    <Skeleton className="h-5 w-full max-w-md" />
+                    <Skeleton className="h-4 w-3/4" />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <Skeleton className="h-20 rounded-lg" />
-                  <Skeleton className="h-20 rounded-lg" />
-                  <Skeleton className="h-20 rounded-lg" />
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full lg:max-w-xs">
+                  <Skeleton className="h-16 sm:h-20 rounded-lg" />
+                  <Skeleton className="h-16 sm:h-20 rounded-lg" />
+                  <Skeleton className="h-16 sm:h-20 rounded-lg" />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="mb-8">
-            <CardHeader className="pb-2">
-              <Skeleton className="h-5 w-28" />
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-5 w-32 mt-3" />
-            </CardContent>
-          </Card>
-          <Card className="mb-8">
-            <CardHeader>
-              <Skeleton className="h-6 w-56" />
-            </CardHeader>
-            <CardContent className="border-t">
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <Skeleton key={i} className="h-32 rounded-lg" />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="mb-8">
-            <CardHeader>
-              <Skeleton className="h-6 w-72" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-[80%]" />
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-40" />
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-40" />
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <Skeleton className="h-20 rounded-lg" />
-                <Skeleton className="h-20 rounded-lg" />
-                <Skeleton className="h-20 rounded-lg" />
-              </div>
+            <CardContent className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
             </CardContent>
           </Card>
-        </main>
-      </div>
+        </div>
+      </TooltipProvider>
     );
   }
 
@@ -286,81 +246,31 @@ const ComplianceScorePage = () => {
 
   return (
     <TooltipProvider>
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-midnight-blue text-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <div>
-                <h1 className="text-2xl font-bold">Compliance Vault Pro</h1>
-                <p className="text-sm text-gray-300">AI-Driven Solutions & Compliance</p>
-              </div>
-              {clientData?.client?.customer_reference && (
-                <span className="px-3 py-1 bg-electric-teal/20 text-electric-teal rounded-lg font-mono text-sm">
-                  {clientData.client.customer_reference}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm">{user?.email}</span>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={logout}
-                className="text-white hover:text-electric-teal"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-              onClick={() => navigate('/dashboard')}
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Dashboard
-            </button>
-            <button 
-              className="flex items-center px-3 py-4 text-sm font-medium border-b-2 border-electric-teal text-electric-teal"
-            >
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Compliance Score
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" data-testid="compliance-score-page">
-        {/* Export buttons: visible to all; upgrade prompt on click for Solo */}
-        <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+    <div className={portalPageRoot} data-testid="compliance-score-page">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-midnight-blue">Compliance score</h1>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             size="sm"
+            className="w-full sm:w-auto min-h-11 justify-center"
             onClick={handleDownloadPdf}
             disabled={exportingPdf}
           >
             {exportingPdf ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-            Download score explanation (PDF)
+            Score summary (PDF)
           </Button>
           <Button
             variant="outline"
             size="sm"
+            className="w-full sm:w-auto min-h-11 justify-center"
             onClick={handleDownloadCsv}
             disabled={exportingCsv}
           >
             {exportingCsv ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
-            Export score drivers (CSV)
+            Score drivers (CSV)
           </Button>
+          </div>
         </div>
         {showExportUpgradeModal && (
           <UpgradePrompt
@@ -389,8 +299,8 @@ const ComplianceScorePage = () => {
           <CardContent className="pt-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               {/* Score Display */}
-              <div className="flex items-center gap-6">
-                <div className={`w-32 h-32 rounded-full border-8 flex items-center justify-center ${
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-center sm:text-left min-w-0 w-full lg:w-auto">
+                <div className={`w-28 h-28 sm:w-32 sm:h-32 rounded-full border-8 flex items-center justify-center shrink-0 ${
                   scoreData?.color === 'green' ? 'border-green-500 bg-green-100' :
                   scoreData?.color === 'amber' ? 'border-amber-500 bg-amber-100' :
                   scoreData?.color === 'red' ? 'border-red-500 bg-red-100' : 'border-gray-300 bg-gray-100'
@@ -400,8 +310,8 @@ const ComplianceScorePage = () => {
                     <p className="text-sm text-gray-500">/100</p>
                   </div>
                 </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                <div className="min-w-0 w-full sm:flex-1">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
                     <span className={`text-3xl font-bold ${colorClass}`}>Grade {scoreData?.grade}</span>
                     <Target className={`w-6 h-6 ${colorClass}`} />
                     {scoreData?.score_last_calculated_at && (
@@ -461,7 +371,7 @@ const ComplianceScorePage = () => {
               </div>
 
               {/* Quick Stats */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full lg:max-w-md min-w-0">
                 <div className="text-center p-3 bg-white/50 rounded-lg">
                   <p className="text-2xl font-bold text-green-600">{scoreData?.stats?.compliant || 0}</p>
                   <p className="text-xs text-gray-600">Valid</p>
@@ -709,9 +619,7 @@ const ComplianceScorePage = () => {
                                   disabled={!d.property_id || !d.requirement_id}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (!d.property_id || !d.requirement_id) return;
-                                    const q = `/documents?property_id=${encodeURIComponent(d.property_id)}&requirement_id=${encodeURIComponent(d.requirement_id)}`;
-                                    navigate(resolveClientPortalPath(q, '/documents'));
+                                    navigateDriverAction(d, 'UPLOAD');
                                   }}
                                 >
                                   <Upload className="w-3.5 h-3.5 mr-1" />
@@ -726,9 +634,7 @@ const ComplianceScorePage = () => {
                                   disabled={!d.property_id || !d.requirement_id}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (!d.property_id || !d.requirement_id) return;
-                                    const q = `/documents?property_id=${encodeURIComponent(d.property_id)}&requirement_id=${encodeURIComponent(d.requirement_id)}`;
-                                    navigate(resolveClientPortalPath(q, '/documents'));
+                                    navigateDriverAction(d, 'CONFIRM');
                                   }}
                                 >
                                   Confirm details
@@ -739,11 +645,10 @@ const ComplianceScorePage = () => {
                                   variant="outline"
                                   size="sm"
                                   className="border-electric-teal text-electric-teal hover:bg-electric-teal/10"
-                                  disabled={!d.property_id}
+                                  disabled={!d.property_id || !d.requirement_id}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (!d.property_id) return;
-                                    navigate(resolveClientPortalPath(`/properties/${String(d.property_id).trim()}`, '/properties'));
+                                    navigateDriverAction(d, 'VIEW');
                                   }}
                                 >
                                   <ExternalLink className="w-3.5 h-3.5 mr-1" />
@@ -760,7 +665,7 @@ const ComplianceScorePage = () => {
                 {/* Mobile: stacked cards */}
                 <div className="md:hidden space-y-3">
                   {(driversFilterPropertyId ? scoreData.drivers.filter(d => d.property_id === driversFilterPropertyId) : scoreData.drivers).map((d, idx) => (
-                    <div key={d.requirement_id || idx} className="p-4 border rounded-lg bg-gray-50 space-y-2">
+                    <div key={d.requirement_id || idx} className="p-4 border rounded-lg bg-gray-50 space-y-3">
                       <p className="font-medium text-midnight-blue">{d.requirement_name || '—'}</p>
                       <p className="text-sm text-gray-600">{d.property_name || d.property_id}</p>
                       <p className="text-sm">
@@ -776,17 +681,15 @@ const ComplianceScorePage = () => {
                         {' · '}
                         {d.date_used ? new Date(d.date_used).toLocaleDateString() : '—'} · {d.evidence_uploaded ? 'Uploaded' : 'Not uploaded'}
                       </p>
-                      <div className="flex flex-wrap gap-2 pt-1">
+                      <div className="flex flex-col gap-2 pt-1">
                         {d.actions?.includes('UPLOAD') && (
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-electric-teal text-electric-teal hover:bg-electric-teal/10"
+                            className="min-h-11 w-full border-electric-teal text-electric-teal hover:bg-electric-teal/10"
                             disabled={!d.property_id || !d.requirement_id}
                             onClick={() => {
-                              if (!d.property_id || !d.requirement_id) return;
-                              const q = `/documents?property_id=${encodeURIComponent(d.property_id)}&requirement_id=${encodeURIComponent(d.requirement_id)}`;
-                              navigate(resolveClientPortalPath(q, '/documents'));
+                              navigateDriverAction(d, 'UPLOAD');
                             }}
                           >
                             <Upload className="w-3.5 h-3.5 mr-1" /> Upload document
@@ -796,11 +699,10 @@ const ComplianceScorePage = () => {
                           <Button
                             variant="outline"
                             size="sm"
+                            className="min-h-11 w-full"
                             disabled={!d.property_id || !d.requirement_id}
                             onClick={() => {
-                              if (!d.property_id || !d.requirement_id) return;
-                              const q = `/documents?property_id=${encodeURIComponent(d.property_id)}&requirement_id=${encodeURIComponent(d.requirement_id)}`;
-                              navigate(resolveClientPortalPath(q, '/documents'));
+                              navigateDriverAction(d, 'CONFIRM');
                             }}
                           >
                             Confirm details
@@ -810,11 +712,10 @@ const ComplianceScorePage = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-electric-teal text-electric-teal hover:bg-electric-teal/10"
-                            disabled={!d.property_id}
+                            className="min-h-11 w-full border-electric-teal text-electric-teal hover:bg-electric-teal/10"
+                            disabled={!d.property_id || !d.requirement_id}
                             onClick={() => {
-                              if (!d.property_id) return;
-                              navigate(resolveClientPortalPath(`/properties/${String(d.property_id).trim()}`, '/properties'));
+                              navigateDriverAction(d, 'VIEW');
                             }}
                           >
                             <ExternalLink className="w-3.5 h-3.5 mr-1" /> View requirement
@@ -996,7 +897,7 @@ const ComplianceScorePage = () => {
         {/* Definitions modal */}
         {showDefinitionsModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setShowDefinitionsModal(false)}>
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full portal-modal-scroll p-6" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-midnight-blue">Definitions</h3>
                 <button type="button" onClick={() => setShowDefinitionsModal(false)} className="p-1 rounded hover:bg-gray-100">
@@ -1032,7 +933,6 @@ const ComplianceScorePage = () => {
             </div>
           </div>
         )}
-      </main>
     </div>
     </TooltipProvider>
   );

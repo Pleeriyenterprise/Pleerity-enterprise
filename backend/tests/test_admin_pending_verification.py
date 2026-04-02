@@ -49,6 +49,10 @@ async def test_pending_verification_list_endpoint_shape_and_filtering():
     db.documents = MagicMock()
     db.documents.count_documents = AsyncMock(return_value=2)
     db.documents.find = MagicMock(return_value=cursor)
+    clients_cursor = MagicMock()
+    clients_cursor.to_list = AsyncMock(return_value=[])
+    db.clients = MagicMock()
+    db.clients.find = MagicMock(return_value=clients_cursor)
 
     with patch("routes.admin.admin_route_guard", new_callable=AsyncMock), patch(
         "routes.admin.database.get_db", return_value=db
@@ -66,8 +70,12 @@ async def test_pending_verification_list_endpoint_shape_and_filtering():
 
     # With client_id filter, find should be called with client_id in query
     db.documents.find.reset_mock()
+    db.clients.find.reset_mock()
     db.documents.count_documents = AsyncMock(return_value=1)
     cursor.to_list = AsyncMock(return_value=[sample_docs[0]])
+    clients_cursor.to_list = AsyncMock(return_value=[
+        {"client_id": "client-a", "full_name": "Acme", "customer_reference": "CRN-1"}
+    ])
     with patch("routes.admin.admin_route_guard", new_callable=AsyncMock), patch(
         "routes.admin.database.get_db", return_value=db
     ):
@@ -142,6 +150,12 @@ async def test_admin_dashboard_includes_unverified_documents_count():
     )
     db.documents = MagicMock()
     db.documents.count_documents = AsyncMock(return_value=3)  # unverified count
+    db.job_runs = MagicMock()
+    db.job_runs.count_documents = AsyncMock(return_value=0)
+    db.provisioning_jobs = MagicMock()
+    db.provisioning_jobs.count_documents = AsyncMock(return_value=0)
+    db.requirements = MagicMock()
+    db.requirements.count_documents = AsyncMock(return_value=0)
 
     with patch("routes.admin.admin_route_guard", new_callable=AsyncMock), patch(
         "routes.admin.database.get_db", return_value=db

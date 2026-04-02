@@ -9,7 +9,9 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
 
+from fastapi import Request
 from fastapi.testclient import TestClient
+from middleware import require_owner_or_admin
 from server import app
 
 
@@ -39,6 +41,10 @@ def admin_headers():
     return {"Authorization": "Bearer mock-admin-token"}
 
 
+async def _override_owner_admin(_request: Request):
+    return {"role": "ROLE_ADMIN", "portal_user_id": "admin1"}
+
+
 def test_recovery_endpoint_does_not_change_subscription_status(client):
     """send-payment-link must NOT modify subscription_status or onboarding_status."""
     mock_client = {
@@ -62,15 +68,18 @@ def test_recovery_endpoint_does_not_change_subscription_status(client):
 
     mock_db.clients.update_one = AsyncMock(side_effect=capture_update)
 
-    with patch("routes.admin_pending_payments.database.get_db", return_value=mock_db):
-        with patch("routes.admin_pending_payments.admin_route_guard", new_callable=AsyncMock, return_value={"role": "ROLE_ADMIN"}):
-            with patch("routes.admin_pending_payments.stripe_service.create_checkout_session", new_callable=AsyncMock) as mock_checkout:
-                mock_checkout.return_value = {"checkout_url": "https://checkout.stripe.com/xxx", "session_id": "cs_xxx"}
-                with patch("routes.admin_pending_payments.require_owner_or_admin", return_value=None):
+    app.dependency_overrides[require_owner_or_admin] = _override_owner_admin
+    try:
+        with patch("routes.admin_pending_payments.database.get_db", return_value=mock_db):
+            with patch("routes.admin_pending_payments.admin_route_guard", new_callable=AsyncMock, return_value={"role": "ROLE_ADMIN"}):
+                with patch("routes.admin_pending_payments.stripe_service.create_checkout_session", new_callable=AsyncMock) as mock_checkout:
+                    mock_checkout.return_value = {"checkout_url": "https://checkout.stripe.com/xxx", "session_id": "cs_xxx"}
                     response = client.post(
                         "/api/admin/intake/c1/send-payment-link",
                         headers={"Authorization": "Bearer mock-admin-token", "Origin": "https://example.com"},
                     )
+    finally:
+        app.dependency_overrides.pop(require_owner_or_admin, None)
 
     assert response.status_code == 200
     for call_update in update_calls:
@@ -102,13 +111,16 @@ def test_get_pending_payments_returns_new_fields(client):
     mock_cursor.to_list = AsyncMock(return_value=[mock_item])
     mock_db.clients.find = MagicMock(return_value=MagicMock(sort=MagicMock(return_value=mock_cursor)))
 
-    with patch("routes.admin_pending_payments.database.get_db", return_value=mock_db):
-        with patch("routes.admin_pending_payments.admin_route_guard", new_callable=AsyncMock, return_value={"role": "ROLE_ADMIN"}):
-            with patch("routes.admin_pending_payments.require_owner_or_admin", return_value=None):
+    app.dependency_overrides[require_owner_or_admin] = _override_owner_admin
+    try:
+        with patch("routes.admin_pending_payments.database.get_db", return_value=mock_db):
+            with patch("routes.admin_pending_payments.admin_route_guard", new_callable=AsyncMock, return_value={"role": "ROLE_ADMIN"}):
                 response = client.get(
                     "/api/admin/intake/pending-payments",
                     headers={"Authorization": "Bearer mock-admin-token"},
                 )
+    finally:
+        app.dependency_overrides.pop(require_owner_or_admin, None)
 
     assert response.status_code == 200
     data = response.json()
@@ -166,7 +178,7 @@ async def test_lifecycle_job_only_updates_lifecycle_status():
     r2.modified_count = 0
     mock_db.clients.update_many = AsyncMock(side_effect=[r1, r2])
 
-    with patch("job_runner.database.get_db", return_value=mock_db):
+    with patch("database.database.get_db", return_value=mock_db):
         result = await run_pending_payment_lifecycle()
 
     assert "abandoned" in (result.get("message") or "")

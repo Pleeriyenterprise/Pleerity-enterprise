@@ -78,8 +78,8 @@ class TestComplianceRecalcSlaMonitor:
             with patch("services.compliance_sla_monitor.datetime") as m_dt:
                 m_dt.now.return_value = mock_now
                 m_dt.side_effect = lambda *a, **k: datetime(*a, **k) if a else mock_now
-            with patch("services.compliance_sla_monitor.create_audit_log", new_callable=AsyncMock) as audit:
-                result = await run_compliance_recalc_sla_monitor()
+                with patch("services.compliance_sla_monitor.create_audit_log", new_callable=AsyncMock) as audit:
+                    result = await run_compliance_recalc_sla_monitor()
         assert result.get("breaches", 0) >= 1
         audit.assert_called()
         call_actions = [getattr(c[1]["action"], "value", str(c[1]["action"])) for c in audit.call_args_list]
@@ -134,9 +134,9 @@ class TestComplianceRecalcSlaMonitor:
             with patch("services.compliance_sla_monitor.datetime") as m_dt:
                 m_dt.now.return_value = mock_now
                 m_dt.side_effect = lambda *a, **k: datetime(*a, **k) if a else mock_now
-            with patch("services.compliance_sla_monitor.create_audit_log", new_callable=AsyncMock) as audit:
-                result1 = await run_compliance_recalc_sla_monitor()
-                result2 = await run_compliance_recalc_sla_monitor()
+                with patch("services.compliance_sla_monitor.create_audit_log", new_callable=AsyncMock) as audit:
+                    result1 = await run_compliance_recalc_sla_monitor()
+                    result2 = await run_compliance_recalc_sla_monitor()
 
         assert result1.get("breaches", 0) == 1
         assert result2.get("breaches", 0) == 1
@@ -194,8 +194,8 @@ class TestComplianceRecalcSlaMonitor:
             with patch("services.compliance_sla_monitor.datetime") as m_dt:
                 m_dt.now.return_value = mock_now
                 m_dt.side_effect = lambda *a, **k: datetime(*a, **k) if a else mock_now
-            with patch("services.compliance_sla_monitor.create_audit_log", new_callable=AsyncMock):
-                result = await run_compliance_recalc_sla_monitor()
+                with patch("services.compliance_sla_monitor.create_audit_log", new_callable=AsyncMock):
+                    result = await run_compliance_recalc_sla_monitor()
         assert result.get("breaches", 0) >= 1
         call = db.compliance_sla_alerts.update_one.call_args
         if call and len(call[0]) >= 2:
@@ -216,21 +216,27 @@ class TestComplianceRecalcSlaMonitor:
         from services.compliance_recalc_queue import STATUS_FAILED, STATUS_DEAD
 
         db = MagicMock()
-        # No PENDING/RUNNING stuck
-        async def empty_cursor(*a, **k):
-            return
-            yield
-        db.compliance_recalc_queue.find = MagicMock(return_value=empty_cursor())
-        db.compliance_recalc_queue.find_one = AsyncMock(return_value=None)
-        db.properties.find = MagicMock(return_value=AsyncMock(__aiter__=lambda _: iter([])))
-        db.compliance_sla_alerts.find_one = AsyncMock(return_value=None)
-        db.compliance_sla_alerts.find = MagicMock(return_value=AsyncMock(to_list=AsyncMock(return_value=[])))
-        db.compliance_sla_alerts.update_one = AsyncMock()
+        fail_items = [
+            {"_id": "j3", "property_id": "p3", "client_id": "c3", "status": STATUS_FAILED, "attempts": 3, "updated_at": mock_now.isoformat(), "last_error": "err"},
+            {"_id": "j4", "property_id": "p4", "client_id": "c4", "status": STATUS_DEAD, "attempts": 5, "updated_at": mock_now.isoformat(), "last_error": "dead"},
+        ]
 
-        async def failed_jobs():
-            yield {"_id": "j3", "property_id": "p3", "client_id": "c3", "status": STATUS_FAILED, "attempts": 3, "updated_at": mock_now.isoformat(), "last_error": "err"}
-            yield {"_id": "j4", "property_id": "p4", "client_id": "c4", "status": STATUS_DEAD, "attempts": 5, "updated_at": mock_now.isoformat(), "last_error": "dead"}
-        db.compliance_recalc_queue.find = MagicMock(return_value=failed_jobs())
+        def queue_find_return(filter, *args, **kwargs):
+            st = filter.get("status")
+            if st == "PENDING":
+                return AsyncCursor([])
+            if st == "RUNNING":
+                return AsyncCursor([])
+            if isinstance(st, dict) and "$in" in st:
+                return AsyncCursor(list(fail_items))
+            return AsyncCursor([])
+
+        db.compliance_recalc_queue.find = MagicMock(side_effect=queue_find_return)
+        db.compliance_recalc_queue.find_one = AsyncMock(return_value=None)
+        db.properties.find = MagicMock(return_value=AsyncCursor([]))
+        db.compliance_sla_alerts.find_one = AsyncMock(return_value=None)
+        db.compliance_sla_alerts.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+        db.compliance_sla_alerts.update_one = AsyncMock()
 
         with patch("services.compliance_sla_monitor.database.get_db", return_value=db):
             with patch("services.compliance_sla_monitor.create_audit_log", new_callable=AsyncMock):
@@ -250,12 +256,13 @@ class TestComplianceRecalcSlaMonitor:
         from services.compliance_recalc_queue import STATUS_DONE
 
         db = MagicMock()
-        async def empty(*a, **k):
-            return
-            yield
-        db.compliance_recalc_queue.find = MagicMock(return_value=empty())
+
+        def queue_find_return(filter, *args, **kwargs):
+            return AsyncCursor([])
+
+        db.compliance_recalc_queue.find = MagicMock(side_effect=queue_find_return)
         db.compliance_recalc_queue.find_one = AsyncMock(return_value=None)
-        db.properties.find = MagicMock(return_value=AsyncMock(__aiter__=lambda _: iter([])))
+        db.properties.find = MagicMock(return_value=AsyncCursor([]))
         # One active PENDING_STUCK alert - no stuck job now => resolve
         db.compliance_sla_alerts.find_one = AsyncMock(return_value=None)
         db.compliance_sla_alerts.find = MagicMock(return_value=AsyncMock(to_list=AsyncMock(return_value=[

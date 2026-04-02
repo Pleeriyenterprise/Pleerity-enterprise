@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from typing import Optional
 from models import AuditAction
 from utils.audit import create_audit_log
+from services.requirement_code_registry import normalize_requirement_code_strict
 import logging
 import uuid
 
@@ -389,8 +390,46 @@ async def request_certificate_update(request: Request):
     if not landlord_email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Landlord has no email on file")
 
-    request_id = str(uuid.uuid4())
+    canon_code, err = normalize_requirement_code_strict(data.certificate_type)
+    if err or not canon_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported certificate_type {data.certificate_type!r}; use a supported requirement code",
+        )
+
     now = datetime.now(timezone.utc)
+    existing_req = await db.requirements.find_one(
+        {
+            "client_id": client_id,
+            "property_id": data.property_id,
+            "$or": [
+                {"requirement_code": canon_code},
+                {"requirement_type": canon_code},
+            ],
+        },
+        {"_id": 0, "requirement_id": 1},
+    )
+    requirement_id = (existing_req or {}).get("requirement_id")
+    if not requirement_id:
+        requirement_id = str(uuid.uuid4())
+        due_far = now.replace(microsecond=0).isoformat()
+        await db.requirements.insert_one(
+            {
+                "requirement_id": requirement_id,
+                "client_id": client_id,
+                "property_id": data.property_id,
+                "requirement_type": canon_code,
+                "requirement_code": canon_code,
+                "description": canon_code.replace("_", " ").title(),
+                "frequency_days": 0,
+                "due_date": due_far,
+                "status": "PENDING",
+                "created_at": due_far,
+                "updated_at": due_far,
+            }
+        )
+
+    request_id = str(uuid.uuid4())
     tenant_name = user.get("full_name", user.get("email", "Tenant"))
     address = f"{property_doc.get('address_line_1', '')}, {property_doc.get('city', '')} {property_doc.get('postcode', '')}".strip(", ")
     doc = {
@@ -402,6 +441,8 @@ async def request_certificate_update(request: Request):
         "property_id": data.property_id,
         "property_address": address,
         "certificate_type": data.certificate_type,
+        "requirement_code": canon_code,
+        "requirement_id": requirement_id,
         "message": (data.message or "").strip(),
         "status": "PENDING",
         "created_at": now,
@@ -444,11 +485,13 @@ async def request_certificate_update(request: Request):
         metadata={
             "property_id": data.property_id,
             "certificate_type": data.certificate_type,
+            "requirement_code": canon_code,
+            "requirement_id": requirement_id,
             "tenant_email": user.get("email"),
             "landlord_email": landlord_email,
         },
     )
-    return {"request_id": request_id, "status": "PENDING"}
+    return {"request_id": request_id, "status": "PENDING", "requirement_id": requirement_id, "requirement_code": canon_code}
 
 
 @router.post("/report-issue")
@@ -508,7 +551,18 @@ async def get_tenant_requests(request: Request):
     tenant_id = user.get("portal_user_id")
     cursor = db.tenant_requests.find(
         {"tenant_id": tenant_id},
-        {"_id": 0, "request_id": 1, "property_id": 1, "property_address": 1, "certificate_type": 1, "message": 1, "status": 1, "created_at": 1},
+        {
+            "_id": 0,
+            "request_id": 1,
+            "property_id": 1,
+            "property_address": 1,
+            "certificate_type": 1,
+            "requirement_code": 1,
+            "requirement_id": 1,
+            "message": 1,
+            "status": 1,
+            "created_at": 1,
+        },
     ).sort("created_at", -1)
     requests = await cursor.to_list(100)
     for r in requests:

@@ -23,6 +23,8 @@ import {
   Archive,
   Lock
 } from 'lucide-react';
+import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
 
 const BulkUploadPage = () => {
   const navigate = useNavigate();
@@ -329,14 +331,14 @@ const BulkUploadPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" data-testid="bulk-upload-loading">
-        <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
+      <div className={portalPageRoot} data-testid="bulk-upload-loading">
+        <PortalLoadingPanel message="Loading bulk upload…" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" data-testid="bulk-upload-page">
+    <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="bulk-upload-page">
       {/* Header */}
       <header className="bg-midnight-blue text-white py-4">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">

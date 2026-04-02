@@ -97,9 +97,11 @@ def test_priorities_passes_same_service_kwargs_as_tasks(client, override_client_
         client.get("/api/client/tasks", params={"property_id": "prop-contract-1"})
         client.get("/api/client/priorities", params={"property_id": "prop-contract-1"})
     assert m.call_count == 2
+    expected = {
+        "client_id": "contract-test-client",
+        "portal_user_id": "pu-contract-1",
+        "property_id_filter": "prop-contract-1",
+        "raw_limit": 120,
+    }
     for call in m.call_args_list:
-        assert call.kwargs == {
-            "client_id": "contract-test-client",
-            "property_id_filter": "prop-contract-1",
-            "raw_limit": 120,
-        }
+        assert call.kwargs == expected

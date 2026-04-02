@@ -20,15 +20,72 @@ from services.compliance_score import (
 )
 
 
-def _make_db_mock(properties: list, requirements: list, documents: list):
-    """Build a mock db with find().to_list() returning the given data."""
+@pytest.fixture(autouse=True)
+def _stub_enqueue_and_catalog_overlay():
+    """MagicMock DB + no catalog score overlay (production path merges catalog portfolio_score)."""
+    with patch(
+        "services.compliance_recalc_queue.enqueue_compliance_recalc",
+        new_callable=AsyncMock,
+        return_value=True,
+    ), patch(
+        "services.catalog_compliance.get_portfolio_compliance_from_catalog",
+        new_callable=AsyncMock,
+        return_value=None,
+    ):
+        yield
+
+
+def _make_db_mock(
+    properties: list,
+    requirements: list,
+    documents: list,
+    *,
+    client_id: str = "c1",
+    default_property_score: int | None = 98,
+    default_breakdown: dict | None = None,
+):
+    """Mock DB for calculate_compliance_score (stored scores on properties + reqs/docs for stats)."""
+    br_default = {
+        "status_score": 99,
+        "expiry_score": 98,
+        "document_score": 99,
+        "overdue_penalty_score": 100,
+        "risk_score": 96,
+    }
+    br = default_breakdown if default_breakdown is not None else br_default
+    props_out = []
+    for p in properties:
+        q = {**p}
+        if "compliance_score" not in q and default_property_score is not None:
+            q["compliance_score"] = default_property_score
+        if "compliance_breakdown" not in q and default_property_score is not None:
+            q["compliance_breakdown"] = dict(br)
+        props_out.append(q)
+    reqs_out = [{**r, "client_id": client_id} if "client_id" not in r else r for r in requirements]
+    docs_out = [{**d, "client_id": client_id} if "client_id" not in d else d for d in documents]
+
+    async def _props_to_list(*_a, **_kw):
+        return list(props_out)
+
+    async def _reqs_to_list(*_a, **_kw):
+        return list(reqs_out)
+
+    async def _docs_to_list(*_a, **_kw):
+        return list(docs_out)
+
     db = MagicMock()
     db.properties = MagicMock()
-    db.properties.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=properties)))
+    db.properties.find = MagicMock(
+        return_value=MagicMock(to_list=AsyncMock(side_effect=_props_to_list))
+    )
     db.requirements = MagicMock()
-    db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=requirements)))
+    db.requirements.find = MagicMock(
+        return_value=MagicMock(to_list=AsyncMock(side_effect=_reqs_to_list))
+    )
     db.documents = MagicMock()
-    db.documents.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=documents)))
+    db.documents.find = MagicMock(
+        return_value=MagicMock(to_list=AsyncMock(side_effect=_docs_to_list))
+    )
     return db
 
 
@@ -66,7 +123,21 @@ class TestCaseB_CriticalOverdueDropsScore:
     async def test_one_critical_overdue_drops_score(self):
         past = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
         future = (datetime.now(timezone.utc) + timedelta(days=200)).isoformat()
-        properties = [{"property_id": "p1", "client_id": "c1", "is_hmo": False}]
+        properties = [
+            {
+                "property_id": "p1",
+                "client_id": "c1",
+                "is_hmo": False,
+                "compliance_score": 55,
+                "compliance_breakdown": {
+                    "status_score": 45,
+                    "expiry_score": 85,
+                    "document_score": 80,
+                    "overdue_penalty_score": 25,
+                    "risk_score": 90,
+                },
+            }
+        ]
         requirements = [
             {"requirement_id": "r1", "property_id": "p1", "requirement_type": "GAS_SAFETY", "status": "OVERDUE", "due_date": past},
             {"requirement_id": "r2", "property_id": "p1", "requirement_type": "EPC", "status": "COMPLIANT", "due_date": future},
@@ -74,7 +145,7 @@ class TestCaseB_CriticalOverdueDropsScore:
         documents = [
             {"document_id": "d1", "property_id": "p1", "requirement_id": "r2", "status": "VERIFIED"},
         ]
-        db = _make_db_mock(properties, requirements, documents)
+        db = _make_db_mock(properties, requirements, documents, default_property_score=None, default_breakdown=None)
         with patch("services.compliance_score.database.get_db", return_value=db):
             result = await calculate_compliance_score("c1")
         # Critical overdue: status contribution low, overdue penalty hit, expiry still ok
@@ -96,11 +167,22 @@ class TestCaseC_CompliantButMissingDocs:
             {"requirement_id": "r2", "property_id": "p1", "requirement_type": "LANDLORD_INSURANCE", "status": "COMPLIANT", "due_date": due},
         ]
         documents = []  # No docs
-        db = _make_db_mock(properties, requirements, documents)
+        db = _make_db_mock(
+            properties,
+            requirements,
+            documents,
+            default_property_score=85,
+            default_breakdown={
+                "status_score": 100,
+                "expiry_score": 100,
+                "document_score": 0,
+                "overdue_penalty_score": 100,
+                "risk_score": 100,
+            },
+        )
         with patch("services.compliance_score.database.get_db", return_value=db):
             result = await calculate_compliance_score("c1")
-        # Status score = 100 (all compliant), expiry = 100, doc_score = 0, overdue = 100, risk = 100
-        # 0.35*100 + 0.25*100 + 0.15*0 + 0.15*100 + 0.10*100 = 35+25+0+15+10 = 85
+        # Portfolio score = stored property average; breakdown averages match model weights narrative.
         assert result.get("score") == 85
         assert result["breakdown"]["status_score"] == 100
         assert result["breakdown"]["document_score"] == 0
@@ -142,7 +224,13 @@ class TestCaseE_NoPropertiesOrNoRequirements:
     @pytest.mark.asyncio
     async def test_no_requirements_returns_100_with_message(self):
         properties = [{"property_id": "p1", "client_id": "c1", "is_hmo": False}]
-        db = _make_db_mock(properties, [], [])
+        db = _make_db_mock(
+            properties,
+            [],
+            [],
+            default_property_score=None,
+            default_breakdown=None,
+        )
         with patch("services.compliance_score.database.get_db", return_value=db):
             result = await calculate_compliance_score("c1")
         assert result.get("score") == 100

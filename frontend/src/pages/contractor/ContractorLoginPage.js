@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { authAPI } from '../../api/client';
+import { authAPI, parseApiError } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -41,7 +41,7 @@ export default function ContractorLoginPage() {
       setContractorAuth(data.access_token, data.user);
       navigate('/contractor', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid credentials');
+      setError(parseApiError(err, 'Invalid credentials'));
     } finally {
       setLoading(false);
     }

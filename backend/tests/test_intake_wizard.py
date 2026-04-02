@@ -79,15 +79,15 @@ class TestIntakeServices:
         assert "MOVE_CHECKLIST" in service_codes
     
     def test_document_pack_services(self, client):
-        """Document Packs category has 3 services"""
+        """Document Packs category has 3 services (PLUS/TENANCY and PRO/ULTIMATE naming in pack_registry)."""
         response = client.get("/api/intake/services")
         data = response.json()
         doc_services = [s for s in data["services"] if s["category"] == "document_pack"]
         assert len(doc_services) == 3
         service_codes = [s["service_code"] for s in doc_services]
         assert "DOC_PACK_ESSENTIAL" in service_codes
-        assert "DOC_PACK_TENANCY" in service_codes
-        assert "DOC_PACK_ULTIMATE" in service_codes
+        assert "DOC_PACK_PLUS" in service_codes
+        assert "DOC_PACK_PRO" in service_codes
 
 
 class TestIntakePacks:

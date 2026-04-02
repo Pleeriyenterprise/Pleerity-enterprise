@@ -202,13 +202,31 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                     score_last_calculated_at = t
         if isinstance(score_last_calculated_at, datetime) and score_last_calculated_at.tzinfo is None:
             score_last_calculated_at = score_last_calculated_at.replace(tzinfo=timezone.utc)
+        _critical_req_types = frozenset(
+            {
+                "GAS_SAFETY",
+                "EICR",
+                "SMOKE_ALARM",
+                "CO_ALARM",
+                "HMO_LICENCE",
+                "FIRE_RISK_ASSESSMENT",
+                "FIRE_DOORS",
+                "EMERGENCY_LIGHTING",
+            }
+        )
+        critical_overdue_count = sum(
+            1
+            for r in requirements
+            if r.get("status") in ("OVERDUE", "EXPIRED")
+            and (r.get("requirement_type") or "").upper() in _critical_req_types
+        )
         stats = {
             "total_requirements": total_reqs,
             "compliant": compliant,
             "pending": pending,
             "expiring_soon": expiring_soon,
             "overdue": overdue,
-            "critical_overdue": 0,
+            "critical_overdue": critical_overdue_count,
             "documents_uploaded": len(documents),
             "documents_verified": len([d for d in documents if d.get("status") == "VERIFIED"]),
             "verified_coverage_percent": round(verified_coverage, 1),

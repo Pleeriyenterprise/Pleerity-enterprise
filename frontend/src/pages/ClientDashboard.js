@@ -9,14 +9,22 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
 import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard, ClipboardCheck, Upload, History, Building2, Wrench, ListTodo, LayoutDashboard } from 'lucide-react';
-import api, { API_URL } from '../api/client';
+import api, { API_URL, parseApiError } from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
 import ScoreTrendChart from '../components/ScoreTrendChart';
 import { formatRiskLabel, riskLevelToGradeColorMessage, getRiskBandExplanation, getRiskBandExplanationFromScore } from '../utils/riskLabel';
 import { UrgencyRow, timingLabelFromDueAtIso } from '../components/client/UrgencyDisplay';
 import { requirementLabel, slaStateLabel, riskTypeLabelClient } from '../domain/presentDomain';
-import { normalizeRouteId, recordClientPortalInteraction, resolveClientPortalPath, resolvePriorityActionNavigateTarget, resolvePropertyPath } from '../utils/clientPortalNavigation';
+import {
+  buildEntityRoute,
+  normalizeRouteId,
+  recordClientPortalInteraction,
+  resolveClientPortalPath,
+  resolvePropertyPath,
+} from '../utils/clientPortalNavigation';
+import { resolveTaskCta } from '../utils/ctaRegistry';
+import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 
 const KPI_NO_DATA = 'No data yet';
 
@@ -120,12 +128,12 @@ const ClientDashboard = () => {
   const [skippedChecklistThisSession, setSkippedChecklistThisSession] = useState(false);
   const [onboardingChecklist, setOnboardingChecklist] = useState(null);
   const [completingItemId, setCompletingItemId] = useState(null);
+  const [onboardingItemError, setOnboardingItemError] = useState('');
+  const [valueInsights, setValueInsights] = useState(null);
   // Operations data for dashboard KPIs and action queue
   const [workOrdersList, setWorkOrdersList] = useState([]);
   const [predictiveInsightsData, setPredictiveInsightsData] = useState(null);
   const [riskSignalsData, setRiskSignalsData] = useState(null);
-  // Priority actions (orchestration/copilot layer)
-  const [priorityActions, setPriorityActions] = useState({ actions: [], total: 0 });
   const [openIssuesCountKpi, setOpenIssuesCountKpi] = useState(null);
   const [openIssuesKpiLoading, setOpenIssuesKpiLoading] = useState(false);
   const [maintenanceSpendMonth, setMaintenanceSpendMonth] = useState(null);
@@ -194,6 +202,7 @@ const ClientDashboard = () => {
     fetchPortfolioSummary();
     fetchRequirements();
     clientAPI.getOnboardingChecklist().then((r) => setOnboardingChecklist(r.data)).catch(() => {});
+    clientAPI.getValueInsights().then((r) => setValueInsights(r.data)).catch(() => setValueInsights(null));
     // Intentionally depend only on role/client_id; fetch functions are stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClientUser, user?.role, user?.client_id]);
@@ -240,14 +249,6 @@ const ClientDashboard = () => {
       .then((res) => setMaintenanceSpendMonth(res.data))
       .catch(() => setMaintenanceSpendMonth(null));
   }, [isClientUser, hasFeature]);
-
-  // Priority actions (orchestration layer) — always fetch when client user
-  useEffect(() => {
-    if (!isClientUser) return;
-    clientAPI.getPriorityActions({ limit: 10 })
-      .then((res) => setPriorityActions({ actions: res.data?.actions || [], total: res.data?.total ?? 0 }))
-      .catch(() => setPriorityActions({ actions: [], total: 0 }));
-  }, [isClientUser]);
 
   useEffect(() => {
     if (!isClientUser) {
@@ -397,6 +398,7 @@ const ClientDashboard = () => {
         fetchScoreChanges();
         fetchComplianceScore();
         clientAPI.getOnboardingChecklist().then((r) => setOnboardingChecklist(r.data)).catch(() => {});
+        clientAPI.getValueInsights().then((r) => setValueInsights(r.data)).catch(() => setValueInsights(null));
         const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
         clientAPI
           .getCommandCenter(params)
@@ -602,13 +604,19 @@ const ClientDashboard = () => {
     clientAPI.getOnboardingChecklist()
       .then((r) => setOnboardingChecklist(r.data))
       .catch(() => {});
+    clientAPI.getValueInsights().then((r) => setValueInsights(r.data)).catch(() => setValueInsights(null));
   };
 
   const completeOnboardingItem = (itemId) => {
+    setOnboardingItemError('');
     setCompletingItemId(itemId);
     clientAPI.completeOnboardingItem(itemId)
       .then(() => refetchOnboardingChecklist())
-      .catch(() => {})
+      .catch((err) => {
+        setOnboardingItemError(
+          parseApiError(err, 'Could not mark this step complete. Complete the action in the app first, then try again.'),
+        );
+      })
       .finally(() => setCompletingItemId(null));
   };
 
@@ -751,14 +759,14 @@ const ClientDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="loading-spinner" />
+      <div className={portalPageRoot} data-testid="client-dashboard-loading">
+        <PortalLoadingPanel message="Loading dashboard…" />
       </div>
     );
   }
 
   return (
-    <div data-testid="client-dashboard">
+    <div className={portalPageRoot} data-testid="client-dashboard">
         <ErrorBanner message={error} onRetry={fetchDashboard} retryLabel="Retry" />
 
         {systemBanners.length > 0 && (
@@ -858,6 +866,33 @@ const ClientDashboard = () => {
               <p className="text-sm text-gray-600 mt-1">Complete these steps to get an accurate compliance overview. You can also skip and return later.</p>
             </CardHeader>
             <CardContent className="space-y-4">
+              {onboardingChecklist?.progress != null && onboardingChecklist.progress.total > 0 && (
+                <div className="mb-2" data-testid="onboarding-progress-bar">
+                  <div className="flex justify-between text-xs text-gray-600 mb-1">
+                    <span>Your progress</span>
+                    <span>
+                      {onboardingChecklist.progress.completed}/{onboardingChecklist.progress.total} (
+                      {onboardingChecklist.progress.percent}%)
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-electric-teal transition-all"
+                      style={{ width: `${Math.min(100, Math.max(0, onboardingChecklist.progress.percent))}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              {onboardingChecklist?.next_step && (
+                <p className="text-sm font-medium text-midnight-blue" data-testid="onboarding-next-step">
+                  Next step: {onboardingChecklist.next_step.label}
+                </p>
+              )}
+              {onboardingItemError && (
+                <Alert className="border-red-200 bg-red-50" data-testid="onboarding-item-error">
+                  <AlertDescription className="text-red-800 text-sm">{onboardingItemError}</AlertDescription>
+                </Alert>
+              )}
               {onboardingChecklist?.items?.length > 0 ? (
                 <ul className="space-y-3 text-sm text-gray-700">
                   {onboardingChecklist.items.map((item) => (
@@ -1027,12 +1062,136 @@ const ClientDashboard = () => {
           </Alert>
         )}
 
-        {/* Welcome – Compliance Command Centre */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-midnight-blue mb-2">Compliance Command Centre</h2>
-          <p className="text-gray-600">Welcome, {data?.client?.full_name}. Here&apos;s your compliance overview.</p>
-          <p className="text-xs text-gray-500 mt-2">This is an evidence-based status summary. It is not legal advice.</p>
+        {/* Welcome – executive overview */}
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-2">Command centre</h2>
+          <p className="text-gray-600 text-sm sm:text-base">Welcome, {data?.client?.full_name}. Evidence-based compliance and operations snapshot.</p>
+          <p className="text-xs text-gray-500 mt-2">Not legal advice.</p>
         </div>
+
+        {valueInsights && (
+          <div
+            className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+            data-testid="value-insights-strip"
+          >
+            <h3 className="text-sm font-semibold text-midnight-blue mb-3">Your impact</h3>
+            <div className="grid sm:grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500 text-xs uppercase tracking-wide">What you&apos;ve achieved</p>
+                <ul className="mt-2 text-gray-800 space-y-1 list-disc pl-4">
+                  <li>{valueInsights.achievements?.requirements_compliant ?? 0} requirements compliant</li>
+                  <li>{valueInsights.achievements?.documents_on_file ?? 0} documents on file</li>
+                  <li>{valueInsights.achievements?.work_orders_completed_last_30_days ?? 0} jobs completed (30 days)</li>
+                </ul>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs uppercase tracking-wide">What needs attention</p>
+                <ul className="mt-2 text-gray-800 space-y-1 list-disc pl-4">
+                  <li>{valueInsights.at_risk?.overdue_requirements ?? 0} overdue requirements</li>
+                  <li>{valueInsights.at_risk?.expiring_soon_requirements ?? 0} expiring soon</li>
+                  <li>{valueInsights.at_risk?.command_centre_urgent_open ?? 0} urgent inbox items</li>
+                </ul>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs uppercase tracking-wide">On a higher plan</p>
+                {valueInsights.upgrade_path?.at_highest_public_tier ? (
+                  <p className="mt-2 text-gray-700">You&apos;re on our top public tier for published limits.</p>
+                ) : (
+                  <>
+                    <ul className="mt-2 text-gray-800 space-y-1 list-disc pl-4">
+                      {(valueInsights.upgrade_path?.unlocks_on_next_tier || []).slice(0, 5).map((u) => (
+                        <li key={u}>{u}</li>
+                      ))}
+                    </ul>
+                    {valueInsights.show_upgrade_for_property_cap ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                        onClick={() => navigate('/billing')}
+                        data-testid="value-insights-upgrade-cta"
+                      >
+                        Upgrade to add properties
+                      </Button>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {valueInsights?.plan_comparison?.next && !valueInsights.upgrade_path?.at_highest_public_tier && (
+          <div
+            className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+            data-testid="plan-comparison-strip"
+          >
+            <h3 className="text-sm font-semibold text-midnight-blue mb-3">Your plan vs next tier</h3>
+            <div className="grid sm:grid-cols-2 gap-4 text-sm">
+              <div className="border border-gray-100 rounded-lg p-3">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Current</p>
+                <p className="font-semibold text-gray-900 mt-1">{valueInsights.plan_comparison.current?.display_name || valueInsights.plan}</p>
+                <p className="text-gray-600 mt-1">
+                  Property cap: {valueInsights.plan_comparison.current?.max_properties ?? valueInsights.max_properties ?? '—'}
+                </p>
+              </div>
+              <div className="border border-electric-teal/50 rounded-lg p-3 bg-teal-50/40">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Next</p>
+                <p className="font-semibold text-midnight-blue mt-1">{valueInsights.plan_comparison.next?.display_name}</p>
+                <p className="text-gray-700 mt-1">
+                  Property cap: {valueInsights.plan_comparison.next?.max_properties ?? '—'}
+                </p>
+                {valueInsights.plan_comparison.immediate_benefit_line && (
+                  <p className="text-gray-800 mt-2 font-medium">{valueInsights.plan_comparison.immediate_benefit_line}</p>
+                )}
+                {(valueInsights.plan_comparison.you_get_on_next_tier || []).length > 0 && (
+                  <ul className="mt-2 text-gray-700 space-y-1 list-disc pl-4">
+                    {(valueInsights.plan_comparison.you_get_on_next_tier || []).slice(0, 6).map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+            <Button
+              type="button"
+              className="mt-4 bg-electric-teal hover:bg-electric-teal/90 text-white"
+              size="sm"
+              onClick={() => navigate('/settings/billing')}
+            >
+              Compare plans & upgrade
+            </Button>
+          </div>
+        )}
+
+        {valueInsights &&
+          (valueInsights.upgrade_nudge_reasons || []).length > 0 &&
+          !valueInsights.upgrade_path?.at_highest_public_tier && (
+            <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="upgrade-nudge-contextual">
+              <AlertCircle className="h-4 w-4 text-amber-700" />
+              <AlertDescription>
+                <span className="font-medium text-amber-900">Why upgrade right now</span>
+                <ul className="mt-2 space-y-2 text-sm text-amber-950 list-disc pl-4">
+                  {(valueInsights.upgrade_nudge_reasons || []).map((r) => (
+                    <li key={r.code}>
+                      <span className="font-medium">{r.headline}</span>
+                      <span className="block text-amber-900 mt-0.5">{r.why_now}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 border-amber-400 text-amber-900 hover:bg-amber-100"
+                  onClick={() => navigate('/settings/billing')}
+                >
+                  Review plans and limits
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
         {/* Compact top strip: score, grade, risk band, last updated, properties count */}
         {(displayScoreInfo || complianceScore || portfolioSummary) && (
@@ -1068,7 +1227,7 @@ const ClientDashboard = () => {
             dashboardFreshness?.last_automation_score_recalc_at ||
             dashboardFreshness?.last_automation_risk_refresh_at) && (
           <div
-            className="mb-4 rounded-lg border border-gray-200 bg-white px-4 py-3 text-xs text-gray-600"
+            className="hidden xl:block mb-4 rounded-lg border border-gray-200 bg-white px-4 py-3 text-xs text-gray-600"
             data-testid="dashboard-freshness-strip"
           >
             <p className="font-medium text-gray-700 mb-1">Data freshness</p>
@@ -1119,7 +1278,7 @@ const ClientDashboard = () => {
 
         {!setupView && isClientUser && (protectionSnapshotLoading || protectionSnapshot) && (
           <Card
-            className="mb-6 border border-gray-200 shadow-sm"
+            className="hidden lg:block mb-6 border border-gray-200 shadow-sm"
             data-testid="protection-snapshot-card"
           >
             <CardHeader className="pb-2">
@@ -1189,7 +1348,7 @@ const ClientDashboard = () => {
                 <p className="text-xs text-electric-teal mt-1">Open Today →</p>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/compliance-score')}>
+            <Card className="hidden sm:block cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/compliance-score')}>
               <CardContent className="p-3 sm:p-4 min-w-0">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Portfolio compliance</p>
                 <p className="text-xl font-bold text-midnight-blue">
@@ -1271,7 +1430,14 @@ const ClientDashboard = () => {
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-sm">
+              <p className="sm:hidden text-sm text-gray-700 font-medium">
+                Urgent {tasksDigest.summary?.urgent_count ?? 0}
+                {' · '}
+                Upcoming {tasksDigest.summary?.upcoming_count ?? 0}
+                {' · '}
+                In progress {tasksDigest.summary?.in_progress_count ?? 0}
+              </p>
+              <div className="hidden sm:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-sm">
                 <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Urgent</p>
                   <p className="text-lg font-semibold text-midnight-blue">{tasksDigest.summary?.urgent_count ?? 0}</p>
@@ -1303,7 +1469,7 @@ const ClientDashboard = () => {
                 </div>
               </div>
               {(tasksDigest.activity_feed?.length ?? 0) > 0 && (
-                <div>
+                <div className="hidden md:block">
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recent inbox activity</p>
                   <ul className="space-y-1.5 text-sm text-gray-700">
                     {tasksDigest.activity_feed.map((row) => (
@@ -1391,8 +1557,8 @@ const ClientDashboard = () => {
             </CardHeader>
             <CardContent className="space-y-5">
               {(commandCenter.urgent_actions?.length ?? 0) > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Urgent &amp; in progress</p>
+                <div className="rounded-xl border border-red-100 bg-red-50/40 p-3 sm:p-4">
+                  <p className="text-xs font-semibold text-red-900 uppercase tracking-wide mb-2">Urgent &amp; in progress</p>
                   <ul className="space-y-2 text-sm">
                     {commandCenter.urgent_actions.slice(0, 6).map((t) => (
                       <li key={t.id || t.title} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
@@ -1400,7 +1566,7 @@ const ClientDashboard = () => {
                           type="button"
                           className="text-left text-midnight-blue hover:underline font-medium min-w-0 break-words"
                           onClick={() => {
-                            const url = t.primary_action_url || t.cta_url;
+                            const url = resolveTaskCta(t, 'primary').route || t.primary_action_url || t.cta_url;
                             if (url && url.startsWith('/')) {
                               const target = resolveClientPortalPath(url, '/today');
                               recordClientPortalInteraction('command_center_urgent_task', { task_id: t.id, target });
@@ -1841,13 +2007,36 @@ const ClientDashboard = () => {
                       const lbl = rec.display_label || requirementLabel(code);
                       actionDisplay = actionDisplay.split(code).join(lbl);
                     }
-                    const actionLower = actionDisplay.toLowerCase();
-                    const fixNowPath =
-                      actionLower.includes('overdue') ? '/requirements?status=OVERDUE_OR_MISSING' :
-                      actionLower.includes('expir') ? '/requirements?window=30&status=DUE_SOON' :
-                      actionLower.includes('verif') || actionLower.includes('confirm') ? '/documents' :
-                      actionLower.includes('upload') ? '/documents' :
-                      '/requirements';
+                    const codeLower = (code || '').toString().trim().toLowerCase();
+                    const recPropertyId = normalizeRouteId(rec.property_id || rec.related_property_id);
+                    const recReqId = normalizeRouteId(rec.requirement_id || rec.related_requirement_id);
+                    const candidates = requirementsList.filter((r) => {
+                      const rCode = String(r.requirement_code || r.requirement_type || '').trim().toLowerCase();
+                      const propOk = recPropertyId ? String(r.property_id || '') === recPropertyId : true;
+                      const codeOk = codeLower ? rCode === codeLower : true;
+                      return propOk && codeOk;
+                    });
+                    const sorted = [...candidates].sort((a, b) => {
+                      const wa =
+                        (String(a.status || '').toUpperCase() === 'OVERDUE' ? 0 : String(a.status || '').toUpperCase() === 'EXPIRING_SOON' ? 1 : 2);
+                      const wb =
+                        (String(b.status || '').toUpperCase() === 'OVERDUE' ? 0 : String(b.status || '').toUpperCase() === 'EXPIRING_SOON' ? 1 : 2);
+                      if (wa !== wb) return wa - wb;
+                      return 0;
+                    });
+                    const bestReq = sorted[0] || null;
+                    const bestRequirementId = recReqId || normalizeRouteId(bestReq?.requirement_id);
+                    const bestPropertyId = recPropertyId || normalizeRouteId(bestReq?.property_id);
+                    const fixNowPath = buildEntityRoute(
+                      {
+                        requirement_id: bestRequirementId,
+                        property_id: bestPropertyId,
+                        work_order_id: normalizeRouteId(rec.work_order_id || rec.related_work_order_id),
+                        mode: 'upload',
+                      },
+                      '/today'
+                    );
+                    const hasEntityRoute = fixNowPath !== '/today';
                     return (
                     <div 
                       key={idx}
@@ -1870,7 +2059,8 @@ const ClientDashboard = () => {
                           variant="outline"
                           size="sm"
                           className="shrink-0"
-                          onClick={(e) => { e.stopPropagation(); navigate(fixNowPath); }}
+                          disabled={!hasEntityRoute}
+                          onClick={(e) => { e.stopPropagation(); if (hasEntityRoute) navigate(fixNowPath); }}
                           data-testid={`quick-action-fix-${idx}`}
                         >
                           Fix now
@@ -2031,53 +2221,6 @@ const ClientDashboard = () => {
               </Button>
             </AlertDescription>
           </Alert>
-        )}
-
-        {/* Priority Actions: ranked next steps from compliance, operations, risk, approvals */}
-        {!setupView && priorityActions.actions?.length > 0 && (
-          <Card className="mb-8 border-electric-teal/30 bg-white" data-testid="priority-actions-panel">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2 text-midnight-blue">
-                <Zap className="w-4 h-4 text-electric-teal" />
-                Priority actions
-              </CardTitle>
-              <p className="text-sm text-gray-600">Most important next steps</p>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3">
-                {priorityActions.actions.map((action, idx) => (
-                  <li key={idx} className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 py-3 border-b border-gray-100 last:border-0">
-                    <div className="min-w-0 flex-1">
-                      <UrgencyRow
-                        urgencyLevel={action.severity || 'medium'}
-                        timingLabel={timingLabelFromDueAtIso(action.due_at)}
-                        className="mb-1"
-                      />
-                      <p className="text-sm font-medium text-midnight-blue break-words">{action.title}</p>
-                      {action.description && (
-                        <p className="text-xs text-gray-600 mt-0.5 line-clamp-3 break-words">{action.description}</p>
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      className="shrink-0 w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0 bg-electric-teal hover:bg-electric-teal/90"
-                      onClick={() => {
-                        const target = resolvePriorityActionNavigateTarget(action, '/today');
-                        recordClientPortalInteraction('dashboard_priority_action', {
-                          target,
-                          related_property_id: action.related_property_id ?? null,
-                          action_type: action.action_type ?? null,
-                        });
-                        navigate(target);
-                      }}
-                    >
-                      {action.recommended_action_label || 'View'}
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
         )}
 
         {/* Action Required: operations items (deep links to Issues, Risk Signals) */}
@@ -2303,59 +2446,46 @@ const ClientDashboard = () => {
           </Card>
         </div>
 
-        {/* Next Actions: Fix now → /properties/:id#req=code */}
-        {(() => {
-          const actionStatuses = ['OVERDUE', 'EXPIRED', 'EXPIRING_SOON', 'PENDING', 'MISSING'];
-          const properties = data?.properties || [];
-          const getPropertyDisplayName = (propertyId) => {
-            const p = properties.find((pr) => pr.property_id === propertyId);
-            return p ? (p.nickname || p.address_line_1 || (p.postcode ? p.postcode : null) || propertyId) : propertyId;
-          };
-          const nextItems = requirementsList
-            .filter((r) => actionStatuses.includes((r.status || '').toUpperCase()))
-            .map((r) => ({
-              property_id: r.property_id,
-              requirement_code: (r.requirement_code || r.requirement_type || r.requirement_id || '').toString(),
-              status: r.status,
-              description: r.description || r.requirement_type,
-            }))
-            .filter((a) => a.property_id && a.requirement_code)
-            .slice(0, 10);
-          const seen = new Set();
-          const deduped = nextItems.filter((a) => {
-            const key = `${a.property_id}:${a.requirement_code}`;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-          });
-          return deduped.length > 0 ? (
-            <Card className="enterprise-card mb-8" data-testid="next-actions-card">
-              <CardHeader>
-                <CardTitle className="text-midnight-blue">Next Actions</CardTitle>
-                <p className="text-sm text-gray-500 mt-1">Items that need evidence or are expiring</p>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {deduped.map((a, i) => (
-                    <li key={`${a.property_id}-${a.requirement_code}-${i}`} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+        {/* Next Actions from command center (single priority source) */}
+        {!setupView && (commandCenter?.urgent_actions?.length ?? 0) > 0 && (
+          <Card className="enterprise-card mb-8" data-testid="next-actions-card">
+            <CardHeader>
+              <CardTitle className="text-midnight-blue">Next Actions</CardTitle>
+              <p className="text-sm text-gray-500 mt-1">Most important tasks from your unified command centre</p>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {commandCenter.urgent_actions.slice(0, 10).map((task) => {
+                  const cta = resolveTaskCta(task, 'primary');
+                  const target = resolveClientPortalPath(cta.route, '/today');
+                  return (
+                    <li key={task.task_id || task.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                       <span className="text-sm text-gray-700 truncate mr-2">
-                        {a.description || requirementLabel(a.requirement_code)} · {getPropertyDisplayName(a.property_id)}
+                        {task.title} {task.property_label ? `· ${task.property_label}` : ''}
                       </span>
                       <Button
                         size="sm"
                         className="bg-electric-teal hover:bg-electric-teal/90 text-white"
-                        onClick={() => navigateToPropertyDashboard(navigate, a.property_id, `req=${encodeURIComponent(a.requirement_code)}`)}
-                        data-testid={`fix-now-${a.property_id}-${a.requirement_code}`}
+                        onClick={() => {
+                          recordClientPortalInteraction('dashboard_priority_action', {
+                            target,
+                            source_type: task.source_type ?? null,
+                            action_type: task.action_type ?? null,
+                            task_id: task.task_id ?? task.id ?? null,
+                          });
+                          navigate(target);
+                        }}
+                        data-testid={`fix-now-${task.task_id || task.id}`}
                       >
-                        Fix now
+                        {task.primary_action_label || 'Fix now'}
                       </Button>
                     </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ) : null;
-        })()}
+                  );
+                })}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Properties: sortable table */}
         <div className="grid lg:grid-cols-3 gap-6 mb-8">

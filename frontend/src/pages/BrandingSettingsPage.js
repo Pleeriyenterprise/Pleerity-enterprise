@@ -12,6 +12,9 @@ import {
   ArrowLeft, Eye
 } from 'lucide-react';
 import api, { openBlobApiResponse } from '../api/client';
+import UpgradePrompt from '../components/UpgradePrompt';
+import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
 
 /** Uploaded logos use this path; <img src> cannot send Bearer auth, so we fetch via axios + blob URL. */
 function logoUrlRequiresAuthenticatedFetch(url) {
@@ -25,7 +28,6 @@ function logoUrlRequiresAuthenticatedFetch(url) {
     return s.includes('/client/branding/logo');
   }
 }
-import UpgradePrompt from '../components/UpgradePrompt';
 
 const BrandingSettingsPage = () => {
   const navigate = useNavigate();
@@ -213,13 +215,8 @@ const BrandingSettingsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-            <div className="h-64 bg-gray-200 rounded"></div>
-          </div>
-        </div>
+      <div className={cn(portalPageRoot, 'p-4 sm:p-8')}>
+        <PortalLoadingPanel message="Loading branding…" />
       </div>
     );
   }
@@ -227,22 +224,23 @@ const BrandingSettingsPage = () => {
   const isLocked = !branding?.feature_enabled;
 
   return (
-    <div className="min-h-screen bg-gray-50" data-testid="branding-settings-page">
+    <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="branding-settings-page">
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
               <Button 
                 variant="ghost" 
                 size="sm" 
+                className="min-h-11 shrink-0 self-start"
                 onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/settings'))}
                 data-testid="back-btn"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Settings
               </Button>
-              <div>
+              <div className="min-w-0">
                 <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                   <Palette className="w-5 h-5 text-electric-teal" />
                   Branding Settings
@@ -250,9 +248,10 @@ const BrandingSettingsPage = () => {
                 <p className="text-sm text-gray-500">Customize your reports and emails</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
+                className="min-h-11 w-full sm:w-auto"
                 onClick={handleReset}
                 disabled={isLocked || saving}
                 data-testid="reset-btn"
@@ -261,6 +260,7 @@ const BrandingSettingsPage = () => {
                 Reset
               </Button>
               <Button
+                className="min-h-11 w-full sm:w-auto"
                 onClick={handleSave}
                 disabled={isLocked || saving || !hasChanges}
                 data-testid="save-btn"
@@ -273,7 +273,7 @@ const BrandingSettingsPage = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
         {/* Upgrade Notice for Locked Feature */}
         {isLocked && (
           <UpgradePrompt

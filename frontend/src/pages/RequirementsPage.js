@@ -30,6 +30,8 @@ import {
 import { Alert, AlertDescription } from '../components/ui/alert';
 import EmptyState from '../components/EmptyState';
 import { requirementLabel } from '../domain/presentDomain';
+import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import { PortalLoadingPanel } from '../components/client/ClientPortalPatterns';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -233,10 +235,13 @@ const RequirementsPage = () => {
     const StatusIcon = statusConfig.icon;
     const daysUntil = getDaysUntilDue(req.due_date);
     const docCount = documentCountByRequirementId[req.requirement_id] || 0;
+    const hasDocs = docCount > 0;
+    const docsPath = resolveDocumentsPath(req.property_id, { requirement_id: req.requirement_id });
+    const uploadPath = resolveDocumentsPath(req.property_id, { requirement_id: req.requirement_id, focus: 'upload' });
     return (
       <div key={req.requirement_id} className="p-4 hover:bg-gray-50 transition-colors" data-testid={`requirement-row-${req.requirement_id}`}>
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-4 flex-1">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${statusConfig.color === 'green' ? 'bg-green-100' : statusConfig.color === 'amber' ? 'bg-amber-100' : statusConfig.color === 'red' ? 'bg-red-100' : statusConfig.color === 'blue' ? 'bg-blue-100' : 'bg-gray-100'}`}>
               <StatusIcon className={`w-5 h-5 ${statusConfig.color === 'green' ? 'text-green-600' : statusConfig.color === 'amber' ? 'text-amber-600' : statusConfig.color === 'red' ? 'text-red-600' : statusConfig.color === 'blue' ? 'text-blue-600' : 'text-gray-600'}`} />
             </div>
@@ -268,19 +273,41 @@ const RequirementsPage = () => {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4 ml-4">
+          <div className="flex flex-col gap-3 w-full lg:w-auto lg:max-w-xs shrink-0 border-t border-gray-100 pt-4 lg:border-t-0 lg:pt-0">
             {daysUntil !== null && (
-              <div className={`text-right ${daysUntil < 0 ? 'text-red-600' : daysUntil <= 14 ? 'text-amber-600' : daysUntil <= 30 ? 'text-yellow-600' : 'text-gray-600'}`}>
-                <p className="text-lg font-bold">{daysUntil < 0 ? Math.abs(daysUntil) : daysUntil}</p>
+              <div className={`flex lg:flex-col items-center lg:items-end justify-between lg:justify-start gap-2 ${daysUntil < 0 ? 'text-red-600' : daysUntil <= 14 ? 'text-amber-600' : daysUntil <= 30 ? 'text-yellow-600' : 'text-gray-600'}`}>
+                <p className="text-lg font-bold tabular-nums">{daysUntil < 0 ? Math.abs(daysUntil) : daysUntil}</p>
                 <p className="text-xs">{daysUntil < 0 ? 'days overdue' : 'days left'}</p>
               </div>
             )}
-            <Button variant="ghost" size="sm" onClick={() => openEditModal(req)} className="text-gray-600 hover:text-midnight-blue" data-testid={`edit-requirement-${req.requirement_id}`}>
-              <Pencil className="w-4 h-4 mr-1" /> Edit
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate(resolveDocumentsPath(req.property_id, { requirement_id: req.requirement_id }))} className="text-electric-teal hover:text-teal-700" data-testid={`view-documents-${req.requirement_id}`}>
-              View Documents <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
+            {hasDocs ? (
+              <Button
+                className="w-full min-h-11 justify-center bg-midnight-blue hover:bg-midnight-blue/90"
+                onClick={() => navigate(docsPath)}
+                data-testid={`view-documents-${req.requirement_id}`}
+              >
+                {PORTAL_COPY.viewDocuments}
+                <ChevronRight className="w-4 h-4 ml-1 shrink-0" />
+              </Button>
+            ) : (
+              <Button
+                className="w-full min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90 text-midnight-blue font-semibold"
+                onClick={() => navigate(uploadPath)}
+                data-testid={`upload-document-${req.requirement_id}`}
+              >
+                {PORTAL_COPY.uploadDocument}
+              </Button>
+            )}
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-2">
+              {hasDocs && (
+                <Button variant="outline" size="sm" className="w-full min-h-10 justify-center" onClick={() => navigate(uploadPath)}>
+                  Add document
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" className="w-full min-h-10 justify-center text-gray-500 hover:text-midnight-blue" onClick={() => openEditModal(req)} data-testid={`edit-requirement-${req.requirement_id}`}>
+                <Pencil className="w-4 h-4 mr-1 shrink-0" /> Edit dates and applicability
+              </Button>
+            </div>
           </div>
         </div>
         {hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
@@ -289,7 +316,7 @@ const RequirementsPage = () => {
               type="button"
               variant="outline"
               size="sm"
-              className="text-xs h-8"
+              className="text-xs min-h-10 h-auto py-2"
               disabled={complianceBookingKey !== null}
               onClick={() => bookComplianceFromRequirement(req, 'inspection')}
               data-testid={`compliance-inspection-${req.requirement_id}`}
@@ -305,7 +332,7 @@ const RequirementsPage = () => {
               type="button"
               variant="outline"
               size="sm"
-              className="text-xs h-8"
+              className="text-xs min-h-10 h-auto py-2"
               disabled={complianceBookingKey !== null}
               onClick={() => bookComplianceFromRequirement(req, 'renewal')}
               data-testid={`compliance-renewal-${req.requirement_id}`}
@@ -319,7 +346,7 @@ const RequirementsPage = () => {
               type="button"
               variant="outline"
               size="sm"
-              className="text-xs h-8"
+              className="text-xs min-h-10 h-auto py-2"
               onClick={() =>
                 navigate(resolveDocumentsPath(req.property_id, { requirement_id: req.requirement_id, focus: 'upload' }))
               }
@@ -359,11 +386,7 @@ const RequirementsPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
-      </div>
-    );
+    return <PortalLoadingPanel message={`Loading ${PORTAL_COPY.requirements.toLowerCase()}…`} />;
   }
 
   return (
@@ -380,15 +403,15 @@ const RequirementsPage = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-2xl font-bold text-midnight-blue">{getPageTitle()}</h2>
-              <p className="text-gray-500 mt-1">{getPageDescription()}</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-midnight-blue">{getPageTitle()}</h2>
+              <p className="text-gray-500 mt-1 text-sm sm:text-base">{getPageDescription()}</p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Showing</p>
-              <p className="text-2xl font-bold text-midnight-blue">{filteredRequirements.length}</p>
-              <p className="text-sm text-gray-500">tracked items</p>
+            <div className="text-left sm:text-right shrink-0 rounded-xl border border-gray-200 bg-white px-4 py-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Showing</p>
+              <p className="text-2xl font-bold text-midnight-blue tabular-nums">{filteredRequirements.length}</p>
+              <p className="text-sm text-gray-500">{PORTAL_COPY.trackedItem}s</p>
             </div>
           </div>
         </div>
@@ -459,44 +482,46 @@ const RequirementsPage = () => {
 
         {/* Search Bar */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-4">
+            <div className="flex-1 relative min-w-0">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by requirement type, property, or description..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
+                placeholder="Search requirement, property, or notes…"
+                className="w-full min-h-11 pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal focus:border-transparent"
                 data-testid="search-input"
               />
             </div>
+            <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto shrink-0">
             <Button
               variant="outline"
               onClick={fetchData}
-              className="border-gray-200"
+              className="border-gray-200 w-full sm:w-auto min-h-11"
               data-testid="refresh-btn"
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
+              <RefreshCw className="w-4 h-4 mr-2 shrink-0" />
               Refresh
             </Button>
-            <div className="flex items-center gap-2 border border-gray-200 rounded-lg p-1 bg-gray-50">
+            <div className="flex flex-1 items-stretch gap-1 border border-gray-200 rounded-lg p-1 bg-gray-50 min-h-11">
               <button
                 type="button"
                 onClick={() => setGroupBy('property')}
-                className={`px-3 py-1.5 text-sm rounded-md ${groupBy === 'property' ? 'bg-white shadow border border-gray-200 font-medium text-midnight-blue' : 'text-gray-600'}`}
+                className={`flex-1 px-2 sm:px-3 py-2 text-xs sm:text-sm rounded-md min-h-[2.5rem] ${groupBy === 'property' ? 'bg-white shadow border border-gray-200 font-medium text-midnight-blue' : 'text-gray-600'}`}
                 data-testid="group-by-property"
               >
-                Group by property
+                By property
               </button>
               <button
                 type="button"
                 onClick={() => setGroupBy('requirement')}
-                className={`px-3 py-1.5 text-sm rounded-md ${groupBy === 'requirement' ? 'bg-white shadow border border-gray-200 font-medium text-midnight-blue' : 'text-gray-600'}`}
+                className={`flex-1 px-2 sm:px-3 py-2 text-xs sm:text-sm rounded-md min-h-[2.5rem] ${groupBy === 'requirement' ? 'bg-white shadow border border-gray-200 font-medium text-midnight-blue' : 'text-gray-600'}`}
                 data-testid="group-by-requirement"
               >
-                Group by requirement
+                By requirement
               </button>
+            </div>
             </div>
           </div>
         </div>
@@ -578,7 +603,7 @@ const RequirementsPage = () => {
         {/* Edit requirement modal */}
         {editModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" data-testid="edit-requirement-modal">
-            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 portal-modal-scroll max-h-[min(90dvh,90vh)]">
               <h3 className="text-lg font-semibold text-midnight-blue mb-4">Edit tracked item</h3>
               <p className="text-sm text-gray-600 mb-2">
                 {editModal.requirement.requirement_type?.replace(/_/g, ' ')} — {editModal.property?.nickname || editModal.property?.address_line_1 || 'Property'}

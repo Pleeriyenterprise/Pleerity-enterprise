@@ -124,8 +124,50 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Compliance Vault Pro API")
     if os.environ.get("PYTEST_RUNNING") == "1":
-        logger.info("PYTEST_RUNNING=1: skipping database, scheduler, and heavy startup")
+        # Integration tests (intake, checkout, document packs) need MongoDB + seeded catalogue.
+        # Set MONGO_URL + DB_NAME (conftest sets safe defaults). Scheduler/stripe-heavy paths stay off.
+        _mongo = (os.environ.get("MONGO_URL") or "").strip()
+        _dbn = (os.environ.get("DB_NAME") or "").strip()
+        if _mongo and _dbn:
+            try:
+                await database.connect()
+                logger.info("PYTEST: MongoDB connected db=%s", _dbn)
+                try:
+                    from services.service_definitions_v2 import seed_service_catalogue_v2
+
+                    _sr = await seed_service_catalogue_v2()
+                    logger.info(
+                        "PYTEST: service_catalogue_v2 seeded created=%s skipped=%s",
+                        _sr.get("created"),
+                        _sr.get("skipped"),
+                    )
+                except Exception as e:
+                    logger.warning("PYTEST: seed_service_catalogue_v2 failed: %s", e)
+                try:
+                    from services.service_catalogue import seed_service_catalogue
+
+                    await seed_service_catalogue()
+                except Exception as e:
+                    logger.warning("PYTEST: seed_service_catalogue failed: %s", e)
+                try:
+                    db = database.get_db()
+                    await db.document_pack_items.create_index("item_id", unique=True)
+                    await db.document_pack_items.create_index(
+                        [("order_id", 1), ("canonical_index", 1)]
+                    )
+                    await db.document_pack_items.create_index("order_id")
+                except Exception:
+                    pass
+            except Exception as e:
+                logger.warning(
+                    "PYTEST: MongoDB unavailable (%s). DB-backed tests will fail until Mongo is reachable.",
+                    e,
+                )
+        else:
+            logger.info("PYTEST: MONGO_URL/DB_NAME unset; skipping DB connect (legacy unit-only mode)")
         yield
+        # Do not close MongoDB here: each TestClient instance runs lifespan; closing would break
+        # later tests that share the global database singleton. Process exit tears down the client.
         return
 
     # Production: JWT + URL checks before DB so misconfig fails fast and Render sees a clear
@@ -451,10 +493,10 @@ async def lifespan(app: FastAPI):
             kwargs={"run_type": "schedule"},
         )
         
-        # Monthly digest on the 1st of each month at 10:00 AM UTC
+        # Monthly digest: daily 10:00 UTC — each client receives on their digest_day_of_month (default 1)
         scheduler.add_job(
             "job_runner:run_scheduled_job",
-            CronTrigger(day=1, hour=10, minute=0, timezone=SCHEDULER_TIMEZONE),
+            CronTrigger(hour=10, minute=0, timezone=SCHEDULER_TIMEZONE),
             id="monthly_digest",
             name="Monthly Compliance Digest",
             replace_existing=True,

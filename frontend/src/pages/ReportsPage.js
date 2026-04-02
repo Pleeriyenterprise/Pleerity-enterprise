@@ -41,6 +41,9 @@ import {
   propertyTypeLabel,
   requirementLabel,
 } from '../domain/presentDomain';
+import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import { cn } from '../lib/utils';
 
 const ReportsPage = () => {
   const navigate = useNavigate();
@@ -555,27 +558,28 @@ const ReportsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" data-testid="reports-loading">
-        <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
+      <div className={portalPageRoot} data-testid="reports-loading">
+        <PortalLoadingPanel message={PORTAL_COPY.loadingReports} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" data-testid="reports-page">
-      {/* Header */}
+    <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="reports-page">
       <header className="bg-midnight-blue text-white py-4">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))} 
-                className="text-gray-300 hover:text-white"
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4 min-w-0">
+              <button
+                type="button"
+                onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))}
+                className="text-gray-300 hover:text-white p-2 min-h-11 min-w-11 flex items-center justify-center shrink-0 rounded-lg hover:bg-white/10"
                 data-testid="back-btn"
+                aria-label="Back"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <div>
+              <div className="min-w-0">
                 <h1 className="text-xl font-bold">Reports</h1>
                 <p className="text-sm text-gray-300">Generate and download compliance reports</p>
               </div>
@@ -583,21 +587,21 @@ const ReportsPage = () => {
             {hasScheduledReportsAccess ? (
               <Button
                 onClick={() => setShowScheduleModal(true)}
-                className="bg-electric-teal hover:bg-teal-600"
+                className="bg-electric-teal hover:bg-teal-600 min-h-11 w-full sm:w-auto shrink-0"
                 data-testid="schedule-report-btn"
               >
                 <Clock className="w-4 h-4 mr-2" />
-                Schedule Report
+                Schedule report
               </Button>
             ) : (
               <Button
                 variant="outline"
-                className="border-white/30 text-white hover:bg-white/10"
-                onClick={() => navigate('/app/billing?upgrade_to=PLAN_2_PORTFOLIO')}
+                className="border-white/30 text-white hover:bg-white/10 min-h-11 w-full sm:w-auto shrink-0"
+                onClick={() => navigate('/settings/billing?upgrade_to=PLAN_2_PORTFOLIO')}
                 data-testid="schedule-report-upgrade-btn"
               >
                 <Lock className="w-4 h-4 mr-2" />
-                Schedule Report
+                Upgrade to schedule reports
               </Button>
             )}
           </div>
@@ -694,62 +698,104 @@ const ReportsPage = () => {
             ) : digests.length === 0 ? (
               <p className="text-sm text-gray-500">No digests yet. Enable Monthly Digest in Notification Preferences to receive them.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-2 font-medium text-gray-700">Period</th>
-                      <th className="text-left py-2 font-medium text-gray-700">Sent</th>
-                      <th className="text-right py-2 font-medium text-gray-700">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {digests.map((d) => {
-                      const periodStart = (d.digest_period_start || d.content?.period_start || '').slice(0, 10);
-                      const periodEnd = (d.digest_period_end || d.content?.period_end || '').slice(0, 10);
-                      const sentAt = d.sent_at ? new Date(d.sent_at).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—';
-                      return (
-                        <tr key={d.digest_id} className="border-b border-gray-100">
-                          <td className="py-3 text-gray-800">{periodStart} – {periodEnd}</td>
-                          <td className="py-3 text-gray-600">{sentAt}</td>
-                          <td className="py-3 text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="mr-1"
-                              onClick={() => setDigestView(d)}
-                              data-testid={`digest-view-${d.digest_id}`}
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              View
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={downloadingDigestId === d.digest_id}
-                              onClick={() => {
-                                setDownloadingDigestId(d.digest_id);
-                                try {
-                                  downloadDigestPdf(d);
-                                  toast.success('Digest PDF downloaded');
-                                } catch (err) {
-                                  toast.error('Failed to generate PDF');
-                                } finally {
-                                  setDownloadingDigestId(null);
-                                }
-                              }}
-                              data-testid={`digest-download-${d.digest_id}`}
-                            >
-                              {downloadingDigestId === d.digest_id ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
-                              Download PDF
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="md:hidden space-y-3">
+                  {digests.map((d) => {
+                    const periodStart = (d.digest_period_start || d.content?.period_start || '').slice(0, 10);
+                    const periodEnd = (d.digest_period_end || d.content?.period_end || '').slice(0, 10);
+                    const sentAt = d.sent_at ? new Date(d.sent_at).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—';
+                    return (
+                      <div key={d.digest_id} className="rounded-lg border border-gray-200 p-3 bg-white">
+                        <p className="text-sm font-medium text-midnight-blue">{periodStart} – {periodEnd}</p>
+                        <p className="text-xs text-gray-500 mt-1">Sent {sentAt}</p>
+                        <div className="flex flex-col gap-2 mt-3">
+                          <Button variant="outline" size="sm" className="min-h-11 w-full" onClick={() => setDigestView(d)} data-testid={`digest-view-${d.digest_id}`}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            {PORTAL_COPY.viewDetails}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="min-h-11 w-full"
+                            disabled={downloadingDigestId === d.digest_id}
+                            onClick={() => {
+                              setDownloadingDigestId(d.digest_id);
+                              try {
+                                downloadDigestPdf(d);
+                                toast.success('Digest PDF downloaded');
+                              } catch (err) {
+                                toast.error('Failed to generate PDF');
+                              } finally {
+                                setDownloadingDigestId(null);
+                              }
+                            }}
+                            data-testid={`digest-download-${d.digest_id}`}
+                          >
+                            {downloadingDigestId === d.digest_id ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                            Download PDF
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-2 font-medium text-gray-700">Period</th>
+                        <th className="text-left py-2 font-medium text-gray-700">Sent</th>
+                        <th className="text-right py-2 font-medium text-gray-700">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {digests.map((d) => {
+                        const periodStart = (d.digest_period_start || d.content?.period_start || '').slice(0, 10);
+                        const periodEnd = (d.digest_period_end || d.content?.period_end || '').slice(0, 10);
+                        const sentAt = d.sent_at ? new Date(d.sent_at).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—';
+                        return (
+                          <tr key={d.digest_id} className="border-b border-gray-100">
+                            <td className="py-3 text-gray-800">{periodStart} – {periodEnd}</td>
+                            <td className="py-3 text-gray-600">{sentAt}</td>
+                            <td className="py-3 text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="mr-1"
+                                onClick={() => setDigestView(d)}
+                                data-testid={`digest-view-${d.digest_id}`}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                View
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={downloadingDigestId === d.digest_id}
+                                onClick={() => {
+                                  setDownloadingDigestId(d.digest_id);
+                                  try {
+                                    downloadDigestPdf(d);
+                                    toast.success('Digest PDF downloaded');
+                                  } catch (err) {
+                                    toast.error('Failed to generate PDF');
+                                  } finally {
+                                    setDownloadingDigestId(null);
+                                  }
+                                }}
+                                data-testid={`digest-download-${d.digest_id}`}
+                              >
+                                {downloadingDigestId === d.digest_id ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+                                Download PDF
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -841,7 +887,7 @@ const ReportsPage = () => {
         )}
         {digestView && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDigestView(null)}>
-            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[min(90dvh,90vh)] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
               <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                 <h3 className="font-semibold text-midnight-blue">Monthly Digest</h3>
                 <button type="button" onClick={() => setDigestView(null)} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -983,7 +1029,50 @@ const ReportsPage = () => {
               </p>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              <div className="md:hidden space-y-3">
+                {previousReports.map((r) => (
+                  <div key={r.report_id} className="rounded-lg border border-gray-200 p-3" data-testid={`previous-report-${r.report_id}`}>
+                    <p className="text-sm font-medium text-midnight-blue">{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {r.scope === 'property' ? 'Property' : 'Portfolio'}
+                      {r.property_id ? ` · ${properties.find((p) => p.property_id === r.property_id)?.address_line_1 || r.property_id}` : ''}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Score / risk: {r.score_at_time != null ? `${r.score_at_time}` : '—'} / {r.risk_level_at_time || '—'}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-3 min-h-11 w-full"
+                      disabled={generating === `download_${r.report_id}`}
+                      onClick={async () => {
+                        setGenerating(`download_${r.report_id}`);
+                        try {
+                          const res = await api.get(`/reports/${r.report_id}/download`, { responseType: 'blob' });
+                          const url = window.URL.createObjectURL(new Blob([res.data]));
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.setAttribute('download', `evidence_readiness_${r.scope}_${r.created_at ? new Date(r.created_at).toISOString().slice(0, 10) : 'report'}.pdf`);
+                          document.body.appendChild(link);
+                          link.click();
+                          link.remove();
+                          window.URL.revokeObjectURL(url);
+                          toast.success('Report downloaded');
+                        } catch (err) {
+                          toast.error('Download failed');
+                        } finally {
+                          setGenerating(null);
+                        }
+                      }}
+                      data-testid={`download-report-${r.report_id}`}
+                    >
+                      {generating === `download_${r.report_id}` ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                      Download
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200">

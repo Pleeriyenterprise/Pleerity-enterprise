@@ -483,10 +483,11 @@ async def get_score_change_explanation(
         }
 
 
-async def capture_all_client_snapshots() -> Dict[str, Any]:
+async def capture_all_client_snapshots(client_id: Optional[str] = None) -> Dict[str, Any]:
     """Capture daily snapshots for all active clients.
     
     Called by the scheduler job daily.
+    When ``client_id`` is set, only that client is snapshotted (admin scoped run).
     
     Returns:
         dict with success/failure counts
@@ -494,12 +495,20 @@ async def capture_all_client_snapshots() -> Dict[str, Any]:
     db = database.get_db()
     
     try:
-        # Get all active clients
-        clients = await db.clients.find(
-            {"subscription_status": "ACTIVE"},
-            {"_id": 0, "client_id": 1}
-        ).to_list(1000)
-        
+        q = {"subscription_status": "ACTIVE"}
+        if client_id and str(client_id).strip():
+            q["client_id"] = str(client_id).strip()
+        clients = await db.clients.find(q, {"_id": 0, "client_id": 1}).to_list(1000)
+        if not clients:
+            if client_id and str(client_id).strip():
+                logger.warning("capture_all_client_snapshots: no ACTIVE client for client_id=%s", client_id.strip())
+            return {
+                "total_clients": 0,
+                "success_count": 0,
+                "error_count": 0,
+                "errors": [],
+            }
+
         success_count = 0
         error_count = 0
         errors = []

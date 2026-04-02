@@ -97,6 +97,68 @@ async def get_admin_dashboard(request: Request):
         
         # Unverified documents (UPLOADED status) for admin verification workflow badge
         unverified_documents_count = await db.documents.count_documents({"status": "UPLOADED"})
+
+        from services.job_run_service import STATUS_FAILED
+
+        since_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        failed_job_runs_24h = await db.job_runs.count_documents(
+            {"status": STATUS_FAILED, "finished_at": {"$gte": since_24h}}
+        )
+        stuck_onboarding_active = await db.clients.count_documents(
+            {
+                "subscription_status": "ACTIVE",
+                "onboarding_status": {
+                    "$in": [OnboardingStatus.INTAKE_PENDING.value, OnboardingStatus.PROVISIONING.value]
+                },
+            }
+        )
+        provisioning_failed_recent = await db.provisioning_jobs.count_documents(
+            {"status": ProvisioningJobStatus.FAILED.value}
+        )
+        total_overdue_requirements = await db.requirements.count_documents({"status": "OVERDUE"})
+        high_risk_properties = await db.properties.count_documents({"compliance_status": "RED"})
+
+        operational_alerts: List[Dict[str, Any]] = []
+        if stuck_onboarding_active > 0:
+            operational_alerts.append(
+                {
+                    "level": "warning",
+                    "code": "STUCK_ONBOARDING",
+                    "count": stuck_onboarding_active,
+                    "message": f"{stuck_onboarding_active} active subscription(s) still in intake or provisioning onboarding.",
+                    "hint": "Review clients list and control panel for activation and provisioning steps.",
+                }
+            )
+        if failed_job_runs_24h > 0:
+            operational_alerts.append(
+                {
+                    "level": "warning",
+                    "code": "FAILED_AUTOMATION_RUNS",
+                    "count": failed_job_runs_24h,
+                    "message": f"{failed_job_runs_24h} automation job run(s) failed in the last 24 hours.",
+                    "hint": "Check System Health / job runs and logs for recurring failures.",
+                }
+            )
+        if provisioning_failed_recent > 0:
+            operational_alerts.append(
+                {
+                    "level": "high",
+                    "code": "PROVISIONING_FAILURES",
+                    "count": provisioning_failed_recent,
+                    "message": f"{provisioning_failed_recent} provisioning job(s) in FAILED state (open backlog).",
+                    "hint": "Investigate provisioning_jobs and client intake records.",
+                }
+            )
+        if total_overdue_requirements >= 50 or high_risk_properties >= 20:
+            operational_alerts.append(
+                {
+                    "level": "info",
+                    "code": "PORTFOLIO_RISK_ACCUMULATION",
+                    "count": total_overdue_requirements,
+                    "message": f"Portfolio load: {total_overdue_requirements} overdue requirement(s), {high_risk_properties} RED property/propert(ies).",
+                    "hint": "High backlog may indicate clients needing outreach or bulk remediation.",
+                }
+            )
         
         return {
             "stats": {
@@ -108,9 +170,15 @@ async def get_admin_dashboard(request: Request):
                 "total_properties": total_properties,
                 "recent_signups_7d": recent_signups,
                 "unverified_documents_count": unverified_documents_count,
+                "failed_job_runs_24h": failed_job_runs_24h,
+                "stuck_onboarding_active": stuck_onboarding_active,
+                "provisioning_failed_open": provisioning_failed_recent,
+                "total_overdue_requirements": total_overdue_requirements,
+                "high_risk_properties_red": high_risk_properties,
             },
             "compliance_overview": compliance_breakdown,
             "recent_activity": [],
+            "operational_alerts": operational_alerts,
         }
     
     except Exception as e:
@@ -2945,6 +3013,14 @@ async def get_feature_matrix(request: Request):
 
 class RunJobRequest(BaseModel):
     job: str
+    client_id: Optional[str] = None
+    property_id: Optional[str] = None
+    # Monthly digest: optional filter (requires client_id). See job_scope_registry.
+    property_ids: Optional[List[str]] = None
+
+
+class ClientMonthlyDigestActionBody(BaseModel):
+    property_ids: Optional[List[str]] = None
 
 
 @router.post("/jobs/run")
@@ -2960,20 +3036,65 @@ async def run_job_now(request: Request, body: RunJobRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid job. Use one of: {', '.join(sorted(JOB_RUNNERS.keys()))}"
         )
+    from services.job_scope_registry import get_job_run_scope, validate_manual_job_scope
+
+    scope_err = validate_manual_job_scope(
+        job_id,
+        client_id=body.client_id,
+        property_id=body.property_id,
+        property_ids=body.property_ids,
+    )
+    if scope_err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=scope_err)
+
+    job_kwargs = None
+    start_metadata = None
+    if body.client_id and body.client_id.strip():
+        start_metadata = {"scope": "client", "client_id": body.client_id.strip()}
+    else:
+        start_metadata = {"scope": "global"}
+    if body.property_id and body.property_id.strip():
+        start_metadata = dict(start_metadata or {})
+        start_metadata["property_id"] = body.property_id.strip()
+    pids_meta = [str(x).strip() for x in (body.property_ids or []) if x and str(x).strip()]
+    if pids_meta:
+        start_metadata = dict(start_metadata or {})
+        start_metadata["property_ids"] = pids_meta
+
+    scope = get_job_run_scope(job_id)
+    job_kw: Dict[str, Any] = {}
+    if scope.accepts_client_id and body.client_id and body.client_id.strip():
+        job_kw["client_id"] = body.client_id.strip()
+    if scope.accepts_property_id and body.property_id and body.property_id.strip():
+        job_kw["property_id"] = body.property_id.strip()
+    if scope.accepts_property_ids_filter and pids_meta:
+        job_kw["property_ids"] = pids_meta
+    job_kwargs = job_kw if job_kw else None
     try:
-        result = await run_instrumented(job_id, "manual", triggered_by=user.get("portal_user_id"))
+        result = await run_instrumented(
+            job_id,
+            "manual",
+            triggered_by=user.get("portal_user_id"),
+            job_kwargs=job_kwargs,
+            start_metadata=start_metadata,
+        )
         message = (result.get("message") if result else None) or f"Job {job_id} completed"
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user["portal_user_id"],
-            client_id=None,
+            client_id=body.client_id.strip() if body.client_id and body.client_id.strip() else None,
             metadata={
                 "action": "manual_job_run",
                 "job_id": job_id,
+                "run_scope": (start_metadata or {}).get("scope"),
+                "target_client_id": body.client_id.strip() if body.client_id and body.client_id.strip() else None,
+                "target_property_id": body.property_id.strip() if body.property_id and body.property_id.strip() else None,
+                "target_property_ids": pids_meta if pids_meta else None,
                 "admin_email": user["email"],
+                "job_kwargs": job_kwargs,
             },
         )
-        return {"success": True, "job": job_id, "message": message}
+        return {"success": True, "job": job_id, "message": message, "result": result}
     except Exception as e:
         logger.error(f"Manual job run error ({job_id}): {e}")
         raise HTTPException(
@@ -3606,6 +3727,48 @@ async def get_client_control_panel(request: Request, client_id: str):
             {"_id": 0, "action": 1, "timestamp": 1, "metadata": 1},
         ).sort("timestamp", -1).limit(50).to_list(50)
 
+        from services.onboarding_checklist_service import get_checklist_for_client
+
+        oc_state = await get_checklist_for_client(client_id)
+        onboard_snap: Dict[str, Any]
+        if oc_state.get("error"):
+            onboard_snap = {"unavailable": True}
+        else:
+            onboard_snap = {
+                "onboarding_status": oc_state.get("onboarding_status"),
+                "phase_status": oc_state.get("phase_status"),
+                "progress": oc_state.get("progress"),
+                "completed_at": oc_state.get("completed_at"),
+                "next_step": oc_state.get("next_step"),
+            }
+        dl_rows = (
+            await db.digest_logs.find({"client_id": client_id}, {"_id": 0, "digest_id": 1, "sent_at": 1})
+            .sort("sent_at", -1)
+            .limit(1)
+            .to_list(1)
+        )
+        last_digest_row = dl_rows[0] if dl_rows else None
+        bc_rows = (
+            await db.communication_deliveries.find(
+                {"client_id": client_id},
+                {"_id": 0, "communication_id": 1, "created_at": 1, "email_status": 1, "in_app_status": 1},
+            )
+            .sort("created_at", -1)
+            .limit(1)
+            .to_list(1)
+        )
+        last_broadcast_delivery = bc_rows[0] if bc_rows else None
+        recent_audit_highlights = []
+        for ev in system_events[:12]:
+            md = ev.get("metadata") if isinstance(ev.get("metadata"), dict) else {}
+            recent_audit_highlights.append(
+                {
+                    "action": ev.get("action"),
+                    "timestamp": ev.get("timestamp"),
+                    "metadata_preview": {k: md[k] for k in list(md.keys())[:6]},
+                }
+            )
+
         onboarding_stage = client.get("onboarding_status")
         activation_email_sent = bool(client.get("activation_email_sent_at"))
         dashboard_ready_sent = bool(client.get("onboarding_dashboard_ready_email_sent_at"))
@@ -3651,6 +3814,12 @@ async def get_client_control_panel(request: Request, client_id: str):
                 "payments": payment_events,
                 "login_events": login_events,
                 "system_actions": system_events,
+            },
+            "operational_snapshot": {
+                "onboarding_checklist": onboard_snap,
+                "last_monthly_digest": last_digest_row,
+                "last_broadcast_delivery": last_broadcast_delivery,
+                "recent_audit_highlights": recent_audit_highlights,
             },
         }
     except HTTPException:
@@ -3805,6 +3974,54 @@ async def admin_action_run_client_job(request: Request, client_id: str, body: Ru
     if job != "compliance_recalc_client":
         raise HTTPException(status_code=400, detail="Unsupported client job")
     return await admin_action_recalculate_compliance(request, client_id)
+
+
+@router.post("/clients/{client_id}/actions/monthly-digest")
+async def admin_action_client_monthly_digest(
+    request: Request,
+    client_id: str,
+    body: ClientMonthlyDigestActionBody = Body(default_factory=ClientMonthlyDigestActionBody),
+):
+    """Send the monthly compliance digest email (and PDF) to one client. Audited; respects active subscription."""
+    user = await admin_route_guard(request)
+    await _enforce_admin_job_run_rate(user["portal_user_id"])
+    db = database.get_db()
+    exists = await db.clients.find_one({"client_id": client_id}, {"_id": 1})
+    if not exists:
+        raise HTTPException(status_code=404, detail="Client not found")
+    from job_runner import run_instrumented
+
+    pids = [str(x).strip() for x in (body.property_ids or []) if x and str(x).strip()]
+    job_kw: Dict[str, Any] = {"client_id": client_id.strip()}
+    if pids:
+        job_kw["property_ids"] = pids
+    meta = {"scope": "client", "client_id": client_id.strip()}
+    if pids:
+        meta["property_ids"] = pids
+
+    try:
+        result = await run_instrumented(
+            "monthly_digest",
+            "manual",
+            triggered_by=user.get("portal_user_id"),
+            job_kwargs=job_kw,
+            start_metadata=meta,
+        )
+    except Exception as e:
+        logger.error("admin monthly digest for client %s failed: %s", client_id, e)
+        raise HTTPException(status_code=500, detail="Failed to send monthly digest")
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user.get("portal_user_id"),
+        client_id=client_id,
+        metadata={
+            "action_type": "client_monthly_digest",
+            "outcome_status": (result or {}).get("outcome_status"),
+            "message": (result or {}).get("message"),
+            "property_ids": pids if pids else None,
+        },
+    )
+    return {"success": True, "client_id": client_id, **(result or {})}
 
 
 @router.post("/clients/{client_id}/actions/unlock-account")

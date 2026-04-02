@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { ArrowLeft, Plus, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../api/client';
+import { portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
 
 const PropertyCreatePage = () => {
   const navigate = useNavigate();
@@ -61,7 +63,7 @@ const PropertyCreatePage = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className={cn(portalPageRoot, 'bg-gray-50 flex items-center justify-center p-4')}>
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
@@ -74,7 +76,7 @@ const PropertyCreatePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={cn(portalPageRoot, 'bg-gray-50')}>
       {/* Header */}
       <header className="bg-midnight-blue text-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

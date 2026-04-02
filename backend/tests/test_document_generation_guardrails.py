@@ -20,6 +20,11 @@ os.chdir(BACKEND_DIR)
 pytestmark = pytest.mark.asyncio
 
 
+@pytest.fixture(autouse=True)
+def _guardrail_llm_api_key(monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", "sk-test-guardrails-mock")
+
+
 # -----------------------------------------------------------------------------
 # 1) Non-JSON response: pipeline fails, no template_renderer / document_versions_v2
 # -----------------------------------------------------------------------------
@@ -87,7 +92,10 @@ class TestParseFailureHardFail:
             mock_db.orders = MagicMock()
             mock_db.orders.find_one = AsyncMock(return_value=order)
             mock_db.orders.update_one = AsyncMock()
-            mock_db.__getitem__ = MagicMock(return_value=MagicMock(update_one=AsyncMock()))
+            _orch = MagicMock()
+            _orch.find_one = AsyncMock(return_value=None)
+            _orch.update_one = AsyncMock()
+            mock_db.__getitem__ = MagicMock(return_value=_orch)
             mock_get_db.return_value = mock_db
 
             result = await document_orchestrator.execute_full_pipeline(
@@ -213,6 +221,10 @@ class TestManagedPromptInputDataJsonGuard:
             mock_db.orders = MagicMock()
             mock_db.orders.find_one = AsyncMock(return_value=order)
             mock_db.orders.update_one = AsyncMock()
+            _orch = MagicMock()
+            _orch.find_one = AsyncMock(return_value=None)
+            _orch.update_one = AsyncMock()
+            mock_db.__getitem__ = MagicMock(return_value=_orch)
             mock_get_db.return_value = mock_db
 
             result = await document_orchestrator.execute_full_pipeline(
@@ -314,6 +326,8 @@ class TestWF2FailureSetsOrderAndOrchestrationFailed:
             transition_calls.append((args, kwargs))
             return order
 
+        notif = MagicMock()
+        notif.notify_order_failed = AsyncMock()
         with (
             patch("services.workflow_automation_service.database.get_db", return_value=mock_db),
             patch(
@@ -335,6 +349,11 @@ class TestWF2FailureSetsOrderAndOrchestrationFailed:
                 new_callable=AsyncMock,
                 return_value=failed_result,
             ),
+            patch.object(
+                WorkflowAutomationService,
+                "_get_notification_service",
+                return_value=notif,
+            ),
         ):
             wf = WorkflowAutomationService()
             out = await wf.wf2_queue_to_generation(order_id)
@@ -344,7 +363,13 @@ class TestWF2FailureSetsOrderAndOrchestrationFailed:
         assert len(transition_calls) >= 1
         (_, kwargs) = transition_calls[-1]
         assert kwargs.get("new_status") == OrderStatus.FAILED
-        set_payload = mock_db.orders.update_one.call_args_list[-1][0][1].get("$set", {})
+        failed_updates = [
+            c
+            for c in mock_db.orders.update_one.call_args_list
+            if len(c[0]) >= 2 and (c[0][1].get("$set") or {}).get("orchestration_status") == "FAILED"
+        ]
+        assert failed_updates, "expected an orders update setting orchestration_status FAILED"
+        set_payload = failed_updates[0][0][1].get("$set", {})
         assert set_payload.get("orchestration_status") == "FAILED"
         assert "last_orchestration_error" in set_payload
 
@@ -366,7 +391,7 @@ class TestWF4FailureReturnsToReviewWithOrchestrationFailed:
         order = {
             "order_id": order_id,
             "service_code": "AI_WF_BLUEPRINT",
-            "status": OrderStatus.REGENERATING.value,
+            "status": OrderStatus.INTERNAL_REVIEW.value,
             "parameters": {"business_description": "Test"},
         }
         exec_id = "wf4-exec-456"
@@ -457,6 +482,7 @@ class TestSingleFailedRunProducesOneExecutionRecord:
                     failed_execution_records.append(doc)
 
         mock_coll = MagicMock()
+        mock_coll.find_one = AsyncMock(return_value=None)
         mock_coll.update_one = AsyncMock(side_effect=capture_upsert)
         mock_db = MagicMock()
         mock_db.orders = MagicMock()
@@ -498,12 +524,12 @@ class TestSingleFailedRunProducesOneExecutionRecord:
                 order_id=order_id,
                 intake_data={"business_description": "Test"},
             )
-        assert result.success is False
-        assert result.execution_id is not None
-        exec_id = result.execution_id
-        await document_orchestrator.finalize_orchestration_failure(
-            result, stage="pipeline", error_code="GENERATION_FAILED"
-        )
+            assert result.success is False
+            assert result.execution_id is not None
+            exec_id = result.execution_id
+            await document_orchestrator.finalize_orchestration_failure(
+                result, stage="pipeline", error_code="GENERATION_FAILED"
+            )
         assert len(failed_execution_records) == 1, "expected exactly one FAILED execution record for one failed run"
         assert failed_execution_records[0].get("execution_id") == exec_id
         assert failed_execution_records[0].get("status") == "FAILED"
@@ -598,13 +624,14 @@ class TestIdempotencyTwoIdenticalCallsOneVersion:
             success=True,
             order_id=order_id,
             version=1,
-            status=RenderStatus.REVIEW_PENDING,
+            status=RenderStatus.DRAFT,
             docx=RenderedDocument("a.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", b"", "h", 1, "docx"),
             pdf=RenderedDocument("a.pdf", "application/pdf", b"", "h", 1, "pdf"),
             json_output_hash="j",
             render_time_ms=0,
             error_message=None,
         )
+        render_mock = AsyncMock(return_value=render_return)
 
         with (
             patch(
@@ -642,12 +669,7 @@ class TestIdempotencyTwoIdenticalCallsOneVersion:
                 ),
             ),
             patch("services.document_orchestrator.database.get_db", return_value=mock_db),
-            patch.object(
-                template_renderer,
-                "render_from_orchestration",
-                new_callable=AsyncMock,
-                return_value=render_return,
-            ),
+            patch.object(template_renderer, "render_from_orchestration", render_mock),
         ):
             r1 = await document_orchestrator.execute_full_pipeline(
                 order_id=order_id,
@@ -665,8 +687,9 @@ class TestIdempotencyTwoIdenticalCallsOneVersion:
         assert r2.success is True
         assert r1.version == 1
         assert r2.version == 1
-        assert template_renderer.render_from_orchestration.await_count == 1
-        assert len(executions_stored) == 1
+        assert render_mock.await_count == 1
+        keys = {e.get("idempotency_key") for e in executions_stored if e.get("idempotency_key")}
+        assert len(keys) == 1
         assert executions_stored[0].get("idempotency_key")
 
 

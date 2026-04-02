@@ -120,6 +120,26 @@ class Database:
                 await self.db.message_logs.create_index("idempotency_key", unique=True, sparse=True)
             except Exception:
                 pass
+            # Monthly digest delivery + snapshot comparison
+            try:
+                await self.db.digest_logs.create_index(
+                    [("client_id", 1), ("report_month_key", 1), ("delivery_status", 1)],
+                    name="idx_digest_client_month_status",
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.digest_logs.create_index("digest_id", unique=True, sparse=True)
+            except Exception:
+                pass
+            try:
+                await self.db.monthly_compliance_snapshots.create_index(
+                    [("client_id", 1), ("report_month_key", 1)],
+                    unique=True,
+                    name="idx_monthly_snapshot_client_month",
+                )
+            except Exception:
+                pass
             # Reminder item-level state + evaluation audit (truth-checked suppression/cooldown)
             try:
                 await self.db.reminder_item_state.create_index(

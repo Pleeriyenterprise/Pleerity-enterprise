@@ -5,6 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
+import { buildEntityRoute } from '../utils/clientPortalNavigation';
+import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
 import { 
   Users, 
   ArrowLeft, 
@@ -46,6 +49,7 @@ const TenantManagementPage = () => {
     property_ids: []
   });
   const [updatingRequestId, setUpdatingRequestId] = useState(null);
+  const [startingComplianceRequestId, setStartingComplianceRequestId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -162,6 +166,44 @@ const TenantManagementPage = () => {
     }
   };
 
+  const openRequestUploadFlow = (req) => {
+    const target = buildEntityRoute(
+      {
+        requirement_id: req.requirement_id,
+        property_id: req.property_id,
+        mode: 'upload',
+      },
+      '/documents'
+    );
+    navigate(target);
+  };
+
+  const startComplianceJobForRequest = async (req) => {
+    setStartingComplianceRequestId(req.request_id);
+    try {
+      const res = await api.post(`/client/tenant-requests/${encodeURIComponent(req.request_id)}/start-compliance-job`, {
+        allow_duplicate: false,
+      });
+      const woId = res.data?.work_order?.work_order_id;
+      toast.success('Compliance job started from tenant request');
+      await fetchData();
+      const target = buildEntityRoute(
+        {
+          work_order_id: woId,
+          requirement_id: req.requirement_id,
+          property_id: req.property_id,
+          mode: 'review',
+        },
+        '/operations/work-orders'
+      );
+      navigate(target);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Could not start compliance job');
+    } finally {
+      setStartingComplianceRequestId(null);
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'ACTIVE':
@@ -205,14 +247,14 @@ const TenantManagementPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" data-testid="tenant-management-loading">
-        <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
+      <div className={portalPageRoot} data-testid="tenant-management-loading">
+        <PortalLoadingPanel message="Loading tenant management…" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" data-testid="tenant-management-page">
+    <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="tenant-management-page">
       {/* Header */}
       <header className="bg-midnight-blue text-white py-4">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -261,7 +303,7 @@ const TenantManagementPage = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-midnight-blue">{tenants.length}</div>
@@ -333,30 +375,46 @@ const TenantManagementPage = () => {
             ) : (
               <div className="space-y-3">
                 {requests.map((r) => (
-                  <div key={r.request_id} className="border border-gray-200 rounded-lg p-4 bg-gray-50/50 flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
+                  <div key={r.request_id} className="border border-gray-200 rounded-lg p-4 bg-gray-50/50 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-wrap">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-teal-700">Certificate request</span>
                         <span className="font-medium text-midnight-blue">{r.tenant_name || r.tenant_email}</span>
-                        <span className="text-sm text-gray-600">{r.certificate_type}</span>
-                        <span className="text-gray-500 text-sm">{r.property_address || r.property_id}</span>
                       </div>
+                      <p className="text-sm text-gray-700 mt-1"><span className="font-medium">Type:</span> {r.certificate_type}</p>
+                      <p className="text-sm text-gray-600"><span className="font-medium">Property:</span> {r.property_address || r.property_id}</p>
                       {r.message && <div className="text-sm text-gray-600 mt-1">{r.message}</div>}
                       <span className="text-xs text-gray-400 mt-1 block">
                         {r.created_at ? new Date(r.created_at).toLocaleString() : ''}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${
+                    <div className="flex flex-col w-full sm:w-auto sm:min-w-[12rem] gap-2 shrink-0">
+                      <span className={`inline-flex items-center justify-center sm:justify-start px-2 py-1 text-xs font-medium rounded-full w-fit ${
                         r.status === 'DONE' ? 'bg-green-100 text-green-700' :
                         r.status === 'DECLINED' ? 'bg-red-100 text-red-700' :
                         r.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
                       }`}>
                         {r.status}
                       </span>
-                      {r.status === 'PENDING' && (
+                      <Button
+                        className="w-full min-h-11 justify-center bg-midnight-blue hover:bg-midnight-blue/90"
+                        onClick={() => openRequestUploadFlow(r)}
+                      >
+                        Upload document
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full min-h-11 justify-center"
+                        disabled={!r.requirement_id || startingComplianceRequestId === r.request_id}
+                        onClick={() => startComplianceJobForRequest(r)}
+                      >
+                        {startingComplianceRequestId === r.request_id ? 'Starting…' : 'Start compliance job'}
+                      </Button>
+                      <div className="flex flex-col gap-2 border-t border-gray-200 pt-2">
+                        <span className="text-[11px] font-medium text-gray-500 uppercase">Status update</span>
                         <select
-                          className="text-sm border border-gray-200 rounded px-2 py-1"
-                          value=""
+                          className="text-sm border border-gray-200 rounded-lg px-3 py-2.5 min-h-11 w-full bg-white"
+                          value={r.status === 'PENDING' ? '' : r.status}
                           onChange={(e) => {
                             const v = e.target.value;
                             if (v) updateRequestStatus(r.request_id, v);
@@ -364,25 +422,13 @@ const TenantManagementPage = () => {
                           disabled={updatingRequestId === r.request_id}
                           data-testid={`request-status-${r.request_id}`}
                         >
-                          <option value="">Update status…</option>
+                          <option value="">Choose…</option>
                           <option value="IN_PROGRESS">In progress</option>
-                          <option value="DONE">Done</option>
                           <option value="DECLINED">Declined</option>
+                          <option value="DONE">Mark done</option>
                         </select>
-                      )}
-                      {(r.status === 'IN_PROGRESS' || r.status === 'DONE' || r.status === 'DECLINED') && (
-                        <select
-                          className="text-sm border border-gray-200 rounded px-2 py-1"
-                          value={r.status}
-                          onChange={(e) => updateRequestStatus(r.request_id, e.target.value)}
-                          disabled={updatingRequestId === r.request_id}
-                        >
-                          <option value="IN_PROGRESS">In progress</option>
-                          <option value="DONE">Done</option>
-                          <option value="DECLINED">Declined</option>
-                        </select>
-                      )}
-                      {updatingRequestId === r.request_id && <RefreshCw className="w-4 h-4 animate-spin text-gray-400" />}
+                      </div>
+                      {updatingRequestId === r.request_id && <RefreshCw className="w-4 h-4 animate-spin text-gray-400 self-center" />}
                     </div>
                   </div>
                 ))}

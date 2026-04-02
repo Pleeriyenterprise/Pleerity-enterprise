@@ -65,8 +65,12 @@ async def test_failure_spike_monitor_breach_sends_audit_and_alert_respects_coold
     with patch("services.notification_failure_spike_monitor.database.get_db", return_value=db):
         with patch("services.notification_failure_spike_monitor.create_audit_log", new_callable=AsyncMock) as audit:
             with patch("services.notification_failure_spike_monitor._admin_recipients", return_value=["ops@test.com"]):
-                with patch("services.notification_failure_spike_monitor.notification_orchestrator.send", new_callable=AsyncMock) as orch_send:
+                with patch(
+                    "services.notification_orchestrator.notification_orchestrator.send",
+                    new_callable=AsyncMock,
+                ) as orch_send:
                     from services.notification_orchestrator import NotificationResult
+
                     orch_send.return_value = NotificationResult(outcome="sent", message_id="m1")
                     result = await run_notification_failure_spike_monitor()
     assert result.get("breached") is True
@@ -84,7 +88,10 @@ async def test_failure_spike_monitor_breach_sends_audit_and_alert_respects_coold
         with patch("services.notification_failure_spike_monitor.NOTIFICATION_SPIKE_COOLDOWN_SECONDS", 3600):
             with patch("services.notification_failure_spike_monitor.create_audit_log", new_callable=AsyncMock) as audit2:
                 with patch("services.notification_failure_spike_monitor._admin_recipients", return_value=["ops@test.com"]):
-                    with patch("services.notification_failure_spike_monitor.notification_orchestrator.send", new_callable=AsyncMock) as orch_send2:
+                    with patch(
+                        "services.notification_orchestrator.notification_orchestrator.send",
+                        new_callable=AsyncMock,
+                    ) as orch_send2:
                         result2 = await run_notification_failure_spike_monitor()
     assert result2.get("breached") is True
     assert result2.get("cooldown") is True
@@ -111,14 +118,22 @@ async def test_notification_health_summary_returns_aggregates():
     from routes.admin import get_notification_health_summary
 
     db = MagicMock()
-    db.message_logs.count_documents = AsyncMock(side_effect=[10, 2, 5, 1, 3])
-    top_templates = [{"_id": "PAYMENT_FAILED", "count": 2}, {"_id": "OTP_CODE_SMS", "count": 1}]
-    top_reasons = [{"_id": "timeout", "count": 2}]
+    # sent_email, failed_email, sent_sms, failed_sms, throttled, has_any_logs
+    db.message_logs.count_documents = AsyncMock(side_effect=[10, 2, 5, 1, 3, 21])
+    top_failed_rows = [
+        {"_id": "PAYMENT_FAILED", "count": 2},
+        {"_id": "OTP_CODE_SMS", "count": 1},
+    ]
+    top_reason_rows = [{"_id": "timeout", "count": 2}]
     n = [0]
+
     def agg_mock(*args, **kwargs):
         n[0] += 1
-        return _AsyncAggregateCursor(top_templates if n[0] == 1 else top_reasons)
+        return _AsyncAggregateCursor(top_failed_rows if n[0] == 1 else top_reason_rows)
+
     db.message_logs.aggregate = agg_mock
+    db.job_runs = MagicMock()
+    db.job_runs.find_one = AsyncMock(return_value=None)
 
     req = MagicMock()
     req.state = MagicMock()
@@ -135,6 +150,7 @@ async def test_notification_health_summary_returns_aggregates():
     assert "top_failed_templates" in response
     assert "top_failure_reasons" in response
     assert response["window_minutes"] == 60
+    assert response["top_failed_templates"] and response["top_failed_templates"][0].get("template_key")
 
 
 @pytest.mark.asyncio
@@ -166,7 +182,7 @@ async def test_compliance_expiry_reminder_sms_pro_allowed_solo_denied():
     db.message_logs.count_documents = AsyncMock(return_value=0)
 
     with patch("services.notification_orchestrator.database.get_db", return_value=db):
-        with patch("services.notification_orchestrator.plan_registry.enforce_feature", new_callable=AsyncMock) as enforce:
+        with patch("services.plan_registry.plan_registry.enforce_feature", new_callable=AsyncMock) as enforce:
             enforce.return_value = (False, "SMS reminders not available on your plan", None)
             result = await notification_orchestrator.send(
                 template_key="COMPLIANCE_EXPIRY_REMINDER_SMS",
@@ -178,7 +194,7 @@ async def test_compliance_expiry_reminder_sms_pro_allowed_solo_denied():
     assert result.block_reason == "BLOCKED_PLAN_GATE"
 
     with patch("services.notification_orchestrator.database.get_db", return_value=db):
-        with patch("services.notification_orchestrator.plan_registry.enforce_feature", new_callable=AsyncMock) as enforce2:
+        with patch("services.plan_registry.plan_registry.enforce_feature", new_callable=AsyncMock) as enforce2:
             enforce2.return_value = (True, None, None)
             db.message_logs.count_documents = AsyncMock(return_value=0)
             result2 = await notification_orchestrator.send(

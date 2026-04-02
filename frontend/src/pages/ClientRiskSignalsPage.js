@@ -704,7 +704,7 @@ function ClientRiskSignalsPageInner() {
                         variant="outline"
                         onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
                       >
-                        <Wrench className="w-4 h-4 mr-2 shrink-0" /> Create work order
+                        <Wrench className="w-4 h-4 mr-2 shrink-0" /> Start maintenance job
                       </Button>
                       {s.status === 'active' && (
                         <div className="grid grid-cols-2 gap-2">
@@ -776,7 +776,7 @@ function ClientRiskSignalsPageInner() {
                               variant="outline"
                               onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
                             >
-                              <Wrench className="w-4 h-4 mr-1" /> Work order
+                              <Wrench className="w-4 h-4 mr-1" /> Start job
                             </Button>
                             {s.status === 'active' && (
                               <>

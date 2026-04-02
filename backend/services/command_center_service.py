@@ -18,14 +18,38 @@ _LEVEL_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 def _slim_task(t: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "id": t.get("id"),
+        "task_id": t.get("id"),
         "title": t.get("title"),
         "section": t.get("section"),
+        "source_type": t.get("source_type"),
+        "source_id": t.get("source_id"),
+        "source_entity_type": t.get("source_entity_type") or t.get("source_type"),
+        "source_entity_id": t.get("source_entity_id") or t.get("source_id"),
         "property_id": t.get("property_id"),
+        "requirement_id": t.get("requirement_id"),
+        "work_order_id": t.get("work_order_id"),
         "property_label": t.get("property_label"),
+        "priority_level": t.get("urgency_level"),
         "urgency_level": t.get("urgency_level"),
         "due_date": t.get("due_date"),
         "timing_label": (t.get("metadata") or {}).get("timing_label"),
+        "action_type": t.get("primary_action_type"),
         "primary_action_label": t.get("primary_action_label"),
+        "primary_cta": {
+            "label": t.get("primary_action_label"),
+            "route": t.get("primary_action_url"),
+            "action_type": t.get("primary_action_type"),
+        },
+        "secondary_actions": [
+            {"action_type": "snooze", "label": "Snooze"},
+            {"action_type": "dismiss", "label": "Dismiss"},
+            {"action_type": "reviewed", "label": "Mark reviewed"},
+        ],
+        "audit_metadata": {
+            "task_id": t.get("id"),
+            "source_type": t.get("source_type"),
+            "action_context_type": t.get("action_context_type") or t.get("primary_action_type"),
+        },
         "primary_action_url": t.get("primary_action_url"),
         "cta_url": t.get("primary_action_url") or "/tasks",
     }

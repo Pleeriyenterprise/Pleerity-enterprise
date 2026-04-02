@@ -29,7 +29,9 @@ _TRACKED_ACTIONS = frozenset(
         AuditAction.MAINTENANCE_ISSUE_CREATED,
         AuditAction.CONTRACTOR_WORK_ORDER_STATUS_CHANGED,
         AuditAction.CLIENT_TASK_MARKED_DONE,
+        AuditAction.CLIENT_TASK_MARKED_REVIEWED,
         AuditAction.CLIENT_TASK_DISMISSED,
+        AuditAction.CLIENT_TASK_SNOOZED,
         AuditAction.RISK_SIGNAL_CREATED,
     )
 )

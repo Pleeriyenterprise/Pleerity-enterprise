@@ -4,6 +4,7 @@ All targeting is server-side. Uses NotificationOrchestrator for email (Postmark)
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -30,9 +31,20 @@ MESSAGE_TYPES_CRITICAL = frozenset(
         "MAINTENANCE_NOTICE",
         "ACCOUNT_ALERT",
         "DIRECT_SUPPORT_MESSAGE",
+        # Phase 5.1 canonical broadcast labels (same delivery + audit pipeline)
+        "SYSTEM_UPDATE",
+        "DOWNTIME_ALERT",
+        "IMPORTANT_NOTICE",
     }
 )
-MESSAGE_TYPES_ANNOUNCEMENT = frozenset({"GENERAL_ANNOUNCEMENT", "FEATURE_ANNOUNCEMENT"})
+MESSAGE_TYPES_ANNOUNCEMENT = frozenset(
+    {
+        "GENERAL_ANNOUNCEMENT",
+        "FEATURE_ANNOUNCEMENT",
+        "SYSTEM_UPDATE",
+        "IMPORTANT_NOTICE",
+    }
+)
 
 TARGET_SCOPES = frozenset({"ALL_CLIENTS", "SELECTED", "SINGLE"})
 
@@ -44,10 +56,27 @@ MESSAGE_TYPES_PLATFORM_LETTERHEAD = frozenset(
         "SERVICE_UPDATE",
         "GENERAL_ANNOUNCEMENT",
         "FEATURE_ANNOUNCEMENT",
+        "SYSTEM_UPDATE",
+        "DOWNTIME_ALERT",
+        "IMPORTANT_NOTICE",
     }
 )
 
+
+def requires_high_risk_acknowledgement(target_scope: str, message_type: str) -> bool:
+    """Broad sends and high-impact types require explicit admin checkbox."""
+    if target_scope == "ALL_CLIENTS":
+        return True
+    if message_type == "INCIDENT":
+        return True
+    if message_type == "DOWNTIME_ALERT":
+        return True
+    return False
+
 MAX_ADMIN_COMM_RECIPIENTS = int(os.getenv("ADMIN_COMM_MAX_RECIPIENTS", "50000"))
+# In-process email retries for admin broadcasts (distinct idempotency keys per attempt after the first).
+ADMIN_COMM_EMAIL_MAX_ATTEMPTS = max(1, int(os.getenv("ADMIN_COMM_EMAIL_MAX_ATTEMPTS", "3")))
+ADMIN_COMM_EMAIL_RETRY_DELAY_SEC = float(os.getenv("ADMIN_COMM_EMAIL_RETRY_DELAY_SEC", "2"))
 BATCH_SIZE = int(os.getenv("ADMIN_COMM_BATCH_SIZE", "400"))
 
 _EVENT_HANDLER_ATTR = re.compile(r"\s+on\w+\s*=", re.IGNORECASE)
@@ -395,7 +424,7 @@ async def _deliver_recipient_batches(
             per_text = apply_template_variables(text_body, vars_ctx)
 
             delivery_id = f"DLV-{uuid.uuid4().hex[:10].upper()}"
-            ddoc = {
+            ddoc: Dict[str, Any] = {
                 "delivery_id": delivery_id,
                 "communication_id": communication_id,
                 "client_id": cid,
@@ -405,54 +434,10 @@ async def _deliver_recipient_batches(
                 "in_app_status": "SKIPPED",
                 "postmark_message_id": None,
                 "error_message": None,
+                "email_attempts": [],
             }
 
-            if "email" in channels:
-                if not row.get("email"):
-                    ddoc["email_status"] = "SKIPPED"
-                    ddoc["error_message"] = "no_email"
-                    email_blocked += 1
-                else:
-                    idempotency_key = f"{communication_id}:{cid}:email"
-                    ctx = {
-                        "subject": rendered_subject,
-                        "email_header_title": rendered_subject[:200],
-                        "message": rendered_html,
-                        "text_message": per_text,
-                        "client_name": vars_ctx["client_name"],
-                        "customer_reference": vars_ctx.get("customer_reference") or "",
-                        "portal_link": vars_ctx["portal_link"],
-                        "communication_id": communication_id,
-                        "message_type": message_type,
-                        "show_notification_preferences_link": notif_template_key
-                        == "ADMIN_CLIENT_COMMUNICATION_ANNOUNCEMENT",
-                    }
-                    if force_platform:
-                        ctx["_force_pleerity_email_branding"] = True
-                    res = await orch.send(
-                        notif_template_key,
-                        cid,
-                        ctx,
-                        idempotency_key=idempotency_key,
-                        event_type="admin_communication",
-                    )
-                    if res.outcome == "sent":
-                        ddoc["email_status"] = "SENT"
-                        ddoc["postmark_message_id"] = (res.details or {}).get("provider_message_id")
-                        email_sent += 1
-                    elif res.outcome == "duplicate_ignored":
-                        ddoc["email_status"] = "SENT"
-                        ddoc["error_message"] = "duplicate_ignored"
-                        email_sent += 1
-                    elif res.outcome == "blocked":
-                        ddoc["email_status"] = "BLOCKED"
-                        ddoc["error_message"] = res.block_reason
-                        email_blocked += 1
-                    else:
-                        ddoc["email_status"] = "FAILED"
-                        ddoc["error_message"] = res.error_message
-                        email_failed += 1
-
+            # In-app first so portal users see the message even if email later fails or retries.
             if "in_app" in channels:
                 title = apply_template_variables((in_app_title or rendered_subject)[:200], vars_ctx)
                 body_ia = apply_template_variables((in_app_body or per_text)[:4000], vars_ctx)
@@ -481,6 +466,83 @@ async def _deliver_recipient_batches(
                 else:
                     ddoc["in_app_status"] = "FAILED" if row.get("portal_user_ids") else "SKIPPED"
                     in_app_failed += 1
+
+            if "email" in channels:
+                if not row.get("email"):
+                    ddoc["email_status"] = "SKIPPED"
+                    ddoc["error_message"] = "no_email"
+                    email_blocked += 1
+                else:
+                    ctx = {
+                        "subject": rendered_subject,
+                        "email_header_title": rendered_subject[:200],
+                        "message": rendered_html,
+                        "text_message": per_text,
+                        "client_name": vars_ctx["client_name"],
+                        "customer_reference": vars_ctx.get("customer_reference") or "",
+                        "portal_link": vars_ctx["portal_link"],
+                        "communication_id": communication_id,
+                        "message_type": message_type,
+                        "show_notification_preferences_link": notif_template_key
+                        == "ADMIN_CLIENT_COMMUNICATION_ANNOUNCEMENT",
+                    }
+                    if force_platform:
+                        ctx["_force_pleerity_email_branding"] = True
+
+                    last_res = None
+                    email_done = False
+                    for attempt in range(ADMIN_COMM_EMAIL_MAX_ATTEMPTS):
+                        idempotency_key = (
+                            f"{communication_id}:{cid}:email"
+                            if attempt == 0
+                            else f"{communication_id}:{cid}:email:r{attempt}"
+                        )
+                        res = await orch.send(
+                            notif_template_key,
+                            cid,
+                            ctx,
+                            idempotency_key=idempotency_key,
+                            event_type="admin_communication",
+                        )
+                        last_res = res
+                        ddoc["email_attempts"].append(
+                            {
+                                "attempt": attempt + 1,
+                                "outcome": res.outcome,
+                                "at": datetime.now(timezone.utc).isoformat(),
+                                "error": res.error_message or res.block_reason,
+                                "idempotency_key": idempotency_key,
+                            }
+                        )
+
+                        if res.outcome in ("sent", "duplicate_ignored"):
+                            ddoc["email_status"] = "SENT"
+                            ddoc["postmark_message_id"] = (res.details or {}).get("provider_message_id")
+                            if res.outcome == "duplicate_ignored":
+                                ddoc["error_message"] = "duplicate_ignored"
+                            email_sent += 1
+                            email_done = True
+                            break
+                        if res.outcome == "blocked":
+                            ddoc["email_status"] = "BLOCKED"
+                            ddoc["error_message"] = res.block_reason
+                            email_blocked += 1
+                            email_done = True
+                            break
+                        if attempt + 1 < ADMIN_COMM_EMAIL_MAX_ATTEMPTS:
+                            logger.warning(
+                                "admin comm email retry comm=%s client=%s attempt=%s/%s outcome=%s",
+                                communication_id,
+                                cid,
+                                attempt + 1,
+                                ADMIN_COMM_EMAIL_MAX_ATTEMPTS,
+                                res.outcome,
+                            )
+                            await asyncio.sleep(ADMIN_COMM_EMAIL_RETRY_DELAY_SEC)
+                    if not email_done:
+                        ddoc["email_status"] = "FAILED"
+                        ddoc["error_message"] = (last_res.error_message if last_res else None) or "send_failed"
+                        email_failed += 1
 
             await db.communication_deliveries.insert_one(ddoc)
 
@@ -553,9 +615,11 @@ async def send_communication(
     if compute_preview_checksum(checksum_payload) != preview_checksum:
         raise ValueError("preview_checksum mismatch — run preview again")
 
-    if target_scope == "ALL_CLIENTS" or message_type == "INCIDENT":
+    if requires_high_risk_acknowledgement(target_scope, message_type):
         if not acknowledge_high_risk:
-            raise ValueError("acknowledge_high_risk required for broadcast or INCIDENT sends")
+            raise ValueError(
+                "acknowledge_high_risk required for all-client sends, INCIDENT, or DOWNTIME_ALERT"
+            )
 
     total = await count_recipients(target_scope, target_filters)
     if total != expected_recipient_count:
@@ -754,6 +818,137 @@ async def list_messages(
     return rows, total
 
 
+async def resend_failed_communication_delivery_email(
+    *,
+    delivery_id: str,
+    admin_user: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retry email for a single FAILED admin communication delivery row. Audited."""
+    db = database.get_db()
+    ddoc = await db.communication_deliveries.find_one({"delivery_id": delivery_id})
+    if not ddoc:
+        raise ValueError("Delivery not found")
+    if ddoc.get("email_status") != "FAILED":
+        raise ValueError("Resend is only available when email_status is FAILED")
+
+    msg = await db.communication_messages.find_one({"communication_id": ddoc["communication_id"]})
+    if not msg:
+        raise ValueError("Communication message not found")
+
+    cid = ddoc["client_id"]
+    row = None
+    async for batch in iter_recipient_batches("SINGLE", {"client_id": cid}):
+        for r in batch:
+            if r.get("client_id") == cid:
+                row = r
+                break
+        if row:
+            break
+    if not row or not row.get("email"):
+        raise ValueError("Recipient email could not be resolved for this client")
+
+    from services.notification_orchestrator import NotificationOrchestrator
+
+    message_type = str(msg.get("message_type") or "GENERAL_ANNOUNCEMENT")
+    notif_template_key = notification_template_key_for_message_type(message_type)
+    force_platform = use_platform_letterhead_email(message_type)
+    safe_html = msg.get("body_html_snapshot") or ""
+    text_body = (msg.get("body_text_snapshot") or "").strip() or _strip_html_simple(safe_html)
+    subject_stripped = (msg.get("subject") or "").strip()
+    extras = {"incident_title": subject_stripped}
+    vars_ctx = build_variable_context(row, extras)
+    rendered_html = apply_template_variables(safe_html, vars_ctx)
+    rendered_subject = apply_template_variables(subject_stripped, vars_ctx)
+    per_text = apply_template_variables(text_body, vars_ctx)
+
+    ctx = {
+        "subject": rendered_subject,
+        "email_header_title": rendered_subject[:200],
+        "message": rendered_html,
+        "text_message": per_text,
+        "client_name": vars_ctx["client_name"],
+        "customer_reference": vars_ctx.get("customer_reference") or "",
+        "portal_link": vars_ctx["portal_link"],
+        "communication_id": ddoc["communication_id"],
+        "message_type": message_type,
+        "show_notification_preferences_link": notif_template_key == "ADMIN_CLIENT_COMMUNICATION_ANNOUNCEMENT",
+    }
+    if force_platform:
+        ctx["_force_pleerity_email_branding"] = True
+
+    orch = NotificationOrchestrator()
+    resend_key = f"{ddoc['communication_id']}:{cid}:email:resend:{uuid.uuid4().hex[:12]}"
+    res = await orch.send(
+        notif_template_key,
+        cid,
+        ctx,
+        idempotency_key=resend_key,
+        event_type="admin_communication_resend",
+    )
+
+    now = datetime.now(timezone.utc)
+    resend_entry = {
+        "at": now.isoformat(),
+        "outcome": res.outcome,
+        "error": res.error_message or res.block_reason,
+        "idempotency_key": resend_key,
+        "by_portal_user_id": admin_user.get("portal_user_id"),
+    }
+    await db.communication_deliveries.update_one(
+        {"delivery_id": delivery_id},
+        {
+            "$push": {"email_resend_attempts": resend_entry},
+            "$set": {
+                "updated_at": now,
+                "email_last_resend_at": now,
+            },
+        },
+    )
+
+    new_status = "FAILED"
+    err = res.error_message
+    pmid = None
+    if res.outcome in ("sent", "duplicate_ignored"):
+        new_status = "SENT"
+        pmid = (res.details or {}).get("provider_message_id")
+        if res.outcome == "duplicate_ignored":
+            err = "duplicate_ignored"
+        else:
+            err = None
+    elif res.outcome == "blocked":
+        new_status = "BLOCKED"
+        err = res.block_reason
+
+    await db.communication_deliveries.update_one(
+        {"delivery_id": delivery_id},
+        {
+            "$set": {
+                "email_status": new_status,
+                "postmark_message_id": pmid,
+                "error_message": err,
+                "updated_at": now,
+            }
+        },
+    )
+
+    admin_id = admin_user.get("portal_user_id") or "unknown"
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=admin_id,
+        client_id=cid,
+        resource_type="communication_delivery",
+        resource_id=delivery_id,
+        metadata={
+            "action_type": "admin_communication_delivery_resend",
+            "delivery_id": delivery_id,
+            "communication_id": ddoc["communication_id"],
+            "outcome": res.outcome,
+        },
+    )
+
+    return {"delivery_id": delivery_id, "email_status": new_status, "outcome": res.outcome, "error": err}
+
+
 async def get_message_detail(communication_id: str) -> Optional[Dict[str, Any]]:
     db = database.get_db()
     doc = await db.communication_messages.find_one({"communication_id": communication_id}, {"_id": 0})
@@ -923,9 +1118,11 @@ async def schedule_communication(
     }
     if compute_preview_checksum(checksum_payload) != preview_checksum:
         raise ValueError("preview_checksum mismatch — run preview again")
-    if target_scope == "ALL_CLIENTS" or message_type == "INCIDENT":
+    if requires_high_risk_acknowledgement(target_scope, message_type):
         if not acknowledge_high_risk:
-            raise ValueError("acknowledge_high_risk required for broadcast or INCIDENT schedules")
+            raise ValueError(
+                "acknowledge_high_risk required for all-client schedules, INCIDENT, or DOWNTIME_ALERT"
+            )
     total = await count_recipients(target_scope, target_filters)
     if total != expected_recipient_count:
         raise ValueError(

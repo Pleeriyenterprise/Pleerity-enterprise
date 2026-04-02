@@ -15,6 +15,22 @@ from utils.expiry_utils import (
 )
 
 
+class _AsyncPropCursor:
+    def __init__(self, items):
+        self._items = list(items)
+
+    def __aiter__(self):
+        self._i = 0
+        return self
+
+    async def __anext__(self):
+        if self._i >= len(self._items):
+            raise StopAsyncIteration
+        v = self._items[self._i]
+        self._i += 1
+        return v
+
+
 class TestGetEffectiveExpiryDate:
     """Single rule: confirmed_expiry_date else extracted_expiry_date else due_date."""
 
@@ -126,10 +142,40 @@ class TestReminderWritesReminderTypeAndRefs:
                                 "property_id": "p1",
                                 "due_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
                                 "description": "Gas Safety",
+                                "requirement_type": "GAS_SAFETY_CERT",
                             }
                         ]
                         scheduler.db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=reqs)))
                         scheduler.db.requirements.update_one = AsyncMock()
+
+                        async def _req_find_one(filter, projection=None):
+                            for r in reqs:
+                                if (
+                                    r.get("requirement_id") == filter.get("requirement_id")
+                                    and r.get("client_id") == filter.get("client_id")
+                                ):
+                                    return dict(r)
+                            return None
+
+                        scheduler.db.requirements.find_one = AsyncMock(side_effect=_req_find_one)
+                        scheduler.db.reminder_item_state = MagicMock(
+                            find_one=AsyncMock(return_value=None),
+                            update_one=AsyncMock(),
+                        )
+                        scheduler.db.reminder_evaluation_log = MagicMock(insert_one=AsyncMock())
+                        scheduler.db.properties.find = MagicMock(
+                            return_value=_AsyncPropCursor(
+                                [
+                                    {
+                                        "property_id": "p1",
+                                        "nickname": None,
+                                        "address_line_1": "1 Example Rd",
+                                        "city": "London",
+                                        "postcode": "N1",
+                                    },
+                                ]
+                            )
+                        )
                         with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock):
                             with patch("services.plan_registry.plan_registry.enforce_feature", new_callable=AsyncMock, return_value=(False, None, None)):
                                 await scheduler.send_daily_reminders()
@@ -183,6 +229,35 @@ class TestReminderWritesReminderTypeAndRefs:
                 ]
                 scheduler.db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=reqs)))
                 scheduler.db.requirements.update_one = AsyncMock()
+
+                async def _req_find_one_od(filter, projection=None):
+                    for r in reqs:
+                        if (
+                            r.get("requirement_id") == filter.get("requirement_id")
+                            and r.get("client_id") == filter.get("client_id")
+                        ):
+                            return dict(r)
+                    return None
+
+                scheduler.db.requirements.find_one = AsyncMock(side_effect=_req_find_one_od)
+                scheduler.db.reminder_item_state = MagicMock(
+                    find_one=AsyncMock(return_value=None),
+                    update_one=AsyncMock(),
+                )
+                scheduler.db.reminder_evaluation_log = MagicMock(insert_one=AsyncMock())
+                scheduler.db.properties.find = MagicMock(
+                    return_value=_AsyncPropCursor(
+                        [
+                            {
+                                "property_id": "p1",
+                                "nickname": None,
+                                "address_line_1": "1 Example Rd",
+                                "city": "London",
+                                "postcode": "N1",
+                            },
+                        ]
+                    )
+                )
 
                 with patch("services.jobs.JobScheduler._resolve_reminder_recipients", new_callable=AsyncMock, return_value=["u@example.com"]):
                     with patch("services.jobs.JobScheduler._send_reminder_email", new_callable=AsyncMock) as mock_send:

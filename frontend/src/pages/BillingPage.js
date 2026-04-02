@@ -32,6 +32,8 @@ import { toast } from 'sonner';
 import api, { clientAPI } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { formatUpgradeUsageContext } from '../components/UpgradePrompt';
+import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { PORTAL_COPY } from '../utils/clientPortalCopy';
 
 // Plan configuration - matches backend plan_registry.py
 const PLANS = [
@@ -547,46 +549,42 @@ const BillingPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center" data-testid="billing-loading">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-electric-teal mx-auto mb-3" />
-          <p className="text-gray-600">Loading plan information...</p>
-        </div>
+      <div className={portalPageRoot} data-testid="billing-loading">
+        <PortalLoadingPanel message={PORTAL_COPY.loadingBilling} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" data-testid="billing-page">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              data-testid="back-btn"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </button>
-            <div>
-              <h1 className="text-xl font-semibold text-midnight-blue">Billing</h1>
-              <p className="text-sm text-gray-500">
-                {billingMainTab === 'account'
-                  ? 'Subscription summary, billing history, and payment details'
-                  : 'Compare plans and upgrade your subscription'}
-              </p>
-            </div>
+    <div className={portalPageRoot} data-testid="billing-page">
+      <div className="max-w-6xl mx-auto px-4 pt-4 pb-2">
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))}
+            className="p-2 min-h-11 min-w-11 flex items-center justify-center hover:bg-gray-100 rounded-lg transition-colors shrink-0"
+            data-testid="back-btn"
+            aria-label="Back"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold text-midnight-blue">Billing</h1>
+            <p className="text-sm text-gray-500">
+              {billingMainTab === 'account'
+                ? 'Subscription summary, billing history, and payment details'
+                : 'Compare plans and upgrade your subscription'}
+            </p>
           </div>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-200 pb-4" data-testid="billing-main-tabs">
+      <main className="max-w-6xl mx-auto px-4 py-6">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 mb-8 border-b border-gray-200 pb-4" data-testid="billing-main-tabs">
           <button
             type="button"
             onClick={() => setBillingMainTab('account')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+            className={`px-4 py-2 min-h-11 text-sm font-medium rounded-lg transition-colors w-full sm:w-auto ${
               billingMainTab === 'account'
                 ? 'bg-midnight-blue text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -597,7 +595,7 @@ const BillingPage = () => {
           <button
             type="button"
             onClick={() => setBillingMainTab('plans')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+            className={`px-4 py-2 min-h-11 text-sm font-medium rounded-lg transition-colors w-full sm:w-auto ${
               billingMainTab === 'plans'
                 ? 'bg-midnight-blue text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -862,63 +860,106 @@ const BillingPage = () => {
                           <p className="text-xs mt-1">Created after each subscription checkout.</p>
                         </div>
                       ) : (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b text-left text-gray-500">
-                                <th className="py-2 pr-4">Invoice #</th>
-                                <th className="py-2 pr-4">Date</th>
-                                <th className="py-2 pr-4">Description</th>
-                                <th className="py-2 pr-4">Amount</th>
-                                <th className="py-2 pr-4">Status</th>
-                                <th className="py-2 text-right">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {pdfReceipts.map((r) => (
-                                <tr key={r.invoice_number || r.stripe_checkout_session_id} className="border-b border-gray-100">
-                                  <td className="py-3 pr-4 font-mono text-xs">{r.invoice_number}</td>
-                                  <td className="py-3 pr-4">
-                                    {r.date_issued ? new Date(r.date_issued).toLocaleDateString('en-GB') : '—'}
-                                  </td>
-                                  <td className="py-3 pr-4 text-gray-700">
-                                    {r.line_summary || 'Subscription receipt'}
-                                  </td>
-                                  <td className="py-3 pr-4">{r.amount_display || '—'}</td>
-                                  <td className="py-3 pr-4">{r.payment_status}</td>
-                                  <td className="py-3 text-right">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      disabled={!r.invoice_number}
-                                      onClick={async () => {
-                                        if (!r.invoice_number) return;
-                                        try {
-                                          const response = await api.get(
-                                            `/client/billing/receipt/${encodeURIComponent(r.invoice_number)}/download`,
-                                            { responseType: 'blob' }
-                                          );
-                                          const blob = new Blob([response.data], { type: 'application/pdf' });
-                                          const url = window.URL.createObjectURL(blob);
-                                          const a = document.createElement('a');
-                                          a.href = url;
-                                          a.download = `${r.invoice_number}.pdf`;
-                                          a.click();
-                                          window.URL.revokeObjectURL(url);
-                                          toast.success('Download started');
-                                        } catch {
-                                          toast.error('Download failed');
-                                        }
-                                      }}
-                                    >
-                                      PDF
-                                    </Button>
-                                  </td>
+                        <>
+                          <div className="md:hidden space-y-3">
+                            {pdfReceipts.map((r) => (
+                              <div
+                                key={r.invoice_number || r.stripe_checkout_session_id}
+                                className="rounded-lg border border-gray-200 p-3 bg-white"
+                              >
+                                <p className="font-mono text-xs text-midnight-blue">{r.invoice_number || '—'}</p>
+                                <p className="text-sm text-gray-700 mt-1">{r.line_summary || 'Subscription receipt'}</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {r.date_issued ? new Date(r.date_issued).toLocaleDateString('en-GB') : '—'} · {r.amount_display || '—'} · {r.payment_status}
+                                </p>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="mt-3 min-h-11 w-full"
+                                  disabled={!r.invoice_number}
+                                  onClick={async () => {
+                                    if (!r.invoice_number) return;
+                                    try {
+                                      const response = await api.get(
+                                        `/client/billing/receipt/${encodeURIComponent(r.invoice_number)}/download`,
+                                        { responseType: 'blob' }
+                                      );
+                                      const blob = new Blob([response.data], { type: 'application/pdf' });
+                                      const url = window.URL.createObjectURL(blob);
+                                      const a = document.createElement('a');
+                                      a.href = url;
+                                      a.download = `${r.invoice_number}.pdf`;
+                                      a.click();
+                                      window.URL.revokeObjectURL(url);
+                                      toast.success('Download started');
+                                    } catch {
+                                      toast.error('Download failed');
+                                    }
+                                  }}
+                                >
+                                  Download PDF
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b text-left text-gray-500">
+                                  <th className="py-2 pr-4">Invoice #</th>
+                                  <th className="py-2 pr-4">Date</th>
+                                  <th className="py-2 pr-4">Description</th>
+                                  <th className="py-2 pr-4">Amount</th>
+                                  <th className="py-2 pr-4">Status</th>
+                                  <th className="py-2 text-right">Action</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                              </thead>
+                              <tbody>
+                                {pdfReceipts.map((r) => (
+                                  <tr key={r.invoice_number || r.stripe_checkout_session_id} className="border-b border-gray-100">
+                                    <td className="py-3 pr-4 font-mono text-xs">{r.invoice_number}</td>
+                                    <td className="py-3 pr-4">
+                                      {r.date_issued ? new Date(r.date_issued).toLocaleDateString('en-GB') : '—'}
+                                    </td>
+                                    <td className="py-3 pr-4 text-gray-700">
+                                      {r.line_summary || 'Subscription receipt'}
+                                    </td>
+                                    <td className="py-3 pr-4">{r.amount_display || '—'}</td>
+                                    <td className="py-3 pr-4">{r.payment_status}</td>
+                                    <td className="py-3 text-right">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={!r.invoice_number}
+                                        onClick={async () => {
+                                          if (!r.invoice_number) return;
+                                          try {
+                                            const response = await api.get(
+                                              `/client/billing/receipt/${encodeURIComponent(r.invoice_number)}/download`,
+                                              { responseType: 'blob' }
+                                            );
+                                            const blob = new Blob([response.data], { type: 'application/pdf' });
+                                            const url = window.URL.createObjectURL(blob);
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = `${r.invoice_number}.pdf`;
+                                            a.click();
+                                            window.URL.revokeObjectURL(url);
+                                            toast.success('Download started');
+                                          } catch {
+                                            toast.error('Download failed');
+                                          }
+                                        }}
+                                      >
+                                        PDF
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
                       )}
                     </div>
                   </>
@@ -1133,7 +1174,7 @@ const BillingPage = () => {
           </div>
           
           {/* Header Row */}
-          <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 border-b border-gray-200 sticky top-[73px] z-10">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-gray-50 border-b border-gray-200">
             <div className="font-medium text-gray-700">Feature</div>
             {displayPlans.map((plan) => (
               <div key={plan.code} className="text-center">

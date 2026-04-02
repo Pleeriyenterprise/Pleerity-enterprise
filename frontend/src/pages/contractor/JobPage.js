@@ -9,6 +9,7 @@ import {
   openBlobApiResponse,
   contractorEvidenceFilenameFromKey,
   isContractorFileEvidenceKey,
+  parseApiError,
 } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
@@ -57,7 +58,7 @@ export default function JobPage() {
         setWorkOrder(res.data);
       })
       .catch((err) => {
-        const msg = err.response?.data?.detail || 'Invalid or expired job link';
+        const msg = parseApiError(err, 'Invalid or expired job link');
         setError(msg);
         setWorkOrder(null);
         toast.error(msg);
@@ -90,7 +91,7 @@ export default function JobPage() {
         toast.success('Assignment accepted');
         loadWorkOrder();
       })
-      .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
+      .catch((e) => toast.error(parseApiError(e, 'Could not accept assignment')))
       .finally(() => setActionLoading(false));
   };
 
@@ -103,7 +104,7 @@ export default function JobPage() {
         setWorkOrder(null);
         setError('You have declined this assignment.');
       })
-      .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
+      .catch((e) => toast.error(parseApiError(e, 'Could not decline assignment')))
       .finally(() => setActionLoading(false));
   };
 
@@ -114,7 +115,7 @@ export default function JobPage() {
         toast.success('Status updated');
         loadWorkOrder();
       })
-      .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
+      .catch((e) => toast.error(parseApiError(e, 'Could not update status')))
       .finally(() => setActionLoading(false));
   };
 
@@ -128,7 +129,7 @@ export default function JobPage() {
         toast.success('Notes saved');
         loadWorkOrder();
       })
-      .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
+      .catch((e) => toast.error(parseApiError(e, 'Could not save notes')))
       .finally(() => setActionLoading(false));
   };
 
@@ -142,7 +143,7 @@ export default function JobPage() {
         toast.success('Evidence uploaded');
         loadWorkOrder();
       })
-      .catch((err) => toast.error(err.response?.data?.detail || 'Upload failed'))
+      .catch((err) => toast.error(parseApiError(err, 'Upload failed')))
       .finally(() => {
         setEvidenceUploading(false);
         e.target.value = '';
@@ -161,8 +162,7 @@ export default function JobPage() {
         }),
       )
       .catch((err) => {
-        const d = err?.response?.data?.detail;
-        toast.error(typeof d === 'string' ? d : 'Could not open file');
+        toast.error(parseApiError(err, 'Could not open file'));
       })
       .finally(() => setEvidenceFileLoadingKey(null));
   };
@@ -181,7 +181,7 @@ export default function JobPage() {
         setInvoiceModal(false);
         setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
       })
-      .catch((err) => toast.error(err.response?.data?.detail || 'Failed'))
+      .catch((err) => toast.error(parseApiError(err, 'Could not submit invoice')))
       .finally(() => setInvoiceSaving(false));
   };
 

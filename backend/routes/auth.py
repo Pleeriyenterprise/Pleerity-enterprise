@@ -22,6 +22,7 @@ from auth import (
     create_step_up_token,
 )
 from utils.audit import create_audit_log
+from utils.api_errors import log_api_error, structured_error
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from config.security_limits import security_limits
 from datetime import datetime, timezone, timedelta
@@ -978,7 +979,21 @@ async def contractor_login(request: Request, credentials: LoginRequest):
                     )
             except Exception:
                 pass
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+            log_api_error(
+                logger,
+                endpoint="POST /api/auth/contractor-login",
+                error_type="CONTRACTOR_INVALID_CREDENTIALS",
+                message="Invalid credentials",
+                user_id=email_key,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=structured_error(
+                    "CONTRACTOR_INVALID_CREDENTIALS",
+                    "Email or password is incorrect. Check your details and try again.",
+                    retry_suggested=True,
+                ),
+            )
         contractor_id = acc["contractor_id"]
         contractor = await contractor_service.get_contractor(contractor_id)
         # Self-heal legacy docs that completed set-password (activated_at) but never got status=active.
@@ -1009,7 +1024,21 @@ async def contractor_login(request: Request, credentials: LoginRequest):
                 )
             except Exception:
                 pass
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor account is not active")
+            log_api_error(
+                logger,
+                endpoint="POST /api/auth/contractor-login",
+                error_type="CONTRACTOR_INACTIVE",
+                message="contractor not active",
+                user_id=email_key,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=structured_error(
+                    "CONTRACTOR_INACTIVE",
+                    "Your contractor account is not active. Contact the client organisation that invited you.",
+                    retry_suggested=False,
+                ),
+            )
         portal_access_status = (contractor.get("portal_access_status") or "").strip().lower()
         if portal_access_status not in (
             contractor_service.PORTAL_ACCESS_ENABLED,
@@ -1020,7 +1049,21 @@ async def contractor_login(request: Request, credentials: LoginRequest):
                 actor_id=contractor_id,
                 metadata={"email": credentials.email, "contractor_id": contractor_id, "reason": "portal_access_disabled"},
             )
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor portal access is disabled")
+            log_api_error(
+                logger,
+                endpoint="POST /api/auth/contractor-login",
+                error_type="CONTRACTOR_PORTAL_DISABLED",
+                message="portal access disabled",
+                user_id=email_key,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=structured_error(
+                    "CONTRACTOR_PORTAL_DISABLED",
+                    "Contractor portal access is disabled for this account. Ask your client to re-enable access.",
+                    retry_suggested=False,
+                ),
+            )
         token_data = {
             "portal_user_id": f"contractor_{contractor_id}",
             "contractor_id": contractor_id,
@@ -1061,8 +1104,23 @@ async def contractor_login(request: Request, credentials: LoginRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Contractor login error: %s", e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Login failed")
+        log_api_error(
+            logger,
+            endpoint="POST /api/auth/contractor-login",
+            error_type=type(e).__name__,
+            message=str(e),
+            user_id=(credentials.email or "").strip().lower() or None,
+            exc=e,
+            level=logging.ERROR,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=structured_error(
+                "CONTRACTOR_LOGIN_ERROR",
+                "Sign-in could not be completed. Please try again shortly.",
+                retry_suggested=True,
+            ),
+        )
 
 
 @router.post("/contractor-set-password")
@@ -1584,7 +1642,8 @@ async def break_glass_reset_owner_password(request: Request):
     if header_secret != secret:
         await create_audit_log(action=AuditAction.BREAK_GLASS_OWNER_USED, metadata={"outcome": "invalid_secret"})
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-    body = await request.json() if request.headers.get("content-type") == "application/json" else {}
+    _ct = (request.headers.get("content-type") or request.headers.get("Content-Type") or "").lower()
+    body = await request.json() if "application/json" in _ct else {}
     new_password = (body.get("new_password") or "").strip()
     if not new_password:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="new_password required")

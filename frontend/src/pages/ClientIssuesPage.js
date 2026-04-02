@@ -11,6 +11,7 @@ import { AlertCircle, Plus, Loader2, FileText, X, Wrench, Building2 } from 'luci
 import { toast } from 'sonner';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { issueStatusLabel, issueSeverityLabel } from '../domain/presentDomain';
+import { PortalFilterStack, portalDrawerPanelClass } from '../components/client/ClientPortalPatterns';
 import { resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
 
 function ClientIssuesPageInner() {
@@ -204,7 +205,7 @@ function ClientIssuesPageInner() {
       <div className="p-6 max-w-2xl">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2 mb-4">
           <AlertCircle className="w-7 h-7" />
-          Issues
+          Maintenance issues
         </h1>
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-6">
@@ -234,14 +235,14 @@ function ClientIssuesPageInner() {
             <FileText className="w-4 h-4 mr-2 shrink-0" />
             Add issue
           </Button>
-          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90">
+          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90 font-semibold">
             <Plus className="w-4 h-4 mr-2 shrink-0" />
-            Report issue (create work order)
+            Start maintenance job (from report)
           </Button>
         </div>
       </div>
-      <p className="text-gray-600 mb-6">
-        Portfolio-wide issue intake and triage. Add an issue for triage and reasoning, or report an issue to create a work order directly.
+      <p className="text-gray-600 mb-6 text-sm sm:text-base">
+        Portfolio-wide <strong>maintenance issue</strong> intake. Log an issue for triage, or go straight to a <strong>maintenance job</strong> when you already know the work needed.
       </p>
 
       {/* Summary KPI row */}
@@ -278,19 +279,19 @@ function ClientIssuesPageInner() {
           <CardTitle className="text-base">Filters</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
+          <PortalFilterStack>
+            <div className="w-full sm:w-auto sm:min-w-[10rem]">
               <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
-              <select value={filterProperty} onChange={(e) => setFilterProperty(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[160px]">
+              <select value={filterProperty} onChange={(e) => setFilterProperty(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2.5 text-sm w-full min-h-11 min-w-0 max-w-full">
                 <option value="">All</option>
                 {properties.map((p) => (
                   <option key={p.property_id} value={p.property_id}>{propertyLabel(p.property_id)}</option>
                 ))}
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-auto sm:min-w-[9rem]">
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[140px]">
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2.5 text-sm w-full min-h-11">
                 <option value="">All</option>
                 <option value="new">New</option>
                 <option value="triaged">Triaged</option>
@@ -299,9 +300,9 @@ function ClientIssuesPageInner() {
                 <option value="closed">Closed</option>
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-auto sm:min-w-[8rem]">
               <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[120px]">
+              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2.5 text-sm w-full min-h-11">
                 <option value="">All</option>
                 <option value="general">General</option>
                 <option value="plumbing">Plumbing</option>
@@ -309,9 +310,9 @@ function ClientIssuesPageInner() {
                 <option value="heating">Heating</option>
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-auto sm:min-w-[8rem]">
               <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
-              <select value={filterSeverity} onChange={(e) => setFilterSeverity(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[100px]">
+              <select value={filterSeverity} onChange={(e) => setFilterSeverity(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2.5 text-sm w-full min-h-11">
                 <option value="">All</option>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -319,37 +320,39 @@ function ClientIssuesPageInner() {
                 <option value="urgent">Urgent / Critical</option>
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-auto sm:min-w-[8rem]">
               <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
-              <select value={filterSource} onChange={(e) => setFilterSource(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[120px]">
+              <select value={filterSource} onChange={(e) => setFilterSource(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2.5 text-sm w-full min-h-11">
                 <option value="">All</option>
                 <option value="tenant">Tenant</option>
                 <option value="client">Landlord / Client</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-auto">
               <label className="block text-sm font-medium text-gray-700 mb-1">From date</label>
-              <input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm" />
+              <input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2.5 text-sm w-full min-h-11 sm:w-auto" />
             </div>
-            <div>
+            <div className="w-full sm:w-auto">
               <label className="block text-sm font-medium text-gray-700 mb-1">To date</label>
-              <input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm" />
+              <input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2.5 text-sm w-full min-h-11 sm:w-auto" />
             </div>
-            <div>
+            <div className="w-full md:flex-1 md:min-w-[12rem]">
               <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Description, ref, property…" className="border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[180px]" />
+              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Description, ref, property…" className="border border-gray-300 rounded-md px-3 py-2.5 text-sm w-full min-h-11 max-w-full" />
             </div>
-            <Button variant="outline" size="sm" onClick={() => { setFilterProperty(''); setFilterStatus(''); setFilterCategory(''); setFilterSeverity(''); setFilterSource(''); setFilterFromDate(''); setFilterToDate(''); setSearchQuery(''); }}>Clear filters</Button>
-            <Button variant="ghost" size="sm" onClick={loadIssues}>Refresh</Button>
-          </div>
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto min-h-11" onClick={() => { setFilterProperty(''); setFilterStatus(''); setFilterCategory(''); setFilterSeverity(''); setFilterSource(''); setFilterFromDate(''); setFilterToDate(''); setSearchQuery(''); }}>Clear filters</Button>
+            <Button variant="ghost" className="w-full sm:w-auto min-h-11" onClick={loadIssues}>Refresh</Button>
+            </div>
+          </PortalFilterStack>
         </CardContent>
       </Card>
 
       {/* Issues queue table */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-base">Issues</CardTitle>
+          <CardTitle className="text-base">Maintenance issue queue</CardTitle>
         </CardHeader>
         <CardContent>
           {issuesLoading ? (
@@ -368,7 +371,38 @@ function ClientIssuesPageInner() {
               <Button size="sm" variant="outline" className="mt-2" onClick={() => { setFilterProperty(''); setFilterStatus(''); setFilterCategory(''); setFilterSeverity(''); setFilterSource(''); setFilterFromDate(''); setFilterToDate(''); setSearchQuery(''); }}>Clear filters</Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              <div className="md:hidden space-y-3">
+                {filteredBySearch.map((iss) => (
+                  <div key={iss.issue_id} className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 shadow-sm">
+                    <div className="flex justify-between gap-2 text-xs text-gray-500">
+                      <span className="font-mono truncate">{iss.issue_id?.slice(0, 12)}</span>
+                      <span className="shrink-0">{formatDate(iss.created_at)}</span>
+                    </div>
+                    <p className="font-medium text-midnight-blue text-sm break-words">{iss.description || '—'}</p>
+                    <p className="text-sm text-gray-600 break-words">{propertyLabel(iss.property_id)}</p>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="px-2 py-1 rounded-md bg-slate-100 text-slate-800">{issueStatusLabel(iss.status)}</span>
+                      <span className={`px-2 py-1 rounded-md ${(iss.severity || '').toLowerCase() === 'urgent' ? 'bg-red-100 text-red-800' : (iss.severity || '').toLowerCase() === 'high' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>
+                        {issueSeverityLabel(iss.severity)}
+                      </span>
+                      <span className="px-2 py-1 rounded-md bg-gray-50 text-gray-600">{(iss.category || '—').replace(/_/g, ' ')}</span>
+                    </div>
+                    <div className="flex flex-col gap-2 pt-1">
+                      <Button className="w-full min-h-11 justify-center bg-midnight-blue hover:bg-midnight-blue/90" onClick={() => setIssueDetailDrawer(iss.issue_id)}>
+                        View details
+                      </Button>
+                      {iss.status !== 'ready_for_work_order' && iss.status !== 'closed' && (
+                        <Button variant="outline" className="w-full min-h-11 justify-center" onClick={() => handleCreateWoFromIssue(iss.issue_id)} disabled={creatingWoFromIssue === iss.issue_id}>
+                          {creatingWoFromIssue === iss.issue_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4 mr-2 shrink-0" />}
+                          Start maintenance job
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-gray-600">
@@ -406,11 +440,11 @@ function ClientIssuesPageInner() {
                       <td className="p-2 text-gray-600">{formatDate(iss.created_at)}</td>
                       <td className="p-2 text-gray-600">{iss.triage?.sla_hours != null ? `${iss.triage.sla_hours}h` : '—'}</td>
                       <td className="p-2 text-right">
-                        <Button size="sm" variant="ghost" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
+                        <Button size="sm" variant="ghost" className="min-h-9" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
                         {iss.status !== 'ready_for_work_order' && iss.status !== 'closed' && (
-                          <Button size="sm" variant="outline" className="ml-1" onClick={() => handleCreateWoFromIssue(iss.issue_id)} disabled={creatingWoFromIssue === iss.issue_id}>
+                          <Button size="sm" variant="outline" className="ml-1 min-h-9" onClick={() => handleCreateWoFromIssue(iss.issue_id)} disabled={creatingWoFromIssue === iss.issue_id}>
                             {creatingWoFromIssue === iss.issue_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wrench className="w-3 h-3 mr-1" />}
-                            Create WO
+                            Start job
                           </Button>
                         )}
                       </td>
@@ -419,6 +453,7 @@ function ClientIssuesPageInner() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
           {issuesTotal > 0 && <p className="text-sm text-gray-500 mt-2">Total: {issuesTotal}</p>}
         </CardContent>
@@ -448,7 +483,7 @@ function ClientIssuesPageInner() {
       {/* Issue detail drawer */}
       {issueDetailDrawer && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setIssueDetailDrawer(null)}>
-          <div className="w-full max-w-lg bg-white shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className={portalDrawerPanelClass} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="font-semibold text-midnight-blue">Issue details</h3>
               <button type="button" onClick={() => setIssueDetailDrawer(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
@@ -459,7 +494,7 @@ function ClientIssuesPageInner() {
               ) : issueDetailData ? (
                 <>
                   <p className="text-sm text-gray-700 whitespace-pre-wrap mb-4">{issueDetailData.description || '—'}</p>
-                  <dl className="grid grid-cols-2 gap-2 text-sm mb-4">
+                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm mb-4">
                     <dt className="text-gray-500">Property</dt>
                     <dd>{propertyLabel(issueDetailData.property_id)}</dd>
                     <dt className="text-gray-500">Category</dt>

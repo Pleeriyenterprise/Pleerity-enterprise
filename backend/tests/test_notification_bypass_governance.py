@@ -30,9 +30,24 @@ PATTERN_TWILIO_CLIENT = re.compile(r"twilio\.rest\.Client\s*\(|from twilio\.rest
 PATTERN_EMails_SEND = re.compile(r"\.emails\.send\s*\(")  # postmark .emails.send( or client.emails.send(
 
 
+def _skip_scan_path(path: Path) -> bool:
+    """Exclude venvs and site-packages so CI scans only first-party backend code."""
+    parts_lower = {p.lower() for p in path.parts}
+    if ".venv" in parts_lower or "venv" in parts_lower:
+        return True
+    if "site-packages" in parts_lower:
+        return True
+    s = str(path).replace("\\", "/")
+    if "/.venv/" in s or s.endswith("/.venv"):
+        return True
+    return False
+
+
 def _collect_py_files():
     files = []
     for path in BACKEND_ROOT.rglob("*.py"):
+        if _skip_scan_path(path):
+            continue
         if "node_modules" in str(path) or "__pycache__" in str(path) or path.name.startswith("."):
             continue
         try:

@@ -308,6 +308,193 @@ class EmailService:
                 </div>
         """
 
+    def _build_monthly_digest_action_body_html(self, model: Dict[str, Any]) -> str:
+        """Mobile-first action layer: summary, deltas, urgent items, steps — no wide data tables."""
+        m = model
+        label = html_module.escape(str(m.get("reporting_month_label") or "this period"))
+        acct = html_module.escape(str(m.get("account_name") or m.get("client_name") or "Your account"))
+        crn = m.get("customer_reference")
+        crn_line = (
+            f'<p style="margin:6px 0 0 0;color:#334155;font-size:14px;"><strong>CRN:</strong> {html_module.escape(str(crn))}</p>'
+            if crn
+            else ""
+        )
+        gen = html_module.escape(str(m.get("generated_at_display") or m.get("data_as_of") or ""))
+        props = int(m.get("properties_count") or 0)
+        scope_note_html = ""
+        dsn = m.get("digest_score_scope_note")
+        if dsn:
+            scope_note_html = (
+                '<p style="margin:12px 0;padding:10px 12px;background:#eff6ff;border-left:4px solid #2563eb;'
+                'font-size:13px;color:#1e3a5f;line-height:1.5;">'
+                f"{html_module.escape(str(dsn))}"
+                "</p>"
+            )
+        score = int(m.get("compliance_score") or 0)
+        risk = html_module.escape(str(m.get("risk_level") or "—"))
+        total = int(m.get("total_requirements") or 0)
+        valid = int(m.get("valid_count") or m.get("compliant") or 0)
+        exp = int(m.get("expiring_soon") or 0)
+        ovd = int(m.get("overdue") or 0)
+        miss = int(m.get("missing_evidence_count") or 0)
+
+        def metric_card(title: str, value: str) -> str:
+            return (
+                f'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin:0 0 10px 0;">'
+                f'<div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.04em;">{title}</div>'
+                f'<div style="font-size:20px;font-weight:700;color:#0f172a;margin-top:4px;">{value}</div></div>'
+            )
+
+        top_prop_html = ""
+        tpr = m.get("digest_email_top_properties_at_risk") or []
+        if tpr and m.get("include_property_breakdown", True):
+            parts = [
+                '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">'
+                "Properties needing the most attention</p>",
+                '<ul style="margin:0;padding-left:20px;color:#334155;font-size:14px;line-height:1.55;">',
+            ]
+            for row in tpr:
+                nm = html_module.escape(str(row.get("name") or "Property"))
+                rk = html_module.escape(str(row.get("risk_level") or "—"))
+                sc = row.get("score")
+                sc_s = html_module.escape(str(sc)) if sc is not None else "—"
+                ovd = int(row.get("overdue_count") or 0)
+                miss = int(row.get("missing_evidence_count") or 0)
+                bits = [f"Score {sc_s}", rk]
+                if ovd:
+                    bits.append(f"{ovd} overdue")
+                if miss:
+                    bits.append(f"{miss} missing evidence")
+                parts.append(f"<li><strong>{nm}</strong> — {html_module.escape(' · '.join(bits))}</li>")
+            parts.append("</ul>")
+            top_prop_html = "".join(parts)
+
+        cards = ""
+        if m.get("include_compliance_summary", True):
+            cards += metric_card("Compliance score", html_module.escape(str(score)))
+            cards += metric_card("Risk level", risk)
+            cards += metric_card("Tracked requirements", html_module.escape(str(total)))
+            cards += metric_card("Valid", html_module.escape(str(valid)))
+            cards += metric_card("Expiring soon", html_module.escape(str(exp)))
+            cards += metric_card("Overdue", html_module.escape(str(ovd)))
+            cards += metric_card("Missing evidence", html_module.escape(str(miss)))
+
+        d = m.get("deltas") or {}
+        delta_block = ""
+        if d.get("has_prior_snapshot"):
+            delta_block = '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">What changed since your last report</p><ul style="margin:0;padding-left:20px;color:#334155;font-size:15px;line-height:1.5;">'
+            sd = d.get("score_delta")
+            if sd is not None:
+                try:
+                    sdi = int(sd)
+                    delta_block += f"<li>Compliance score moved by {sdi:+d} point(s).</li>"
+                except (TypeError, ValueError):
+                    delta_block += f"<li>Compliance score movement recorded.</li>"
+            if d.get("newly_overdue_labels"):
+                for x in d["newly_overdue_labels"][:5]:
+                    delta_block += f"<li>Newly overdue: {html_module.escape(str(x))}</li>"
+            if d.get("resolved_improved_labels"):
+                for x in d["resolved_improved_labels"][:5]:
+                    delta_block += f"<li>Resolved or improved: {html_module.escape(str(x))}</li>"
+            if d.get("newly_expiring_labels"):
+                for x in d["newly_expiring_labels"][:4]:
+                    delta_block += f"<li>Newly expiring soon: {html_module.escape(str(x))}</li>"
+            docd = d.get("documents_uploaded_delta_vs_prev_period")
+            if docd is not None:
+                try:
+                    delta_block += f"<li>Document uploads vs your prior reporting period: {int(docd):+d}.</li>"
+                except (TypeError, ValueError):
+                    delta_block += f"<li>Document upload activity changed vs your prior reporting period.</li>"
+            elif m.get("include_recent_documents", True):
+                delta_block += f"<li>Documents uploaded this reporting period: {int(m.get('documents_uploaded_period') or 0)}.</li>"
+            nmd = d.get("newly_missing_evidence_delta")
+            if nmd is not None:
+                try:
+                    nmdi = int(nmd)
+                    if nmdi != 0:
+                        delta_block += f"<li>Missing evidence count vs last report: {nmdi:+d}.</li>"
+                except (TypeError, ValueError):
+                    pass
+            delta_block += "</ul>"
+        else:
+            delta_block = (
+                '<p style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 14px;color:#1e3a5f;font-size:14px;line-height:1.5;">'
+                "This is your first monthly compliance summary on record. Next month we will compare changes against this report."
+                "</p>"
+            )
+
+        urgent_block = ""
+        if m.get("include_action_items", True):
+            items = m.get("urgent_items") or []
+            if items:
+                urgent_block = '<p style="font-weight:600;color:#b91c1c;margin:20px 0 8px 0;">Immediate attention</p><ul style="margin:0;padding-left:0;list-style:none;">'
+                for it in items[:5]:
+                    url = html_module.escape(str(it.get("url") or m.get("primary_cta_url") or m.get("portal_link") or "#"))
+                    line = html_module.escape(str(it.get("line") or it.get("title") or "Action item"))
+                    urgent_block += (
+                        f'<li style="margin:0 0 12px 0;"><a href="{url}" style="display:block;padding:12px 14px;'
+                        f'background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#991b1b;text-decoration:none;'
+                        f'font-size:15px;font-weight:600;">{line}</a></li>'
+                    )
+                urgent_block += "</ul>"
+
+        steps = ""
+        if m.get("include_recommendations", True):
+            steps = '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">Recommended next steps</p><ol style="margin:0;padding-left:20px;color:#334155;font-size:15px;line-height:1.55;">'
+            if miss > 0:
+                steps += "<li>Upload missing documents and request verification where required.</li>"
+            if ovd > 0:
+                steps += "<li>Clear overdue renewals or book a compliance job from the command centre.</li>"
+            steps += "<li>Review your dashboard and calendar for upcoming expiries.</li>"
+            steps += "</ol>"
+
+        pdf_note = ""
+        if m.get("digest_pdf_attached"):
+            pdf_note = (
+                '<p style="margin:16px 0;font-size:14px;color:#334155;">'
+                "A detailed <strong>PDF audit report</strong> is attached for your records, lenders, or advisers."
+                "</p>"
+            )
+
+        trunc_note = ""
+        if m.get("digest_truncated") and m.get("digest_truncation_display_lines"):
+            lines_esc = " ".join(
+                html_module.escape(str(x)) for x in (m.get("digest_truncation_display_lines") or [])
+            )
+            trunc_note = (
+                '<p style="margin:16px 0;padding:12px 14px;background:#fffbeb;border-left:4px solid #d97706;'
+                'font-size:13px;color:#78350f;line-height:1.5;">'
+                "<strong>Data scope notice.</strong> "
+                f"{lines_esc}"
+                "</p>"
+            )
+
+        support = html_module.escape(str(m.get("support_email") or SUPPORT_EMAIL or "support@pleerityenterprise.co.uk"))
+        disclaimer = (
+            "<p style='font-size:12px;color:#64748b;margin-top:20px;line-height:1.5;'>"
+            "Figures are generated from tracked requirements, evidence states, and dates recorded in Compliance Vault Pro. "
+            f"Support: <a href='mailto:{support}' style='color:#00B8A9;'>{support}</a>. "
+            "This email is operational and informational — not legal advice."
+            "</p>"
+        )
+
+        return f"""
+<p style="margin:0 0 8px 0;color:#64748b;font-size:13px;">Monthly Compliance Summary — {label}</p>
+<p style="margin:0 0 4px 0;font-size:16px;color:#0f172a;"><strong>{acct}</strong></p>
+{crn_line}
+<p style="margin:8px 0 0 0;color:#64748b;font-size:13px;">Properties in scope: <strong>{props}</strong> · Generated: {gen}</p>
+{scope_note_html}
+<div style="height:16px;"></div>
+{cards}
+{top_prop_html}
+{delta_block}
+{urgent_block}
+{steps}
+{pdf_note}
+{trunc_note}
+{disclaimer}
+"""
+
     def _build_scheduled_report_table(self, report_rows: List[Dict[str, Any]]) -> str:
         """Build HTML table for scheduled requirements report with status styling."""
         status_styles = {
@@ -726,84 +913,46 @@ class EmailService:
             </html>
             """
         elif template_alias == EmailTemplateAlias.MONTHLY_DIGEST:
-            include_summary = model.get("include_compliance_summary", True)
-            include_actions = model.get("include_action_items", True)
-            include_expiries = model.get("include_upcoming_expiries", True)
-            include_docs = model.get("include_recent_documents", True)
-            include_property_breakdown = model.get("include_property_breakdown", True)
-            include_recommendations = model.get("include_recommendations", True)
-            include_audit_summary = model.get("include_audit_summary", False)
-            items = []
-            if include_summary:
-                items.extend([
-                    f"<li><strong>Properties:</strong> {model.get('properties_count', 0)}</li>",
-                    f"<li><strong>Total requirements:</strong> {model.get('total_requirements', 0)}</li>",
-                    f"<li><strong>Compliant:</strong> {model.get('compliant', 0)}</li>",
-                ])
-            if include_actions:
-                items.append(f"<li><strong>Overdue:</strong> {model.get('overdue', 0)}</li>")
-            if include_expiries:
-                items.append(f"<li><strong>Expiring soon:</strong> {model.get('expiring_soon', 0)}</li>")
-            if include_docs:
-                items.append(f"<li><strong>Documents uploaded (period):</strong> {model.get('documents_uploaded', 0)}</li>")
-            if include_property_breakdown:
-                items.append("<li><strong>Property breakdown:</strong> available in your portal dashboard.</li>")
-            if include_recommendations:
-                overdue = int(model.get("overdue", 0) or 0)
-                expiring = int(model.get("expiring_soon", 0) or 0)
-                if overdue > 0:
-                    items.append("<li><strong>Recommendation:</strong> Prioritize clearing overdue requirements first.</li>")
-                elif expiring > 0:
-                    items.append("<li><strong>Recommendation:</strong> Schedule uploads for expiring items this week.</li>")
-                else:
-                    items.append("<li><strong>Recommendation:</strong> Maintain current cadence and monitor upcoming deadlines.</li>")
-            if not items:
-                items = ["<li>No sections enabled in your digest preferences.</li>"]
-            list_html = "\n                        ".join(items)
-            cc_html = ""
-            if include_audit_summary and model.get("command_centre_digest_included"):
+            body_inner = self._build_monthly_digest_action_body_html(model)
+            extra_cc = ""
+            if model.get("include_audit_summary") and model.get("command_centre_digest_included"):
                 u = int(model.get("command_centre_urgent_open") or 0)
                 up = int(model.get("command_centre_upcoming_open") or 0)
                 ip = int(model.get("command_centre_in_progress_open") or 0)
                 sn = int(model.get("command_centre_snoozed") or 0)
-                cc_html = (
-                    "<p><strong>Open priorities (Today inbox)</strong></p>"
-                    "<ul>"
-                    f"<li><strong>Urgent:</strong> {u}</li>"
-                    f"<li><strong>Upcoming:</strong> {up}</li>"
-                    f"<li><strong>In progress:</strong> {ip}</li>"
-                    f"<li><strong>Snoozed:</strong> {sn}</li>"
-                    "</ul>"
+                extra_cc = (
+                    "<p style=\"font-weight:600;margin:20px 0 8px 0;\">Today inbox snapshot</p>"
+                    "<ul style=\"margin:0;padding-left:20px;color:#334155;font-size:14px;\">"
+                    f"<li>Urgent: {u}</li><li>Upcoming: {up}</li><li>In progress: {ip}</li><li>Snoozed: {sn}</li></ul>"
                 )
                 act_lines = model.get("command_centre_recent_activity_lines") or []
                 if act_lines:
                     lis = "".join(f"<li>{html_module.escape(str(line))}</li>" for line in act_lines)
-                    cc_html += f"<p><strong>Recent inbox activity</strong></p><ul>{lis}</ul>"
+                    extra_cc += f"<p style=\"font-weight:600;margin:16px 0 6px 0;\">Recent inbox activity</p><ul style=\"margin:0;padding-left:20px;font-size:14px;\">{lis}</ul>"
             period_html = ""
-            if include_audit_summary and model.get("digest_period_activity_included"):
+            if model.get("include_audit_summary") and model.get("digest_period_activity_included"):
                 plines = model.get("digest_period_activity_lines") or []
                 if plines:
                     plis = "".join(f"<li>{html_module.escape(str(line))}</li>" for line in plines)
-                    period_html = f"<p><strong>What changed in this period</strong></p><ul>{plis}</ul>"
+                    period_html = f"<p style=\"font-weight:600;margin:20px 0 8px 0;\">Operational activity (period)</p><ul style=\"margin:0;padding-left:20px;font-size:14px;\">{plis}</ul>"
                 else:
-                    period_html = (
-                        "<p><strong>What changed in this period</strong></p>"
-                        "<p>No qualifying activity was recorded in audit and operational logs for this window.</p>"
-                    )
-            data_as_of = (model.get("data_as_of") or model.get("period_end") or "").replace("T", " ")[:19]
-            body = f"<p>Summary for the period (counts only):</p><ul>{list_html}</ul>{cc_html}{period_html}<p>Period: {model.get('period_start', '')} to {model.get('period_end', '')}</p><p style=\"color: #64748b; font-size: 12px; margin-top: 16px;\">Data as of {data_as_of}. This summary is for information only and does not constitute legal advice.</p>"
-            greeting = f"Hello {model.get('client_name', 'there')},"
+                    period_html = "<p style=\"color:#64748b;font-size:14px;\">No qualifying operational activity lines for this window.</p>"
+            body = body_inner + extra_cc + period_html
+            greeting = _format_greeting(model.get("client_name"))
+            header = html_module.escape(
+                str(model.get("email_header_title") or model.get("subject") or "Monthly Compliance Summary")
+            )
             return _customer_email_html(
                 model,
                 greeting=greeting,
                 body_html=body,
-                header_title="Monthly compliance digest",
-                cta_label="Open Today",
-                cta_url=model.get('portal_link', '#'),
-                why_received="you have reporting notifications enabled for your account.",
+                header_title=header,
+                cta_label=str(model.get("primary_cta_label") or "Review & Fix Compliance Now"),
+                cta_url=model.get("primary_cta_url") or model.get("portal_link") or "#",
+                why_received="you have monthly compliance reporting enabled for your account.",
                 show_preferences_link=True,
                 preferences_url=_notification_preferences_url(model) or None,
-                customer_reference=model.get('customer_reference'),
+                customer_reference=model.get("customer_reference"),
             )
         elif template_alias == EmailTemplateAlias.CLEARFORM_WELCOME:
             # Use the dedicated ClearForm method (customer-facing but custom layout)
@@ -1181,77 +1330,51 @@ Review the admin dashboard pending-verification list to process these documents.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.MONTHLY_DIGEST:
-            include_summary = model.get("include_compliance_summary", True)
-            include_actions = model.get("include_action_items", True)
-            include_expiries = model.get("include_upcoming_expiries", True)
-            include_docs = model.get("include_recent_documents", True)
-            include_property_breakdown = model.get("include_property_breakdown", True)
-            include_recommendations = model.get("include_recommendations", True)
-            include_audit_summary = model.get("include_audit_summary", False)
-            lines = []
-            if include_summary:
-                lines.extend([
-                    f"- Properties: {model.get('properties_count', 0)}",
-                    f"- Total requirements: {model.get('total_requirements', 0)}",
-                    f"- Compliant: {model.get('compliant', 0)}",
-                ])
-            if include_actions:
-                lines.append(f"- Overdue: {model.get('overdue', 0)}")
-            if include_expiries:
-                lines.append(f"- Expiring soon: {model.get('expiring_soon', 0)}")
-            if include_docs:
-                lines.append(f"- Documents uploaded (period): {model.get('documents_uploaded', 0)}")
-            if include_property_breakdown:
-                lines.append("- Property breakdown: available in your portal dashboard.")
-            if include_recommendations:
-                overdue = int(model.get("overdue", 0) or 0)
-                expiring = int(model.get("expiring_soon", 0) or 0)
-                if overdue > 0:
-                    lines.append("- Recommendation: prioritize overdue requirements first.")
-                elif expiring > 0:
-                    lines.append("- Recommendation: schedule uploads for expiring items this week.")
-                else:
-                    lines.append("- Recommendation: keep current cadence and monitor upcoming deadlines.")
-            if not lines:
-                lines = ["- No sections enabled in your digest preferences."]
-            body_lines = "\n".join(lines)
-            cc_lines = []
-            if include_audit_summary and model.get("command_centre_digest_included"):
-                cc_lines.append("")
-                cc_lines.append("Open priorities (Today inbox):")
-                cc_lines.append(f"- Urgent: {int(model.get('command_centre_urgent_open') or 0)}")
-                cc_lines.append(f"- Upcoming: {int(model.get('command_centre_upcoming_open') or 0)}")
-                cc_lines.append(f"- In progress: {int(model.get('command_centre_in_progress_open') or 0)}")
-                cc_lines.append(f"- Snoozed: {int(model.get('command_centre_snoozed') or 0)}")
-                act_lines = model.get("command_centre_recent_activity_lines") or []
-                if act_lines:
-                    cc_lines.append("")
-                    cc_lines.append("Recent inbox activity:")
-                    for line in act_lines:
-                        cc_lines.append(f"- {line}")
-            if include_audit_summary and model.get("digest_period_activity_included"):
-                pal = model.get("digest_period_activity_lines") or []
-                if pal:
-                    cc_lines.append("")
-                    cc_lines.append("What changed this period:")
-                    for line in pal:
-                        cc_lines.append(f"- {line}")
-            cc_block = "\n".join(cc_lines)
-            data_as_of = (model.get("data_as_of") or model.get("period_end") or "").replace("T", " ")[:19]
-            return f"""
-MONTHLY COMPLIANCE DIGEST
-========================
-
-Summary for the period (counts only):
-
-{body_lines}
-{cc_block}
-
-Period: {model.get('period_start', '')} to {model.get('period_end', '')}
-
-Data as of {data_as_of}. This summary is for information only and does not constitute legal advice.
-{footer}
-            """
+            label = model.get("reporting_month_label") or ""
+            lines = [
+                f"MONTHLY COMPLIANCE SUMMARY — {label}",
+                "",
+                f"Account: {model.get('account_name') or model.get('client_name', '')}",
+            ]
+            if model.get("customer_reference"):
+                lines.append(f"CRN: {model.get('customer_reference')}")
+            lines.extend(
+                [
+                    f"Properties: {model.get('properties_count', 0)}",
+                    f"Compliance score: {model.get('compliance_score', 0)}",
+                    f"Risk: {model.get('risk_level', '')}",
+                    f"Requirements: {model.get('total_requirements', 0)} (valid {model.get('valid_count', model.get('compliant', 0))}, "
+                    f"expiring soon {model.get('expiring_soon', 0)}, overdue {model.get('overdue', 0)}, "
+                    f"missing evidence {model.get('missing_evidence_count', 0)})",
+                    "",
+                ]
+            )
+            d = model.get("deltas") or {}
+            if d.get("has_prior_snapshot"):
+                lines.append("Changes since your last report:")
+                if d.get("score_delta") is not None:
+                    lines.append(f"- Score delta: {d.get('score_delta')}")
+                for x in (d.get("newly_overdue_labels") or [])[:4]:
+                    lines.append(f"- Newly overdue: {x}")
+                for x in (d.get("resolved_improved_labels") or [])[:4]:
+                    lines.append(f"- Resolved/improved: {x}")
+                docd = d.get("documents_uploaded_delta_vs_prev_period")
+                if docd is not None:
+                    lines.append(f"- Document uploads vs prior period: {docd}")
+            else:
+                lines.append("First monthly summary on record; comparison starts next month.")
+            lines.append("")
+            for it in (model.get("urgent_items") or [])[:5]:
+                lines.append(f"* {it.get('line') or it.get('title')} — {it.get('url')}")
+            lines.append("")
+            lines.append(f"Open command centre: {model.get('primary_cta_url') or model.get('portal_link', '')}")
+            if model.get("digest_pdf_attached"):
+                lines.append("PDF audit report attached.")
+            lines.append("")
+            lines.append(
+                "Generated from tracked requirements and evidence in Compliance Vault Pro. Not legal advice."
+            )
+            return "\n".join(lines) + footer
         elif template_alias == EmailTemplateAlias.CLEARFORM_WELCOME:
             return f"""
 WELCOME TO CLEARFORM BY PLEERITY

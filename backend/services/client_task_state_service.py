@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 import uuid
 import logging
+import os
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -23,10 +24,12 @@ COLLECTION_ACTIVITY = "client_task_activity_log"
 OVERRIDE_SNOOZE = "snooze"
 OVERRIDE_DISMISS = "dismiss"
 OVERRIDE_DONE = "done"
+OVERRIDE_REVIEWED = "reviewed"
 
 ACTION_SNOOZE = "snooze"
 ACTION_DISMISS = "dismiss"
 ACTION_DONE = "done"
+ACTION_REVIEWED = "reviewed"
 ACTION_RESTORE = "restore"
 
 # Stable ids from unified_tasks_service: "requirement:uuid", "risk_signal:...", etc.
@@ -107,15 +110,18 @@ async def apply_task_action(
     title_snapshot: Optional[str] = None,
     source_type_snapshot: Optional[str] = None,
     property_id_snapshot: Optional[str] = None,
+    dismiss_reason: Optional[str] = None,
+    business_outcome: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Apply snooze, dismiss, done, or restore. Writes override row (except restore) and activity log.
+    Apply snooze, dismiss (reason required), done (legacy inbox hide), reviewed (preferred triage hide), or restore.
+    Writes override row (except restore) and activity log. Does not mutate compliance or operations truth.
     """
     if not is_valid_task_id(task_id):
         raise ValueError("Invalid task_id")
     action = (action or "").strip().lower()
-    if action not in (ACTION_SNOOZE, ACTION_DISMISS, ACTION_DONE, ACTION_RESTORE):
-        raise ValueError("action must be snooze, dismiss, done, or restore")
+    if action not in (ACTION_SNOOZE, ACTION_DISMISS, ACTION_DONE, ACTION_REVIEWED, ACTION_RESTORE):
+        raise ValueError("action must be snooze, dismiss, done, reviewed, or restore")
 
     db = database.get_db()
     coll = db[COLLECTION_OVERRIDES]
@@ -159,7 +165,11 @@ async def apply_task_action(
             "snoozed_until": until,
             "recorded_at": now,
             "actor_portal_user_id": portal_user_id,
+            "last_user_action_at": now,
+            "last_user_action_by": portal_user_id,
             "snapshot": snap,
+            "dismiss_reason": None,
+            "task_status": OVERRIDE_SNOOZE,
         }
         await coll.update_one(
             {"client_id": client_id, "task_id": scoped_task_id},
@@ -177,6 +187,7 @@ async def apply_task_action(
                 "snoozed_until": until.isoformat(),
                 "title": (title_snapshot or "")[:500] or None,
                 "source_type": source_type_snapshot,
+                "business_outcome": business_outcome or "task_snoozed",
             },
         )
         await create_audit_log(
@@ -190,12 +201,31 @@ async def apply_task_action(
                 "task_scope_user_id": scope,
                 "snooze_days": days,
                 "snoozed_until": until.isoformat(),
+                "business_outcome": business_outcome or "task_snoozed",
             },
         )
         return {"ok": True, "task_id": task_id, "state": OVERRIDE_SNOOZE, "snoozed_until": until.isoformat()}
 
-    # dismiss | done
-    override = OVERRIDE_DISMISS if action == ACTION_DISMISS else OVERRIDE_DONE
+    if action == ACTION_DISMISS:
+        dr = (dismiss_reason or "").strip()
+        if len(dr) < 3:
+            if os.getenv("CLIENT_TASK_DISMISS_ALLOW_LEGACY_EMPTY", "").strip().lower() in ("1", "true", "yes"):
+                dr = (
+                    os.getenv("CLIENT_TASK_DISMISS_LEGACY_DEFAULT_REASON", "").strip()
+                    or "Legacy integration dismiss (no reason supplied — enable CLIENT_TASK_DISMISS_ALLOW_LEGACY_EMPTY only during migration)"
+                )
+            else:
+                raise ValueError(
+                    "Dismiss requires a reason (at least 3 characters). This is logged; it does not satisfy compliance."
+                )
+
+    # dismiss | done | reviewed
+    if action == ACTION_DISMISS:
+        override = OVERRIDE_DISMISS
+    elif action == ACTION_REVIEWED:
+        override = OVERRIDE_REVIEWED
+    else:
+        override = OVERRIDE_DONE
     doc = {
         "client_id": client_id,
         "task_id": scoped_task_id,
@@ -205,31 +235,58 @@ async def apply_task_action(
         "snoozed_until": None,
         "recorded_at": now,
         "actor_portal_user_id": portal_user_id,
+        "last_user_action_at": now,
+        "last_user_action_by": portal_user_id,
         "snapshot": snap,
+        "dismiss_reason": (dismiss_reason or "").strip()[:2000] if action == ACTION_DISMISS else None,
+        "task_status": override,
     }
     await coll.update_one(
         {"client_id": client_id, "task_id": scoped_task_id},
         {"$set": doc},
         upsert=True,
     )
+    act_extra: Dict[str, Any] = {
+        "title": (title_snapshot or "")[:500] or None,
+        "source_type": source_type_snapshot,
+        "business_outcome": business_outcome
+        or (
+            "task_dismissed"
+            if action == ACTION_DISMISS
+            else ("task_marked_reviewed" if action == ACTION_REVIEWED else "inbox_done_legacy")
+        ),
+    }
+    if action == ACTION_DISMISS:
+        act_extra["dismiss_reason"] = (dismiss_reason or "").strip()[:2000]
     await _log_activity(
         client_id,
         task_id,
         action,
         portal_user_id,
         task_scope_user_id=scope,
-        extra={"title": (title_snapshot or "")[:500] or None, "source_type": source_type_snapshot},
+        extra=act_extra,
     )
-    audit_action = (
-        AuditAction.CLIENT_TASK_DISMISSED if action == ACTION_DISMISS else AuditAction.CLIENT_TASK_MARKED_DONE
-    )
+    if action == ACTION_DISMISS:
+        audit_action = AuditAction.CLIENT_TASK_DISMISSED
+    elif action == ACTION_REVIEWED:
+        audit_action = AuditAction.CLIENT_TASK_MARKED_REVIEWED
+    else:
+        audit_action = AuditAction.CLIENT_TASK_MARKED_DONE
+    audit_meta: Dict[str, Any] = {
+        "task_id": task_id,
+        "task_scope_user_id": scope,
+        "override": override,
+        "business_outcome": act_extra.get("business_outcome"),
+    }
+    if action == ACTION_DISMISS:
+        audit_meta["dismiss_reason"] = (dismiss_reason or "").strip()[:2000]
     await create_audit_log(
         action=audit_action,
         actor_id=portal_user_id,
         client_id=client_id,
         resource_type="client_task",
         resource_id=task_id,
-        metadata={"task_id": task_id, "task_scope_user_id": scope, "override": override},
+        metadata=audit_meta,
     )
     return {"ok": True, "task_id": task_id, "state": override}
 
@@ -290,7 +347,7 @@ def partition_tasks_by_override(
                 snoozed.append(sn)
             else:
                 visible.append(t)
-        elif kind in (OVERRIDE_DISMISS, OVERRIDE_DONE):
+        elif kind in (OVERRIDE_DISMISS, OVERRIDE_DONE, OVERRIDE_REVIEWED):
             continue
         else:
             visible.append(t)
@@ -311,6 +368,13 @@ async def count_activity_since(
     }
     if portal_user_id is not None:
         q["task_scope_user_id"] = _scope_token(portal_user_id)
+    # Normalize legacy action names in query
+    expanded = list(actions)
+    if ACTION_DONE in actions and ACTION_REVIEWED not in actions:
+        expanded.append(ACTION_REVIEWED)
+    if ACTION_REVIEWED in actions and ACTION_DONE not in actions:
+        expanded.append(ACTION_DONE)
+    q["action"] = {"$in": list(dict.fromkeys(expanded))}
     return await db[COLLECTION_ACTIVITY].count_documents(q)
 
 
@@ -324,14 +388,14 @@ async def list_hidden_inbox_items(
     coll = db[COLLECTION_OVERRIDES]
     q: Dict[str, Any] = {
         "client_id": client_id,
-        "override": {"$in": [OVERRIDE_DISMISS, OVERRIDE_DONE]},
+        "override": {"$in": [OVERRIDE_DISMISS, OVERRIDE_DONE, OVERRIDE_REVIEWED]},
     }
     if portal_user_id is not None:
         q["task_scope_user_id"] = _scope_token(portal_user_id)
     cursor = (
         coll.find(
             q,
-            {"_id": 0, "task_id": 1, "raw_task_id": 1, "override": 1, "snapshot": 1, "recorded_at": 1},
+            {"_id": 0, "task_id": 1, "raw_task_id": 1, "override": 1, "snapshot": 1, "recorded_at": 1, "dismiss_reason": 1},
         )
         .sort("recorded_at", -1)
         .limit(min(limit, 100))
@@ -355,6 +419,7 @@ async def list_hidden_inbox_items(
                 "source_type": snap.get("source_type"),
                 "property_id": snap.get("property_id"),
                 "hidden_at": ra,
+                "dismiss_reason": r.get("dismiss_reason"),
             }
         )
     return out
@@ -393,7 +458,7 @@ def merge_user_acknowledgements_into_recent(
     synthetic: List[Dict[str, Any]] = []
     for row in activity_rows:
         act = (row.get("action") or "").lower()
-        if act not in (ACTION_DISMISS, ACTION_DONE):
+        if act not in (ACTION_DISMISS, ACTION_DONE, ACTION_REVIEWED):
             continue
         tid = row.get("task_id") or ""
         if not tid:
@@ -402,11 +467,20 @@ def merge_user_acknowledgements_into_recent(
         ca_s = ca.isoformat() if hasattr(ca, "isoformat") else str(ca)
         extra = row.get("extra") or {}
         title_from_log = extra.get("title")
-        label = title_from_log or ("Dismissed in inbox" if act == ACTION_DISMISS else "Marked done in inbox")
+        if act == ACTION_DISMISS:
+            label = title_from_log or "Dismissed task (inbox only)"
+        elif act == ACTION_REVIEWED:
+            label = title_from_log or "Marked reviewed (inbox only)"
+        else:
+            label = title_from_log or "Marked done in inbox (legacy)"
         synthetic.append({
             "id": f"user_ack:{tid}:{ca_s}",
             "source_type": "inbox_acknowledgement",
             "source_id": tid,
+            "source_entity_type": "inbox_acknowledgement",
+            "source_entity_id": tid,
+            "action_context_type": "inbox_triage",
+            "primary_recommended_action": "Restore or read help",
             "title": label,
             "description": "You hid this from your open task lists. It does not change work orders, approvals, or compliance records. Restore from Tasks → Hidden or Snoozed, or read how inbox actions work in Help.",
             "property_id": None,
@@ -422,7 +496,7 @@ def merge_user_acknowledgements_into_recent(
             "primary_action_label": "How inbox actions work",
             "primary_action_url": "/help?article=command-centre-tasks-inbox",
             "inline_action_supported": False,
-            "metadata": {"user_action": act, "task_id": tid},
+            "metadata": {"user_action": act, "task_id": tid, "business_outcome": (extra.get("business_outcome") or "inbox_triage")},
             "freshness_timestamp": ca_s,
             "created_at": ca_s,
             "updated_at": ca_s,

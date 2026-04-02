@@ -32,6 +32,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { toast } from 'sonner';
 import api from '../api/client';
 import UpgradePrompt from '../components/UpgradePrompt';
+import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
 
 const IntegrationsPage = () => {
   const navigate = useNavigate();
@@ -265,11 +267,8 @@ const IntegrationsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-electric-teal mx-auto mb-3" />
-          <p className="text-gray-600">Loading integrations...</p>
-        </div>
+      <div className={portalPageRoot}>
+        <PortalLoadingPanel message="Loading integrations…" />
       </div>
     );
   }
@@ -277,13 +276,13 @@ const IntegrationsPage = () => {
   // Show upgrade prompt if webhooks not available
   if (entitlements && !hasWebhooksAccess) {
     return (
-      <div className="min-h-screen bg-gray-50" data-testid="integrations-page">
+      <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="integrations-page">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
           <div className="max-w-6xl mx-auto px-4 py-4">
             <div className="flex items-center gap-4">
               <button 
-                onClick={() => navigate('/app/dashboard')}
+                onClick={() => navigate('/dashboard')}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 data-testid="back-btn"
               >
@@ -353,14 +352,14 @@ const IntegrationsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" data-testid="integrations-page">
+    <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="integrations-page">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <button 
-                onClick={() => navigate('/app/dashboard')}
+                onClick={() => navigate('/dashboard')}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 data-testid="back-btn"
               >
@@ -376,7 +375,7 @@ const IntegrationsPage = () => {
             </div>
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="bg-electric-teal hover:bg-teal-600"
+              className="bg-electric-teal hover:bg-teal-600 min-h-11 w-full sm:w-auto shrink-0"
               data-testid="create-webhook-btn"
             >
               <Plus className="w-4 h-4 mr-2" />

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import api, { clientAPI } from '../api/client';
-import { useAuth } from '../contexts/AuthContext';
+import api, { clientAPI, parseApiError } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { UpgradeRequired } from '../components/UpgradePrompt';
 import EmptyState from '../components/EmptyState';
@@ -34,12 +33,12 @@ import {
   Files,
   Trash2
 } from 'lucide-react';
+import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 
 const DocumentsPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const uploadDeepLinkApplied = useRef('');
-  const { user } = useAuth();
   const { hasFeature } = useEntitlements();
   const [documents, setDocuments] = useState([]);
   const [properties, setProperties] = useState([]);
@@ -330,7 +329,7 @@ const DocumentsPage = () => {
       setUploadForm({ property_id: '', requirement_id: '', document_type: '', notes: '', file: null });
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to upload document');
+      toast.error(parseApiError(error, 'Failed to upload document'));
     } finally {
       setUploading(false);
     }
@@ -612,46 +611,42 @@ const DocumentsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" data-testid="documents-loading">
-        <RefreshCw className="w-8 h-8 animate-spin text-electric-teal" />
+      <div className={portalPageRoot} data-testid="documents-loading">
+        <PortalLoadingPanel message="Loading documents…" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" data-testid="documents-page">
-      {/* Header */}
-      <header className="bg-midnight-blue text-white py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))} 
-                className="text-gray-300 hover:text-white"
-                data-testid="back-to-dashboard-btn"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <h1 className="text-xl font-bold">Documents</h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/documents/bulk-upload')}
-                className="bg-transparent border-white/30 text-white hover:bg-white/10"
-                data-testid="bulk-upload-nav-btn"
-              >
-                <Files className="w-4 h-4 mr-2" />
-                Bulk Upload
-              </Button>
-              <span className="text-sm text-gray-300">{user?.email}</span>
-            </div>
+    <div className={portalPageRoot} data-testid="documents-page">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6">
+        <div className="flex items-start gap-3 min-w-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))}
+            className="text-gray-600 hover:text-midnight-blue shrink-0 mt-0.5"
+            data-testid="back-to-dashboard-btn"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-midnight-blue">Documents</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Upload evidence and link it to requirements. Awaiting verification shows until dates are confirmed.</p>
           </div>
         </div>
-      </header>
+        <Button
+          variant="outline"
+          className="w-full sm:w-auto min-h-11 shrink-0"
+          onClick={() => navigate('/documents/bulk-upload')}
+          data-testid="bulk-upload-nav-btn"
+        >
+          <Files className="w-4 h-4 mr-2 shrink-0" />
+          Bulk upload
+        </Button>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto w-full">
         {upgradeRequiredDetail ? (
           <div className="flex flex-col items-center justify-center py-12" data-testid="documents-upgrade-required">
             <UpgradeRequired upgradeDetail={upgradeRequiredDetail} showBackToDashboard />
@@ -664,8 +659,8 @@ const DocumentsPage = () => {
             <Card id="upload-form-anchor" data-testid="upload-form-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Upload className="w-5 h-5" />
-                  Upload Document
+                  <Upload className="w-5 h-5 shrink-0" />
+                  Upload document
                 </CardTitle>
                 <p className="text-sm text-gray-500 mt-1">Need help? See: <Link to="/help?article=uploading-evidence" className="text-electric-teal hover:underline">Uploading Evidence guide</Link> in Help Centre.</p>
               </CardHeader>
@@ -840,11 +835,11 @@ const DocumentsPage = () => {
                   />
                 ) : (
                   <>
-                    <div className="flex flex-wrap gap-3 mb-4">
+                    <PortalFilterStack className="mb-4">
                       <select
                         value={filterPropertyId}
                         onChange={(e) => setFilterPropertyId(e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-electric-teal"
+                        className="w-full md:w-auto min-h-11 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-electric-teal"
                         data-testid="filter-by-property"
                       >
                         <option value="">All properties</option>
@@ -857,7 +852,7 @@ const DocumentsPage = () => {
                       <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-electric-teal"
+                        className="w-full md:w-auto min-h-11 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-electric-teal"
                         data-testid="filter-by-status"
                       >
                         <option value="">All statuses</option>
@@ -867,11 +862,11 @@ const DocumentsPage = () => {
                         <option value="REJECTED">Rejected</option>
                       </select>
                       {(filterPropertyId || filterStatus) && (
-                        <Button variant="ghost" size="sm" onClick={() => { setFilterPropertyId(''); setFilterStatus(''); }} data-testid="clear-filters">
+                        <Button variant="ghost" size="sm" className="min-h-11 w-full md:w-auto" onClick={() => { setFilterPropertyId(''); setFilterStatus(''); }} data-testid="clear-filters">
                           Clear filters
                         </Button>
                       )}
-                    </div>
+                    </PortalFilterStack>
                     {filteredDocuments.length === 0 ? (
                       <EmptyState
                         title="No documents match"
@@ -1120,7 +1115,7 @@ const DocumentsPage = () => {
           </div>
         </div>
         )}
-      </main>
+      </div>
 
       {/* Review Modal */}
       {reviewModal && (

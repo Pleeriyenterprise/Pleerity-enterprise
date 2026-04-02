@@ -27,6 +27,8 @@ async def test_enforce_feature_returns_subscription_inactive_when_canceled():
         "billing_plan": "PLAN_3_PRO",
         "subscription_status": "CANCELED",
     })
+    db.client_billing = MagicMock()
+    db.client_billing.find_one = AsyncMock(return_value=None)
     with patch("services.plan_registry.database.get_db", return_value=db):
         allowed, msg, details = await plan_registry.enforce_feature("client-pro-canceled", "reports_pdf")
     assert allowed is False
@@ -46,6 +48,8 @@ async def test_enforce_feature_returns_subscription_inactive_when_past_due():
         "billing_plan": "PLAN_3_PRO",
         "subscription_status": "PAST_DUE",
     })
+    db.client_billing = MagicMock()
+    db.client_billing.find_one = AsyncMock(return_value=None)
     with patch("services.plan_registry.database.get_db", return_value=db):
         allowed, msg, details = await plan_registry.enforce_feature("client-past-due", "reports_csv")
     assert allowed is False
@@ -64,6 +68,8 @@ async def test_enforce_feature_returns_subscription_inactive_when_unpaid():
         "billing_plan": "PLAN_3_PRO",
         "subscription_status": "UNPAID",
     })
+    db.client_billing = MagicMock()
+    db.client_billing.find_one = AsyncMock(return_value=None)
     with patch("services.plan_registry.database.get_db", return_value=db):
         allowed, _, details = await plan_registry.enforce_feature("client-unpaid", "scheduled_reports")
     assert allowed is False
@@ -164,14 +170,18 @@ async def test_scheduled_report_job_skips_when_enforce_feature_denies():
         "client_id": "c1", "subscription_status": "ACTIVE", "entitlement_status": "ENABLED",
         "email": "a@b.co", "full_name": "Test",
     })
+    db.message_logs = MagicMock()
     db.message_logs.insert_one = AsyncMock()
     job = ScheduledReportJob(db)
     mock_registry = MagicMock()
-    mock_registry.enforce_feature = AsyncMock(return_value=(False, "Subscription inactive", {"error_code": "SUBSCRIPTION_INACTIVE"}))
-    with patch("services.plan_registry.plan_registry", mock_registry):
-        with patch("services.jobs.create_audit_log", new_callable=AsyncMock):
-            count = await job.process_scheduled_reports()
-    assert count == 0
+    mock_registry.enforce_feature = AsyncMock(
+        return_value=(False, "Subscription inactive", {"error_code": "SUBSCRIPTION_INACTIVE"})
+    )
+    with patch("services.plan_registry.plan_registry", mock_registry, create=True):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            result = await job.process_scheduled_reports()
+    assert result["count"] == 0
+    assert result["outcome_status"] == "success"
     mock_registry.enforce_feature.assert_called_once_with("c1", "scheduled_reports")
     db.report_schedules.update_one.assert_not_called()
 

@@ -28,11 +28,28 @@ from services.work_order_execution_constants import (
 )
 from models import AuditAction
 from utils.audit import create_audit_log
+from utils.api_errors import log_api_error, structured_error
 from auth import hash_token
 from services import work_order_schedule_service as wo_schedule
 from services.work_order_schedule_constants import SCHEDULE_ACTOR_CONTRACTOR
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/job", tags=["contractor-job-link"])
+
+
+def _job_link_error(status_code: int, error_code: str, message: str, *, retry_suggested: bool = False) -> None:
+    log_api_error(
+        logger,
+        endpoint="GET/POST /api/job/*",
+        error_type=error_code,
+        message=message,
+    )
+    raise HTTPException(
+        status_code=status_code,
+        detail=structured_error(error_code, message, retry_suggested=retry_suggested),
+    )
 
 
 def _compliance_booking_status_contractor_hint(status: Optional[str]) -> str:
@@ -79,14 +96,29 @@ async def get_job_context(
     """Validate job token and return work_order_id, contractor_id. Raises 401 if invalid."""
     raw = (token or x_job_token or "").strip()
     if not raw:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Job token required (query ?token= or header X-Job-Token)")
+        _job_link_error(
+            status.HTTP_401_UNAUTHORIZED,
+            "JOB_TOKEN_MISSING",
+            "A secure job link token is required. Open the link from your assignment email or paste the full URL.",
+            retry_suggested=False,
+        )
     token_hash = hash_token(raw)
     db = database.get_db()
     doc = await db.contractor_job_tokens.find_one({"token_hash": token_hash})
     if not doc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired job link")
+        _job_link_error(
+            status.HTTP_401_UNAUTHORIZED,
+            "JOB_TOKEN_INVALID",
+            "This job link is not valid. Request a new assignment email from the client.",
+            retry_suggested=False,
+        )
     if doc.get("revoked_at"):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Job link is no longer valid")
+        _job_link_error(
+            status.HTTP_401_UNAUTHORIZED,
+            "JOB_TOKEN_REVOKED",
+            "This job link is no longer valid. Ask the client to resend the assignment.",
+            retry_suggested=False,
+        )
     expires_at = doc.get("expires_at")
     if expires_at:
         try:
@@ -97,7 +129,12 @@ async def get_job_context(
             if exp_dt.tzinfo is None:
                 exp_dt = exp_dt.replace(tzinfo=timezone.utc)
             if datetime.now(timezone.utc) > exp_dt:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Job link has expired")
+                _job_link_error(
+                    status.HTTP_401_UNAUTHORIZED,
+                    "JOB_TOKEN_EXPIRED",
+                    "This job link has expired. Ask the client to send a fresh assignment link.",
+                    retry_suggested=False,
+                )
         except (ValueError, TypeError):
             pass
     contractor = await db.contractors.find_one(
@@ -105,11 +142,26 @@ async def get_job_context(
         {"_id": 0, "status": 1, "portal_access_status": 1},
     )
     if not contractor:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired job link")
+        _job_link_error(
+            status.HTTP_401_UNAUTHORIZED,
+            "JOB_TOKEN_CONTRACTOR_MISSING",
+            "This job link is no longer valid.",
+            retry_suggested=False,
+        )
     if (contractor.get("status") or "").lower() != contractor_service.STATUS_ACTIVE:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Contractor access is no longer active")
+        _job_link_error(
+            status.HTTP_401_UNAUTHORIZED,
+            "CONTRACTOR_NOT_ACTIVE",
+            "Your contractor profile is not active, so this job link cannot be used. Contact the client.",
+            retry_suggested=False,
+        )
     if (contractor.get("portal_access_status") or "").lower() == contractor_service.PORTAL_ACCESS_DISABLED:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Contractor access is no longer active")
+        _job_link_error(
+            status.HTTP_401_UNAUTHORIZED,
+            "CONTRACTOR_PORTAL_DISABLED",
+            "Portal access is disabled for this contractor account. Ask the client to re-enable access.",
+            retry_suggested=False,
+        )
     return {"work_order_id": doc["work_order_id"], "contractor_id": doc["contractor_id"]}
 
 
@@ -334,11 +386,29 @@ async def accept_assignment(request: Request, ctx: dict = Depends(job_context_de
     contractor_id = ctx["contractor_id"]
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _job_link_error(
+            status.HTTP_404_NOT_FOUND,
+            "WORK_ORDER_NOT_FOUND",
+            "This work order was not found. The link may be out of date.",
+            retry_suggested=False,
+        )
     if (wo.get("contractor_id") or "").strip() != (contractor_id or "").strip():
-        raise HTTPException(status_code=404, detail="Work order not found or not assigned to you")
+        _job_link_error(
+            status.HTTP_404_NOT_FOUND,
+            "WORK_ORDER_NOT_ASSIGNED",
+            "This job is not assigned to you. Use the link from your latest assignment email.",
+            retry_suggested=False,
+        )
     if (wo.get("status") or "").upper() not in (maintenance_service.STATUS_ASSIGNED, maintenance_service.STATUS_OPEN):
-        raise HTTPException(status_code=400, detail="Work order is not in a state that can be accepted")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=structured_error(
+                "ASSIGNMENT_WRONG_STATE",
+                "This job cannot be accepted in its current state. Refresh the page, or contact the client if the job was updated.",
+                retry_suggested=True,
+                current_status=(wo.get("status") or ""),
+            ),
+        )
     now_iso = datetime.now(timezone.utc).isoformat()
     updated = await maintenance_service.update_work_order(
         work_order_id=work_order_id,

@@ -1,8 +1,11 @@
 """Background jobs for reminders and digests - Compliance Vault Pro"""
 import asyncio
+import base64
+import calendar
 import html
 import json
 import uuid
+from typing import Any, Dict, List, Optional
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime, timedelta, timezone
 import os
@@ -23,6 +26,20 @@ ROOT_DIR = Path(__file__).parent.parent
 load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
+
+
+def effective_digest_calendar_day(day_preference: int, when: datetime) -> int:
+    """
+    Map user preference (1–31) to the actual calendar day in ``when``'s month.
+    E.g. preference 31 in April → 30; in February → 28 or 29 (leap).
+    """
+    try:
+        dp = int(day_preference)
+    except (TypeError, ValueError):
+        dp = 1
+    dp = max(1, min(31, dp))
+    last_dom = calendar.monthrange(when.year, when.month)[1]
+    return min(dp, last_dom)
 
 
 def _reminder_item_label_from_req(current_req: dict) -> str:
@@ -86,25 +103,36 @@ class JobScheduler:
         if self.client:
             self.client.close()
     
-    async def send_daily_reminders(self):
+    async def send_daily_reminders(self, client_id: Optional[str] = None):
         """Send daily compliance reminders for expiring requirements.
         Respects user notification preferences.
         
         IMPORTANT: Only runs for clients with ENABLED entitlement.
         Clients with LIMITED or DISABLED entitlement do not receive reminders.
+
+        When ``client_id`` is set (admin scoped run), only that client is evaluated.
         """
         logger.info("Running daily reminder job...")
         
         try:
-            # Get all active clients with ENABLED entitlement
-            # Per spec: no background jobs when entitlement is DISABLED
-            clients = await self.db.clients.find(
-                {
-                    "subscription_status": "ACTIVE",
-                    "entitlement_status": {"$in": ["ENABLED", None]}  # None for legacy compatibility
-                },
-                {"_id": 0}
-            ).to_list(1000)
+            base_q = {
+                "subscription_status": "ACTIVE",
+                "entitlement_status": {"$in": ["ENABLED", None]},  # None for legacy compatibility
+            }
+            if client_id and str(client_id).strip():
+                cid = str(client_id).strip()
+                one = await self.db.clients.find_one({**base_q, "client_id": cid}, {"_id": 0})
+                if not one:
+                    return {
+                        "message": f"Client not found or not eligible for reminders: {cid}",
+                        "count": 0,
+                        "outcome_status": "failed",
+                        "error_message": "Client not found or not ACTIVE / not entitled",
+                        "outcome_metrics": {"expected_count": 1, "attempted_count": 0, "success_count": 0, "failed_count": 1},
+                    }
+                clients = [one]
+            else:
+                clients = await self.db.clients.find(base_q, {"_id": 0}).to_list(1000)
             
             attempted_count = 0
             success_count = 0
@@ -336,6 +364,227 @@ class JobScheduler:
         except Exception as e:
             logger.exception("Daily reminder job error: %s", e)
             raise
+
+    async def build_monthly_digest_content_for_client(
+        self,
+        client: dict,
+        prefs: Optional[dict],
+        period_start: datetime,
+        period_end: datetime,
+        report_month_key: str,
+        reporting_month_label: str,
+        *,
+        property_ids: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Full digest payload from live entities (same truth as dashboard / score / Today)."""
+        from services.monthly_digest_assembly_service import assemble_monthly_digest_payload
+
+        return await assemble_monthly_digest_payload(
+            client,
+            prefs,
+            period_start=period_start,
+            period_end=period_end,
+            report_month_key=report_month_key,
+            reporting_month_label=reporting_month_label,
+            property_ids=property_ids,
+        )
+
+    async def send_monthly_digest_for_client(
+        self,
+        client_id: str,
+        *,
+        force: bool = False,
+        triggered_by_admin_id: Optional[str] = None,
+        property_ids: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Send one monthly digest email (+ PDF). Admin may force send (ignore prefs / quiet hours).
+
+        Optional ``property_ids`` limits tables to those properties; monthly snapshot is not updated (subset run).
+        """
+        client = await self.db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        if not client:
+            return {
+                "message": "Client not found",
+                "count": 0,
+                "outcome_status": "failed",
+                "error_message": "Client not found",
+                "outcome_metrics": {"expected_count": 1, "attempted_count": 0, "success_count": 0, "failed_count": 1},
+            }
+        if client.get("subscription_status") != "ACTIVE":
+            return {
+                "message": "Client subscription not active",
+                "count": 0,
+                "outcome_status": "failed",
+                "error_message": "subscription_status not ACTIVE",
+                "outcome_metrics": {"expected_count": 1, "attempted_count": 0, "success_count": 0, "failed_count": 1},
+            }
+        if client.get("entitlement_status") == "DISABLED":
+            return {
+                "message": "Client entitlement disabled",
+                "count": 0,
+                "outcome_status": "failed",
+                "error_message": "entitlement DISABLED",
+                "outcome_metrics": {"expected_count": 1, "attempted_count": 0, "success_count": 0, "failed_count": 1},
+            }
+
+        prefs = await self.db.notification_preferences.find_one({"client_id": client_id}, {"_id": 0})
+        if not force:
+            monthly_digest_enabled = prefs.get("monthly_digest", True) if prefs else True
+            if not monthly_digest_enabled:
+                return {
+                    "message": "Skipped: monthly digest disabled in preferences",
+                    "count": 0,
+                    "outcome_status": "success",
+                    "outcome_metrics": {"skipped_count": 1, "attempted_count": 0, "success_count": 0, "failed_count": 0},
+                }
+            if self._is_in_quiet_hours(prefs):
+                return {
+                    "message": "Skipped: quiet hours",
+                    "count": 0,
+                    "outcome_status": "success",
+                    "outcome_metrics": {"skipped_count": 1, "attempted_count": 0, "success_count": 0, "failed_count": 0},
+                }
+
+        from services.monthly_digest_assembly_service import reporting_period_for_previous_calendar_month
+
+        period_start, period_end, report_month_key, reporting_month_label = reporting_period_for_previous_calendar_month()
+        digest_id = str(uuid.uuid4())
+        await self._delete_stale_queued_digest_logs(client_id, report_month_key)
+        await self._insert_queued_digest_log(
+            digest_id=digest_id,
+            client_id=client_id,
+            report_month_key=report_month_key,
+            period_start=period_start,
+            period_end=period_end,
+            manual_trigger=bool(triggered_by_admin_id),
+            triggered_by_admin_id=triggered_by_admin_id,
+        )
+        try:
+            digest_content = await self.build_monthly_digest_content_for_client(
+                client,
+                prefs,
+                period_start,
+                period_end,
+                report_month_key,
+                reporting_month_label,
+                property_ids=property_ids,
+            )
+            digest_content["digest_id"] = digest_id
+        except Exception as asm_err:
+            logger.exception("Monthly digest assembly failed for %s: %s", client_id, asm_err)
+            await self._finalize_digest_log(
+                digest_id=digest_id,
+                digest_content={},
+                period_start=period_start,
+                period_end=period_end,
+                report_month_key=report_month_key,
+                email_subject=None,
+                pdf_relpath=None,
+                delivery_status="failed_assembly",
+                failure_reason=str(asm_err)[:500],
+                provider_message_id=None,
+                manual_trigger=bool(triggered_by_admin_id),
+                triggered_by_admin_id=triggered_by_admin_id,
+            )
+            return {
+                "message": "Digest assembly failed",
+                "count": 0,
+                "outcome_status": "failed",
+                "error_message": str(asm_err)[:500],
+                "outcome_metrics": {"expected_count": 1, "attempted_count": 1, "success_count": 0, "failed_count": 1},
+            }
+
+        force_key = bool(force or triggered_by_admin_id)
+        send_out = await self._send_digest_email(client, digest_content, force_new_idempotency=force_key)
+        if not send_out.get("ok"):
+            await self._finalize_digest_log(
+                digest_id=digest_id,
+                digest_content=digest_content,
+                period_start=period_start,
+                period_end=period_end,
+                report_month_key=report_month_key,
+                email_subject=send_out.get("email_subject") or digest_content.get("subject"),
+                pdf_relpath=send_out.get("pdf_storage_relpath"),
+                delivery_status=send_out.get("delivery_status") or "failed_email",
+                failure_reason=send_out.get("failure_reason"),
+                provider_message_id=send_out.get("provider_message_id"),
+                manual_trigger=bool(triggered_by_admin_id),
+                triggered_by_admin_id=triggered_by_admin_id,
+            )
+            return {
+                "message": send_out.get("failure_reason") or "Digest not sent",
+                "count": 0,
+                "outcome_status": "failed",
+                "error_message": send_out.get("failure_reason") or "email send failed or skipped",
+                "outcome_metrics": {"expected_count": 1, "attempted_count": 1, "success_count": 0, "failed_count": 1},
+            }
+        await self._finalize_digest_log(
+            digest_id=digest_id,
+            digest_content=digest_content,
+            period_start=period_start,
+            period_end=period_end,
+            report_month_key=report_month_key,
+            email_subject=send_out.get("email_subject") or digest_content.get("subject"),
+            pdf_relpath=send_out.get("pdf_storage_relpath"),
+            delivery_status="sent",
+            failure_reason=None,
+            provider_message_id=send_out.get("provider_message_id"),
+            manual_trigger=bool(triggered_by_admin_id),
+            triggered_by_admin_id=triggered_by_admin_id,
+        )
+        subset_run = bool(property_ids)
+        if not subset_run:
+            try:
+                from services.monthly_digest_snapshot_service import persist_snapshot
+
+                fps = digest_content.get("_requirement_fingerprints") or {}
+
+                await persist_snapshot(
+                    self.db,
+                    client_id=client_id,
+                    digest_id=digest_id,
+                    report_month_key=report_month_key,
+                    compliance_score=int(digest_content.get("compliance_score") or 0),
+                    risk_level=str(digest_content.get("risk_level") or ""),
+                    total_requirements=int(digest_content.get("total_requirements") or 0),
+                    valid_count=int(digest_content.get("valid_count") or digest_content.get("compliant") or 0),
+                    expiring_soon_count=int(digest_content.get("expiring_soon") or 0),
+                    overdue_count=int(digest_content.get("overdue") or 0),
+                    missing_evidence_count=int(digest_content.get("missing_evidence_count") or 0),
+                    open_compliance_jobs=int(digest_content.get("open_compliance_jobs") or 0),
+                    open_maintenance_jobs=int(digest_content.get("open_maintenance_jobs") or 0),
+                    documents_uploaded_in_report_period=int(digest_content.get("documents_uploaded_period") or 0),
+                    requirement_fingerprints=fps,
+                )
+            except Exception as snap_err:
+                logger.warning("Monthly digest: snapshot persist failed for %s: %s", client_id, snap_err)
+        else:
+            logger.info(
+                "Monthly digest: skipping monthly_compliance_snapshots persist (property subset run) client=%s",
+                client_id,
+            )
+        try:
+            from utils.audit import create_audit_log
+            from models import AuditAction
+
+            await create_audit_log(
+                action=AuditAction.DIGEST_SENT,
+                client_id=client_id,
+                actor_id=triggered_by_admin_id,
+                metadata={
+                    "digest_id": digest_id,
+                    "channel": "EMAIL",
+                    "manual_trigger": bool(triggered_by_admin_id),
+                },
+            )
+        except Exception as audit_err:
+            logger.warning("Failed to log DIGEST_SENT audit for %s: %s", digest_id, audit_err)
+        return {
+            "message": "Monthly digest sent",
+            "count": 1,
+            "outcome_status": "success",
+            "outcome_metrics": {"expected_count": 1, "attempted_count": 1, "success_count": 1, "failed_count": 0},
+        }
     
     async def send_monthly_digests(self):
         """Send monthly compliance digest to all active clients.
@@ -360,141 +609,149 @@ class JobScheduler:
             digest_count = 0
             attempted_digests = 0
             failed_digests = 0
+            now_utc = datetime.now(timezone.utc)
+
+            from services.monthly_digest_assembly_service import reporting_period_for_previous_calendar_month
+
+            period_start, period_end, report_month_key, reporting_month_label = reporting_period_for_previous_calendar_month(
+                now_utc
+            )
 
             for client in clients:
-                # Check notification preferences
                 prefs = await self.db.notification_preferences.find_one(
                     {"client_id": client["client_id"]},
-                    {"_id": 0}
+                    {"_id": 0},
                 )
-                
-                # Default to enabled if no preferences set
                 monthly_digest_enabled = prefs.get("monthly_digest", True) if prefs else True
-                
                 if not monthly_digest_enabled:
                     logger.info(f"Skipping monthly digest for {client['email']} - disabled in preferences")
                     continue
                 if self._is_in_quiet_hours(prefs):
                     logger.info(f"Skipping monthly digest for {client['email']} - within quiet hours")
                     continue
-                
-                # Calculate digest period (last 30 days)
-                period_end = datetime.now(timezone.utc)
-                period_start = period_end - timedelta(days=30)
-                
-                # Get properties
-                properties = await self.db.properties.find(
-                    {"client_id": client["client_id"]},
-                    {"_id": 0}
-                ).to_list(100)
-                
-                # Get requirements summary
-                requirements = await self.db.requirements.find(
-                    {"client_id": client["client_id"]},
-                    {"_id": 0}
-                ).to_list(1000)
-                
-                compliant = sum(1 for r in requirements if r["status"] == "COMPLIANT")
-                overdue = sum(1 for r in requirements if r["status"] == "OVERDUE")
-                expiring = sum(1 for r in requirements if r["status"] == "EXPIRING_SOON")
-                
-                # Get recent documents uploaded
-                recent_documents = await self.db.documents.find({
-                    "client_id": client["client_id"],
-                    "uploaded_at": {"$gte": period_start.isoformat()}
-                }, {"_id": 0}).to_list(100)
-                
-                digest_content = {
-                    "period_start": period_start.isoformat(),
-                    "period_end": period_end.isoformat(),
-                    "properties_count": len(properties),
-                    "total_requirements": len(requirements),
-                    "compliant": compliant,
-                    "overdue": overdue,
-                    "expiring_soon": expiring,
-                    "documents_uploaded": len(recent_documents)
-                }
-                # Section flags from preferences (default True for backward compatibility)
-                digest_content["include_compliance_summary"] = prefs.get("digest_compliance_summary", True) if prefs else True
-                digest_content["include_action_items"] = prefs.get("digest_action_items", True) if prefs else True
-                digest_content["include_upcoming_expiries"] = prefs.get("digest_upcoming_expiries", True) if prefs else True
-                digest_content["include_property_breakdown"] = prefs.get("digest_property_breakdown", True) if prefs else True
-                digest_content["include_recent_documents"] = prefs.get("digest_recent_documents", True) if prefs else True
-                digest_content["include_recommendations"] = prefs.get("digest_recommendations", True) if prefs else True
-                digest_content["include_audit_summary"] = prefs.get("digest_audit_summary", False) if prefs else False
+                day_pref = int(prefs.get("digest_day_of_month", 1) or 1) if prefs else 1
+                effective_dom = effective_digest_calendar_day(day_pref, now_utc)
+                if now_utc.day != effective_dom:
+                    continue
 
-                # Same aggregation as portal "activity" (audit + score + work orders + uploads) for the digest window.
-                try:
-                    from services.portal_activity_service import compute_activity_deltas
-
-                    period_act = await compute_activity_deltas(
+                dup = await self.db.digest_logs.find_one(
+                    {
+                        "client_id": client["client_id"],
+                        "report_month_key": report_month_key,
+                        "delivery_status": "sent",
+                    },
+                    {"_id": 1},
+                )
+                if dup:
+                    logger.info(
+                        "Skipping monthly digest for client %s — already sent for %s",
                         client["client_id"],
-                        period_start.isoformat(),
-                        period_end.isoformat(),
+                        report_month_key,
                     )
-                    digest_content["digest_period_activity_included"] = True
-                    digest_content["digest_period_activity_lines"] = period_act.get("lines") or []
-                except Exception as e:
-                    logger.warning(
-                        "Monthly digest: period activity summary failed for client %s: %s",
-                        client.get("client_id"),
-                        e,
-                    )
+                    continue
 
-                # Align "action items" with Command Centre / unified tasks (same engine as portal Today view).
-                if digest_content.get("include_action_items", True):
-                    try:
-                        from services.unified_tasks_service import get_unified_tasks_digest
-
-                        ut_digest = await get_unified_tasks_digest(
-                            client["client_id"],
-                            activity_limit=5,
-                        )
-                        summ = ut_digest.get("summary") or {}
-                        digest_content["command_centre_digest_included"] = True
-                        digest_content["command_centre_urgent_open"] = int(summ.get("urgent_count") or 0)
-                        digest_content["command_centre_upcoming_open"] = int(summ.get("upcoming_count") or 0)
-                        digest_content["command_centre_in_progress_open"] = int(summ.get("in_progress_count") or 0)
-                        digest_content["command_centre_snoozed"] = int(summ.get("snoozed_count") or 0)
-                        digest_content["command_centre_recent_activity_lines"] = _format_digest_inbox_activity_lines(
-                            ut_digest.get("activity_feed") or [],
-                            limit=5,
-                        )
-                    except Exception as e:
-                        logger.warning(
-                            "Monthly digest: unified tasks snapshot failed for client %s: %s",
-                            client.get("client_id"),
-                            e,
-                        )
-                
-                # Send digest email (skip and audit if no recipient)
                 digest_id = str(uuid.uuid4())
-                digest_content["digest_id"] = digest_id
-                attempted_digests += 1
-                sent = await self._send_digest_email(client, digest_content)
-                if not sent:
+                await self._delete_stale_queued_digest_logs(client["client_id"], report_month_key)
+                await self._insert_queued_digest_log(
+                    digest_id=digest_id,
+                    client_id=client["client_id"],
+                    report_month_key=report_month_key,
+                    period_start=period_start,
+                    period_end=period_end,
+                    manual_trigger=False,
+                    triggered_by_admin_id=None,
+                )
+                try:
+                    digest_content = await self.build_monthly_digest_content_for_client(
+                        client, prefs, period_start, period_end, report_month_key, reporting_month_label
+                    )
+                    digest_content["digest_id"] = digest_id
+                except Exception as asm_err:
+                    logger.exception(
+                        "Monthly digest assembly failed for client %s: %s",
+                        client["client_id"],
+                        asm_err,
+                    )
+                    await self._finalize_digest_log(
+                        digest_id=digest_id,
+                        digest_content={},
+                        period_start=period_start,
+                        period_end=period_end,
+                        report_month_key=report_month_key,
+                        email_subject=None,
+                        pdf_relpath=None,
+                        delivery_status="failed_assembly",
+                        failure_reason=str(asm_err)[:500],
+                        provider_message_id=None,
+                        manual_trigger=False,
+                        triggered_by_admin_id=None,
+                    )
                     failed_digests += 1
                     continue
-                digest_log = {
-                    "digest_id": digest_id,
-                    "client_id": client["client_id"],
-                    "digest_period_start": period_start.isoformat(),
-                    "digest_period_end": period_end.isoformat(),
-                    "content": digest_content,
-                    "sent_at": datetime.now(timezone.utc).isoformat(),
-                    "created_at": datetime.now(timezone.utc).isoformat()
-                }
-                await self.db.digest_logs.insert_one(digest_log)
+
+                attempted_digests += 1
+                send_out = await self._send_digest_email(client, digest_content, force_new_idempotency=False)
+                if not send_out.get("ok"):
+                    await self._finalize_digest_log(
+                        digest_id=digest_id,
+                        digest_content=digest_content,
+                        period_start=period_start,
+                        period_end=period_end,
+                        report_month_key=report_month_key,
+                        email_subject=send_out.get("email_subject") or digest_content.get("subject"),
+                        pdf_relpath=send_out.get("pdf_storage_relpath"),
+                        delivery_status=send_out.get("delivery_status") or "failed_email",
+                        failure_reason=send_out.get("failure_reason"),
+                        provider_message_id=send_out.get("provider_message_id"),
+                        manual_trigger=False,
+                        triggered_by_admin_id=None,
+                    )
+                    failed_digests += 1
+                    continue
+                await self._finalize_digest_log(
+                    digest_id=digest_id,
+                    digest_content=digest_content,
+                    period_start=period_start,
+                    period_end=period_end,
+                    report_month_key=report_month_key,
+                    email_subject=send_out.get("email_subject") or digest_content.get("subject"),
+                    pdf_relpath=send_out.get("pdf_storage_relpath"),
+                    delivery_status="sent",
+                    failure_reason=None,
+                    provider_message_id=send_out.get("provider_message_id"),
+                    manual_trigger=False,
+                    triggered_by_admin_id=None,
+                )
                 try:
                     from utils.audit import create_audit_log
                     from models import AuditAction
+                    from services.monthly_digest_snapshot_service import persist_snapshot
+
                     await create_audit_log(
                         action=AuditAction.DIGEST_SENT,
                         client_id=client["client_id"],
-                        metadata={"digest_id": digest_id, "channel": "EMAIL"},
+                        metadata={"digest_id": digest_id, "channel": "EMAIL", "report_month_key": report_month_key},
+                    )
+                    fps = digest_content.get("_requirement_fingerprints") or {}
+                    await persist_snapshot(
+                        self.db,
+                        client_id=client["client_id"],
+                        digest_id=digest_id,
+                        report_month_key=report_month_key,
+                        compliance_score=int(digest_content.get("compliance_score") or 0),
+                        risk_level=str(digest_content.get("risk_level") or ""),
+                        total_requirements=int(digest_content.get("total_requirements") or 0),
+                        valid_count=int(digest_content.get("valid_count") or digest_content.get("compliant") or 0),
+                        expiring_soon_count=int(digest_content.get("expiring_soon") or 0),
+                        overdue_count=int(digest_content.get("overdue") or 0),
+                        missing_evidence_count=int(digest_content.get("missing_evidence_count") or 0),
+                        open_compliance_jobs=int(digest_content.get("open_compliance_jobs") or 0),
+                        open_maintenance_jobs=int(digest_content.get("open_maintenance_jobs") or 0),
+                        documents_uploaded_in_report_period=int(digest_content.get("documents_uploaded_period") or 0),
+                        requirement_fingerprints=fps,
                     )
                 except Exception as audit_err:
-                    logger.warning("Failed to log DIGEST_SENT audit for %s: %s", digest_id, audit_err)
+                    logger.warning("Digest audit/snapshot failed for %s: %s", digest_id, audit_err)
                 digest_count += 1
 
             logger.info("Monthly digest job complete. attempted=%s success=%s failed=%s", attempted_digests, digest_count, failed_digests)
@@ -656,6 +913,101 @@ class JobScheduler:
             logger.error("Failed to send reminder email: %s", e)
             return False
 
+    def _strip_digest_content_for_storage(self, digest_content: Dict[str, Any]) -> Dict[str, Any]:
+        _heavy = frozenset({"requirement_rows_pdf", "property_rows_pdf", "score_block"})
+        content_store = {
+            k: v
+            for k, v in (digest_content or {}).items()
+            if not str(k).startswith("_") and k not in _heavy
+        }
+        if any(k in (digest_content or {}) for k in _heavy):
+            content_store["detail_redacted_for_storage"] = True
+        return content_store
+
+    async def _delete_stale_queued_digest_logs(self, client_id: str, report_month_key: str) -> None:
+        """Remove abandoned queued rows so a retry can start clean for the same report month."""
+        try:
+            await self.db.digest_logs.delete_many(
+                {"client_id": client_id, "report_month_key": report_month_key, "delivery_status": "queued"}
+            )
+        except Exception as e:
+            logger.warning("digest_logs delete stale queued failed client=%s: %s", client_id, e)
+
+    async def _insert_queued_digest_log(
+        self,
+        *,
+        digest_id: str,
+        client_id: str,
+        report_month_key: str,
+        period_start: datetime,
+        period_end: datetime,
+        manual_trigger: bool,
+        triggered_by_admin_id: Optional[str],
+    ) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        await self.db.digest_logs.insert_one(
+            {
+                "digest_id": digest_id,
+                "client_id": client_id,
+                "report_month_key": report_month_key,
+                "digest_period_start": period_start.isoformat(),
+                "digest_period_end": period_end.isoformat(),
+                "content": {},
+                "email_subject": None,
+                "pdf_storage_relpath": None,
+                "delivery_status": "queued",
+                "failure_reason": None,
+                "provider_message_id": None,
+                "sent_at": None,
+                "queued_at": now,
+                "created_at": now,
+                "updated_at": now,
+                "manual_trigger": manual_trigger,
+                "triggered_by_admin_id": triggered_by_admin_id,
+            }
+        )
+
+    async def _finalize_digest_log(
+        self,
+        *,
+        digest_id: str,
+        digest_content: Dict[str, Any],
+        period_start: datetime,
+        period_end: datetime,
+        report_month_key: str,
+        email_subject: Optional[str],
+        pdf_relpath: Optional[str],
+        delivery_status: str,
+        failure_reason: Optional[str],
+        provider_message_id: Optional[str],
+        manual_trigger: bool,
+        triggered_by_admin_id: Optional[str],
+    ) -> None:
+        """Update queued digest row to terminal state (sent, failed_*, skipped_*)."""
+        now = datetime.now(timezone.utc).isoformat()
+        content_store = self._strip_digest_content_for_storage(digest_content)
+        payload: Dict[str, Any] = {
+            "digest_period_start": period_start.isoformat(),
+            "digest_period_end": period_end.isoformat(),
+            "report_month_key": report_month_key,
+            "content": content_store,
+            "email_subject": email_subject,
+            "pdf_storage_relpath": pdf_relpath,
+            "delivery_status": delivery_status,
+            "failure_reason": failure_reason,
+            "provider_message_id": provider_message_id,
+            "manual_trigger": manual_trigger,
+            "triggered_by_admin_id": triggered_by_admin_id,
+            "updated_at": now,
+        }
+        if delivery_status == "sent":
+            payload["sent_at"] = now
+        else:
+            payload["sent_at"] = None
+        res = await self.db.digest_logs.update_one({"digest_id": digest_id}, {"$set": payload})
+        if res.matched_count == 0:
+            logger.error("digest_logs finalize: no row for digest_id=%s", digest_id)
+
     async def _maybe_send_reminder_sms(self, client, prefs, expiring, overdue, recipient_phone=None, reminder_refs=None):
         """Send SMS reminder via NotificationOrchestrator (plan-gated, 24h throttle inside orchestrator). Writes message_log with event_type REMINDER and reminder_refs in metadata."""
         try:
@@ -683,14 +1035,33 @@ class JobScheduler:
         except Exception as e:
             logger.warning("SMS reminder error for client %s (non-fatal): %s", client.get("client_id"), e)
     
-    async def _send_digest_email(self, client, content):
-        """Send monthly digest email via NotificationOrchestrator. Returns True if sent, False if skipped."""
-        try:
-            from services.notification_orchestrator import notification_orchestrator
-            from services.webhook_service import fire_digest_sent
-            from utils.audit import create_audit_log
-            from models import AuditAction
+    async def _send_digest_email(self, client, content, *, force_new_idempotency: bool = False) -> Dict[str, Any]:
+        """
+        Build mandatory PDF, persist to storage, send action email via orchestrator.
+        Returns outcome dict for digest_logs / retries (never silently drops PDF failure).
+        """
+        from services.notification_orchestrator import notification_orchestrator
+        from services.webhook_service import fire_digest_sent
+        from utils.audit import create_audit_log
+        from models import AuditAction
+        from utils.app_urls import get_app_base_url
+        from services.monthly_digest_pdf_service import build_monthly_digest_pdf_bytes, write_monthly_digest_pdf_to_storage
+        from services.branding_resolver_service import resolve_branding, BrandingContext
 
+        subj = (content.get("subject") or "Monthly Compliance Summary").strip()
+        report_mk = (content.get("report_month_key") or "").strip()
+
+        def _fail(delivery_status: str, reason: str, pdf_storage_relpath: Optional[str] = None):
+            return {
+                "ok": False,
+                "delivery_status": delivery_status,
+                "failure_reason": (reason[:500] if reason else None),
+                "email_subject": subj,
+                "provider_message_id": None,
+                "pdf_storage_relpath": pdf_storage_relpath,
+            }
+
+        try:
             recipient = (client.get("email") or client.get("contact_email") or "").strip()
             if not recipient:
                 await create_audit_log(
@@ -698,56 +1069,55 @@ class JobScheduler:
                     client_id=client["client_id"],
                     metadata={
                         "template_key": "MONTHLY_DIGEST",
+                        "report_month_key": report_mk,
                         "properties_count": content.get("properties_count", 0),
                         "total_requirements": content.get("total_requirements", 0),
-                        "compliant": content.get("compliant", 0),
-                        "overdue": content.get("overdue", 0),
-                        "expiring_soon": content.get("expiring_soon", 0),
-                        "documents_uploaded": content.get("documents_uploaded", 0),
                     },
                 )
-                logger.info(f"Digest skipped for client {client['client_id']}: no email or contact_email")
-                return False
+                logger.info("Digest skipped for client %s: no email or contact_email", client["client_id"])
+                return _fail("skipped_no_recipient", "No recipient email on client record")
 
-            period_end = (content.get("period_end") or "").replace("T", " ")[:10]
-            idempotency_key = f"{client['client_id']}_MONTHLY_DIGEST_{period_end}"
-            from utils.app_urls import get_app_base_url
+            if force_new_idempotency and content.get("digest_id"):
+                idempotency_key = f"{client['client_id']}_MONTHLY_DIGEST_{content.get('digest_id')}"
+            else:
+                idempotency_key = f"{client['client_id']}_MONTHLY_DIGEST_{report_mk or 'unknown'}"
 
             base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
-            template_model = {
-                "period_start": content.get("period_start", ""),
-                "period_end": content.get("period_end", ""),
-                "data_as_of": content.get("period_end", ""),
-                "properties_count": content.get("properties_count", 0),
-                "total_requirements": content.get("total_requirements", 0),
-                "compliant": content.get("compliant", 0),
-                "overdue": content.get("overdue", 0),
-                "expiring_soon": content.get("expiring_soon", 0),
-                "documents_uploaded": content.get("documents_uploaded", 0),
-                "company_name": "Pleerity Enterprise Ltd",
-                "tagline": "AI-Driven Solutions & Compliance",
-                "subject": "Monthly Compliance Digest",
-                "portal_link": f"{base_url}/today",
-            }
+            template_model = {k: v for k, v in content.items() if not str(k).startswith("_")}
+            template_model.setdefault("company_name", "Pleerity Enterprise Ltd")
+            template_model.setdefault("tagline", "AI-Driven Solutions & Compliance")
+            template_model.setdefault("subject", subj)
+            template_model.setdefault("portal_link", f"{base_url}/today")
+            template_model.setdefault("primary_cta_url", template_model.get("portal_link"))
             _cname = (client.get("full_name") or client.get("contact_name") or "").strip()
             if _cname:
                 template_model["client_name"] = _cname
-            for key in ("include_compliance_summary", "include_action_items", "include_upcoming_expiries",
-                       "include_property_breakdown", "include_recent_documents", "include_recommendations", "include_audit_summary"):
-                if key in content:
-                    template_model[key] = content[key]
-            for key in (
-                "command_centre_digest_included",
-                "command_centre_urgent_open",
-                "command_centre_upcoming_open",
-                "command_centre_in_progress_open",
-                "command_centre_snoozed",
-                "command_centre_recent_activity_lines",
-                "digest_period_activity_included",
-                "digest_period_activity_lines",
-            ):
-                if key in content:
-                    template_model[key] = content[key]
+
+            pdf_model = {k: v for k, v in content.items() if not str(k).startswith("_")}
+            try:
+                brand_pdf = await resolve_branding(client["client_id"], BrandingContext.CLIENT_DOCUMENT_PDF)
+                pdf_bytes = build_monthly_digest_pdf_bytes(pdf_model, brand=brand_pdf)
+                relpath = write_monthly_digest_pdf_to_storage(client["client_id"], report_mk or "report", pdf_bytes)
+            except Exception as pdf_err:
+                logger.error(
+                    "Monthly digest PDF failed for client %s: %s",
+                    client.get("client_id"),
+                    pdf_err,
+                    exc_info=True,
+                )
+                return _fail("failed_pdf", str(pdf_err))
+
+            safe_fname = f"monthly-compliance-summary-{report_mk or 'report'}.pdf"
+            template_model["attachments"] = [
+                {
+                    "Name": safe_fname,
+                    "Content": base64.b64encode(pdf_bytes).decode("ascii"),
+                    "ContentType": "application/pdf",
+                }
+            ]
+            template_model["digest_pdf_attached"] = True
+            template_model["pdf_storage_relpath"] = relpath
+
             result = await notification_orchestrator.send(
                 template_key="MONTHLY_DIGEST",
                 client_id=client["client_id"],
@@ -755,9 +1125,23 @@ class JobScheduler:
                 idempotency_key=idempotency_key,
                 event_type="monthly_digest",
             )
+            provider_id = (result.details or {}).get("provider_message_id") if result.details else None
             if result.outcome not in ("sent", "duplicate_ignored"):
-                return False
-            logger.info(f"Digest sent to {recipient}: {content.get('total_requirements', 0)} requirements")
+                return {
+                    "ok": False,
+                    "delivery_status": "failed_email",
+                    "failure_reason": (result.error_message or result.outcome or "send_failed")[:500],
+                    "email_subject": subj,
+                    "provider_message_id": provider_id,
+                    "pdf_storage_relpath": relpath,
+                }
+
+            logger.info(
+                "Digest sent to %s: report=%s requirements=%s",
+                recipient,
+                report_mk,
+                content.get("total_requirements", 0),
+            )
             try:
                 await fire_digest_sent(
                     client_id=client["client_id"],
@@ -766,17 +1150,25 @@ class JobScheduler:
                     properties_count=content.get("properties_count", 0),
                     requirements_summary={
                         "total": content.get("total_requirements", 0),
-                        "compliant": content.get("compliant", 0),
+                        "compliant": content.get("valid_count", content.get("compliant", 0)),
                         "overdue": content.get("overdue", 0),
                         "expiring_soon": content.get("expiring_soon", 0),
                     },
                 )
             except Exception as webhook_err:
-                logger.error(f"Webhook error for digest: {webhook_err}")
-            return True
+                logger.error("Webhook error for digest: %s", webhook_err)
+
+            return {
+                "ok": True,
+                "delivery_status": "sent",
+                "failure_reason": None,
+                "email_subject": subj,
+                "provider_message_id": provider_id,
+                "pdf_storage_relpath": relpath,
+            }
         except Exception as e:
-            logger.error(f"Failed to send digest email: {e}")
-            return False
+            logger.error("Failed to send digest email: %s", e, exc_info=True)
+            return _fail("failed_email", str(e))
     
     async def send_pending_verification_digest(self):
         """Send daily summary of documents with status UPLOADED (counts only, no PII) to OWNER/ADMIN via orchestrator."""
@@ -870,7 +1262,7 @@ class JobScheduler:
             logger.exception("Pending verification digest job error: %s", e)
             raise
 
-    async def check_compliance_status_changes(self):
+    async def check_compliance_status_changes(self, client_id: Optional[str] = None):
         """Check for compliance status changes and send alerts.
         
         This job:
@@ -880,21 +1272,31 @@ class JobScheduler:
         4. Fires webhooks for status changes
         5. Updates the stored status
         6. Respects user notification preferences
+
+        When ``client_id`` is set, only that client is scanned (admin scoped run).
         """
         logger.info("Running compliance status change check...")
         
         try:
             from services.webhook_service import fire_compliance_status_changed
             
-            # Get all active clients with ENABLED entitlement
-            # Per spec: no background jobs when entitlement is DISABLED
-            clients = await self.db.clients.find(
-                {
-                    "subscription_status": "ACTIVE",
-                    "entitlement_status": {"$in": ["ENABLED", None]}  # None for legacy compatibility
-                },
-                {"_id": 0}
-            ).to_list(1000)
+            base_q = {
+                "subscription_status": "ACTIVE",
+                "entitlement_status": {"$in": ["ENABLED", None]},  # None for legacy compatibility
+            }
+            if client_id and str(client_id).strip():
+                cid = str(client_id).strip()
+                one = await self.db.clients.find_one({**base_q, "client_id": cid}, {"_id": 0})
+                if not one:
+                    return {
+                        "message": f"Client not found or not eligible: {cid}",
+                        "count": 0,
+                        "outcome_status": "failed",
+                        "error_message": "Client not found or not ACTIVE / not entitled",
+                    }
+                clients = [one]
+            else:
+                clients = await self.db.clients.find(base_q, {"_id": 0}).to_list(1000)
             
             alert_count = 0
             attempted_alerts = 0

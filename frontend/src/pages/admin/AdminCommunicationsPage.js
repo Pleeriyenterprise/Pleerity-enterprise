@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { adminAPI } from '../../api/client';
+import { adminAPI, parseApiError } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/button';
@@ -20,6 +20,9 @@ import {
 
 const MESSAGE_TYPES = [
   'INCIDENT',
+  'DOWNTIME_ALERT',
+  'SYSTEM_UPDATE',
+  'IMPORTANT_NOTICE',
   'SERVICE_UPDATE',
   'MAINTENANCE_NOTICE',
   'ACCOUNT_ALERT',
@@ -84,6 +87,7 @@ export default function AdminCommunicationsPage() {
   const [historyTotal, setHistoryTotal] = useState(0);
   const [detailId, setDetailId] = useState(null);
   const [detail, setDetail] = useState(null);
+  const [resendBusyId, setResendBusyId] = useState(null);
   const [banners, setBanners] = useState([]);
   const [includeDraftsScheduledInHistory, setIncludeDraftsScheduledInHistory] = useState(false);
 
@@ -338,6 +342,20 @@ export default function AdminCommunicationsPage() {
       setDetail(data);
     } catch {
       toast.error('Failed to load message');
+    }
+  };
+
+  const resendFailedDeliveryEmail = async (deliveryId) => {
+    if (!mutate || !deliveryId) return;
+    setResendBusyId(deliveryId);
+    try {
+      const { data } = await adminAPI.communicationsResendDeliveryEmail(deliveryId);
+      toast.success(data?.email_status === 'SENT' ? 'Email resent successfully' : `Resend finished: ${data?.outcome || data?.email_status || 'done'}`);
+      if (detailId) await openDetail(detailId);
+    } catch (e) {
+      toast.error(parseApiError(e, 'Resend failed'));
+    } finally {
+      setResendBusyId(null);
     }
   };
 
@@ -790,6 +808,51 @@ export default function AdminCommunicationsPage() {
                     Close
                   </button>
                 </div>
+                {Array.isArray(detail.deliveries) && detail.deliveries.length > 0 && (
+                  <div className="mb-4 overflow-x-auto">
+                    <p className="text-xs font-semibold text-gray-700 mb-2">Per-recipient delivery</p>
+                    <table className="w-full text-xs border border-gray-200 bg-white rounded">
+                      <thead>
+                        <tr className="bg-gray-50 text-left">
+                          <th className="p-2">Client</th>
+                          <th className="p-2">Email</th>
+                          <th className="p-2">In-app</th>
+                          <th className="p-2">Attempts</th>
+                          <th className="p-2" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detail.deliveries.map((d) => (
+                          <tr key={d.delivery_id} className="border-t border-gray-100">
+                            <td className="p-2 font-mono">{d.client_id}</td>
+                            <td className="p-2">
+                              <span className="font-medium">{d.email_status}</span>
+                              {d.error_message && <span className="block text-red-600 truncate max-w-[200px]" title={d.error_message}>{d.error_message}</span>}
+                              {Array.isArray(d.email_attempts) && d.email_attempts.length > 1 && (
+                                <span className="block text-gray-500">Retried {d.email_attempts.length}×</span>
+                              )}
+                            </td>
+                            <td className="p-2">{d.in_app_status}</td>
+                            <td className="p-2 text-gray-600">{Array.isArray(d.email_attempts) ? d.email_attempts.length : '—'}</td>
+                            <td className="p-2">
+                              {mutate && d.email_status === 'FAILED' && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={resendBusyId === d.delivery_id}
+                                  onClick={() => resendFailedDeliveryEmail(d.delivery_id)}
+                                >
+                                  {resendBusyId === d.delivery_id ? 'Sending…' : 'Resend email'}
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
                 <pre className="text-xs overflow-auto max-h-96 bg-white p-2 rounded border">{JSON.stringify(detail, null, 2)}</pre>
               </div>
             )}

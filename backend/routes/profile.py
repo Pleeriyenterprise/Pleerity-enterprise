@@ -453,6 +453,16 @@ async def list_my_in_app_notifications(request: Request, limit: int = 50):
     return {"items": items}
 
 
+@router.get("/in-app-notifications/unread-count")
+async def in_app_notifications_unread_count(request: Request):
+    """Unread count for notification bell (admin broadcasts + system notices)."""
+    user = await client_route_guard(request)
+    from services.order_service import get_unread_count
+
+    n = await get_unread_count(user["portal_user_id"])
+    return {"unread_count": n}
+
+
 @router.patch("/in-app-notifications/{notification_id}/read")
 async def mark_in_app_notification_read(request: Request, notification_id: str):
     user = await client_route_guard(request)

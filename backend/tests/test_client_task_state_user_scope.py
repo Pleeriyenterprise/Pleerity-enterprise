@@ -117,6 +117,7 @@ def test_task_overrides_are_isolated_per_portal_user(monkeypatch):
             "dismiss",
             portal_user_id="pu-1",
             title_snapshot="Task 1",
+            dismiss_reason="Not relevant to this portfolio branch",
         )
     )
 
@@ -134,7 +135,15 @@ def test_restore_only_clears_current_user_override(monkeypatch):
     monkeypatch.setattr(svc, "create_audit_log", AsyncMock(return_value=None))
 
     asyncio.run(svc.apply_task_action("c1", "issue:iss-1", "done", portal_user_id="pu-1"))
-    asyncio.run(svc.apply_task_action("c1", "issue:iss-1", "dismiss", portal_user_id="pu-2"))
+    asyncio.run(
+        svc.apply_task_action(
+            "c1",
+            "issue:iss-1",
+            "dismiss",
+            portal_user_id="pu-2",
+            dismiss_reason="Duplicate entry in inbox",
+        )
+    )
     asyncio.run(svc.apply_task_action("c1", "issue:iss-1", "restore", portal_user_id="pu-1"))
 
     u1 = asyncio.run(svc.load_active_overrides("c1", portal_user_id="pu-1"))
@@ -151,7 +160,15 @@ def test_hidden_and_activity_views_are_user_scoped(monkeypatch):
     monkeypatch.setattr(svc, "create_audit_log", AsyncMock(return_value=None))
 
     asyncio.run(svc.apply_task_action("c1", "work_order:wo-1", "done", portal_user_id="pu-1"))
-    asyncio.run(svc.apply_task_action("c1", "work_order:wo-2", "dismiss", portal_user_id="pu-2"))
+    asyncio.run(
+        svc.apply_task_action(
+            "c1",
+            "work_order:wo-2",
+            "dismiss",
+            portal_user_id="pu-2",
+            dismiss_reason="Tracking elsewhere",
+        )
+    )
 
     since = _now() - timedelta(days=1)
     u1_ack = asyncio.run(
@@ -171,3 +188,26 @@ def test_hidden_and_activity_views_are_user_scoped(monkeypatch):
     assert all_ack == 2
     assert [r["task_id"] for r in u1_hidden] == ["work_order:wo-1"]
     assert [r["task_id"] for r in u2_hidden] == ["work_order:wo-2"]
+
+
+def test_dismiss_allows_legacy_empty_when_env_set(monkeypatch):
+    monkeypatch.setenv("CLIENT_TASK_DISMISS_ALLOW_LEGACY_EMPTY", "true")
+    fake_db = _FakeDb()
+    monkeypatch.setattr(svc.database, "get_db", lambda: fake_db)
+    monkeypatch.setattr(svc, "create_audit_log", AsyncMock(return_value=None))
+    asyncio.run(svc.apply_task_action("c1", "requirement:req-legacy", "dismiss", portal_user_id="pu-1"))
+    u = asyncio.run(svc.load_active_overrides("c1", portal_user_id="pu-1"))
+    assert u["requirement:req-legacy"]["override"] == svc.OVERRIDE_DISMISS
+
+
+def test_dismiss_requires_reason(monkeypatch):
+    fake_db = _FakeDb()
+    monkeypatch.setattr(svc.database, "get_db", lambda: fake_db)
+    monkeypatch.setattr(svc, "create_audit_log", AsyncMock(return_value=None))
+
+    try:
+        asyncio.run(svc.apply_task_action("c1", "requirement:req-x", "dismiss", portal_user_id="pu-1"))
+    except ValueError as e:
+        assert "reason" in str(e).lower()
+    else:
+        raise AssertionError("expected ValueError")

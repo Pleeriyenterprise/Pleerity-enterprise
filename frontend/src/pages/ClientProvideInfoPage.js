@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
+import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -173,7 +174,7 @@ const ClientProvideInfoPage = () => {
       if (response.ok) {
         toast.success('Information submitted successfully!');
         // Redirect to dashboard after short delay
-        setTimeout(() => navigate('/app/dashboard'), 2000);
+        setTimeout(() => navigate('/dashboard'), 2000);
       } else {
         toast.error(data.detail || 'Failed to submit information');
       }
@@ -202,11 +203,8 @@ const ClientProvideInfoPage = () => {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-          <p className="mt-2 text-gray-600">Loading...</p>
-        </div>
+      <div className={portalPageRoot}>
+        <PortalLoadingPanel message="Loading…" />
       </div>
     );
   }
@@ -214,14 +212,14 @@ const ClientProvideInfoPage = () => {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className={cn(portalPageRoot, 'bg-gray-50 flex items-center justify-center p-4')}>
         <Card className="max-w-md w-full">
           <CardContent className="pt-6">
             <div className="text-center">
               <AlertCircle className="h-12 w-12 mx-auto text-red-500 mb-4" />
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to Load</h2>
               <p className="text-gray-600 mb-4">{error}</p>
-              <Button onClick={() => navigate('/app/dashboard')}>
+              <Button onClick={() => navigate('/dashboard')}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Return to Dashboard
               </Button>
@@ -233,11 +231,11 @@ const ClientProvideInfoPage = () => {
   }
   
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className={cn(portalPageRoot, 'bg-gray-50 py-8 px-4')}>
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/app/dashboard')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>

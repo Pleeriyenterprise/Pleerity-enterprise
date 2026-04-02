@@ -4,18 +4,36 @@ Used by server (scheduler) and admin (manual run).
 Each run_* returns a dict with "message" (and optionally "count") for admin toast.
 Job execution is persisted via job_run_service for observability and SLA watchdog.
 """
+import inspect
 import logging
 import traceback
+import uuid
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Callable, Awaitable
+from typing import Any, Awaitable, Callable, Dict, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def _filter_kwargs_for_callable(fn: Callable[..., Any], kw: Dict[str, Any]) -> Dict[str, Any]:
+    """Pass only parameters the job runner function declares (plus optional **kwargs)."""
+    if not kw:
+        return {}
+    try:
+        sig = inspect.signature(fn)
+    except (TypeError, ValueError):
+        return {}
+    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+        return dict(kw)
+    return {k: v for k, v in kw.items() if k in sig.parameters}
 
 
 async def run_instrumented(
     job_id: str,
     run_type: str,
     triggered_by: Optional[str] = None,
+    *,
+    job_kwargs: Optional[Dict[str, Any]] = None,
+    start_metadata: Optional[Dict[str, Any]] = None,
 ) -> dict:
     """
     Run a job by id with start/finish persistence. Used by scheduler and admin.
@@ -38,10 +56,20 @@ async def run_instrumented(
         logger.error("run_instrumented: unknown job_id=%s (not in JOB_RUNNERS); no job_runs row will be created", job_id)
         raise ValueError(f"Unknown job_id: {job_id}")
     logger.info("run_instrumented: starting job_id=%s run_type=%s (will call start_job_run)", job_id, run_type)
-    job_run_id = await start_job_run(job_id, run_type, triggered_by=triggered_by)
+    meta = dict(start_metadata or {})
+    kw = {k: v for k, v in dict(job_kwargs or {}).items() if v is not None}
+    if job_id == "monthly_digest" and triggered_by:
+        kw.setdefault("triggered_by_admin_id", triggered_by)
+    job_run_id = await start_job_run(
+        job_id, run_type, triggered_by=triggered_by, metadata=meta if meta else None
+    )
     logger.info("run_instrumented: start_job_run returned job_run_id=%s for job_id=%s", job_run_id, job_id)
     try:
-        result = await fn()
+        call_kw = _filter_kwargs_for_callable(fn, kw)
+        if call_kw:
+            result = await fn(**call_kw)
+        else:
+            result = await fn()
         if not isinstance(result, dict):
             result = {"message": str(result), "count": result if isinstance(result, (int, float)) else None}
         count = result.get("count")
@@ -116,12 +144,14 @@ async def run_scheduled_job(job_id: str, run_type: str = "schedule"):
     return await run_instrumented(job_id, run_type, triggered_by=None)
 
 
-async def run_daily_reminders():
+async def run_daily_reminders(client_id: Optional[str] = None):
     try:
         from services.jobs import JobScheduler
         job_scheduler = JobScheduler()
         await job_scheduler.connect()
-        result = await job_scheduler.send_daily_reminders()
+        result = await job_scheduler.send_daily_reminders(
+            client_id=str(client_id).strip() if client_id and str(client_id).strip() else None
+        )
         await job_scheduler.close()
         if isinstance(result, dict):
             logger.info("Daily reminders job completed: %s", result.get("message", result))
@@ -148,12 +178,30 @@ async def run_pending_verification_digest():
         raise
 
 
-async def run_monthly_digests():
+async def run_monthly_digests(
+    client_id=None,
+    triggered_by_admin_id=None,
+    property_ids=None,
+    **__,
+):
     try:
         from services.jobs import JobScheduler
         job_scheduler = JobScheduler()
         await job_scheduler.connect()
-        result = await job_scheduler.send_monthly_digests()
+        if client_id and str(client_id).strip():
+            pids = None
+            if property_ids:
+                pids = [str(p).strip() for p in property_ids if p and str(p).strip()]
+                if not pids:
+                    pids = None
+            result = await job_scheduler.send_monthly_digest_for_client(
+                str(client_id).strip(),
+                force=True,
+                triggered_by_admin_id=triggered_by_admin_id,
+                property_ids=pids,
+            )
+        else:
+            result = await job_scheduler.send_monthly_digests()
         await job_scheduler.close()
         if isinstance(result, dict):
             logger.info("Monthly digest job completed: %s", result.get("message", result))
@@ -164,12 +212,14 @@ async def run_monthly_digests():
         raise
 
 
-async def run_compliance_status_check():
+async def run_compliance_status_check(client_id: Optional[str] = None):
     try:
         from services.jobs import JobScheduler
         job_scheduler = JobScheduler()
         await job_scheduler.connect()
-        result = await job_scheduler.check_compliance_status_changes()
+        result = await job_scheduler.check_compliance_status_changes(
+            client_id=str(client_id).strip() if client_id and str(client_id).strip() else None
+        )
         await job_scheduler.close()
         if isinstance(result, dict):
             logger.info("Compliance status check completed: %s", result.get("message", result))
@@ -193,10 +243,12 @@ async def run_scheduled_reports():
         raise
 
 
-async def run_compliance_score_snapshots():
+async def run_compliance_score_snapshots(client_id: Optional[str] = None):
     try:
         from services.compliance_trending import capture_all_client_snapshots
-        result = await capture_all_client_snapshots()
+        result = await capture_all_client_snapshots(
+            client_id=str(client_id).strip() if client_id and str(client_id).strip() else None
+        )
         logger.info(f"Compliance score snapshots completed: {result['success_count']}/{result['total_clients']} clients")
         return {"message": f"Compliance score snapshots: {result['success_count']}/{result['total_clients']} clients"}
     except Exception as e:
@@ -822,7 +874,7 @@ async def run_risk_signal_regen_alert_monitor():
         raise
 
 
-async def run_risk_signals_job():
+async def run_risk_signals_job(client_id: Optional[str] = None):
     """Generate stored risk signals for all clients with PREDICTIVE_MAINTENANCE. Writes to risk_signals collection."""
     from database import database
     from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
@@ -835,7 +887,19 @@ async def run_risk_signals_job():
     )
 
     db = database.get_db()
+    filter_cid = str(client_id).strip() if client_id and str(client_id).strip() else None
     clients = await db.clients.find({}, {"_id": 0, "client_id": 1, "billing_plan": 1}).to_list(10000)
+    if filter_cid:
+        clients = [c for c in clients if c.get("client_id") == filter_cid]
+        if not clients:
+            return {
+                "message": f"Client not found: {filter_cid}",
+                "count": 0,
+                "outcome_status": OUTCOME_FAILED,
+                "error_code": "UnknownClient",
+                "error_message": "No client matches client_id for risk_signals_job",
+                "outcome_metrics": {},
+            }
     skipped_no_flag = 0
     eligible_clients = 0
     successful_clients = 0
@@ -1037,6 +1101,50 @@ HEARTBEAT_COLLECTION = "scheduler_heartbeat"
 HEARTBEAT_DOC_ID = "default"
 
 
+async def run_compliance_recalc_enqueue_property(property_id: Optional[str] = None, **_kwargs):
+    """Admin: enqueue a single-property compliance recalc (worker processes queue)."""
+    from database import database
+    from services.compliance_recalc_queue import (
+        ACTOR_ADMIN,
+        TRIGGER_ADMIN_MANUAL_JOB,
+        enqueue_compliance_recalc,
+    )
+    from services.job_run_service import OUTCOME_FAILED
+
+    pid = str(property_id).strip() if property_id else ""
+    if not pid:
+        return {
+            "message": "property_id is required",
+            "count": 0,
+            "outcome_status": OUTCOME_FAILED,
+            "error_message": "missing property_id",
+        }
+    db = database.get_db()
+    prop = await db.properties.find_one({"property_id": pid}, {"_id": 0, "client_id": 1})
+    if not prop or not prop.get("client_id"):
+        return {
+            "message": f"Property not found: {pid}",
+            "count": 0,
+            "outcome_status": OUTCOME_FAILED,
+            "error_message": "property not found",
+        }
+    cid = prop["client_id"]
+    corr = f"{TRIGGER_ADMIN_MANUAL_JOB}:{pid}:{uuid.uuid4().hex[:12]}"
+    enq = await enqueue_compliance_recalc(
+        property_id=pid,
+        client_id=cid,
+        trigger_reason=TRIGGER_ADMIN_MANUAL_JOB,
+        actor_type=ACTOR_ADMIN,
+        actor_id=None,
+        correlation_id=corr,
+    )
+    return {
+        "message": "Compliance recalc enqueued" if enq else "Recalc already queued (duplicate correlation window)",
+        "count": 1 if enq else 0,
+        "outcome_metrics": {"enqueued": enq, "property_id": pid, "client_id": cid},
+    }
+
+
 async def run_delivery_reconciliation():
     """Enrich recent reminder/digest job runs with delivery_provider_accepted, delivery_delivered, delivery_bounced from message_logs."""
     try:
@@ -1122,6 +1230,7 @@ JOB_RUNNERS = {
     "scheduled_reports": run_scheduled_reports,
     "compliance_score_snapshots": run_compliance_score_snapshots,
     "compliance_recalc_worker": run_compliance_recalc_worker,
+    "compliance_recalc_enqueue_property": run_compliance_recalc_enqueue_property,
     "expiry_rollover_recalc": run_expiry_rollover_recalc,
     "order_delivery_processing": run_order_delivery_processing,
     "sla_monitoring": run_sla_monitoring,

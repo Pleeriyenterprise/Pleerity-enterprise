@@ -17,6 +17,8 @@ import {
 } from '../components/ui/select';
 import { toast } from 'sonner';
 import client from '../api/client';
+import { portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
 
 const STATUS_CONFIG = {
   CREATED: { label: 'Created', color: 'bg-gray-100 text-gray-700', icon: Clock },
@@ -315,7 +317,7 @@ export default function ClientOrdersPage() {
   const completedOrders = orders.filter(o => o.status === 'COMPLETED').length;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8" data-testid="client-orders-page">
+    <div className={cn(portalPageRoot, 'bg-gray-50 py-8')} data-testid="client-orders-page">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">

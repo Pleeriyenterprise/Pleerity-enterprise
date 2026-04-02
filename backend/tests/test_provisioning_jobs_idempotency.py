@@ -40,6 +40,7 @@ class TestWebhookIdempotencyByCheckoutSession:
         db.clients.find_one = AsyncMock()
         db.clients.update_one = AsyncMock()
         db.client_billing = MagicMock()
+        db.client_billing.find_one = AsyncMock(return_value={"entitlements_version": 1})
         db.client_billing.update_one = AsyncMock()
 
         session = {
@@ -61,13 +62,16 @@ class TestWebhookIdempotencyByCheckoutSession:
              patch("services.stripe_webhook_service.plan_registry.get_plan_from_subscription_price_id", return_value=PlanCode.PLAN_1_SOLO), \
              patch("services.stripe_webhook_service.plan_registry.get_stripe_price_ids", return_value={"onboarding_price_id": "price_onboard"}), \
              patch("services.stripe_webhook_service.plan_registry.get_entitlement_status_from_subscription", return_value=EntitlementStatus.ENABLED), \
-             patch("services.stripe_webhook_service.create_audit_log", new_callable=AsyncMock):
+             patch("services.stripe_webhook_service.create_audit_log", new_callable=AsyncMock), \
+             patch("services.crn_service.ensure_client_crn", new_callable=AsyncMock, return_value="PLE-CVP-2026-000001"), \
+             patch("services.stripe_webhook_service._run_provisioning_after_webhook", new_callable=AsyncMock):
             svc = StripeWebhookService()
             await svc._handle_subscription_checkout(session, {})
         db.provisioning_jobs.update_one.assert_called()
         call = db.provisioning_jobs.update_one.call_args
         assert call[0][0] == {"checkout_session_id": CHECKOUT_SESSION_ID}
-        assert call[1]["$set"].get("needs_run") is True
+        payload = call[0][1] if len(call[0]) > 1 else {}
+        assert payload.get("$set", {}).get("needs_run") is True
         db.provisioning_jobs.insert_one.assert_not_called()
 
 

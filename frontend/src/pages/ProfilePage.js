@@ -7,6 +7,8 @@ import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { ArrowLeft, Save, User, Bell, CheckCircle2, Camera } from 'lucide-react';
+import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { cn } from '../lib/utils';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -103,14 +105,14 @@ const ProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="loading-spinner" />
+      <div className={portalPageRoot}>
+        <PortalLoadingPanel message="Loading profile…" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={cn(portalPageRoot, 'bg-gray-50')}>
       {/* Header */}
       <header className="bg-midnight-blue text-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

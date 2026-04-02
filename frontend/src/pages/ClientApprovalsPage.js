@@ -34,6 +34,9 @@ import {
 import { ClipboardCheck, Loader2, Download, Search, Wrench, Briefcase, Eye, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import { PortalFilterStack, PortalLoadingPanel, portalPageRoot, portalDrawerPanelClass } from '../components/client/ClientPortalPatterns';
+import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import { cn } from '../lib/utils';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -292,11 +295,11 @@ function ClientApprovalsPageInner() {
   }
 
   return (
-    <div className="p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
+    <div className={cn(portalPageRoot, 'p-4 sm:p-6 max-w-6xl mx-auto')}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ClipboardCheck className="w-7 h-7" />
+            <ClipboardCheck className="w-7 h-7 shrink-0" />
             Approvals
           </h1>
           <p className="text-gray-600 mt-1">Review invoices and cost submissions linked to work orders. Compare to benchmarks and approve, reject, or request more information.</p>
@@ -305,7 +308,7 @@ function ClientApprovalsPageInner() {
             <p>Contractors are independent service providers engaged by you. You are responsible for paying the contractor. Pleerity does not process contractor payments.</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+        <Button variant="outline" size="sm" className="min-h-11 w-full sm:w-auto shrink-0" onClick={handleExport} disabled={exporting}>
           {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
           Export CSV
         </Button>
@@ -338,18 +341,18 @@ function ClientApprovalsPageInner() {
       {/* Filters */}
       <Card className="mb-6">
         <CardContent className="p-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex items-center gap-2 min-w-[200px] flex-1">
-              <Search className="w-4 h-4 text-gray-400" />
+          <PortalFilterStack>
+            <div className="flex items-center gap-2 w-full md:flex-1 md:min-w-[200px]">
+              <Search className="w-4 h-4 text-gray-400 shrink-0" />
               <Input
                 placeholder="Search ref, contractor, property, work order…"
                 value={filters.q}
                 onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
-                className="max-w-sm"
+                className="w-full md:max-w-sm min-h-11"
               />
             </div>
             <Select value={filters.status || 'all'} onValueChange={(v) => applyFilter('status', v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-full md:w-[140px] min-h-11">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -359,7 +362,7 @@ function ClientApprovalsPageInner() {
               </SelectContent>
             </Select>
             <Select value={filters.benchmarkFit || 'all'} onValueChange={(v) => applyFilter('benchmarkFit', v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full md:w-[160px] min-h-11">
                 <SelectValue placeholder="Benchmark" />
               </SelectTrigger>
               <SelectContent>
@@ -369,7 +372,7 @@ function ClientApprovalsPageInner() {
               </SelectContent>
             </Select>
             <Select value={filters.propertyId || 'all'} onValueChange={(v) => applyFilter('propertyId', v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full md:w-[180px] min-h-11">
                 <SelectValue placeholder="Property" />
               </SelectTrigger>
               <SelectContent>
@@ -380,7 +383,7 @@ function ClientApprovalsPageInner() {
               </SelectContent>
             </Select>
             <Select value={filters.contractorId || 'all'} onValueChange={(v) => applyFilter('contractorId', v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full md:w-[180px] min-h-11">
                 <SelectValue placeholder="Contractor" />
               </SelectTrigger>
               <SelectContent>
@@ -394,23 +397,23 @@ function ClientApprovalsPageInner() {
               placeholder="Work order ID"
               value={filters.workOrderId}
               onChange={(e) => setFilters((f) => ({ ...f, workOrderId: e.target.value }))}
-              className="w-[140px]"
+              className="w-full md:w-[140px] min-h-11"
             />
             <Input
               type="date"
               placeholder="From"
               value={filters.from}
               onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
-              className="w-[140px]"
+              className="w-full md:w-[140px] min-h-11"
             />
             <Input
               type="date"
               placeholder="To"
               value={filters.to}
               onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
-              className="w-[140px]"
+              className="w-full md:w-[140px] min-h-11"
             />
-          </div>
+          </PortalFilterStack>
         </CardContent>
       </Card>
 
@@ -449,10 +452,7 @@ function ClientApprovalsPageInner() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex gap-2 text-gray-500 py-8">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Loading…
-            </div>
+            <PortalLoadingPanel message={PORTAL_COPY.loadingApprovals} />
           ) : approvals.length === 0 ? (
             <div className="py-12 text-center text-gray-500">
               <ClipboardCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -471,64 +471,105 @@ function ClientApprovalsPageInner() {
               </div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ref</TableHead>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Work Order</TableHead>
-                  <TableHead>Contractor</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Benchmark</TableHead>
-                  <TableHead>Fit</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="md:hidden space-y-3">
                 {approvals.map((row) => (
-                  <TableRow
-                    key={row.invoice_id}
-                    className={row.benchmark_fit === 'above' ? 'bg-amber-50/50' : ''}
-                  >
-                    <TableCell className="font-medium">{row.reference || row.invoice_id}</TableCell>
-                    <TableCell>{row.property_label ?? '—'}</TableCell>
-                    <TableCell>{row.work_order_id ? (row.work_order_label || row.work_order_id) : <span className="text-amber-600">—</span>}</TableCell>
-                    <TableCell>{row.contractor_label ?? '—'}</TableCell>
-                    <TableCell className="text-right">{formatAmount(row.submitted_amount, row.currency)}</TableCell>
-                    <TableCell>
-                      {row.benchmark_min != null && row.benchmark_max != null
-                        ? `${formatAmount(row.benchmark_min, row.currency)} – ${formatAmount(row.benchmark_max, row.currency)}`
-                        : 'No benchmark'}
-                    </TableCell>
-                    <TableCell><BenchmarkBadge fit={row.benchmark_fit} /></TableCell>
-                    <TableCell><StatusBadge status={row.status} /></TableCell>
-                    <TableCell>{formatDate(row.submitted_at)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => openDrawer(row.invoice_id)}><Eye className="w-4 h-4" /></Button>
+                  <Card key={row.invoice_id} className={cn('border p-4', row.benchmark_fit === 'above' ? 'border-amber-200 bg-amber-50/40' : 'border-gray-200')}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-midnight-blue">{row.reference || row.invoice_id}</p>
+                        <p className="text-sm text-gray-600 mt-1">{row.property_label ?? '—'}</p>
+                        <p className="text-sm text-gray-600">{row.contractor_label ?? '—'}</p>
+                        <p className="text-lg font-semibold text-midnight-blue mt-2">{formatAmount(row.submitted_amount, row.currency)}</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <StatusBadge status={row.status} />
+                          <BenchmarkBadge fit={row.benchmark_fit} />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">Submitted {formatDate(row.submitted_at)}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 mt-4">
+                      <Button className="min-h-11 w-full bg-midnight-blue hover:bg-midnight-blue/90" onClick={() => openDrawer(row.invoice_id)}>
+                        {row.status === 'approved' ? PORTAL_COPY.recordPayment : PORTAL_COPY.reviewApproval}
+                      </Button>
                       {row.status === 'pending' && (
-                        <>
-                          <Button variant="ghost" size="sm" className="text-green-700" onClick={() => handleAction('approved', undefined, row.invoice_id)}><CheckCircle className="w-4 h-4" /></Button>
-                          <Button variant="ghost" size="sm" className="text-red-700" onClick={() => handleAction('rejected', undefined, row.invoice_id)}><XCircle className="w-4 h-4" /></Button>
-                          <Button variant="ghost" size="sm" className="text-blue-700" onClick={() => handleAction('needs_info', undefined, row.invoice_id)}><MessageCircle className="w-4 h-4" /></Button>
-                        </>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Button variant="outline" size="sm" className="min-h-11 text-green-700 border-green-200" onClick={() => handleAction('approved', undefined, row.invoice_id)} aria-label="Approve">
+                            <CheckCircle className="w-4 h-4 mx-auto" />
+                          </Button>
+                          <Button variant="outline" size="sm" className="min-h-11 text-red-700 border-red-200" onClick={() => handleAction('rejected', undefined, row.invoice_id)} aria-label="Reject">
+                            <XCircle className="w-4 h-4 mx-auto" />
+                          </Button>
+                          <Button variant="outline" size="sm" className="min-h-11 text-blue-700 border-blue-200" onClick={() => handleAction('needs_info', undefined, row.invoice_id)} aria-label="Request more information">
+                            <MessageCircle className="w-4 h-4 mx-auto" />
+                          </Button>
+                        </div>
                       )}
-                      {row.status === 'approved' && (
-                        <Button variant="ghost" size="sm" className="text-emerald-700" onClick={() => openDrawer(row.invoice_id)} title="Mark as paid">Mark paid</Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                  </Card>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ref</TableHead>
+                      <TableHead>Property</TableHead>
+                      <TableHead>Work Order</TableHead>
+                      <TableHead>Contractor</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Benchmark</TableHead>
+                      <TableHead>Fit</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Submitted</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {approvals.map((row) => (
+                      <TableRow
+                        key={row.invoice_id}
+                        className={row.benchmark_fit === 'above' ? 'bg-amber-50/50' : ''}
+                      >
+                        <TableCell className="font-medium">{row.reference || row.invoice_id}</TableCell>
+                        <TableCell>{row.property_label ?? '—'}</TableCell>
+                        <TableCell>{row.work_order_id ? (row.work_order_label || row.work_order_id) : <span className="text-amber-600">—</span>}</TableCell>
+                        <TableCell>{row.contractor_label ?? '—'}</TableCell>
+                        <TableCell className="text-right">{formatAmount(row.submitted_amount, row.currency)}</TableCell>
+                        <TableCell>
+                          {row.benchmark_min != null && row.benchmark_max != null
+                            ? `${formatAmount(row.benchmark_min, row.currency)} – ${formatAmount(row.benchmark_max, row.currency)}`
+                            : 'No benchmark'}
+                        </TableCell>
+                        <TableCell><BenchmarkBadge fit={row.benchmark_fit} /></TableCell>
+                        <TableCell><StatusBadge status={row.status} /></TableCell>
+                        <TableCell>{formatDate(row.submitted_at)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => openDrawer(row.invoice_id)}><Eye className="w-4 h-4" /></Button>
+                          {row.status === 'pending' && (
+                            <>
+                              <Button variant="ghost" size="sm" className="text-green-700" onClick={() => handleAction('approved', undefined, row.invoice_id)}><CheckCircle className="w-4 h-4" /></Button>
+                              <Button variant="ghost" size="sm" className="text-red-700" onClick={() => handleAction('rejected', undefined, row.invoice_id)}><XCircle className="w-4 h-4" /></Button>
+                              <Button variant="ghost" size="sm" className="text-blue-700" onClick={() => handleAction('needs_info', undefined, row.invoice_id)}><MessageCircle className="w-4 h-4" /></Button>
+                            </>
+                          )}
+                          {row.status === 'approved' && (
+                            <Button variant="ghost" size="sm" className="text-emerald-700" onClick={() => openDrawer(row.invoice_id)}>{PORTAL_COPY.recordPayment}</Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
 
       {/* Detail drawer */}
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className={cn(portalDrawerPanelClass, 'sm:max-w-lg')}>
           <SheetHeader>
             <SheetTitle>{detail ? (detail.reference || detail.invoice_id) : 'Approval detail'}</SheetTitle>
             <SheetDescription>
@@ -540,7 +581,7 @@ function ClientApprovalsPageInner() {
             </SheetDescription>
           </SheetHeader>
           {detailLoading ? (
-            <div className="flex gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
+            <PortalLoadingPanel message="Loading approval…" />
           ) : detail ? (
             <div className="mt-6 space-y-6">
               <div className="rounded-lg border border-sky-200 bg-sky-50/80 p-3 text-sm text-sky-900">

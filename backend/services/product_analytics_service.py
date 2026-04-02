@@ -24,6 +24,14 @@ ALLOWED_EVENTS = frozenset(
         "evidence_pack_requested",
         "evidence_pack_downloaded",
         "activity_since_viewed",
+        "today_task_snoozed",
+        "today_task_dismissed",
+        "today_task_marked_reviewed",
+        "today_task_restored",
+        "today_primary_cta_clicked",
+        "today_secondary_nav_clicked",
+        "today_risk_follow_up_started",
+        "today_compliance_job_started",
     }
 )
 
