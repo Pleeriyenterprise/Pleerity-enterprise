@@ -32,6 +32,7 @@ from utils.api_errors import log_api_error, structured_error
 from auth import hash_token
 from services import work_order_schedule_service as wo_schedule
 from services.work_order_schedule_constants import SCHEDULE_ACTOR_CONTRACTOR
+from services.contractor_work_order_status_policy import validate_contractor_status_patch
 import logging
 
 logger = logging.getLogger(__name__)
@@ -229,15 +230,11 @@ async def update_work_order(request: Request, body: UpdateWorkOrderBody, ctx: di
         raise HTTPException(status_code=404, detail="Work order not found")
     if (wo.get("contractor_id") or "").strip() != (contractor_id or "").strip():
         raise HTTPException(status_code=404, detail="Work order not found or not assigned to you")
-    allowed = (
-        maintenance_service.STATUS_SCHEDULED,
-        maintenance_service.STATUS_IN_PROGRESS,
-        maintenance_service.STATUS_AWAITING_PARTS,
-        maintenance_service.STATUS_COMPLETED,
-    )
     status_val = (body.status or "").strip().upper() if body.status else None
-    if status_val and status_val not in allowed:
-        raise HTTPException(status_code=400, detail="Status must be one of: SCHEDULED, IN_PROGRESS, AWAITING_PARTS, COMPLETED")
+    if status_val:
+        ok, policy_err = validate_contractor_status_patch(wo.get("status"), status_val)
+        if not ok:
+            raise HTTPException(status_code=400, detail=policy_err or "Invalid status transition")
     updated = await maintenance_service.update_work_order(
         work_order_id=work_order_id,
         status=body.status,

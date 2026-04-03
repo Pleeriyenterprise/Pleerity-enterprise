@@ -756,17 +756,20 @@ class NotificationOrchestrator:
         # scheduled-report: always use code-built layout (job path has report_rows; manual path passes pre-built message).
         # This avoids stale DB email_templates overriding the canonical layout.
         if alias_str == "scheduled-report":
-            if context.get("report_rows") is not None:
+            # Pre-rendered HTML (e.g. manual report with attachment) bypasses EmailService.
+            if context.get("message"):
+                html = str(context["message"])
+                text = (context.get("text_message") or "").strip() or _strip_html_to_text(html)
+                subj = (context.get("subject") or default_subject)
+                return html, text, subj
+            # Job-driven digest: structured summary and/or requirement rows — never raw CSV in body.
+            if context.get("report_rows") is not None or context.get("report_summary") is not None:
                 from services.email_service import EmailService
+
                 svc = EmailService()
                 model = context or {}
                 html = svc._build_html_body(EmailTemplateAlias.SCHEDULED_REPORT, model)
                 text = svc._build_text_body(EmailTemplateAlias.SCHEDULED_REPORT, model)
-                subj = (context.get("subject") or default_subject)
-                return html, text, subj
-            if context.get("message"):
-                html = str(context["message"])
-                text = (context.get("text_message") or "").strip() or _strip_html_to_text(html)
                 subj = (context.get("subject") or default_subject)
                 return html, text, subj
         if alias_str == "order-intake-confirmation" and context.get("message"):

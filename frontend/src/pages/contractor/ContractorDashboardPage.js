@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   createContractorAPI,
@@ -11,8 +11,41 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Wrench, LogOut, Loader2, X, FileText, CheckCircle, XCircle, Upload, AlertCircle, Info } from 'lucide-react';
+import {
+  Wrench,
+  LogOut,
+  Loader2,
+  X,
+  FileText,
+  CheckCircle,
+  XCircle,
+  Upload,
+  AlertCircle,
+  Info,
+  ClipboardList,
+  PoundSterling,
+  ChevronRight,
+  CalendarClock,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  buildInvoiceByWorkOrderId,
+  formatMoneyGbp,
+  getAllowedNextStatuses,
+  getBlockOrCancelReason,
+  getEvidenceGuidance,
+  getJobTypeLabel,
+  getJobValueDisplay,
+  getLifecycleBadge,
+  getLifecycleStage,
+  getNextStepMessage,
+  isCompletedPipeline,
+  isPendingScheduling,
+  isSlaOverdue,
+  sortWorkOrdersForDashboard,
+  statusValueToLabel,
+  toneToClasses,
+} from '../../utils/contractorWorkflow';
 
 function contractorDebugLog(event, payload) {
   if (typeof window === 'undefined') return;
@@ -64,13 +97,6 @@ function contractorMayConfirmSchedule(wo) {
   return sb === 'client' || sb === 'admin';
 }
 
-const STATUS_OPTIONS = [
-  { value: 'SCHEDULED', label: 'Scheduled' },
-  { value: 'IN_PROGRESS', label: 'In progress' },
-  { value: 'AWAITING_PARTS', label: 'Awaiting parts' },
-  { value: 'COMPLETED', label: 'Completed' },
-];
-
 export default function ContractorDashboardPage() {
   const navigate = useNavigate();
   const [token, setToken] = useState(null);
@@ -100,6 +126,9 @@ export default function ContractorDashboardPage() {
     notes: '',
   });
   const [scheduleActionLoading, setScheduleActionLoading] = useState(false);
+  const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [dashboardSummaryError, setDashboardSummaryError] = useState(null);
+  const invoicesSectionRef = useRef(null);
 
   useEffect(() => {
     const t = getContractorToken();
@@ -178,6 +207,75 @@ export default function ContractorDashboardPage() {
       });
   }, [api]);
 
+  const loadDashboardSummary = useCallback(() => {
+    if (!api) return Promise.resolve();
+    setDashboardSummaryError(null);
+    return api
+      .getDashboardSummary()
+      .then((res) => setDashboardSummary(res.data))
+      .catch((err) => {
+        setDashboardSummary(null);
+        const msg =
+          err?.response?.data?.detail ||
+          (typeof err?.response?.data?.detail === 'object' ? err.response.data.detail?.message : null) ||
+          err?.message ||
+          'Could not load dashboard summary.';
+        setDashboardSummaryError(typeof msg === 'string' ? msg : 'Could not load dashboard summary.');
+        contractorDebugLog('dashboard_summary_failed', { status: err?.response?.status, msg });
+      });
+  }, [api]);
+
+  const invoiceByWorkOrderId = useMemo(() => buildInvoiceByWorkOrderId(invoices), [invoices]);
+
+  const sortedWorkOrders = useMemo(() => sortWorkOrdersForDashboard(workOrders), [workOrders]);
+
+  const actionCounts = useMemo(() => {
+    if (dashboardSummary?.work_orders) return dashboardSummary.work_orders;
+    return {
+      overdue: workOrders.filter((w) => isSlaOverdue(w)).length,
+      pending_scheduling: workOrders.filter((w) => isPendingScheduling(w)).length,
+      completed: workOrders.filter((w) => isCompletedPipeline(w)).length,
+      total_assigned: workOrders.length,
+    };
+  }, [dashboardSummary, workOrders]);
+
+  const earningsDisplay = useMemo(() => {
+    if (dashboardSummary?.earnings_gbp) return dashboardSummary.earnings_gbp;
+    let pendingApprovalTotal = 0;
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    let paidThisMonthTotal = 0;
+    (invoices || []).forEach((inv) => {
+      const st = (inv.status || '').toLowerCase();
+      const amt = Number(inv.submitted_amount);
+      const a = Number.isNaN(amt) ? 0 : amt;
+      if (st === 'pending' || st === 'needs_info') pendingApprovalTotal += a;
+      if (st === 'paid' && inv.paid_at) {
+        const pd = new Date(inv.paid_at);
+        if (!Number.isNaN(pd.getTime()) && pd >= monthStart) paidThisMonthTotal += a;
+      }
+    });
+    const invoicedWo = new Set((invoices || []).map((i) => i.work_order_id).filter(Boolean));
+    let readyJobs = 0;
+    let readyEst = 0;
+    (workOrders || []).forEach((wo) => {
+      const st = (wo.status || '').toUpperCase();
+      if (!wo.work_order_id || invoicedWo.has(wo.work_order_id)) return;
+      if (!['COMPLETED', 'VERIFIED', 'CLOSED'].includes(st)) return;
+      readyJobs += 1;
+      const mx = wo.cost_estimate_max != null ? Number(wo.cost_estimate_max) : null;
+      const mn = wo.cost_estimate_min != null ? Number(wo.cost_estimate_min) : null;
+      if (mx != null && !Number.isNaN(mx)) readyEst += mx;
+      else if (mn != null && !Number.isNaN(mn)) readyEst += mn;
+    });
+    return {
+      pending_approval_total: Math.round(pendingApprovalTotal * 100) / 100,
+      ready_to_invoice_jobs: readyJobs,
+      ready_to_invoice_estimated_total: Math.round(readyEst * 100) / 100,
+      paid_this_month_total: Math.round(paidThisMonthTotal * 100) / 100,
+    };
+  }, [dashboardSummary, invoices, workOrders]);
+
   useEffect(() => {
     if (!api) {
       setBootstrapLoading(false);
@@ -189,7 +287,7 @@ export default function ContractorDashboardPage() {
     setInvoicesError(null);
     setProfileError(null);
     contractorDebugLog('bootstrap_api_calls_start', {});
-    Promise.all([loadWorkOrders(), loadInvoices(), loadProfile()]).finally(() => {
+    Promise.all([loadWorkOrders(), loadInvoices(), loadProfile(), loadDashboardSummary()]).finally(() => {
       if (!cancelled) {
         setBootstrapLoading(false);
         contractorDebugLog('bootstrap_api_calls_done', {});
@@ -198,7 +296,7 @@ export default function ContractorDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [api, loadWorkOrders, loadInvoices, loadProfile]);
+  }, [api, loadWorkOrders, loadInvoices, loadProfile, loadDashboardSummary]);
 
   useEffect(() => {
     if (!api || !detailId) return;
@@ -230,6 +328,7 @@ export default function ContractorDashboardPage() {
       .then(() => {
         toast.success('Assignment accepted');
         loadWorkOrders();
+        loadDashboardSummary();
         setDetailId(null);
       })
       .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
@@ -243,6 +342,7 @@ export default function ContractorDashboardPage() {
       .then(() => {
         toast.success('Assignment declined');
         loadWorkOrders();
+        loadDashboardSummary();
         setDetailId(null);
       })
       .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
@@ -255,6 +355,7 @@ export default function ContractorDashboardPage() {
       .then(() => {
         toast.success('Status updated');
         loadWorkOrders();
+        loadDashboardSummary();
         if (detailId === id) api.getWorkOrder(id).then((r) => setDetail(r.data));
       })
       .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
@@ -273,6 +374,7 @@ export default function ContractorDashboardPage() {
         toast.success('Notes saved');
         setDetail(r.data);
         loadWorkOrders();
+        loadDashboardSummary();
       })
       .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
       .finally(() => setActionLoading(null));
@@ -302,6 +404,7 @@ export default function ContractorDashboardPage() {
         return refreshContractorDetail(detail.work_order_id);
       })
       .then(() => loadWorkOrders())
+      .then(() => loadDashboardSummary())
       .catch((e) => toast.error(e.response?.data?.detail || 'Could not propose visit time'))
       .finally(() => setScheduleActionLoading(false));
   };
@@ -316,6 +419,7 @@ export default function ContractorDashboardPage() {
         return refreshContractorDetail(detail.work_order_id);
       })
       .then(() => loadWorkOrders())
+      .then(() => loadDashboardSummary())
       .catch((e) => toast.error(e.response?.data?.detail || 'Could not confirm'))
       .finally(() => setScheduleActionLoading(false));
   };
@@ -331,6 +435,7 @@ export default function ContractorDashboardPage() {
         return refreshContractorDetail(detail.work_order_id);
       })
       .then(() => loadWorkOrders())
+      .then(() => loadDashboardSummary())
       .catch((e) => toast.error(e.response?.data?.detail || 'Request failed'))
       .finally(() => setScheduleActionLoading(false));
   };
@@ -346,6 +451,7 @@ export default function ContractorDashboardPage() {
         return refreshContractorDetail(detail.work_order_id);
       })
       .then(() => loadWorkOrders())
+      .then(() => loadDashboardSummary())
       .catch((e) => toast.error(e.response?.data?.detail || 'Could not cancel'))
       .finally(() => setScheduleActionLoading(false));
   };
@@ -368,6 +474,7 @@ export default function ContractorDashboardPage() {
         toast.success('Evidence uploaded');
         setDetail(res.data.work_order);
         loadWorkOrders();
+        loadDashboardSummary();
       })
       .catch((err) => toast.error(err.response?.data?.detail || 'Upload failed'))
       .finally(() => {
@@ -409,7 +516,9 @@ export default function ContractorDashboardPage() {
         setInvoiceModal(null);
         setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
         setInvoicesRefreshing(true);
-        loadInvoices().finally(() => setInvoicesRefreshing(false));
+        loadInvoices()
+          .then(() => loadDashboardSummary())
+          .finally(() => setInvoicesRefreshing(false));
       })
       .catch((err) => toast.error(err.response?.data?.detail || 'Failed'))
       .finally(() => setInvoiceSaving(false));
@@ -433,7 +542,7 @@ export default function ContractorDashboardPage() {
         </Button>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4">
+      <main className="max-w-6xl mx-auto p-4 md:p-6">
         {profileError && (
           <Alert variant="destructive" className="mb-4" data-testid="contractor-profile-error">
             <AlertCircle className="h-4 w-4" />
@@ -460,7 +569,121 @@ export default function ContractorDashboardPage() {
               </Alert>
             )}
 
-            <h1 className="text-xl font-bold text-gray-900 mb-4">My work orders</h1>
+            {dashboardSummaryError ? (
+              <Alert className="mb-4 border-amber-200 bg-amber-50">
+                <AlertCircle className="h-4 w-4 text-amber-700" />
+                <AlertDescription className="text-amber-900 text-sm">{dashboardSummaryError}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            <section className="mb-8" aria-label="Action required summary">
+              <h1 className="text-lg font-bold text-midnight-blue tracking-tight mb-3">Action required</h1>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Card className={`border-l-4 ${actionCounts.overdue > 0 ? 'border-l-red-500 shadow-sm' : 'border-l-red-200'}`}>
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-red-800">Overdue SLA</p>
+                    <p className="text-3xl font-bold text-red-700 mt-1">{actionCounts.overdue ?? 0}</p>
+                    <p className="text-xs text-gray-600 mt-1">Past agreed complete-by date — act today.</p>
+                  </CardContent>
+                </Card>
+                <Card className={`border-l-4 ${actionCounts.pending_scheduling > 0 ? 'border-l-amber-500 shadow-sm' : 'border-l-amber-200'}`}>
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">Pending scheduling</p>
+                    <p className="text-3xl font-bold text-amber-800 mt-1">{actionCounts.pending_scheduling ?? 0}</p>
+                    <p className="text-xs text-gray-600 mt-1">Needs a confirmed visit time.</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-emerald-500">
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900">Completed</p>
+                    <p className="text-3xl font-bold text-emerald-800 mt-1">{actionCounts.completed ?? 0}</p>
+                    <p className="text-xs text-gray-600 mt-1">Finished jobs (awaiting invoice if needed).</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+
+            <section className="mb-8" aria-label="Earnings and invoices">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <h2 className="text-lg font-bold text-midnight-blue flex items-center gap-2">
+                  <PoundSterling className="w-5 h-5 text-electric-teal" />
+                  Earnings &amp; invoices
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-electric-teal text-midnight-blue"
+                    onClick={() => {
+                      const first = sortedWorkOrders.find(
+                        (w) =>
+                          ['COMPLETED', 'VERIFIED', 'CLOSED'].includes((w.status || '').toUpperCase()) &&
+                          !invoiceByWorkOrderId[w.work_order_id],
+                      );
+                      if (first) {
+                        setDetailId(first.work_order_id);
+                        setTimeout(() => setInvoiceModal(first), 300);
+                      } else {
+                        toast.message('No completed jobs waiting for an invoice', {
+                          description: 'Open a completed job from the list below to submit an invoice.',
+                        });
+                      }
+                    }}
+                  >
+                    <FileText className="w-4 h-4 mr-1" />
+                    Submit invoice
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => invoicesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  >
+                    <ClipboardList className="w-4 h-4 mr-1" />
+                    View payment history
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Card className="border border-gray-200 shadow-sm">
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs font-medium text-gray-500 uppercase">Pending approval</p>
+                    <p className="text-2xl font-bold text-midnight-blue mt-1">
+                      {formatMoneyGbp(earningsDisplay.pending_approval_total) || '£0.00'}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">With client for review.</p>
+                  </CardContent>
+                </Card>
+                <Card className="border border-gray-200 shadow-sm">
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs font-medium text-gray-500 uppercase">Ready to invoice</p>
+                    <p className="text-2xl font-bold text-midnight-blue mt-1">
+                      {earningsDisplay.ready_to_invoice_jobs ?? 0}{' '}
+                      <span className="text-sm font-normal text-gray-500">jobs</span>
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Est. value {formatMoneyGbp(earningsDisplay.ready_to_invoice_estimated_total) || '£0.00'} (from job estimates)
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card className="border border-gray-200 shadow-sm">
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs font-medium text-gray-500 uppercase">Paid this month</p>
+                    <p className="text-2xl font-bold text-emerald-800 mt-1">
+                      {formatMoneyGbp(earningsDisplay.paid_this_month_total) || '£0.00'}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">Recorded on invoices (UTC month).</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+
+            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <CalendarClock className="w-5 h-5 text-electric-teal" />
+              My work orders
+              {total > 0 ? <span className="text-sm font-normal text-gray-500">({total})</span> : null}
+            </h2>
             {workOrdersError ? (
               <Alert variant="destructive" className="mb-4" data-testid="contractor-work-orders-error">
                 <AlertCircle className="h-4 w-4" />
@@ -478,27 +701,73 @@ export default function ContractorDashboardPage() {
                 </CardContent>
               </Card>
             ) : workOrders.length > 0 ? (
-              <div className="space-y-2">
-                {workOrders.map((wo) => (
-                  <Card key={wo.work_order_id} className="cursor-pointer hover:shadow-md" onClick={() => setDetailId(wo.work_order_id)}>
-                    <CardContent className="py-3 flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="font-medium text-gray-900 truncate max-w-md">{wo.description || wo.work_order_id}</p>
-                        <p className="text-sm text-gray-500">{wo.property_address || wo.property_id} · {wo.status}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">{formatDate(wo.sla_complete_by)}</span>
-                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setDetailId(wo.work_order_id); }}>View</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="space-y-4">
+                {sortedWorkOrders.map((wo) => {
+                  const stage = getLifecycleStage(wo, invoiceByWorkOrderId);
+                  const badge = getLifecycleBadge(stage);
+                  const overdue = isSlaOverdue(wo);
+                  const borderClass = overdue ? 'border-l-red-500' : isPendingScheduling(wo) ? 'border-l-amber-400' : 'border-l-teal-500';
+                  const reason = getBlockOrCancelReason(wo);
+                  const nextLine = getNextStepMessage(wo, invoiceByWorkOrderId);
+                  return (
+                    <Card
+                      key={wo.work_order_id}
+                      className={`cursor-pointer hover:shadow-md transition-shadow border-l-4 ${borderClass} overflow-hidden`}
+                      onClick={() => setDetailId(wo.work_order_id)}
+                    >
+                      <CardContent className="py-4 px-4 md:px-5">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${toneToClasses(badge.tone)}`}>
+                                {badge.label}
+                              </span>
+                              {overdue ? (
+                                <span className="text-xs font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded">SLA overdue</span>
+                              ) : null}
+                            </div>
+                            <p className="text-xs font-medium text-electric-teal uppercase tracking-wide">{getJobTypeLabel(wo)}</p>
+                            <p className="font-semibold text-midnight-blue leading-snug">{wo.description || wo.work_order_id}</p>
+                            <p className="text-sm text-gray-700">{wo.property_address || wo.property_id}</p>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+                              <span>
+                                <span className="text-gray-400">SLA / due:</span> {formatDate(wo.sla_complete_by)}
+                              </span>
+                              <span>
+                                <span className="text-gray-400">Job value:</span> {getJobValueDisplay(wo)}
+                              </span>
+                            </div>
+                            {reason ? (
+                              <p className="text-xs text-red-800 bg-red-50 border border-red-100 rounded px-2 py-1.5">{reason}</p>
+                            ) : null}
+                            <p className="text-sm text-gray-700 border-t border-gray-100 pt-2 mt-1">
+                              <span className="font-medium text-midnight-blue">Next step:</span> {nextLine}
+                            </p>
+                          </div>
+                          <div className="flex md:flex-col items-center md:items-end gap-2 shrink-0">
+                            <Button
+                              size="sm"
+                              className="bg-electric-teal hover:bg-electric-teal/90 text-white"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDetailId(wo.work_order_id);
+                              }}
+                            >
+                              View details
+                              <ChevronRight className="w-4 h-4 ml-1" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             ) : null}
 
             {/* My invoices */}
-            <div className="mt-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">My invoices</h2>
+            <div className="mt-10 scroll-mt-24" ref={invoicesSectionRef}>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Payment history</h2>
               {invoicesError ? (
                 <Alert variant="destructive" className="mb-4" data-testid="contractor-invoices-error">
                   <AlertCircle className="h-4 w-4" />
@@ -549,26 +818,75 @@ export default function ContractorDashboardPage() {
 
         {/* Detail drawer */}
         {detailId && (
-          <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setDetailId(null)}>
-            <div className="w-full max-w-lg bg-white shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-4 border-b">
-                <h2 className="font-semibold text-midnight-blue">Work order</h2>
+          <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={() => setDetailId(null)}>
+            <div className="w-full max-w-2xl bg-white shadow-2xl overflow-y-auto border-l border-gray-200" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b bg-white/95 backdrop-blur">
+                <h2 className="font-semibold text-midnight-blue">Job control</h2>
                 <button type="button" onClick={() => setDetailId(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
               </div>
-              <div className="p-4">
+              <div className="p-4 md:p-6 space-y-8">
                 {detailLoading ? (
                   <Loader2 className="w-6 h-6 animate-spin text-electric-teal" />
                 ) : detail ? (
                   <>
-                    <p className="font-medium text-gray-900 mb-2">{detail.description || detail.work_order_id}</p>
-                    <dl className="grid grid-cols-2 gap-2 text-sm mb-4">
-                      <dt className="text-gray-500">Status</dt>
-                      <dd><span className="px-1.5 py-0.5 rounded bg-gray-100">{detail.status}</span></dd>
-                      <dt className="text-gray-500">Property</dt>
-                      <dd>{detail.property_address || detail.property_id}</dd>
-                      <dt className="text-gray-500">SLA complete by</dt>
-                      <dd>{formatDate(detail.sla_complete_by)}</dd>
-                    </dl>
+                    {(() => {
+                      const dStage = getLifecycleStage(detail, invoiceByWorkOrderId);
+                      const dBadge = getLifecycleBadge(dStage);
+                      const nextLine = getNextStepMessage(detail, invoiceByWorkOrderId);
+                      return (
+                        <section className="rounded-xl border border-gray-200 bg-slate-50/80 p-4">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Next step</p>
+                          <p className="text-sm text-midnight-blue leading-relaxed">{nextLine}</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <span className={`text-xs font-semibold px-2 py-1 rounded border ${toneToClasses(dBadge.tone)}`}>{dBadge.label}</span>
+                            <span className="text-xs text-gray-500 px-2 py-1 bg-white rounded border border-gray-200">
+                              System status: {detail.status}
+                            </span>
+                          </div>
+                        </section>
+                      );
+                    })()}
+
+                    <section>
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">A. Job overview</h3>
+                      <p className="font-semibold text-midnight-blue mb-1">{detail.description || detail.work_order_id}</p>
+                      <p className="text-sm text-electric-teal font-medium mb-3">{getJobTypeLabel(detail)}</p>
+                      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <div>
+                          <dt className="text-gray-500">Property</dt>
+                          <dd className="font-medium text-gray-900">{detail.property_address || detail.property_id}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">Job value (estimate)</dt>
+                          <dd className="font-medium text-gray-900">{getJobValueDisplay(detail)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">SLA complete by</dt>
+                          <dd className="font-medium text-gray-900">{formatDate(detail.sla_complete_by)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">Work order ID</dt>
+                          <dd className="font-mono text-xs text-gray-700 break-all">{detail.work_order_id}</dd>
+                        </div>
+                      </dl>
+                    </section>
+
+                    <section>
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">B. Required actions</h3>
+                      {getBlockOrCancelReason(detail) ? (
+                        <p className="text-sm text-red-800 bg-red-50 border border-red-100 rounded-md p-3 mb-3">{getBlockOrCancelReason(detail)}</p>
+                      ) : null}
+                    {(detail.status === 'ASSIGNED' || detail.status === 'OPEN') && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <Button size="sm" onClick={() => handleAccept(detail.work_order_id)} disabled={!!actionLoading}>
+                          {actionLoading === detail.work_order_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-1" />}
+                          Accept assignment
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleDecline(detail.work_order_id)} disabled={!!actionLoading}>
+                          <XCircle className="w-4 h-4 mr-1" /> Decline
+                        </Button>
+                      </div>
+                    )}
                     {(() => {
                       const st = (detail.status || '').toUpperCase();
                       const woTerminal = ['CANCELLED', 'COMPLETED', 'CLOSED', 'VERIFIED'].includes(st);
@@ -585,8 +903,8 @@ export default function ContractorDashboardPage() {
                         ss !== 'cancelled' &&
                         ss !== 'completed';
                       return (
-                        <div className="rounded-lg border border-gray-200 bg-slate-50/90 p-3 mb-4 text-sm">
-                          <p className="font-medium text-gray-900 mb-2">Visit scheduling</p>
+                        <div className="rounded-lg border border-gray-200 bg-white p-3 mb-2 text-sm">
+                          <p className="font-medium text-midnight-blue mb-2">Visit scheduling</p>
                           <p className="text-gray-800 mb-1">{scheduleLifecycleLabel(detail)}</p>
                           {detail.scheduled_at ? (
                             <p className="text-gray-700 text-xs mb-1">
@@ -661,33 +979,12 @@ export default function ContractorDashboardPage() {
                         </div>
                       );
                     })()}
-                    <div className="space-y-2 mb-4">
-                      <span className="block text-sm font-medium text-gray-700">Your notes</span>
-                      <Input
-                        placeholder="Contractor notes"
-                        value={notesForm.contractor_notes}
-                        onChange={(ev) => setNotesForm((f) => ({ ...f, contractor_notes: ev.target.value }))}
-                        className="mb-1"
-                      />
-                      <Input
-                        placeholder="Completion notes"
-                        value={notesForm.completion_notes}
-                        onChange={(ev) => setNotesForm((f) => ({ ...f, completion_notes: ev.target.value }))}
-                        className="mb-1"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={handleSaveNotes}
-                        disabled={!!actionLoading || evidenceUploading}
-                      >
-                        Save notes
-                      </Button>
-                    </div>
-                    <div className="mb-4">
-                      <span className="block text-sm font-medium text-gray-700 mb-1">Evidence</span>
-                      <p className="text-xs text-gray-500 mb-2">PDF, images, or Word — max 20MB. Upload after you accept the job.</p>
+                    </section>
+
+                    <section>
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">C. Evidence upload</h3>
+                      <p className="text-sm text-gray-700 mb-3 leading-relaxed">{getEvidenceGuidance(detail)}</p>
+                      <p className="text-xs text-gray-500 mb-2">PDF, images, or Word — max 20MB. Accept the assignment first if the upload is disabled.</p>
                       {(detail.evidence_keys || []).length > 0 && (
                         <ul className="text-sm text-gray-700 mb-2 space-y-2 max-h-40 overflow-y-auto">
                           {(detail.evidence_keys || []).map((k) => {
@@ -738,38 +1035,81 @@ export default function ContractorDashboardPage() {
                           onChange={onEvidenceSelected}
                         />
                       </label>
-                    </div>
-                    {(detail.status === 'ASSIGNED' || detail.status === 'OPEN') && (
-                      <div className="flex gap-2 mb-4">
-                        <Button size="sm" onClick={() => handleAccept(detail.work_order_id)} disabled={!!actionLoading}>
-                          {actionLoading === detail.work_order_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-1" />}
-                          Accept
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDecline(detail.work_order_id)} disabled={!!actionLoading}>
-                          <XCircle className="w-4 h-4 mr-1" /> Decline
-                        </Button>
-                      </div>
-                    )}
-                    {!['OPEN', 'ASSIGNED'].includes(detail.status) && (
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Update status</label>
-                        <select
-                          value={detail.status}
-                          onChange={(e) => handleStatusChange(detail.work_order_id, e.target.value)}
-                          disabled={!!actionLoading}
-                          className="border border-gray-200 rounded-md px-3 py-2 text-sm w-full"
+                    </section>
+
+                    <section>
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">D. Progress &amp; billing</h3>
+                      <p className="text-xs text-gray-600 mb-2">
+                        Current job status: <strong className="text-midnight-blue">{detail.status}</strong>. Progress is{' '}
+                        <strong>one step at a time</strong> (for example, mark in progress before complete).
+                      </p>
+                      {!['OPEN', 'ASSIGNED'].includes((detail.status || '').toUpperCase()) &&
+                      !['CANCELLED', 'COMPLETED', 'CLOSED', 'VERIFIED'].includes((detail.status || '').toUpperCase()) ? (
+                        <div className="space-y-2 mb-4">
+                          <p className="text-xs font-medium text-gray-600">Set status to:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {getAllowedNextStatuses(detail).map((val) => (
+                              <Button
+                                key={val}
+                                type="button"
+                                size="sm"
+                                variant={detail.status === val ? 'default' : 'outline'}
+                                className={detail.status === val ? 'bg-electric-teal hover:bg-electric-teal/90' : ''}
+                                disabled={!!actionLoading || detail.status === val}
+                                onClick={() => handleStatusChange(detail.work_order_id, val)}
+                              >
+                                {statusValueToLabel(val)}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      {['CANCELLED'].includes((detail.status || '').toUpperCase()) ? (
+                        <p className="text-sm text-gray-600">This job is closed — no status changes.</p>
+                      ) : null}
+                      {['COMPLETED', 'VERIFIED', 'CLOSED'].includes((detail.status || '').toUpperCase()) ? (
+                        <div className="space-y-3">
+                          <p className="text-sm text-gray-700">Work is marked complete. Submit an invoice for the client to approve and record payment.</p>
+                          {!invoiceByWorkOrderId[detail.work_order_id] ? (
+                            <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => setInvoiceModal(detail)}>
+                              <FileText className="w-4 h-4 mr-1" /> Submit invoice
+                            </Button>
+                          ) : (
+                            <p className="text-sm text-gray-600">
+                              Invoice status:{' '}
+                              <span className="font-medium">{invoiceByWorkOrderId[detail.work_order_id].status || '—'}</span>
+                            </p>
+                          )}
+                        </div>
+                      ) : null}
+                    </section>
+
+                    <section>
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">E. Notes</h3>
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="On-site / internal notes (optional)"
+                          value={notesForm.contractor_notes}
+                          onChange={(ev) => setNotesForm((f) => ({ ...f, contractor_notes: ev.target.value }))}
+                          className="mb-1"
+                        />
+                        <Input
+                          placeholder="Completion summary for the client (optional)"
+                          value={notesForm.completion_notes}
+                          onChange={(ev) => setNotesForm((f) => ({ ...f, completion_notes: ev.target.value }))}
+                          className="mb-1"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={handleSaveNotes}
+                          disabled={!!actionLoading || evidenceUploading}
                         >
-                          {STATUS_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                          ))}
-                        </select>
+                          Save notes
+                        </Button>
                       </div>
-                    )}
-                    {['COMPLETED', 'VERIFIED', 'CLOSED'].includes((detail.status || '').toUpperCase()) && (
-                      <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => setInvoiceModal(detail)}>
-                        <FileText className="w-4 h-4 mr-1" /> Submit invoice
-                      </Button>
-                    )}
+                    </section>
                   </>
                 ) : (
                   <p className="text-gray-500">Could not load details.</p>

@@ -1895,25 +1895,36 @@ class ScheduledReportJob:
                     # Send to each recipient via orchestrator
                     date_key = now.strftime("%Y-%m-%d")
                     schedule_sent = 0
+                    from utils.app_urls import get_app_base_url
+
+                    base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
+                    scheduled_portal_link = f"{base_url}/today"
                     for recipient in recipients:
                         attempted_reports += 1
                         try:
                             idempotency_key = f"{schedule.get('schedule_id', schedule['client_id'])}_SCHEDULED_REPORT_{date_key}_{recipient}"
                             from services.notification_orchestrator import notification_orchestrator
+                            rows = report_data.get("rows") or []
+                            summary = report_data.get("report_summary")
+                            props_snap = report_data.get("properties_snapshot")
                             result = await notification_orchestrator.send(
                                 template_key="SCHEDULED_REPORT",
                                 client_id=schedule["client_id"],
                                 context={
                                     "recipient": recipient,
                                     "client_name": client.get("full_name", "there"),
+                                    "customer_reference": (client.get("customer_reference") or "").strip(),
                                     "report_type": report_type.replace("_", " ").title(),
                                     "frequency": frequency,
                                     "generated_date": now.strftime("%d %B %Y"),
-                                    "report_content": report_data.get("content", "")[:2000],
-                                    "report_rows": report_data.get("rows") or [],
-                                    "total_requirements": len(report_data.get("rows", [])),
+                                    "report_rows": rows,
+                                    "total_requirements": len(rows) if rows else (summary or {}).get("total_requirements", 0),
+                                    "report_summary": summary,
+                                    "properties_snapshot": props_snap if props_snap is not None else [],
+                                    "portal_link": scheduled_portal_link,
                                     "company_name": client.get("company_name", "Your Company"),
                                     "subject": subject,
+                                    "email_render_engine": "unified_scheduled_digest_v1",
                                 },
                                 idempotency_key=idempotency_key,
                                 event_type="scheduled_report",

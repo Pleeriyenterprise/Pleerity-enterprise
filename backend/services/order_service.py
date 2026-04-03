@@ -806,8 +806,97 @@ async def update_admin_notification_preferences(
 
 
 # ============================================================================
-# IN-APP NOTIFICATIONS
+# IN-APP NOTIFICATIONS (enterprise inbox)
 # ============================================================================
+
+_INBOX_SEVERITY_ORDER = ("critical", "high", "medium", "low", "info")
+_VALID_INBOX_FILTERS = frozenset(
+    {"all", "unread", "critical", "compliance", "billing", "operations", "system"}
+)
+
+
+def _not_dismissed_query() -> Dict[str, Any]:
+    return {"$or": [{"dismissed_at": None}, {"dismissed_at": {"$exists": False}}]}
+
+
+def priority_string_to_severity(priority: Optional[str]) -> str:
+    if not priority:
+        return "medium"
+    p = str(priority).lower()
+    if p in ("urgent",):
+        return "critical"
+    if p in ("high",):
+        return "high"
+    if p in ("low",):
+        return "low"
+    if p in ("medium",):
+        return "medium"
+    return "medium"
+
+
+def infer_in_app_severity(doc: Dict[str, Any]) -> str:
+    raw = (doc.get("severity") or "").strip().lower()
+    if raw in _INBOX_SEVERITY_ORDER:
+        return raw
+    return priority_string_to_severity(doc.get("priority"))
+
+
+def infer_in_app_category(doc: Dict[str, Any]) -> str:
+    cat = (doc.get("notification_category") or "").strip().lower()
+    if cat in ("compliance", "billing", "operations", "system"):
+        return cat
+    nt = str(doc.get("notification_type") or doc.get("type") or "").lower()
+    meta = doc.get("metadata") or {}
+    if "admin_communication" in nt or str(meta.get("message_type") or "").lower() in (
+        "broadcast",
+        "announcement",
+    ):
+        return "system"
+    if "billing" in nt or "invoice" in nt or "payment" in nt:
+        return "billing"
+    if "compliance" in nt or "requirement" in nt or "sla" in nt:
+        return "compliance"
+    if doc.get("order_id") or "order" in nt or "work_order" in nt or "maintenance" in nt:
+        return "operations"
+    return "system"
+
+
+def serialize_in_app_notification(doc: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize stored document for API/clients (legacy + new fields)."""
+    out = dict(doc)
+    for key in ("created_at", "read_at", "dismissed_at"):
+        if key in out and out[key] is not None and hasattr(out[key], "isoformat"):
+            out[key] = out[key].isoformat()
+    nt = out.get("notification_type") or out.get("type") or "general"
+    out["notification_type"] = nt
+    out["severity"] = infer_in_app_severity(out)
+    out["notification_category"] = infer_in_app_category(out)
+    oid = out.get("related_entity_id") or out.get("order_id")
+    if not out.get("related_entity_type") and oid and (out.get("order_id") or "order" in str(nt).lower()):
+        out["related_entity_type"] = "order"
+        out["related_entity_id"] = out.get("order_id") or oid
+    if out.get("primary_cta_path") is None and out.get("link"):
+        out["primary_cta_path"] = out["link"]
+    return out
+
+
+def _inbox_sort_key(doc: Dict[str, Any]) -> tuple:
+    sev = infer_in_app_severity(doc)
+    try:
+        sev_i = _INBOX_SEVERITY_ORDER.index(sev)
+    except ValueError:
+        sev_i = len(_INBOX_SEVERITY_ORDER)
+    unread = not bool(doc.get("is_read"))
+    created = doc.get("created_at")
+    if created is None:
+        ts = 0.0
+    elif hasattr(created, "timestamp"):
+        ts = created.timestamp()
+    else:
+        ts = 0.0
+    # Unread first, then severity (critical first), then newest
+    return (0 if unread else 1, sev_i, -ts)
+
 
 async def create_in_app_notification(
     recipient_id: str,
@@ -816,73 +905,203 @@ async def create_in_app_notification(
     notification_type: str,
     link: Optional[str] = None,
     metadata: Optional[Dict] = None,
+    *,
+    severity: Optional[str] = None,
+    notification_category: Optional[str] = None,
+    related_entity_type: Optional[str] = None,
+    related_entity_id: Optional[str] = None,
+    primary_cta_label: Optional[str] = None,
+    primary_cta_path: Optional[str] = None,
 ) -> str:
-    """Create an in-app notification for a user."""
+    """Create an in-app notification for a portal user (client or admin)."""
     db = database.get_db()
-    
+
     notification_id = f"NOTIF-{uuid.uuid4().hex[:8].upper()}"
-    
-    notification = {
+    now = datetime.now(timezone.utc)
+    meta = dict(metadata or {})
+    sev = (severity or meta.get("severity") or "medium")
+    if isinstance(sev, str):
+        sev = sev.strip().lower()
+    if sev not in _INBOX_SEVERITY_ORDER:
+        sev = "medium"
+
+    cta_path = primary_cta_path if primary_cta_path is not None else link
+
+    notification: Dict[str, Any] = {
         "notification_id": notification_id,
         "recipient_id": recipient_id,
         "title": title,
         "message": message,
         "notification_type": notification_type,
         "link": link,
-        "metadata": metadata or {},
+        "metadata": meta,
         "is_read": False,
-        "created_at": datetime.now(timezone.utc),
+        "created_at": now,
+        "severity": sev,
+        "notification_category": notification_category,
+        "related_entity_type": related_entity_type,
+        "related_entity_id": related_entity_id,
+        "primary_cta_label": primary_cta_label,
+        "primary_cta_path": cta_path,
     }
-    
+    # Strip keys with None to avoid clutter (Mongo accepts null; we prefer absent for sparse indexes)
+    notification = {k: v for k, v in notification.items() if v is not None}
+
     await db.in_app_notifications.insert_one(notification)
-    logger.info(f"In-app notification created: {notification_id} for {recipient_id}")
-    
+    logger.info("In-app notification created: %s for %s type=%s", notification_id, recipient_id, notification_type)
+
     return notification_id
 
 
-async def get_unread_notifications(user_id: str, limit: int = 50) -> List[Dict]:
-    """Get unread notifications for a user."""
+async def notify_all_portal_admins_in_app(
+    *,
+    title: str,
+    message: str,
+    notification_type: str,
+    severity: str = "high",
+    notification_category: str = "operations",
+    link: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    related_entity_type: Optional[str] = None,
+    related_entity_id: Optional[str] = None,
+    primary_cta_label: Optional[str] = None,
+    primary_cta_path: Optional[str] = None,
+) -> int:
+    """Fan-out the same in-app notification to all admin/owner portal users."""
     db = database.get_db()
-    cursor = db.in_app_notifications.find(
-        {"recipient_id": user_id, "is_read": False},
-        {"_id": 0}
-    ).sort("created_at", -1).limit(limit)
-    return await cursor.to_list(length=None)
+    admins = await db.portal_users.find(
+        {"role": {"$in": ["ROLE_ADMIN", "admin", "ROLE_OWNER"]}},
+        {"_id": 0, "portal_user_id": 1, "user_id": 1},
+    ).to_list(length=500)
+    count = 0
+    for admin in admins:
+        aid = admin.get("portal_user_id") or admin.get("user_id")
+        if not aid:
+            continue
+        await create_in_app_notification(
+            recipient_id=aid,
+            title=title,
+            message=message,
+            notification_type=notification_type,
+            link=link,
+            metadata=metadata,
+            severity=severity,
+            notification_category=notification_category,
+            related_entity_type=related_entity_type,
+            related_entity_id=related_entity_id,
+            primary_cta_label=primary_cta_label,
+            primary_cta_path=primary_cta_path,
+        )
+        count += 1
+    return count
+
+
+async def list_inbox_notifications(
+    user_id: str,
+    *,
+    limit: int = 100,
+    inbox_filter: str = "all",
+) -> List[Dict]:
+    """List non-dismissed notifications with filter; sorted for bell (unread + severity + recency)."""
+    if inbox_filter not in _VALID_INBOX_FILTERS:
+        inbox_filter = "all"
+    db = database.get_db()
+    and_parts: List[Dict[str, Any]] = [
+        {"recipient_id": user_id},
+        _not_dismissed_query(),
+    ]
+    if inbox_filter == "unread":
+        and_parts.append({"is_read": False})
+    elif inbox_filter == "critical":
+        and_parts.append(
+            {
+                "$or": [
+                    {"severity": "critical"},
+                    {"priority": {"$in": ["urgent", "URGENT"]}},
+                ]
+            }
+        )
+    query: Dict[str, Any] = {"$and": and_parts}
+    cursor = db.in_app_notifications.find(query, {"_id": 0})
+    items = await cursor.to_list(length=max(limit * 4, 400))
+
+    if inbox_filter in ("compliance", "billing", "operations", "system"):
+        items = [d for d in items if infer_in_app_category(d) == inbox_filter]
+
+    items.sort(key=_inbox_sort_key)
+    return [serialize_in_app_notification(d) for d in items[:limit]]
+
+
+async def get_unread_notifications(user_id: str, limit: int = 50) -> List[Dict]:
+    """Unread-only slice (non-dismissed), sorted for inbox."""
+    return await list_inbox_notifications(user_id, limit=limit, inbox_filter="unread")
 
 
 async def get_all_notifications(user_id: str, limit: int = 100) -> List[Dict]:
-    """Get all notifications for a user."""
-    db = database.get_db()
-    cursor = db.in_app_notifications.find(
-        {"recipient_id": user_id},
-        {"_id": 0}
-    ).sort("created_at", -1).limit(limit)
-    return await cursor.to_list(length=None)
+    """All non-dismissed notifications for a user."""
+    return await list_inbox_notifications(user_id, limit=limit, inbox_filter="all")
 
 
-async def mark_notification_read(notification_id: str) -> bool:
-    """Mark a notification as read."""
+async def mark_notification_read(notification_id: str, recipient_id: str) -> bool:
+    """Mark a notification as read; must belong to recipient_id."""
     db = database.get_db()
     result = await db.in_app_notifications.update_one(
-        {"notification_id": notification_id},
-        {"$set": {"is_read": True, "read_at": datetime.now(timezone.utc)}}
+        {"notification_id": notification_id, "recipient_id": recipient_id, **_not_dismissed_query()},
+        {"$set": {"is_read": True, "read_at": datetime.now(timezone.utc)}},
+    )
+    return result.modified_count > 0
+
+
+async def dismiss_notification(notification_id: str, recipient_id: str) -> bool:
+    """Soft-dismiss (archive) a notification for one recipient."""
+    db = database.get_db()
+    result = await db.in_app_notifications.update_one(
+        {"notification_id": notification_id, "recipient_id": recipient_id},
+        {"$set": {"dismissed_at": datetime.now(timezone.utc)}},
     )
     return result.modified_count > 0
 
 
 async def mark_all_notifications_read(user_id: str) -> int:
-    """Mark all notifications as read for a user."""
+    """Mark all non-dismissed notifications as read for a user."""
     db = database.get_db()
     result = await db.in_app_notifications.update_many(
-        {"recipient_id": user_id, "is_read": False},
-        {"$set": {"is_read": True, "read_at": datetime.now(timezone.utc)}}
+        {"recipient_id": user_id, "is_read": False, **_not_dismissed_query()},
+        {"$set": {"is_read": True, "read_at": datetime.now(timezone.utc)}},
     )
     return result.modified_count
 
 
 async def get_unread_count(user_id: str) -> int:
-    """Get count of unread notifications."""
+    """Count unread, non-dismissed notifications."""
     db = database.get_db()
     return await db.in_app_notifications.count_documents(
-        {"recipient_id": user_id, "is_read": False}
+        {"recipient_id": user_id, "is_read": False, **_not_dismissed_query()}
     )
+
+
+async def record_in_app_cta_action(
+    notification_id: str,
+    recipient_id: str,
+    action_key: str,
+) -> bool:
+    """Append CTA action metadata (audit is logged by the route)."""
+    db = database.get_db()
+    doc = await db.in_app_notifications.find_one(
+        {"notification_id": notification_id, "recipient_id": recipient_id},
+        {"_id": 0, "actions_taken": 1},
+    )
+    if not doc:
+        return False
+    actions = list(doc.get("actions_taken") or [])
+    actions.append(
+        {
+            "action_key": action_key,
+            "at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    await db.in_app_notifications.update_one(
+        {"notification_id": notification_id, "recipient_id": recipient_id},
+        {"$set": {"actions_taken": actions}},
+    )
+    return True

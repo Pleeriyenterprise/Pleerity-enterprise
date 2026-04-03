@@ -51,6 +51,14 @@ def _iso_or_none(value: Any) -> Optional[str]:
     return str(value)
 
 
+def _iso_or_none_billing_period(value: Any) -> Optional[str]:
+    """Next renewal / period end: never expose invalid or epoch timestamps to the UI."""
+    from services.billing_period_utils import normalize_stored_period_end_for_api
+
+    dt = normalize_stored_period_end_for_api(value)
+    return dt.isoformat() if dt else None
+
+
 # Request models for admin invite
 class AdminInviteRequest(BaseModel):
     email: EmailStr
@@ -3794,7 +3802,7 @@ async def get_client_control_panel(request: Request, client_id: str):
                 "plan": client.get("billing_plan"),
                 "status": client.get("subscription_status"),
                 "last_payment": _iso_or_none(client.get("last_payment_date")),
-                "next_billing_date": _iso_or_none((billing or {}).get("current_period_end")),
+                "next_billing_date": _iso_or_none_billing_period((billing or {}).get("current_period_end")),
                 "receipts": receipts,
                 "receipts_meta": receipts_meta,
             },

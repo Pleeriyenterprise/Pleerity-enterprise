@@ -157,7 +157,9 @@ def _markdown_to_html(text: str) -> str:
 def _render_nurture_body(lead: Dict[str, Any], template_index: int) -> str:
     template = NURTURE_TEMPLATES[template_index]
     name = lead.get("name") or (lead.get("email") or "").split("@")[0] or "there"
-    unsubscribe_link = f'<a href="{UNSUBSCRIBE_URL}?lead={lead[\"lead_id\"]}">Unsubscribe from marketing emails</a>'
+    # No backslashes inside f-string expressions (SyntaxError on older Python / PEP 498).
+    lead_id_q = str(lead.get("lead_id") or "").strip()
+    unsubscribe_link = f'<a href="{UNSUBSCRIBE_URL}?lead={lead_id_q}">Unsubscribe from marketing emails</a>'
     return template["body"].format(
         name=name,
         base_url=_app_base(),

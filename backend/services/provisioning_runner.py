@@ -56,6 +56,26 @@ async def _send_provisioning_failed_admin_alert(job_id: str, client_id: Optional
             )
     except Exception as e:
         logger.exception("Failed to send provisioning failed admin alert: %s", e)
+    try:
+        from services.order_service import notify_all_portal_admins_in_app
+
+        n = await notify_all_portal_admins_in_app(
+            title="Provisioning failed",
+            message=f"Job {job_id}" + (f", client {client_id}" if client_id else "") + f"\n{error_message[:500]}",
+            notification_type="provisioning_failed",
+            severity="critical",
+            notification_category="operations",
+            link="/admin/dashboard",
+            primary_cta_label="Open control centre",
+            primary_cta_path="/admin/dashboard",
+            metadata={"job_id": job_id, "client_id": client_id},
+            related_entity_type="provisioning_job",
+            related_entity_id=job_id,
+        )
+        if n:
+            logger.info("In-app admin notifications for provisioning failure: %s recipients", n)
+    except Exception as e:
+        logger.warning("Failed to create in-app provisioning failure notifications: %s", e)
 
 
 def _worker_id() -> str:

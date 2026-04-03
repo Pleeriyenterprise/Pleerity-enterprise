@@ -34,6 +34,7 @@ from middleware import admin_route_guard
 from models import AuditAction, EmailTemplateAlias, UserRole, PasswordToken
 from utils.audit import create_audit_log
 from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
+from services.billing_period_utils import period_end_from_stripe_unix, period_start_from_stripe_unix
 from services.provisioning import provisioning_service
 from services.stripe_service import StripeService
 
@@ -803,16 +804,26 @@ async def sync_client_billing(request: Request, client_id: str):
             new_subscription_status = active_subscription.status.upper()
             new_entitlement_status = plan_registry.get_entitlement_status_from_subscription(active_subscription.status)
             
+            cps = period_start_from_stripe_unix(getattr(active_subscription, "current_period_start", None))
+            cpe = period_end_from_stripe_unix(getattr(active_subscription, "current_period_end", None))
+            if not cpe:
+                logger.warning(
+                    "admin billing sync: invalid or missing current_period_end client_id=%s subscription_id=%s",
+                    client_id,
+                    getattr(active_subscription, "id", None),
+                )
             billing_update.update({
                 "stripe_subscription_id": active_subscription.id,
                 "current_plan_code": new_plan_code.value if isinstance(new_plan_code, PlanCode) else new_plan_code,
                 "subscription_status": new_subscription_status,
                 "entitlement_status": new_entitlement_status.value,
                 "cancel_at_period_end": active_subscription.cancel_at_period_end,
-                "current_period_start": datetime.fromtimestamp(active_subscription.current_period_start, tz=timezone.utc),
-                "current_period_end": datetime.fromtimestamp(active_subscription.current_period_end, tz=timezone.utc),
-                "billing_sync_state": "ok",
+                "billing_sync_state": "ok" if cpe else "missing_period_end",
             })
+            if cps:
+                billing_update["current_period_start"] = cps
+            if cpe:
+                billing_update["current_period_end"] = cpe
             
             # Get invoice info
             latest_invoice = active_subscription.get("latest_invoice")

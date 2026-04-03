@@ -344,8 +344,14 @@ async def _notify_client_recommendation_pending(
                 title=in_title,
                 message=in_msg,
                 notification_type="work_order_contractor_routing",
-                link=f"/maintenance/work-orders/{work_order_id}",
+                link="/operations/work-orders",
                 metadata={"work_order_id": work_order_id, "recommended_contractor_id": top_rank.get("contractor_id")},
+                severity="medium",
+                notification_category="operations",
+                related_entity_type="work_order",
+                related_entity_id=work_order_id,
+                primary_cta_label="Work orders",
+                primary_cta_path="/operations/work-orders",
             )
         except Exception as e:
             logger.warning("In-app recommendation notify failed: %s", e)

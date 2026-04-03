@@ -208,31 +208,31 @@ class OrderNotificationService:
         priority: str = NotificationPriority.MEDIUM,
         metadata: Dict[str, Any] = None,
     ) -> str:
-        """Create an in-app notification for an admin."""
-        db = database.get_db()
-        
+        """Create an in-app notification for an admin (unified enterprise schema)."""
+        from services.order_service import create_in_app_notification, priority_string_to_severity
+
         config = EVENT_CONFIG.get(event_type, {})
         icon = config.get("icon", "📌")
-        
-        # Use in_app_notifications collection to match existing schema
-        notification = {
-            "notification_id": f"NOTIF-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{admin_id[:8]}",
-            "recipient_id": admin_id,  # Match existing schema
-            "type": event_type,
-            "title": f"{icon} {title}",
-            "message": message,
-            "order_id": order_id,
-            "priority": priority,
-            "is_read": False,
-            "created_at": datetime.now(timezone.utc),
-            "metadata": metadata or {},
-        }
-        
-        await db.in_app_notifications.insert_one(notification)
-        
-        logger.debug(f"Created in-app notification for admin {admin_id}: {title}")
-        
-        return notification["notification_id"]
+        meta = dict(metadata or {})
+        if order_id:
+            meta.setdefault("order_id", order_id)
+        cta_path = f"/admin/orders?order={order_id}" if order_id else "/admin/orders"
+        sev = priority_string_to_severity(priority)
+
+        return await create_in_app_notification(
+            recipient_id=admin_id,
+            title=f"{icon} {title}",
+            message=message,
+            notification_type=event_type,
+            link=cta_path if order_id else "/admin/orders",
+            metadata=meta,
+            severity=sev,
+            notification_category="operations",
+            related_entity_type="order" if order_id else None,
+            related_entity_id=order_id,
+            primary_cta_label="View order" if order_id else "Orders",
+            primary_cta_path=cta_path,
+        )
     
     async def notify_order_event(
         self,

@@ -51,6 +51,13 @@ CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
     JobScheduleEntry("expiry_rollover_recalc", True, 26 * 60, "Daily", False),
     JobScheduleEntry("contractor_performance_recalc", False, 26 * 60, "Daily", True),
     JobScheduleEntry("compliance_recalc_worker", True, 2, "Every 15 sec", False),
+    JobScheduleEntry(
+        "compliance_recalc_enqueue_property",
+        False,
+        26 * 60,
+        "Daily",
+        True,
+    ),
     JobScheduleEntry("risk_signal_regen_worker", False, 3, "Every 30 sec", False),
     JobScheduleEntry("compliance_recalc_sla_monitor", True, 12, "Every 5 min", True),
     JobScheduleEntry("notification_retry_worker", True, 5, "Every minute", True),

@@ -504,6 +504,11 @@ export const clientAPI = {
   getInAppNotificationsUnreadCount: () => apiClient.get('/profile/in-app-notifications/unread-count'),
   markInAppNotificationRead: (notificationId) =>
     apiClient.patch(`/profile/in-app-notifications/${encodeURIComponent(notificationId)}/read`),
+  markAllInAppNotificationsRead: () => apiClient.post('/profile/in-app-notifications/read-all'),
+  dismissInAppNotification: (notificationId) =>
+    apiClient.post(`/profile/in-app-notifications/${encodeURIComponent(notificationId)}/dismiss`),
+  recordInAppNotificationCta: (notificationId, body = { action_key: 'primary' }) =>
+    apiClient.post(`/profile/in-app-notifications/${encodeURIComponent(notificationId)}/cta`, body),
   /** Server time + last audit activity (trust / freshness for portal shell). */
   getPortalContext: () => apiClient.get('/client/portal-context'),
   /** Active system banners (auth only; visible before full provisioning). */
@@ -662,6 +667,16 @@ export const adminAPI = {
   communicationsBannerCreate: (body) => apiClient.post('/admin/communications/banners', body),
   communicationsBannerPatch: (bannerId, body) =>
     apiClient.patch(`/admin/communications/banners/${encodeURIComponent(bannerId)}`, body),
+  /** In-app notification inbox (admin bell). */
+  getInAppNotifications: (params = {}) => apiClient.get('/admin/notifications', { params }),
+  getInAppNotificationsUnreadCount: () => apiClient.get('/admin/notifications/unread-count'),
+  markInAppNotificationRead: (notificationId) =>
+    apiClient.post(`/admin/notifications/${encodeURIComponent(notificationId)}/read`),
+  markAllInAppNotificationsRead: () => apiClient.post('/admin/notifications/read-all'),
+  dismissInAppNotification: (notificationId) =>
+    apiClient.post(`/admin/notifications/${encodeURIComponent(notificationId)}/dismiss`),
+  recordInAppNotificationCta: (notificationId, body = { action_key: 'primary' }) =>
+    apiClient.post(`/admin/notifications/${encodeURIComponent(notificationId)}/cta`, body),
 };
 
 // Contractor portal API (use with contractor token from contractor login/set-password)
@@ -675,6 +690,7 @@ export function createContractorAPI(accessToken) {
     declineAssignment: (id) => apiClient.post(`/contractor/work-orders/${id}/decline`, {}, { headers }),
     submitInvoice: (body) => apiClient.post('/contractor/invoices', body, { headers }),
     getProfile: () => apiClient.get('/contractor/profile', { headers }),
+    getDashboardSummary: () => apiClient.get('/contractor/dashboard-summary', { headers }),
     getInvoices: (params = {}) => apiClient.get('/contractor/invoices', { params, headers }),
     uploadWorkOrderEvidence: (workOrderId, file) => {
       const fd = new FormData();

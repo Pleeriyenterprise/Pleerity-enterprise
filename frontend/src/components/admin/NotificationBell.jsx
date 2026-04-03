@@ -1,11 +1,5 @@
 /**
- * NotificationBell - Admin notification bell with dropdown
- * 
- * Features:
- * - Shows unread count badge
- * - Dropdown with recent notifications
- * - Mark as read functionality
- * - Click to navigate to related order
+ * NotificationBell - Admin notification bell with dropdown (enterprise inbox).
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -20,25 +14,17 @@ import {
 } from '../ui/popover';
 import {
   Bell,
-  Check,
   CheckCheck,
   Package,
   AlertTriangle,
   Clock,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { adminAPI } from '../../api/client';
+import { resolveNotificationTarget, severityBadgeClass } from '../../utils/notificationDeepLink';
 
-// Use same base as api client: relative /api when REACT_APP_BACKEND_URL not set
-const _backendUrl = process.env.REACT_APP_BACKEND_URL;
-const API_BASE = typeof _backendUrl === 'string' && _backendUrl.trim() ? _backendUrl.trim().replace(/\/$/, '') : '';
-const NOTIFICATIONS_BASE = API_BASE ? `${API_BASE}/api` : '/api';
-
-// Polling interval for notifications (30 seconds)
 const POLL_INTERVAL = 30000;
 
-/**
- * Format date for display
- */
 const formatTimeAgo = (dateString) => {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -47,7 +33,6 @@ const formatTimeAgo = (dateString) => {
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
-
   if (diffMins < 1) return 'Just now';
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
@@ -55,42 +40,22 @@ const formatTimeAgo = (dateString) => {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 };
 
-/**
- * Get icon component based on notification priority/type
- */
 const NotificationIcon = ({ notification }) => {
-  const priority = notification?.priority;
-  if (priority === 'urgent' || priority === 'high') {
+  const sev = String(notification?.severity || '').toLowerCase();
+  const pr = notification?.priority;
+  if (sev === 'critical' || pr === 'urgent' || pr === 'high') {
     return <AlertTriangle className="h-4 w-4" />;
   }
-  if (notification?.order_id) {
+  if (notification?.order_id || notification?.related_entity_type === 'order') {
     return <Package className="h-4 w-4" />;
   }
   return <Bell className="h-4 w-4" />;
 };
 
-/**
- * Get priority color
- */
-const getPriorityClass = (priority) => {
-  switch (priority) {
-    case 'urgent':
-      return 'bg-red-100 text-red-800 border-red-200';
-    case 'high':
-      return 'bg-orange-100 text-orange-800 border-orange-200';
-    case 'medium':
-      return 'bg-blue-100 text-blue-800 border-blue-200';
-    default:
-      return 'bg-gray-100 text-gray-800 border-gray-200';
-  }
-};
-
-/**
- * Single notification item
- */
-const NotificationItem = ({ notification, onRead, onClick }) => {
+const NotificationItem = ({ notification, onRead, onNavigate }) => {
   if (!notification || typeof notification !== 'object') return null;
-  const priorityClass = getPriorityClass(notification.priority);
+  const sev = notification.severity || 'medium';
+  const priorityClass = severityBadgeClass(sev);
 
   return (
     <div
@@ -100,13 +65,13 @@ const NotificationItem = ({ notification, onRead, onClick }) => {
       )}
       onClick={() => {
         if (!notification.is_read && notification.notification_id) onRead(notification.notification_id);
-        onClick(notification);
+        onNavigate(notification);
       }}
     >
       <div className="flex items-start gap-3">
         <div
           className={cn(
-            'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+            'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border',
             priorityClass
           )}
         >
@@ -123,21 +88,25 @@ const NotificationItem = ({ notification, onRead, onClick }) => {
             >
               {notification.title ?? '—'}
             </p>
-            {!notification.is_read && (
-              <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
-            )}
+            {!notification.is_read && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
           </div>
-          <p className="text-xs text-gray-500 truncate mt-0.5">
-            {notification.message ?? ''}
-          </p>
-          <div className="flex items-center gap-2 mt-1">
+          <p className="text-xs text-gray-500 truncate mt-0.5">{notification.message ?? ''}</p>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className="text-xs text-gray-400 flex items-center gap-1">
               <Clock className="h-3 w-3" />
               {formatTimeAgo(notification.created_at)}
             </span>
-            {notification.order_id && (
+            <span
+              className={cn(
+                'text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded border',
+                priorityClass
+              )}
+            >
+              {sev}
+            </span>
+            {(notification.order_id || notification.related_entity_id) && (
               <Badge variant="outline" className="text-xs py-0">
-                {notification.order_id}
+                {notification.order_id || notification.related_entity_id}
               </Badge>
             )}
           </div>
@@ -147,9 +116,6 @@ const NotificationItem = ({ notification, onRead, onClick }) => {
   );
 };
 
-/**
- * Main NotificationBell component
- */
 const NotificationBell = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -157,38 +123,10 @@ const NotificationBell = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('auth_token');
-    return {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-    };
-  };
-
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const response = await fetch(`${NOTIFICATIONS_BASE}/admin/notifications/?limit=20`, {
-        headers: getAuthHeaders(),
-      });
-        if (response.ok) {
-          const data = await response.json();
-          setNotifications(Array.isArray(data?.notifications) ? data.notifications : []);
-          setUnreadCount(typeof data?.unread_count === 'number' ? data.unread_count : 0);
-        }
-      } catch (error) {
-        console.error('Failed to fetch notifications:', error);
-      }
-  }, []);
-
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const response = await fetch(`${NOTIFICATIONS_BASE}/admin/notifications/unread-count`, {
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadCount(typeof data?.unread_count === 'number' ? data.unread_count : 0);
-      }
+      const { data } = await adminAPI.getInAppNotificationsUnreadCount();
+      setUnreadCount(typeof data?.unread_count === 'number' ? data.unread_count : 0);
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
     }
@@ -196,15 +134,10 @@ const NotificationBell = () => {
 
   const markAsRead = async (notificationId) => {
     try {
-      await fetch(`${NOTIFICATIONS_BASE}/admin/notifications/${notificationId}/read`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
+      await adminAPI.markInAppNotificationRead(notificationId);
       setUnreadCount((prev) => Math.max(0, prev - 1));
       setNotifications((prev) =>
-        prev.map((n) =>
-          n.notification_id === notificationId ? { ...n, is_read: true } : n
-        )
+        prev.map((n) => (n.notification_id === notificationId ? { ...n, is_read: true } : n))
       );
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
@@ -213,10 +146,7 @@ const NotificationBell = () => {
 
   const markAllAsRead = async () => {
     try {
-      await fetch(`${NOTIFICATIONS_BASE}/admin/notifications/read-all`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
+      await adminAPI.markAllInAppNotificationsRead();
       setUnreadCount(0);
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch (error) {
@@ -224,64 +154,46 @@ const NotificationBell = () => {
     }
   };
 
-  const handleNotificationClick = (notification) => {
+  const handleNotificationNavigate = (notification) => {
     setIsOpen(false);
-    if (notification.order_id) {
-      navigate(`/admin/orders?order=${notification.order_id}`);
-    }
+    const { href, external } = resolveNotificationTarget(notification, true);
+    if (external) window.open(href, '_blank', 'noopener,noreferrer');
+    else navigate(href);
   };
 
-  // Fetch on mount
   useEffect(() => {
-    // Use a flag to prevent state updates on unmounted component
     let mounted = true;
-    
-    const loadInitial = async () => {
+    (async () => {
       try {
-        const response = await fetch(`${NOTIFICATIONS_BASE}/admin/notifications/unread-count`, {
-          headers: getAuthHeaders(),
-        });
-        if (response.ok && mounted) {
-          const data = await response.json();
-          setUnreadCount(typeof data?.unread_count === 'number' ? data.unread_count : 0);
-        }
+        const { data } = await adminAPI.getInAppNotificationsUnreadCount();
+        if (mounted && typeof data?.unread_count === 'number') setUnreadCount(data.unread_count);
       } catch (error) {
         console.error('Failed to fetch unread count:', error);
       }
+    })();
+    return () => {
+      mounted = false;
     };
-    
-    loadInitial();
-    
-    return () => { mounted = false; };
   }, []);
 
-  // Fetch full list when popover opens
   useEffect(() => {
     if (!isOpen) return;
-    
     let mounted = true;
-    
-    const loadNotifications = async () => {
+    (async () => {
       try {
-        const response = await fetch(`${NOTIFICATIONS_BASE}/admin/notifications/?limit=20`, {
-          headers: getAuthHeaders(),
-        });
-        if (response.ok && mounted) {
-          const data = await response.json();
-          setNotifications(Array.isArray(data?.notifications) ? data.notifications : []);
-          setUnreadCount(typeof data?.unread_count === 'number' ? data.unread_count : 0);
-        }
+        const { data } = await adminAPI.getInAppNotifications({ limit: 20, inbox_filter: 'all' });
+        if (!mounted) return;
+        setNotifications(Array.isArray(data?.notifications) ? data.notifications : []);
+        if (typeof data?.unread_count === 'number') setUnreadCount(data.unread_count);
       } catch (error) {
         console.error('Failed to fetch notifications:', error);
       }
+    })();
+    return () => {
+      mounted = false;
     };
-
-    loadNotifications();
-    
-    return () => { mounted = false; };
   }, [isOpen]);
 
-  // Poll for unread count
   useEffect(() => {
     const interval = setInterval(fetchUnreadCount, POLL_INTERVAL);
     return () => clearInterval(interval);
@@ -321,37 +233,49 @@ const NotificationBell = () => {
         </div>
 
         <ScrollArea className="h-[350px]">
-          {notifications.length === 0 ? (
+          {isLoading && notifications.length === 0 ? (
+            <div className="p-6 text-center text-gray-500 text-sm">Loading…</div>
+          ) : notifications.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm">No notifications</p>
             </div>
           ) : (
-            notifications.filter(Boolean).map((notification) => (
-              <NotificationItem
-                key={notification.notification_id ?? notification.created_at ?? Math.random()}
-                notification={notification}
-                onRead={markAsRead}
-                onClick={handleNotificationClick}
-              />
-            ))
+            notifications
+              .filter(Boolean)
+              .map((notification) => (
+                <NotificationItem
+                  key={notification.notification_id ?? notification.created_at}
+                  notification={notification}
+                  onRead={markAsRead}
+                  onNavigate={handleNotificationNavigate}
+                />
+              ))
           )}
         </ScrollArea>
 
-        {notifications.length > 0 && (
-          <div className="p-2 border-t border-gray-200">
-            <Button
-              variant="ghost"
-              className="w-full text-sm text-gray-600 hover:text-gray-900"
-              onClick={() => {
-                setIsOpen(false);
-                navigate('/admin/notifications/preferences');
-              }}
-            >
-              Notification preferences
-            </Button>
-          </div>
-        )}
+        <div className="p-2 border-t border-gray-200 space-y-1">
+          <Button
+            variant="ghost"
+            className="w-full text-sm text-gray-600 hover:text-gray-900"
+            onClick={() => {
+              setIsOpen(false);
+              navigate('/admin/notifications/inbox');
+            }}
+          >
+            Open notification center
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full text-sm text-gray-600 hover:text-gray-900"
+            onClick={() => {
+              setIsOpen(false);
+              navigate('/admin/notifications/preferences');
+            }}
+          >
+            Notification preferences
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );

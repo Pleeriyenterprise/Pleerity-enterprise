@@ -320,7 +320,11 @@ class ReportingService:
         return {
             "content": output.getvalue(),
             "filename": f"compliance_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            "content_type": "text/csv"
+            "content_type": "text/csv",
+            # For governed email digest (Phase 6) — never send ``content`` as the customer email body.
+            "report_summary": dict(data["summary"]),
+            "properties_snapshot": list(data.get("properties") or []),
+            "rows": [],
         }
     
     def _generate_requirements_csv(self, data: Dict[str, Any]) -> Dict[str, Any]:

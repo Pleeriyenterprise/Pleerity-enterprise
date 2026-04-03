@@ -31,6 +31,7 @@ _JOB_SCOPE_OVERRIDES: dict[str, JobRunScope] = {
     "compliance_check_evening": JobRunScope(accepts_client_id=True),
     "compliance_score_snapshots": JobRunScope(accepts_client_id=True),
     "risk_signals_job": JobRunScope(accepts_client_id=True),
+    # Manual API must include property_id. Scheduler runs the same job id without scope → batch enqueue.
     "compliance_recalc_enqueue_property": JobRunScope(
         accepts_client_id=False,
         accepts_property_id=True,

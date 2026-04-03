@@ -609,6 +609,21 @@ async def lifespan(app: FastAPI):
             kwargs={"run_type": "schedule"},
         )
 
+        # Scheduled batch: enqueue compliance recalc for up to N properties/day (worker drains queue).
+        # Manual single-property enqueue still uses the same job id with property_id in admin API body.
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=3, minute=20, timezone=SCHEDULER_TIMEZONE),
+            id="compliance_recalc_enqueue_property",
+            name="Compliance Recalc Enqueue (scheduled property batch)",
+            replace_existing=True,
+            args=["compliance_recalc_enqueue_property"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=600,
+            coalesce=True,
+            max_instances=1,
+        )
+
         # Risk signal regeneration worker (debounced queue; near–real-time heuristic refresh)
         scheduler.add_job(
             "job_runner:run_scheduled_job",

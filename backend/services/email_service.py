@@ -10,6 +10,10 @@ import logging
 from typing import Optional, Dict, Any, List
 
 from email_templates.email_layout import build_customer_email_layout, merge_branding_kwargs
+from email_templates.unified.scheduled_report_digest import (
+    build_scheduled_report_digest_html,
+    build_scheduled_report_digest_text,
+)
 from utils.branding import CUSTOMER_SUPPORT_FOOTER_PLAIN, SUPPORT_EMAIL
 from presentation.label_service import (
     compliance_requirement_status_label,
@@ -788,32 +792,25 @@ class EmailService:
                 customer_reference=model.get('customer_reference'),
             )
         elif template_alias == EmailTemplateAlias.SCHEDULED_REPORT:
-            customer_ref = model.get('customer_reference', '')
-            ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
-            report_rows: List[Dict[str, Any]] = model.get('report_rows') or []
-            total_requirements = model.get('total_requirements', 0) or len(report_rows)
-            if report_rows:
-                report_table_html = self._build_scheduled_report_table(report_rows)
-                report_body = f"""
-                    <p style="margin: 0 0 12px 0;"><strong>Report:</strong> {html_module.escape(str(model.get('report_type', 'Requirements Report')))}</p>
-                    <p style="margin: 0 0 16px 0;"><strong>Total requirements:</strong> {total_requirements}</p>
-                    <div style="overflow-x: auto; margin: 16px 0; border: 1px solid #e2e8f0; border-radius: 6px;">
-                        {report_table_html}
-                    </div>"""
-            else:
-                raw_content = (model.get('report_content') or 'Report data will appear here.')[:1500]
-                report_body = f"""
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin: 20px 0; font-family: monospace; font-size: 12px; white-space: pre-wrap; overflow-x: auto;">{html_module.escape(raw_content)}</div>"""
-            body = f"<p>Please find your scheduled <strong>{model.get('report_type', 'compliance')}</strong> report below.</p>{report_body}<p style=\"color: #666; font-size: 14px; margin-top: 20px;\">For the full report with all details, please log in to your dashboard and download the complete report from the Reports section.</p>"
-            greeting = f"Hello {model.get('client_name', 'there')},"
+            customer_ref = str(model.get("customer_reference") or "").strip()
+            ref_badge = (
+                f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{html_module.escape(customer_ref)}</span>'
+                if customer_ref
+                else ""
+            )
+            inner_body, header_title = build_scheduled_report_digest_html(model)
+            greeting = _format_greeting(model.get("client_name"))
+            portal = str(model.get("portal_link") or "").strip().rstrip("/") or ""
+            if not portal or portal == "#":
+                portal = f"{_email_app_base()}/today"
             return _customer_email_html(
                 model,
                 greeting=greeting,
-                body_html=body,
-                header_title=f"Your {model.get('frequency', 'Weekly').title()} Compliance Report",
+                body_html=inner_body,
+                header_title=header_title,
                 ref_badge=ref_badge,
-                cta_label="View your dashboard",
-                cta_url=model.get('portal_link', '#'),
+                cta_label="Open your portal",
+                cta_url=portal,
                 why_received="you have scheduled compliance reports enabled for your account.",
                 show_preferences_link=True,
                 preferences_url=_notification_preferences_url(model) or None,
@@ -1240,23 +1237,10 @@ If you did not expect this invitation, please contact the system administrator.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.SCHEDULED_REPORT:
-            total = model.get('total_requirements', 0)
-            report_type = model.get('report_type', 'compliance')
-            return f"""
-Your {model.get('frequency', 'Weekly').title()} Compliance Report
-=========================================
-{ref_line}
+            digest = build_scheduled_report_digest_text(model)
+            return f"""{_format_greeting(model.get('client_name'))}
 
-Hello {model.get('client_name', 'there')},
-
-Please find your scheduled {report_type} report summary below.
-
-Report: {report_type}
-Generated: {model.get('generated_date', 'today')}
-Total requirements: {total}
-
-For the full report with all details, please log in to your dashboard and download the complete report from the Reports section.
-{footer}
+{digest}{footer}
             """
         elif template_alias == EmailTemplateAlias.AI_EXTRACTION_APPLIED:
             status_icon = "✅" if model.get('requirement_status') == 'COMPLIANT' else "⚠️" if model.get('requirement_status') == 'EXPIRING_SOON' else "❌"

@@ -26,7 +26,15 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, Tuple
 from database import database
 from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
-from services.billing_period_utils import period_end_from_stripe_unix, period_start_from_stripe_unix
+from services.billing_period_utils import (
+    period_end_from_stripe_unix,
+    period_start_from_stripe_unix,
+    normalize_stored_period_end_for_api,
+)
+from services.billing_stripe_sync_service import (
+    retrieve_stripe_subscription_dict,
+    persist_subscription_billing_from_stripe,
+)
 from services.subscription_lifecycle_service import (
     sync_subscription_lifecycle,
     grace_period_days,
@@ -542,8 +550,14 @@ class StripeWebhookService:
             "latest_invoice_id": subscription.get("latest_invoice"),
             "updated_at": now_sync,
             "billing_last_synced_at": now_sync,
-            "billing_sync_state": "ok",
+            "billing_sync_state": "ok" if period_end_dt else "missing_period_end",
         }
+        if not period_end_dt:
+            logger.warning(
+                "checkout webhook: current_period_end missing after Subscription.retrieve client_id=%s subscription_id=%s",
+                client_id,
+                stripe_subscription_id,
+            )
         if period_end_dt:
             billing_record["current_period_end"] = period_end_dt
         if period_start_dt:
@@ -1043,34 +1057,11 @@ class StripeWebhookService:
         db = database.get_db()
         stripe_customer_id = subscription.get("customer")
         stripe_subscription_id = subscription.get("id")
-        subscription_status = subscription.get("status", "unknown")
         event_type = (event or {}).get("type", "customer.subscription.updated")
         logger.info(
             "HANDLER_START event.type=%s stripe_customer_id=%s subscription_id=%s checkout_session_id=(n/a) metadata.client_id=(from_billing) metadata.plan_code=(from_items) computed_client_id=(lookup)",
             event_type, stripe_customer_id, stripe_subscription_id,
         )
-        # Resolve plan first so we can seed client_billing if checkout has not run yet (out-of-order webhooks).
-        new_plan_code = None
-        for item in subscription.get("items", {}).get("data", []):
-            price_id = item.get("price", {}).get("id") if isinstance(item.get("price"), dict) else item.get("price")
-            new_plan_code = plan_registry.get_plan_from_subscription_price_id(price_id)
-            if new_plan_code:
-                break
-
-        if not new_plan_code:
-            full_sub = stripe.Subscription.retrieve(
-                stripe_subscription_id,
-                expand=["items.data.price"],
-            )
-            for item in full_sub.get("items", {}).get("data", []):
-                price_id = item.get("price", {}).get("id")
-                new_plan_code = plan_registry.get_plan_from_subscription_price_id(price_id)
-                if new_plan_code:
-                    break
-
-        if not new_plan_code:
-            logger.error(f"Cannot determine plan for subscription {stripe_subscription_id}")
-            raise ValueError(f"No matching plan for subscription {stripe_subscription_id}")
 
         billing = await db.client_billing.find_one(
             {"stripe_customer_id": stripe_customer_id},
@@ -1128,59 +1119,37 @@ class StripeWebhookService:
 
         old_plan = billing.get("current_plan_code")
         old_status = billing.get("subscription_status")
-        
-        # Map status to entitlement
-        entitlement_status = plan_registry.get_entitlement_status_from_subscription(subscription_status)
-        
-        # Update billing record; increment entitlements_version on plan/status change from Stripe
-        period_end_dt = period_end_from_stripe_unix(subscription.get("current_period_end"))
-        period_start_dt = period_start_from_stripe_unix(subscription.get("current_period_start"))
-        now_sync = datetime.now(timezone.utc)
-        billing_update = {
-            "current_plan_code": new_plan_code.value,
-            "subscription_status": subscription_status.upper(),
-            "entitlement_status": entitlement_status.value,
-            "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
-            "latest_invoice_id": subscription.get("latest_invoice"),
-            "updated_at": now_sync,
-            "billing_last_synced_at": now_sync,
-            "billing_sync_state": "ok",
-        }
-        if stripe_customer_id:
-            billing_update["stripe_customer_id"] = stripe_customer_id
-        if stripe_subscription_id:
-            billing_update["stripe_subscription_id"] = stripe_subscription_id
-        if period_end_dt:
-            billing_update["current_period_end"] = period_end_dt
-        if period_start_dt:
-            billing_update["current_period_start"] = period_start_dt
-        sub_status_update: Dict[str, Any] = {
-            "$set": billing_update,
-            "$inc": {"entitlements_version": 1},
-        }
-        await db.client_billing.update_one(
-            {"client_id": client_id},
-            sub_status_update,
-        )
-        billing_after = await db.client_billing.find_one(
-            {"client_id": client_id},
-            {"_id": 0, "entitlements_version": 1}
-        )
-        entitlements_version = (billing_after or {}).get("entitlements_version", 1)
 
-        # Update client record
-        sub_status_set = "ACTIVE" if subscription_status in ("active", "trialing") else subscription_status.upper()
-        await db.clients.update_one(
-            {"client_id": client_id},
-            {
-                "$set": {
-                    "billing_plan": new_plan_code.value,
-                    "subscription_status": sub_status_set,
-                    "entitlement_status": entitlement_status.value,
-                    "entitlements_version": entitlements_version,
-                }
-            }
+        try:
+            sub_d = retrieve_stripe_subscription_dict(stripe_subscription_id)
+        except Exception as e:
+            logger.exception(
+                "subscription webhook: Stripe.Subscription.retrieve failed subscription_id=%s: %s",
+                stripe_subscription_id,
+                e,
+            )
+            raise
+
+        summary = await persist_subscription_billing_from_stripe(
+            client_id,
+            sub_d,
+            event_source=event_type,
+            update_plan=True,
+            increment_entitlements_version=1,
         )
+        entitlements_version = summary["entitlements_version"]
+        subscription_status = sub_d.get("status", "unknown")
+        entitlement_status = plan_registry.get_entitlement_status_from_subscription(subscription_status)
+        sub_status_set = "ACTIVE" if subscription_status in ("active", "trialing") else subscription_status.upper()
+
+        pc_val = summary.get("plan_code")
+        if not pc_val:
+            bill_row = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0, "current_plan_code": 1})
+            pc_val = (bill_row or {}).get("current_plan_code")
+        if not pc_val:
+            logger.error("Cannot determine plan for subscription %s after API sync", stripe_subscription_id)
+            raise ValueError(f"No matching plan for subscription {stripe_subscription_id}")
+        new_plan_code = plan_registry.resolve_plan_code(pc_val)
         try:
             await sync_subscription_lifecycle(client_id, bump_version=False)
         except Exception as lc_err:
@@ -1428,66 +1397,69 @@ class StripeWebhookService:
         )
         if not subscription_id:
             return {"handled": False, "reason": "not_subscription_invoice"}
-        # Find billing record
         billing = await db.client_billing.find_one(
             {"stripe_customer_id": stripe_customer_id},
-            {"_id": 0}
+            {"_id": 0},
         )
-        
         if not billing:
-            logger.warning(f"No billing record for customer {stripe_customer_id}")
+            billing = await db.client_billing.find_one(
+                {"stripe_subscription_id": subscription_id},
+                {"_id": 0},
+            )
+        if not billing:
+            logger.warning(
+                "invoice.paid: no billing record stripe_customer_id=%s subscription_id=%s",
+                stripe_customer_id,
+                subscription_id,
+            )
             return {"handled": False, "reason": "no_billing_record"}
-        
+
         client_id = billing.get("client_id")
         old_status = billing.get("subscription_status")
+        had_dunning = bool(billing.get("payment_failed_at") or billing.get("grace_period_ends_at"))
 
-        # Fetch current subscription status (Stripe source of truth)
-        subscription = stripe.Subscription.retrieve(subscription_id, expand=["items.data.price"])
-        sub_d = subscription.to_dict() if hasattr(subscription, "to_dict") else dict(subscription)
+        try:
+            sub_d = retrieve_stripe_subscription_dict(subscription_id)
+        except Exception as e:
+            logger.exception(
+                "invoice.paid: Stripe.Subscription.retrieve failed subscription_id=%s err=%s",
+                subscription_id,
+                e,
+            )
+            raise
+
+        inv_latest = invoice.get("id")
+        extra_inv: Dict[str, Any] = {}
+        if inv_latest:
+            extra_inv["latest_invoice_id"] = inv_latest
+
+        await persist_subscription_billing_from_stripe(
+            client_id,
+            sub_d,
+            event_source=event_type,
+            update_plan=True,
+            additional_billing_set=extra_inv if extra_inv else None,
+            increment_entitlements_version=1 if had_dunning else 0,
+        )
+
+        if had_dunning:
+            await db.client_billing.update_one(
+                {"client_id": client_id},
+                {
+                    "$unset": {
+                        "payment_failed_at": "",
+                        "grace_period_ends_at": "",
+                        "dunning_stripe_invoice_id": "",
+                        "grace_mid_reminder_sent_at": "",
+                        "renewal_reminder_period_key_7d": "",
+                        "renewal_reminder_period_key_3d": "",
+                    },
+                },
+            )
+
         new_status = sub_d.get("status", "unknown")
         entitlement_status = plan_registry.get_entitlement_status_from_subscription(new_status)
         period_end_dt = period_end_from_stripe_unix(sub_d.get("current_period_end"))
-        period_start_dt = period_start_from_stripe_unix(sub_d.get("current_period_start"))
-        had_dunning = bool(billing.get("payment_failed_at") or billing.get("grace_period_ends_at"))
-
-        now_sync = datetime.now(timezone.utc)
-        set_doc: Dict[str, Any] = {
-            "subscription_status": new_status.upper(),
-            "entitlement_status": entitlement_status.value,
-            "latest_invoice_id": invoice.get("id"),
-            "updated_at": now_sync,
-            "billing_last_synced_at": now_sync,
-            "billing_sync_state": "ok",
-        }
-        if period_end_dt:
-            set_doc["current_period_end"] = period_end_dt
-        if period_start_dt:
-            set_doc["current_period_start"] = period_start_dt
-        for item in (sub_d.get("items") or {}).get("data") or []:
-            price = item.get("price") or {}
-            if isinstance(price, dict) and price.get("recurring") is not None and price.get("unit_amount") is not None:
-                set_doc["subscription_recurring_amount_pence"] = int(price["unit_amount"])
-                break
-
-        update: Dict[str, Any] = {"$set": set_doc}
-        unset_doc: Dict[str, str] = {}
-        if had_dunning:
-            unset_doc.update(
-                {
-                    "payment_failed_at": "",
-                    "grace_period_ends_at": "",
-                    "dunning_stripe_invoice_id": "",
-                    "grace_mid_reminder_sent_at": "",
-                    "renewal_reminder_period_key_7d": "",
-                    "renewal_reminder_period_key_3d": "",
-                }
-            )
-        if unset_doc:
-            update["$unset"] = unset_doc
-        if had_dunning:
-            update["$inc"] = {"entitlements_version": 1}
-
-        await db.client_billing.update_one({"client_id": client_id}, update)
 
         try:
             inv_id = invoice.get("id")
@@ -1496,7 +1468,11 @@ class StripeWebhookService:
                 inv_d = inv_full.to_dict() if hasattr(inv_full, "to_dict") else dict(inv_full)
                 from services.billing_line_normalization import breakdown_from_invoice_lines
 
-                pc = billing.get("current_plan_code")
+                bill_pc = await db.client_billing.find_one(
+                    {"client_id": client_id},
+                    {"_id": 0, "current_plan_code": 1},
+                )
+                pc = (bill_pc or {}).get("current_plan_code")
                 plan_enum = plan_registry.resolve_plan_code(pc) if pc else None
                 br = breakdown_from_invoice_lines(inv_d, plan_enum)
                 bset: Dict[str, Any] = {
@@ -1509,24 +1485,6 @@ class StripeWebhookService:
                 await db.client_billing.update_one({"client_id": client_id}, {"$set": bset})
         except Exception as inv_err:
             logger.warning("invoice paid: persist line breakdown failed: %s", inv_err)
-
-        billing_after = await db.client_billing.find_one(
-            {"client_id": client_id},
-            {"_id": 0, "entitlements_version": 1},
-        )
-        entitlements_version = (billing_after or {}).get("entitlements_version", 1)
-
-        sub_for_client = "ACTIVE" if new_status in ("active", "trialing") else new_status.upper()
-        await db.clients.update_one(
-            {"client_id": client_id},
-            {
-                "$set": {
-                    "subscription_status": sub_for_client,
-                    "entitlement_status": entitlement_status.value,
-                    "entitlements_version": entitlements_version,
-                }
-            },
-        )
 
         try:
             await sync_subscription_lifecycle(client_id, bump_version=False)
@@ -1548,7 +1506,7 @@ class StripeWebhookService:
                 client_name = (client_row or {}).get("contact_name") or (client_row or {}).get("full_name") or "Valued Customer"
                 from utils.public_app_url import get_public_app_url
                 base_url = get_public_app_url(for_email_links=False)
-                cpe_out = period_end_dt or billing.get("current_period_end")
+                cpe_out = period_end_dt or normalize_stored_period_end_for_api(billing.get("current_period_end"))
                 renewal_display = ""
                 if cpe_out:
                     if hasattr(cpe_out, "strftime"):

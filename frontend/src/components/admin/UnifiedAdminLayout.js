@@ -28,6 +28,7 @@ import {
   History,
   Menu,
   Bell,
+  Inbox,
   Search,
   HelpCircle,
   PenTool,
@@ -157,7 +158,8 @@ const navSections = [
       { href: '/admin/incidents', label: 'Incidents', icon: AlertTriangle, badge: 'incidents' },
       { href: '/admin/security', label: 'Security Monitoring', icon: Shield },
       { href: '/admin/dashboard', label: 'Audit Logs', icon: History, tabTarget: 'audit' },
-      { href: '/admin/notifications/preferences', label: 'Notifications', icon: Bell },
+      { href: '/admin/notifications/inbox', label: 'Notification inbox', icon: Inbox },
+      { href: '/admin/notifications/preferences', label: 'Notification preferences', icon: Bell },
     ],
   },
 ];

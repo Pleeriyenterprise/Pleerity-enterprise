@@ -445,6 +445,9 @@ async def _deliver_recipient_batches(
                 ok_any = False
                 for puid in row.get("portal_user_ids") or []:
                     try:
+                        sev = (str(severity or "medium")).strip().lower()
+                        if sev not in ("info", "low", "medium", "high", "critical"):
+                            sev = "medium"
                         await create_in_app_notification(
                             recipient_id=puid,
                             title=title,
@@ -456,6 +459,12 @@ async def _deliver_recipient_batches(
                                 "message_type": message_type,
                                 "severity": severity,
                             },
+                            severity=sev,
+                            notification_category="system",
+                            related_entity_type="admin_communication",
+                            related_entity_id=communication_id,
+                            primary_cta_label="Open portal",
+                            primary_cta_path=link,
                         )
                         ok_any = True
                     except Exception as e:

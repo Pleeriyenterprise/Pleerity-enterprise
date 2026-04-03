@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
-import { adminAPI, API_URL } from '../api/client';
+import api, { adminAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useStepUpApi } from '../hooks/useStepUpApi';
 
@@ -23,11 +23,13 @@ const Row = ({ label, value }) => (
   </div>
 );
 
+const MIN_VALID_DATE_MS = 946684800000;
+
 const fmtDate = (value) => {
-  if (!value) return '-';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleString();
+  if (value == null || value === '') return 'Not available';
+  const t = new Date(value).getTime();
+  if (Number.isNaN(t) || t < MIN_VALID_DATE_MS) return 'Not available';
+  return new Date(value).toLocaleString('en-GB');
 };
 
 const ACTION_HEALTH_DEFS = [
@@ -322,15 +324,40 @@ const AdminClientControlPanelPage = () => {
     });
   }, [data, lastActionRunAt]);
 
-  const buildReceiptDownloadUrl = (receipt) => {
-    if (!clientId || !receipt) return null;
-    const base = API_URL ? `${API_URL}/api` : '/api';
-    if (receipt.source === 'subscription') {
-      const ref = encodeURIComponent(receipt.invoice_number || receipt.stripe_checkout_session_id || '');
-      return ref ? `${base}/admin/billing/clients/${clientId}/receipts/subscription/${ref}/download` : null;
+  const handleReceiptDownload = async (r) => {
+    if (!clientId || !r?.pdf_available) return;
+    try {
+      let path;
+      if (r.source === 'subscription') {
+        const ref = encodeURIComponent(r.invoice_number || r.stripe_checkout_session_id || '');
+        if (!ref) {
+          toast.error('Missing receipt reference');
+          return;
+        }
+        path = `/admin/billing/clients/${clientId}/receipts/subscription/${ref}/download`;
+      } else {
+        const oid = (r.order_id || '').trim();
+        if (!oid) {
+          toast.error('Missing order id');
+          return;
+        }
+        path = `/admin/billing/clients/${clientId}/receipts/order/${encodeURIComponent(oid)}/download`;
+      }
+      const response = await api.get(path, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${r.invoice_number || r.order_reference || r.order_id || 'receipt'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Receipt downloaded');
+    } catch (err) {
+      const msg = err?.response?.data?.detail;
+      toast.error(typeof msg === 'string' ? msg : 'Download failed');
     }
-    const orderId = receipt.order_id;
-    return orderId ? `${base}/admin/billing/clients/${clientId}/receipts/order/${encodeURIComponent(orderId)}/download` : null;
   };
 
   return (
@@ -494,19 +521,21 @@ const AdminClientControlPanelPage = () => {
               <Row label="Next billing date" value={fmtDate(billing.next_billing_date)} />
               <Row label="Receipts" value={`${receiptRows.length} (total ${receiptsMeta.total || receiptRows.length})`} />
               <div className="mt-3 space-y-2 max-h-52 overflow-y-auto">
-                {receiptRows.slice(0, 12).map((r) => {
-                  const url = buildReceiptDownloadUrl(r);
-                  return (
+                {receiptRows.slice(0, 12).map((r) => (
                     <div key={r.receipt_key} className="flex items-center justify-between text-sm border border-gray-100 rounded p-2">
                       <div className="min-w-0">
                         <div className="font-medium truncate">{r.invoice_number || r.order_reference || r.receipt_key}</div>
                         <div className="text-xs text-gray-600">{r.amount_display || '-'} / {fmtDate(r.date_issued)}</div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {url ? (
-                          <a className="text-xs text-electric-teal hover:underline" href={url} target="_blank" rel="noreferrer">
+                        {r.pdf_available ? (
+                          <button
+                            type="button"
+                            className="text-xs text-electric-teal hover:underline"
+                            onClick={() => handleReceiptDownload(r)}
+                          >
                             Download
-                          </a>
+                          </button>
                         ) : (
                           <span className="text-xs text-gray-400">No PDF</span>
                         )}
@@ -522,8 +551,7 @@ const AdminClientControlPanelPage = () => {
                         </button>
                       </div>
                     </div>
-                  );
-                })}
+                ))}
               </div>
             </SectionCard>
 

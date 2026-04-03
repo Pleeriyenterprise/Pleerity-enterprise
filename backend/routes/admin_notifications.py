@@ -1,20 +1,23 @@
 """
 Admin Notifications Routes - Manage admin notification preferences and in-app notifications.
 """
-from fastapi import APIRouter, HTTPException, Depends, Body
+from fastapi import APIRouter, HTTPException, Depends, Body, Query, Request
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from database import database
 from middleware import admin_route_guard
+from models import AuditAction, UserRole
+from utils.audit import create_audit_log
 from services.order_service import (
     get_admin_notification_preferences,
     update_admin_notification_preferences,
-    get_unread_notifications,
-    get_all_notifications,
     mark_notification_read,
     mark_all_notifications_read,
     get_unread_count,
+    list_inbox_notifications,
+    dismiss_notification,
+    record_in_app_cta_action,
 )
 import logging
 
@@ -78,30 +81,31 @@ def _admin_id(current_user: dict):
     return current_user.get("portal_user_id") or current_user.get("user_id")
 
 
-def _serialize_notification(n: Dict[str, Any]) -> Dict[str, Any]:
-    """Ensure datetime fields are ISO strings for JSON (bell expects date strings)."""
-    out = dict(n)
-    for key in ("created_at", "read_at"):
-        if key in out and out[key] is not None and hasattr(out[key], "isoformat"):
-            out[key] = out[key].isoformat()
-    return out
+def _actor_role_admin(current_user: dict) -> UserRole:
+    r = current_user.get("role") or ""
+    try:
+        return UserRole(r)
+    except ValueError:
+        return UserRole.ROLE_ADMIN
 
 
 @router.get("/")
 async def list_notifications(
     unread_only: bool = False,
+    inbox_filter: str = Query(
+        "all",
+        description="all | unread | critical | compliance | billing | operations | system",
+    ),
     limit: int = 50,
     current_user: dict = Depends(admin_route_guard),
 ):
-    """List notifications for the admin. recipient_id in DB must match JWT portal_user_id for bell to show them."""
+    """List in-app notifications for the admin (non-dismissed), sorted with unread and critical first."""
     admin_id = _admin_id(current_user)
-    if unread_only:
-        notifications = await get_unread_notifications(admin_id, limit=limit)
-    else:
-        notifications = await get_all_notifications(admin_id, limit=limit)
+    eff_filter = "unread" if unread_only else inbox_filter
+    notifications = await list_inbox_notifications(admin_id, limit=limit, inbox_filter=eff_filter)
     unread_count = await get_unread_count(admin_id)
     return {
-        "notifications": [_serialize_notification(n) for n in notifications],
+        "notifications": notifications,
         "total": len(notifications),
         "unread_count": unread_count,
     }
@@ -116,27 +120,100 @@ async def get_notification_count(
     return {"unread_count": count}
 
 
+class InAppCtaRequest(BaseModel):
+    action_key: str = "primary"
+
+
 @router.post("/{notification_id}/read")
 async def mark_as_read(
     notification_id: str,
+    request: Request,
     current_user: dict = Depends(admin_route_guard),
 ):
-    """Mark a single notification as read."""
-    success = await mark_notification_read(notification_id)
-    
+    """Mark a single notification as read (scoped to current admin)."""
+    aid = _admin_id(current_user)
+    success = await mark_notification_read(notification_id, aid)
+
     if not success:
         raise HTTPException(status_code=404, detail="Notification not found")
-    
+
+    await create_audit_log(
+        action=AuditAction.IN_APP_NOTIFICATION_READ,
+        actor_role=_actor_role_admin(current_user),
+        actor_id=aid,
+        resource_type="in_app_notification",
+        resource_id=notification_id,
+        metadata={"surface": "admin"},
+        ip_address=request.client.host if request.client else None,
+    )
+    return {"success": True}
+
+
+@router.post("/{notification_id}/dismiss")
+async def dismiss_notification_route(
+    notification_id: str,
+    request: Request,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Archive / dismiss a notification for this admin."""
+    aid = _admin_id(current_user)
+    ok = await dismiss_notification(notification_id, aid)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    await create_audit_log(
+        action=AuditAction.IN_APP_NOTIFICATION_DISMISSED,
+        actor_role=_actor_role_admin(current_user),
+        actor_id=aid,
+        resource_type="in_app_notification",
+        resource_id=notification_id,
+        metadata={"surface": "admin"},
+        ip_address=request.client.host if request.client else None,
+    )
+    return {"success": True}
+
+
+@router.post("/{notification_id}/cta")
+async def record_cta_action(
+    notification_id: str,
+    body: InAppCtaRequest,
+    request: Request,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Record that the user took an in-app CTA (read is separate; this is explicit action)."""
+    aid = _admin_id(current_user)
+    ok = await record_in_app_cta_action(notification_id, aid, body.action_key)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    await create_audit_log(
+        action=AuditAction.IN_APP_NOTIFICATION_CTA_ACTION,
+        actor_role=_actor_role_admin(current_user),
+        actor_id=aid,
+        resource_type="in_app_notification",
+        resource_id=notification_id,
+        metadata={"surface": "admin", "action_key": body.action_key},
+        ip_address=request.client.host if request.client else None,
+    )
     return {"success": True}
 
 
 @router.post("/read-all")
 async def mark_all_as_read(
+    request: Request,
     current_user: dict = Depends(admin_route_guard),
 ):
     """Mark all notifications as read."""
-    count = await mark_all_notifications_read(_admin_id(current_user))
-    
+    aid = _admin_id(current_user)
+    count = await mark_all_notifications_read(aid)
+    if count:
+        await create_audit_log(
+            action=AuditAction.IN_APP_NOTIFICATION_READ,
+            actor_role=_actor_role_admin(current_user),
+            actor_id=aid,
+            resource_type="in_app_notification",
+            resource_id="*",
+            metadata={"surface": "admin", "read_all": True, "marked_read": count},
+            ip_address=request.client.host if request.client else None,
+        )
     return {
         "success": True,
         "marked_read": count,

@@ -111,6 +111,7 @@ import DocumentsPage from './pages/DocumentsPage';
 import BulkUploadPage from './pages/BulkUploadPage';
 import ReportsPage from './pages/ReportsPage';
 import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
+import ClientNotificationInboxPage from './pages/ClientNotificationInboxPage';
 import CalendarPage from './pages/CalendarPage';
 import TenantDashboard from './pages/TenantDashboard';
 import TenantPropertiesPage from './pages/TenantPropertiesPage';
@@ -145,6 +146,7 @@ import AdminPendingPaymentsPage from './pages/AdminPendingPaymentsPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminServiceCataloguePage from './pages/AdminServiceCataloguePage';
 import AdminNotificationPreferencesPage from './pages/AdminNotificationPreferencesPage';
+import AdminNotificationInboxPage from './pages/AdminNotificationInboxPage';
 import AdminIntakeSchemaPage from './pages/AdminIntakeSchemaPage';
 import AdminAnalyticsDashboard from './pages/AdminAnalyticsDashboard';
 import AdminExecutiveOverviewPage from './pages/AdminExecutiveOverviewPage';
@@ -351,6 +353,7 @@ function App() {
               <Route index element={<Navigate to="/settings/profile" replace />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="notifications" element={<NotificationPreferencesPage />} />
+              <Route path="inbox" element={<ClientNotificationInboxPage />} />
               <Route path="billing" element={<BillingPage />} />
               <Route path="billing/receipts" element={<Navigate to="/settings/billing?tab=account" replace />} />
               <Route path="branding" element={<EntitlementProtectedRoute requiredFeature="white_label_reports"><BrandingSettingsPage /></EntitlementProtectedRoute>} />
@@ -384,6 +387,7 @@ function App() {
             <Route path="/app/settings" element={<Navigate to="/settings" replace />} />
             <Route path="/app/profile" element={<Navigate to="/settings/profile" replace />} />
             <Route path="/app/notifications" element={<Navigate to="/settings/notifications" replace />} />
+            <Route path="/app/inbox" element={<Navigate to="/settings/inbox" replace />} />
             <Route path="/app/calendar" element={<Navigate to="/calendar" replace />} />
             <Route path="/app/properties/create" element={<Navigate to="/properties/create" replace />} />
             <Route path="/app/properties" element={<Navigate to="/properties" replace />} />
@@ -487,6 +491,14 @@ function App() {
                   <AdminNotificationPreferencesPage />
                 </ProtectedRoute>
               } 
+            />
+            <Route
+              path="/admin/notifications/inbox"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminNotificationInboxPage />
+                </ProtectedRoute>
+              }
             />
             <Route 
               path="/admin/intake-schema" 

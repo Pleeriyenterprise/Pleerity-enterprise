@@ -1,7 +1,7 @@
 """User Profile Routes - Additive Enhancement
 Allows clients to view and update their profile and notification preferences.
 """
-from fastapi import APIRouter, HTTPException, Request, status, File, UploadFile
+from fastapi import APIRouter, HTTPException, Request, status, File, UploadFile, Query
 from fastapi.responses import FileResponse
 from database import database
 from middleware import client_route_guard, require_auth
@@ -9,7 +9,7 @@ from services import admin_communications_service as acs
 from models import AuditAction, UserRole
 from utils.audit import create_audit_log
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from pathlib import Path
 import os
@@ -443,13 +443,36 @@ async def upload_my_avatar(request: Request, file: UploadFile = File(...)):
 # --- In-app notifications & system banners (client communications) ---
 
 
-@router.get("/in-app-notifications")
-async def list_my_in_app_notifications(request: Request, limit: int = 50):
-    """List in-app notifications for the authenticated portal user."""
-    user = await client_route_guard(request)
-    from services.order_service import get_all_notifications
+def _client_actor_role(user: Dict[str, Any]) -> UserRole:
+    r = user.get("role") or ""
+    try:
+        return UserRole(r)
+    except ValueError:
+        return UserRole.ROLE_CLIENT
 
-    items = await get_all_notifications(user["portal_user_id"], limit=min(limit, 100))
+
+class InAppCtaRequest(BaseModel):
+    action_key: str = "primary"
+
+
+@router.get("/in-app-notifications")
+async def list_my_in_app_notifications(
+    request: Request,
+    limit: int = 50,
+    inbox_filter: str = Query(
+        "all",
+        description="all | unread | critical | compliance | billing | operations | system",
+    ),
+):
+    """List in-app notifications for the authenticated portal user (non-dismissed)."""
+    user = await client_route_guard(request)
+    from services.order_service import list_inbox_notifications
+
+    items = await list_inbox_notifications(
+        user["portal_user_id"],
+        limit=min(limit, 200),
+        inbox_filter=inbox_filter,
+    )
     return {"items": items}
 
 
@@ -468,9 +491,81 @@ async def mark_in_app_notification_read(request: Request, notification_id: str):
     user = await client_route_guard(request)
     from services.order_service import mark_notification_read
 
-    ok = await mark_notification_read(notification_id)
+    ok = await mark_notification_read(notification_id, user["portal_user_id"])
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    await create_audit_log(
+        action=AuditAction.IN_APP_NOTIFICATION_READ,
+        actor_role=_client_actor_role(user),
+        actor_id=user["portal_user_id"],
+        client_id=user.get("client_id"),
+        resource_type="in_app_notification",
+        resource_id=notification_id,
+        metadata={"surface": "client_portal"},
+        ip_address=request.client.host if request.client else None,
+    )
+    return {"ok": True}
+
+
+@router.post("/in-app-notifications/read-all")
+async def mark_all_in_app_notifications_read(request: Request):
+    user = await client_route_guard(request)
+    from services.order_service import mark_all_notifications_read
+
+    n = await mark_all_notifications_read(user["portal_user_id"])
+    if n:
+        await create_audit_log(
+            action=AuditAction.IN_APP_NOTIFICATION_READ,
+            actor_role=_client_actor_role(user),
+            actor_id=user["portal_user_id"],
+            client_id=user.get("client_id"),
+            resource_type="in_app_notification",
+            resource_id="*",
+            metadata={"surface": "client_portal", "read_all": True, "marked_read": n},
+            ip_address=request.client.host if request.client else None,
+        )
+    return {"ok": True, "marked_read": n}
+
+
+@router.post("/in-app-notifications/{notification_id}/dismiss")
+async def dismiss_in_app_notification(request: Request, notification_id: str):
+    user = await client_route_guard(request)
+    from services.order_service import dismiss_notification
+
+    ok = await dismiss_notification(notification_id, user["portal_user_id"])
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    await create_audit_log(
+        action=AuditAction.IN_APP_NOTIFICATION_DISMISSED,
+        actor_role=_client_actor_role(user),
+        actor_id=user["portal_user_id"],
+        client_id=user.get("client_id"),
+        resource_type="in_app_notification",
+        resource_id=notification_id,
+        metadata={"surface": "client_portal"},
+        ip_address=request.client.host if request.client else None,
+    )
+    return {"ok": True}
+
+
+@router.post("/in-app-notifications/{notification_id}/cta")
+async def in_app_notification_cta(request: Request, notification_id: str, body: InAppCtaRequest):
+    user = await client_route_guard(request)
+    from services.order_service import record_in_app_cta_action
+
+    ok = await record_in_app_cta_action(notification_id, user["portal_user_id"], body.action_key)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    await create_audit_log(
+        action=AuditAction.IN_APP_NOTIFICATION_CTA_ACTION,
+        actor_role=_client_actor_role(user),
+        actor_id=user["portal_user_id"],
+        client_id=user.get("client_id"),
+        resource_type="in_app_notification",
+        resource_id=notification_id,
+        metadata={"surface": "client_portal", "action_key": body.action_key},
+        ip_address=request.client.host if request.client else None,
+    )
     return {"ok": True}
 
 

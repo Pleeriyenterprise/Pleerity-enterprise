@@ -18,6 +18,8 @@ from models import AuditAction
 from utils.audit import create_audit_log
 from services import work_order_schedule_service as wo_schedule
 from services.work_order_schedule_constants import SCHEDULE_ACTOR_CONTRACTOR
+from routes.contractor_dashboard_summary import build_contractor_dashboard_summary
+from services.contractor_work_order_status_policy import validate_contractor_status_patch
 
 router = APIRouter(prefix="/api/contractor", tags=["contractor-portal"], dependencies=[Depends(contractor_route_guard)])
 
@@ -25,6 +27,16 @@ router = APIRouter(prefix="/api/contractor", tags=["contractor-portal"], depende
 def _ensure_assigned_to_me(work_order: dict, contractor_id: str) -> None:
     if (work_order.get("contractor_id") or "").strip() != (contractor_id or "").strip():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Work order not found or not assigned to you")
+
+
+@router.get("/dashboard-summary")
+async def contractor_dashboard_summary(request: Request):
+    """Aggregated queue counts and earnings for the contractor home dashboard."""
+    user = await contractor_route_guard(request)
+    contractor_id = user.get("contractor_id")
+    if not contractor_id:
+        raise HTTPException(status_code=403, detail="Contractor context required")
+    return await build_contractor_dashboard_summary(contractor_id)
 
 
 @router.get("/work-orders")
@@ -92,16 +104,11 @@ async def update_my_work_order(request: Request, work_order_id: str, body: Updat
     if not wo:
         raise HTTPException(status_code=404, detail="Work order not found")
     _ensure_assigned_to_me(wo, contractor_id)
-    # Contractor may set status to SCHEDULED, IN_PROGRESS, AWAITING_PARTS, COMPLETED (not OPEN/ASSIGNED or unassign)
-    allowed_statuses = (
-        maintenance_service.STATUS_SCHEDULED,
-        maintenance_service.STATUS_IN_PROGRESS,
-        maintenance_service.STATUS_AWAITING_PARTS,
-        maintenance_service.STATUS_COMPLETED,
-    )
     status_val = (body.status or "").strip().upper() if body.status else None
-    if status_val and status_val not in allowed_statuses:
-        raise HTTPException(status_code=400, detail="Contractors can only set status to SCHEDULED, IN_PROGRESS, AWAITING_PARTS, or COMPLETED")
+    if status_val:
+        ok, policy_err = validate_contractor_status_patch(wo.get("status"), status_val)
+        if not ok:
+            raise HTTPException(status_code=400, detail=policy_err or "Invalid status transition")
     updated = await maintenance_service.update_work_order(
         work_order_id=work_order_id,
         status=body.status,

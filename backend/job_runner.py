@@ -9,7 +9,7 @@ import logging
 import traceback
 import uuid
 from datetime import datetime, timezone, timedelta
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -611,13 +611,24 @@ async def run_lead_sla_check():
 
 async def run_checklist_nurture_processing():
     """Daily: send next checklist nurture email (2–5) to COMPLIANCE_CHECKLIST leads when due."""
+    from services.job_run_service import OUTCOME_FAILED
+
     try:
         from services.lead_nurture_service import process_checklist_nurture_queue
         sent = await process_checklist_nurture_queue()
         return {"message": f"Checklist nurture: {sent} email(s) sent", "count": sent}
     except Exception as e:
-        logger.error(f"Checklist nurture processing failed: {e}")
-        raise
+        logger.exception(
+            "checklist_nurture_processing failed: structured_error job_id=checklist_nurture_processing error=%s",
+            e,
+        )
+        return {
+            "message": f"Checklist nurture failed: {e}",
+            "count": 0,
+            "outcome_status": OUTCOME_FAILED,
+            "error_message": str(e),
+            "error_code": type(e).__name__,
+        }
 
 
 async def run_onboarding_sequence_processing():
@@ -1099,50 +1110,158 @@ async def run_work_order_contractor_confirmation_timeout_job():
 
 HEARTBEAT_COLLECTION = "scheduler_heartbeat"
 HEARTBEAT_DOC_ID = "default"
+# Round-robin cursor for scheduled compliance recalc batch (avoids always hitting the same N properties).
+COMPLIANCE_BATCH_POINTER_DOC_ID = "compliance_recalc_batch_pointer"
+
+
+async def _fetch_properties_batch_round_robin(db, limit: int) -> List[Dict[str, Any]]:
+    """
+    Return up to ``limit`` properties using a persistent cursor on ``property_id`` (lexicographic ring).
+    Stores state in ``scheduler_heartbeat`` under COMPLIANCE_BATCH_POINTER_DOC_ID.
+    """
+    coll = db[HEARTBEAT_COLLECTION]
+    ptr_doc = await coll.find_one({"_id": COMPLIANCE_BATCH_POINTER_DOC_ID}, {"_id": 0, "after_property_id": 1})
+    raw_after = (ptr_doc or {}).get("after_property_id")
+    after = (str(raw_after).strip() if raw_after else "") or None
+
+    proj = {"_id": 0, "property_id": 1, "client_id": 1}
+    batch: List[Dict[str, Any]] = []
+
+    q1: Dict[str, Any] = {"property_id": {"$gt": after}} if after else {}
+    async for prop in db.properties.find(q1, proj).sort("property_id", 1).limit(limit):
+        batch.append(prop)
+
+    need = limit - len(batch)
+    # Wrap only when continuing from a previous cursor; if ``after`` is None, a short batch means
+    # the portfolio has fewer than ``limit`` properties — do not re-query from the start (duplicates).
+    if need > 0 and after:
+        q2: Dict[str, Any] = {"property_id": {"$lte": after}}
+        async for prop in db.properties.find(q2, proj).sort("property_id", 1).limit(need):
+            batch.append(prop)
+
+    next_after: Optional[str] = None
+    if batch:
+        last_id = batch[-1].get("property_id")
+        next_after = str(last_id).strip() if last_id else None
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await coll.update_one(
+        {"_id": COMPLIANCE_BATCH_POINTER_DOC_ID},
+        {"$set": {"after_property_id": next_after, "updated_at": now_iso}},
+        upsert=True,
+    )
+    return batch
 
 
 async def run_compliance_recalc_enqueue_property(property_id: Optional[str] = None, **_kwargs):
-    """Admin: enqueue a single-property compliance recalc (worker processes queue)."""
+    """
+    Enqueue compliance recalc for the worker queue.
+
+    - Manual (admin): pass ``property_id`` — enqueues that property (admin trigger).
+    - Scheduled: omit ``property_id`` — enqueues up to COMPLIANCE_RECALC_SCHEDULED_BATCH_LIMIT
+      properties per run with a daily dedupe correlation. Properties are chosen in **round-robin**
+      order on ``property_id`` (cursor persisted in ``scheduler_heartbeat``).
+    """
+    import os
+
     from database import database
     from services.compliance_recalc_queue import (
         ACTOR_ADMIN,
+        ACTOR_SYSTEM,
         TRIGGER_ADMIN_MANUAL_JOB,
+        TRIGGER_SCHEDULED_PROPERTY_BATCH,
         enqueue_compliance_recalc,
     )
     from services.job_run_service import OUTCOME_FAILED
 
     pid = str(property_id).strip() if property_id else ""
-    if not pid:
-        return {
-            "message": "property_id is required",
-            "count": 0,
-            "outcome_status": OUTCOME_FAILED,
-            "error_message": "missing property_id",
-        }
     db = database.get_db()
-    prop = await db.properties.find_one({"property_id": pid}, {"_id": 0, "client_id": 1})
-    if not prop or not prop.get("client_id"):
+
+    if pid:
+        prop = await db.properties.find_one({"property_id": pid}, {"_id": 0, "client_id": 1})
+        if not prop or not prop.get("client_id"):
+            return {
+                "message": f"Property not found: {pid}",
+                "count": 0,
+                "outcome_status": OUTCOME_FAILED,
+                "error_message": "property not found",
+            }
+        cid = prop["client_id"]
+        corr = f"{TRIGGER_ADMIN_MANUAL_JOB}:{pid}:{uuid.uuid4().hex[:12]}"
+        enq = await enqueue_compliance_recalc(
+            property_id=pid,
+            client_id=cid,
+            trigger_reason=TRIGGER_ADMIN_MANUAL_JOB,
+            actor_type=ACTOR_ADMIN,
+            actor_id=None,
+            correlation_id=corr,
+        )
         return {
-            "message": f"Property not found: {pid}",
+            "message": "Compliance recalc enqueued" if enq else "Recalc already queued (duplicate correlation window)",
+            "count": 1 if enq else 0,
+            "outcome_metrics": {"enqueued": enq, "property_id": pid, "client_id": cid},
+        }
+
+    # Scheduled batch: one enqueue per property per calendar day (unique correlation).
+    try:
+        limit = int(os.environ.get("COMPLIANCE_RECALC_SCHEDULED_BATCH_LIMIT", "500"))
+    except ValueError:
+        limit = 500
+    limit = max(1, min(limit, 5000))
+
+    now = datetime.now(timezone.utc)
+    date_str = now.strftime("%Y-%m-%d")
+    enqueued = 0
+    scanned = 0
+    try:
+        total_props = await db.properties.count_documents({})
+        props_batch = await _fetch_properties_batch_round_robin(db, limit)
+        for prop in props_batch:
+            scanned += 1
+            pr = prop.get("property_id")
+            cid = prop.get("client_id")
+            if not pr or not cid:
+                continue
+            corr = f"{TRIGGER_SCHEDULED_PROPERTY_BATCH}:{pr}:{date_str}"
+            ok = await enqueue_compliance_recalc(
+                property_id=str(pr),
+                client_id=str(cid),
+                trigger_reason=TRIGGER_SCHEDULED_PROPERTY_BATCH,
+                actor_type=ACTOR_SYSTEM,
+                actor_id=None,
+                correlation_id=corr,
+            )
+            if ok:
+                enqueued += 1
+        msg = (
+            f"Scheduled compliance recalc enqueue: {enqueued} newly enqueued "
+            f"({scanned} properties in batch, limit={limit}, portfolio={total_props}, round-robin)"
+        )
+        logger.info("compliance_recalc_enqueue_property: %s", msg)
+        return {
+            "message": msg,
+            "count": enqueued,
+            "outcome_metrics": {
+                "enqueued": enqueued,
+                "scanned": scanned,
+                "limit": limit,
+                "batch_date": date_str,
+                "total_properties": total_props,
+                "round_robin": True,
+            },
+        }
+    except Exception as e:
+        logger.exception(
+            "compliance_recalc_enqueue_property batch failed: job_id=compliance_recalc_enqueue_property error=%s",
+            e,
+        )
+        return {
+            "message": f"Scheduled enqueue batch failed: {e}",
             "count": 0,
             "outcome_status": OUTCOME_FAILED,
-            "error_message": "property not found",
+            "error_message": str(e),
+            "error_code": type(e).__name__,
         }
-    cid = prop["client_id"]
-    corr = f"{TRIGGER_ADMIN_MANUAL_JOB}:{pid}:{uuid.uuid4().hex[:12]}"
-    enq = await enqueue_compliance_recalc(
-        property_id=pid,
-        client_id=cid,
-        trigger_reason=TRIGGER_ADMIN_MANUAL_JOB,
-        actor_type=ACTOR_ADMIN,
-        actor_id=None,
-        correlation_id=corr,
-    )
-    return {
-        "message": "Compliance recalc enqueued" if enq else "Recalc already queued (duplicate correlation window)",
-        "count": 1 if enq else 0,
-        "outcome_metrics": {"enqueued": enq, "property_id": pid, "client_id": cid},
-    }
 
 
 async def run_delivery_reconciliation():

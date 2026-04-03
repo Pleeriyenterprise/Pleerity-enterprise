@@ -3,7 +3,7 @@
  * Provides a document library view for clients to access their deliverables.
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FileText, Download, Clock, CheckCircle2, AlertCircle,
   Package, Eye, RefreshCw, Search, Filter, Calendar
@@ -222,6 +222,7 @@ export default function ClientOrdersPage() {
   const [documents, setDocuments] = useState([]);
   const [stats, setStats] = useState({ total: 0, action_required: 0 });
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -246,6 +247,11 @@ export default function ClientOrdersPage() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  useEffect(() => {
+    const oid = searchParams.get('order');
+    if (oid) setSearchQuery(oid);
+  }, [searchParams]);
 
   const handleViewDocuments = async (order) => {
     try {

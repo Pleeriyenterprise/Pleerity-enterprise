@@ -35,7 +35,9 @@ import {
   TrendingUp,
   ClipboardCheck,
   ListTodo,
+  Inbox,
 } from 'lucide-react';
+import { resolveNotificationTarget } from '../utils/notificationDeepLink';
 
 // Operations sub-items (feature-gated). Shown under Operations group; no standalone Maintenance/Contractors.
 const OPERATIONS_CHILDREN = [
@@ -68,6 +70,7 @@ const TENANT_PORTAL_TABS = [
 
 const SETTINGS_SUB = [
   { path: '/settings/profile', label: 'Profile', icon: User },
+  { path: '/settings/inbox', label: 'Inbox', icon: Inbox },
   { path: '/settings/notifications', label: 'Notifications', icon: Bell },
   { path: '/settings/billing', label: 'Billing', icon: CreditCard },
 ];
@@ -94,12 +97,14 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const loadInAppNotifications = () => {
     if (isTenant || !isClient) return;
     setNotifLoading(true);
-    clientAPI
-      .getInAppNotifications({ limit: 50 })
-      .then((r) => {
-        const items = r.data.items || [];
-        setNotifItems(items);
-        setNotifUnreadCount(items.filter((n) => !n.is_read).length);
+    Promise.all([
+      clientAPI.getInAppNotifications({ limit: 30, inbox_filter: 'all' }),
+      clientAPI.getInAppNotificationsUnreadCount(),
+    ])
+      .then(([listRes, countRes]) => {
+        setNotifItems(listRes.data.items || []);
+        const n = countRes.data?.unread_count;
+        setNotifUnreadCount(typeof n === 'number' ? n : 0);
       })
       .catch(() => {})
       .finally(() => setNotifLoading(false));
@@ -340,11 +345,23 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                         onClick={() => setNotifOpen(false)}
                       />
                       <div className="fixed z-50 right-2 top-[3.5rem] w-[min(100vw-1rem,24rem)] max-h-[min(70vh,28rem)] overflow-hidden rounded-lg border border-gray-200 bg-white text-gray-900 shadow-xl flex flex-col">
-                        <div className="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
+                        <div className="px-3 py-2 border-b border-gray-100 flex items-center justify-between gap-2">
                           <span className="text-sm font-semibold">Notifications</span>
-                          <button type="button" className="text-xs text-electric-teal hover:underline" onClick={() => setNotifOpen(false)}>
-                            Close
-                          </button>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              className="text-xs text-electric-teal hover:underline"
+                              onClick={() => {
+                                setNotifOpen(false);
+                                navigate('/settings/inbox');
+                              }}
+                            >
+                              View all
+                            </button>
+                            <button type="button" className="text-xs text-gray-500 hover:underline" onClick={() => setNotifOpen(false)}>
+                              Close
+                            </button>
+                          </div>
                         </div>
                         <div className="overflow-y-auto flex-1">
                           {notifLoading && <p className="p-3 text-sm text-gray-500">Loading…</p>}
@@ -372,10 +389,9 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                                   } catch (_) {
                                     /* ignore */
                                   }
-                                  if (n.link) {
-                                    if (/^https?:\/\//i.test(n.link)) window.open(n.link, '_blank', 'noopener,noreferrer');
-                                    else navigate(n.link.startsWith('/') ? n.link : `/${n.link}`);
-                                  }
+                                  const { href, external } = resolveNotificationTarget(n, false);
+                                  if (external) window.open(href, '_blank', 'noopener,noreferrer');
+                                  else navigate(href);
                                   setNotifOpen(false);
                                 }}
                               >

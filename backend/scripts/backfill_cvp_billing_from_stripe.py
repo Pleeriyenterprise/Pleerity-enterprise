@@ -27,10 +27,7 @@ import stripe  # noqa: E402
 
 from database import database  # noqa: E402
 from services.billing_line_normalization import breakdown_from_invoice_lines  # noqa: E402
-from services.billing_period_utils import (  # noqa: E402
-    period_end_from_stripe_unix,
-    period_start_from_stripe_unix,
-)
+from services.billing_stripe_sync_service import sync_client_billing_from_stripe_subscription_id  # noqa: E402
 from services.plan_registry import plan_registry  # noqa: E402
 
 
@@ -39,29 +36,23 @@ async def backfill_one(client_id: str, stripe_sub_id: str, plan_code_str: Option
     if not stripe.api_key:
         raise RuntimeError("STRIPE_SECRET_KEY or STRIPE_API_KEY is not set")
 
-    sub = stripe.Subscription.retrieve(stripe_sub_id, expand=["items.data.price"])
-    sub_d = sub.to_dict() if hasattr(sub, "to_dict") else dict(sub)
+    dry = (os.getenv("DRY_RUN") or "").strip() in ("1", "true", "yes")
+    summary: Dict[str, Any] = {}
+    if not dry:
+        summary = await sync_client_billing_from_stripe_subscription_id(
+            client_id,
+            stripe_sub_id,
+            event_source="backfill_cvp_billing_from_stripe",
+            update_plan=True,
+        )
 
     set_doc: Dict[str, Any] = {"updated_at": datetime.now(timezone.utc)}
-    cpe = period_end_from_stripe_unix(sub_d.get("current_period_end"))
-    cps = period_start_from_stripe_unix(sub_d.get("current_period_start"))
-    anc = period_start_from_stripe_unix(sub_d.get("billing_cycle_anchor"))
-    if cpe:
-        set_doc["current_period_end"] = cpe
-    if cps:
-        set_doc["current_period_start"] = cps
-    if anc:
-        set_doc["billing_cycle_anchor"] = anc
-    for item in (sub_d.get("items") or {}).get("data") or []:
-        price = item.get("price") or {}
-        if isinstance(price, dict) and price.get("recurring") is not None and price.get("unit_amount") is not None:
-            set_doc["subscription_recurring_amount_pence"] = int(price["unit_amount"])
-            break
-
+    sub = stripe.Subscription.retrieve(stripe_sub_id, expand=["items.data.price"])
+    sub_d = sub.to_dict() if hasattr(sub, "to_dict") else dict(sub)
     cust_id = sub_d.get("customer")
     if isinstance(cust_id, dict):
         cust_id = cust_id.get("id")
-    if cust_id and plan_code_str:
+    if cust_id and plan_code_str and not dry:
         try:
             plan_enum = plan_registry.resolve_plan_code(plan_code_str)
             invs = stripe.Invoice.list(customer=cust_id, status="paid", limit=1, expand=["data.lines.data.price"])
@@ -74,13 +65,11 @@ async def backfill_one(client_id: str, stripe_sub_id: str, plan_code_str: Option
                     sp = sum(x["amount"] for x in br if x.get("type") == "subscription")
                     if sp:
                         set_doc["subscription_amount_pence"] = sp
+                    await database.get_db().client_billing.update_one({"client_id": client_id}, {"$set": set_doc})
         except Exception:
             pass
 
-    dry = (os.getenv("DRY_RUN") or "").strip() in ("1", "true", "yes")
-    if not dry:
-        await database.get_db().client_billing.update_one({"client_id": client_id}, {"$set": set_doc})
-    return {"client_id": client_id, "dry_run": dry, "fields": list(set_doc.keys())}
+    return {"client_id": client_id, "dry_run": dry, "sync_summary": summary, "invoice_enriched": bool(set_doc.get("last_invoice_billing_breakdown"))}
 
 
 async def main() -> None:
