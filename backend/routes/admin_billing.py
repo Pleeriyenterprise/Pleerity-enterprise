@@ -337,6 +337,8 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
         stripe_svc = StripeService()
         sub_status = await stripe_svc.get_subscription_status(client_id, client_facing=False)
         snapshot["subscription_lifecycle"] = sub_status
+        snapshot["billing_last_synced_at"] = sub_status.get("billing_last_synced_at")
+        snapshot["billing_sync_state"] = sub_status.get("billing_sync_state")
 
         if sub_status.get("has_subscription"):
             cpe_iso = sub_status.get("current_period_end")
@@ -775,10 +777,12 @@ async def sync_client_billing(request: Request, client_id: str):
             active_subscription = subscriptions.data[0]
         
         # Build billing update
+        now_sync = datetime.now(timezone.utc)
         billing_update = {
             "client_id": client_id,
             "stripe_customer_id": stripe_customer_id,
-            "updated_at": datetime.now(timezone.utc),
+            "updated_at": now_sync,
+            "billing_last_synced_at": now_sync,
         }
         
         new_plan_code = None
@@ -807,6 +811,7 @@ async def sync_client_billing(request: Request, client_id: str):
                 "cancel_at_period_end": active_subscription.cancel_at_period_end,
                 "current_period_start": datetime.fromtimestamp(active_subscription.current_period_start, tz=timezone.utc),
                 "current_period_end": datetime.fromtimestamp(active_subscription.current_period_end, tz=timezone.utc),
+                "billing_sync_state": "ok",
             })
             
             # Get invoice info
@@ -827,6 +832,7 @@ async def sync_client_billing(request: Request, client_id: str):
             billing_update.update({
                 "subscription_status": "NONE",
                 "entitlement_status": EntitlementStatus.DISABLED.value,
+                "billing_sync_state": "no_subscription",
             })
         
         # Upsert billing record

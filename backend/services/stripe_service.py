@@ -37,6 +37,18 @@ logger = logging.getLogger(__name__)
 stripe.api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
 
 
+def _billing_timestamp_iso(val: Any) -> Optional[str]:
+    """Normalize Mongo-stored billing sync timestamps for JSON."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        dt = val if val.tzinfo else val.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).isoformat()
+    if isinstance(val, str) and val.strip():
+        return val.strip()
+    return None
+
+
 class StripeService:
     """Stripe billing operations service."""
     
@@ -338,6 +350,17 @@ class StripeService:
                 "has_subscription": False,
                 "status": "NONE",
                 "entitlement_status": EntitlementStatus.DISABLED.value,
+                "subscription_status": None,
+                "current_period_end": None,
+                "current_period_start": None,
+                "next_renewal_date": None,
+                "billing_lifecycle_state": None,
+                "cancel_at_period_end": False,
+                "grace_period_ends_at": None,
+                "payment_failed_at": None,
+                "charge_automatically": None,
+                "billing_last_synced_at": None,
+                "billing_sync_state": "no_subscription",
             }
 
         # Legacy rows without lifecycle: one-time reconcile (no version bump)
@@ -359,6 +382,7 @@ class StripeService:
         stripe_sub_id = billing.get("stripe_subscription_id")
         charge_automatically: Optional[bool] = None
         monthly_price_pence: Optional[int] = None
+        stripe_refresh_failed = False
         if stripe_sub_id and (stripe.api_key or "").strip():
             try:
                 sub = stripe.Subscription.retrieve(
@@ -380,8 +404,11 @@ class StripeService:
                         if ua is not None:
                             monthly_price_pence = int(ua)
                             break
+                now_sync = datetime.now(timezone.utc)
                 set_fields: Dict[str, Any] = {
-                    "updated_at": datetime.now(timezone.utc),
+                    "updated_at": now_sync,
+                    "billing_last_synced_at": now_sync,
+                    "billing_sync_state": "ok",
                 }
                 if fresh_end:
                     set_fields["current_period_end"] = fresh_end
@@ -393,12 +420,18 @@ class StripeService:
                     set_fields["billing_cycle_anchor"] = anchor_dt
                 if monthly_price_pence is not None:
                     set_fields["subscription_recurring_amount_pence"] = monthly_price_pence
-                if len(set_fields) > 1:
-                    await db.client_billing.update_one(
-                        {"client_id": client_id},
-                        {"$set": set_fields},
-                    )
+                await db.client_billing.update_one(
+                    {"client_id": client_id},
+                    {"$set": set_fields},
+                )
+                billing["billing_last_synced_at"] = now_sync
+                billing["billing_sync_state"] = "ok"
+                if fresh_end is not None:
+                    billing["current_period_end"] = fresh_end
+                if fresh_start is not None:
+                    billing["current_period_start"] = fresh_start
             except stripe.error.StripeError as e:
+                stripe_refresh_failed = True
                 logger.warning(
                     "get_subscription_status: could not refresh subscription from Stripe client_id=%s: %s",
                     client_id,
@@ -438,6 +471,18 @@ class StripeService:
             plan_registry.get_property_limit_by_string(plan_code_str) if plan_code_str else 0
         )
 
+        billing_last_iso = _billing_timestamp_iso(billing.get("billing_last_synced_at"))
+        if cpe_out:
+            api_billing_sync_state = "ok"
+        elif not stripe_sub_id:
+            api_billing_sync_state = "no_subscription"
+        elif stripe_refresh_failed:
+            api_billing_sync_state = "stripe_error"
+        elif sub_u in ("ACTIVE", "TRIALING", "PAST_DUE", "UNPAID"):
+            api_billing_sync_state = "missing_period_end"
+        else:
+            api_billing_sync_state = "unknown"
+
         if client_facing:
             return build_client_billing_payload(
                 has_subscription=True,
@@ -449,6 +494,7 @@ class StripeService:
                 cancel_at_period_end=bool(billing.get("cancel_at_period_end", False)),
                 next_renewal_date_iso=cpe_out,
                 current_period_start_iso=cps_out,
+                current_period_end_iso=cpe_out,
                 monthly_price_pence=monthly_price_pence,
                 setup_fee_pence=setup_pence,
                 setup_fee_paid=onboarding_paid,
@@ -458,6 +504,8 @@ class StripeService:
                 grace_period_ends_at_iso=g_end.isoformat() if g_end else None,
                 payment_failed_at_iso=pfail.isoformat() if pfail else None,
                 charge_automatically=charge_automatically,
+                billing_last_synced_at_iso=billing_last_iso,
+                billing_sync_state=api_billing_sync_state,
                 currency=str((plan_def or {}).get("currency") or "gbp"),
             )
 
@@ -470,11 +518,14 @@ class StripeService:
             "billing_lifecycle_state": lifecycle_out,
             "current_period_end": cpe_out,
             "current_period_start": cps_out,
+            "next_renewal_date": cpe_out,
             "cancel_at_period_end": billing.get("cancel_at_period_end", False),
             "onboarding_fee_paid": onboarding_paid,
             "grace_period_ends_at": g_end.isoformat() if g_end else None,
             "payment_failed_at": pfail.isoformat() if pfail else None,
             "charge_automatically": charge_automatically,
+            "billing_last_synced_at": billing_last_iso,
+            "billing_sync_state": api_billing_sync_state,
         }
     
     async def cancel_subscription(

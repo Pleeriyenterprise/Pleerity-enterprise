@@ -186,7 +186,7 @@ export default function PropertyOperatingHub({
         <section className="min-w-0" aria-labelledby="property-risk-hub-heading">
           <h2 id="property-risk-hub-heading" className="text-lg font-semibold text-midnight-blue border-b border-gray-200 pb-2 mb-3 flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-            {PORTAL_COPY.riskSignal}s (active)
+            {PORTAL_COPY.riskSignalsActiveHeading}
           </h2>
           <ul className="space-y-3">
             {(riskSignalsData.signals || []).filter((s) => (s.status || 'active') === 'active').slice(0, 2).map((s) => {

@@ -9,7 +9,10 @@ export const PORTAL_COPY = {
   maintenanceJob: 'Maintenance job',
   workOrders: 'Work orders',
   maintenanceIssue: 'Maintenance issue',
+  /** Plural label — use this instead of `{singular}s` in JSX to avoid parse/TDZ edge cases. */
+  maintenanceIssues: 'Maintenance issues',
   riskSignal: 'Risk signal',
+  riskSignalsActiveHeading: 'Risk signals (active)',
   uploadDocument: 'Upload document',
   viewDocuments: 'View documents',
   startRenewal: 'Start renewal',
@@ -21,6 +24,7 @@ export const PORTAL_COPY = {
   viewDetails: 'View details',
   viewProperty: 'View property',
   trackedItem: 'tracked item',
+  trackedItems: 'tracked items',
   addWorkOrder: 'Add work order',
   upgradeForWorkOrders: 'Upgrade for work orders',
   viewReports: 'View reports',

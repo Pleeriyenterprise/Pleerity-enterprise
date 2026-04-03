@@ -819,8 +819,24 @@ const AdminBillingPage = () => {
                         <p className="text-gray-500">Next billing / period end</p>
                         <p className="font-medium">
                           {formatAdminDate(
-                            billingSnapshot.subscription_lifecycle?.current_period_end ||
+                            billingSnapshot.subscription_lifecycle?.next_renewal_date ||
+                              billingSnapshot.subscription_lifecycle?.current_period_end ||
                               billingSnapshot.next_billing_date
+                          ) || '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Billing sync state</p>
+                        <p className="font-mono text-xs">
+                          {billingSnapshot.billing_sync_state || billingSnapshot.subscription_lifecycle?.billing_sync_state || '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Last billing sync (API)</p>
+                        <p className="font-medium text-xs">
+                          {formatAdminDate(
+                            billingSnapshot.billing_last_synced_at ||
+                              billingSnapshot.subscription_lifecycle?.billing_last_synced_at
                           ) || '—'}
                         </p>
                       </div>
@@ -893,7 +909,17 @@ const AdminBillingPage = () => {
                               </div>
                               <div>
                                 <p className="text-gray-500">Period end (API)</p>
-                                <p className="font-medium">{formatAdminDate(sl.current_period_end) || '—'}</p>
+                                <p className="font-medium">
+                                  {formatAdminDate(sl.next_renewal_date || sl.current_period_end) || '—'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">billing_sync_state</p>
+                                <p className="font-mono text-xs">{sl.billing_sync_state || '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">billing_last_synced_at</p>
+                                <p className="font-medium text-xs">{formatAdminDate(sl.billing_last_synced_at) || '—'}</p>
                               </div>
                               <div>
                                 <p className="text-gray-500">Grace ends</p>

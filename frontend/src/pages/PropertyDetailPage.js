@@ -348,6 +348,41 @@ export default function PropertyDetailPage() {
       .finally(() => setComplianceExplainabilityLoading(false));
   }, [propertyId]);
 
+  const loadTimeline = useCallback((appendCursor = null) => {
+    if (!propertyId) return;
+    setTimelineError(null);
+    if (!appendCursor) setTimelineLoading(true);
+    const range = timelineFilters.dateRange;
+    const to = new Date();
+    const from = new Date();
+    if (range === '7') from.setDate(from.getDate() - 7);
+    else if (range === '90') from.setDate(from.getDate() - 90);
+    else from.setDate(from.getDate() - 30);
+    const params = {
+      limit: 50,
+      from_date: from.toISOString().slice(0, 10),
+      to_date: to.toISOString().slice(0, 10),
+    };
+    if (timelineFilters.category) params.category = timelineFilters.category;
+    if (timelineFilters.actor_type) params.actor_type = timelineFilters.actor_type;
+    if (appendCursor) params.cursor = appendCursor;
+    clientAPI.getPropertyTimeline(propertyId, params)
+      .then((res) => {
+        const items = res.data?.items || [];
+        if (appendCursor) {
+          setTimelineItems((prev) => [...prev, ...items]);
+        } else {
+          setTimelineItems(items);
+        }
+        setTimelineNextCursor(res.data?.next_cursor || null);
+      })
+      .catch((err) => {
+        setTimelineError(err?.response?.data?.detail || 'Failed to load timeline');
+        if (!appendCursor) setTimelineItems([]);
+      })
+      .finally(() => setTimelineLoading(false));
+  }, [propertyId, timelineFilters.category, timelineFilters.dateRange, timelineFilters.actor_type]);
+
   // Keep property-level compliance/risk views in sync with Action -> Outcome events from other screens.
   useEffect(() => {
     if (!propertyId) return undefined;
@@ -442,41 +477,6 @@ export default function PropertyDetailPage() {
   useEffect(() => {
     if (propertyId && activeTab === TAB_EVIDENCE) loadEvidence();
   }, [propertyId, activeTab, loadEvidence]);
-
-  const loadTimeline = useCallback((appendCursor = null) => {
-    if (!propertyId) return;
-    setTimelineError(null);
-    if (!appendCursor) setTimelineLoading(true);
-    const range = timelineFilters.dateRange;
-    const to = new Date();
-    const from = new Date();
-    if (range === '7') from.setDate(from.getDate() - 7);
-    else if (range === '90') from.setDate(from.getDate() - 90);
-    else from.setDate(from.getDate() - 30);
-    const params = {
-      limit: 50,
-      from_date: from.toISOString().slice(0, 10),
-      to_date: to.toISOString().slice(0, 10),
-    };
-    if (timelineFilters.category) params.category = timelineFilters.category;
-    if (timelineFilters.actor_type) params.actor_type = timelineFilters.actor_type;
-    if (appendCursor) params.cursor = appendCursor;
-    clientAPI.getPropertyTimeline(propertyId, params)
-      .then((res) => {
-        const items = res.data?.items || [];
-        if (appendCursor) {
-          setTimelineItems((prev) => [...prev, ...items]);
-        } else {
-          setTimelineItems(items);
-        }
-        setTimelineNextCursor(res.data?.next_cursor || null);
-      })
-      .catch((err) => {
-        setTimelineError(err?.response?.data?.detail || 'Failed to load timeline');
-        if (!appendCursor) setTimelineItems([]);
-      })
-      .finally(() => setTimelineLoading(false));
-  }, [propertyId, timelineFilters.category, timelineFilters.dateRange, timelineFilters.actor_type]);
 
   const loadOperatingFeed = useCallback(() => {
     if (!propertyId) return;
@@ -1564,7 +1564,7 @@ export default function PropertyDetailPage() {
           {/* Issues queue */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">{PORTAL_COPY.maintenanceIssue}s</CardTitle>
+              <CardTitle className="text-base">{PORTAL_COPY.maintenanceIssues}</CardTitle>
               <PortalFilterStack className="mt-2">
                 <select value={maintenanceIssueFilter.status} onChange={(e) => setMaintenanceIssueFilter((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-2 text-sm min-h-11 w-full md:w-auto">
                   <option value="">All statuses</option><option value="new">New</option><option value="triaged">Triaged</option><option value="ready_for_work_order">{issueStatusLabel('ready_for_work_order')}</option><option value="closed">Closed</option>

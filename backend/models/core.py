@@ -57,6 +57,7 @@ class ServiceCode(str, Enum):
 
 class UserRole(str, Enum):
     ROLE_OWNER = "ROLE_OWNER"  # System owner; bypasses billing/plan gating; cannot be deleted/downgraded
+    SYSTEM = "SYSTEM"  # Webhooks, scheduled jobs — not a portal login role
     ROLE_CLIENT = "ROLE_CLIENT"
     ROLE_CLIENT_ADMIN = "ROLE_CLIENT_ADMIN"
     ROLE_ADMIN = "ROLE_ADMIN"

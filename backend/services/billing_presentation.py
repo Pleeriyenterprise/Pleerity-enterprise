@@ -55,6 +55,7 @@ def renewal_customer_copy(
     subscription_status: Optional[str],
     cancel_at_period_end: bool,
     next_renewal_display: Optional[str],
+    billing_sync_state: str = "unknown",
 ) -> str:
     if not has_subscription:
         return "No active subscription is on file."
@@ -64,6 +65,17 @@ def renewal_customer_copy(
             return "This subscription has ended."
         return "Renewal information is not available for this subscription state."
     if not next_renewal_display:
+        bss = (billing_sync_state or "unknown").lower()
+        if bss == "stripe_error":
+            return (
+                "We could not reach Stripe to refresh your next renewal date. "
+                "Your subscription remains active — try again in a few minutes or use the billing portal."
+            )
+        if bss in ("missing_period_end", "stale"):
+            return (
+                "Your next renewal date is not on file yet. "
+                "If this continues, contact support or ask an admin to run a billing sync from Stripe."
+            )
         return "We are syncing your next renewal date from Stripe; refresh in a moment."
     if cancel_at_period_end:
         return f"Renews until {next_renewal_display}."
@@ -100,6 +112,7 @@ def build_client_billing_payload(
     cancel_at_period_end: bool,
     next_renewal_date_iso: Optional[str],
     current_period_start_iso: Optional[str],
+    current_period_end_iso: Optional[str] = None,
     monthly_price_pence: Optional[int],
     setup_fee_pence: Optional[int],
     setup_fee_paid: bool,
@@ -109,6 +122,8 @@ def build_client_billing_payload(
     grace_period_ends_at_iso: Optional[str],
     payment_failed_at_iso: Optional[str],
     charge_automatically: Optional[bool],
+    billing_last_synced_at_iso: Optional[str] = None,
+    billing_sync_state: str = "unknown",
     currency: str = "gbp",
 ) -> Dict[str, Any]:
     """
@@ -144,20 +159,27 @@ def build_client_billing_payload(
             "grace_period_ends_at": None,
             "payment_failed_at": None,
             "charge_automatically": None,
+            "subscription_status": None,
+            "current_period_end": None,
+            "billing_last_synced_at": None,
+            "billing_sync_state": "no_subscription",
             "renewal_customer_copy": renewal_customer_copy(
                 has_subscription=False,
                 subscription_status=None,
                 cancel_at_period_end=False,
                 next_renewal_display=None,
+                billing_sync_state="no_subscription",
             ),
             "renewal_soon": False,
             "currency": cur,
         }
 
+    cpe_iso = current_period_end_iso if current_period_end_iso is not None else next_renewal_date_iso
+
     period_end_dt: Optional[datetime] = None
-    if next_renewal_date_iso:
+    if cpe_iso:
         try:
-            period_end_dt = datetime.fromisoformat(next_renewal_date_iso.replace("Z", "+00:00"))
+            period_end_dt = datetime.fromisoformat(cpe_iso.replace("Z", "+00:00"))
         except (ValueError, TypeError):
             period_end_dt = None
 
@@ -190,10 +212,14 @@ def build_client_billing_payload(
             subscription_status=subscription_status,
             billing_lifecycle_state=billing_lifecycle_state,
         ),
-        "next_renewal_date": next_renewal_date_iso,
+        "subscription_status": _upper(subscription_status) or None,
+        "next_renewal_date": cpe_iso,
         "next_renewal_date_display": renewal_display,
         "current_period_start": current_period_start_iso,
+        "current_period_end": cpe_iso,
         "cancel_at_period_end": cancel_at_period_end,
+        "billing_last_synced_at": billing_last_synced_at_iso,
+        "billing_sync_state": billing_sync_state,
         "monthly_price_pence": monthly_price_pence,
         "monthly_price_display": money_pence(monthly_price_pence),
         "setup_fee_pence": setup_fee_pence if setup_fee_pence and setup_fee_pence > 0 else None,
@@ -209,6 +235,7 @@ def build_client_billing_payload(
             subscription_status=subscription_status,
             cancel_at_period_end=cancel_at_period_end,
             next_renewal_display=renewal_display,
+            billing_sync_state=billing_sync_state,
         ),
         "renewal_soon": renewal_soon_flag(
             has_subscription=has_subscription,

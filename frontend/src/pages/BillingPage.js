@@ -227,6 +227,43 @@ function formatRenewalDisplay(isoOrDate) {
   });
 }
 
+function formatLastSyncedEnGb(isoOrDate) {
+  if (isoOrDate == null || isoOrDate === '') return null;
+  const t = new Date(isoOrDate).getTime();
+  if (Number.isNaN(t)) return null;
+  return new Date(isoOrDate).toLocaleString('en-GB');
+}
+
+/** Canonical period end from billing status API (display + ISO aliases). */
+function nextRenewalPrimaryDisplay(bs) {
+  if (!bs?.has_subscription) return null;
+  return (
+    bs.next_renewal_date_display ||
+    formatRenewalDisplay(bs.next_renewal_date) ||
+    formatRenewalDisplay(bs.current_period_end) ||
+    null
+  );
+}
+
+function nextRenewalFallbackLabel(bs, usageRefreshing) {
+  if (!bs?.has_subscription) return 'No active subscription';
+  const primary = nextRenewalPrimaryDisplay(bs);
+  if (primary) return primary;
+  if (usageRefreshing) return 'Syncing…';
+  const st = (bs.billing_sync_state || '').toLowerCase();
+  if (st === 'stripe_error') return 'Could not load from Stripe';
+  if (st === 'missing_period_end' || st === 'stale') return 'Not on file — contact support';
+  const last = formatLastSyncedEnGb(bs.billing_last_synced_at);
+  if (bs.plan_status_display === 'Active') {
+    return last ? `Unavailable (last billing sync ${last})` : 'Renewal date unavailable';
+  }
+  return '—';
+}
+
+function nextRenewalEndPhrase(bs) {
+  return nextRenewalPrimaryDisplay(bs) || 'the end of your billing period';
+}
+
 /** Portal API returns billing_status_display / plan_status_display (no internal lifecycle strings). */
 function billingStatusLabel(bs) {
   return bs?.billing_status_display || (bs?.has_subscription ? '—' : 'No active subscription');
@@ -667,17 +704,13 @@ const BillingPage = () => {
                     {billingStatus.charge_automatically === false ? (
                       <>
                         Your billing period renews soon (
-                        {billingStatus.next_renewal_date_display ||
-                          formatRenewalDisplay(billingStatus?.next_renewal_date) ||
-                          'see date below'}
+                        {nextRenewalPrimaryDisplay(billingStatus) || 'see date below'}
                         ). Complete payment when invoiced to avoid interruption.
                       </>
                     ) : (
                       <>
                         Your subscription renews soon (
-                        {billingStatus.next_renewal_date_display ||
-                          formatRenewalDisplay(billingStatus?.next_renewal_date) ||
-                          'see date below'}
+                        {nextRenewalPrimaryDisplay(billingStatus) || 'see date below'}
                         ). Payment is automatic — confirm your card on file is valid.
                       </>
                     )}
@@ -708,12 +741,13 @@ const BillingPage = () => {
                 <div>
                   <p className="text-gray-500">Next renewal date</p>
                   <p className="font-medium">
-                    {billingStatus?.has_subscription
-                      ? billingStatus.next_renewal_date_display ||
-                        formatRenewalDisplay(billingStatus?.next_renewal_date) ||
-                        (billingStatus.plan_status_display === 'Active' ? 'Updating…' : '—')
-                      : 'No active subscription'}
+                    {nextRenewalFallbackLabel(billingStatus, usageRefreshing)}
                   </p>
+                  {billingStatus?.has_subscription && billingStatus?.billing_last_synced_at && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Last billing sync: {formatLastSyncedEnGb(billingStatus.billing_last_synced_at)}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <p className="text-gray-500">Monthly price</p>
@@ -1000,11 +1034,7 @@ const BillingPage = () => {
             <AlertDescription className="text-amber-800">
               <strong>Cancellation Scheduled</strong>
               <p className="mt-1">
-                Your subscription will end on{' '}
-                {billingStatus.next_renewal_date_display ||
-                  formatRenewalDisplay(billingStatus.next_renewal_date) ||
-                  'the end of your billing period'}
-                . 
+                Your subscription will end on {nextRenewalEndPhrase(billingStatus)}. 
                 You'll continue to have full access until then.
               </p>
             </AlertDescription>
@@ -1356,11 +1386,7 @@ const BillingPage = () => {
               <div className="p-4 border border-gray-200 rounded-lg">
                 <h4 className="font-medium text-gray-900 mb-1">Cancel at Period End</h4>
                 <p className="text-sm text-gray-500">
-                  Keep full access until{' '}
-                  {billingStatus?.next_renewal_date_display ||
-                    formatRenewalDisplay(billingStatus?.next_renewal_date) ||
-                    'the end of your billing period'}
-                  , then your subscription ends.
+                  Keep full access until {nextRenewalEndPhrase(billingStatus)}, then your subscription ends.
                 </p>
               </div>
               <div className="p-4 border border-red-200 rounded-lg bg-red-50">

@@ -411,7 +411,7 @@ const RequirementsPage = () => {
             <div className="text-left sm:text-right shrink-0 rounded-xl border border-gray-200 bg-white px-4 py-3">
               <p className="text-xs text-gray-500 uppercase tracking-wide">Showing</p>
               <p className="text-2xl font-bold text-midnight-blue tabular-nums">{filteredRequirements.length}</p>
-              <p className="text-sm text-gray-500">{PORTAL_COPY.trackedItem}s</p>
+              <p className="text-sm text-gray-500">{PORTAL_COPY.trackedItems}</p>
             </div>
           </div>
         </div>

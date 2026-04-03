@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   createContractorAPI,
@@ -116,7 +116,9 @@ export default function ContractorDashboardPage() {
     } catch (_) {}
   }, [navigate]);
 
-  const api = token ? createContractorAPI(token) : null;
+  // createContractorAPI() returns a new object every call — must memoize or bootstrap useEffect
+  // (which depends on load* callbacks keyed by `api`) will re-run every render → request storm + stuck spinner.
+  const api = useMemo(() => (token ? createContractorAPI(token) : null), [token]);
 
   const loadWorkOrders = useCallback(() => {
     if (!api) return Promise.resolve();

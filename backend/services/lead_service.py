@@ -670,12 +670,6 @@ class LeadService:
         db = database.get_db()
         now = datetime.now(timezone.utc).isoformat()
         
-        attribution = {}
-        try:
-            from services.lead_automation_service import apply_conversion_attribution
-            attribution = await apply_conversion_attribution(lead_id=lead_id, client_id=client_id, converted_at_iso=now)
-        except Exception:
-            attribution = {}
         # Update lead
         await db[LEADS_COLLECTION].update_one(
             {"lead_id": lead_id},
@@ -728,6 +722,16 @@ class LeadService:
         """
         db = database.get_db()
         now = datetime.now(timezone.utc).isoformat()
+
+        attribution: Dict[str, Any] = {}
+        try:
+            from services.lead_automation_service import apply_conversion_attribution
+
+            attribution = await apply_conversion_attribution(
+                lead_id=lead_id, client_id=client_id, converted_at_iso=now
+            )
+        except Exception:
+            attribution = {}
         
         lead_before = await db[LEADS_COLLECTION].find_one({"lead_id": lead_id}, {"_id": 0, "created_at": 1, "source_platform": 1})
         time_to_convert_seconds = None

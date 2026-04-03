@@ -34,7 +34,7 @@ from services.subscription_lifecycle_service import (
 )
 from services.security_monitoring_service import record_security_event
 from utils.audit import create_audit_log
-from models import AuditAction, ProvisioningJob, ProvisioningJobStatus
+from models import AuditAction, ProvisioningJob, ProvisioningJobStatus, UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -249,7 +249,7 @@ class StripeWebhookService:
             # Create audit log for failed event
             await create_audit_log(
                 action=AuditAction.ADMIN_ACTION,
-                actor_role="SYSTEM",
+                actor_role=UserRole.SYSTEM,
                 metadata={
                     "action_type": "STRIPE_EVENT_FAILED",
                     "event_id": event_id,
@@ -529,6 +529,7 @@ class StripeWebhookService:
         period_end_dt = period_end_from_stripe_unix(subscription.get("current_period_end"))
         period_start_dt = period_start_from_stripe_unix(subscription.get("current_period_start"))
         anchor_dt = period_start_from_stripe_unix(subscription.get("billing_cycle_anchor"))
+        now_sync = datetime.now(timezone.utc)
         billing_record = {
             "client_id": client_id,
             "stripe_customer_id": stripe_customer_id,
@@ -539,7 +540,9 @@ class StripeWebhookService:
             "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
             "onboarding_fee_paid": onboarding_fee_paid,
             "latest_invoice_id": subscription.get("latest_invoice"),
-            "updated_at": datetime.now(timezone.utc),
+            "updated_at": now_sync,
+            "billing_last_synced_at": now_sync,
+            "billing_sync_state": "ok",
         }
         if period_end_dt:
             billing_record["current_period_end"] = period_end_dt
@@ -573,10 +576,7 @@ class StripeWebhookService:
             "renewal_reminder_period_key_3d": "",
         }
         unset_merged = dict(dunning_unset)
-        if not period_end_dt:
-            unset_merged["current_period_end"] = ""
-        if not period_start_dt:
-            unset_merged["current_period_start"] = ""
+        # Do not clear period boundaries when Stripe omits them on this payload — keep last known values.
         checkout_billing_update["$unset"] = unset_merged
         await db.client_billing.update_one(
             {"client_id": client_id},
@@ -703,7 +703,7 @@ class StripeWebhookService:
         # Audit log (plan updated from Stripe; used for pre-check and verification)
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="SYSTEM",
+            actor_role=UserRole.SYSTEM,
             client_id=client_id,
             metadata={
                 "action_type": "PLAN_UPDATED_FROM_STRIPE",
@@ -719,7 +719,7 @@ class StripeWebhookService:
 
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="SYSTEM",
+            actor_role=UserRole.SYSTEM,
             client_id=client_id,
             metadata={
                 "action_type": "STRIPE_EVENT_PROCESSED",
@@ -1049,50 +1049,85 @@ class StripeWebhookService:
             "HANDLER_START event.type=%s stripe_customer_id=%s subscription_id=%s checkout_session_id=(n/a) metadata.client_id=(from_billing) metadata.plan_code=(from_items) computed_client_id=(lookup)",
             event_type, stripe_customer_id, stripe_subscription_id,
         )
-        # Find client by customer_id
-        billing = await db.client_billing.find_one(
-            {"stripe_customer_id": stripe_customer_id},
-            {"_id": 0}
-        )
-        
-        if not billing:
-            # Try finding by subscription_id
-            billing = await db.client_billing.find_one(
-                {"stripe_subscription_id": stripe_subscription_id},
-                {"_id": 0}
-            )
-        
-        if not billing:
-            logger.warning(f"No billing record for customer {stripe_customer_id}")
-            return {"handled": False, "reason": "no_billing_record"}
-        
-        client_id = billing.get("client_id")
-        old_plan = billing.get("current_plan_code")
-        old_status = billing.get("subscription_status")
-        
-        # Determine plan from subscription items
+        # Resolve plan first so we can seed client_billing if checkout has not run yet (out-of-order webhooks).
         new_plan_code = None
         for item in subscription.get("items", {}).get("data", []):
             price_id = item.get("price", {}).get("id") if isinstance(item.get("price"), dict) else item.get("price")
             new_plan_code = plan_registry.get_plan_from_subscription_price_id(price_id)
             if new_plan_code:
                 break
-        
+
         if not new_plan_code:
-            # Fetch expanded subscription from Stripe
             full_sub = stripe.Subscription.retrieve(
                 stripe_subscription_id,
-                expand=["items.data.price"]
+                expand=["items.data.price"],
             )
             for item in full_sub.get("items", {}).get("data", []):
                 price_id = item.get("price", {}).get("id")
                 new_plan_code = plan_registry.get_plan_from_subscription_price_id(price_id)
                 if new_plan_code:
                     break
-        
+
         if not new_plan_code:
             logger.error(f"Cannot determine plan for subscription {stripe_subscription_id}")
             raise ValueError(f"No matching plan for subscription {stripe_subscription_id}")
+
+        billing = await db.client_billing.find_one(
+            {"stripe_customer_id": stripe_customer_id},
+            {"_id": 0},
+        )
+        if not billing:
+            billing = await db.client_billing.find_one(
+                {"stripe_subscription_id": stripe_subscription_id},
+                {"_id": 0},
+            )
+
+        if not billing:
+            meta = subscription.get("metadata") or {}
+            cid_meta = (meta.get("client_id") or "").strip()
+            client_row = None
+            if cid_meta:
+                client_row = await db.clients.find_one({"client_id": cid_meta}, {"_id": 0, "client_id": 1})
+            if not client_row and stripe_customer_id:
+                client_row = await db.clients.find_one(
+                    {"stripe_customer_id": stripe_customer_id},
+                    {"_id": 0, "client_id": 1},
+                )
+            if not client_row:
+                logger.warning(
+                    "No billing record and no resolvable client for stripe_customer_id=%s subscription_id=%s",
+                    stripe_customer_id,
+                    stripe_subscription_id,
+                )
+                return {"handled": False, "reason": "no_billing_record"}
+            seed_client_id = client_row["client_id"]
+            now_seed = datetime.now(timezone.utc)
+            await db.client_billing.update_one(
+                {"client_id": seed_client_id},
+                {
+                    "$set": {
+                        "client_id": seed_client_id,
+                        "stripe_customer_id": stripe_customer_id,
+                        "stripe_subscription_id": stripe_subscription_id,
+                        "updated_at": now_seed,
+                    },
+                    "$setOnInsert": {"created_at": now_seed},
+                },
+                upsert=True,
+            )
+            billing = await db.client_billing.find_one({"client_id": seed_client_id}, {"_id": 0}) or {}
+
+        client_id = billing.get("client_id")
+        if not client_id:
+            logger.warning(
+                "client_billing row missing client_id stripe_customer_id=%s subscription_id=%s",
+                stripe_customer_id,
+                stripe_subscription_id,
+            )
+            return {"handled": False, "reason": "no_billing_record"}
+
+        old_plan = billing.get("current_plan_code")
+        old_status = billing.get("subscription_status")
         
         # Map status to entitlement
         entitlement_status = plan_registry.get_entitlement_status_from_subscription(subscription_status)
@@ -1100,14 +1135,21 @@ class StripeWebhookService:
         # Update billing record; increment entitlements_version on plan/status change from Stripe
         period_end_dt = period_end_from_stripe_unix(subscription.get("current_period_end"))
         period_start_dt = period_start_from_stripe_unix(subscription.get("current_period_start"))
+        now_sync = datetime.now(timezone.utc)
         billing_update = {
             "current_plan_code": new_plan_code.value,
             "subscription_status": subscription_status.upper(),
             "entitlement_status": entitlement_status.value,
             "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
             "latest_invoice_id": subscription.get("latest_invoice"),
-            "updated_at": datetime.now(timezone.utc),
+            "updated_at": now_sync,
+            "billing_last_synced_at": now_sync,
+            "billing_sync_state": "ok",
         }
+        if stripe_customer_id:
+            billing_update["stripe_customer_id"] = stripe_customer_id
+        if stripe_subscription_id:
+            billing_update["stripe_subscription_id"] = stripe_subscription_id
         if period_end_dt:
             billing_update["current_period_end"] = period_end_dt
         if period_start_dt:
@@ -1116,13 +1158,6 @@ class StripeWebhookService:
             "$set": billing_update,
             "$inc": {"entitlements_version": 1},
         }
-        unset_sub: Dict[str, str] = {}
-        if not period_end_dt:
-            unset_sub["current_period_end"] = ""
-        if not period_start_dt:
-            unset_sub["current_period_start"] = ""
-        if unset_sub:
-            sub_status_update["$unset"] = unset_sub
         await db.client_billing.update_one(
             {"client_id": client_id},
             sub_status_update,
@@ -1207,7 +1242,7 @@ class StripeWebhookService:
         # Audit log: plan updated from Stripe (pre-check / verification)
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="SYSTEM",
+            actor_role=UserRole.SYSTEM,
             client_id=client_id,
             metadata={
                 "action_type": "PLAN_UPDATED_FROM_STRIPE",
@@ -1224,7 +1259,7 @@ class StripeWebhookService:
         )
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="SYSTEM",
+            actor_role=UserRole.SYSTEM,
             client_id=client_id,
             metadata={
                 "action_type": "STRIPE_EVENT_PROCESSED",
@@ -1358,7 +1393,7 @@ class StripeWebhookService:
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="SYSTEM",
+            actor_role=UserRole.SYSTEM,
             client_id=client_id,
             metadata={
                 "action_type": "STRIPE_EVENT_PROCESSED",
@@ -1415,11 +1450,14 @@ class StripeWebhookService:
         period_start_dt = period_start_from_stripe_unix(sub_d.get("current_period_start"))
         had_dunning = bool(billing.get("payment_failed_at") or billing.get("grace_period_ends_at"))
 
+        now_sync = datetime.now(timezone.utc)
         set_doc: Dict[str, Any] = {
             "subscription_status": new_status.upper(),
             "entitlement_status": entitlement_status.value,
             "latest_invoice_id": invoice.get("id"),
-            "updated_at": datetime.now(timezone.utc),
+            "updated_at": now_sync,
+            "billing_last_synced_at": now_sync,
+            "billing_sync_state": "ok",
         }
         if period_end_dt:
             set_doc["current_period_end"] = period_end_dt
@@ -1433,10 +1471,6 @@ class StripeWebhookService:
 
         update: Dict[str, Any] = {"$set": set_doc}
         unset_doc: Dict[str, str] = {}
-        if not period_end_dt:
-            unset_doc["current_period_end"] = ""
-        if not period_start_dt:
-            unset_doc["current_period_start"] = ""
         if had_dunning:
             unset_doc.update(
                 {
@@ -1561,7 +1595,7 @@ class StripeWebhookService:
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="SYSTEM",
+            actor_role=UserRole.SYSTEM,
             client_id=client_id,
             metadata={
                 "action_type": "STRIPE_EVENT_PROCESSED",
@@ -1743,7 +1777,7 @@ class StripeWebhookService:
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="SYSTEM",
+            actor_role=UserRole.SYSTEM,
             client_id=client_id,
             metadata={
                 "action_type": "STRIPE_EVENT_PROCESSED",
