@@ -2569,11 +2569,7 @@ const AdminsManagement = () => {
     full_name: ''
   });
 
-  useEffect(() => {
-    fetchAdmins();
-  }, [showArchived]);
-
-  const fetchAdmins = async () => {
+  const fetchAdmins = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get('/admin/admins', {
@@ -2585,7 +2581,11 @@ const AdminsManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showArchived]);
+
+  useEffect(() => {
+    fetchAdmins();
+  }, [fetchAdmins]);
 
   const handleInvite = async (e) => {
     e.preventDefault();
