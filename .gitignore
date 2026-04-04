@@ -237,3 +237,10 @@ frontend/node_modules/.cache/default-development/19.pack
 # Environment files
 *.env
 *.env.*
+
+# Backend: local pytest / prod surface artifact outputs
+backend/pytest_junit.xml
+backend/pytest_junit_after_quarantine.xml
+backend/prod_surface_junit.xml
+backend/prod_surface_out.txt
+backend/prod_priority_run.txt
