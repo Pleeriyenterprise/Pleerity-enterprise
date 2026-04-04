@@ -523,6 +523,18 @@ export const adminAPI = {
     apiClient.get('/admin/documents/pending-verification', { params: { hours, client_id: clientId || undefined, limit, skip } }),
   getClients: (skip = 0, limit = 50) => apiClient.get('/admin/clients', { params: { skip, limit } }),
   getClientDetail: (clientId) => apiClient.get(`/admin/clients/${clientId}`),
+  /** Pending payments / intake list buckets: pending | archived | purge_eligible | test_like | all */
+  getPendingPayments: (params = {}) => apiClient.get('/admin/intake/pending-payments', { params }),
+  archiveClient: (clientId, body, config = {}) =>
+    apiClient.post(`/admin/clients/${clientId}/archive`, body ?? {}, config),
+  restoreClient: (clientId, config = {}) => apiClient.post(`/admin/clients/${clientId}/restore`, null, config),
+  markClientPurgeEligible: (clientId, config = {}) =>
+    apiClient.post(`/admin/clients/${clientId}/mark-purge-eligible`, null, config),
+  flagClientTestLike: (clientId, body, config = {}) =>
+    apiClient.post(`/admin/clients/${clientId}/flag-test-like`, body ?? {}, config),
+  getClientPermanentDeleteCheck: (clientId) => apiClient.get(`/admin/clients/${clientId}/permanent-delete-check`),
+  permanentDeleteClient: (clientId, config = {}) => apiClient.delete(`/admin/clients/${clientId}/permanent`, config),
+  retryProvisioningJob: (jobId) => apiClient.post(`/admin/provisioning-jobs/${jobId}/retry`),
   getClientControlPanel: (clientId) => apiClient.get(`/admin/clients/${clientId}/control-panel`),
   getClientComplianceActivity: (clientId, params = {}) =>
     apiClient.get(`/admin/clients/${clientId}/compliance-activity`, { params }),

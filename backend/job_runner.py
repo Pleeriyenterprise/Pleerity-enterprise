@@ -776,6 +776,45 @@ async def run_pending_payment_lifecycle():
         raise
 
 
+async def run_client_lifecycle_stale_archive():
+    """Archive stale LEAD/PENDING_SETUP-style clients with no Stripe, properties, or portal users."""
+    try:
+        from database import database
+        from services.client_lifecycle_service import job_archive_stale_pending_clients
+
+        db = database.get_db()
+        return await job_archive_stale_pending_clients(db, stale_days=45, dry_run=False)
+    except Exception as e:
+        logger.error("client_lifecycle_stale_archive failed: %s", e)
+        raise
+
+
+async def run_client_purge_eligibility_scan():
+    """Mark archived clients as PURGE_ELIGIBLE when safe (preflight passes)."""
+    try:
+        from database import database
+        from services.client_lifecycle_service import job_evaluate_purge_eligibility
+
+        db = database.get_db()
+        return await job_evaluate_purge_eligibility(db, archived_min_days=60, dry_run=False)
+    except Exception as e:
+        logger.error("client_purge_eligibility_scan failed: %s", e)
+        raise
+
+
+async def run_client_test_like_flag_job():
+    """Heuristic test-like client flagging; never deletes."""
+    try:
+        from database import database
+        from services.client_lifecycle_service import job_flag_test_like_records
+
+        db = database.get_db()
+        return await job_flag_test_like_records(db, limit=500, dry_run=False)
+    except Exception as e:
+        logger.error("client_test_like_flag_job failed: %s", e)
+        raise
+
+
 async def run_risk_lead_nurture_processing():
     """Daily: send risk-check nurture emails 2–5 when due (day 2, 4, 6, 10 since created). Idempotent, no deletes."""
     from database import database
@@ -1370,6 +1409,9 @@ JOB_RUNNERS = {
     "notification_failure_spike_monitor": run_notification_failure_spike_monitor,
     "notification_retry_worker": run_notification_retry_worker,
     "pending_payment_lifecycle": run_pending_payment_lifecycle,
+    "client_lifecycle_stale_archive": run_client_lifecycle_stale_archive,
+    "client_purge_eligibility_scan": run_client_purge_eligibility_scan,
+    "client_test_like_flag_job": run_client_test_like_flag_job,
     "predictive_insights_job": run_predictive_insights_job,
     "risk_signals_job": run_risk_signals_job,
     "risk_signal_regen_worker": run_risk_signal_regen_worker,

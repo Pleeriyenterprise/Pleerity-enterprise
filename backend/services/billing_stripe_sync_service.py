@@ -205,6 +205,16 @@ async def persist_subscription_billing_from_stripe(
         clients_set["billing_plan"] = new_plan_code.value
 
     await db.clients.update_one({"client_id": client_id}, {"$set": clients_set})
+    try:
+        from services.client_lifecycle_service import persist_operational_client_lifecycle_if_needed
+
+        await persist_operational_client_lifecycle_if_needed(db, client_id)
+    except Exception as lc_err:
+        logger.warning(
+            "persist client lifecycle after billing_sync failed client_id=%s: %s",
+            client_id,
+            lc_err,
+        )
 
     logger.info(
         "billing_sync: persisted subscription client_id=%s subscription_id=%s source=%s period_end=%s sync_state=%s",

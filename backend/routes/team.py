@@ -5,10 +5,11 @@ Provides endpoints for managing roles, permissions, and admin users
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field, EmailStr
 
 from middleware import admin_route_guard
+from middleware.step_up_auth import require_recent_step_up
 from database import database
 from models.core import AuditAction, UserRole
 from models.permissions import (
@@ -17,6 +18,8 @@ from models.permissions import (
     has_permission
 )
 from utils.audit import create_audit_log
+from utils.portal_user_scope import merge_active_portal_user
+from services.portal_user_lifecycle_service import archive_portal_user, restore_portal_user
 import logging
 
 logger = logging.getLogger(__name__)
@@ -43,8 +46,8 @@ async def check_team_permission(admin: dict, action: str) -> bool:
     # Super admins always have access
     if admin.get("role") == UserRole.ROLE_ADMIN.value:
         admin_user = await db.portal_users.find_one(
-            {"portal_user_id": admin.get("portal_user_id")},
-            {"_id": 0, "role_id": 1}
+            merge_active_portal_user({"portal_user_id": admin.get("portal_user_id")}),
+            {"_id": 0, "role_id": 1},
         )
         if admin_user and admin_user.get("role_id") == "super_admin":
             return True
@@ -90,8 +93,8 @@ async def list_roles(admin: dict = Depends(admin_route_guard)):
     # Count users per role
     role_user_counts = {}
     async for doc in db.portal_users.aggregate([
-        {"$match": {"role": UserRole.ROLE_ADMIN.value}},
-        {"$group": {"_id": "$role_id", "count": {"$sum": 1}}}
+        {"$match": {"role": UserRole.ROLE_ADMIN.value, "is_deleted": {"$ne": True}}},
+        {"$group": {"_id": "$role_id", "count": {"$sum": 1}}},
     ]):
         role_user_counts[doc["_id"]] = doc["count"]
     
@@ -302,17 +305,20 @@ async def delete_role(role_id: str, admin: dict = Depends(admin_route_guard)):
 async def list_admin_users(
     role_id: Optional[str] = None,
     status: Optional[str] = None,
-    admin: dict = Depends(admin_route_guard)
+    include_archived: bool = Query(False),
+    admin: dict = Depends(admin_route_guard),
 ):
-    """List admin users"""
+    """List admin users (excludes archived unless include_archived)."""
     db = database.get_db()
-    
-    query = {"role": UserRole.ROLE_ADMIN.value}
+
+    query: Dict[str, Any] = {"role": UserRole.ROLE_ADMIN.value}
     if role_id:
         query["role_id"] = role_id
     if status:
         query["status"] = status
-    
+    if not include_archived:
+        query = merge_active_portal_user(query)
+
     cursor = db.portal_users.find(query, {"_id": 0, "password_hash": 0})
     users = await cursor.to_list(500)
     
@@ -401,7 +407,7 @@ async def update_admin_user(
         raise HTTPException(status_code=403, detail="Insufficient permissions to edit users")
     
     # Get user
-    user = await db.portal_users.find_one({"portal_user_id": user_id})
+    user = await db.portal_users.find_one(merge_active_portal_user({"portal_user_id": user_id}))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -441,35 +447,43 @@ async def update_admin_user(
 
 
 @router.delete("/users/{user_id}")
-async def deactivate_admin_user(user_id: str, admin: dict = Depends(admin_route_guard)):
-    """Deactivate an admin user"""
+async def deactivate_admin_user(
+    user_id: str,
+    request: Request,
+    admin: dict = Depends(admin_route_guard),
+):
+    """Archive an admin user (soft delete; same semantics as /api/admin/users/{id}/archive)."""
     db = database.get_db()
-    
-    # Check permission
+
     if not await check_team_permission(admin, "delete"):
         raise HTTPException(status_code=403, detail="Insufficient permissions to delete users")
-    
-    # Cannot delete self
-    if user_id == admin.get("portal_user_id"):
-        raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
-    
-    result = await db.portal_users.update_one(
-        {"portal_user_id": user_id},
-        {"$set": {"status": "DISABLED", "updated_at": now_utc()}}
-    )
-    
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    await create_audit_log(
-        action=AuditAction.ADMIN_ACTION,
-        actor_role=UserRole.ROLE_ADMIN,
-        actor_id=admin.get("portal_user_id"),
-        resource_type="admin_user",
-        resource_id=user_id,
-        metadata={"action": "deactivate"}
-    )
-    
+
+    await require_recent_step_up(request, admin)
+
+    try:
+        await archive_portal_user(
+            db,
+            user_id,
+            admin.get("portal_user_id"),
+            actor_role=UserRole(admin.get("role", UserRole.ROLE_ADMIN.value)),
+        )
+    except ValueError as e:
+        msg = str(e)
+        if msg == "cannot_archive_self":
+            raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+        if msg == "user_not_found":
+            raise HTTPException(status_code=404, detail="User not found")
+        if msg == "already_archived":
+            raise HTTPException(status_code=400, detail="User is already archived")
+        if msg == "owner_cannot_be_archived":
+            raise HTTPException(status_code=403, detail="OWNER cannot be archived")
+        if msg == "last_active_admin":
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot archive the last active admin. Add another admin first.",
+            )
+        raise HTTPException(status_code=400, detail=msg)
+
     return {"success": True}
 
 
@@ -484,10 +498,10 @@ async def get_my_permissions(admin: dict = Depends(admin_route_guard)):
     
     # Get user's role
     user = await db.portal_users.find_one(
-        {"portal_user_id": admin.get("portal_user_id")},
-        {"_id": 0, "role_id": 1}
+        merge_active_portal_user({"portal_user_id": admin.get("portal_user_id")}),
+        {"_id": 0, "role_id": 1},
     )
-    
+
     role_id = user.get("role_id", "super_admin") if user else "super_admin"
     
     # Get permissions

@@ -121,6 +121,19 @@ def compute_entitlement_for_lifecycle(
     return plan_registry.get_entitlement_status_from_subscription(st.lower())
 
 
+async def _persist_client_lifecycle_after_subscription_sync(db, client_id: str) -> None:
+    try:
+        from services.client_lifecycle_service import persist_operational_client_lifecycle_if_needed
+
+        await persist_operational_client_lifecycle_if_needed(db, client_id)
+    except Exception as persist_err:
+        logger.warning(
+            "persist_operational_client_lifecycle after sync_subscription_lifecycle failed client_id=%s: %s",
+            client_id,
+            persist_err,
+        )
+
+
 async def sync_subscription_lifecycle(client_id: str, bump_version: bool = True) -> Dict[str, Any]:
     """
     Recompute `billing_lifecycle_state` and effective `entitlement_status` from `client_billing`.
@@ -160,6 +173,7 @@ async def sync_subscription_lifecycle(client_id: str, bump_version: bool = True)
             {"client_id": client_id},
             {"$set": {"billing_lifecycle_state": lifecycle, "subscription_status": sub_for_client}},
         )
+        await _persist_client_lifecycle_after_subscription_sync(db, client_id)
         return {"updated": False, "billing_lifecycle_state": lifecycle, "entitlement_status": target_ent}
 
     set_doc: Dict[str, Any] = {
@@ -196,6 +210,7 @@ async def sync_subscription_lifecycle(client_id: str, bump_version: bool = True)
         prev_lc,
         prev_ent,
     )
+    await _persist_client_lifecycle_after_subscription_sync(db, client_id)
     return {
         "updated": True,
         "billing_lifecycle_state": lifecycle,

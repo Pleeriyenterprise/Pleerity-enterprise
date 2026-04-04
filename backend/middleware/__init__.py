@@ -9,6 +9,7 @@ from models import UserRole, OnboardingStatus, PasswordStatus
 from database import database
 from services import contractor_service as _contractor_service_guard
 from utils.request_ip import get_client_ip as _request_client_ip
+from utils.portal_user_scope import merge_active_portal_user
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +53,8 @@ async def get_current_user(request: Request) -> Optional[dict]:
     if "session_version" in payload:
         db = database.get_db()
         user_doc = await db.portal_users.find_one(
-            {"portal_user_id": payload.get("portal_user_id")},
-            {"_id": 0, "session_version": 1}
+            merge_active_portal_user({"portal_user_id": payload.get("portal_user_id")}),
+            {"_id": 0, "session_version": 1},
         )
         if user_doc is None:
             try:
@@ -186,16 +187,16 @@ async def client_route_guard(request: Request) -> dict:
     
     # Get portal user
     portal_user = await db.portal_users.find_one(
-        {"portal_user_id": user["portal_user_id"]},
-        {"_id": 0}
+        merge_active_portal_user({"portal_user_id": user["portal_user_id"]}),
+        {"_id": 0},
     )
-    
+
     if not portal_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
         )
-    
+
     # Check user status
     if portal_user["status"] != "ACTIVE":
         await log_route_guard_redirect(
@@ -232,7 +233,19 @@ async def client_route_guard(request: Request) -> dict:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Client not found"
         )
-    
+
+    if client.get("is_deleted"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Client account is not available",
+        )
+    _cls = (client.get("client_lifecycle_status") or "").strip().upper()
+    if _cls in ("ARCHIVED", "PURGE_ELIGIBLE"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Client account is not available",
+        )
+
     # Check provisioning status
     if client["onboarding_status"] != OnboardingStatus.PROVISIONED.value:
         await log_route_guard_redirect(

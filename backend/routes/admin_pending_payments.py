@@ -16,6 +16,12 @@ import uuid
 from database import database
 from middleware import admin_route_guard, require_owner_or_admin
 from services.stripe_service import stripe_service
+from models import ClientLifecycleStatus
+from services.client_lifecycle_service import (
+    default_active_client_match,
+    derive_client_lifecycle_status,
+    latest_provisioning_jobs_for_clients,
+)
 from services.plan_registry import StripeModeMismatchError
 
 logger = logging.getLogger(__name__)
@@ -80,17 +86,34 @@ def _is_provisioned(client: dict) -> bool:
     return (client.get("onboarding_status") or "") == "PROVISIONED"
 
 
+_PENDING_BUCKET_VALUES = frozenset({"pending", "archived", "purge_eligible", "test_like", "all"})
+
+
 @router.get("/pending-payments", dependencies=[Depends(require_owner_or_admin)])
-async def get_pending_payments(request: Request, q: str = None):
+async def get_pending_payments(request: Request, q: str = None, bucket: str = "pending"):
     """
     Return clients where lifecycle_status in (pending_payment, abandoned, archived)
     OR (subscription not active AND not PROVISIONED).
     Optional search: q filters by CRN or email (case-insensitive substring).
+
+    bucket:
+    - pending (default): same funnel, exclude enterprise-archived / purge-queue clients
+    - archived: funnel + client_lifecycle_status ARCHIVED or PURGE_ELIGIBLE
+    - purge_eligible: funnel + purge_eligible or status PURGE_ELIGIBLE
+    - test_like: funnel + is_test_like (includes archived test-like rows)
+    - all: funnel only (no enterprise lifecycle filter)
     """
     await admin_route_guard(request)
     db = database.get_db()
+    b = (bucket or "pending").strip().lower()
+    if b not in _PENDING_BUCKET_VALUES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid bucket (use pending, archived, purge_eligible, test_like, all)",
+        )
+
     lifecycle_in = ["pending_payment", "abandoned", "archived"]
-    match_filter = {
+    match_filter: dict = {
         "$or": [
             {"lifecycle_status": {"$in": lifecycle_in}},
             {
@@ -108,6 +131,29 @@ async def get_pending_payments(request: Request, q: str = None):
     if q and (q := (q or "").strip()):
         search_regex = {"$regex": q, "$options": "i"}
         match_filter = {"$and": [match_filter, {"$or": [{"customer_reference": search_regex}, {"email": search_regex}, {"full_name": search_regex}]}]}
+
+    if b == "pending":
+        match_filter = {"$and": [match_filter, default_active_client_match()]}
+    elif b == "archived":
+        arch = {
+            "$or": [
+                {"client_lifecycle_status": ClientLifecycleStatus.ARCHIVED.value},
+                {"client_lifecycle_status": ClientLifecycleStatus.PURGE_ELIGIBLE.value},
+            ]
+        }
+        match_filter = {"$and": [match_filter, arch]}
+    elif b == "purge_eligible":
+        pe = {
+            "$or": [
+                {"client_lifecycle_status": ClientLifecycleStatus.PURGE_ELIGIBLE.value},
+                {"purge_eligible": True},
+            ]
+        }
+        match_filter = {"$and": [match_filter, pe]}
+    elif b == "test_like":
+        match_filter = {"$and": [match_filter, {"is_test_like": True}]}
+    # b == "all": funnel only
+
     cursor = db.clients.find(
         match_filter,
         {
@@ -119,21 +165,31 @@ async def get_pending_payments(request: Request, q: str = None):
             "billing_plan": 1,
             "created_at": 1,
             "lifecycle_status": 1,
+            "client_lifecycle_status": 1,
+            "is_deleted": 1,
             "subscription_status": 1,
             "onboarding_status": 1,
+            "stripe_customer_id": 1,
+            "stripe_subscription_id": 1,
             "latest_checkout_url": 1,
             "checkout_link_sent_at": 1,
             "last_checkout_error_code": 1,
             "last_checkout_error_message": 1,
             "last_checkout_attempt_at": 1,
+            "purge_eligible": 1,
+            "is_test_like": 1,
+            "archive_reason": 1,
+            "duplicate_of_client_id": 1,
         },
     ).sort("created_at", -1)
     items = await cursor.to_list(length=500)
     # Filter out paid/active clients (defense in depth)
+    filtered = [c for c in items if not (_is_paid_or_active(c) and _is_provisioned(c))]
+    cids = [c.get("client_id") for c in filtered if c.get("client_id")]
+    jobs_by_cid = await latest_provisioning_jobs_for_clients(db, cids)
+
     result = []
-    for c in items:
-        if _is_paid_or_active(c) and _is_provisioned(c):
-            continue
+    for c in filtered:
         last_err = None
         if c.get("last_checkout_error_code") or c.get("last_checkout_error_message"):
             last_err = {
@@ -141,6 +197,8 @@ async def get_pending_payments(request: Request, q: str = None):
                 "message": c.get("last_checkout_error_message"),
                 "occurred_at": c.get("last_checkout_attempt_at"),
             }
+        job = jobs_by_cid.get(c.get("client_id"))
+        derived = derive_client_lifecycle_status(c)
         result.append({
             "client_id": c.get("client_id"),
             "customer_reference": c.get("customer_reference"),
@@ -149,8 +207,20 @@ async def get_pending_payments(request: Request, q: str = None):
             "billing_plan": c.get("billing_plan"),
             "created_at": c.get("created_at"),
             "lifecycle_status": c.get("lifecycle_status", "pending_payment"),
+            "client_lifecycle_status": c.get("client_lifecycle_status"),
+            "derived_client_lifecycle_status": derived,
             "subscription_status": c.get("subscription_status"),
             "onboarding_status": c.get("onboarding_status"),
+            "billing_state": {
+                "stripe_customer_id": bool((c.get("stripe_customer_id") or "").strip()),
+                "stripe_subscription_id": bool((c.get("stripe_subscription_id") or "").strip()),
+                "subscription_status": c.get("subscription_status"),
+            },
+            "provisioning_state": {"job_status": job.get("status") if job else None, "job_id": job.get("job_id") if job else None},
+            "purge_eligible": bool(c.get("purge_eligible")),
+            "is_test_like": bool(c.get("is_test_like")),
+            "archive_reason": c.get("archive_reason"),
+            "duplicate_of_client_id": c.get("duplicate_of_client_id"),
             "latest_checkout_url": c.get("latest_checkout_url"),
             "checkout_link_sent_at": c.get("checkout_link_sent_at"),
             "last_checkout_error": last_err,
@@ -158,7 +228,7 @@ async def get_pending_payments(request: Request, q: str = None):
             "last_checkout_error_message": c.get("last_checkout_error_message"),
             "last_checkout_attempt_at": c.get("last_checkout_attempt_at"),
         })
-    return {"items": result}
+    return {"items": result, "bucket": b}
 
 
 @router.post("/{client_id}/send-payment-link", dependencies=[Depends(require_owner_or_admin)])

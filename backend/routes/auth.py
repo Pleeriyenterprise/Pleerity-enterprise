@@ -32,6 +32,7 @@ import re
 import os
 import secrets
 from middleware import require_auth
+from utils.portal_user_scope import merge_active_portal_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -285,7 +286,7 @@ async def extend_session(request: Request):
     user = await require_auth(request)
     db = database.get_db()
     portal_user = await db.portal_users.find_one(
-        {"portal_user_id": user["portal_user_id"]},
+        merge_active_portal_user({"portal_user_id": user["portal_user_id"]}),
         {"_id": 0, "portal_user_id": 1, "client_id": 1, "auth_email": 1, "role": 1, "session_version": 1},
     )
     if not portal_user:
@@ -366,7 +367,7 @@ async def step_up_verify(request: Request, body: StepUpPasswordRequest):
     user = await require_auth(request)
     db = database.get_db()
     portal_user = await db.portal_users.find_one(
-        {"portal_user_id": user["portal_user_id"]},
+        merge_active_portal_user({"portal_user_id": user["portal_user_id"]}),
         {"_id": 0, "password_hash": 1, "portal_user_id": 1, "role": 1},
     )
     if not portal_user or not portal_user.get("password_hash"):
@@ -448,10 +449,12 @@ async def login(request: Request, credentials: LoginRequest):
     try:
         # Find portal user
         portal_user = await db.portal_users.find_one(
-            {"auth_email": {"$regex": f"^{re.escape(email_key)}$", "$options": "i"}},
-            {"_id": 0}
+            merge_active_portal_user(
+                {"auth_email": {"$regex": f"^{re.escape(email_key)}$", "$options": "i"}}
+            ),
+            {"_id": 0},
         )
-        
+
         if not portal_user:
             await create_audit_log(
                 action=AuditAction.USER_LOGIN_FAILED,
@@ -749,10 +752,10 @@ async def set_password(request: Request, data: SetPasswordRequest):
         
         # Get portal user
         portal_user = await db.portal_users.find_one(
-            {"portal_user_id": password_token["portal_user_id"]},
-            {"_id": 0}
+            merge_active_portal_user({"portal_user_id": password_token["portal_user_id"]}),
+            {"_id": 0},
         )
-        
+
         if not portal_user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -1258,7 +1261,9 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest):
 
     try:
         portal_user = await db.portal_users.find_one(
-            {"auth_email": {"$regex": f"^{re.escape(email_raw)}$", "$options": "i"}},
+            merge_active_portal_user(
+                {"auth_email": {"$regex": f"^{re.escape(email_raw)}$", "$options": "i"}}
+            ),
             {"_id": 0, "portal_user_id": 1, "auth_email": 1, "role": 1, "client_id": 1},
         )
         if not portal_user:
@@ -1472,10 +1477,12 @@ async def admin_login(request: Request, credentials: LoginRequest):
     try:
         # Find user by email (any role); role check happens after password verification
         portal_user = await db.portal_users.find_one(
-            {"auth_email": {"$regex": f"^{re.escape(email_key)}$", "$options": "i"}},
-            {"_id": 0}
+            merge_active_portal_user(
+                {"auth_email": {"$regex": f"^{re.escape(email_key)}$", "$options": "i"}}
+            ),
+            {"_id": 0},
         )
-        
+
         if not portal_user:
             await create_audit_log(
                 action=AuditAction.ADMIN_LOGIN_FAILED,
@@ -1652,8 +1659,8 @@ async def break_glass_reset_owner_password(request: Request):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
     db = database.get_db()
     owner = await db.portal_users.find_one(
-        {"role": UserRole.ROLE_OWNER.value},
-        {"_id": 0, "portal_user_id": 1, "auth_email": 1}
+        merge_active_portal_user({"role": UserRole.ROLE_OWNER.value}),
+        {"_id": 0, "portal_user_id": 1, "auth_email": 1},
     )
     if not owner:
         await create_audit_log(action=AuditAction.BREAK_GLASS_OWNER_USED, metadata={"outcome": "no_owner"})

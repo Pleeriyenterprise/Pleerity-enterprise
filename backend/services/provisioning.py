@@ -5,6 +5,7 @@ from models import (
     AuditAction, SubscriptionStatus
 )
 from utils.audit import create_audit_log
+from services.client_lifecycle_service import persist_operational_client_lifecycle_if_needed
 from auth import generate_secure_token, hash_token
 from datetime import datetime, timedelta, timezone
 import os
@@ -194,6 +195,7 @@ class ProvisioningService:
                     "$unset": {"last_provisioning_error": ""},
                 }
             )
+            await persist_operational_client_lifecycle_if_needed(db, client_id)
             await create_audit_log(
                 action=AuditAction.PROVISIONING_COMPLETE,
                 client_id=client_id,
@@ -751,7 +753,8 @@ class ProvisioningService:
                 }
             }
         )
-        
+        await persist_operational_client_lifecycle_if_needed(db, client_id)
+
         await create_audit_log(
             action=AuditAction.PROVISIONING_FAILED,
             client_id=client_id,

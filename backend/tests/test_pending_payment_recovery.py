@@ -115,10 +115,15 @@ def test_get_pending_payments_returns_new_fields(client):
     try:
         with patch("routes.admin_pending_payments.database.get_db", return_value=mock_db):
             with patch("routes.admin_pending_payments.admin_route_guard", new_callable=AsyncMock, return_value={"role": "ROLE_ADMIN"}):
-                response = client.get(
-                    "/api/admin/intake/pending-payments",
-                    headers={"Authorization": "Bearer mock-admin-token"},
-                )
+                with patch(
+                    "routes.admin_pending_payments.latest_provisioning_jobs_for_clients",
+                    new_callable=AsyncMock,
+                    return_value={},
+                ):
+                    response = client.get(
+                        "/api/admin/intake/pending-payments",
+                        headers={"Authorization": "Bearer mock-admin-token"},
+                    )
     finally:
         app.dependency_overrides.pop(require_owner_or_admin, None)
 

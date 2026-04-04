@@ -17,8 +17,44 @@ from fastapi.responses import FileResponse
 from auth import create_access_token
 from config.security_limits import security_limits
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
+from utils.portal_user_scope import merge_active_portal_user
+from services.portal_user_lifecycle_service import (
+    archive_portal_user,
+    restore_portal_user,
+    permanent_delete_portal_user,
+    permanent_delete_preflight,
+)
+from services.client_lifecycle_service import default_active_client_match, derive_client_lifecycle_status
+from models import ClientLifecycleStatus
 
 logger = logging.getLogger(__name__)
+
+
+def _portal_lifecycle_http(exc: ValueError) -> HTTPException:
+    key = str(exc)
+    if key.startswith("preflight_failed:"):
+        blockers = [b for b in key.split(":", 1)[1].split(",") if b]
+        return HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": "Permanent delete not allowed", "blockers": blockers},
+        )
+    static = {
+        "cannot_archive_self": (status.HTTP_400_BAD_REQUEST, "You cannot archive your own account"),
+        "cannot_delete_self": (status.HTTP_400_BAD_REQUEST, "You cannot delete your own account permanently"),
+        "user_not_found": (status.HTTP_404_NOT_FOUND, "User not found"),
+        "already_archived": (status.HTTP_400_BAD_REQUEST, "User is already archived"),
+        "not_archived": (status.HTTP_400_BAD_REQUEST, "User is not archived"),
+        "owner_cannot_be_archived": (status.HTTP_403_FORBIDDEN, "OWNER cannot be archived"),
+        "owner_cannot_be_deleted": (status.HTTP_403_FORBIDDEN, "OWNER cannot be permanently deleted"),
+        "last_active_admin": (
+            status.HTTP_400_BAD_REQUEST,
+            "Cannot archive the last active admin. Add another admin first.",
+        ),
+    }
+    if key in static:
+        code, detail = static[key]
+        return HTTPException(status_code=code, detail=detail)
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=key)
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(admin_route_guard)])
 LEGACY_JOBS_ENDPOINT_SUNSET = "2026-06-30T00:00:00Z"
 
@@ -791,12 +827,14 @@ async def get_clients(
     max_properties: int = None,
     risk_band: str = None,
     q: str = None,
+    lifecycle_bucket: str = None,
+    include_archived_clients: bool = False,
 ):
     """
     Get all clients (admin only). Supports filtering by subscription_status, onboarding_status,
     plan_code (solo|portfolio|pro), min_properties, max_properties, and q (search name/email/CRN).
-    Returns each client with plan_code, subscription_status, current_period_end, cancel_at_period_end,
-    property_count; portfolio_score_band reserved for future use.
+    lifecycle_bucket: active (default), all, archived, purge_eligible, test_like, pending_setup.
+    By default archived/purge-eligible/deleted clients are excluded unless include_archived_clients or bucket=all.
     """
     await admin_route_guard(request)
     db = database.get_db()
@@ -804,7 +842,7 @@ async def get_clients(
     try:
         import re
         # Base match on clients collection
-        match = {}
+        match: Dict[str, Any] = {}
         if subscription_status:
             match["subscription_status"] = subscription_status.strip().upper()
         if onboarding_status:
@@ -821,6 +859,35 @@ async def get_clients(
                 {"customer_reference": {"$regex": q_esc, "$options": "i"}},
             ]
         # risk_band filter reserved for future use (no-op when portfolio_score_band not stored)
+
+        bucket = (lifecycle_bucket or "active").strip().lower()
+        if bucket == "all":
+            pass
+        elif bucket == "active":
+            if not include_archived_clients:
+                match = {"$and": [match, default_active_client_match()]} if match else default_active_client_match()
+        elif bucket == "archived":
+            match = {"$and": [match, {"client_lifecycle_status": ClientLifecycleStatus.ARCHIVED.value}]} if match else {"client_lifecycle_status": ClientLifecycleStatus.ARCHIVED.value}
+        elif bucket == "purge_eligible":
+            pe = {"$or": [
+                {"client_lifecycle_status": ClientLifecycleStatus.PURGE_ELIGIBLE.value},
+                {"purge_eligible": True},
+            ]}
+            match = {"$and": [match, pe]} if match else pe
+        elif bucket == "test_like":
+            tl = {"is_test_like": True}
+            match = {"$and": [match, tl]} if match else tl
+        elif bucket == "pending_setup":
+            ps = {"onboarding_status": {"$ne": OnboardingStatus.PROVISIONED.value}}
+            parts = [match, ps] if match else [ps]
+            if not include_archived_clients:
+                parts.append(default_active_client_match())
+            match = {"$and": parts}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid lifecycle_bucket (use active, all, archived, purge_eligible, test_like, pending_setup)",
+            )
 
         pipeline = [
             {"$match": match},
@@ -872,12 +939,14 @@ async def get_clients(
                 c["current_period_end"] = val.isoformat()
             if c.get("cancel_at_period_end") is None:
                 c["cancel_at_period_end"] = False
+            c["derived_client_lifecycle_status"] = derive_client_lifecycle_status(c)
 
         return {
             "clients": clients,
             "total": total,
             "skip": skip,
             "limit": limit,
+            "lifecycle_bucket": bucket,
         }
     except HTTPException:
         raise
@@ -3643,6 +3712,7 @@ async def get_client_full_status(request: Request, client_id: str):
         
         return {
             "client": client,
+            "derived_client_lifecycle_status": derive_client_lifecycle_status(client),
             "portal_users": portal_users,
             "properties_count": len(properties),
             "properties": properties[:5],  # First 5 only
@@ -4178,27 +4248,110 @@ async def get_client_avatar(request: Request, client_id: str):
 # ============================================================================
 
 @router.get("/admins")
-async def list_admins(request: Request):
-    """List all staff (OWNER + ADMIN) for admin management. Excludes password hashes."""
-    user = await admin_route_guard(request)
+async def list_admins(request: Request, include_archived: bool = Query(False)):
+    """List all staff (OWNER + ADMIN) for admin management. Excludes password hashes.
+    Archived (soft-deleted) users are omitted unless include_archived=true.
+    """
+    await admin_route_guard(request)
     db = database.get_db()
-    
+
     try:
-        admins = await db.portal_users.find(
-            {"role": {"$in": [UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value]}},
-            {"_id": 0, "password_hash": 0}
-        ).to_list(100)
-        
+        q: Dict[str, Any] = {"role": {"$in": [UserRole.ROLE_OWNER.value, UserRole.ROLE_ADMIN.value]}}
+        if not include_archived:
+            q = merge_active_portal_user(q)
+        admins = await db.portal_users.find(q, {"_id": 0, "password_hash": 0}).to_list(100)
+
         return {
             "admins": admins,
-            "total": len(admins)
+            "total": len(admins),
         }
-    
+
     except Exception as e:
         logger.error(f"List admins error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to list admins"
+            detail="Failed to list admins",
+        )
+
+
+@router.post("/users/{portal_user_id}/archive")
+async def archive_staff_user(request: Request, portal_user_id: str):
+    """Soft-delete (archive) a portal user: disables login, retains billing linkage on client."""
+    user = await admin_route_guard(request)
+    await require_recent_step_up(request, user)
+    db = database.get_db()
+    try:
+        await archive_portal_user(
+            db,
+            portal_user_id,
+            user["portal_user_id"],
+            actor_role=UserRole(user["role"]),
+        )
+        return {"message": "User archived", "portal_user_id": portal_user_id}
+    except ValueError as e:
+        raise _portal_lifecycle_http(e)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("archive user error: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to archive user")
+
+
+@router.post("/users/{portal_user_id}/restore")
+async def restore_staff_user(request: Request, portal_user_id: str):
+    """Restore an archived portal user to active (not a substitute for reactivating legacy DISABLED-only rows)."""
+    user = await admin_route_guard(request)
+    await require_recent_step_up(request, user)
+    db = database.get_db()
+    try:
+        await restore_portal_user(
+            db,
+            portal_user_id,
+            user["portal_user_id"],
+            actor_role=UserRole(user["role"]),
+        )
+        return {"message": "User restored", "portal_user_id": portal_user_id}
+    except ValueError as e:
+        raise _portal_lifecycle_http(e)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("restore user error: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to restore user")
+
+
+@router.get("/users/{portal_user_id}/permanent-delete-check")
+async def permanent_delete_check(request: Request, portal_user_id: str):
+    """Return whether hard delete is allowed (billing and audit preflight)."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    allowed, blockers = await permanent_delete_preflight(db, portal_user_id)
+    return {"allowed": allowed, "blockers": blockers}
+
+
+@router.delete("/users/{portal_user_id}/permanent")
+async def permanent_delete_user(request: Request, portal_user_id: str):
+    """Remove portal_users row only when preflight passes; never deletes Stripe, clients, or invoice rows."""
+    user = await admin_route_guard(request)
+    await require_recent_step_up(request, user)
+    db = database.get_db()
+    try:
+        await permanent_delete_portal_user(
+            db,
+            portal_user_id,
+            user["portal_user_id"],
+            actor_role=UserRole(user["role"]),
+        )
+        return {"message": "User permanently deleted", "portal_user_id": portal_user_id}
+    except ValueError as e:
+        raise _portal_lifecycle_http(e)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("permanent delete user error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to permanently delete user",
         )
 
 
@@ -4350,109 +4503,76 @@ async def invite_admin(request: Request, invite_data: AdminInviteRequest):
 
 @router.delete("/admins/{portal_user_id}")
 async def deactivate_admin(request: Request, portal_user_id: str):
-    """Deactivate an ADMIN user (OWNER or ADMIN). OWNER cannot be deactivated or downgraded; last OWNER cannot be removed."""
+    """Deactivate an ADMIN user (OWNER or ADMIN). Delegates to archive (USER_ARCHIVED audit)."""
     user = await admin_route_guard(request)
     await require_recent_step_up(request, user)
     db = database.get_db()
-    
-    try:
-        if user["portal_user_id"] == portal_user_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You cannot deactivate your own account"
-            )
-        
-        target = await db.portal_users.find_one(
-            {"portal_user_id": portal_user_id},
-            {"_id": 0, "role": 1, "status": 1, "auth_email": 1}
-        )
-        
-        if not target:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        
-        # OWNER cannot be deleted, deactivated, or downgraded via API
-        if target.get("role") == UserRole.ROLE_OWNER.value:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="OWNER cannot be deactivated or removed via API"
-            )
-        
-        # Target is ADMIN: last-active-admin protection
-        active_admin_count = await db.portal_users.count_documents({
-            "role": UserRole.ROLE_ADMIN.value,
-            "status": UserStatus.ACTIVE.value
-        })
-        if active_admin_count <= 1 and target.get("status") == UserStatus.ACTIVE.value:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot deactivate the last active admin. Add another admin or use the recovery script to re-enable an admin by email."
-            )
 
-        await db.portal_users.update_one(
-            {"portal_user_id": portal_user_id},
-            {"$set": {"status": UserStatus.DISABLED.value}}
-        )
-        
-        await create_audit_log(
-            action=AuditAction.ADMIN_DISABLED,
+    try:
+        await archive_portal_user(
+            db,
+            portal_user_id,
+            user["portal_user_id"],
             actor_role=UserRole(user["role"]),
-            actor_id=user["portal_user_id"],
-            resource_type="portal_user",
-            resource_id=portal_user_id,
-            metadata={
-                "deactivated_email": target.get("auth_email"),
-                "by": user.get("email")
-            }
         )
-        
         return {
-            "message": "Admin deactivated successfully",
-            "portal_user_id": portal_user_id
+            "message": "Admin archived successfully",
+            "portal_user_id": portal_user_id,
         }
-    
+    except ValueError as e:
+        raise _portal_lifecycle_http(e)
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Deactivate admin error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to deactivate admin"
+            detail="Failed to deactivate admin",
         )
 
 
 @router.post("/admins/{portal_user_id}/reactivate")
 async def reactivate_admin(request: Request, portal_user_id: str):
-    """Reactivate a disabled ADMIN user. Only ADMIN can be reactivated (OWNER cannot be deactivated)."""
+    """Reactivate a disabled ADMIN user. Archived users are restored (USER_RESTORED); legacy DISABLED uses ADMIN_ENABLED."""
     user = await admin_route_guard(request)
     await require_recent_step_up(request, user)
     db = database.get_db()
-    
+
     try:
         target = await db.portal_users.find_one(
             {"portal_user_id": portal_user_id, "role": UserRole.ROLE_ADMIN.value},
-            {"_id": 0}
+            {"_id": 0},
         )
-        
+
         if not target:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Admin not found"
+                detail="Admin not found",
             )
-        
+
+        if target.get("is_deleted") is True:
+            await restore_portal_user(
+                db,
+                portal_user_id,
+                user["portal_user_id"],
+                actor_role=UserRole(user["role"]),
+            )
+            return {
+                "message": "Admin restored successfully",
+                "portal_user_id": portal_user_id,
+            }
+
         if target.get("status") == UserStatus.ACTIVE.value:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Admin is already active"
+                detail="Admin is already active",
             )
-        
+
         await db.portal_users.update_one(
             {"portal_user_id": portal_user_id},
-            {"$set": {"status": UserStatus.ACTIVE.value}}
+            {"$set": {"status": UserStatus.ACTIVE.value}},
         )
-        
+
         await create_audit_log(
             action=AuditAction.ADMIN_ENABLED,
             actor_role=UserRole(user["role"]),
@@ -4461,22 +4581,24 @@ async def reactivate_admin(request: Request, portal_user_id: str):
             resource_id=portal_user_id,
             metadata={
                 "reactivated_email": target.get("auth_email"),
-                "by": user.get("email")
-            }
+                "by": user.get("email"),
+            },
         )
-        
+
         return {
             "message": "Admin reactivated successfully",
-            "portal_user_id": portal_user_id
+            "portal_user_id": portal_user_id,
         }
-    
+
+    except ValueError as e:
+        raise _portal_lifecycle_http(e)
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Reactivate admin error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to reactivate admin"
+            detail="Failed to reactivate admin",
         )
 
 

@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import {
   Users, Shield, Plus, Edit, Trash2, CheckCircle, XCircle,
-  RefreshCw, UserPlus, Lock, Unlock, Eye, Settings, Save
+  RefreshCw, UserPlus, Lock, Unlock, Eye, Settings, Save, Archive, RotateCcw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -58,12 +58,15 @@ function StatCard({ title, value, icon: Icon, color = 'blue', description }) {
 }
 
 export default function AdminTeamPage() {
+  const stepUp = useStepUpApi();
   const [activeTab, setActiveTab] = useState('users');
   const [loading, setLoading] = useState(false);
   const [permissions, setPermissions] = useState({});
   const [roles, setRoles] = useState([]);
   const [users, setUsers] = useState([]);
   const [myPermissions, setMyPermissions] = useState({});
+  const [showArchivedUsers, setShowArchivedUsers] = useState(false);
+  const [userActionId, setUserActionId] = useState(null);
   
   // Dialogs
   const [showRoleDialog, setShowRoleDialog] = useState(false);
@@ -91,7 +94,7 @@ export default function AdminTeamPage() {
       const [permRes, rolesRes, usersRes, myPermRes] = await Promise.all([
         client.get('/admin/team/permissions'),
         client.get('/admin/team/roles'),
-        client.get('/admin/team/users'),
+        client.get('/admin/team/users', { params: { include_archived: showArchivedUsers } }),
         client.get('/admin/team/me/permissions')
       ]);
       
@@ -103,7 +106,7 @@ export default function AdminTeamPage() {
       console.error('Failed to fetch team data:', error);
       toast.error('Failed to load team data');
     }
-  }, []);
+  }, [showArchivedUsers]);
   
   useEffect(() => {
     fetchData();
@@ -218,16 +221,81 @@ export default function AdminTeamPage() {
     }
   };
   
-  const handleToggleUser = async (userId, currentStatus) => {
+  const handleArchiveTeamUser = async (userId, email) => {
+    if (!window.confirm(`Archive ${email}? They will be signed out.`)) return;
+    setUserActionId(userId);
     try {
-      await client.put(`/admin/team/users/${userId}`, {
-        is_active: currentStatus !== 'ACTIVE'
-      });
-      toast.success('User status updated');
+      await stepUp.request((headers) =>
+        client.delete(`/admin/team/users/${userId}`, { headers }),
+      );
+      toast.success('User archived');
       fetchData();
     } catch (error) {
-      console.error('Failed to update user:', error);
-      toast.error(error.response?.data?.detail || 'Failed to update user');
+      if (error?.message !== 'step_up_cancelled') {
+        const d = error.response?.data?.detail;
+        toast.error(typeof d === 'string' ? d : d?.message || 'Failed to archive user');
+      }
+    } finally {
+      setUserActionId(null);
+    }
+  };
+
+  const handleRestoreTeamUser = async (userId) => {
+    setUserActionId(userId);
+    try {
+      await stepUp.request((headers) =>
+        client.post(`/admin/users/${userId}/restore`, null, { headers }),
+      );
+      toast.success('User restored');
+      fetchData();
+    } catch (error) {
+      if (error?.message !== 'step_up_cancelled') {
+        const d = error.response?.data?.detail;
+        toast.error(typeof d === 'string' ? d : d?.message || 'Failed to restore user');
+      }
+    } finally {
+      setUserActionId(null);
+    }
+  };
+
+  const handlePermanentTeamUser = async (userId, email) => {
+    setUserActionId(userId);
+    try {
+      const check = await client.get(`/admin/users/${userId}/permanent-delete-check`);
+      const { allowed, blockers = [] } = check.data || {};
+      if (!allowed) {
+        toast.error(
+          blockers.length ? `Cannot delete: ${blockers.join(', ')}` : 'Cannot permanently delete',
+        );
+        return;
+      }
+      if (
+        !window.confirm(
+          `Permanently remove ${email}? Billing and client records are not deleted.`,
+        )
+      ) {
+        return;
+      }
+      await stepUp.request((headers) =>
+        client.delete(`/admin/users/${userId}/permanent`, { headers }),
+      );
+      toast.success('User permanently deleted');
+      fetchData();
+    } catch (error) {
+      if (error?.message !== 'step_up_cancelled') {
+        const d = error.response?.data?.detail;
+        if (d && typeof d === 'object' && d.message) {
+          toast.error(
+            Array.isArray(d.blockers) && d.blockers.length
+              ? `${d.message}: ${d.blockers.join(', ')}`
+              : d.message,
+          );
+        } else {
+          toast.error(typeof d === 'string' ? d : 'Failed to permanently delete');
+        }
+      }
+    } finally {
+      setUserActionId(null);
     }
   };
   
@@ -242,7 +310,7 @@ export default function AdminTeamPage() {
     }
   };
   
-  const activeUsers = users.filter(u => u.status === 'ACTIVE').length;
+  const activeUsers = users.filter((u) => u.status === 'ACTIVE' && !u.is_deleted).length;
   const customRoles = roles.filter(r => !r.is_system).length;
   
   return (
@@ -317,8 +385,22 @@ export default function AdminTeamPage() {
           <TabsContent value="users" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Admin Users</CardTitle>
-                <CardDescription>Manage user access and role assignments</CardDescription>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle>Admin Users</CardTitle>
+                    <CardDescription>Manage user access and role assignments</CardDescription>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showArchivedUsers}
+                      onChange={(e) => setShowArchivedUsers(e.target.checked)}
+                      className="rounded border-gray-300"
+                      data-testid="team-show-archived"
+                    />
+                    Show archived
+                  </label>
+                </div>
               </CardHeader>
               <CardContent>
                 {users.length > 0 ? (
@@ -334,7 +416,10 @@ export default function AdminTeamPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map(user => (
+                      {users.map(user => {
+                        const archived = user.is_deleted === true;
+                        const busy = userActionId === user.portal_user_id;
+                        return (
                         <TableRow key={user.portal_user_id} data-testid={`user-row-${user.portal_user_id}`}>
                           <TableCell className="font-medium">{user.name}</TableCell>
                           <TableCell>{user.email}</TableCell>
@@ -342,6 +427,7 @@ export default function AdminTeamPage() {
                             <Select
                               value={user.role_id || 'super_admin'}
                               onValueChange={v => handleChangeUserRole(user.portal_user_id, v)}
+                              disabled={archived}
                             >
                               <SelectTrigger className="w-[160px]">
                                 <SelectValue />
@@ -356,8 +442,8 @@ export default function AdminTeamPage() {
                             </Select>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={user.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                              {user.status}
+                            <Badge variant={archived ? 'outline' : user.status === 'ACTIVE' ? 'default' : 'secondary'}>
+                              {archived ? 'Archived' : user.status}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm text-gray-500">
@@ -366,21 +452,42 @@ export default function AdminTeamPage() {
                               : 'Never'}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleToggleUser(user.portal_user_id, user.status)}
-                              title={user.status === 'ACTIVE' ? 'Disable' : 'Enable'}
-                            >
-                              {user.status === 'ACTIVE' ? (
-                                <XCircle className="h-4 w-4 text-red-500" />
+                            <div className="flex justify-end gap-1">
+                              {busy ? (
+                                <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                              ) : archived ? (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRestoreTeamUser(user.portal_user_id)}
+                                    title="Restore"
+                                  >
+                                    <RotateCcw className="h-4 w-4 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handlePermanentTeamUser(user.portal_user_id, user.email)}
+                                    title="Permanent delete"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </>
                               ) : (
-                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleArchiveTeamUser(user.portal_user_id, user.email)}
+                                  title="Archive user"
+                                >
+                                  <Archive className="h-4 w-4 text-amber-600" />
+                                </Button>
                               )}
-                            </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
-                      ))}
+                      );})}
                     </TableBody>
                   </Table>
                 ) : (

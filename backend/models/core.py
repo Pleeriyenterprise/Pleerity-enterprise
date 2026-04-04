@@ -41,6 +41,17 @@ class OnboardingStatus(str, Enum):
     FAILED = "FAILED"
 
 
+class ClientLifecycleStatus(str, Enum):
+    """Enterprise client lifecycle (orthogonal to legacy payment lifecycle_status on Client)."""
+
+    LEAD = "LEAD"
+    PENDING_SETUP = "PENDING_SETUP"
+    ACTIVE = "ACTIVE"
+    SUSPENDED = "SUSPENDED"
+    ARCHIVED = "ARCHIVED"
+    PURGE_ELIGIBLE = "PURGE_ELIGIBLE"
+
+
 class ProvisioningJobStatus(str, Enum):
     """Single source of truth for purchase lifecycle (provisioning_jobs)."""
     INTAKE_RECEIVED = "INTAKE_RECEIVED"
@@ -181,7 +192,11 @@ class AuditAction(str, Enum):
     ADMIN_ENABLED = "ADMIN_ENABLED"
     PASSWORD_RESET_BY_OWNER = "PASSWORD_RESET_BY_OWNER"
     SESSION_FORCE_LOGOUT = "SESSION_FORCE_LOGOUT"
-    
+    # Portal user lifecycle (soft archive + conditional hard delete)
+    USER_ARCHIVED = "USER_ARCHIVED"
+    USER_RESTORED = "USER_RESTORED"
+    USER_DELETED_PERMANENTLY = "USER_DELETED_PERMANENTLY"
+
     # Route Guards
     ROUTE_GUARD_REDIRECT = "ROUTE_GUARD_REDIRECT"
     ADMIN_ROUTE_GUARD_BLOCK = "ADMIN_ROUTE_GUARD_BLOCK"
@@ -242,6 +257,12 @@ class AuditAction(str, Enum):
     CLIENT_TASK_MARKED_DONE = "CLIENT_TASK_MARKED_DONE"
     CLIENT_TASK_MARKED_REVIEWED = "CLIENT_TASK_MARKED_REVIEWED"
     CLIENT_TASK_RESTORED = "CLIENT_TASK_RESTORED"
+    # Client (organisation) lifecycle — archive / purge / test flags
+    CLIENT_ARCHIVED = "CLIENT_ARCHIVED"
+    CLIENT_RESTORED = "CLIENT_RESTORED"
+    CLIENT_MARKED_PURGE_ELIGIBLE = "CLIENT_MARKED_PURGE_ELIGIBLE"
+    CLIENT_DELETED_PERMANENTLY = "CLIENT_DELETED_PERMANENTLY"
+    CLIENT_FLAGGED_TEST_LIKE = "CLIENT_FLAGGED_TEST_LIKE"
     CLIENT_PORTAL_TODAY_NAVIGATION_INTENT = "CLIENT_PORTAL_TODAY_NAVIGATION_INTENT"
     TENANT_REQUEST_RESOLUTION_ATTEMPT = "TENANT_REQUEST_RESOLUTION_ATTEMPT"
     TENANT_REQUEST_RESOLVED = "TENANT_REQUEST_RESOLVED"
@@ -541,8 +562,20 @@ class Client(BaseModel):
     consent_data_processing: bool = False
     consent_service_boundary: bool = False  # "Does not provide legal advice" acknowledgment
     last_invite_error: Optional[str] = None  # Set when portal invite email fails (so support can retry)
-    # Pending payment recovery
+    # Pending payment recovery (legacy funnel; keep for Stripe recovery UX)
     lifecycle_status: str = "pending_payment"  # pending_payment | abandoned | archived | active_customer
+    # Enterprise lifecycle (LEAD, PENDING_SETUP, ACTIVE, SUSPENDED, ARCHIVED, PURGE_ELIGIBLE)
+    client_lifecycle_status: Optional[str] = None
+    is_deleted: bool = False
+    archived_at: Optional[datetime] = None
+    archived_by: Optional[str] = None
+    archive_reason: Optional[str] = None
+    purge_eligible: bool = False
+    purge_checked_at: Optional[datetime] = None
+    purged_at: Optional[datetime] = None
+    purged_by: Optional[str] = None
+    is_test_like: bool = False
+    duplicate_of_client_id: Optional[str] = None
     latest_checkout_session_id: Optional[str] = None
     latest_checkout_url: Optional[str] = None
     checkout_link_sent_at: Optional[datetime] = None

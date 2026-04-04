@@ -56,6 +56,13 @@ class Database:
             await self.db.clients.create_index("full_name")  # For name search
             await self.db.clients.create_index("billing_plan")  # Plan filter (admin clients list)
             await self.db.clients.create_index("subscription_status")  # Status filter (admin clients list)
+            try:
+                await self.db.clients.create_index("client_lifecycle_status")
+                await self.db.clients.create_index("is_deleted")
+                await self.db.clients.create_index("purge_eligible")
+                await self.db.clients.create_index("is_test_like")
+            except Exception:
+                pass
             
             # Property indexes - for postcode search
             await self.db.properties.create_index("postcode")
@@ -75,6 +82,10 @@ class Database:
             
             await self.db.portal_users.create_index("client_id")
             await self.db.portal_users.create_index("portal_user_id", unique=True)
+            try:
+                await self.db.portal_users.create_index("is_deleted")
+            except Exception:
+                pass
 
             # Evidence pack jobs (client exports)
             try:

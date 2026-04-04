@@ -39,7 +39,8 @@ async def get_checklist_items_for_client(client_id: str) -> List[Dict[str, Any]]
         {"client_id": client_id},
         {"_id": 0, "billing_plan": 1, "onboarding_checklist": 1, "default_jurisdiction": 1, "enabled_jurisdictions": 1},
     )
-    if not client:
+    # Use `is None`: projection can yield {} when the doc exists but every included field is absent; `not {}` is True in Python.
+    if client is None:
         return []
 
     plan = client.get("billing_plan") or "PLAN_1_SOLO"
@@ -130,7 +131,7 @@ async def validate_item_completion(client_id: str, item_id: str) -> bool:
             {"client_id": client_id},
             {"_id": 0, "default_jurisdiction": 1, "enabled_jurisdictions": 1},
         )
-        if not client:
+        if client is None:
             return False
         return bool(client.get("default_jurisdiction") and client.get("enabled_jurisdictions"))
     if item_id == ITEM_REVIEW_REQUIREMENTS:
@@ -158,7 +159,7 @@ async def mark_item_complete(
     """
     db = database.get_db()
     client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "onboarding_checklist": 1})
-    if not client:
+    if client is None:
         return {"ok": False, "error": "Client not found"}
 
     if not await validate_item_completion(client_id, item_id):
@@ -208,7 +209,7 @@ async def sync_auto_completed_items(client_id: str, *, portal_user_id: Optional[
     """
     db = database.get_db()
     client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "onboarding_checklist": 1})
-    if not client:
+    if client is None:
         return []
     o_prev = client.get("onboarding_checklist") or {}
     existing_items = o_prev.get("items") or []

@@ -786,7 +786,17 @@ async def submit_intake(request: Request, data: IntakeFormData):
             }
         
         await db.clients.insert_one(client_doc)
-        
+        try:
+            from services.client_lifecycle_service import persist_operational_client_lifecycle_if_needed
+
+            await persist_operational_client_lifecycle_if_needed(db, client.client_id)
+        except Exception as lc_err:
+            logger.warning(
+                "persist client lifecycle after intake insert failed client_id=%s: %s",
+                client.client_id,
+                lc_err,
+            )
+
         # Link risk-check lead to client (best-effort; do not block intake)
         if lead_id_val and (lead_id_val or "").strip():
             try:

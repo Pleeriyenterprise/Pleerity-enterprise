@@ -42,10 +42,10 @@ import {
   ChevronUp,
   UserCog,
   UserPlus,
-  UserMinus,
   RotateCcw,
   Download,
   MailPlus,
+  Archive,
   MessageSquare,
   History,
   Settings,
@@ -60,11 +60,36 @@ import {
 /** Normalize API error detail (string or FastAPI validation array) for toast messages. */
 function normalizeErrorDetail(detail, fallback) {
   if (typeof detail === 'string') return detail;
+  if (detail && typeof detail === 'object' && !Array.isArray(detail) && detail.message) {
+    const b = detail.blockers;
+    if (Array.isArray(b) && b.length > 0) {
+      return `${detail.message}: ${b.join(', ')}`;
+    }
+    return detail.message;
+  }
   if (Array.isArray(detail) && detail.length > 0) {
     const first = detail[0];
     return first.msg || (first.loc && first.loc.join('. ')) || String(first);
   }
   return fallback;
+}
+
+const ADMIN_CLIENT_LIFECYCLE_BUCKETS = [
+  { id: 'active', label: 'Active' },
+  { id: 'pending_setup', label: 'Pending setup' },
+  { id: 'archived', label: 'Archived' },
+  { id: 'purge_eligible', label: 'Purge eligible' },
+  { id: 'test_like', label: 'Test-like' },
+  { id: 'all', label: 'All' },
+];
+
+function adminEnterpriseLifecycleBadgeClass(derived) {
+  const d = (derived || '').toUpperCase();
+  if (d === 'ARCHIVED' || d === 'PURGE_ELIGIBLE') return 'bg-slate-200 text-slate-800';
+  if (d === 'ACTIVE') return 'bg-emerald-100 text-emerald-900';
+  if (d === 'SUSPENDED') return 'bg-amber-100 text-amber-900';
+  if (d === 'LEAD') return 'bg-violet-100 text-violet-900';
+  return 'bg-sky-100 text-sky-900';
 }
 
 // Global Search Component
@@ -1118,8 +1143,12 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
         
         // Map drilldown type to API endpoint
         if (drilldownType === 'clients' || drilldownType === 'clients-active' || drilldownType === 'clients-pending') {
-          const status = drilldownType === 'clients-active' ? '&subscription_status=ACTIVE' : 
-                         drilldownType === 'clients-pending' ? '&subscription_status=PENDING' : '';
+          const status =
+            drilldownType === 'clients-active'
+              ? '&subscription_status=ACTIVE'
+              : drilldownType === 'clients-pending'
+                ? '&lifecycle_bucket=pending_setup'
+                : '';
           endpoint = `/admin/clients?limit=50${status}`;
         } else if (drilldownType === 'properties') {
           endpoint = '/admin/kpi/properties?limit=50';
@@ -1674,6 +1703,7 @@ const ClientsManagement = () => {
   const planFilter = searchParams.get('plan_code') || '';
   const subscriptionFilter = searchParams.get('subscription_status') || '';
   const statusFilter = searchParams.get('onboarding_status') || 'all';
+  const lifecycleBucket = searchParams.get('lifecycle_bucket') || 'active';
   const searchTerm = searchParams.get('q') || '';
 
   useEffect(() => {
@@ -1705,6 +1735,9 @@ const ClientsManagement = () => {
       if (subscriptionFilter && subscriptionFilter !== 'all') params.set('subscription_status', subscriptionFilter);
       if (statusFilter && statusFilter !== 'all') params.set('onboarding_status', statusFilter);
       if (searchTerm.trim()) params.set('q', searchTerm.trim());
+      if (lifecycleBucket && lifecycleBucket !== 'active') {
+        params.set('lifecycle_bucket', lifecycleBucket);
+      }
       const response = await api.get(`/admin/clients?${params.toString()}`);
       setClients(response.data.clients || []);
       setTotal(response.data.total ?? 0);
@@ -1716,7 +1749,7 @@ const ClientsManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [planFilter, subscriptionFilter, statusFilter, searchTerm]);
+  }, [planFilter, subscriptionFilter, statusFilter, lifecycleBucket, searchTerm]);
 
   useEffect(() => {
     fetchClients();
@@ -1762,7 +1795,12 @@ const ClientsManagement = () => {
     return styles[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const hasFilters = planFilter || subscriptionFilter || (statusFilter && statusFilter !== 'all') || searchTerm.trim();
+  const hasFilters =
+    planFilter ||
+    subscriptionFilter ||
+    (statusFilter && statusFilter !== 'all') ||
+    (lifecycleBucket && lifecycleBucket !== 'active') ||
+    searchTerm.trim();
 
   if (loading) {
     return (
@@ -1780,6 +1818,22 @@ const ClientsManagement = () => {
 
       {/* Search and Filter */}
       <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap gap-2">
+          {ADMIN_CLIENT_LIFECYCLE_BUCKETS.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => updateParams({ lifecycle_bucket: b.id === 'active' ? null : b.id })}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                lifecycleBucket === b.id
+                  ? 'bg-electric-teal text-white border-electric-teal'
+                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -1847,7 +1901,8 @@ const ClientsManagement = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lifecycle</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Onboarding</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subscription</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -1863,7 +1918,38 @@ const ClientsManagement = () => {
                       <div>
                         <p className="font-medium text-midnight-blue">{client.full_name}</p>
                         <p className="text-sm text-gray-500">{client.email}</p>
+                        {client.customer_reference ? (
+                          <p className="text-xs text-gray-400 font-mono mt-0.5">{client.customer_reference}</p>
+                        ) : null}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 max-w-[200px]">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-md ${adminEnterpriseLifecycleBadgeClass(
+                          client.derived_client_lifecycle_status,
+                        )}`}
+                      >
+                        {client.derived_client_lifecycle_status || '—'}
+                      </span>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {client.is_test_like ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-700">Test-like</span>
+                        ) : null}
+                        {client.purge_eligible ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-800">Purge</span>
+                        ) : null}
+                      </div>
+                      {client.client_lifecycle_status &&
+                      client.client_lifecycle_status !== client.derived_client_lifecycle_status ? (
+                        <p className="text-[10px] text-gray-400 mt-1" title="Stored enterprise status (may differ until next sync)">
+                          stored: {client.client_lifecycle_status}
+                        </p>
+                      ) : null}
+                      {client.archive_reason ? (
+                        <p className="text-[10px] text-gray-500 mt-1 line-clamp-2" title={client.archive_reason}>
+                          {client.archive_reason}
+                        </p>
+                      ) : null}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(client.onboarding_status)}`}>
@@ -1923,6 +2009,32 @@ const ClientsManagement = () => {
                     {clientDetails.client?.subscription_status}
                   </span>
                 </div>
+              </div>
+              <div className="border-t border-gray-100 pt-3 mt-3">
+                <p className="text-sm text-gray-500 mb-2">Enterprise lifecycle</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-md ${adminEnterpriseLifecycleBadgeClass(
+                      clientDetails.derived_client_lifecycle_status,
+                    )}`}
+                  >
+                    {clientDetails.derived_client_lifecycle_status || '—'}
+                  </span>
+                  {clientDetails.client?.client_lifecycle_status ? (
+                    <span className="text-xs text-gray-500">stored: {clientDetails.client.client_lifecycle_status}</span>
+                  ) : null}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
+                  {clientDetails.client?.is_test_like ? <span>Test-like</span> : null}
+                  {clientDetails.client?.purge_eligible ? <span>Purge eligible</span> : null}
+                  {clientDetails.client?.is_deleted ? <span className="text-amber-700">Archived / hidden</span> : null}
+                </div>
+                {clientDetails.client?.archive_reason ? (
+                  <p className="text-xs text-gray-500 mt-2">
+                    <span className="font-medium text-gray-600">Archive reason: </span>
+                    {clientDetails.client.archive_reason}
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -2451,6 +2563,7 @@ const AdminsManagement = () => {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     full_name: ''
@@ -2458,12 +2571,14 @@ const AdminsManagement = () => {
 
   useEffect(() => {
     fetchAdmins();
-  }, []);
+  }, [showArchived]);
 
   const fetchAdmins = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/admin/admins');
+      const response = await api.get('/admin/admins', {
+        params: { include_archived: showArchived },
+      });
       setAdmins(response.data.admins || []);
     } catch (error) {
       toast.error('Failed to load admin users');
@@ -2497,17 +2612,70 @@ const AdminsManagement = () => {
     }
   };
 
-  const handleDeactivate = async (portalUserId, email) => {
-    if (!window.confirm(`Are you sure you want to deactivate ${email}?`)) return;
-    
+  const handleArchive = async (portalUserId, email) => {
+    if (!window.confirm(`Archive ${email}? They will be signed out and hidden from normal lists.`)) return;
+
     setActionLoading(portalUserId);
     try {
-      await stepUp.request((headers) => api.delete(`/admin/admins/${portalUserId}`, { headers }));
-      toast.success('Admin deactivated successfully');
+      await stepUp.request((headers) =>
+        api.post(`/admin/users/${portalUserId}/archive`, null, { headers }),
+      );
+      toast.success('User archived');
       fetchAdmins();
     } catch (error) {
       if (error?.message !== 'step_up_cancelled') {
-        toast.error(normalizeErrorDetail(error.response?.data?.detail, 'Failed to deactivate admin'));
+        toast.error(normalizeErrorDetail(error.response?.data?.detail, 'Failed to archive user'));
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRestoreUser = async (portalUserId) => {
+    setActionLoading(portalUserId);
+    try {
+      await stepUp.request((headers) =>
+        api.post(`/admin/users/${portalUserId}/restore`, null, { headers }),
+      );
+      toast.success('User restored');
+      fetchAdmins();
+    } catch (error) {
+      if (error?.message !== 'step_up_cancelled') {
+        toast.error(normalizeErrorDetail(error.response?.data?.detail, 'Failed to restore user'));
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handlePermanentDelete = async (portalUserId, email) => {
+    setActionLoading(portalUserId);
+    try {
+      const check = await api.get(`/admin/users/${portalUserId}/permanent-delete-check`);
+      const { allowed, blockers = [] } = check.data || {};
+      if (!allowed) {
+        toast.error(
+          blockers.length
+            ? `Cannot permanently delete: ${blockers.join(', ')}`
+            : 'Cannot permanently delete this user',
+        );
+        return;
+      }
+      if (
+        !window.confirm(
+          `Permanently remove ${email} from the database? This cannot be undone. Billing records and the client account are not deleted.`,
+        )
+      ) {
+        return;
+      }
+      await stepUp.request((headers) =>
+        api.delete(`/admin/users/${portalUserId}/permanent`, { headers }),
+      );
+      toast.success('User permanently deleted');
+      fetchAdmins();
+    } catch (error) {
+      if (error?.message !== 'step_up_cancelled') {
+        toast.error(normalizeErrorDetail(error.response?.data?.detail, 'Failed to permanently delete user'));
       }
     } finally {
       setActionLoading(null);
@@ -2552,7 +2720,10 @@ const AdminsManagement = () => {
     }
   };
 
-  const getStatusBadge = (status, passwordStatus) => {
+  const getStatusBadge = (status, passwordStatus, isDeleted) => {
+    if (isDeleted) {
+      return { label: 'Archived', className: 'bg-slate-100 text-slate-800 border border-slate-300' };
+    }
     if (status === 'DISABLED') {
       return { label: 'Disabled', className: 'bg-gray-100 text-gray-700 border border-gray-300' };
     }
@@ -2583,7 +2754,17 @@ const AdminsManagement = () => {
             Manage administrator access to Compliance Vault Pro
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              className="rounded border-gray-300"
+              data-testid="admins-show-archived"
+            />
+            Show archived
+          </label>
           <button
             onClick={fetchAdmins}
             className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
@@ -2755,15 +2936,17 @@ const AdminsManagement = () => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {(admins ?? []).map((admin) => {
-                const statusBadge = getStatusBadge(admin.status, admin.password_status);
+                const isArchived = admin.is_deleted === true;
+                const isOwner = admin.role === 'ROLE_OWNER';
+                const statusBadge = getStatusBadge(admin.status, admin.password_status, isArchived);
                 const isLoading = actionLoading === admin.portal_user_id;
-                const isDisabled = admin.status === 'DISABLED';
+                const isDisabled = admin.status === 'DISABLED' && !isArchived;
                 const isPending = admin.status === 'INVITED' || admin.password_status === 'NOT_SET';
 
                 return (
                   <tr 
                     key={admin.portal_user_id} 
-                    className={`hover:bg-gray-50 transition-colors ${isDisabled ? 'opacity-60' : ''}`}
+                    className={`hover:bg-gray-50 transition-colors ${isDisabled || isArchived ? 'opacity-60' : ''}`}
                     data-testid={`admin-row-${admin.portal_user_id}`}
                   >
                     <td className="px-6 py-4">
@@ -2814,34 +2997,57 @@ const AdminsManagement = () => {
                           <RefreshCw className="w-4 h-4 animate-spin text-electric-teal" />
                         ) : (
                           <>
-                            {isPending && !isDisabled && (
-                              <button
-                                onClick={() => handleResendInvite(admin.portal_user_id, admin.auth_email)}
-                                className="p-2 text-electric-teal hover:bg-electric-teal/10 rounded-lg transition-colors"
-                                title="Resend Invitation"
-                                data-testid={`resend-invite-${admin.portal_user_id}`}
-                              >
-                                <MailPlus className="w-4 h-4" />
-                              </button>
-                            )}
-                            {isDisabled ? (
-                              <button
-                                onClick={() => handleReactivate(admin.portal_user_id)}
-                                className="p-2 text-electric-teal hover:bg-electric-teal/10 rounded-lg transition-colors"
-                                title="Reactivate Admin"
-                                data-testid={`reactivate-admin-${admin.portal_user_id}`}
-                              >
-                                <RotateCcw className="w-4 h-4" />
-                              </button>
+                            {isArchived ? (
+                              <>
+                                <button
+                                  onClick={() => handleRestoreUser(admin.portal_user_id)}
+                                  className="p-2 text-electric-teal hover:bg-electric-teal/10 rounded-lg transition-colors"
+                                  title="Restore user"
+                                  data-testid={`restore-admin-${admin.portal_user_id}`}
+                                >
+                                  <RotateCcw className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handlePermanentDelete(admin.portal_user_id, admin.auth_email)}
+                                  className="p-2 text-gray-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Permanent delete (only when billing/audit checks pass)"
+                                  data-testid={`permanent-delete-admin-${admin.portal_user_id}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
                             ) : (
-                              <button
-                                onClick={() => handleDeactivate(admin.portal_user_id, admin.auth_email)}
-                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Deactivate Admin"
-                                data-testid={`deactivate-admin-${admin.portal_user_id}`}
-                              >
-                                <UserMinus className="w-4 h-4" />
-                              </button>
+                              <>
+                                {isPending && !isDisabled && (
+                                  <button
+                                    onClick={() => handleResendInvite(admin.portal_user_id, admin.auth_email)}
+                                    className="p-2 text-electric-teal hover:bg-electric-teal/10 rounded-lg transition-colors"
+                                    title="Resend Invitation"
+                                    data-testid={`resend-invite-${admin.portal_user_id}`}
+                                  >
+                                    <MailPlus className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {isDisabled ? (
+                                  <button
+                                    onClick={() => handleReactivate(admin.portal_user_id)}
+                                    className="p-2 text-electric-teal hover:bg-electric-teal/10 rounded-lg transition-colors"
+                                    title="Reactivate Admin"
+                                    data-testid={`reactivate-admin-${admin.portal_user_id}`}
+                                  >
+                                    <RotateCcw className="w-4 h-4" />
+                                  </button>
+                                ) : !isOwner ? (
+                                  <button
+                                    onClick={() => handleArchive(admin.portal_user_id, admin.auth_email)}
+                                    className="p-2 text-gray-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                                    title="Archive user"
+                                    data-testid={`archive-admin-${admin.portal_user_id}`}
+                                  >
+                                    <Archive className="w-4 h-4" />
+                                  </button>
+                                ) : null}
+                              </>
                             )}
                           </>
                         )}
