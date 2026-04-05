@@ -1006,7 +1006,7 @@ async def contractor_login(request: Request, credentials: LoginRequest):
             and contractor_service.portal_access_is_activated(contractor)
             and contractor.get("activated_at")
             and contractor_service.normalize_lifecycle_status(contractor.get("status"))
-            != contractor_service.LC_SUSPENDED
+            not in (contractor_service.LC_SUSPENDED, contractor_service.LC_ARCHIVED)
         ):
             await contractor_service.update_contractor(
                 contractor_id, status=contractor_service.LC_ACTIVE
@@ -1158,8 +1158,11 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
     contractor = await contractor_service.get_contractor(contractor_id)
     if not contractor:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invite data")
-    if contractor_service.normalize_lifecycle_status(contractor.get("status")) == contractor_service.LC_SUSPENDED:
+    _cst = contractor_service.normalize_lifecycle_status(contractor.get("status"))
+    if _cst == contractor_service.LC_SUSPENDED:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor account is suspended")
+    if _cst == contractor_service.LC_ARCHIVED:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor account is archived")
     if (contractor.get("portal_access_status") or "").strip().lower() == contractor_service.PORTAL_ACCESS_DISABLED:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor portal access is disabled")
     is_valid, message = validate_password_strength(data.password)

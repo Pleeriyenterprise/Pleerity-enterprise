@@ -19,6 +19,7 @@ from services.requirement_code_registry import (
     is_bookable_compliance_requirement,
     normalize_requirement_code_strict,
 )
+from services.compliance_workflow_service import assert_max_one_active_compliance_job
 from services.work_order_execution_constants import (
     ALLOWED_COMPLIANCE_GENERATED_FROM,
     ALLOWED_COMPLIANCE_PURPOSES,
@@ -98,6 +99,12 @@ async def create_compliance_execution_work_order(
     )[0]
     if row_code and row_code != canon:
         raise ValueError("requirement_code does not match linked property requirement")
+
+    await assert_max_one_active_compliance_job(
+        client_id=client_id.strip(),
+        property_id=property_id.strip(),
+        linked_property_requirement_id=lpr,
+    )
 
     cat = await db.requirements_catalog.find_one({"code": canon}, {"_id": 0, "title": 1})
     title = (cat or {}).get("title") or canon.replace("_", " ").title()

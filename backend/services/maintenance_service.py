@@ -43,6 +43,18 @@ STATUS_AWAITING_PARTS = "AWAITING_PARTS"
 STATUS_VERIFIED = "VERIFIED"
 STATUS_CLOSED = "CLOSED"
 
+# Optional operational holds (persisted on work_orders.operational_exception)
+OPERATIONAL_EXCEPTION_NO_ACCESS = "NO_ACCESS"
+OPERATIONAL_EXCEPTION_RESCHEDULE_REQUIRED = "RESCHEDULE_REQUIRED"
+OPERATIONAL_EXCEPTION_FOLLOW_UP_REQUIRED = "FOLLOW_UP_REQUIRED"
+ALLOWED_OPERATIONAL_EXCEPTIONS = frozenset(
+    {
+        OPERATIONAL_EXCEPTION_NO_ACCESS,
+        OPERATIONAL_EXCEPTION_RESCHEDULE_REQUIRED,
+        OPERATIONAL_EXCEPTION_FOLLOW_UP_REQUIRED,
+    }
+)
+
 ALL_STATUSES = (
     STATUS_OPEN,
     STATUS_ASSIGNED,
@@ -325,6 +337,7 @@ async def update_work_order(
     evidence_keys_append: Optional[List[str]] = None,
     accepted_at: Optional[str] = None,
     scheduled_at: Optional[str] = None,
+    operational_exception: Optional[str] = None,
     *,
     allow_direct_contractor_assignment: bool = False,
     assignment_profile: str = "standard",
@@ -376,6 +389,16 @@ async def update_work_order(
         )
     now = datetime.now(timezone.utc).isoformat()
     set_fields = {"updated_at": now}
+    if operational_exception is not None:
+        raw_oe = (operational_exception or "").strip().upper()
+        if raw_oe == "" or raw_oe in ("NONE", "CLEAR", "NULL"):
+            set_fields["operational_exception"] = None
+        elif raw_oe in ALLOWED_OPERATIONAL_EXCEPTIONS:
+            set_fields["operational_exception"] = raw_oe
+        else:
+            raise ValueError(
+                f"operational_exception must be one of: {', '.join(sorted(ALLOWED_OPERATIONAL_EXCEPTIONS))} or empty to clear"
+            )
     if contractor_notes is not None:
         set_fields["contractor_notes"] = contractor_notes
     if completion_notes is not None:

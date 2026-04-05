@@ -1029,7 +1029,7 @@ function ClientRiskSignalsPageInner() {
                             onClick={() => openArrangeInspection(drawerSignal.property_id)}
                           >
                             <ClipboardCheck className="w-4 h-4 mr-1" />
-                            Book inspection
+                            Create compliance job
                           </Button>
                         )}
                         {actions.includes('schedule_inspection') && hasFeature('maintenance_workflows') && !hasFeature('compliance_engine') && (
@@ -1136,10 +1136,10 @@ function ClientRiskSignalsPageInner() {
       <Dialog open={arrangeOpen} onOpenChange={(o) => !o && setArrangeOpen(false)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Book compliance inspection</DialogTitle>
+            <DialogTitle>Create compliance job</DialogTitle>
             <DialogDescription>
-              Select the regulatory obligation this inspection satisfies. A compliance job (not a general repair ticket) will
-              be created and linked to this risk signal.
+              Select the obligation this job will satisfy. This only creates the job — open it afterward to assign a contractor
+              and complete booking, visit, and proof.
             </DialogDescription>
           </DialogHeader>
           {arrangeLoading ? (
@@ -1172,7 +1172,7 @@ function ClientRiskSignalsPageInner() {
               Cancel
             </Button>
             <Button type="button" onClick={confirmArrangeInspection} disabled={!!actionFromSignal || arrangeLoading}>
-              {actionFromSignal === 'schedule_inspection' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Book inspection'}
+              {actionFromSignal === 'schedule_inspection' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create job'}
             </Button>
           </DialogFooter>
         </DialogContent>

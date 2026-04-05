@@ -60,6 +60,15 @@ async def permanent_delete_preflight(db, portal_user_id: str) -> Tuple[bool, Lis
         if props > 0:
             blockers.append("client_has_properties")
 
+    # Tenant-specific: preserve tenancy and tenant-facing compliance / ops history.
+    if user.get("role") == UserRole.ROLE_TENANT.value:
+        if await db.tenant_assignments.count_documents({"tenant_id": portal_user_id}) > 0:
+            blockers.append("tenant_assignments_exist")
+        if await db.tenant_requests.count_documents({"tenant_id": portal_user_id}) > 0:
+            blockers.append("tenant_requests_exist")
+        if await db.maintenance_issues.count_documents({"reporter_id": portal_user_id}) > 0:
+            blockers.append("tenant_maintenance_issues_exist")
+
     # Block only when this user has acted in the system (preserves compliance trail).
     if await db.audit_logs.count_documents({"actor_id": portal_user_id}) > 0:
         blockers.append("audit_logs_present")
@@ -206,4 +215,52 @@ async def permanent_delete_portal_user(
             "target_role": target.get("role"),
             "blockers_checked": "passed",
         },
+    )
+
+
+async def suspend_portal_user_identity(
+    db,
+    portal_user_id: str,
+    actor_portal_user_id: str,
+    *,
+    actor_role: UserRole,
+) -> None:
+    """Disable login without soft-delete (distinct from archive)."""
+    if portal_user_id == actor_portal_user_id:
+        raise ValueError("cannot_suspend_self")
+    target = await get_portal_user_any_status(db, portal_user_id)
+    if not target:
+        raise ValueError("user_not_found")
+    if target.get("is_deleted") is True:
+        raise ValueError("archived_use_restore_first")
+    if target.get("role") == UserRole.ROLE_OWNER.value:
+        raise ValueError("owner_cannot_be_suspended")
+    if target.get("status") == UserStatus.DISABLED.value:
+        raise ValueError("already_suspended")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.portal_users.update_one(
+        {"portal_user_id": portal_user_id},
+        {"$set": {"status": UserStatus.DISABLED.value, "updated_at": now}, "$inc": {"session_version": 1}},
+    )
+
+
+async def resume_portal_user_identity(
+    db,
+    portal_user_id: str,
+    actor_portal_user_id: str,
+    *,
+    actor_role: UserRole,
+) -> None:
+    """Re-enable login after suspend (not for archived users)."""
+    target = await get_portal_user_any_status(db, portal_user_id)
+    if not target:
+        raise ValueError("user_not_found")
+    if target.get("is_deleted") is True:
+        raise ValueError("archived_use_restore_first")
+    if target.get("status") != UserStatus.DISABLED.value:
+        raise ValueError("not_suspended")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.portal_users.update_one(
+        {"portal_user_id": portal_user_id},
+        {"$set": {"status": UserStatus.ACTIVE.value, "updated_at": now}, "$inc": {"session_version": 1}},
     )

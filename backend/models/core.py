@@ -52,6 +52,18 @@ class ClientLifecycleStatus(str, Enum):
     PURGE_ELIGIBLE = "PURGE_ELIGIBLE"
 
 
+# Same enum values — used by unified identity admin API (clients, contractors, portal users).
+IdentityLifecycleStatus = ClientLifecycleStatus
+
+
+class IdentityKind(str, Enum):
+    """Discriminator for unified identity lifecycle routes (profiles stay in their collections)."""
+
+    CLIENT = "client"
+    CONTRACTOR = "contractor"
+    PORTAL_USER = "portal_user"
+
+
 class ProvisioningJobStatus(str, Enum):
     """Single source of truth for purchase lifecycle (provisioning_jobs)."""
     INTAKE_RECEIVED = "INTAKE_RECEIVED"
@@ -263,6 +275,12 @@ class AuditAction(str, Enum):
     CLIENT_MARKED_PURGE_ELIGIBLE = "CLIENT_MARKED_PURGE_ELIGIBLE"
     CLIENT_DELETED_PERMANENTLY = "CLIENT_DELETED_PERMANENTLY"
     CLIENT_FLAGGED_TEST_LIKE = "CLIENT_FLAGGED_TEST_LIKE"
+    # Unified identity lifecycle (cross-kind admin surface; may coexist with CLIENT_* / USER_* logs)
+    IDENTITY_ARCHIVED = "IDENTITY_ARCHIVED"
+    IDENTITY_RESTORED = "IDENTITY_RESTORED"
+    IDENTITY_SUSPENDED = "IDENTITY_SUSPENDED"
+    IDENTITY_DELETED = "IDENTITY_DELETED"
+    IDENTITY_MARKED_PURGE_ELIGIBLE = "IDENTITY_MARKED_PURGE_ELIGIBLE"
     CLIENT_PORTAL_TODAY_NAVIGATION_INTENT = "CLIENT_PORTAL_TODAY_NAVIGATION_INTENT"
     TENANT_REQUEST_RESOLUTION_ATTEMPT = "TENANT_REQUEST_RESOLUTION_ATTEMPT"
     TENANT_REQUEST_RESOLVED = "TENANT_REQUEST_RESOLVED"

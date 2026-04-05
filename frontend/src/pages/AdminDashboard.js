@@ -77,6 +77,7 @@ function normalizeErrorDetail(detail, fallback) {
 const ADMIN_CLIENT_LIFECYCLE_BUCKETS = [
   { id: 'active', label: 'Active' },
   { id: 'pending_setup', label: 'Pending setup' },
+  { id: 'suspended', label: 'Suspended' },
   { id: 'archived', label: 'Archived' },
   { id: 'purge_eligible', label: 'Purge eligible' },
   { id: 'test_like', label: 'Test-like' },
@@ -93,11 +94,19 @@ function adminEnterpriseLifecycleBadgeClass(derived) {
 }
 
 // Global Search Component
+function globalSearchInactiveLabel(client) {
+  const st = (client.client_lifecycle_status || '').toUpperCase();
+  if (client.is_deleted || st === 'ARCHIVED' || st === 'PURGE_ELIGIBLE') return 'Archived';
+  if (st === 'SUSPENDED') return 'Suspended';
+  return null;
+}
+
 const GlobalSearch = ({ onSelectClient }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [includeArchived, setIncludeArchived] = useState(false);
   const searchRef = useRef(null);
   const debounceTimer = useRef(null);
 
@@ -119,7 +128,12 @@ const GlobalSearch = ({ onSelectClient }) => {
 
     setLoading(true);
     try {
-      const response = await api.get(`/admin/search?q=${encodeURIComponent(searchTerm)}&limit=10`);
+      const params = new URLSearchParams({
+        q: searchTerm,
+        limit: '10',
+        ...(includeArchived ? { include_archived: 'true' } : {}),
+      });
+      const response = await api.get(`/admin/search?${params.toString()}`);
       setResults(response.data.results || []);
       setIsOpen(true);
     } catch (error) {
@@ -128,19 +142,28 @@ const GlobalSearch = ({ onSelectClient }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [includeArchived]);
 
   const handleInputChange = (e) => {
     const value = e.target.value;
     setQuery(value);
-    
-    // Debounce search
+
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
     debounceTimer.current = setTimeout(() => {
       handleSearch(value);
     }, 300);
+  };
+
+  const toggleIncludeArchived = (checked) => {
+    setIncludeArchived(checked);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    if (query.trim().length >= 2) {
+      debounceTimer.current = setTimeout(() => handleSearch(query.trim()), 150);
+    }
   };
 
   const handleSelectResult = (client) => {
@@ -166,14 +189,27 @@ const GlobalSearch = ({ onSelectClient }) => {
           <RefreshCw className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
         )}
       </div>
+      <label className="flex items-center gap-2 mt-1.5 text-[11px] text-white/75 cursor-pointer select-none max-w-64">
+        <input
+          type="checkbox"
+          checked={includeArchived}
+          onChange={(e) => toggleIncludeArchived(e.target.checked)}
+          className="rounded border-white/40 bg-white/10 text-electric-teal focus:ring-electric-teal"
+          data-testid="global-search-include-archived"
+        />
+        Include archived &amp; suspended
+      </label>
 
       {isOpen && results.length > 0 && (
         <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden" data-testid="search-results">
           <div className="p-2 text-xs text-gray-500 border-b border-gray-100">
             {results.length} result{results.length !== 1 ? 's' : ''} found
+            {!includeArchived ? <span className="block text-[10px] text-gray-400 mt-0.5">Archived / suspended hidden — enable above to find them</span> : null}
           </div>
           <div className="max-h-80 overflow-y-auto">
-            {results.map((client) => (
+            {results.map((client) => {
+              const inactiveLabel = includeArchived ? globalSearchInactiveLabel(client) : null;
+              return (
               <button
                 key={client.client_id}
                 onClick={() => handleSelectResult(client)}
@@ -182,7 +218,14 @@ const GlobalSearch = ({ onSelectClient }) => {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-midnight-blue">{client.full_name}</p>
+                    <p className="font-medium text-midnight-blue flex flex-wrap items-center gap-1.5">
+                      {client.full_name}
+                      {inactiveLabel ? (
+                        <span className="text-[10px] font-normal px-1.5 py-0 rounded bg-slate-200 text-slate-700">
+                          {inactiveLabel}
+                        </span>
+                      ) : null}
+                    </p>
                     <p className="text-sm text-gray-500">{client.email}</p>
                   </div>
                   <div className="text-right">
@@ -197,14 +240,18 @@ const GlobalSearch = ({ onSelectClient }) => {
                   </div>
                 </div>
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
       {isOpen && query.length >= 2 && results.length === 0 && !loading && (
-        <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 p-4 text-center text-gray-500">
-          No results found
+        <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 p-4 text-center text-gray-500 text-sm">
+          <p>No results found</p>
+          {!includeArchived ? (
+            <p className="text-[11px] text-gray-400 mt-2">Try &quot;Include archived &amp; suspended&quot; if this is a dormant account.</p>
+          ) : null}
         </div>
       )}
     </div>

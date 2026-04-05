@@ -106,6 +106,58 @@ async def _append_document_evidence_to_work_order(document_id: str, work_order_i
     )
 
 
+async def _finalize_active_compliance_jobs_after_certificate_verified(
+    db,
+    *,
+    client_id: str,
+    requirement_id: str,
+    document_id: str,
+    actor_id: Optional[str],
+) -> None:
+    """
+    Link verified certificate to every active compliance job for this requirement and move jobs to VERIFIED.
+    Idempotent: safe if work order already terminal.
+    """
+    from services import maintenance_service
+    from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE
+
+    terminal = frozenset(
+        {
+            maintenance_service.STATUS_CANCELLED,
+            maintenance_service.STATUS_COMPLETED,
+            maintenance_service.STATUS_CLOSED,
+            maintenance_service.STATUS_VERIFIED,
+        }
+    )
+    key = f"document:{document_id.strip()}"
+    cursor = db.work_orders.find(
+        {
+            "client_id": client_id.strip(),
+            "work_order_kind": WORK_ORDER_KIND_COMPLIANCE,
+            "linked_property_requirement_id": requirement_id.strip(),
+            "status": {"$nin": list(terminal)},
+        },
+        {"_id": 0, "work_order_id": 1},
+    )
+    async for row in cursor:
+        wid = (row.get("work_order_id") or "").strip()
+        if not wid:
+            continue
+        try:
+            await maintenance_service.update_work_order(
+                wid,
+                evidence_keys_append=[key],
+                assigned_by=actor_id,
+            )
+            await maintenance_service.update_work_order(
+                wid,
+                status=maintenance_service.STATUS_VERIFIED,
+                assigned_by=actor_id,
+            )
+        except Exception as ex:
+            logger.warning("Finalize compliance job %s on document verify failed: %s", wid, ex)
+
+
 async def _set_compliance_work_order_proof_verified(db, work_order_id: Optional[str]) -> None:
     """After a linked document is verified, mark compliance proof as policy-satisfied on the work order."""
     if not (work_order_id or "").strip():
@@ -949,6 +1001,195 @@ async def upload_zip_archive(
         )
 
 
+async def perform_client_document_upload(
+    *,
+    user: Dict[str, Any],
+    file: UploadFile,
+    property_id: str,
+    requirement_id: Optional[str],
+    work_order_id: Optional[str] = None,
+    document_type: Optional[str] = None,
+    notes: Optional[str] = None,
+    source: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Persist a client compliance upload (shared by POST /api/documents/upload and requirement-scoped routes).
+    Caller must enforce rate limits and authentication.
+    """
+    db = database.get_db()
+    property_doc = await db.properties.find_one(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0},
+    )
+
+    if not property_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=structured_error(
+                "PROPERTY_NOT_FOUND",
+                "Property not found or not linked to your account.",
+            ),
+        )
+    if property_doc.get("is_active") is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error_code": "PLAN_LIMIT",
+                "message": "This property is archived. Activate it from property settings or upgrade your plan to add documents.",
+            },
+        )
+
+    requirement = None
+    rid = (requirement_id or "").strip()
+    if rid:
+        requirement = await db.requirements.find_one(
+            {"requirement_id": rid, "client_id": user["client_id"]},
+            {"_id": 0},
+        )
+        if not requirement:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Requirement not found",
+            )
+        requirement_id = rid
+    else:
+        requirement_id = None
+
+    validated_wo = await _validate_optional_work_order_document_link(
+        db,
+        work_order_id=work_order_id,
+        client_id=user["client_id"],
+        property_id=property_id,
+        requirement_id=requirement_id,
+    )
+
+    file_extension = Path(file.filename).suffix
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = DOCUMENT_STORAGE_PATH / user["client_id"] / unique_filename
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    contents = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    stored_path = f"{user['client_id']}/{unique_filename}"
+
+    document = Document(
+        client_id=user["client_id"],
+        property_id=property_id,
+        requirement_id=requirement_id,
+        work_order_id=validated_wo,
+        file_name=file.filename,
+        file_path=stored_path,
+        file_size=len(contents),
+        mime_type=file.content_type or "application/octet-stream",
+        status=DocumentStatus.UPLOADED,
+        uploaded_by=user["portal_user_id"],
+        document_type=document_type.strip() if isinstance(document_type, str) else None,
+        source=(source.strip() if isinstance(source, str) and source.strip() else None) or "portal",
+        notes=notes.strip() if isinstance(notes, str) else None,
+    )
+
+    doc = document.model_dump()
+    doc["uploaded_at"] = doc["uploaded_at"].isoformat()
+
+    await db.documents.insert_one(doc)
+
+    asyncio.create_task(
+        _run_analysis_after_upload(
+            document_id=document.document_id,
+            client_id=user["client_id"],
+            actor_id=user.get("portal_user_id"),
+            file_path=str(file_path),
+            mime_type=file.content_type or "application/octet-stream",
+        )
+    )
+
+    from services.provisioning import provisioning_service
+
+    await provisioning_service._update_property_compliance(property_id)
+    from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
+
+    await enqueue_compliance_recalc(
+        property_id=property_id,
+        client_id=user["client_id"],
+        trigger_reason=TRIGGER_DOC_UPLOADED,
+        actor_type=ACTOR_CLIENT,
+        actor_id=user.get("portal_user_id"),
+        correlation_id=f"DOC_UPLOADED:{document.document_id}",
+    )
+    try:
+        from services.score_events_service import write_score_event, EVENT_DOCUMENT_UPLOADED, ACTOR_ROLE_CLIENT
+
+        await write_score_event(
+            client_id=user["client_id"],
+            event_type=EVENT_DOCUMENT_UPLOADED,
+            actor_user_id=user.get("portal_user_id"),
+            actor_role=ACTOR_ROLE_CLIENT,
+            property_id=property_id,
+            requirement_id=requirement_id,
+            document_id=document.document_id,
+            metadata={"filename": file.filename},
+        )
+    except Exception as ev_err:
+        logger.debug("Score event DOCUMENT_UPLOADED skip: %s", ev_err)
+
+    await create_audit_log(
+        action=AuditAction.DOCUMENT_UPLOADED,
+        actor_id=user["portal_user_id"],
+        client_id=user["client_id"],
+        resource_type="document",
+        resource_id=document.document_id,
+        metadata={
+            "filename": file.filename,
+            "requirement_id": requirement_id,
+            "property_id": property_id,
+        },
+    )
+
+    try:
+        from services.analytics_service import log_event, log_first_doc_uploaded_once
+
+        await log_event(
+            "doc_uploaded",
+            {"client_id": user["client_id"], "metadata": {"document_id": document.document_id, "property_id": property_id}},
+        )
+        await log_first_doc_uploaded_once(user["client_id"])
+    except Exception:
+        pass
+    logger.info("Document uploaded: %s", document.document_id)
+    outcome = None
+    try:
+        from services.compliance_outcome_engine import (
+            apply_action_outcome,
+            EVENT_CERTIFICATE_UPLOADED,
+        )
+
+        outcome = await apply_action_outcome(
+            {
+                "event_type": EVENT_CERTIFICATE_UPLOADED,
+                "client_id": user["client_id"],
+                "property_id": property_id,
+                "asset_id": None,
+                "requirement_type": (requirement or {}).get("requirement_type"),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "source_id": document.document_id,
+                "dedupe_key": f"{EVENT_CERTIFICATE_UPLOADED}:{document.document_id}",
+                "actor_id": user.get("portal_user_id"),
+                "actor_role": "CLIENT",
+                "metadata": {"document_id": document.document_id},
+            }
+        )
+    except Exception as outcome_err:
+        logger.debug("Action outcome skip for document upload: %s", outcome_err)
+
+    return {
+        "message": "Document uploaded successfully",
+        "document_id": document.document_id,
+        "outcome": outcome,
+    }
+
+
 @router.post("/upload")
 async def upload_document(
     request: Request,
@@ -963,179 +1204,19 @@ async def upload_document(
     """Upload a compliance document (client or admin). requirement_id optional for 'Other' docs (link later)."""
     user = await client_route_guard(request)
     await _enforce_document_upload_rate_limit(user["client_id"])
-    db = database.get_db()
-    
+
     try:
-        # Verify property belongs to client
-        property_doc = await db.properties.find_one(
-            {"property_id": property_id, "client_id": user["client_id"]},
-            {"_id": 0}
-        )
-        
-        if not property_doc:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=structured_error(
-                    "PROPERTY_NOT_FOUND",
-                    "Property not found or not linked to your account.",
-                ),
-            )
-        # Archived (read-only) properties: no new uploads after downgrade
-        if property_doc.get("is_active") is False:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": "PLAN_LIMIT",
-                    "message": "This property is archived. Activate it from property settings or upgrade your plan to add documents.",
-                },
-            )
-        
-        requirement = None
-        if requirement_id and requirement_id.strip():
-            requirement = await db.requirements.find_one(
-                {"requirement_id": requirement_id, "client_id": user["client_id"]},
-                {"_id": 0}
-            )
-            if not requirement:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Requirement not found"
-                )
-            requirement_id = requirement_id.strip()
-        else:
-            requirement_id = None
-
-        validated_wo = await _validate_optional_work_order_document_link(
-            db,
+        return await perform_client_document_upload(
+            user=user,
+            file=file,
+            property_id=property_id,
+            requirement_id=requirement_id,
             work_order_id=work_order_id,
-            client_id=user["client_id"],
-            property_id=property_id,
-            requirement_id=requirement_id,
+            document_type=document_type,
+            notes=notes,
+            source=source,
         )
-        
-        # Create unique filename
-        file_extension = Path(file.filename).suffix
-        unique_filename = f"{uuid.uuid4()}{file_extension}"
-        file_path = DOCUMENT_STORAGE_PATH / user["client_id"] / unique_filename
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Save file
-        contents = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(contents)
-        
-        # Store relative path so file can be resolved when DOCUMENT_STORAGE_PATH differs (e.g. another server)
-        stored_path = f"{user['client_id']}/{unique_filename}"
-        
-        # Create document record
-        document = Document(
-            client_id=user["client_id"],
-            property_id=property_id,
-            requirement_id=requirement_id,
-            work_order_id=validated_wo,
-            file_name=file.filename,
-            file_path=stored_path,
-            file_size=len(contents),
-            mime_type=file.content_type or "application/octet-stream",
-            status=DocumentStatus.UPLOADED,
-            uploaded_by=user["portal_user_id"],
-            document_type=document_type.strip() if isinstance(document_type, str) else None,
-            source=(source.strip() if isinstance(source, str) and source.strip() else None) or "portal",
-            notes=notes.strip() if isinstance(notes, str) else None,
-        )
-        
-        doc = document.model_dump()
-        doc["uploaded_at"] = doc["uploaded_at"].isoformat()
-        
-        await db.documents.insert_one(doc)
-        
-        # Trigger AI extraction in background (PDF + images via Gemini/OpenAI); modal opens when done
-        asyncio.create_task(_run_analysis_after_upload(
-            document_id=document.document_id,
-            client_id=user["client_id"],
-            actor_id=user.get("portal_user_id"),
-            file_path=str(file_path),
-            mime_type=file.content_type or "application/octet-stream",
-        ))
-        
-        # Do not mark requirement as satisfied on upload; user confirms expiry in modal or via apply-extraction
-        from services.provisioning import provisioning_service
-        await provisioning_service._update_property_compliance(property_id)
-        from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
-        await enqueue_compliance_recalc(
-            property_id=property_id,
-            client_id=user["client_id"],
-            trigger_reason=TRIGGER_DOC_UPLOADED,
-            actor_type=ACTOR_CLIENT,
-            actor_id=user.get("portal_user_id"),
-            correlation_id=f"DOC_UPLOADED:{document.document_id}",
-        )
-        try:
-            from services.score_events_service import write_score_event, EVENT_DOCUMENT_UPLOADED, ACTOR_ROLE_CLIENT
-            await write_score_event(
-                client_id=user["client_id"],
-                event_type=EVENT_DOCUMENT_UPLOADED,
-                actor_user_id=user.get("portal_user_id"),
-                actor_role=ACTOR_ROLE_CLIENT,
-                property_id=property_id,
-                requirement_id=requirement_id,
-                document_id=document.document_id,
-                metadata={"filename": file.filename},
-            )
-        except Exception as ev_err:
-            logger.debug("Score event DOCUMENT_UPLOADED skip: %s", ev_err)
-        
-        # Audit log
-        await create_audit_log(
-            action=AuditAction.DOCUMENT_UPLOADED,
-            actor_id=user["portal_user_id"],
-            client_id=user["client_id"],
-            resource_type="document",
-            resource_id=document.document_id,
-            metadata={
-                "filename": file.filename,
-                "requirement_id": requirement_id,
-                "property_id": property_id
-            }
-        )
-        
-        try:
-            from services.analytics_service import log_event, log_first_doc_uploaded_once
-            await log_event("doc_uploaded", {"client_id": user["client_id"], "metadata": {"document_id": document.document_id, "property_id": property_id}})
-            await log_first_doc_uploaded_once(user["client_id"])
-        except Exception:
-            pass
-        logger.info(f"Document uploaded: {document.document_id}")
-        outcome = None
-        try:
-            from services.compliance_outcome_engine import (
-                apply_action_outcome,
-                EVENT_CERTIFICATE_UPLOADED,
-            )
-            outcome = await apply_action_outcome(
-                {
-                    "event_type": EVENT_CERTIFICATE_UPLOADED,
-                    "client_id": user["client_id"],
-                    "property_id": property_id,
-                    "asset_id": None,
-                    "requirement_type": (requirement or {}).get("requirement_type"),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "source_id": document.document_id,
-                    "dedupe_key": f"{EVENT_CERTIFICATE_UPLOADED}:{document.document_id}",
-                    "actor_id": user.get("portal_user_id"),
-                    "actor_role": "CLIENT",
-                    "metadata": {"document_id": document.document_id},
-                }
-            )
-        except Exception as outcome_err:
-            logger.debug("Action outcome skip for document upload: %s", outcome_err)
 
-        return {
-            "message": "Document uploaded successfully",
-            "document_id": document.document_id,
-            "outcome": outcome,
-        }
-    
     except HTTPException:
         raise
     except Exception as e:
@@ -1156,6 +1237,37 @@ async def upload_document(
                 retry_suggested=True,
             ),
         )
+
+
+@router.post("/{document_id}/validate")
+async def client_request_document_validation(request: Request, document_id: str):
+    """
+    Client requests review / validation of an uploaded document (audit trail only; does not approve).
+    Sets manual_review_flag and client_validation_requested_at on the document row.
+    """
+    user = await client_route_guard(request)
+    db = database.get_db()
+    doc = await db.documents.find_one(
+        {"document_id": document_id.strip(), "client_id": user["client_id"]},
+        {"_id": 0, "document_id": 1},
+    )
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.documents.update_one(
+        {"document_id": document_id.strip(), "client_id": user["client_id"]},
+        {"$set": {"manual_review_flag": True, "client_validation_requested_at": now, "updated_at": now}},
+    )
+    await create_audit_log(
+        action=AuditAction.DOCUMENT_VIEWED,
+        actor_id=user.get("portal_user_id"),
+        client_id=user["client_id"],
+        resource_type="document",
+        resource_id=document_id.strip(),
+        metadata={"event": "client_validation_requested", "requested_at": now},
+    )
+    return {"ok": True, "document_id": document_id.strip(), "client_validation_requested_at": now}
+
 
 @router.post("/admin/upload")
 async def admin_upload_document(
@@ -1475,9 +1587,20 @@ async def verify_document(request: Request, document_id: str):
                         "date_source": "VERIFIED_DOCUMENT",
                         "evidence_state": "VERIFIED",
                         "confidence_state": "VERIFIED",
+                        "compliance_state": "VALID",
                     }
                 },
             )
+            try:
+                await _finalize_active_compliance_jobs_after_certificate_verified(
+                    db,
+                    client_id=str(document.get("client_id") or ""),
+                    requirement_id=str(document["requirement_id"]),
+                    document_id=document_id,
+                    actor_id=user.get("portal_user_id"),
+                )
+            except Exception as fin_e:
+                logger.warning("Active compliance job finalize on verify skipped: %s", fin_e)
         
         # Recompute property compliance (skip for client-level docs with no property_id)
         if document.get("property_id"):

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Briefcase, Loader2, AlertCircle, CheckCircle, Plus, Send, UserPlus, Eye } from 'lucide-react';
+import { Briefcase, Loader2, AlertCircle, CheckCircle, Send, UserPlus, Eye } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 
@@ -30,21 +30,7 @@ function ClientContractorsPageInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('my'); // 'my' | 'network' | 'marketplace'
-  const [addFormOpen, setAddFormOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [submittingId, setSubmittingId] = useState(null);
-  const [addForm, setAddForm] = useState({
-    company_name: '',
-    trade_types_text: '',
-    phone: '',
-    email: '',
-    contact_name: '',
-    region: '',
-    credentials_text: '',
-    insurance_details: '',
-    areas_text: '',
-    notes: '',
-  });
 
   const load = useCallback(() => {
     setLoading(true);
@@ -76,42 +62,6 @@ function ClientContractorsPageInner() {
     load();
   }, [load]);
 
-  const parseList = (text) => (text || '').split(',').map((s) => s.trim()).filter(Boolean);
-
-  const handleAddSubmit = (e) => {
-    e.preventDefault();
-    const payload = {
-      company_name: addForm.company_name.trim(),
-      trade_types: parseList(addForm.trade_types_text) || ['general'],
-      phone: addForm.phone.trim() || null,
-      email: addForm.email.trim() || null,
-      contact_name: addForm.contact_name.trim() || null,
-      region: addForm.region.trim() || null,
-      credentials: parseList(addForm.credentials_text),
-      insurance_details: addForm.insurance_details.trim() || null,
-      areas_served: parseList(addForm.areas_text),
-      notes: addForm.notes.trim() || null,
-    };
-    if (!payload.company_name) {
-      toast.error('Company name is required');
-      return;
-    }
-    if (!payload.phone && !payload.email) {
-      toast.error('Phone or email is required');
-      return;
-    }
-    setSaving(true);
-    clientAPI.createContractor(payload)
-      .then(() => {
-        toast.success('Contractor added');
-        setAddFormOpen(false);
-        setAddForm({ company_name: '', trade_types_text: '', phone: '', email: '', contact_name: '', region: '', credentials_text: '', insurance_details: '', areas_text: '', notes: '' });
-        load();
-      })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Failed to add contractor'))
-      .finally(() => setSaving(false));
-  };
-
   const handleSubmitToNetwork = (contractorId) => {
     setSubmittingId(contractorId);
     clientAPI.submitContractorToNetwork(contractorId)
@@ -130,7 +80,18 @@ function ClientContractorsPageInner() {
   };
 
   const getEmptyMessage = () => {
-    if (activeTab === 'my') return 'No contractors added yet. Click "Add contractor" to add your own trades.';
+    if (activeTab === 'my') {
+      return (
+        <>
+          No contractors in your list yet. To add someone new, open a maintenance or compliance job and use{' '}
+          <span className="font-medium">Add contractor & assign</span> in the assignment section (
+          <Link to="/operations/work-orders" className="text-electric-teal hover:underline">
+            Operations → Jobs
+          </Link>
+          ).
+        </>
+      );
+    }
     if (activeTab === 'network') return 'No network contractors available. Your administrator can add platform network contractors from Operations & Compliance → Contractors.';
     return 'No marketplace contractors available yet. Self-registered contractors appear here after admin approval.';
   };
@@ -165,7 +126,7 @@ function ClientContractorsPageInner() {
         Contractors
       </h1>
       <p className="text-gray-600 mb-4">
-        Your added contractors and the platform network. Add your own trades or use network contractors for jobs.
+        Browse contractors already on your account, the platform network, and the marketplace. New contacts are added when you assign someone on a job (open any job from Operations → Jobs), so details stay tied to the right property and workflow.
       </p>
 
       <div className="flex flex-wrap gap-2 mb-4 items-center">
@@ -190,12 +151,6 @@ function ClientContractorsPageInner() {
         >
           Marketplace
         </button>
-        {activeTab === 'my' && (
-          <Button size="sm" className="ml-auto bg-electric-teal hover:bg-electric-teal/90" onClick={() => setAddFormOpen(true)}>
-            <Plus className="w-4 h-4 mr-1" />
-            Add contractor
-          </Button>
-        )}
       </div>
 
       <Card>
@@ -209,9 +164,9 @@ function ClientContractorsPageInner() {
               Loading…
             </div>
           ) : contractors.length === 0 ? (
-            <p className="text-gray-500 py-6">
+            <div className="text-gray-500 py-6 text-sm leading-relaxed">
               {getEmptyMessage()}
-            </p>
+            </div>
           ) : (
             <ul className="space-y-3">
               {contractors.map((c) => {
@@ -263,7 +218,7 @@ function ClientContractorsPageInner() {
                     <div className="flex flex-wrap gap-1.5 items-center shrink-0">
                       <Button size="sm" variant="outline" onClick={() => navigate('/operations/work-orders')}>
                         <UserPlus className="w-3.5 h-3.5 mr-1" />
-                        Assign
+                        Open jobs
                       </Button>
                       {(activeTab === 'network' || activeTab === 'marketplace') && (
                         <Button size="sm" variant="ghost" onClick={() => navigate('/operations/work-orders')}>
@@ -291,116 +246,6 @@ function ClientContractorsPageInner() {
           {total > 0 && <p className="text-sm text-gray-500 mt-2">Total: {total}</p>}
         </CardContent>
       </Card>
-
-      {addFormOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Add contractor</h2>
-            <p className="text-sm text-gray-600 mb-4">Add a contractor visible only to your organisation. Phone or email required.</p>
-            <form onSubmit={handleAddSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Company name *</label>
-                <input
-                  type="text"
-                  value={addForm.company_name}
-                  onChange={(e) => setAddForm((f) => ({ ...f, company_name: e.target.value }))}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Trade types (comma-separated)</label>
-                <input
-                  type="text"
-                  value={addForm.trade_types_text}
-                  onChange={(e) => setAddForm((f) => ({ ...f, trade_types_text: e.target.value }))}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
-                  placeholder="e.g. plumbing, electrical, gas"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact name</label>
-                <input
-                  type="text"
-                  value={addForm.contact_name}
-                  onChange={(e) => setAddForm((f) => ({ ...f, contact_name: e.target.value }))}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input
-                  type="text"
-                  value={addForm.phone}
-                  onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={addForm.email}
-                  onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Region</label>
-                <input
-                  type="text"
-                  value={addForm.region}
-                  onChange={(e) => setAddForm((f) => ({ ...f, region: e.target.value }))}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Credentials (comma-separated)</label>
-                <input
-                  type="text"
-                  value={addForm.credentials_text}
-                  onChange={(e) => setAddForm((f) => ({ ...f, credentials_text: e.target.value }))}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
-                  placeholder="e.g. Gas Safe, NICEIC"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Insurance details</label>
-                <textarea
-                  value={addForm.insurance_details}
-                  onChange={(e) => setAddForm((f) => ({ ...f, insurance_details: e.target.value }))}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
-                  rows={2}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Areas served (comma-separated)</label>
-                <input
-                  type="text"
-                  value={addForm.areas_text}
-                  onChange={(e) => setAddForm((f) => ({ ...f, areas_text: e.target.value }))}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                <textarea
-                  value={addForm.notes}
-                  onChange={(e) => setAddForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full"
-                  rows={2}
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button type="submit" disabled={saving} className="bg-electric-teal hover:bg-electric-teal/90">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setAddFormOpen(false)}>Cancel</Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

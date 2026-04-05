@@ -78,6 +78,7 @@ def default_active_client_match() -> Dict[str, Any]:
                             "$nin": [
                                 ClientLifecycleStatus.ARCHIVED.value,
                                 ClientLifecycleStatus.PURGE_ELIGIBLE.value,
+                                ClientLifecycleStatus.SUSPENDED.value,
                             ]
                         }
                     },
@@ -192,6 +193,13 @@ async def permanent_delete_preflight(db, client_id: str) -> Tuple[bool, List[str
 
     blockers: List[str] = []
 
+    st_lc = (client.get("client_lifecycle_status") or "").strip().upper()
+    if st_lc not in (
+        ClientLifecycleStatus.ARCHIVED.value,
+        ClientLifecycleStatus.PURGE_ELIGIBLE.value,
+    ):
+        blockers.append("client_not_archived_or_purge_eligible")
+
     if (client.get("stripe_customer_id") or "").strip():
         blockers.append("stripe_customer_id_present")
     if (client.get("stripe_subscription_id") or "").strip():
@@ -210,6 +218,11 @@ async def permanent_delete_preflight(db, client_id: str) -> Tuple[bool, List[str
         ("portal_users", {"client_id": client_id}),
         ("provisioning_jobs", {"client_id": client_id}),
         ("client_billing", {"client_id": client_id}),
+        ("contractors", {"client_id": client_id}),
+        ("orders", {"client_id": client_id}),
+        ("compliance_evidence_pack_jobs", {"client_id": client_id}),
+        ("client_read_api_keys", {"client_id": client_id}),
+        ("product_analytics_events", {"client_id": client_id}),
     ]
     for name, q in pairs:
         n = await _count(db, name, q)
@@ -433,7 +446,56 @@ async def permanent_delete_client(
         client_id=client_id,
         resource_type="client",
         resource_id=client_id,
-        metadata={"email": doc.get("email"), "purged_at": now},
+        metadata={
+            "email": doc.get("email"),
+            "purged_at": now,
+            "purged_by": actor_portal_user_id,
+            "prior_client_lifecycle_status": (doc.get("client_lifecycle_status") or "").strip().upper() or None,
+        },
+    )
+
+
+async def suspend_client_org(
+    db,
+    client_id: str,
+    actor_portal_user_id: str,
+    *,
+    actor_role: UserRole,
+) -> None:
+    doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+    if not doc:
+        raise ValueError("client_not_found")
+    st = (doc.get("client_lifecycle_status") or "").strip().upper()
+    if st in (ClientLifecycleStatus.ARCHIVED.value, ClientLifecycleStatus.PURGE_ELIGIBLE.value):
+        raise ValueError("client_archived_use_restore")
+    if st == ClientLifecycleStatus.SUSPENDED.value:
+        raise ValueError("already_suspended")
+    now = datetime.now(timezone.utc)
+    await db.clients.update_one(
+        {"client_id": client_id},
+        {"$set": {"client_lifecycle_status": ClientLifecycleStatus.SUSPENDED.value, "updated_at": now}},
+    )
+
+
+async def resume_client_org(
+    db,
+    client_id: str,
+    actor_portal_user_id: str,
+    *,
+    actor_role: UserRole,
+) -> None:
+    doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+    if not doc:
+        raise ValueError("client_not_found")
+    st = (doc.get("client_lifecycle_status") or "").strip().upper()
+    if st != ClientLifecycleStatus.SUSPENDED.value:
+        raise ValueError("not_suspended")
+    shadow = {**doc, "client_lifecycle_status": None}
+    target = operational_client_lifecycle_to_persist(shadow)
+    now = datetime.now(timezone.utc)
+    await db.clients.update_one(
+        {"client_id": client_id},
+        {"$set": {"client_lifecycle_status": target, "updated_at": now}},
     )
 
 

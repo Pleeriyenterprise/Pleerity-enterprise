@@ -359,6 +359,7 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
                     <th className="text-left py-2 font-medium">Billing</th>
                     <th className="text-left py-2 font-medium">Flags</th>
                     <th className="text-left py-2 font-medium">Archive reason</th>
+                    <th className="text-left py-2 font-medium">Archived / purge scan</th>
                     <th className="text-left py-2 font-medium">Checkout</th>
                     <th className="text-left py-2 font-medium w-[200px]">Actions</th>
                   </tr>
@@ -429,6 +430,10 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
                         </td>
                         <td className="py-2 max-w-[140px] text-xs text-muted-foreground truncate" title={item.archive_reason || ''}>
                           {item.archive_reason || '—'}
+                        </td>
+                        <td className="py-2 whitespace-nowrap text-[11px] text-muted-foreground">
+                          <div>Arch: {formatDate(item.archived_at)}</div>
+                          <div>Purge scan: {formatDate(item.purge_checked_at)}</div>
                         </td>
                         <td className="py-2">
                           {item.last_checkout_error_code ? (
@@ -571,8 +576,9 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
             <AlertDialogDescription asChild>
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>
-                  This removes the client document from the database. Allowed only when billing, subscriptions, properties, and other
-                  dependencies are clear.
+                  The organisation must first be archived (or purge-eligible). Permanent delete removes the client document only when
+                  Stripe, subscriptions, properties, contractors, documents, work orders, audit history, and other dependencies are
+                  clear — the check below lists exact blockers.
                 </p>
                 {deleteCheckLoading ? (
                   <p className="flex items-center gap-2">

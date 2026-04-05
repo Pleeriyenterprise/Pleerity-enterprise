@@ -477,6 +477,53 @@ export const clientAPI = {
     apiClient.post(`/client/maintenance/work-orders/${workOrderId}/contractor-routing/confirm`),
   /** Compliance execution jobs (COMPLIANCE work orders). Requires COMPLIANCE_ENGINE + MAINTENANCE_WORKFLOWS. */
   bookComplianceWorkOrder: (body) => apiClient.post('/client/compliance-execution/work-orders/book', body),
+  /** Top-level /api compliance workflow surface (requirements, jobs, Today). */
+  getRequirementWorkflow: (requirementId) => apiClient.get(`/requirements/${encodeURIComponent(requirementId)}`),
+  createRequirementComplianceJob: (requirementId, body = {}) =>
+    apiClient.post(`/requirements/${encodeURIComponent(requirementId)}/jobs`, body),
+  markRequirementNotApplicableById: (requirementId, body) =>
+    apiClient.post(`/requirements/${encodeURIComponent(requirementId)}/mark-not-applicable`, body),
+  reopenRequirementById: (requirementId) => apiClient.post(`/requirements/${encodeURIComponent(requirementId)}/reopen`, {}),
+  getComplianceWorkflowJob: (jobId) => apiClient.get(`/jobs/${encodeURIComponent(jobId)}`),
+  getJobAssignableContractors: (jobId, params = {}) =>
+    apiClient.get(`/jobs/${encodeURIComponent(jobId)}/assignable-contractors`, { params }),
+  createWorkflowContractor: (body) => apiClient.post('/contractors', body),
+  complianceJobAssignContractor: (jobId, body) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/assign-contractor`, body),
+  complianceJobRequestBooking: (jobId, body) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/request-booking`, body),
+  complianceJobReschedule: (jobId, body) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/reschedule`, body),
+  complianceJobCancelBooking: (jobId) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/cancel-booking`, {}),
+  complianceJobMarkNoAccess: (jobId, body = {}) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/mark-no-access`, body),
+  complianceJobMarkRescheduleRequired: (jobId) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/mark-reschedule-required`, {}),
+  complianceJobConfirmBooking: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/confirm-booking`, {}),
+  complianceJobStart: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/start`, {}),
+  complianceJobAwaitingParts: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/awaiting-parts`, {}),
+  complianceJobComplete: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/complete`, {}),
+  complianceJobLinkDocument: (jobId, body) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/link-document`, body),
+  complianceJobAttachCompletionProof: (jobId, body) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/attach-completion-proof`, body),
+  complianceJobClose: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/close`, {}),
+  complianceJobVerify: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/verify`, {}),
+  complianceJobCancel: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/cancel`, {}),
+  getTodayItems: (params = {}) => apiClient.get('/today/items', { params }),
+  todayItemMarkReviewed: (itemId) => apiClient.post(`/today/items/${encodeURIComponent(itemId)}/mark-reviewed`, {}),
+  todayItemSnooze: (itemId, days) => apiClient.post(`/today/items/${encodeURIComponent(itemId)}/snooze`, { days }),
+  todayItemDismiss: (itemId, reason) =>
+    apiClient.post(`/today/items/${encodeURIComponent(itemId)}/dismiss`, { reason }),
+  todayItemRestore: (itemId) => apiClient.post(`/today/items/${encodeURIComponent(itemId)}/restore`, {}),
+  complianceJobSetOperationalException: (jobId, exception) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/operational-exception`, { exception: exception || '' }),
+  complianceJobResumeAfterParts: (jobId) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/resume-after-parts`, {}),
+  complianceJobCreatePersonalContractorAndAssign: (jobId, body) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/create-personal-contractor-and-assign`, body),
+  requestDocumentValidation: (documentId) => apiClient.post(`/documents/${encodeURIComponent(documentId)}/validate`, {}),
   getComplianceContractorRoutingState: (workOrderId) =>
     apiClient.get(`/client/compliance-execution/work-orders/${workOrderId}/contractor-routing`),
   requestComplianceContractor: (workOrderId) =>
@@ -518,7 +565,8 @@ export const clientAPI = {
 
 export const adminAPI = {
   getDashboard: () => apiClient.get('/admin/dashboard'),
-  globalSearch: (q, limit = 20) => apiClient.get('/admin/search', { params: { q, limit } }),
+  globalSearch: (q, limit = 20, includeArchived = false) =>
+    apiClient.get('/admin/search', { params: { q, limit, include_archived: includeArchived || undefined } }),
   getPendingVerificationDocuments: (hours = 24, clientId = null, limit = 50, skip = 0) =>
     apiClient.get('/admin/documents/pending-verification', { params: { hours, client_id: clientId || undefined, limit, skip } }),
   getClients: (skip = 0, limit = 50) => apiClient.get('/admin/clients', { params: { skip, limit } }),
@@ -534,6 +582,26 @@ export const adminAPI = {
     apiClient.post(`/admin/clients/${clientId}/flag-test-like`, body ?? {}, config),
   getClientPermanentDeleteCheck: (clientId) => apiClient.get(`/admin/clients/${clientId}/permanent-delete-check`),
   permanentDeleteClient: (clientId, config = {}) => apiClient.delete(`/admin/clients/${clientId}/permanent`, config),
+  /** Unified identity lifecycle (clients, contractors, portal users). */
+  listIdentities: (params = {}) => apiClient.get('/admin/identities', { params }),
+  identityArchive: (kind, id, body = {}, config = {}) =>
+    apiClient.post(
+      `/admin/identities/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/archive`,
+      body,
+      config,
+    ),
+  identityRestore: (kind, id, config = {}) =>
+    apiClient.post(`/admin/identities/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/restore`, {}, config),
+  identitySuspend: (kind, id, config = {}) =>
+    apiClient.post(`/admin/identities/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/suspend`, {}, config),
+  identityResume: (kind, id, config = {}) =>
+    apiClient.post(`/admin/identities/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/resume`, {}, config),
+  identityMarkPurgeEligible: (kind, id, config = {}) =>
+    apiClient.post(`/admin/identities/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/mark-purge-eligible`, {}, config),
+  identityPermanentDeleteCheck: (kind, id) =>
+    apiClient.get(`/admin/identities/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/permanent-delete-check`),
+  identityPermanentDelete: (kind, id, config = {}) =>
+    apiClient.delete(`/admin/identities/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/permanent`, config),
   retryProvisioningJob: (jobId) => apiClient.post(`/admin/provisioning-jobs/${jobId}/retry`),
   getClientControlPanel: (clientId) => apiClient.get(`/admin/clients/${clientId}/control-panel`),
   getClientComplianceActivity: (clientId, params = {}) =>

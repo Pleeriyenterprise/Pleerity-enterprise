@@ -4,7 +4,17 @@ from typing import Optional, List, Dict, Any
 from database import database
 from middleware import admin_route_guard, require_owner, require_owner_or_admin, require_support_or_above
 from middleware.step_up_auth import require_recent_step_up
-from models import AuditAction, EmailTemplateAlias, PasswordToken, UserRole, UserStatus, PasswordStatus, ProvisioningJobStatus, OnboardingStatus
+from models import (
+    AuditAction,
+    EmailTemplateAlias,
+    PasswordToken,
+    UserRole,
+    UserStatus,
+    PasswordStatus,
+    ProvisioningJobStatus,
+    OnboardingStatus,
+    SubscriptionStatus,
+)
 from utils.audit import create_audit_log
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -526,18 +536,46 @@ async def get_email_delivery(
 
 
 @router.get("/search")
-async def global_search(request: Request, q: str = "", limit: int = 20):
+async def global_search(
+    request: Request,
+    q: str = "",
+    limit: int = 20,
+    include_archived: bool = Query(False, description="Include archived, purge-eligible, and suspended clients"),
+):
     """
     Global search across clients by CRN, email, name, phone, order reference, or postcode.
-    Returns matching clients with their key details.
+    By default excludes clients hidden from the active admin list (archived, purge queue, suspended).
+    Set include_archived=true to search those as well (e.g. recovery on dormant accounts).
     """
     user = await admin_route_guard(request)
     db = database.get_db()
     
     if not q or len(q.strip()) < 2:
-        return {"results": [], "query": q, "total": 0}
+        return {"results": [], "query": q, "total": 0, "include_archived": include_archived}
     
     search_term = q.strip()
+    visibility_match = {} if include_archived else default_active_client_match()
+
+    def _with_visibility(query: Dict[str, Any]) -> Dict[str, Any]:
+        if not visibility_match:
+            return query
+        return {"$and": [query, visibility_match]}
+
+    search_projection = {
+        "_id": 0,
+        "client_id": 1,
+        "customer_reference": 1,
+        "full_name": 1,
+        "email": 1,
+        "company_name": 1,
+        "subscription_status": 1,
+        "onboarding_status": 1,
+        "billing_plan": 1,
+        "phone": 1,
+        "created_at": 1,
+        "client_lifecycle_status": 1,
+        "is_deleted": 1,
+    }
     
     try:
         # Build search conditions:
@@ -558,10 +596,8 @@ async def global_search(request: Request, q: str = "", limit: int = 20):
         }
         
         clients_cursor = db.clients.find(
-            client_query,
-            {"_id": 0, "client_id": 1, "customer_reference": 1, "full_name": 1,
-             "email": 1, "company_name": 1, "subscription_status": 1, 
-             "onboarding_status": 1, "billing_plan": 1, "phone": 1, "created_at": 1}
+            _with_visibility(client_query),
+            search_projection,
         ).limit(limit)
         
         clients = await clients_cursor.to_list(limit)
@@ -576,10 +612,8 @@ async def global_search(request: Request, q: str = "", limit: int = 20):
         order_new_ids = [cid for cid in order_client_ids if cid not in existing_client_ids]
         if order_new_ids:
             order_clients = await db.clients.find(
-                {"client_id": {"$in": order_new_ids}},
-                {"_id": 0, "client_id": 1, "customer_reference": 1, "full_name": 1,
-                 "email": 1, "company_name": 1, "subscription_status": 1,
-                 "onboarding_status": 1, "billing_plan": 1, "phone": 1, "created_at": 1}
+                _with_visibility({"client_id": {"$in": order_new_ids}}),
+                search_projection,
             ).to_list(limit)
             for c in order_clients:
                 match_order = next((o for o in order_hits if o.get("client_id") == c.get("client_id")), None)
@@ -602,10 +636,8 @@ async def global_search(request: Request, q: str = "", limit: int = 20):
         new_client_ids = [cid for cid in postcode_client_ids if cid not in existing_client_ids]
         if new_client_ids:
             additional_clients = await db.clients.find(
-                {"client_id": {"$in": new_client_ids}},
-                {"_id": 0, "client_id": 1, "customer_reference": 1, "full_name": 1,
-                 "email": 1, "company_name": 1, "subscription_status": 1,
-                 "onboarding_status": 1, "billing_plan": 1, "phone": 1, "created_at": 1}
+                _with_visibility({"client_id": {"$in": new_client_ids}}),
+                search_projection,
             ).to_list(limit)
             
             # Mark these as found via postcode
@@ -623,7 +655,8 @@ async def global_search(request: Request, q: str = "", limit: int = 20):
             actor_role=UserRole.ROLE_ADMIN,
             metadata={
                 "search_query": search_term,
-                "results_count": len(clients)
+                "results_count": len(clients),
+                "include_archived": include_archived,
             }
         )
         
@@ -641,6 +674,7 @@ async def global_search(request: Request, q: str = "", limit: int = 20):
             "results": normalized_results,
             "query": search_term,
             "total": len(clients),
+            "include_archived": include_archived,
         }
         
     except Exception as e:
@@ -833,7 +867,7 @@ async def get_clients(
     """
     Get all clients (admin only). Supports filtering by subscription_status, onboarding_status,
     plan_code (solo|portfolio|pro), min_properties, max_properties, and q (search name/email/CRN).
-    lifecycle_bucket: active (default), all, archived, purge_eligible, test_like, pending_setup.
+    lifecycle_bucket: active (default), all, archived, purge_eligible, test_like, pending_setup, suspended.
     By default archived/purge-eligible/deleted clients are excluded unless include_archived_clients or bucket=all.
     """
     await admin_route_guard(request)
@@ -883,10 +917,18 @@ async def get_clients(
             if not include_archived_clients:
                 parts.append(default_active_client_match())
             match = {"$and": parts}
+        elif bucket == "suspended":
+            sus = {
+                "$or": [
+                    {"client_lifecycle_status": ClientLifecycleStatus.SUSPENDED.value},
+                    {"subscription_status": SubscriptionStatus.CANCELLED.value},
+                ]
+            }
+            match = {"$and": [match, sus]} if match else sus
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid lifecycle_bucket (use active, all, archived, purge_eligible, test_like, pending_setup)",
+                detail="Invalid lifecycle_bucket (use active, all, archived, purge_eligible, test_like, pending_setup, suspended)",
             )
 
         pipeline = [

@@ -615,8 +615,12 @@ async def cancel_schedule(
         raise ValueError("Visit is already cancelled")
     db = database.get_db()
     now = datetime.now(timezone.utc).isoformat()
+    # Clear visit fields so the job summary does not imply an active visit; work order status is unchanged (not job cancel).
     set_doc = {
         "schedule_status": SCHEDULE_STATUS_CANCELLED,
+        "scheduled_at": None,
+        "scheduled_timezone": None,
+        "schedule_notes": None,
         "last_schedule_update_at": now,
         "reminder_sent": False,
         "updated_at": now,

@@ -125,6 +125,7 @@ import BillingPage from './pages/BillingPage';
 import ClientProvideInfoPage from './pages/ClientProvideInfoPage';
 import ClientOrdersPage from './pages/ClientOrdersPage';
 import ClientMaintenancePage from './pages/ClientMaintenancePage';
+import ClientJobDetailPage from './pages/ClientJobDetailPage';
 import ClientContractorsPage from './pages/ClientContractorsPage';
 import ClientIssuesPage from './pages/ClientIssuesPage';
 import ClientIssueDetailPage from './pages/ClientIssueDetailPage';
@@ -181,6 +182,7 @@ import AdminOpsAuditPage from './pages/admin/AdminOpsAuditPage';
 import AdminOpsFeatureControlsPage from './pages/admin/AdminOpsFeatureControlsPage';
 import AdminCommunicationsPage from './pages/admin/AdminCommunicationsPage';
 import AdminOpsContractorsPage from './pages/admin/AdminOpsContractorsPage';
+import AdminIdentityLifecyclePage from './pages/admin/AdminIdentityLifecyclePage';
 import AdminOpsMaintenancePage from './pages/admin/AdminOpsMaintenancePage';
 import AdminRiskDashboardPage from './pages/admin/AdminRiskDashboardPage';
 import AdminWorkOrderDetailPage from './pages/admin/AdminWorkOrderDetailPage';
@@ -372,6 +374,7 @@ function App() {
             <Route path="/operations/issues" element={<ClientPortal><ClientIssuesPage /></ClientPortal>} />
             <Route path="/operations/issues/:issueId" element={<ClientPortal><ClientIssueDetailPage /></ClientPortal>} />
             <Route path="/operations/work-orders" element={<ClientPortal><ClientMaintenancePage /></ClientPortal>} />
+            <Route path="/operations/jobs/:jobId" element={<ClientPortal><ClientJobDetailPage /></ClientPortal>} />
             <Route path="/operations/contractors" element={<ClientPortal><ClientContractorsPage /></ClientPortal>} />
             <Route path="/operations/risk-signals" element={<ClientPortal><ClientRiskSignalsPage /></ClientPortal>} />
             <Route path="/operations/approvals" element={<ClientPortal><ClientApprovalsPage /></ClientPortal>} />
@@ -660,6 +663,7 @@ function App() {
             <Route path="/admin/ops/maintenance" element={<ProtectedRoute requireAdmin><AdminOpsMaintenancePage /></ProtectedRoute>} />
             <Route path="/admin/ops/maintenance/work-orders/:workOrderId" element={<ProtectedRoute requireAdmin><AdminWorkOrderDetailPage /></ProtectedRoute>} />
             <Route path="/admin/ops/contractors" element={<ProtectedRoute requireAdmin><AdminOpsContractorsPage /></ProtectedRoute>} />
+            <Route path="/admin/ops/identities" element={<ProtectedRoute requireAdmin><AdminIdentityLifecyclePage /></ProtectedRoute>} />
             <Route path="/admin/ops/risk" element={<ProtectedRoute requireAdmin><AdminRiskDashboardPage /></ProtectedRoute>} />
             <Route path="/admin/ops/audit" element={<ProtectedRoute requireAdmin><AdminOpsAuditPage /></ProtectedRoute>} />
             <Route path="/admin/ops/feature-controls" element={<ProtectedRoute requireAdmin><AdminOpsFeatureControlsPage /></ProtectedRoute>} />

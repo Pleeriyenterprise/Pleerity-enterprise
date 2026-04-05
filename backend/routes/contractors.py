@@ -356,11 +356,21 @@ async def update_contractor(request: Request, contractor_id: str, body: Contract
 
 @router.delete("/contractors/{contractor_id}", dependencies=[Depends(require_owner_or_admin)])
 async def delete_contractor(request: Request, contractor_id: str):
-    """Delete a contractor. Owner or Admin only."""
+    """Hard-delete a contractor only when no work orders, invoices, or audit trail references block it."""
     user = await admin_route_guard(request)
     if user.get("role") not in ("ROLE_OWNER", "ROLE_ADMIN"):
         raise HTTPException(status_code=403, detail="Only Owner or Admin can delete contractors")
-    deleted = await contractor_service.delete_contractor(contractor_id)
+    try:
+        deleted = await contractor_service.delete_contractor(contractor_id)
+    except ValueError as e:
+        msg = str(e)
+        if msg.startswith("preflight_failed:"):
+            blockers = [b for b in msg.split(":", 1)[1].split(",") if b]
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Contractor delete blocked", "blockers": blockers},
+            )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
     if not deleted:
         raise HTTPException(status_code=404, detail="Contractor not found")
     return {"ok": True, "contractor_id": contractor_id}

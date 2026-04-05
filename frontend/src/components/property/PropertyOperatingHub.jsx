@@ -235,7 +235,7 @@ export default function PropertyOperatingHub({
                         className={cn(portalSecondaryButtonClass, 'w-full justify-center')}
                         onClick={() => openBookInspectionFromRisk(s.signal_id)}
                       >
-                        Book compliance inspection
+                        Create compliance job
                       </Button>
                     )}
                     {sigActions.includes('schedule_inspection') && hasFeature('maintenance_workflows') && !hasFeature('compliance_engine') && (

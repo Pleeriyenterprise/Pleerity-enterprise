@@ -384,6 +384,9 @@ async def test_scenario_c_confirmed_cancel_notifies_both():
             client_id="c1",
         )
         assert fake.wo["schedule_status"] == SCHEDULE_STATUS_CANCELLED
+        assert fake.wo.get("scheduled_at") is None
+        assert fake.wo.get("scheduled_timezone") is None
+        assert fake.wo.get("status") == "ASSIGNED"
         assert notification_orchestrator.send.await_count == 2
         recips = {_kwargs(c)["context"]["recipient"] for c in notification_orchestrator.send.await_args_list}
         assert recips == {"client@example.com", "contractor@example.com"}

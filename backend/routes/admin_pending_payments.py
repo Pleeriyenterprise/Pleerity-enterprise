@@ -179,6 +179,8 @@ async def get_pending_payments(request: Request, q: str = None, bucket: str = "p
             "purge_eligible": 1,
             "is_test_like": 1,
             "archive_reason": 1,
+            "archived_at": 1,
+            "purge_checked_at": 1,
             "duplicate_of_client_id": 1,
         },
     ).sort("created_at", -1)
@@ -220,6 +222,8 @@ async def get_pending_payments(request: Request, q: str = None, bucket: str = "p
             "purge_eligible": bool(c.get("purge_eligible")),
             "is_test_like": bool(c.get("is_test_like")),
             "archive_reason": c.get("archive_reason"),
+            "archived_at": c.get("archived_at"),
+            "purge_checked_at": c.get("purge_checked_at"),
             "duplicate_of_client_id": c.get("duplicate_of_client_id"),
             "latest_checkout_url": c.get("latest_checkout_url"),
             "checkout_link_sent_at": c.get("checkout_link_sent_at"),

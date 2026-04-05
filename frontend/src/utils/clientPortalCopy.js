@@ -7,7 +7,11 @@ export const PORTAL_COPY = {
   requirements: 'Requirements',
   complianceJob: 'Compliance job',
   maintenanceJob: 'Maintenance job',
-  workOrders: 'Work orders',
+  /** Nav / list: portfolio execution surface (maintenance + compliance); URLs may still use /operations/work-orders. */
+  jobs: 'Jobs',
+  job: 'Job',
+  jobsListDescription: 'Maintenance and compliance jobs for your portfolio.',
+  workOrders: 'Jobs',
   maintenanceIssue: 'Maintenance issue',
   /** Plural label — use this instead of `{singular}s` in JSX to avoid parse/TDZ edge cases. */
   maintenanceIssues: 'Maintenance issues',
@@ -25,8 +29,8 @@ export const PORTAL_COPY = {
   viewProperty: 'View property',
   trackedItem: 'tracked item',
   trackedItems: 'tracked items',
-  addWorkOrder: 'Add work order',
-  upgradeForWorkOrders: 'Upgrade for work orders',
+  addWorkOrder: 'Create job',
+  upgradeForWorkOrders: 'Upgrade for jobs',
   viewReports: 'View reports',
   reportIssue: 'Report issue',
   loadingApprovals: 'Loading approvals…',

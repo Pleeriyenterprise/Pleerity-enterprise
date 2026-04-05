@@ -48,6 +48,10 @@ LC_PENDING_APPROVAL = "pending_approval"
 LC_APPROVED = "approved"
 LC_ACTIVE = "active"
 LC_SUSPENDED = "suspended"
+LC_ARCHIVED = "archived"
+
+# Client job assign API: unvetted landlord_added rows created from the portal (not vetted network contractors).
+ASSIGNMENT_PROFILE_CLIENT_PORTAL_LANDLORD = "client_portal_landlord_contractor"
 
 # Rework: follow-up work order at same property within this many days of a prior completion counts as rework.
 REWORK_DAYS = 30
@@ -108,6 +112,8 @@ def normalize_lifecycle_status(status: Optional[str]) -> str:
     s = (status or "").strip().lower()
     if s == STATUS_PENDING_REVIEW:
         return LC_PENDING_APPROVAL
+    if s == LC_ARCHIVED:
+        return LC_ARCHIVED
     return s
 
 
@@ -202,6 +208,8 @@ def contractor_is_assignable(contractor: Dict[str, Any]) -> Tuple[bool, str]:
     st = normalize_lifecycle_status(contractor.get("status"))
     if st in (LC_SUSPENDED, "suspended"):
         return False, "Contractor is suspended"
+    if st == LC_ARCHIVED:
+        return False, "Contractor is archived"
     email = (contractor.get("email") or "").strip()
     if not email:
         return False, "Contractor has no email address"
@@ -353,7 +361,7 @@ async def contractor_visible_to_client(contractor_id: str, client_id: str) -> bo
     if not doc:
         return False
     st = normalize_lifecycle_status(doc.get("status"))
-    return st not in (LC_SUSPENDED, "suspended")
+    return st not in (LC_SUSPENDED, "suspended", LC_ARCHIVED)
 
 
 async def list_contractors_for_client(
@@ -678,8 +686,13 @@ async def update_contractor(
 
 
 async def delete_contractor(contractor_id: str) -> bool:
-    """Delete a contractor. Returns True if deleted."""
+    """Hard-delete a contractor only when dependency preflight passes; otherwise raises ValueError."""
+    from services.contractor_identity_lifecycle import contractor_permanent_delete_preflight
+
     db = database.get_db()
+    allowed, blockers = await contractor_permanent_delete_preflight(db, contractor_id)
+    if not allowed:
+        raise ValueError("preflight_failed:" + ",".join(blockers))
     result = await db.contractors.delete_one({"contractor_id": contractor_id})
     return result.deleted_count > 0
 
@@ -696,9 +709,23 @@ async def create_contractor_landlord(
     insurance_details: Optional[str] = None,
     areas_served: Optional[List[str]] = None,
     notes: Optional[str] = None,
+    *,
+    execution_capabilities: Optional[str] = None,
+    supported_requirement_codes: Optional[List[str]] = None,
+    pending_admin_review: bool = False,
 ) -> Dict[str, Any]:
-    """Landlord adds a contractor: source_type=landlord_added, vetted=False, status=active. Visible only to that org."""
+    """Landlord adds a contractor: source_type=landlord_added, org-private. Optional pending_admin_review for portal clients."""
     name = contact_name or company_name
+    if pending_admin_review:
+        eff_status = LC_PENDING_APPROVAL
+        eff_vetting = "pending_admin_review"
+        gov = "Governance: pending admin review (client portal job flow)."
+    else:
+        eff_status = LC_APPROVED
+        eff_vetting = "not_vetted"
+        gov = ""
+    note_parts = [p for p in (gov, (notes or "").strip()) if p]
+    combined_notes = " ".join(note_parts) if note_parts else None
     return await create_contractor(
         name=name,
         company_name=company_name,
@@ -708,16 +735,18 @@ async def create_contractor_landlord(
         email=email,
         client_id=client_id,
         areas_served=areas_served,
-        notes=notes,
+        notes=combined_notes,
         source_type=SOURCE_LANDLORD_ADDED,
-        status=LC_APPROVED,
+        status=eff_status,
         credentials=credentials,
         insurance_details=insurance_details,
         contact_name=contact_name,
         region=region,
         portal_access_status=PORTAL_ACCESS_NOT_INVITED,
-        vetting_status="not_vetted",
+        vetting_status=eff_vetting,
         coverage_area=areas_served,
+        execution_capabilities=execution_capabilities,
+        supported_requirement_codes=supported_requirement_codes,
     )
 
 
@@ -730,6 +759,13 @@ async def create_contractor_client_supplied_personal(
     company_name: Optional[str] = None,
     execution_capabilities: Optional[str] = None,
     supported_requirement_codes: Optional[List[str]] = None,
+    credentials: Optional[List[str]] = None,
+    region: Optional[str] = None,
+    areas_served: Optional[List[str]] = None,
+    insurance_details: Optional[str] = None,
+    extra_notes: Optional[str] = None,
+    *,
+    pending_admin_review: bool = False,
 ) -> Dict[str, Any]:
     """
     Client-added contractor for assignment without prior portal onboarding.
@@ -746,6 +782,33 @@ async def create_contractor_client_supplied_personal(
             raise ValueError("This email is already linked to a non-personal contractor")
         return existing
     display = (name or "").strip() or norm.split("@")[0]
+    db = database.get_db()
+    name_key = display.casefold()
+    if name_key:
+        c2 = db.contractors.find(
+            {
+                "client_id": str(client_id).strip(),
+                "source_type": SOURCE_CLIENT_SUPPLIED_PERSONAL,
+            },
+            {"_id": 0, "email": 1, "name": 1},
+        )
+        async for row in c2:
+            if (str(row.get("name") or "").strip().casefold() == name_key) and normalize_email_for_lookup(
+                row.get("email")
+            ) != norm:
+                raise ValueError(
+                    "A personal contractor with this name already exists for your organisation (different email). "
+                    "Pick the existing contact from search or use a distinct name."
+                )
+    lifecycle = LC_PENDING_APPROVAL if pending_admin_review else LC_APPROVED
+    vetting = "pending_admin_review" if pending_admin_review else "client_supplied_unvetted"
+    note = (
+        "Created from client portal job assign flow; pending admin review before network visibility."
+        if pending_admin_review
+        else "Created from client portal as personal/external contractor for assignment."
+    )
+    if extra_notes and str(extra_notes).strip():
+        note = f"{note} {str(extra_notes).strip()}".strip()
     return await create_contractor(
         name=display,
         company_name=(company_name or "").strip() or None,
@@ -755,12 +818,115 @@ async def create_contractor_client_supplied_personal(
         phone=phone,
         client_id=client_id,
         source_type=SOURCE_CLIENT_SUPPLIED_PERSONAL,
-        status=LC_APPROVED,
+        status=lifecycle,
         portal_access_status=PORTAL_ACCESS_NOT_INVITED,
-        vetting_status="client_supplied_unvetted",
-        notes="Created from client portal as personal/external contractor for assignment.",
+        vetting_status=vetting,
+        notes=note,
+        credentials=credentials,
+        region=(region or "").strip() or None,
+        areas_served=areas_served,
+        insurance_details=(insurance_details or "").strip() or None,
+        coverage_area=areas_served,
         execution_capabilities=execution_capabilities,
         supported_requirement_codes=supported_requirement_codes,
+    )
+
+
+async def create_contractor_for_client_job_portal(
+    *,
+    client_id: str,
+    portal_user_role_upper: str,
+    company_name: str,
+    trade_types: List[str],
+    phone: Optional[str],
+    email: Optional[str],
+    contact_name: Optional[str] = None,
+    region: Optional[str] = None,
+    areas_served: Optional[List[str]] = None,
+    credentials: Optional[List[str]] = None,
+    insurance_details: Optional[str] = None,
+    accreditation_certification: Optional[str] = None,
+    notes: Optional[str] = None,
+    work_order: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Single implementation for client job UI contractor creation (POST /api/contractors and legacy assign route).
+
+    - ROLE_CLIENT + email: client_supplied_personal (email dedupe, optional pending_admin_review).
+    - ROLE_CLIENT + phone-only: landlord_added with pending_admin_review.
+    - Other roles: landlord_added approved (org admin / elevated portal users).
+    Compliance execution stamps come from work_order when kind is COMPLIANCE.
+    """
+    role_u = (portal_user_role_upper or "").strip().upper()
+    pending_client = role_u == "ROLE_CLIENT"
+    creds = [c.strip() for c in (credentials or []) if c and str(c).strip()]
+    if accreditation_certification and str(accreditation_certification).strip():
+        creds.append(str(accreditation_certification).strip())
+
+    exec_cap: Optional[str] = None
+    sup_codes: Optional[List[str]] = None
+    if work_order and (work_order.get("work_order_kind") or "").strip().upper() == WORK_ORDER_KIND_COMPLIANCE:
+        exec_cap = EXECUTION_CAPABILITY_COMPLIANCE
+        raw_code = (work_order.get("requirement_code") or "").strip()
+        if raw_code:
+            norm = normalize_requirement_code(raw_code)
+            if norm and norm in CANONICAL_REQUIREMENT_CODES:
+                sup_codes = [norm]
+
+    email_stripped = (email or "").strip()
+    phone_stripped = (phone or "").strip()
+    if email_stripped:
+        if pending_client:
+            display = (contact_name or "").strip() or (company_name or "").strip() or email_stripped.split("@")[0]
+            return await create_contractor_client_supplied_personal(
+                client_id=client_id,
+                name=display,
+                email=email_stripped,
+                trade_types=trade_types or ["general"],
+                phone=phone_stripped or None,
+                company_name=(company_name or "").strip() or None,
+                execution_capabilities=exec_cap,
+                supported_requirement_codes=sup_codes,
+                credentials=creds or None,
+                region=(region or "").strip() or None,
+                areas_served=areas_served,
+                insurance_details=(insurance_details or "").strip() or None,
+                extra_notes=(notes or "").strip() or None,
+                pending_admin_review=True,
+            )
+        return await create_contractor_landlord(
+            client_id=client_id,
+            company_name=(company_name or "").strip(),
+            trade_types=trade_types or ["general"],
+            phone=phone_stripped or None,
+            email=email_stripped,
+            contact_name=(contact_name or "").strip() or None,
+            region=(region or "").strip() or None,
+            credentials=creds or None,
+            insurance_details=(insurance_details or "").strip() or None,
+            areas_served=areas_served,
+            notes=(notes or "").strip() or None,
+            execution_capabilities=exec_cap,
+            supported_requirement_codes=sup_codes,
+            pending_admin_review=False,
+        )
+    if not phone_stripped:
+        raise ValueError("email or phone is required")
+    return await create_contractor_landlord(
+        client_id=client_id,
+        company_name=(company_name or "").strip(),
+        trade_types=trade_types or ["general"],
+        phone=phone_stripped,
+        email=None,
+        contact_name=(contact_name or "").strip() or None,
+        region=(region or "").strip() or None,
+        credentials=creds or None,
+        insurance_details=(insurance_details or "").strip() or None,
+        areas_served=areas_served,
+        notes=(notes or "").strip() or None,
+        execution_capabilities=exec_cap,
+        supported_requirement_codes=sup_codes,
+        pending_admin_review=pending_client,
     )
 
 
@@ -1148,6 +1314,8 @@ async def validate_contractor_for_work_order_assignment(
         st = normalize_lifecycle_status(contractor_s.get("status"))
         if st in (LC_SUSPENDED, "suspended"):
             raise ValueError("Contractor is suspended")
+        if st == LC_ARCHIVED:
+            raise ValueError("Contractor is archived")
         if (contractor_s.get("source_type") or "").strip().lower() != SOURCE_CLIENT_SUPPLIED_PERSONAL:
             raise ValueError("Not a client-supplied personal contractor record")
         if str(contractor_s.get("client_id") or "").strip() != str(client_id).strip():
@@ -1161,6 +1329,52 @@ async def validate_contractor_for_work_order_assignment(
         )
         if not wo or (wo.get("client_id") or "").strip() != (client_id or "").strip():
             raise ValueError("Work order not found for this client")
+        return
+    if assignment_profile == ASSIGNMENT_PROFILE_CLIENT_PORTAL_LANDLORD:
+        st = normalize_lifecycle_status(contractor_s.get("status"))
+        if st in (LC_SUSPENDED, "suspended"):
+            raise ValueError("Contractor is suspended")
+        if st == LC_ARCHIVED:
+            raise ValueError("Contractor is archived")
+        if (contractor_s.get("source_type") or "").strip().lower() != SOURCE_LANDLORD_ADDED:
+            raise ValueError("Not an organisation directory contractor record")
+        if str(contractor_s.get("client_id") or "").strip() != str(client_id).strip():
+            raise ValueError("Contractor is not linked to your organisation")
+        wo = await db.work_orders.find_one(
+            {"work_order_id": work_order_id},
+            {
+                "_id": 0,
+                "client_id": 1,
+                "property_id": 1,
+                "category": 1,
+                "work_order_kind": 1,
+                "requirement_code": 1,
+            },
+        )
+        if not wo or (wo.get("client_id") or "").strip() != (client_id or "").strip():
+            raise ValueError("Work order not found for this client")
+        if not contractor_client_link_allows(contractor_s, client_id):
+            raise ValueError("Contractor is scoped to a different client")
+        if not contractor_property_scope_allows(contractor_s, wo.get("property_id")):
+            raise ValueError("Contractor is not scoped to this property")
+        if not contractor_passes_work_order_execution_gate(contractor_s, wo):
+            raise ValueError(
+                "Contractor execution capabilities do not match this work order "
+                "(maintenance repair vs compliance inspection/renewal)"
+            )
+        prop_pc = None
+        if wo.get("property_id"):
+            prop = await db.properties.find_one(
+                {"property_id": wo["property_id"], "client_id": client_id},
+                {"_id": 0, "postcode": 1},
+            )
+            prop_pc = (prop or {}).get("postcode")
+        if not contractor_location_matches_property(contractor_s, prop_pc):
+            raise ValueError("Contractor location does not match the property postcode")
+        kind = (wo.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
+        if kind == WORK_ORDER_KIND_MAINTENANCE:
+            if not contractor_trade_matches_category(contractor_s, wo.get("category")):
+                raise ValueError("Contractor trade types do not match this maintenance work order category")
         return
     ok, reason = contractor_is_assignable(contractor_s)
     if not ok:

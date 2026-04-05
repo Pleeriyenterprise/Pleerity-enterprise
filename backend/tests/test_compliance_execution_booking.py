@@ -111,6 +111,10 @@ def test_create_compliance_booking_service_mocked():
         with (
             patch.object(db_singleton, "get_db", return_value=mock_db),
             patch("services.compliance_booking_service.create_audit_log", new_callable=AsyncMock),
+            patch(
+                "services.compliance_booking_service.assert_max_one_active_compliance_job",
+                new_callable=AsyncMock,
+            ),
             patch("services.compliance_booking_service.maintenance_service.create_work_order", side_effect=fake_create),
         ):
             await cbs.create_compliance_execution_work_order(

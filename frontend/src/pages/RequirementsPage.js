@@ -17,6 +17,8 @@ import {
   AlertCircle,
   Loader2,
   ClipboardCheck,
+  Eye,
+  Ban,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { buildSafeQueryPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
@@ -55,7 +57,16 @@ const RequirementsPage = () => {
   const [editForm, setEditForm] = useState({ confirmed_expiry_date: '', applicability: '', not_required_reason: '' });
   const [documentCountByRequirementId, setDocumentCountByRequirementId] = useState({});
   const [requirementsPresentation, setRequirementsPresentation] = useState(null);
-  const [complianceBookingKey, setComplianceBookingKey] = useState(null);
+  const [complianceActionKey, setComplianceActionKey] = useState(null);
+  const [notApplicableModal, setNotApplicableModal] = useState(null);
+  const [notApplicableReason, setNotApplicableReason] = useState('');
+  const [notApplicableCode, setNotApplicableCode] = useState('other');
+  const [notApplicableSaving, setNotApplicableSaving] = useState(false);
+  const [notApplicableCloseActiveJob, setNotApplicableCloseActiveJob] = useState(false);
+  const [notApplicableActiveJobId, setNotApplicableActiveJobId] = useState(null);
+  const [viewRequirementModal, setViewRequirementModal] = useState(null);
+  const [viewRequirementLoading, setViewRequirementLoading] = useState(false);
+  const [viewRequirementData, setViewRequirementData] = useState(null);
 
   // Get filter from URL params
   const statusFilter = searchParams.get('status') || 'all';
@@ -133,30 +144,71 @@ const RequirementsPage = () => {
     setEditModal({ requirement: req, property: getPropertyById(req.property_id) });
   };
 
-  const bookComplianceFromRequirement = async (req, purpose) => {
-    const key = `${req.requirement_id}:${purpose}`;
-    setComplianceBookingKey(key);
+  const createComplianceWorkOrderFromRequirement = async (req) => {
+    setComplianceActionKey(req.requirement_id);
     try {
-      const code = req.requirement_code || req.requirement_type;
-      if (!code) {
-        toast.error('This item has no requirement code; contact support.');
-        return;
-      }
-      const res = await clientAPI.bookComplianceWorkOrder({
-        property_id: req.property_id,
-        requirement_code: code,
-        compliance_purpose: purpose,
+      const res = await clientAPI.createRequirementComplianceJob(req.requirement_id, {
+        compliance_purpose: 'inspection',
         compliance_generated_from: 'requirement',
-        linked_property_requirement_id: req.requirement_id,
       });
       const woId = res.data?.work_order?.work_order_id;
-      toast.success('Compliance job created. Open the job to request a contractor.');
-      if (woId) navigate(buildSafeQueryPath('/operations/work-orders', { work_order_id: woId }));
+      toast.success('Compliance job created. Next: open the job and assign a contractor, then request a visit.');
+      if (woId) navigate(`/operations/jobs/${woId}`);
       else navigate('/operations/work-orders');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Could not create compliance job');
+      const d = error.response?.data?.detail;
+      toast.error(typeof d === 'string' ? d : d?.message || 'Could not create compliance job');
     } finally {
-      setComplianceBookingKey(null);
+      setComplianceActionKey(null);
+    }
+  };
+
+  const openViewRequirementModal = (req) => {
+    setViewRequirementModal({ requirement: req });
+    setViewRequirementData(null);
+    setViewRequirementLoading(true);
+    clientAPI
+      .getRequirementWorkflow(req.requirement_id)
+      .then((r) => setViewRequirementData(r.data))
+      .catch((err) => {
+        toast.error(err.response?.data?.detail || 'Could not load requirement');
+        setViewRequirementModal(null);
+      })
+      .finally(() => setViewRequirementLoading(false));
+  };
+
+  const submitNotApplicable = async () => {
+    if (!notApplicableModal) return;
+    const text = notApplicableReason.trim();
+    if (text.length < 10) {
+      toast.error('Please enter a reason (at least 10 characters) for the audit trail.');
+      return;
+    }
+    setNotApplicableSaving(true);
+    try {
+      await clientAPI.markRequirementNotApplicableById(notApplicableModal.requirement.requirement_id, {
+        reason: text,
+        reason_code: notApplicableCode || undefined,
+        confirm_close_active_job: notApplicableCloseActiveJob,
+      });
+      toast.success('Marked as not applicable.');
+      setNotApplicableModal(null);
+      setNotApplicableReason('');
+      setNotApplicableCode('other');
+      setNotApplicableCloseActiveJob(false);
+      setNotApplicableActiveJobId(null);
+      fetchData();
+    } catch (error) {
+      const st = error.response?.status;
+      const det = error.response?.data?.detail;
+      if (st === 409 && det && typeof det === 'object' && det.code === 'ACTIVE_COMPLIANCE_JOB_EXISTS') {
+        setNotApplicableActiveJobId(det.work_order_id || null);
+        toast.error(det.message || 'An open compliance job must be cancelled to mark this not applicable.');
+      } else {
+        toast.error(typeof det === 'string' ? det : det?.message || 'Could not update requirement');
+      }
+    } finally {
+      setNotApplicableSaving(false);
     }
   };
 
@@ -311,50 +363,67 @@ const RequirementsPage = () => {
           </div>
         </div>
         {hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
-          <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="text-xs min-h-10 h-auto py-2"
-              disabled={complianceBookingKey !== null}
-              onClick={() => bookComplianceFromRequirement(req, 'inspection')}
-              data-testid={`compliance-inspection-${req.requirement_id}`}
-            >
-              {complianceBookingKey === `${req.requirement_id}:inspection` ? (
-                <Loader2 className="w-3 h-3 animate-spin mr-1" />
-              ) : (
-                <ClipboardCheck className="w-3 h-3 mr-1" />
-              )}
-              Arrange compliance inspection
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="text-xs min-h-10 h-auto py-2"
-              disabled={complianceBookingKey !== null}
-              onClick={() => bookComplianceFromRequirement(req, 'renewal')}
-              data-testid={`compliance-renewal-${req.requirement_id}`}
-            >
-              {complianceBookingKey === `${req.requirement_id}:renewal` ? (
-                <Loader2 className="w-3 h-3 animate-spin mr-1" />
-              ) : null}
-              Start renewal
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="text-xs min-h-10 h-auto py-2"
-              onClick={() =>
-                navigate(resolveDocumentsPath(req.property_id, { requirement_id: req.requirement_id, focus: 'upload' }))
-              }
-              data-testid={`compliance-upload-${req.requirement_id}`}
-            >
-              <FileText className="w-3 h-3 mr-1" />
-              Upload compliance evidence
-            </Button>
+          <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3">
+            <p className="text-xs text-gray-500">Compliance actions</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs min-h-10 h-auto py-2"
+                onClick={() =>
+                  navigate(resolveDocumentsPath(req.property_id, { requirement_id: req.requirement_id, focus: 'upload' }))
+                }
+                data-testid={`compliance-upload-certificate-${req.requirement_id}`}
+              >
+                <FileText className="w-3 h-3 mr-1 shrink-0" />
+                Upload certificate
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs min-h-10 h-auto py-2"
+                disabled={complianceActionKey !== null}
+                onClick={() => createComplianceWorkOrderFromRequirement(req)}
+                data-testid={`compliance-create-job-${req.requirement_id}`}
+              >
+                {complianceActionKey === req.requirement_id ? (
+                  <Loader2 className="w-3 h-3 animate-spin mr-1 shrink-0" />
+                ) : (
+                  <ClipboardCheck className="w-3 h-3 mr-1 shrink-0" />
+                )}
+                Create compliance work order
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs min-h-10 h-auto py-2"
+                onClick={() => {
+                  setNotApplicableReason('');
+                  setNotApplicableCode('other');
+                  setNotApplicableModal({ requirement: req });
+                  setNotApplicableCloseActiveJob(false);
+                  setNotApplicableActiveJobId(null);
+                }}
+                data-testid={`compliance-not-applicable-${req.requirement_id}`}
+              >
+                <Ban className="w-3 h-3 mr-1 shrink-0" />
+                Mark as not applicable
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs min-h-10 h-auto py-2"
+                onClick={() => openViewRequirementModal(req)}
+                data-testid={`compliance-view-requirement-${req.requirement_id}`}
+              >
+                <Eye className="w-3 h-3 mr-1 shrink-0" />
+                View requirement
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -597,6 +666,137 @@ const RequirementsPage = () => {
         {filteredRequirements.length > 0 && (
           <div className="mt-4 text-center text-sm text-gray-500">
             Showing {filteredRequirements.length} of {requirements.length} tracked items
+          </div>
+        )}
+
+        {notApplicableModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" data-testid="not-applicable-modal">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 portal-modal-scroll max-h-[min(90dvh,90vh)]">
+              <h3 className="text-lg font-semibold text-midnight-blue mb-2">Mark as not applicable</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                This is recorded for audit. The requirement is not deleted.
+              </p>
+              {notApplicableActiveJobId ? (
+                <Alert className="mb-4 border-amber-200 bg-amber-50">
+                  <AlertDescription className="text-sm text-amber-900">
+                    An open compliance job is linked to this requirement (
+                    <span className="font-mono">{notApplicableActiveJobId}</span>). To mark not applicable, confirm that
+                    this job should be cancelled with audit trail.
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category (optional)</label>
+                  <select
+                    value={notApplicableCode}
+                    onChange={(e) => setNotApplicableCode(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  >
+                    {NOT_REQUIRED_REASONS.map((r) => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reason (required, min. 10 characters)</label>
+                  <textarea
+                    value={notApplicableReason}
+                    onChange={(e) => setNotApplicableReason(e.target.value)}
+                    rows={4}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                    placeholder="Explain why this obligation does not apply to this property."
+                    data-testid="not-applicable-reason"
+                  />
+                </div>
+                {notApplicableActiveJobId ? (
+                  <label className="flex items-start gap-2 text-sm text-gray-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={notApplicableCloseActiveJob}
+                      onChange={(e) => setNotApplicableCloseActiveJob(e.target.checked)}
+                      data-testid="not-applicable-close-job"
+                    />
+                    <span>
+                      Cancel the open compliance job and mark this requirement not applicable (one step).
+                    </span>
+                  </label>
+                ) : null}
+              </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setNotApplicableModal(null);
+                    setNotApplicableReason('');
+                    setNotApplicableCloseActiveJob(false);
+                    setNotApplicableActiveJobId(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={submitNotApplicable}
+                  disabled={notApplicableSaving || (notApplicableActiveJobId && !notApplicableCloseActiveJob)}
+                  data-testid="not-applicable-submit"
+                >
+                  {notApplicableSaving ? 'Saving…' : 'Confirm'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {viewRequirementModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" data-testid="view-requirement-modal">
+            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6 portal-modal-scroll max-h-[min(90dvh,90vh)]">
+              <h3 className="text-lg font-semibold text-midnight-blue mb-2">Requirement</h3>
+              {viewRequirementLoading ? (
+                <div className="flex items-center gap-2 text-gray-500 py-8">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Loading…
+                </div>
+              ) : viewRequirementData?.requirement ? (
+                <div className="space-y-2 text-sm">
+                  <p className="font-medium text-gray-900">
+                    {viewRequirementData.requirement.display_label
+                      || requirementLabel(viewRequirementData.requirement.requirement_type || viewRequirementData.requirement.requirement_code)}
+                  </p>
+                  <dl className="grid grid-cols-2 gap-2 text-xs">
+                    <dt className="text-gray-500">Workflow status</dt>
+                    <dd>{viewRequirementData.requirement.workflow_status || '—'}</dd>
+                    <dt className="text-gray-500">Compliance state</dt>
+                    <dd>{viewRequirementData.requirement.compliance_state || '—'}</dd>
+                    <dt className="text-gray-500">Property</dt>
+                    <dd>{getPropertyById(viewRequirementData.requirement.property_id).nickname || getPropertyById(viewRequirementData.requirement.property_id).address_line_1 || '—'}</dd>
+                  </dl>
+                  {viewRequirementData.active_compliance_job?.job_id ? (
+                    <div className="pt-2 border-t border-gray-100 mt-2">
+                      <p className="text-xs text-gray-600 mb-1">Active compliance job</p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="w-full min-h-10"
+                        onClick={() => {
+                          const jid = viewRequirementData.active_compliance_job.job_id;
+                          setViewRequirementModal(null);
+                          navigate(`/operations/jobs/${jid}`);
+                        }}
+                      >
+                        Open job {viewRequirementData.active_compliance_job.job_id?.slice(0, 8)}…
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">No data.</p>
+              )}
+              <div className="flex justify-end mt-6">
+                <Button variant="outline" onClick={() => setViewRequirementModal(null)}>Close</Button>
+              </div>
+            </div>
           </div>
         )}
 

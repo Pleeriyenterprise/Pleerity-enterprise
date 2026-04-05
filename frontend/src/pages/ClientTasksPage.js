@@ -1,6 +1,18 @@
 /**
  * Client portal — Today (priorities inbox). Aggregated server-side tasks with sections,
  * urgency, deep links, and selective inline actions (risk → issue / work order).
+ *
+ * Today model (keep aligned with docs/CLIENT_PORTAL_WORKFLOW_MATRIX.md and today_projection_service.py):
+ *
+ * - Business actions: server-provided `business_actions` (upload certificate → navigate to documents vault
+ *   with focus=upload; create compliance job → POST requirement job then navigate; view requirement/issue/job;
+ *   etc.). These drive real domain workflows, not inbox presentation alone.
+ *
+ * - Visibility actions: `visibility_actions` → POST /api/today/items/{id}/snooze | mark-reviewed | dismiss.
+ *   Snooze/reviewed/dismiss only touch task overrides; they do not change compliance outcome on requirements.
+ *
+ * - Restore: hidden/dismissed items expose restore → POST /api/today/items/{id}/restore (see restoreTodayItem).
+ *   Clears overrides so the task can reappear; does not mutate underlying requirement/job/document state.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { inboxTitleForDisplay } from '../domain/presentDomain';
@@ -88,10 +100,10 @@ function TaskCard({
   onRiskAction,
   riskLoading,
   showRiskInline,
-  onTaskOverride,
   onOpenDismissModal,
   onPrimaryNavigate,
-  onBookCompliance,
+  onRunBusinessAction,
+  onVisibilityTap,
   overrideBusy,
   complianceBookingBusyId,
   showComplianceBooking,
@@ -103,6 +115,8 @@ function TaskCard({
   const busy = overrideBusy === task.id;
   const ce = meta.compliance_execution_booking;
   const bookingBusy = complianceBookingBusyId === task.id;
+  const businessActions = task.business_actions || [];
+  const hasComplianceCreateAction = businessActions.some((a) => a.id === 'create_compliance_work_order');
   const displayTitle = inboxTitleForDisplay(task);
   const hasLongContext = Boolean(task.why_matters || task.recommended_action);
   const entityHint =
@@ -163,32 +177,64 @@ function TaskCard({
           </div>
 
           <div className="flex flex-col gap-3 pt-2 border-t border-gray-100 min-w-0">
-            <div>
-              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Next step</p>
-              <Button
-                className="w-full min-h-12 h-12 text-sm font-semibold justify-center bg-midnight-blue hover:bg-midnight-blue/90 shadow-sm"
-                disabled={bookingBusy}
-                onClick={() => onPrimaryNavigate(task)}
-              >
-                {task.primary_action_label || 'Open'}
-              </Button>
-            </div>
-            {showComplianceBooking && ce?.eligible && (
+            {businessActions.length > 0 ? (
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Business actions</p>
+                <div className="flex flex-col gap-2">
+                  {businessActions.map((act) => (
+                    <Button
+                      key={act.id}
+                      type="button"
+                      variant={act.id === 'open_primary' ? 'default' : 'outline'}
+                      className={`w-full min-h-11 h-11 text-sm justify-center ${act.id === 'open_primary' ? 'bg-midnight-blue hover:bg-midnight-blue/90 shadow-sm' : 'border-midnight-blue/20'}`}
+                      disabled={bookingBusy}
+                      onClick={() => onRunBusinessAction(act, task)}
+                    >
+                      {act.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Next step</p>
+                <Button
+                  className="w-full min-h-12 h-12 text-sm font-semibold justify-center bg-midnight-blue hover:bg-midnight-blue/90 shadow-sm"
+                  disabled={bookingBusy}
+                  onClick={() => onPrimaryNavigate(task)}
+                >
+                  {task.primary_action_label || 'Open'}
+                </Button>
+              </div>
+            )}
+            {showComplianceBooking && ce?.eligible && !hasComplianceCreateAction && ce.linked_property_requirement_id && (
               <div>
                 <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Book contractor-led compliance
+                  Compliance job
                 </p>
                 <Button
                   type="button"
                   variant="outline"
                   className="w-full min-h-11 h-11 text-sm justify-center border-electric-teal text-electric-teal hover:bg-teal-50"
                   disabled={busy || bookingBusy}
-                  onClick={() => onBookCompliance(task)}
+                  onClick={() =>
+                    onRunBusinessAction(
+                      {
+                        id: 'create_compliance_work_order',
+                        requirement_id: ce.linked_property_requirement_id,
+                        property_id: ce.property_id,
+                        requirement_code: ce.requirement_code,
+                        compliance_purpose: ce.compliance_purpose || 'inspection',
+                        compliance_generated_from: ce.compliance_generated_from || 'requirement',
+                      },
+                      task
+                    )
+                  }
                 >
-                  {bookingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Start compliance job'}
+                  {bookingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create compliance job'}
                 </Button>
                 <p className="text-xs text-gray-500 mt-1.5 leading-snug">
-                  Creates a compliance job linked to this requirement. Request a contractor from Work orders when ready.
+                  Creates the job only. Open the job to assign a contractor and complete booking, execution, and proof.
                 </p>
               </div>
             )}
@@ -225,59 +271,49 @@ function TaskCard({
                 <ExternalLink className="w-3.5 h-3.5 ml-1 shrink-0" />
               </Button>
             )}
-            {enableTriage && (
+            {enableTriage && (task.visibility_actions || []).length > 0 && (
               <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/50 p-3 space-y-2">
                 <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
-                  Manage visibility only
+                  Inbox visibility only
                 </p>
                 <p className="text-xs text-gray-500 leading-snug">
-                  Snooze, dismiss, or mark reviewed changes your inbox — not statutory compliance, approvals, or work order state.
+                  These actions change what you see here — not compliance outcomes, approvals, or job state.
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 text-xs justify-center"
-                    disabled={busy}
-                    title="Snooze: hide from open lists for 1 day"
-                    onClick={() => onTaskOverride('snooze', task, 1)}
-                  >
-                    <Bell className="w-3.5 h-3.5 mr-1 shrink-0" />
-                    Snooze 1 day
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 text-xs justify-center"
-                    disabled={busy}
-                    title="Snooze: hide from open lists for 7 days"
-                    onClick={() => onTaskOverride('snooze', task, 7)}
-                  >
-                    <Bell className="w-3.5 h-3.5 mr-1 shrink-0" />
-                    Snooze 7 days
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 text-xs justify-center col-span-2 sm:col-span-1"
-                    disabled={busy}
-                    title="You’ve reviewed this; it leaves open lists until you restore (does not close obligations)"
-                    onClick={() => onTaskOverride('reviewed', task)}
-                  >
-                    <CheckCircle className="w-3.5 h-3.5 mr-1 shrink-0" />
-                    Mark reviewed
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 text-xs justify-center col-span-2 sm:col-span-1"
-                    disabled={busy}
-                    title="Requires a reason; logged and audited"
-                    onClick={() => onOpenDismissModal(task)}
-                  >
-                    <EyeOff className="w-3.5 h-3.5 mr-1 shrink-0" />
-                    Dismiss task…
-                  </Button>
+                  {(task.visibility_actions || []).map((va) => {
+                    if (va.id === 'dismiss') {
+                      return (
+                        <Button
+                          key={va.id}
+                          type="button"
+                          variant="outline"
+                          className="h-11 text-xs justify-center col-span-2 sm:col-span-1"
+                          disabled={busy}
+                          title="Requires a reason; logged and audited"
+                          onClick={() => onOpenDismissModal(task)}
+                        >
+                          <EyeOff className="w-3.5 h-3.5 mr-1 shrink-0" />
+                          {va.label}
+                        </Button>
+                      );
+                    }
+                    const isSnooze = va.id === 'snooze_1' || va.id === 'snooze_7';
+                    const days = va.snooze_days || (va.id === 'snooze_7' ? 7 : 1);
+                    return (
+                      <Button
+                        key={va.id}
+                        type="button"
+                        variant="outline"
+                        className="h-11 text-xs justify-center"
+                        disabled={busy}
+                        onClick={() => onVisibilityTap(va, task, isSnooze ? days : undefined)}
+                      >
+                        {isSnooze ? <Bell className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
+                        {va.id === 'mark_reviewed' ? <CheckCircle className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
+                        {va.label}
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -345,10 +381,10 @@ function SectionBlock({
   onRiskAction,
   riskLoading,
   showRiskInline,
-  onTaskOverride,
   onOpenDismissModal,
   onPrimaryNavigate,
-  onBookCompliance,
+  onRunBusinessAction,
+  onVisibilityTap,
   overrideBusy,
   complianceBookingBusyId,
   showComplianceBooking,
@@ -374,10 +410,10 @@ function SectionBlock({
             onRiskAction={onRiskAction}
             riskLoading={riskLoading}
             showRiskInline={showRiskInline}
-            onTaskOverride={onTaskOverride}
             onOpenDismissModal={onOpenDismissModal}
             onPrimaryNavigate={onPrimaryNavigate}
-            onBookCompliance={onBookCompliance}
+            onRunBusinessAction={onRunBusinessAction}
+            onVisibilityTap={onVisibilityTap}
             overrideBusy={overrideBusy}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
@@ -429,7 +465,7 @@ export default function ClientTasksPage() {
     setError('');
     const params = propertyFilter ? { property_id: propertyFilter } : {};
     clientAPI
-      .getTasks(params)
+      .getTodayItems(params)
       .then((res) => setPayload(res.data))
       .catch((err) => {
         setError(err?.response?.data?.detail || 'Failed to load tasks');
@@ -503,6 +539,76 @@ export default function ClientTasksPage() {
       .catch(() => {});
   };
 
+  const runBusinessAction = async (act, task) => {
+    const tid = task?.id;
+    if (act.id === 'create_compliance_work_order' && act.requirement_id) {
+      setComplianceBookingBusyId(tid);
+      try {
+        const res = await clientAPI.createRequirementComplianceJob(act.requirement_id, {
+          compliance_purpose: act.compliance_purpose || 'inspection',
+          compliance_generated_from: act.compliance_generated_from || 'requirement',
+        });
+        const woId = res.data?.work_order?.work_order_id;
+        emitTodayAnalytics('today_compliance_job_started', {
+          task_id: tid,
+          requirement_code: act.requirement_code,
+          work_order_id: woId,
+        });
+        toast.success('Compliance job created.');
+        if (woId) navigate(resolveClientPortalPath(`/operations/jobs/${encodeURIComponent(woId)}`, '/operations/jobs'));
+        else navigate(resolveClientPortalPath('/operations/work-orders', '/operations/work-orders'));
+        load();
+      } catch (err) {
+        toast.error(err?.response?.data?.detail || 'Could not create compliance job');
+      } finally {
+        setComplianceBookingBusyId(null);
+      }
+      return;
+    }
+    if (act.id === 'create_maintenance_job' && act.issue_id) {
+      navigate(resolveClientPortalPath(`/operations/issues/${encodeURIComponent(act.issue_id)}`, '/operations/issues'));
+      return;
+    }
+    if (act.navigate) {
+      navigate(resolveClientPortalPath(act.navigate, '/today'));
+      return;
+    }
+    await onPrimaryNavigate(task, 'primary');
+  };
+
+  const runVisibilityTap = async (va, task, snoozeDays) => {
+    const tid = task?.id || task?.task_id;
+    if (!tid) return;
+    if (va.id === 'mark_reviewed') {
+      setOverrideBusyId(tid);
+      try {
+        await clientAPI.todayItemMarkReviewed(tid);
+        emitTodayAnalytics('today_task_marked_reviewed', { task_id: tid, source_type: task.source_type });
+        toast.success('Marked reviewed in inbox');
+        load();
+      } catch (err) {
+        toast.error(err?.response?.data?.detail || 'Could not update inbox');
+      } finally {
+        setOverrideBusyId(null);
+      }
+      return;
+    }
+    if (va.id === 'snooze_1' || va.id === 'snooze_7' || snoozeDays) {
+      const days = Number(snoozeDays || va.snooze_days || 1);
+      setOverrideBusyId(tid);
+      try {
+        await clientAPI.todayItemSnooze(tid, days);
+        emitTodayAnalytics('today_task_snoozed', { task_id: tid, source_type: task.source_type, snooze_days: days });
+        toast.success(`Snoozed ${days} day${days !== 1 ? 's' : ''}`);
+        load();
+      } catch (err) {
+        toast.error(err?.response?.data?.detail || 'Could not snooze');
+      } finally {
+        setOverrideBusyId(null);
+      }
+    }
+  };
+
   const onPrimaryNavigate = async (task, which = 'primary') => {
     const cta = resolveTaskCta(task, which);
     const url = cta.route || (which === 'secondary' ? '/today' : '/dashboard');
@@ -529,85 +635,17 @@ export default function ClientTasksPage() {
     navigate(resolveClientPortalPath(url, which === 'secondary' ? '/today' : '/dashboard'));
   };
 
-  const handleBookCompliance = async (task) => {
-    const ce = task.metadata?.compliance_execution_booking;
-    if (!ce?.eligible) return;
-    setComplianceBookingBusyId(task.id);
-    try {
-      const res = await clientAPI.bookComplianceWorkOrder({
-        property_id: ce.property_id,
-        requirement_code: ce.requirement_code,
-        compliance_purpose: ce.compliance_purpose,
-        compliance_generated_from: ce.compliance_generated_from || 'requirement',
-        linked_property_requirement_id: ce.linked_property_requirement_id,
-      });
-      const woId = res.data?.work_order?.work_order_id;
-      emitTodayAnalytics('today_compliance_job_started', {
-        task_id: task.id,
-        requirement_code: ce.requirement_code,
-        work_order_id: woId,
-      });
-      toast.success('Compliance job created — open Work orders to request a contractor.');
-      navigate(
-        resolveClientPortalPath(
-          woId ? `/operations/work-orders?work_order_id=${encodeURIComponent(woId)}` : '/operations/work-orders',
-          '/operations/work-orders'
-        )
-      );
-      load();
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Could not start compliance job');
-    } finally {
-      setComplianceBookingBusyId(null);
-    }
-  };
-
-  const onTaskOverride = async (action, task, snoozeDays) => {
-    const tid = task?.id || task?.task_id;
+  const restoreTodayItem = async (taskOrItem) => {
+    const tid = taskOrItem?.id || taskOrItem?.task_id;
     if (!tid) return;
     setOverrideBusyId(tid);
     try {
-      const businessOutcome =
-        action === 'snooze'
-          ? 'task_snoozed'
-          : action === 'dismiss'
-            ? 'task_dismissed'
-            : action === 'reviewed'
-              ? 'task_marked_reviewed'
-              : action === 'restore'
-                ? 'task_restored'
-                : 'inbox_done_legacy';
-      await clientAPI.postTaskOverride({
-        task_id: tid,
-        action,
-        snooze_days: snoozeDays,
-        title: task.title,
-        source_type: task.source_type,
-        property_id: task.property_id,
-        business_outcome: businessOutcome,
-      });
-      if (action === 'snooze') {
-        emitTodayAnalytics('today_task_snoozed', {
-          task_id: tid,
-          source_type: task.source_type,
-          snooze_days: snoozeDays,
-        });
-      } else if (action === 'reviewed') {
-        emitTodayAnalytics('today_task_marked_reviewed', { task_id: tid, source_type: task.source_type });
-      } else if (action === 'restore') {
-        emitTodayAnalytics('today_task_restored', { task_id: tid, source_type: task.source_type });
-      }
-      const labels = {
-        snooze: snoozeDays ? `Snoozed ${snoozeDays} day${snoozeDays !== 1 ? 's' : ''}` : 'Snoozed',
-        dismiss: 'Task dismissed (logged)',
-        reviewed: 'Marked reviewed in inbox',
-        done: 'Marked done (legacy)',
-        restore: 'Restored to inbox',
-      };
-      toast.success(labels[action] || 'Updated');
+      await clientAPI.todayItemRestore(tid);
+      emitTodayAnalytics('today_task_restored', { task_id: tid, source_type: taskOrItem.source_type });
+      toast.success('Restored to inbox');
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Could not update task');
+      toast.error(err?.response?.data?.detail || 'Could not restore');
     } finally {
       setOverrideBusyId(null);
     }
@@ -630,15 +668,7 @@ export default function ClientTasksPage() {
     setDismissReason('');
     setOverrideBusyId(tid);
     try {
-      await clientAPI.postTaskOverride({
-        task_id: tid,
-        action: 'dismiss',
-        title: task.title,
-        source_type: task.source_type,
-        property_id: task.property_id,
-        dismiss_reason: reason,
-        business_outcome: 'task_dismissed',
-      });
+      await clientAPI.todayItemDismiss(tid, reason);
       emitTodayAnalytics('today_task_dismissed', {
         task_id: tid,
         source_type: task.source_type,
@@ -872,10 +902,10 @@ export default function ClientTasksPage() {
             onRiskAction={onRiskAction}
             riskLoading={riskLoading}
             showRiskInline={showRiskInline}
-            onTaskOverride={onTaskOverride}
             onOpenDismissModal={openDismissModal}
             onPrimaryNavigate={onPrimaryNavigate}
-            onBookCompliance={handleBookCompliance}
+            onRunBusinessAction={runBusinessAction}
+            onVisibilityTap={runVisibilityTap}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
@@ -888,10 +918,10 @@ export default function ClientTasksPage() {
             onRiskAction={onRiskAction}
             riskLoading={riskLoading}
             showRiskInline={showRiskInline}
-            onTaskOverride={onTaskOverride}
             onOpenDismissModal={openDismissModal}
             onPrimaryNavigate={onPrimaryNavigate}
-            onBookCompliance={handleBookCompliance}
+            onRunBusinessAction={runBusinessAction}
+            onVisibilityTap={runVisibilityTap}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
@@ -904,10 +934,10 @@ export default function ClientTasksPage() {
             onRiskAction={onRiskAction}
             riskLoading={riskLoading}
             showRiskInline={showRiskInline}
-            onTaskOverride={onTaskOverride}
             onOpenDismissModal={openDismissModal}
             onPrimaryNavigate={onPrimaryNavigate}
-            onBookCompliance={handleBookCompliance}
+            onRunBusinessAction={runBusinessAction}
+            onVisibilityTap={runVisibilityTap}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
@@ -926,7 +956,7 @@ export default function ClientTasksPage() {
                     key={t.id}
                     task={t}
                     busy={overrideBusyId === t.id}
-                    onRestore={(tk) => onTaskOverride('restore', tk)}
+                    onRestore={(tk) => restoreTodayItem(tk)}
                   />
                 ))}
               </div>
@@ -945,14 +975,7 @@ export default function ClientTasksPage() {
                     key={h.task_id}
                     item={h}
                     busy={overrideBusyId === h.task_id}
-                    onRestore={(it) =>
-                      onTaskOverride('restore', {
-                        id: it.task_id,
-                        title: it.title,
-                        source_type: it.source_type,
-                        property_id: it.property_id,
-                      })
-                    }
+                    onRestore={(it) => restoreTodayItem(it)}
                   />
                 ))}
               </div>
@@ -964,10 +987,10 @@ export default function ClientTasksPage() {
             onRiskAction={onRiskAction}
             riskLoading={riskLoading}
             showRiskInline={showRiskInline}
-            onTaskOverride={onTaskOverride}
             onOpenDismissModal={openDismissModal}
             onPrimaryNavigate={onPrimaryNavigate}
-            onBookCompliance={handleBookCompliance}
+            onRunBusinessAction={runBusinessAction}
+            onVisibilityTap={runVisibilityTap}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}

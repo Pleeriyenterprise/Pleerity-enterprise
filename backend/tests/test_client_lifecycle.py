@@ -86,6 +86,7 @@ async def test_permanent_delete_preflight_blocks_stripe_subscription():
     db.clients.find_one = AsyncMock(
         return_value={
             "client_id": "x",
+            "client_lifecycle_status": "ARCHIVED",
             "stripe_customer_id": "",
             "stripe_subscription_id": "sub_123",
             "subscription_status": "canceled",
@@ -145,6 +146,7 @@ async def test_permanent_delete_preflight_blocks_active_subscription():
     db.clients.find_one = AsyncMock(
         return_value={
             "client_id": "x",
+            "client_lifecycle_status": "ARCHIVED",
             "stripe_customer_id": "",
             "stripe_subscription_id": "",
             "subscription_status": "active",
@@ -155,3 +157,48 @@ async def test_permanent_delete_preflight_blocks_active_subscription():
         allowed, blockers = await permanent_delete_preflight(db, "x")
     assert allowed is False
     assert "subscription_active_or_trialing" in blockers
+
+
+@pytest.mark.asyncio
+async def test_permanent_delete_preflight_blocks_unarchived_even_if_empty_deps():
+    from services.client_lifecycle_service import permanent_delete_preflight
+
+    db = MagicMock()
+    db.clients.find_one = AsyncMock(
+        return_value={
+            "client_id": "x",
+            "client_lifecycle_status": "ACTIVE",
+            "stripe_customer_id": "",
+            "stripe_subscription_id": "",
+            "subscription_status": "canceled",
+        }
+    )
+
+    with patch("services.client_lifecycle_service._count", new_callable=AsyncMock, return_value=0):
+        allowed, blockers = await permanent_delete_preflight(db, "x")
+    assert allowed is False
+    assert "client_not_archived_or_purge_eligible" in blockers
+
+
+@pytest.mark.asyncio
+async def test_permanent_delete_preflight_blocks_contractors():
+    from services.client_lifecycle_service import permanent_delete_preflight
+
+    db = MagicMock()
+    db.clients.find_one = AsyncMock(
+        return_value={
+            "client_id": "x",
+            "client_lifecycle_status": "PURGE_ELIGIBLE",
+            "stripe_customer_id": "",
+            "stripe_subscription_id": "",
+            "subscription_status": "canceled",
+        }
+    )
+
+    async def fake_count(_, name, __):
+        return 1 if name == "contractors" else 0
+
+    with patch("services.client_lifecycle_service._count", new_callable=AsyncMock, side_effect=fake_count):
+        allowed, blockers = await permanent_delete_preflight(db, "x")
+    assert allowed is False
+    assert any(b.startswith("contractors_count:") for b in blockers)

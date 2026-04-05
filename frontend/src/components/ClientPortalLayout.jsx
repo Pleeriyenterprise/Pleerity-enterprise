@@ -38,11 +38,12 @@ import {
   Inbox,
 } from 'lucide-react';
 import { resolveNotificationTarget } from '../utils/notificationDeepLink';
+import { PORTAL_COPY } from '../utils/clientPortalCopy';
 
 // Operations sub-items (feature-gated). Shown under Operations group; no standalone Maintenance/Contractors.
 const OPERATIONS_CHILDREN = [
   { path: '/operations/issues', label: 'Issues', icon: AlertCircle, feature: 'maintenance_workflows' },
-  { path: '/operations/work-orders', label: 'Work Orders', icon: Wrench, feature: 'maintenance_workflows' },
+  { path: '/operations/work-orders', label: PORTAL_COPY.jobs, icon: Wrench, feature: 'maintenance_workflows' },
   { path: '/operations/contractors', label: 'Contractors', icon: Briefcase, feature: 'contractor_network' },
   { path: '/operations/risk-signals', label: 'Risk Signals', icon: TrendingUp, feature: 'predictive_maintenance' },
   { path: '/operations/approvals', label: 'Approvals', icon: ClipboardCheck, feature: 'invoicing' },

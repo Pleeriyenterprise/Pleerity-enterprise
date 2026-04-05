@@ -789,3 +789,24 @@ async def get_upcoming_deadlines(request: Request, days: int = 30):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load upcoming deadlines"
         )
+
+
+@router.get("/{property_id}/requirements")
+async def get_property_requirements_api(request: Request, property_id: str):
+    """List enriched requirements for one property (same shape as GET /api/client/properties/{id}/requirements)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    requirements = await db.requirements.find(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0},
+    ).to_list(100)
+    from services.requirement_truth import enrich_requirements_for_client
+
+    enriched, presentation = await enrich_requirements_for_client(db, user["client_id"], requirements)
+    return {"requirements": enriched, "presentation": presentation}

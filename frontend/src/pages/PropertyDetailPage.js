@@ -2324,7 +2324,7 @@ export default function PropertyDetailPage() {
                               <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.createIssueFromRiskSignal(s.signal_id, {}); toast.success('Issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Create issue</Button>
                             )}
                             {actions.includes('schedule_inspection') && hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
-                              <Button size="sm" variant="outline" onClick={() => openBookInspectionFromRisk(s.signal_id)}>Book inspection</Button>
+                              <Button size="sm" variant="outline" onClick={() => openBookInspectionFromRisk(s.signal_id)}>Create compliance job</Button>
                             )}
                             {actions.includes('schedule_inspection') && hasFeature('maintenance_workflows') && !hasFeature('compliance_engine') && (
                               <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {}); toast.success('Inspection issue logged (maintenance)'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Log inspection issue</Button>
@@ -2631,7 +2631,7 @@ export default function PropertyDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !bookInspectionSaving && setBookInspectionOpen(false)}>
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full m-4 p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-2 mb-3">
-              <h3 className="font-semibold text-midnight-blue text-lg">Book compliance inspection</h3>
+              <h3 className="font-semibold text-midnight-blue text-lg">Create compliance job</h3>
               <button type="button" onClick={() => !bookInspectionSaving && setBookInspectionOpen(false)} className="p-1 rounded hover:bg-gray-100" aria-label="Close">
                 <X className="w-5 h-5" />
               </button>
@@ -2660,7 +2660,7 @@ export default function PropertyDetailPage() {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setBookInspectionOpen(false)} disabled={bookInspectionSaving}>Cancel</Button>
               <Button onClick={confirmBookInspectionFromRisk} disabled={bookInspectionSaving || !bookInspectionReqPick}>
-                {bookInspectionSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Book inspection'}
+                {bookInspectionSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create job'}
               </Button>
             </div>
           </div>
