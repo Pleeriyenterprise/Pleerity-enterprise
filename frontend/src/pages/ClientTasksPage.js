@@ -427,6 +427,7 @@ function SectionBlock({
   onPrimaryNavigate,
   onRunBusinessAction,
   onVisibilityTap,
+  onTaskTitleClick,
   overrideBusy,
   complianceBookingBusyId,
   showComplianceBooking,
