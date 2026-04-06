@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminAPI } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
-import { LayoutDashboard, Settings, Users, BarChart3, RefreshCw, Zap, Shield } from 'lucide-react';
+import { LayoutDashboard, Settings, Users, BarChart3, RefreshCw, Zap, Shield, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 const MODULE_LINKS = [
@@ -99,6 +99,13 @@ export default function AdminOpsOverviewPage() {
                 >
                   <Zap className="w-8 h-8 text-electric-teal" />
                   <span className="font-medium text-gray-900">Feature Controls</span>
+                </Link>
+                <Link
+                  to="/admin/ops/roi-diagnostics"
+                  className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm transition-colors"
+                >
+                  <TrendingUp className="w-8 h-8 text-electric-teal" />
+                  <span className="font-medium text-gray-900">Client ROI diagnostics</span>
                 </Link>
               </div>
             </div>

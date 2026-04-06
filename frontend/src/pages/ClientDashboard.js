@@ -152,6 +152,8 @@ const ClientDashboard = () => {
   const [systemBanners, setSystemBanners] = useState([]);
   /** Landlord contractors: submitted for network review vs rejected (CONTRACTOR_NETWORK). */
   const [contractorNetworkActivity, setContractorNetworkActivity] = useState(null);
+  /** undefined = loading; null = error; object = GET /client/dashboard/roi-summary (non-blocking). */
+  const [roiSummary, setRoiSummary] = useState(undefined);
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -186,6 +188,25 @@ const ClientDashboard = () => {
       cancelled = true;
     };
   }, [isClientUser, contractorNetworkEnabled]);
+
+  useEffect(() => {
+    if (!isClientUser) {
+      setRoiSummary(undefined);
+      return undefined;
+    }
+    let cancelled = false;
+    clientAPI
+      .getDashboardRoiSummary()
+      .then((res) => {
+        if (!cancelled) setRoiSummary(res.data ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setRoiSummary(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isClientUser]);
 
   useEffect(() => {
     if (!isClientUser) {
@@ -1219,6 +1240,80 @@ const ClientDashboard = () => {
               <span className="text-xs text-gray-500">{portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0} propert{(portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0) === 1 ? 'y' : 'ies'}</span>
             )}
           </div>
+        )}
+
+        {!setupView && isClientUser && (
+          <Card
+            className="mb-6 border border-teal-100 bg-gradient-to-br from-teal-50/40 to-white shadow-sm"
+            data-testid="dashboard-roi-summary"
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-teal-600 shrink-0" aria-hidden />
+                Value from your subscription
+              </CardTitle>
+              <p className="text-xs text-gray-500 font-normal mt-1">
+                Approximate month-to-date indicators (loaded separately so your dashboard stays fast).
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {roiSummary === undefined && (
+                <p className="text-sm text-gray-500">Loading value summary…</p>
+              )}
+              {roiSummary === null && (
+                <p className="text-sm text-gray-600">Value summary is temporarily unavailable.</p>
+              )}
+              {roiSummary != null && (
+                <>
+                  <p className="text-sm font-semibold text-midnight-blue">
+                    {roiSummary.period_label || 'This month'}:
+                  </p>
+                  <ul className="space-y-2 text-sm text-gray-800">
+                    <li className="flex gap-2.5 items-start">
+                      <span className="text-green-600 font-semibold shrink-0" aria-hidden>
+                        ✔
+                      </span>
+                      <span>
+                        {roiSummary.compliance_basis === 'unavailable'
+                          ? 'Compliance count unavailable'
+                          : `${roiSummary.compliance_items_up_to_date ?? 0} compliance items up to date`}
+                      </span>
+                    </li>
+                    <li className="flex gap-2.5 items-start">
+                      <span className="text-green-600 font-semibold shrink-0" aria-hidden>
+                        ✔
+                      </span>
+                      <span>{roiSummary.jobs_completed_on_time ?? 0} jobs completed on time</span>
+                    </li>
+                    <li className="flex gap-2.5 items-start">
+                      <span className="text-green-600 font-semibold shrink-0" aria-hidden>
+                        ✔
+                      </span>
+                      <span>{roiSummary.sla_breaches_avoided ?? 0} SLA breaches avoided</span>
+                    </li>
+                  </ul>
+                  <div className="text-xs text-gray-500 pt-1 space-y-1.5">
+                    <p>
+                      Approximate month-to-date figures from your account
+                      {roiSummary.compliance_basis === 'portfolio_snapshot'
+                        ? ' — compliance shows your current compliant portfolio when nothing was updated this month (not strictly month-to-date activity).'
+                        : roiSummary.compliance_basis === 'unavailable'
+                          ? ' — compliance figures could not be loaded.'
+                          : '.'}
+                    </p>
+                    <p>
+                      &quot;SLA breaches avoided&quot; counts jobs that had an SLA near-breach flag, finished without a
+                      recorded breach, and met the SLA deadline — a descriptive tally, not a claim that any single action
+                      caused the outcome.
+                    </p>
+                  </div>
+                  {roiSummary.unavailable && (
+                    <p className="text-xs text-amber-800">Some underlying data could not be fully loaded.</p>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {!setupView && isClientUser &&

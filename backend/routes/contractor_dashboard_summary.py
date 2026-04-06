@@ -76,7 +76,10 @@ def _scheduled_today_utc(wo: Dict[str, Any], now: datetime) -> bool:
     d = _parse_iso(sat)
     if not d:
         return False
-    return d.date() == now.date()
+    # Compare calendar dates in UTC only: `now` is UTC; naive .date() on `d` would use the
+    # offset-local calendar day (e.g. +05:30 can be "tomorrow" vs UTC same instant).
+    d_utc = d.astimezone(timezone.utc)
+    return d_utc.date() == now.date()
 
 
 def _is_overdue_sla(wo: Dict[str, Any], now: datetime) -> bool:

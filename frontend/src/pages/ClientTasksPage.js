@@ -11,6 +11,9 @@
  * - Visibility actions: `visibility_actions` → POST /api/today/items/{id}/snooze | mark-reviewed | dismiss.
  *   Snooze/reviewed/dismiss only touch task overrides; they do not change compliance outcome on requirements.
  *
+ * Analytics: `TODAY_TASK_COMPLETED` = inbox visibility only (mark reviewed), not underlying object resolved.
+ * Workflow attempts: `TODAY_PRIMARY_ACTION_TRIGGERED` (see backend `product_analytics_service` module doc).
+ *
  * - Restore: hidden/dismissed items expose restore → POST /api/today/items/{id}/restore (see restoreTodayItem).
  *   Clears overrides so the task can reappear; does not mutate underlying requirement/job/document state.
  */
@@ -34,7 +37,7 @@ import {
 } from '../components/ui/dialog';
 import { Loader2, LayoutList, Info, ExternalLink, Bell, EyeOff, CheckCircle, RotateCcw, History } from 'lucide-react';
 import { toast } from 'sonner';
-import { UrgencyRow } from '../components/client/UrgencyDisplay';
+import { TodayUrgencyRow } from '../components/client/UrgencyDisplay';
 import { resolveClientPortalPath } from '../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../utils/ctaRegistry';
 
@@ -95,6 +98,23 @@ function primaryClickBusinessOutcome(task) {
   return 'primary_navigation';
 }
 
+/** Payload for Today analytics (snake_case keys; server sanitizes). */
+function todayTaskAnalyticsProps(task) {
+  if (!task) return {};
+  const meta = task.metadata || {};
+  const wo =
+    meta.work_order_id ||
+    meta.related_work_order_id ||
+    (task.source_entity_type === 'work_order' ? task.source_entity_id : undefined);
+  const out = {
+    task_id: task.id,
+    task_type: task.source_type || undefined,
+  };
+  if (task.property_id) out.property_id = task.property_id;
+  if (wo) out.work_order_id = String(wo);
+  return out;
+}
+
 function TaskCard({
   task,
   onRiskAction,
@@ -104,6 +124,7 @@ function TaskCard({
   onPrimaryNavigate,
   onRunBusinessAction,
   onVisibilityTap,
+  onTaskTitleClick,
   overrideBusy,
   complianceBookingBusyId,
   showComplianceBooking,
@@ -133,9 +154,23 @@ function TaskCard({
               <Badge variant="outline" className="text-xs font-normal shrink-0">
                 {sourceTypeLabel(task.source_type)}
               </Badge>
-              <UrgencyRow urgencyLevel={task.urgency_level} timingLabel={meta.timing_label} />
+              <TodayUrgencyRow urgency={task.urgency} urgencyLevel={task.urgency_level} timingLabel={meta.timing_label} />
             </div>
-            <h3 className="font-semibold text-midnight-blue text-base leading-snug break-words">{displayTitle}</h3>
+            <h3
+              className={`font-semibold text-midnight-blue text-base leading-snug break-words${onTaskTitleClick ? ' cursor-pointer hover:underline decoration-midnight-blue/30' : ''}`}
+              role={onTaskTitleClick ? 'button' : undefined}
+              tabIndex={onTaskTitleClick ? 0 : undefined}
+              onClick={() => onTaskTitleClick?.(task)}
+              onKeyDown={(e) => {
+                if (!onTaskTitleClick) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onTaskTitleClick(task);
+                }
+              }}
+            >
+              {displayTitle}
+            </h3>
             {entityHint && (
               <p className="text-[11px] text-gray-400 font-mono break-all" title={task.source_entity_id}>
                 Linked: {entityHint}
@@ -181,18 +216,25 @@ function TaskCard({
               <div>
                 <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Business actions</p>
                 <div className="flex flex-col gap-2">
-                  {businessActions.map((act) => (
-                    <Button
-                      key={act.id}
-                      type="button"
-                      variant={act.id === 'open_primary' ? 'default' : 'outline'}
-                      className={`w-full min-h-11 h-11 text-sm justify-center ${act.id === 'open_primary' ? 'bg-midnight-blue hover:bg-midnight-blue/90 shadow-sm' : 'border-midnight-blue/20'}`}
-                      disabled={bookingBusy}
-                      onClick={() => onRunBusinessAction(act, task)}
-                    >
-                      {act.label}
-                    </Button>
-                  ))}
+                  {businessActions.map((act) => {
+                    const isPrimary = act.primary === true || act.id === 'open_primary';
+                    return (
+                      <Button
+                        key={act.id}
+                        type="button"
+                        variant={isPrimary ? 'default' : 'outline'}
+                        className={`w-full min-h-11 h-11 text-sm justify-center ${
+                          isPrimary
+                            ? 'bg-midnight-blue hover:bg-midnight-blue/90 shadow-md ring-2 ring-electric-teal/40 ring-offset-2 ring-offset-white'
+                            : 'border-midnight-blue/20'
+                        }`}
+                        disabled={bookingBusy}
+                        onClick={() => onRunBusinessAction(act, task)}
+                      >
+                        {act.label}
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
@@ -246,7 +288,7 @@ function TaskCard({
                     variant="outline"
                     className="min-h-11 h-11 w-full justify-center text-xs sm:text-sm"
                     disabled={riskLoading === `issue:${sid}`}
-                    onClick={() => onRiskAction('issue', sid)}
+                    onClick={() => onRiskAction('issue', sid, task)}
                   >
                     {riskLoading === `issue:${sid}` ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Log maintenance issue'}
                   </Button>
@@ -254,7 +296,7 @@ function TaskCard({
                     variant="outline"
                     className="min-h-11 h-11 w-full justify-center text-xs sm:text-sm"
                     disabled={riskLoading === `wo:${sid}`}
-                    onClick={() => onRiskAction('work_order', sid)}
+                    onClick={() => onRiskAction('work_order', sid, task)}
                   >
                     {riskLoading === `wo:${sid}` ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Start maintenance job'}
                   </Button>
@@ -414,6 +456,7 @@ function SectionBlock({
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={onRunBusinessAction}
             onVisibilityTap={onVisibilityTap}
+            onTaskTitleClick={onTaskTitleClick}
             overrideBusy={overrideBusy}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
@@ -452,15 +495,17 @@ export default function ClientTasksPage() {
       .catch(() => setPropertyOptions([]));
   }, [isClientUser]);
 
-  useEffect(() => {
-    if (!isClientUser || typeof sessionStorage === 'undefined') return;
-    if (sessionStorage.getItem('pleerity_today_opened')) return;
-    sessionStorage.setItem('pleerity_today_opened', '1');
-    clientAPI.postAnalyticsEvent({ event: 'today_opened', path: '/today' }).catch(() => {});
-  }, [isClientUser]);
+  const emitTodayAnalytics = useCallback((event, properties = {}) => {
+    clientAPI
+      .postAnalyticsEvent({ event, path: '/today', properties: { ...properties, page: 'today' } })
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(() => {
     if (!isClientUser) return;
+    emitTodayAnalytics('TODAY_PAGE_REQUESTED', {
+      ...(propertyFilter ? { property_id: propertyFilter } : {}),
+    });
     setLoading(true);
     setError('');
     const params = propertyFilter ? { property_id: propertyFilter } : {};
@@ -470,13 +515,24 @@ export default function ClientTasksPage() {
       .catch((err) => {
         setError(err?.response?.data?.detail || 'Failed to load tasks');
         setPayload(null);
+        emitTodayAnalytics('TODAY_PAGE_LOAD_FAILED', {
+          ...(propertyFilter ? { property_id: propertyFilter } : {}),
+          ...(typeof err?.response?.status === 'number' ? { http_status: err.response.status } : {}),
+        });
       })
       .finally(() => setLoading(false));
-  }, [isClientUser, propertyFilter]);
+  }, [isClientUser, propertyFilter, emitTodayAnalytics]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!isClientUser || loading || error || payload == null) return;
+    emitTodayAnalytics('TODAY_PAGE_VIEWED', {
+      ...(propertyFilter ? { property_id: propertyFilter } : {}),
+    });
+  }, [isClientUser, loading, error, payload, propertyFilter, emitTodayAnalytics]);
 
   // Keep Today inbox aligned with real-time Action -> Outcome events.
   useEffect(() => {
@@ -533,13 +589,20 @@ export default function ClientTasksPage() {
   const showComplianceBooking =
     hasFeature('compliance_engine') && hasFeature('maintenance_workflows');
 
-  const emitTodayAnalytics = (event, properties = {}) => {
-    clientAPI
-      .postAnalyticsEvent({ event, path: '/today', properties: { ...properties, page: 'today' } })
-      .catch(() => {});
-  };
+  const onTaskTitleClick = useCallback(
+    (task) => {
+      emitTodayAnalytics('TODAY_TASK_CLICKED', todayTaskAnalyticsProps(task));
+    },
+    [emitTodayAnalytics]
+  );
 
   const runBusinessAction = async (act, task) => {
+    if (act?.id && task) {
+      emitTodayAnalytics('TODAY_PRIMARY_ACTION_TRIGGERED', {
+        ...todayTaskAnalyticsProps(task),
+        action_id: act.id,
+      });
+    }
     const tid = task?.id;
     if (act.id === 'create_compliance_work_order' && act.requirement_id) {
       setComplianceBookingBusyId(tid);
@@ -573,7 +636,7 @@ export default function ClientTasksPage() {
       navigate(resolveClientPortalPath(act.navigate, '/today'));
       return;
     }
-    await onPrimaryNavigate(task, 'primary');
+    await onPrimaryNavigate(task, 'primary', { skipPrimaryWorkflowAnalytics: true });
   };
 
   const runVisibilityTap = async (va, task, snoozeDays) => {
@@ -583,7 +646,8 @@ export default function ClientTasksPage() {
       setOverrideBusyId(tid);
       try {
         await clientAPI.todayItemMarkReviewed(tid);
-        emitTodayAnalytics('today_task_marked_reviewed', { task_id: tid, source_type: task.source_type });
+        // TODAY_TASK_COMPLETED = inbox mark-reviewed only, not domain/workflow completion.
+        emitTodayAnalytics('TODAY_TASK_COMPLETED', todayTaskAnalyticsProps(task));
         toast.success('Marked reviewed in inbox');
         load();
       } catch (err) {
@@ -598,7 +662,7 @@ export default function ClientTasksPage() {
       setOverrideBusyId(tid);
       try {
         await clientAPI.todayItemSnooze(tid, days);
-        emitTodayAnalytics('today_task_snoozed', { task_id: tid, source_type: task.source_type, snooze_days: days });
+        emitTodayAnalytics('TODAY_TASK_SNOOZED', { ...todayTaskAnalyticsProps(task), days });
         toast.success(`Snoozed ${days} day${days !== 1 ? 's' : ''}`);
         load();
       } catch (err) {
@@ -609,18 +673,26 @@ export default function ClientTasksPage() {
     }
   };
 
-  const onPrimaryNavigate = async (task, which = 'primary') => {
+  const onPrimaryNavigate = async (task, which = 'primary', opts = {}) => {
+    const skipWorkflow = opts.skipPrimaryWorkflowAnalytics === true;
+    if (which === 'primary' && !skipWorkflow) {
+      emitTodayAnalytics('TODAY_PRIMARY_ACTION_TRIGGERED', {
+        ...todayTaskAnalyticsProps(task),
+        action_id: opts.primaryActionId || 'next_step_primary',
+        business_outcome: primaryClickBusinessOutcome(task),
+      });
+    }
     const cta = resolveTaskCta(task, which);
     const url = cta.route || (which === 'secondary' ? '/today' : '/dashboard');
-    const outcome =
-      which === 'secondary' ? 'secondary_navigation' : primaryClickBusinessOutcome(task);
-    emitTodayAnalytics(which === 'secondary' ? 'today_secondary_nav_clicked' : 'today_primary_cta_clicked', {
-      task_id: task.id,
-      source_type: task.source_type,
-      source_entity_type: task.source_entity_type || task.source_type,
-      action_context_type: task.action_context_type || task.primary_action_type,
-      business_outcome: outcome,
-    });
+    if (which === 'secondary') {
+      emitTodayAnalytics('today_secondary_nav_clicked', {
+        task_id: task.id,
+        source_type: task.source_type,
+        source_entity_type: task.source_entity_type || task.source_type,
+        action_context_type: task.action_context_type || task.primary_action_type,
+        business_outcome: 'secondary_navigation',
+      });
+    }
     try {
       await clientAPI.recordTaskNavigationIntent({
         task_id: task.id,
@@ -669,10 +741,7 @@ export default function ClientTasksPage() {
     setOverrideBusyId(tid);
     try {
       await clientAPI.todayItemDismiss(tid, reason);
-      emitTodayAnalytics('today_task_dismissed', {
-        task_id: tid,
-        source_type: task.source_type,
-      });
+      emitTodayAnalytics('TODAY_TASK_DISMISSED', todayTaskAnalyticsProps(task));
       toast.success('Task dismissed — obligation unchanged; action audited.');
       load();
     } catch (err) {
@@ -682,11 +751,17 @@ export default function ClientTasksPage() {
     }
   };
 
-  const onRiskAction = async (kind, signalId) => {
+  const onRiskAction = async (kind, signalId, taskForAnalytics) => {
     if (!signalId) return;
     const key = `${kind}:${signalId}`;
     setRiskLoading(key);
     try {
+      if (taskForAnalytics) {
+        emitTodayAnalytics('TODAY_PRIMARY_ACTION_TRIGGERED', {
+          ...todayTaskAnalyticsProps(taskForAnalytics),
+          action_id: kind === 'issue' ? 'risk_follow_up_issue' : 'risk_follow_up_work_order',
+        });
+      }
       emitTodayAnalytics('today_risk_follow_up_started', {
         follow_up_kind: kind,
         risk_signal_id: signalId,
@@ -906,6 +981,7 @@ export default function ClientTasksPage() {
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={runBusinessAction}
             onVisibilityTap={runVisibilityTap}
+            onTaskTitleClick={onTaskTitleClick}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
@@ -922,6 +998,7 @@ export default function ClientTasksPage() {
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={runBusinessAction}
             onVisibilityTap={runVisibilityTap}
+            onTaskTitleClick={onTaskTitleClick}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
@@ -938,6 +1015,7 @@ export default function ClientTasksPage() {
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={runBusinessAction}
             onVisibilityTap={runVisibilityTap}
+            onTaskTitleClick={onTaskTitleClick}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
@@ -991,6 +1069,7 @@ export default function ClientTasksPage() {
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={runBusinessAction}
             onVisibilityTap={runVisibilityTap}
+            onTaskTitleClick={onTaskTitleClick}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}

@@ -5,6 +5,7 @@ Gated by MAINTENANCE_WORKFLOWS feature flag for client/tenant.
 """
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
+import os
 import uuid
 from database import database
 import logging
@@ -29,6 +30,19 @@ from services.work_order_execution_constants import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Secure job-link token lifetime (days). Stored hashed; tied to work_order_id + contractor_id.
+# Default 30 balances tighter exposure with typical windows; use CONTRACTOR_JOB_TOKEN_TTL_DAYS=90 for long-cycle work.
+def _contractor_job_token_ttl_days() -> int:
+    raw = (os.getenv("CONTRACTOR_JOB_TOKEN_TTL_DAYS") or "").strip()
+    if not raw:
+        return 30
+    try:
+        n = int(raw)
+        return max(1, min(n, 365))
+    except ValueError:
+        return 30
+
 
 # Work order status lifecycle (existing + additive)
 STATUS_OPEN = "OPEN"
@@ -413,6 +427,16 @@ async def update_work_order(
                     assert_completion_schedule_policy(dict(prev_snapshot))
                 except ValueError as e:
                     raise ValueError(str(e)) from e
+                from services import compliance_workflow_service as _cws
+
+                wo_for_proof = dict(prev_snapshot)
+                wo_for_proof["evidence_keys"] = merged_evidence
+                if _cws.contractor_completion_proof_required(wo_for_proof) and not _cws.contractor_has_completion_proof(
+                    wo_for_proof
+                ):
+                    raise ValueError(
+                        "Completion proof is required for this job. Upload evidence before marking complete."
+                    )
             set_fields["status"] = status
             if status == STATUS_COMPLETED:
                 set_fields["completed_at"] = now
@@ -523,7 +547,7 @@ async def update_work_order(
                 from utils.audit import create_audit_log
                 raw_token = generate_secure_token()
                 token_hash = hash_token(raw_token)
-                expires_at = (datetime.now(timezone.utc) + timedelta(days=90)).isoformat()
+                expires_at = (datetime.now(timezone.utc) + timedelta(days=_contractor_job_token_ttl_days())).isoformat()
                 await db.contractor_job_tokens.insert_one({
                     "token_hash": token_hash,
                     "work_order_id": work_order_id,

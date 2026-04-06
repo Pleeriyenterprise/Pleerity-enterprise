@@ -196,6 +196,8 @@ export function inboxTitleForDisplay(task) {
   const raw = String(task?.title || '').trim();
   if (!raw) return 'Task';
   const meta = task?.metadata || {};
+  // Today projection sets action-oriented titles; do not replace with short requirement labels.
+  if (meta.today_action_title) return raw;
   const code = meta.requirement_type || meta.requirement_code || meta.code;
   if (code && typeof code === 'string') {
     const lbl = requirementLabel(code);

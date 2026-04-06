@@ -121,6 +121,22 @@ async def get_client_checklist(request: Request, client_id: str):
     return result
 
 
+@router.get("/clients/{client_id}/dashboard-roi-diagnostics")
+async def get_client_dashboard_roi_diagnostics(request: Request, client_id: str):
+    """
+    Read-only: client dashboard ROI summary plus diagnostics (scan health, no-SLA job counts).
+    Same computation as GET /api/client/dashboard/roi-summary; for support/ops only.
+    """
+    await admin_route_guard(request)
+    db = database.get_db()
+    if not await db.clients.find_one({"client_id": client_id}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Client not found")
+    from services.client_roi_summary_service import get_roi_summary_month_to_date
+
+    data = await get_roi_summary_month_to_date(client_id, db)
+    return {"client_id": client_id, **data}
+
+
 @router.get("/compliance-clients-summary")
 async def get_compliance_clients_summary(
     request: Request,

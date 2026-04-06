@@ -542,6 +542,42 @@ async def get_dashboard(request: Request):
         )
 
 
+@router.get("/dashboard/roi-summary")
+async def get_dashboard_roi_summary(request: Request):
+    """
+    Month-to-date ROI-style metrics (v1 approximations). Separate from /dashboard so the main
+    dashboard load stays fast; clients may fetch this after first paint.
+    """
+    user = await client_route_guard(request)
+    db = database.get_db()
+    try:
+        from services.client_roi_summary_service import get_roi_summary_month_to_date
+
+        return await get_roi_summary_month_to_date(user["client_id"], db)
+    except Exception:
+        # Full failure (e.g. import error): still return a safe payload for the UI, but never silently —
+        # ops and log aggregators need the stack trace.
+        logger.exception(
+            "ROI summary endpoint failed client_id=%s",
+            user.get("client_id"),
+        )
+        return {
+            "period_label": "This month",
+            "compliance_items_up_to_date": 0,
+            "compliance_basis": "portfolio_snapshot",
+            "jobs_completed_on_time": 0,
+            "jobs_completed_in_period": 0,
+            "sla_breaches_avoided": 0,
+            "approximate": True,
+            "unavailable": True,
+            "diagnostics": {
+                "requirements_scan_ok": False,
+                "work_orders_scan_ok": False,
+                "endpoint_error": True,
+            },
+        }
+
+
 @router.get("/priority-actions")
 async def get_client_priority_actions(
     request: Request,
@@ -915,14 +951,15 @@ async def post_client_analytics_event(request: Request, body: ClientAnalyticsEve
     """First-party product analytics (Mongo). Unknown event names are ignored."""
     user = await client_route_guard(request)
     try:
-        from services.product_analytics_service import record_event
+        from utils.analytics_event_logger import record_portal_analytics_event
 
-        await record_event(
-            user["client_id"],
-            user.get("portal_user_id"),
-            body.event.strip(),
-            body.properties,
-            body.path,
+        await record_portal_analytics_event(
+            client_id=user["client_id"],
+            portal_user_id=user.get("portal_user_id"),
+            jwt_role=user.get("role"),
+            event=body.event.strip(),
+            properties=body.properties,
+            path=body.path,
         )
         return {"recorded": True}
     except Exception as e:
@@ -1088,6 +1125,7 @@ async def download_client_evidence_pack_file(request: Request, job_id: str):
 
     try:
         from services.product_analytics_service import record_event
+        from utils.analytics_event_logger import analytics_role_from_jwt_role
 
         await record_event(
             user["client_id"],
@@ -1095,6 +1133,7 @@ async def download_client_evidence_pack_file(request: Request, job_id: str):
             "evidence_pack_downloaded",
             {"job_id": job_id},
             "/evidence-pack",
+            role=analytics_role_from_jwt_role(user.get("role")),
         )
     except Exception:
         pass

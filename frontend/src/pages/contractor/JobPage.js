@@ -1,8 +1,9 @@
 /**
  * Secure job link page: contractor interacts with a single work order via token (no login).
  * Token is in URL ?token=... from assignment email.
+ * Optimised for fast first paint: preconnect to API host, layout shell while loading, next action first.
  */
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   createJobLinkAPI,
@@ -10,17 +11,21 @@ import {
   contractorEvidenceFilenameFromKey,
   isContractorFileEvidenceKey,
   parseApiError,
+  parseJobLinkError,
 } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { Wrench, Loader2, X, FileText, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-react';
+import { Wrench, Loader2, FileText, CheckCircle, XCircle, AlertCircle, Upload, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   contractorPortalExecutableActions,
+  contractorListPrimaryAction,
+  contractorNextStepLineFromNextActions,
   defaultInvoiceAmountFieldFromWorkOrder,
   formatContractorInvoiceStateLabel,
 } from '../../utils/contractorWorkflow';
+import { fireContractorWorkflowUsage } from '../../utils/contractorWorkflowUsage';
 
 function formatDate(s) {
   if (!s) return '—';
@@ -38,12 +43,18 @@ const STATUS_OPTIONS = [
   { value: 'COMPLETED', label: 'Completed' },
 ];
 
+const SCHEDULE_TZ_OPTIONS = [
+  { value: 'Europe/London', label: 'UK (London)' },
+  { value: 'Europe/Dublin', label: 'Ireland (Dublin)' },
+  { value: 'UTC', label: 'UTC' },
+];
+
 export default function JobPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
   const [workOrder, setWorkOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(() => !!token);
+  const [loadError, setLoadError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [invoiceModal, setInvoiceModal] = useState(null);
   const [invoiceForm, setInvoiceForm] = useState({ reference: '', description: '', submitted_amount: '' });
@@ -51,34 +62,75 @@ export default function JobPage() {
   const [notesForm, setNotesForm] = useState({ contractor_notes: '', completion_notes: '' });
   const [evidenceUploading, setEvidenceUploading] = useState(false);
   const [evidenceFileLoadingKey, setEvidenceFileLoadingKey] = useState(null);
+  const [scheduleForm, setScheduleForm] = useState({ datetimeLocal: '', timezone: 'Europe/London' });
+
+  const evidenceSectionRef = useRef(null);
+  const evidenceFileInputRef = useRef(null);
+  const nextActionRef = useRef(null);
+  const jobLinkOpenUsageWidRef = useRef(null);
 
   const api = token ? createJobLinkAPI(token) : null;
 
   const loadWorkOrder = useCallback(() => {
-    if (!api) return;
+    if (!api) return Promise.resolve();
     setLoading(true);
-    setError(null);
-    api.getWorkOrder()
+    setLoadError(null);
+    return api
+      .getWorkOrder()
       .then((res) => {
         setWorkOrder(res.data);
+        setLoadError(null);
+        const wid = res.data?.work_order_id;
+        if (wid && jobLinkOpenUsageWidRef.current !== wid) {
+          jobLinkOpenUsageWidRef.current = wid;
+          fireContractorWorkflowUsage(api.postWorkflowUsage, { event_type: 'job_opened', work_order_id: wid });
+        }
       })
       .catch((err) => {
-        const msg = parseApiError(err, 'Invalid or expired job link');
-        setError(msg);
+        const parsed = parseJobLinkError(err);
+        setLoadError(parsed);
         setWorkOrder(null);
-        toast.error(msg);
+        toast.error(parsed.message);
       })
       .finally(() => setLoading(false));
   }, [api]);
 
-  useEffect(() => {
+  /**
+   * Start the work-order fetch on layout (before paint) so the request begins marginally earlier than useEffect.
+   * Keep this only where the extra paint cycle is justified; do not copy blindly to other screens.
+   */
+  useLayoutEffect(() => {
     if (!token) {
-      setError('Missing job link. Use the link from your assignment email.');
       setLoading(false);
       return;
     }
     loadWorkOrder();
   }, [token, loadWorkOrder]);
+
+  /** Preconnect to API origin when backend URL is absolute (cuts first-request latency). */
+  useEffect(() => {
+    if (!token || typeof document === 'undefined') return;
+    const raw = (process.env.REACT_APP_BACKEND_URL || '').trim();
+    if (!raw) return;
+    try {
+      const u = new URL(raw);
+      const href = `${u.protocol}//${u.host}`;
+      const id = 'cvp-job-link-preconnect';
+      if (document.getElementById(id)) return;
+      const link = document.createElement('link');
+      link.id = id;
+      link.rel = 'preconnect';
+      link.href = href;
+      link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+      return () => {
+        const el = document.getElementById(id);
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      };
+    } catch {
+      return undefined;
+    }
+  }, [token]);
 
   useEffect(() => {
     if (workOrder) {
@@ -89,98 +141,148 @@ export default function JobPage() {
     }
   }, [workOrder]);
 
-  const handleAccept = () => {
+  const primaryAction = useMemo(
+    () => (workOrder ? contractorListPrimaryAction(workOrder) : null),
+    [workOrder],
+  );
+  const nextStepLine = useMemo(
+    () => (workOrder ? contractorNextStepLineFromNextActions(workOrder) : ''),
+    [workOrder],
+  );
+
+  const scrollToEvidence = useCallback(() => {
+    evidenceSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => evidenceFileInputRef.current?.focus?.(), 400);
+  }, []);
+
+  const handleAccept = useCallback(() => {
+    if (!api || !workOrder?.work_order_id) return;
+    fireContractorWorkflowUsage(api.postWorkflowUsage, {
+      event_type: 'action_taken',
+      work_order_id: workOrder.work_order_id,
+      action_id: 'accept_assignment',
+    });
     setActionLoading(true);
-    api.acceptAssignment()
+    api
+      .acceptAssignment()
       .then(() => {
         toast.success('Assignment accepted');
-        loadWorkOrder();
+        return loadWorkOrder();
       })
       .catch((e) => toast.error(parseApiError(e, 'Could not accept assignment')))
       .finally(() => setActionLoading(false));
-  };
+  }, [api, loadWorkOrder, workOrder?.work_order_id]);
 
-  const handleDecline = () => {
-    if (!confirm('Decline this assignment? The work order will be unassigned.')) return;
+  const handleDecline = useCallback(() => {
+    if (!api || !workOrder?.work_order_id) return;
+    if (!window.confirm('Decline this assignment? The work order will be unassigned.')) return;
+    const wid = workOrder.work_order_id;
+    fireContractorWorkflowUsage(api.postWorkflowUsage, {
+      event_type: 'action_taken',
+      work_order_id: wid,
+      action_id: 'decline_assignment',
+    });
     setActionLoading(true);
-    api.declineAssignment()
+    api
+      .declineAssignment()
       .then(() => {
         toast.success('Assignment declined');
         setWorkOrder(null);
-        setError('You have declined this assignment.');
+        setLoadError({
+          title: 'Assignment declined',
+          message: 'You have declined this assignment. You can close this page.',
+        });
       })
       .catch((e) => toast.error(parseApiError(e, 'Could not decline assignment')))
       .finally(() => setActionLoading(false));
-  };
+  }, [api, workOrder?.work_order_id]);
 
-  const handleStatusChange = (status) => {
+  const handleStatusChange = useCallback(
+    (status) => {
+      if (!api || !workOrder?.work_order_id) return;
+      const wid = workOrder.work_order_id;
+      setActionLoading(true);
+      api
+        .updateWorkOrder({ status })
+        .then((res) => {
+          const completed = (status || '').toUpperCase() === 'COMPLETED';
+          if (completed) {
+            const id = res?.data?.work_order_id || wid;
+            fireContractorWorkflowUsage(api.postWorkflowUsage, { event_type: 'job_completed', work_order_id: id });
+          }
+          toast.success('Status updated');
+          return loadWorkOrder();
+        })
+        .catch((e) => toast.error(parseApiError(e, 'Could not update status')))
+        .finally(() => setActionLoading(false));
+    },
+    [api, loadWorkOrder, workOrder?.work_order_id],
+  );
+
+  const handleSaveNotes = useCallback(() => {
+    if (!api) return;
     setActionLoading(true);
-    api.updateWorkOrder({ status })
-      .then(() => {
-        toast.success('Status updated');
-        loadWorkOrder();
+    api
+      .updateWorkOrder({
+        contractor_notes: notesForm.contractor_notes || undefined,
+        completion_notes: notesForm.completion_notes || undefined,
       })
-      .catch((e) => toast.error(parseApiError(e, 'Could not update status')))
-      .finally(() => setActionLoading(false));
-  };
-
-  const handleSaveNotes = () => {
-    setActionLoading(true);
-    api.updateWorkOrder({
-      contractor_notes: notesForm.contractor_notes || undefined,
-      completion_notes: notesForm.completion_notes || undefined,
-    })
       .then(() => {
         toast.success('Notes saved');
-        loadWorkOrder();
+        return loadWorkOrder();
       })
       .catch((e) => toast.error(parseApiError(e, 'Could not save notes')))
       .finally(() => setActionLoading(false));
-  };
+  }, [api, notesForm, loadWorkOrder]);
 
-  const onEvidenceSelected = (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !api) return;
-    setEvidenceUploading(true);
-    api
-      .uploadWorkOrderEvidence(file)
-      .then(() => {
-        toast.success('Evidence uploaded');
-        loadWorkOrder();
-      })
-      .catch((err) => toast.error(parseApiError(err, 'Upload failed')))
-      .finally(() => {
-        setEvidenceUploading(false);
-        e.target.value = '';
-      });
-  };
+  const onEvidenceSelected = useCallback(
+    (e) => {
+      const file = e.target.files?.[0];
+      if (!file || !api || !workOrder?.work_order_id) return;
+      const wid = workOrder.work_order_id;
+      setEvidenceUploading(true);
+      api
+        .uploadWorkOrderEvidence(file)
+        .then(() => {
+          toast.success('Evidence uploaded');
+          fireContractorWorkflowUsage(api.postWorkflowUsage, { event_type: 'proof_uploaded', work_order_id: wid });
+          return loadWorkOrder();
+        })
+        .catch((err) => toast.error(parseApiError(err, 'Upload failed')))
+        .finally(() => {
+          setEvidenceUploading(false);
+          e.target.value = '';
+        });
+    },
+    [api, loadWorkOrder, workOrder?.work_order_id],
+  );
 
-  const handleEvidenceFileOpen = (storageKey, download) => {
-    if (!api) return;
-    setEvidenceFileLoadingKey(storageKey);
-    api
-      .downloadWorkOrderEvidenceFile(storageKey, download)
-      .then((res) =>
-        openBlobApiResponse(res, {
-          download,
-          fallbackFilename: contractorEvidenceFilenameFromKey(storageKey),
-        }),
-      )
-      .catch((err) => {
-        toast.error(parseApiError(err, 'Could not open file'));
-      })
-      .finally(() => setEvidenceFileLoadingKey(null));
-  };
+  const handleEvidenceFileOpen = useCallback(
+    (storageKey, download) => {
+      if (!api) return;
+      setEvidenceFileLoadingKey(storageKey);
+      api
+        .downloadWorkOrderEvidenceFile(storageKey, download)
+        .then((res) =>
+          openBlobApiResponse(res, {
+            download,
+            fallbackFilename: contractorEvidenceFilenameFromKey(storageKey),
+          }),
+        )
+        .catch((err) => {
+          toast.error(parseApiError(err, 'Could not open file'));
+        })
+        .finally(() => setEvidenceFileLoadingKey(null));
+    },
+    [api],
+  );
 
-  const billingAction = useMemo(() => {
-    if (!workOrder) return null;
-    return contractorPortalExecutableActions(workOrder).find((a) =>
+  const openInvoiceModal = useCallback(() => {
+    if (!workOrder) return;
+    const billingAction = contractorPortalExecutableActions(workOrder).find((a) =>
       ['submit_invoice', 'view_invoice', 'edit_invoice'].includes(a.id),
     );
-  }, [workOrder]);
-
-  const openInvoiceModal = () => {
-    if (!workOrder || !billingAction) return;
+    if (!billingAction) return;
     const li = workOrder.linked_invoice;
     if (billingAction.id === 'submit_invoice') {
       setInvoiceForm({
@@ -197,42 +299,219 @@ export default function JobPage() {
       submitted_amount: li?.submitted_amount != null ? String(li.submitted_amount) : '',
     });
     setInvoiceModal({ mode: billingAction.id === 'edit_invoice' ? 'edit' : 'view' });
-  };
+  }, [workOrder]);
 
-  const handleSubmitInvoice = (e) => {
-    e.preventDefault();
-    if (!api || !invoiceModal) return;
-    if (invoiceModal.mode === 'view') return;
-    const ref = (invoiceForm.reference || '').trim();
-    if (!ref) {
-      toast.error('Invoice reference is required');
+  const handleSubmitInvoice = useCallback(
+    (e) => {
+      e.preventDefault();
+      if (!api || !invoiceModal) return;
+      if (invoiceModal.mode === 'view') return;
+      const ref = (invoiceForm.reference || '').trim();
+      if (!ref) {
+        toast.error('Invoice reference is required');
+        return;
+      }
+      const amt = parseFloat(String(invoiceForm.submitted_amount).replace(/,/g, ''));
+      if (Number.isNaN(amt) || amt <= 0) {
+        toast.error('Enter a valid invoice amount greater than zero');
+        return;
+      }
+      setInvoiceSaving(true);
+      api
+        .submitInvoice({
+          reference: ref,
+          description: (invoiceForm.description || '').trim() || undefined,
+          submitted_amount: amt,
+        })
+        .then(() => {
+          toast.success(
+            invoiceModal.mode === 'edit'
+              ? 'Invoice updated and resubmitted for approval.'
+              : 'Invoice submitted for approval.',
+          );
+          setInvoiceModal(null);
+          setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
+          return loadWorkOrder();
+        })
+        .catch((err) => toast.error(parseApiError(err, 'Could not submit invoice')))
+        .finally(() => setInvoiceSaving(false));
+    },
+    [api, invoiceModal, invoiceForm, loadWorkOrder],
+  );
+
+  const handleProposeSchedule = useCallback(() => {
+    if (!api) return;
+    if (!scheduleForm.datetimeLocal) {
+      toast.error('Choose a visit date and time');
       return;
     }
-    const amt = parseFloat(String(invoiceForm.submitted_amount).replace(/,/g, ''));
-    if (Number.isNaN(amt) || amt <= 0) {
-      toast.error('Enter a valid invoice amount greater than zero');
-      return;
-    }
-    setInvoiceSaving(true);
+    const raw =
+      scheduleForm.datetimeLocal.length === 16 ? `${scheduleForm.datetimeLocal}:00` : scheduleForm.datetimeLocal;
+    setActionLoading(true);
     api
-      .submitInvoice({
-        reference: ref,
-        description: (invoiceForm.description || '').trim() || undefined,
-        submitted_amount: amt,
+      .proposeSchedule({
+        scheduled_at: raw,
+        timezone: scheduleForm.timezone,
       })
       .then(() => {
-        toast.success(
-          invoiceModal.mode === 'edit'
-            ? 'Invoice updated and resubmitted for approval.'
-            : 'Invoice submitted for approval.',
-        );
-        setInvoiceModal(null);
-        setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
-        loadWorkOrder();
+        toast.success('Visit time proposed');
+        if (workOrder?.work_order_id) {
+          fireContractorWorkflowUsage(api.postWorkflowUsage, {
+            event_type: 'action_taken',
+            work_order_id: workOrder.work_order_id,
+            action_id: 'propose_visit',
+          });
+        }
+        return loadWorkOrder();
       })
-      .catch((err) => toast.error(parseApiError(err, 'Could not submit invoice')))
-      .finally(() => setInvoiceSaving(false));
-  };
+      .catch((e) => toast.error(parseApiError(e, 'Could not propose visit time')))
+      .finally(() => setActionLoading(false));
+  }, [api, scheduleForm, loadWorkOrder, workOrder?.work_order_id]);
+
+  const handlePrimaryOrNextAction = useCallback(
+    (action) => {
+      if (!action?.id || !workOrder || !api) return;
+      const aid = action.id;
+      const wid = workOrder.work_order_id;
+      const logActionTaken = () =>
+        fireContractorWorkflowUsage(api.postWorkflowUsage, {
+          event_type: 'action_taken',
+          work_order_id: wid,
+          action_id: aid,
+        });
+      if (aid === 'open_job_detail') {
+        nextActionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      if (aid === 'accept_assignment') {
+        handleAccept();
+        return;
+      }
+      if (aid === 'decline_assignment') {
+        handleDecline();
+        return;
+      }
+      if (aid === 'upload_completion_proof') {
+        logActionTaken();
+        scrollToEvidence();
+        toast.message('Upload your file in the Evidence section below.');
+        return;
+      }
+      if (aid === 'start_job') {
+        logActionTaken();
+        handleStatusChange('IN_PROGRESS');
+        return;
+      }
+      if (aid === 'awaiting_parts') {
+        logActionTaken();
+        handleStatusChange('AWAITING_PARTS');
+        return;
+      }
+      if (aid === 'resume_job') {
+        logActionTaken();
+        handleStatusChange('IN_PROGRESS');
+        return;
+      }
+      if (aid === 'complete_job') {
+        if (workOrder.completion_proof_required && !workOrder.completion_proof_satisfied) {
+          toast.error('Upload completion proof before completing this job');
+          scrollToEvidence();
+          return;
+        }
+        logActionTaken();
+        handleStatusChange('COMPLETED');
+        return;
+      }
+      if (aid === 'submit_invoice' || aid === 'view_invoice' || aid === 'edit_invoice') {
+        logActionTaken();
+        openInvoiceModal();
+        return;
+      }
+      if (aid === 'propose_visit') {
+        logActionTaken();
+        nextActionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        toast.message('Choose date, time, and timezone, then tap Propose visit time.');
+        return;
+      }
+      if (aid === 'confirm_visit') {
+        logActionTaken();
+        setActionLoading(true);
+        api
+          .confirmSchedule()
+          .then(() => {
+            toast.success('Visit confirmed');
+            return loadWorkOrder();
+          })
+          .catch((e) => toast.error(parseApiError(e, 'Could not confirm')))
+          .finally(() => setActionLoading(false));
+        return;
+      }
+      if (aid === 'reschedule_visit') {
+        const reason = window.prompt('Reason for reschedule request (optional)') ?? '';
+        logActionTaken();
+        setActionLoading(true);
+        api
+          .requestScheduleReschedule({ reason: reason.trim() || undefined })
+          .then(() => {
+            toast.success('Reschedule request sent');
+            return loadWorkOrder();
+          })
+          .catch((e) => toast.error(parseApiError(e, 'Request failed')))
+          .finally(() => setActionLoading(false));
+        return;
+      }
+      if (aid === 'cancel_scheduled_visit') {
+        if (!window.confirm('Cancel this scheduled visit? The booking will be cleared.')) return;
+        logActionTaken();
+        setActionLoading(true);
+        api
+          .cancelSchedule()
+          .then(() => {
+            toast.success('Visit cancelled');
+            return loadWorkOrder();
+          })
+          .catch((e) => toast.error(parseApiError(e, 'Could not cancel')))
+          .finally(() => setActionLoading(false));
+        return;
+      }
+      if (aid === 'mark_no_access') {
+        const notes = window.prompt('Optional note for your client (e.g. why access was not possible)') ?? '';
+        logActionTaken();
+        setActionLoading(true);
+        api
+          .markNoAccess({ notes: notes.trim() || undefined })
+          .then(() => {
+            toast.success('No access recorded.');
+            return loadWorkOrder();
+          })
+          .catch((e) => toast.error(parseApiError(e, 'Could not record no access')))
+          .finally(() => setActionLoading(false));
+      }
+    },
+    [
+      workOrder,
+      api,
+      handleAccept,
+      handleDecline,
+      handleStatusChange,
+      scrollToEvidence,
+      openInvoiceModal,
+      loadWorkOrder,
+    ],
+  );
+
+  const billingAction = useMemo(() => {
+    if (!workOrder) return null;
+    return contractorPortalExecutableActions(workOrder).find((a) =>
+      ['submit_invoice', 'view_invoice', 'edit_invoice'].includes(a.id),
+    );
+  }, [workOrder]);
+
+  const primaryDisabled =
+    !!actionLoading ||
+    (primaryAction?.id === 'complete_job' &&
+      workOrder?.completion_proof_required &&
+      !workOrder?.completion_proof_satisfied);
 
   if (!token) {
     return (
@@ -250,20 +529,43 @@ export default function JobPage() {
 
   if (loading && !workOrder) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-electric-teal" />
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-2">
+          <Wrench className="w-6 h-6 text-electric-teal" />
+          <span className="font-semibold text-midnight-blue">Work order</span>
+        </header>
+        <main className="max-w-2xl mx-auto p-4">
+          <a href="#job-next-action" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-white focus:px-3 focus:py-2 focus:rounded-md focus:shadow">
+            Skip to next action
+          </a>
+          <div
+            id="job-next-action"
+            ref={nextActionRef}
+            className="rounded-xl border-2 border-electric-teal/60 bg-gradient-to-b from-teal-50 to-white p-5 mb-4 animate-pulse"
+            aria-busy="true"
+            aria-label="Loading next action"
+          >
+            <div className="h-3 w-28 bg-teal-200/80 rounded mb-4" />
+            <div className="h-4 w-full bg-gray-200 rounded mb-3" />
+            <div className="h-11 w-48 bg-electric-teal/30 rounded-lg" />
+          </div>
+          <p className="text-sm text-gray-600 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-electric-teal shrink-0" />
+            Loading your job…
+          </p>
+        </main>
       </div>
     );
   }
 
-  if (error && !workOrder) {
+  if (loadError && !workOrder) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="p-6 text-center">
             <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-            <h1 className="text-lg font-semibold text-gray-900">Invalid or expired link</h1>
-            <p className="text-gray-600 mt-2">{error}</p>
+            <h1 className="text-lg font-semibold text-gray-900">{loadError.title}</h1>
+            <p className="text-gray-600 mt-2 text-left">{loadError.message}</p>
           </CardContent>
         </Card>
       </div>
@@ -280,16 +582,105 @@ export default function JobPage() {
       </header>
 
       <main className="max-w-2xl mx-auto p-4">
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-sm text-amber-900">
-          <p className="font-medium mb-1">Payment responsibility</p>
-          <p>Pleerity coordinates work orders and invoice approval. Payment responsibility lies with the client. Pleerity does not process contractor payments. Follow up with the client for payment.</p>
+        <a href="#job-next-action" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-white focus:px-3 focus:py-2 focus:rounded-md focus:shadow">
+          Skip to next action
+        </a>
+
+        <section
+          id="job-next-action"
+          ref={nextActionRef}
+          className="rounded-xl border-2 border-electric-teal/80 bg-gradient-to-b from-teal-50 via-white to-white shadow-md p-5 mb-4 scroll-mt-4"
+          aria-label="Next action"
+        >
+          <p className="text-[11px] font-bold text-electric-teal uppercase tracking-[0.12em] mb-2 flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5" aria-hidden />
+            Next action
+          </p>
+          {primaryAction ? (
+            <>
+              {primaryAction.hint ? (
+                <p className="text-base text-gray-800 leading-relaxed mb-4">{primaryAction.hint}</p>
+              ) : null}
+              <Button
+                type="button"
+                size="lg"
+                className="w-full sm:w-auto min-h-[48px] px-8 text-base font-semibold bg-electric-teal hover:bg-electric-teal/90 text-white shadow-sm"
+                disabled={primaryDisabled}
+                onClick={() => handlePrimaryOrNextAction(primaryAction)}
+              >
+                {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : primaryAction.label}
+              </Button>
+            </>
+          ) : (
+            <p className="text-base text-midnight-blue font-medium leading-relaxed">{nextStepLine || 'No action required right now.'}</p>
+          )}
+
+          {contractorPortalExecutableActions(detail).some((a) => a.id === 'propose_visit') ? (
+            <div className="mt-5 pt-4 border-t border-teal-100 space-y-3">
+              <p className="text-xs font-semibold text-gray-600">Propose a visit time</p>
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs text-gray-500 mb-1">Date and time</label>
+                  <Input
+                    type="datetime-local"
+                    value={scheduleForm.datetimeLocal}
+                    onChange={(e) => setScheduleForm((f) => ({ ...f, datetimeLocal: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+                <div className="w-full sm:w-44">
+                  <label className="block text-xs text-gray-500 mb-1">Timezone</label>
+                  <select
+                    className="border border-gray-200 rounded-md px-3 py-2 text-sm w-full h-10 bg-white"
+                    value={scheduleForm.timezone}
+                    onChange={(e) => setScheduleForm((f) => ({ ...f, timezone: e.target.value }))}
+                  >
+                    {SCHEDULE_TZ_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  type="button"
+                  className="bg-electric-teal hover:bg-electric-teal/90 text-white shrink-0"
+                  disabled={actionLoading}
+                  onClick={handleProposeSchedule}
+                >
+                  Propose visit time
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900">
+          <span className="font-medium">Payment: </span>
+          Pleerity does not process contractor payments — follow up with the client after invoice approval.
         </div>
+
+        {(detail.status || '').toUpperCase() === 'CANCELLED' ? (
+          <div
+            className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800"
+            role="status"
+          >
+            <p className="font-semibold text-slate-900">This job was cancelled</p>
+            <p className="text-slate-600 mt-1">
+              You do not need to take any further action on this work order. Contact the client if that does not match what you
+              expected.
+            </p>
+          </div>
+        ) : null}
+
         <Card>
           <CardContent className="p-6 space-y-4">
             <p className="font-medium text-gray-900">{detail.description || detail.work_order_id}</p>
             <dl className="grid grid-cols-2 gap-2 text-sm">
               <dt className="text-gray-500">Status</dt>
-              <dd><span className="px-1.5 py-0.5 rounded bg-gray-100">{detail.status}</span></dd>
+              <dd>
+                <span className="px-1.5 py-0.5 rounded bg-gray-100">{detail.status}</span>
+              </dd>
               <dt className="text-gray-500">Property</dt>
               <dd>{detail.property_address || detail.property_id}</dd>
               <dt className="text-gray-500">SLA complete by</dt>
@@ -297,7 +688,7 @@ export default function JobPage() {
             </dl>
 
             {(detail.status === 'ASSIGNED' || detail.status === 'OPEN') && (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button size="sm" onClick={handleAccept} disabled={!!actionLoading}>
                   {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-1" />}
                   Accept
@@ -311,14 +702,26 @@ export default function JobPage() {
             {!['OPEN', 'ASSIGNED'].includes(detail.status) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Update status</label>
+                {detail.completion_proof_required && !detail.completion_proof_satisfied ? (
+                  <p className="text-xs font-medium text-amber-900 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5 mb-2">
+                    Upload completion proof before completing this job
+                  </p>
+                ) : null}
                 <select
                   value={detail.status}
                   onChange={(e) => handleStatusChange(e.target.value)}
                   disabled={!!actionLoading}
                   className="border border-gray-200 rounded-md px-3 py-2 text-sm w-full"
                 >
-                  {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                  {STATUS_OPTIONS.filter((o) => {
+                    if (o.value !== 'COMPLETED') return true;
+                    if ((detail.status || '').toUpperCase() === 'COMPLETED') return true;
+                    if (detail.completion_proof_required && !detail.completion_proof_satisfied) return false;
+                    return true;
+                  }).map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -343,7 +746,7 @@ export default function JobPage() {
               </Button>
             </div>
 
-            <div>
+            <div ref={evidenceSectionRef}>
               <label className="block text-sm font-medium text-gray-700 mb-1">Evidence</label>
               <p className="text-xs text-gray-500 mb-2">PDF, images, or Word — max 20MB. Available after you accept the job.</p>
               {(detail.evidence_keys || []).length > 0 && (
@@ -352,7 +755,10 @@ export default function JobPage() {
                     const keyStr = typeof k === 'string' ? k : String(k);
                     const fileKey = isContractorFileEvidenceKey(keyStr);
                     return (
-                      <li key={keyStr} className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2 last:border-0">
+                      <li
+                        key={keyStr}
+                        className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2 last:border-0"
+                      >
                         <span className="break-all text-xs">{contractorEvidenceFilenameFromKey(keyStr)}</span>
                         {fileKey ? (
                           <span className="flex gap-1 shrink-0">
@@ -389,6 +795,7 @@ export default function JobPage() {
                 <Upload className="w-4 h-4 shrink-0 text-electric-teal" />
                 <span>{evidenceUploading ? 'Uploading…' : 'Choose file'}</span>
                 <input
+                  ref={evidenceFileInputRef}
                   type="file"
                   className="sr-only"
                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,application/pdf"
@@ -423,7 +830,10 @@ export default function JobPage() {
 
       {invoiceModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setInvoiceModal(null)}>
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold mb-4">
               {invoiceModal.mode === 'view'
                 ? 'View invoice'

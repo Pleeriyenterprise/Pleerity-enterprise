@@ -2,12 +2,18 @@
 Contractor job link API: access a single work order via secure token (no login).
 Token is created when contractor is assigned; link is sent in assignment email.
 All routes require a valid job token (query ?token= or header X-Job-Token).
+
+Security model:
+- Opaque random token; only a hash is stored server-side.
+- Bound to exactly one work_order_id and contractor_id; reassignment revokes old tokens.
+- Expires after CONTRACTOR_JOB_TOKEN_TTL_DAYS (default 30, max 365; increase via env for long jobs).
+- No public listing; guessing tokens is infeasible.
 """
 from datetime import datetime, timezone
-from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, HTTPException, Request, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Literal, Optional, List
 
 from database import database
 from services import maintenance_service
@@ -34,6 +40,7 @@ from services import work_order_schedule_service as wo_schedule
 from services.work_order_schedule_constants import SCHEDULE_ACTOR_CONTRACTOR
 from services.contractor_work_order_status_policy import validate_contractor_status_patch
 from services.compliance_workflow_service import apply_contractor_job_enrichment
+from services.contractor_workflow_usage_service import WORKFLOW_USAGE_EVENT_TO_ACTION, log_contractor_workflow_usage
 import logging
 
 logger = logging.getLogger(__name__)
@@ -51,6 +58,28 @@ def _job_link_error(status_code: int, error_code: str, message: str, *, retry_su
     raise HTTPException(
         status_code=status_code,
         detail=structured_error(error_code, message, retry_suggested=retry_suggested),
+    )
+
+
+def _raise_job_work_order_not_found() -> None:
+    """Consistent 404 when the work order document is missing (deleted / wrong id)."""
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=structured_error(
+            "JOB_WORK_ORDER_NOT_FOUND",
+            "This job is no longer available — it may have been removed. Contact the client if you still need access.",
+        ),
+    )
+
+
+def _raise_job_not_assigned_to_token_contractor() -> None:
+    """Consistent 404 when the token's contractor no longer matches the work order (reassignment, etc.)."""
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=structured_error(
+            "JOB_NOT_ASSIGNED_TO_YOU",
+            "This link no longer matches the current assignment (the job may have been reassigned). Ask the client to send you a new assignment link.",
+        ),
     )
 
 
@@ -147,7 +176,7 @@ async def get_job_context(
         _job_link_error(
             status.HTTP_401_UNAUTHORIZED,
             "JOB_TOKEN_CONTRACTOR_MISSING",
-            "This job link is no longer valid.",
+            "This link is no longer valid — the contractor record is missing. Contact the client.",
             retry_suggested=False,
         )
     if (contractor.get("status") or "").lower() != contractor_service.STATUS_ACTIVE:
@@ -179,9 +208,9 @@ async def get_work_order(request: Request, ctx: dict = Depends(job_context_dep))
     contractor_id = ctx["contractor_id"]
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     if (wo.get("contractor_id") or "").strip() != (contractor_id or "").strip():
-        raise HTTPException(status_code=404, detail="Work order not found or not assigned to you")
+        _raise_job_not_assigned_to_token_contractor()
     db = database.get_db()
     if wo.get("property_id") and wo.get("client_id"):
         prop = await db.properties.find_one(
@@ -215,6 +244,57 @@ async def get_work_order(request: Request, ctx: dict = Depends(job_context_dep))
     return wo
 
 
+def _job_link_client_ip(request: Request) -> Optional[str]:
+    if request.client:
+        return request.client.host
+    return None
+
+
+class JobWorkflowUsageBody(BaseModel):
+    """Usage beacons from the secure job link UI (same semantics as contractor portal)."""
+
+    event_type: Literal["job_opened", "action_taken", "proof_uploaded", "job_completed"]
+    action_id: Optional[str] = Field(None, max_length=160)
+
+
+@router.post("/workflow-usage", status_code=status.HTTP_204_NO_CONTENT)
+async def post_job_workflow_usage(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    body: JobWorkflowUsageBody,
+    ctx: dict = Depends(job_context_dep),
+):
+    """Record job-link engagement; returns immediately while audit write runs in the background.
+
+    Semantics: see ``services.contractor_workflow_usage_service`` module docstring (usage vs operational audit).
+    """
+
+    work_order_id = ctx["work_order_id"]
+    contractor_id = ctx["contractor_id"]
+    if body.event_type == "action_taken" and not (body.action_id or "").strip():
+        raise HTTPException(status_code=400, detail="action_id is required for action_taken")
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo:
+        _raise_job_work_order_not_found()
+    if (wo.get("contractor_id") or "").strip() != (contractor_id or "").strip():
+        _raise_job_not_assigned_to_token_contractor()
+    action = WORKFLOW_USAGE_EVENT_TO_ACTION[body.event_type]
+    meta = {}
+    if body.action_id and body.event_type == "action_taken":
+        meta["action_id"] = (body.action_id or "").strip()
+    background_tasks.add_task(
+        log_contractor_workflow_usage,
+        action=action,
+        contractor_id=contractor_id,
+        work_order_id=work_order_id,
+        client_id=wo.get("client_id"),
+        metadata=meta or None,
+        ip_address=_job_link_client_ip(request),
+        source="job_link",
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 class UpdateWorkOrderBody(BaseModel):
     status: Optional[str] = None
     contractor_notes: Optional[str] = None
@@ -230,9 +310,9 @@ async def update_work_order(request: Request, body: UpdateWorkOrderBody, ctx: di
     contractor_id = ctx["contractor_id"]
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     if (wo.get("contractor_id") or "").strip() != (contractor_id or "").strip():
-        raise HTTPException(status_code=404, detail="Work order not found or not assigned to you")
+        _raise_job_not_assigned_to_token_contractor()
     status_val = (body.status or "").strip().upper() if body.status else None
     if status_val:
         ok, policy_err = validate_contractor_status_patch(wo.get("status"), status_val)
@@ -294,9 +374,9 @@ async def job_schedule_propose(request: Request, body: JobScheduleProposeBody, c
             contractor_id=ctx["contractor_id"],
         )
     except LookupError:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     except PermissionError:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -313,9 +393,9 @@ async def job_schedule_confirm(request: Request, ctx: dict = Depends(job_context
             contractor_id=ctx["contractor_id"],
         )
     except LookupError:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     except PermissionError:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -333,9 +413,9 @@ async def job_schedule_reschedule_request(request: Request, body: JobScheduleRes
             contractor_id=ctx["contractor_id"],
         )
     except LookupError:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     except PermissionError:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -352,9 +432,9 @@ async def job_schedule_cancel(request: Request, ctx: dict = Depends(job_context_
             contractor_id=ctx["contractor_id"],
         )
     except LookupError:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     except PermissionError:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -384,9 +464,9 @@ async def job_mark_no_access(
     contractor_id = ctx["contractor_id"]
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     if (wo.get("contractor_id") or "").strip() != (contractor_id or "").strip():
-        raise HTTPException(status_code=404, detail="Work order not found or not assigned to you")
+        _raise_job_not_assigned_to_token_contractor()
     st = (wo.get("status") or "").strip().upper()
     if st in (maintenance_service.STATUS_OPEN, maintenance_service.STATUS_ASSIGNED):
         raise HTTPException(status_code=400, detail="Accept the assignment before reporting access issues")
@@ -433,9 +513,9 @@ async def job_schedule_ics(request: Request, ctx: dict = Depends(job_context_dep
             contractor_id=ctx["contractor_id"],
         )
     except LookupError:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     except PermissionError:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return Response(
@@ -504,9 +584,9 @@ async def download_work_order_evidence_file(
     contractor_id = ctx["contractor_id"]
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     if (wo.get("contractor_id") or "").strip() != (contractor_id or "").strip():
-        raise HTTPException(status_code=404, detail="Work order not found or not assigned to you")
+        _raise_job_not_assigned_to_token_contractor()
     wo_client_id = (wo.get("client_id") or "").strip()
     try:
         path, media, filename = await contractor_evidence_service.resolve_contractor_evidence_file(
@@ -549,9 +629,9 @@ async def upload_work_order_evidence(request: Request, file: UploadFile = File(.
     contractor_id = ctx["contractor_id"]
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     if (wo.get("contractor_id") or "").strip() != (contractor_id or "").strip():
-        raise HTTPException(status_code=404, detail="Work order not found or not assigned to you")
+        _raise_job_not_assigned_to_token_contractor()
     try:
         content = await file.read()
         storage_key, updated = await contractor_evidence_service.save_contractor_work_order_evidence(
@@ -582,12 +662,12 @@ async def decline_assignment(request: Request, ctx: dict = Depends(job_context_d
     contractor_id = ctx["contractor_id"]
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     if (wo.get("contractor_id") or "").strip() != (contractor_id or "").strip():
-        raise HTTPException(status_code=404, detail="Work order not found or not assigned to you")
+        _raise_job_not_assigned_to_token_contractor()
     result = await maintenance_service.contractor_decline_assignment(work_order_id, contractor_id)
     if not result:
-        raise HTTPException(status_code=404, detail="Work order not found or not assigned to you")
+        _raise_job_not_assigned_to_token_contractor()
     await create_audit_log(
         action=AuditAction.CONTRACTOR_DECLINED_ASSIGNMENT,
         actor_id=contractor_id,
@@ -614,9 +694,9 @@ async def submit_invoice(request: Request, body: SubmitInvoiceBody, ctx: dict = 
     contractor_id = ctx["contractor_id"]
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo:
-        raise HTTPException(status_code=404, detail="Work order not found")
+        _raise_job_work_order_not_found()
     if (wo.get("contractor_id") or "").strip() != (contractor_id or "").strip():
-        raise HTTPException(status_code=404, detail="Work order not found or not assigned to you")
+        _raise_job_not_assigned_to_token_contractor()
     if not wo.get("property_id") or not wo.get("client_id"):
         raise HTTPException(status_code=400, detail="Work order missing property or client")
     try:

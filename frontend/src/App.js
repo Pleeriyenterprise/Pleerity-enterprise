@@ -101,6 +101,7 @@ const CheckoutSuccessRedirect = () => {
 
 // Client pages
 import ClientDashboard from './pages/ClientDashboard';
+import ClientCommandCenterPage from './pages/ClientCommandCenterPage';
 import PropertiesPage from './pages/PropertiesPage';
 import RequirementsPage from './pages/RequirementsPage';
 import ComplianceScorePage from './pages/ComplianceScorePage';
@@ -180,6 +181,7 @@ import AdminOpsOverviewPage from './pages/admin/AdminOpsOverviewPage';
 import AdminOpsCompliancePage from './pages/admin/AdminOpsCompliancePage';
 import AdminOpsAuditPage from './pages/admin/AdminOpsAuditPage';
 import AdminOpsFeatureControlsPage from './pages/admin/AdminOpsFeatureControlsPage';
+import AdminOpsRoiDiagnosticsPage from './pages/admin/AdminOpsRoiDiagnosticsPage';
 import AdminCommunicationsPage from './pages/admin/AdminCommunicationsPage';
 import AdminOpsContractorsPage from './pages/admin/AdminOpsContractorsPage';
 import AdminIdentityLifecyclePage from './pages/admin/AdminIdentityLifecyclePage';
@@ -337,6 +339,7 @@ function App() {
                   ======================================== */}
             <Route path="/dashboard" element={<ClientPortal><ClientDashboard /></ClientPortal>} />
             <Route path="/today" element={<ClientPortal><ClientTasksPage /></ClientPortal>} />
+            <Route path="/command-center" element={<ClientPortal><ClientCommandCenterPage /></ClientPortal>} />
             <Route path="/tasks" element={<Navigate to="/today" replace />} />
             <Route path="/properties" element={<ClientPortal><PropertiesPage /></ClientPortal>} />
             <Route path="/properties/:propertyId" element={<ClientPortal><PropertyDetailPage /></ClientPortal>} />
@@ -385,6 +388,7 @@ function App() {
             {/* Redirect legacy /app/* to new paths */}
             <Route path="/app/dashboard" element={<Navigate to="/dashboard" replace />} />
             <Route path="/app/today" element={<Navigate to="/today" replace />} />
+            <Route path="/app/command-center" element={<Navigate to="/command-center" replace />} />
             <Route path="/app/tasks" element={<Navigate to="/today" replace />} />
             <Route path="/app/assistant" element={<Navigate to="/assistant" replace />} />
             <Route path="/app/settings" element={<Navigate to="/settings" replace />} />
@@ -667,6 +671,7 @@ function App() {
             <Route path="/admin/ops/risk" element={<ProtectedRoute requireAdmin><AdminRiskDashboardPage /></ProtectedRoute>} />
             <Route path="/admin/ops/audit" element={<ProtectedRoute requireAdmin><AdminOpsAuditPage /></ProtectedRoute>} />
             <Route path="/admin/ops/feature-controls" element={<ProtectedRoute requireAdmin><AdminOpsFeatureControlsPage /></ProtectedRoute>} />
+            <Route path="/admin/ops/roi-diagnostics" element={<ProtectedRoute requireAdmin><AdminOpsRoiDiagnosticsPage /></ProtectedRoute>} />
             <Route path="/admin/communications" element={<ProtectedRoute requireAdmin><AdminCommunicationsPage /></ProtectedRoute>} />
 
             {/* ClearForm Admin Routes */}

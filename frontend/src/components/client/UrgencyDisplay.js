@@ -37,6 +37,40 @@ export function UrgencyRow({ urgencyLevel, timingLabel, className = '' }) {
   );
 }
 
+/** Today inbox band: overdue | due_soon | on_track (from API). Falls back to legacy urgency_level. */
+export function TodayUrgencyRow({ urgency, urgencyLevel, timingLabel, className = '' }) {
+  const u = String(urgency || '').toLowerCase();
+  // on_track stays in the API for analytics/sorting but stays visually quiet — action-first, not status-heavy.
+  if (u === 'on_track') {
+    return (
+      <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+        <span className="text-[11px] font-normal text-gray-500" data-today-urgency="on_track">
+          On track
+        </span>
+        <DueTimingChip timingLabel={timingLabel} />
+      </div>
+    );
+  }
+  if (u === 'overdue' || u === 'due_soon') {
+    const cfg = {
+      overdue: { emoji: '🔴', label: 'Overdue', cls: 'bg-red-50 text-red-900 border-red-200' },
+      due_soon: { emoji: '🟠', label: 'Due soon', cls: 'bg-amber-50 text-amber-900 border-amber-200' },
+    }[u];
+    return (
+      <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+        <Badge variant="outline" className={`text-xs font-medium border ${cfg.cls}`}>
+          <span className="mr-1.5" aria-hidden="true">
+            {cfg.emoji}
+          </span>
+          {cfg.label}
+        </Badge>
+        <DueTimingChip timingLabel={timingLabel} />
+      </div>
+    );
+  }
+  return <UrgencyRow urgencyLevel={urgencyLevel} timingLabel={timingLabel} className={className} />;
+}
+
 /** Calendar-day diff in UTC; matches server-side task timing_label semantics. */
 export function timingLabelFromDueAtIso(iso) {
   if (!iso) return null;

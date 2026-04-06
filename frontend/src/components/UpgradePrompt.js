@@ -47,6 +47,8 @@ const UpgradePrompt = ({
     navigate(buildSafeQueryPath('/settings/billing', { upgrade_to: requiredPlan }));
   };
 
+  const planAvailabilityLine = `This feature is available on the ${requiredPlanName} plan.`;
+
   // Inline variant - minimal, fits within existing UI
   if (variant === 'inline') {
     return (
@@ -54,17 +56,19 @@ const UpgradePrompt = ({
         className={`flex flex-col gap-1 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 ${className}`}
         data-testid="upgrade-prompt-inline"
       >
-        <div className="flex items-center gap-2">
-          <Lock className="w-4 h-4 flex-shrink-0" />
+        <div className="flex items-start gap-2">
+          <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <span>
-            <strong>{featureName}</strong> requires {requiredPlanName} plan.{' '}
-            <button
-              type="button"
-              onClick={handleUpgradeClick}
-              className="text-amber-800 underline hover:text-amber-900 font-medium"
-            >
-              Upgrade now
-            </button>
+            <span className="block text-amber-900 font-medium">{planAvailabilityLine}</span>
+            <span className="block mt-1">
+              <button
+                type="button"
+                onClick={handleUpgradeClick}
+                className="text-amber-800 underline hover:text-amber-900 font-semibold"
+              >
+                Upgrade plan
+              </button>
+            </span>
           </span>
         </div>
         {contextHint ? (
@@ -89,12 +93,14 @@ const UpgradePrompt = ({
           </div>
           
           <h2 className="text-xl font-bold text-center text-gray-900 mb-2">
-            Upgrade Required
+            {featureName}
           </h2>
-          
-          <p className="text-center text-gray-600 mb-4">
-            <strong className="text-gray-900">{featureName}</strong> is not available on your current plan.
+
+          <p className="text-center text-gray-800 font-medium mb-3">
+            {planAvailabilityLine}
           </p>
+
+          <p className="text-center text-sm text-gray-500 mb-4">It isn&apos;t included on your current plan.</p>
           
           {featureDescription && (
             <p className="text-center text-sm text-gray-500 mb-6">
@@ -132,7 +138,7 @@ const UpgradePrompt = ({
               className="flex-1 bg-electric-teal hover:bg-electric-teal/90"
               onClick={handleUpgradeClick}
             >
-              View Upgrade Options
+              Upgrade plan
               <ArrowUpRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
@@ -153,9 +159,11 @@ const UpgradePrompt = ({
         </div>
         
         <div className="flex-1">
-          <h3 className="font-semibold text-gray-900 mb-1">
+          <h3 className="font-semibold text-gray-900 mb-2">
             {featureName}
           </h3>
+
+          <p className="text-sm font-medium text-gray-800 mb-2">{planAvailabilityLine}</p>
           
           {featureDescription && (
             <p className="text-sm text-gray-600 mb-3">
@@ -164,24 +172,17 @@ const UpgradePrompt = ({
           )}
 
           {contextHint ? (
-            <p className="text-xs text-gray-500 mb-3 leading-relaxed" data-testid="upgrade-context-hint">
+            <p className="text-xs text-gray-500 mb-4 leading-relaxed" data-testid="upgrade-context-hint">
               {contextHint}
             </p>
           ) : null}
-
-          <div className="flex items-center gap-2 text-sm text-amber-700 mb-4">
-            <span className="px-2 py-0.5 bg-amber-100 rounded font-medium">
-              {requiredPlanName}
-            </span>
-            <span>plan required</span>
-          </div>
 
           <Button
             size="sm"
             className="bg-electric-teal hover:bg-electric-teal/90"
             onClick={handleUpgradeClick}
           >
-            Upgrade to Unlock
+            Upgrade plan
             <ArrowUpRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
@@ -429,11 +430,11 @@ export function UpgradeRequired({
   upgradeDetail = null,
 }) {
   const navigate = useNavigate();
-  const { usageContext } = useEntitlements();
+  const { usageContext, entitlements } = useEntitlements();
   const contextHint = useMemo(() => formatUpgradeUsageContext(usageContext), [usageContext]);
   const featureKey = upgradeDetail?.feature ?? upgradeDetail?.feature_key ?? feature;
   const planOverride = plan ?? upgradeDetail?.upgrade_to ?? null;
-  const info = getFeatureDisplayInfo(featureKey, null);
+  const info = getFeatureDisplayInfo(featureKey, entitlements);
   const requiredPlan = planOverride ?? info.requiredPlan;
   const requiredPlanName = getRequiredPlanName(requiredPlan);
 

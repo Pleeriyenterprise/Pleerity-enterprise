@@ -56,6 +56,7 @@ import {
   defaultInvoiceAmountFieldFromWorkOrder,
   formatContractorInvoiceStateLabel,
 } from '../../utils/contractorWorkflow';
+import { fireContractorWorkflowUsage } from '../../utils/contractorWorkflowUsage';
 
 function contractorDebugLog(event, payload) {
   if (typeof window === 'undefined') return;
@@ -134,6 +135,7 @@ export default function ContractorDashboardPage() {
   const [dashboardSummaryError, setDashboardSummaryError] = useState(null);
   const invoicesSectionRef = useRef(null);
   const completionProofInputRef = useRef(null);
+  const lastJobOpenUsageRef = useRef(null);
   const scheduleSectionRef = useRef(null);
   const urgentSectionRef = useRef(null);
   const activeJobsSectionRef = useRef(null);
@@ -539,6 +541,19 @@ export default function ContractorDashboardPage() {
   }, [api, detailId]);
 
   useEffect(() => {
+    if (!detailId) lastJobOpenUsageRef.current = null;
+  }, [detailId]);
+
+  useEffect(() => {
+    if (!detailId || !api || detailLoading) return;
+    if (!detail?.work_order_id || detail.work_order_id !== detailId) return;
+    const wid = detail.work_order_id;
+    if (lastJobOpenUsageRef.current === wid) return;
+    lastJobOpenUsageRef.current = wid;
+    fireContractorWorkflowUsage(api.postWorkflowUsage, { event_type: 'job_opened', work_order_id: wid });
+  }, [api, detailId, detail, detailLoading]);
+
+  useEffect(() => {
     if (detail) {
       setNotesForm({
         contractor_notes: detail.contractor_notes || '',
@@ -609,6 +624,21 @@ export default function ContractorDashboardPage() {
           setDetail(r.data);
         }
       };
+      const logActionTaken = () =>
+        fireContractorWorkflowUsage(api.postWorkflowUsage, {
+          event_type: 'action_taken',
+          work_order_id: wid,
+          action_id: aid,
+        });
+      if (aid === 'complete_job' && wo.completion_proof_required && !wo.completion_proof_satisfied) {
+        toast.error('Upload completion proof before completing this job');
+        return;
+      }
+      const needsConfirmBeforeUsage =
+        aid === 'decline_assignment' || aid === 'cancel_scheduled_visit';
+      if (!needsConfirmBeforeUsage) {
+        logActionTaken();
+      }
       try {
         if (aid === 'accept_assignment') {
           setActionLoading(wid);
@@ -618,6 +648,7 @@ export default function ContractorDashboardPage() {
           await refreshListAndDetail();
         } else if (aid === 'decline_assignment') {
           if (!window.confirm('Decline this assignment? The work order will be unassigned.')) return;
+          logActionTaken();
           setActionLoading(wid);
           await api.declineAssignment(wid);
           toast.success('Assignment declined');
@@ -653,12 +684,9 @@ export default function ContractorDashboardPage() {
           toast.success('Job resumed');
           await refreshListAndDetail();
         } else if (aid === 'complete_job') {
-          if (wo.completion_proof_required && !wo.completion_proof_satisfied) {
-            toast.error('Upload completion proof before completing this job.');
-            return;
-          }
           setActionLoading(wid);
           await api.updateWorkOrder(wid, { status: 'COMPLETED' });
+          fireContractorWorkflowUsage(api.postWorkflowUsage, { event_type: 'job_completed', work_order_id: wid });
           toast.success('Job marked complete');
           await refreshListAndDetail();
         } else if (aid === 'submit_invoice') {
@@ -695,6 +723,7 @@ export default function ContractorDashboardPage() {
           await refreshListAndDetail();
         } else if (aid === 'cancel_scheduled_visit') {
           if (!window.confirm('Cancel this scheduled visit? The booking will be cleared.')) return;
+          logActionTaken();
           setScheduleActionLoading(true);
           await api.cancelSchedule(wid);
           toast.success('Visit cancelled');
@@ -726,6 +755,11 @@ export default function ContractorDashboardPage() {
       })
       .then(() => {
         toast.success('Visit time proposed');
+        fireContractorWorkflowUsage(api.postWorkflowUsage, {
+          event_type: 'action_taken',
+          work_order_id: detail.work_order_id,
+          action_id: 'propose_visit',
+        });
         return refreshContractorDetail(detail.work_order_id);
       })
       .then(() => loadWorkOrders())
@@ -741,6 +775,11 @@ export default function ContractorDashboardPage() {
       .confirmSchedule(detail.work_order_id)
       .then(() => {
         toast.success('Visit confirmed');
+        fireContractorWorkflowUsage(api.postWorkflowUsage, {
+          event_type: 'action_taken',
+          work_order_id: detail.work_order_id,
+          action_id: 'confirm_visit',
+        });
         return refreshContractorDetail(detail.work_order_id);
       })
       .then(() => loadWorkOrders())
@@ -757,6 +796,11 @@ export default function ContractorDashboardPage() {
       .requestScheduleReschedule(detail.work_order_id, { reason: reason.trim() || undefined })
       .then(() => {
         toast.success('Reschedule request sent');
+        fireContractorWorkflowUsage(api.postWorkflowUsage, {
+          event_type: 'action_taken',
+          work_order_id: detail.work_order_id,
+          action_id: 'reschedule_visit',
+        });
         return refreshContractorDetail(detail.work_order_id);
       })
       .then(() => loadWorkOrders())
@@ -774,6 +818,10 @@ export default function ContractorDashboardPage() {
       .then((res) => {
         toast.success('Evidence uploaded');
         setDetail(res.data.work_order);
+        fireContractorWorkflowUsage(api.postWorkflowUsage, {
+          event_type: 'proof_uploaded',
+          work_order_id: detail.work_order_id,
+        });
         loadWorkOrders();
         loadDashboardSummary();
       })
@@ -1239,6 +1287,7 @@ export default function ContractorDashboardPage() {
                             type="button"
                             size="sm"
                             className="shrink-0 bg-electric-teal hover:bg-electric-teal/90 text-white"
+                            disabled={!isContractorInvoiceEligible(wo)}
                             onClick={(e) =>
                               executeContractorAction(wo, { id: 'submit_invoice', label: 'Submit invoice', section: 'billing' }, e)
                             }
@@ -1429,6 +1478,13 @@ export default function ContractorDashboardPage() {
                             <>
                               {primary.hint ? (
                                 <p className="text-base text-gray-800 leading-relaxed mb-5">{primary.hint}</p>
+                              ) : null}
+                              {detail.completion_proof_required &&
+                              !detail.completion_proof_satisfied &&
+                              ['IN_PROGRESS', 'AWAITING_PARTS'].includes((detail.status || '').toUpperCase()) ? (
+                                <p className="text-sm font-medium text-amber-900 bg-amber-50 border border-amber-100 rounded-md px-3 py-2 mb-4">
+                                  Upload completion proof before completing this job
+                                </p>
                               ) : null}
                               <Button
                                 type="button"
@@ -1642,7 +1698,7 @@ export default function ContractorDashboardPage() {
                         <p className="text-xs font-medium text-amber-900 bg-amber-50 border border-amber-100 rounded px-2 py-1.5 mb-2">
                           {detail.completion_proof_satisfied
                             ? 'Completion proof on file — you can complete the job when ready.'
-                            : 'Completion proof required — upload a file before marking the job complete. Complete job stays blocked until proof is on file.'}
+                            : 'Upload completion proof before completing this job'}
                         </p>
                       ) : null}
                       <p className="text-xs text-gray-500 mb-2">PDF, images, or Word — max 20MB. Accept the assignment first if the upload is disabled.</p>

@@ -200,6 +200,37 @@ export { API_URL, setLastApiError };
 /**
  * Map axios/FastAPI errors to a short, actionable message (retry / support / refresh where relevant).
  */
+/** Short titles for job-link (`/api/job/*`) errors when `detail` includes `error_code`. */
+const JOB_LINK_ERROR_TITLES = {
+  JOB_TOKEN_EXPIRED: 'This link has expired',
+  JOB_TOKEN_REVOKED: 'This link is no longer valid',
+  JOB_TOKEN_INVALID: 'This link is not valid',
+  JOB_TOKEN_MISSING: 'Invalid link',
+  JOB_TOKEN_CONTRACTOR_MISSING: 'This link is no longer valid',
+  CONTRACTOR_NOT_ACTIVE: 'Your account is not active',
+  CONTRACTOR_PORTAL_DISABLED: 'Portal access is disabled',
+  JOB_WORK_ORDER_NOT_FOUND: 'This job is no longer available',
+  JOB_NOT_ASSIGNED_TO_YOU: 'This assignment has changed',
+};
+
+/**
+ * Parse errors from secure job-link API calls into a clear title + message for full-page error UI.
+ */
+export function parseJobLinkError(
+  err,
+  fallbackMessage = 'We could not open this job. Contact the client if you need help.',
+) {
+  const message = parseApiError(err, fallbackMessage);
+  const d = err?.response?.data?.detail;
+  const code = d && typeof d === 'object' && d.error_code ? String(d.error_code) : null;
+  const title =
+    (code && JOB_LINK_ERROR_TITLES[code]) ||
+    (err?.response?.status === 404 ? 'Cannot open this job' : null) ||
+    (err?.response?.status === 401 ? 'This link cannot be used' : null) ||
+    'Cannot open this job';
+  return { title, message, errorCode: code };
+}
+
 export function parseApiError(err, fallback = 'Something went wrong. Please try again or refresh the page.') {
   if (!err || !err.response) {
     if (err && err.message === 'Network Error') {
@@ -301,6 +332,8 @@ export const intakeAPI = {
 
 export const clientAPI = {
   getDashboard: () => apiClient.get('/client/dashboard'),
+  /** Month-to-date ROI-style metrics; fetch separately so main dashboard is not blocked. */
+  getDashboardRoiSummary: () => apiClient.get('/client/dashboard/roi-summary'),
   /** Ranked priority actions (orchestration/copilot layer). */
   getPriorityActions: (params = {}) => apiClient.get('/client/priority-actions', { params }),
   /** Unified Command Centre tasks (sections, freshness, spend snapshot). */
@@ -485,6 +518,8 @@ export const clientAPI = {
     apiClient.post(`/requirements/${encodeURIComponent(requirementId)}/mark-not-applicable`, body),
   reopenRequirementById: (requirementId) => apiClient.post(`/requirements/${encodeURIComponent(requirementId)}/reopen`, {}),
   getComplianceWorkflowJob: (jobId) => apiClient.get(`/jobs/${encodeURIComponent(jobId)}`),
+  postJobDecisionLog: (jobId, body) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/decision-log`, body),
   getJobAssignableContractors: (jobId, params = {}) =>
     apiClient.get(`/jobs/${encodeURIComponent(jobId)}/assignable-contractors`, { params }),
   createWorkflowContractor: (body) => apiClient.post('/contractors', body),
@@ -688,6 +723,9 @@ export const adminAPI = {
   updateClientFeatureFlags: (clientId, updates) =>
     apiClient.patch(`/admin/ops/clients/${clientId}/feature-flags`, { updates }),
   getClientPlanUsage: (clientId) => apiClient.get(`/admin/ops/clients/${clientId}/plan-usage`),
+  /** Read-only ROI month summary + diagnostics (same as client card; ops debugging). */
+  getClientDashboardRoiDiagnostics: (clientId) =>
+    apiClient.get(`/admin/ops/clients/${encodeURIComponent(clientId)}/dashboard-roi-diagnostics`),
   // Contractors (Ops Contractor Network)
   getContractors: (params = {}) => apiClient.get('/admin/ops/contractors', { params }),
   getContractorAnalytics: (params = {}) => apiClient.get('/admin/ops/contractors/analytics', { params }),
@@ -797,6 +835,7 @@ export function createContractorAPI(accessToken) {
       apiClient.post(`/contractor/work-orders/${workOrderId}/mark-no-access`, body, { headers }),
     getScheduleIcs: (workOrderId) =>
       apiClient.get(`/contractor/work-orders/${workOrderId}/schedule/ics`, { headers, responseType: 'blob' }),
+    postWorkflowUsage: (body) => apiClient.post('/contractor/workflow-usage', body, { headers }),
   };
 }
 
@@ -828,5 +867,6 @@ export function createJobLinkAPI(jobToken) {
     cancelSchedule: () => apiClient.post('/job/work-order/schedule/cancel', {}, config()),
     markNoAccess: (body = {}) => apiClient.post('/job/work-order/mark-no-access', body, config()),
     getScheduleIcs: () => apiClient.get('/job/work-order/schedule/ics', { ...config(), responseType: 'blob' }),
+    postWorkflowUsage: (body) => apiClient.post('/job/workflow-usage', body, config()),
   };
 }

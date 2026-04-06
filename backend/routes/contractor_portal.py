@@ -3,10 +3,10 @@ Contractor portal API: work orders assigned to the contractor, status updates, e
 All routes require contractor_route_guard (JWT with role=ROLE_CONTRACTOR and contractor_id).
 Contractors only see and act on work orders where contractor_id matches their own.
 """
-from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Literal, Optional, List
 
 from database import database
 from middleware import contractor_route_guard
@@ -21,8 +21,61 @@ from services.work_order_schedule_constants import SCHEDULE_ACTOR_CONTRACTOR
 from routes.contractor_dashboard_summary import build_contractor_dashboard_summary
 from services.contractor_work_order_status_policy import validate_contractor_status_patch
 from services.compliance_workflow_service import apply_contractor_job_enrichment
+from services.contractor_workflow_usage_service import WORKFLOW_USAGE_EVENT_TO_ACTION, log_contractor_workflow_usage
 
 router = APIRouter(prefix="/api/contractor", tags=["contractor-portal"], dependencies=[Depends(contractor_route_guard)])
+
+
+def _request_client_ip(request: Request) -> Optional[str]:
+    if request.client:
+        return request.client.host
+    return None
+
+
+class ContractorWorkflowUsageBody(BaseModel):
+    """Fire-and-forget usage beacons from the contractor portal (non-blocking for the UI)."""
+
+    event_type: Literal["job_opened", "action_taken", "proof_uploaded", "job_completed"]
+    work_order_id: str = Field(..., min_length=1, max_length=120)
+    action_id: Optional[str] = Field(None, max_length=160)
+
+
+@router.post("/workflow-usage", status_code=status.HTTP_204_NO_CONTENT)
+async def post_contractor_workflow_usage(
+    request: Request,
+    body: ContractorWorkflowUsageBody,
+    background_tasks: BackgroundTasks,
+):
+    """Record contractor workflow engagement; returns immediately while audit write runs in the background.
+
+    Semantics: see ``services.contractor_workflow_usage_service`` module docstring (usage vs operational audit).
+    """
+
+    user = await contractor_route_guard(request)
+    contractor_id = user.get("contractor_id")
+    if not contractor_id:
+        raise HTTPException(status_code=403, detail="Contractor context required")
+    if body.event_type == "action_taken" and not (body.action_id or "").strip():
+        raise HTTPException(status_code=400, detail="action_id is required for action_taken")
+    wo = await maintenance_service.get_work_order(body.work_order_id)
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    _ensure_assigned_to_me(wo, contractor_id)
+    action = WORKFLOW_USAGE_EVENT_TO_ACTION[body.event_type]
+    meta = {}
+    if body.action_id and body.event_type == "action_taken":
+        meta["action_id"] = (body.action_id or "").strip()
+    background_tasks.add_task(
+        log_contractor_workflow_usage,
+        action=action,
+        contractor_id=contractor_id,
+        work_order_id=body.work_order_id,
+        client_id=wo.get("client_id"),
+        metadata=meta or None,
+        ip_address=_request_client_ip(request),
+        source="contractor_portal",
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 def _invoice_rank(inv: dict) -> int:

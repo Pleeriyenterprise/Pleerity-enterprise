@@ -169,6 +169,12 @@ class Database:
             # Notification retry queue (outbox pattern)
             await self.db.notification_retry_queue.create_index([("status", 1), ("next_run_at", 1)])
             await self.db.notification_retry_queue.create_index("message_id")
+            try:
+                await self.db.failed_notifications.create_index([("created_at", -1)])
+                await self.db.failed_notifications.create_index("message_id")
+                await self.db.failed_notifications.create_index("template_name")
+            except Exception:
+                pass
             # Onboarding email sequence queue (per-client, send_at)
             await self.db.onboarding_email_queue.create_index([("status", 1), ("send_at", 1)])
             await self.db.onboarding_email_queue.create_index([("client_id", 1), ("event_id", 1)], unique=True)

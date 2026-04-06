@@ -49,7 +49,10 @@ DEFAULT_SENDER = os.getenv("EMAIL_SENDER", "info@pleerityenterprise.co.uk")
 POSTMARK_MESSAGE_STREAM = os.getenv("POSTMARK_MESSAGE_STREAM", "outbound").strip() or "outbound"
 EMAIL_REPLY_TO = (os.getenv("EMAIL_REPLY_TO") or "").strip()
 
-# Retry backoff seconds: EMAIL 30s, 2m, 10m (3 attempts); SMS 1m (2 attempts)
+# Deferred retry backoff (notification_retry_queue). Used for SMS transient failures and for EMAIL
+# only when postmark_inline_exhausted is false (see send() / process_retry guards). Email that exhausts
+# inline Postmark retries in postmark_delivery.deliver_postmark_email is terminal: we do not enqueue
+# here, to avoid duplicate sends from inline + deferred retry both firing for the same logical message.
 EMAIL_BACKOFFS = [30, 120, 600]
 SMS_BACKOFFS = [60]
 MAX_EMAIL_ATTEMPTS = 3
@@ -72,6 +75,8 @@ class NotificationResult:
 
 def _is_transient_error(exc: Exception) -> bool:
     """True if error is retryable (timeout, 5xx)."""
+    if isinstance(exc, TimeoutError):
+        return True
     s = str(exc).lower()
     if "timeout" in s or "timed out" in s:
         return True
@@ -437,11 +442,11 @@ class NotificationOrchestrator:
 
         if result.outcome == "sent":
             return result
-        if result.outcome == "failed" and result.details.get("transient") and result.attempt_count is not None:
+        if result.outcome == "failed" and result.details.get("transient") and result.details.get("attempt_count") is not None:
             # Enqueue retry
             backoffs = SMS_BACKOFFS if channel == "SMS" else EMAIL_BACKOFFS
             attempt = result.attempt_count
-            if attempt <= len(backoffs):
+            if attempt <= len(backoffs) and not result.details.get("postmark_inline_exhausted"):
                 next_run = now + timedelta(seconds=backoffs[attempt - 1])
                 await db.notification_retry_queue.insert_one({
                     "message_id": message_id,
@@ -702,29 +707,62 @@ class NotificationOrchestrator:
                     {"Name": a.get("Name", "file"), "Content": a.get("Content"), "ContentType": a.get("ContentType", "application/octet-stream")}
                     for a in attachments if a.get("Content")
                 ]
-            response = self._postmark_client.emails.send(**send_kw)
-            provider_id = response.get("MessageID")
-            sent_at = datetime.now(timezone.utc)
+            from services.postmark_delivery import deliver_postmark_email
+
+            response, err_msg, attempts_used = await deliver_postmark_email(
+                self._postmark_client,
+                send_kw,
+                template_name=template_key,
+                recipient=recipient,
+                message_id=message_id,
+                client_id=client.get("client_id"),
+                db=db,
+            )
+            if response:
+                provider_id = response.get("MessageID")
+                sent_at = datetime.now(timezone.utc)
+                await db.message_logs.update_one(
+                    {"message_id": message_id},
+                    {
+                        "$set": {
+                            "status": "SENT",
+                            "provider_message_id": provider_id,
+                            "postmark_message_id": provider_id,
+                            "sent_at": sent_at,
+                            "subject": email_subject,
+                            "attempt_count": attempts_used,
+                        }
+                    },
+                )
+                await create_audit_log(
+                    action=AuditAction.EMAIL_SENT,
+                    client_id=client.get("client_id"),
+                    metadata={"template_key": template_key, "message_id": message_id, "postmark_id": provider_id},
+                )
+                return NotificationResult(outcome="sent", message_id=message_id, details={"provider_message_id": provider_id})
+
             await db.message_logs.update_one(
                 {"message_id": message_id},
                 {
                     "$set": {
-                        "status": "SENT",
-                        "provider_message_id": provider_id,
-                        "postmark_message_id": provider_id,
-                        "sent_at": sent_at,
-                        "subject": email_subject,
+                        "status": "FAILED",
+                        "error_message": err_msg or "send failed",
+                        "attempt_count": attempts_used,
                     }
                 },
             )
-            await create_audit_log(
-                action=AuditAction.EMAIL_SENT,
-                client_id=client.get("client_id"),
-                metadata={"template_key": template_key, "message_id": message_id, "postmark_id": provider_id},
+            return NotificationResult(
+                outcome="failed",
+                message_id=message_id,
+                error_message=err_msg,
+                details={
+                    "transient": False,
+                    "attempt_count": attempts_used,
+                    "postmark_inline_exhausted": True,
+                },
             )
-            return NotificationResult(outcome="sent", message_id=message_id, details={"provider_message_id": provider_id})
         except Exception as e:
-            transient = _is_transient_error(e)
+            logger.exception("Postmark delivery unexpected error: %s", e)
             err_msg = str(e)[:500]
             await db.message_logs.update_one(
                 {"message_id": message_id},
@@ -734,7 +772,7 @@ class NotificationOrchestrator:
                 outcome="failed",
                 message_id=message_id,
                 error_message=err_msg,
-                details={"transient": transient, "attempt_count": 1},
+                details={"transient": _is_transient_error(e), "attempt_count": 1},
             )
 
     async def _render_email(
@@ -1002,7 +1040,12 @@ class NotificationOrchestrator:
                 {"message_id": message_id},
                 {"$set": {"status": "FAILED", "attempt_count": new_attempt, "error_message": result.error_message}},
             )
-            if result.details.get("transient") and new_attempt <= max_attempts and new_attempt <= len(backoffs):
+            if (
+                result.details.get("transient")
+                and not result.details.get("postmark_inline_exhausted")
+                and new_attempt <= max_attempts
+                and new_attempt <= len(backoffs)
+            ):
                 next_run = now + timedelta(seconds=backoffs[new_attempt - 1])
                 await db.notification_retry_queue.insert_one({
                     "message_id": message_id,

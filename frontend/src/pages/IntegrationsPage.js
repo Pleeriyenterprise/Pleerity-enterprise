@@ -32,11 +32,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { toast } from 'sonner';
 import api from '../api/client';
 import UpgradePrompt from '../components/UpgradePrompt';
+import { useEntitlements } from '../contexts/EntitlementsContext';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 
 const IntegrationsPage = () => {
   const navigate = useNavigate();
+  const { hasFeature, planName } = useEntitlements();
   const [loading, setLoading] = useState(true);
   const [webhooks, setWebhooks] = useState([]);
   const [availableEvents, setAvailableEvents] = useState([]);
@@ -47,7 +49,6 @@ const IntegrationsPage = () => {
   const [deletingWebhookId, setDeletingWebhookId] = useState(null);
   const [showSecretId, setShowSecretId] = useState(null);
   const [newSecret, setNewSecret] = useState(null);
-  const [entitlements, setEntitlements] = useState(null);
   const [readApiKeys, setReadApiKeys] = useState([]);
   const [readApiMeta, setReadApiMeta] = useState(null);
   const [newReadApiSecret, setNewReadApiSecret] = useState(null);
@@ -57,13 +58,15 @@ const IntegrationsPage = () => {
   const [webhookDeliveriesLoading, setWebhookDeliveriesLoading] = useState(false);
   const [webhookDeliveriesFailedOnly, setWebhookDeliveriesFailedOnly] = useState(false);
 
-  // Check if webhooks feature is available
-  const hasWebhooksAccess = entitlements?.features?.webhooks?.enabled;
+  const hasWebhooksAccess = hasFeature('webhooks');
 
   useEffect(() => {
+    if (!hasWebhooksAccess) {
+      setLoading(false);
+      return;
+    }
     fetchData();
-    fetchEntitlements();
-  }, []);
+  }, [hasWebhooksAccess]);
 
   useEffect(() => {
     if (!hasWebhooksAccess) {
@@ -88,15 +91,6 @@ const IntegrationsPage = () => {
       cancelled = true;
     };
   }, [hasWebhooksAccess, webhookDeliveriesFailedOnly]);
-
-  const fetchEntitlements = async () => {
-    try {
-      const response = await api.get('/client/entitlements');
-      setEntitlements(response.data);
-    } catch (error) {
-      console.error('Failed to fetch entitlements:', error);
-    }
-  };
 
   const fetchData = async () => {
     try {
@@ -273,8 +267,8 @@ const IntegrationsPage = () => {
     );
   }
 
-  // Show upgrade prompt if webhooks not available
-  if (entitlements && !hasWebhooksAccess) {
+  // Safety net if route guard is bypassed
+  if (!hasWebhooksAccess) {
     return (
       <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="integrations-page">
         {/* Header */}
@@ -305,7 +299,7 @@ const IntegrationsPage = () => {
             featureDescription="Connect Compliance Vault Pro to your existing systems. Receive real-time notifications when compliance events occur, automate workflows, and integrate with property management software."
             requiredPlan="PLAN_3_PRO"
             requiredPlanName="Professional"
-            currentPlan={entitlements?.plan_name}
+            currentPlan={planName}
             variant="card"
           />
           

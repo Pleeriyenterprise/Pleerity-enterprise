@@ -4,13 +4,15 @@ End-to-end compliance inspection scenarios (A–E) with mocked persistence.
 A: Risk signal → COMPLIANCE work order; recommendation → pending confirmation; confirm assigns.
 B: Alternate contractor chosen only via confirm-alternate (assignment after client choice).
 C: Personal contractor path tags compliance capability + requirement code for routing.
-D: Operational completion without evidence does not set resolve_linked_compliance_risks.
+D: Completion without evidence is rejected (proof required before COMPLETED).
 E: Log inspection issue creates a maintenance issue (Inspection: prefix), not a compliance WO.
 
 Scenario D duplicates the invariant tested in test_operational_action_alignment (kept here for traceability).
 """
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from database import database as db_singleton
 from services import maintenance_issues_service as mis
@@ -155,7 +157,7 @@ async def test_scenario_c_personal_contractor_for_compliance_gets_execution_tags
     assert k.get("supported_requirement_codes") == ["gas_safety"]
 
 
-def test_scenario_d_operational_complete_without_evidence_skips_risk_resolution():
+def test_scenario_d_complete_without_evidence_is_rejected():
     async def _run():
         mock_db = MagicMock()
         mock_db.work_orders.find_one = AsyncMock(
@@ -169,21 +171,7 @@ def test_scenario_d_operational_complete_without_evidence_skips_risk_resolution(
                 "requirement_code": "eicr",
             }
         )
-        completed = {
-            "work_order_id": "wo-d",
-            "status": "COMPLETED",
-            "client_id": "c1",
-            "property_id": "p1",
-            "work_order_kind": "COMPLIANCE",
-            "requirement_code": "eicr",
-            "evidence_keys": [],
-            "contractor_id": None,
-            "issue_id": None,
-            "asset_id": None,
-            "description": "EICR job",
-            "completed_at": "2026-01-01T00:00:00+00:00",
-        }
-        mock_db.work_orders.find_one_and_update = AsyncMock(return_value=dict(completed))
+        mock_db.work_orders.find_one_and_update = AsyncMock()
         apply_mock = AsyncMock(return_value={"ok": True})
         with (
             patch.object(db_singleton, "get_db", return_value=mock_db),
@@ -195,16 +183,10 @@ def test_scenario_d_operational_complete_without_evidence_skips_risk_resolution(
                 AsyncMock(),
             ),
         ):
-            await maintenance_service.update_work_order("wo-d", status="COMPLETED")
-        wo_completed = [
-            c.args[0]
-            for c in apply_mock.call_args_list
-            if c.args and isinstance(c.args[0], dict) and c.args[0].get("event_type") == "work_order_completed"
-        ]
-        assert len(wo_completed) == 1
-        meta = wo_completed[0].get("metadata") or {}
-        assert meta.get("resolve_linked_compliance_risks") is False
-        assert meta.get("compliance_proof_submitted") is False
+            with pytest.raises(ValueError, match="Completion proof is required"):
+                await maintenance_service.update_work_order("wo-d", status="COMPLETED")
+        mock_db.work_orders.find_one_and_update.assert_not_called()
+        apply_mock.assert_not_awaited()
 
     asyncio.run(_run())
 

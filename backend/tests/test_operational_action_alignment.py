@@ -12,8 +12,8 @@ from services import maintenance_issues_service as mis
 from services import maintenance_service
 
 
-def test_compliance_work_order_completion_without_evidence_skips_risk_resolution_in_outcome():
-    """Operational completion is allowed; linked risk resolution is gated on evidence via outcome metadata."""
+def test_compliance_work_order_completion_without_evidence_raises():
+    """Completion proof is required for compliance jobs; persist is blocked until evidence exists."""
 
     async def _run():
         mock_db = MagicMock()
@@ -28,21 +28,7 @@ def test_compliance_work_order_completion_without_evidence_skips_risk_resolution
                 "requirement_code": "gas_safety",
             }
         )
-        completed = {
-            "work_order_id": "wo-c",
-            "status": "COMPLETED",
-            "client_id": "c1",
-            "property_id": "p1",
-            "work_order_kind": "COMPLIANCE",
-            "requirement_code": "gas_safety",
-            "evidence_keys": [],
-            "contractor_id": None,
-            "issue_id": None,
-            "asset_id": None,
-            "description": "Compliance job",
-            "completed_at": "2026-01-01T00:00:00+00:00",
-        }
-        mock_db.work_orders.find_one_and_update = AsyncMock(return_value=dict(completed))
+        mock_db.work_orders.find_one_and_update = AsyncMock()
         apply_mock = AsyncMock(return_value={"ok": True})
         with (
             patch.object(db_singleton, "get_db", return_value=mock_db),
@@ -54,12 +40,10 @@ def test_compliance_work_order_completion_without_evidence_skips_risk_resolution
                 AsyncMock(),
             ),
         ):
-            await maintenance_service.update_work_order("wo-c", status="COMPLETED")
-        apply_mock.assert_awaited()
-        payload = apply_mock.await_args[0][0]
-        meta = payload.get("metadata") or {}
-        assert meta.get("compliance_proof_submitted") is False
-        assert meta.get("resolve_linked_compliance_risks") is False
+            with pytest.raises(ValueError, match="Completion proof is required"):
+                await maintenance_service.update_work_order("wo-c", status="COMPLETED")
+        mock_db.work_orders.find_one_and_update.assert_not_called()
+        apply_mock.assert_not_awaited()
 
     asyncio.run(_run())
 

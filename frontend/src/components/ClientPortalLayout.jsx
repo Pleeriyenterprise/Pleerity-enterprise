@@ -36,6 +36,7 @@ import {
   ClipboardCheck,
   ListTodo,
   Inbox,
+  Gauge,
 } from 'lucide-react';
 import { resolveNotificationTarget } from '../utils/notificationDeepLink';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
@@ -51,6 +52,7 @@ const OPERATIONS_CHILDREN = [
 
 const PORTAL_TABS = [
   { path: '/today', label: 'Today', icon: ListTodo },
+  { path: '/command-center', label: 'Command center', icon: Gauge },
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/properties', label: 'Properties', icon: Building2 },
   { path: '/requirements', label: 'Requirements', icon: FileCheck },
@@ -78,7 +80,9 @@ const SETTINGS_SUB = [
 
 export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const { user, logout, isClient } = useAuth();
-  const { hasFeature } = useEntitlements();
+  const { hasFeature, entitlementsLoadFailed } = useEntitlements();
+  /** While entitlements failed to load, keep gated nav visible so users are not misled into thinking features are absent; route gates show retry. */
+  const navHasFeature = (key) => entitlementsLoadFailed || hasFeature(key);
   const navigate = useNavigate();
   const isTenant = user?.role === 'ROLE_TENANT';
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -226,19 +230,19 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   };
 
   const location = useLocation();
-  const showReports = hasFeature('reports_pdf') || hasFeature('reports_csv');
+  const showReports = navHasFeature('reports_pdf') || navHasFeature('reports_csv');
 
   // Build tabs: filter by feature; for Operations group, show only if at least one child is enabled and filter children
   const tabs = isTenant
     ? TENANT_PORTAL_TABS
     : PORTAL_TABS.map((t) => {
         if (t.type === 'group' && t.children) {
-          const children = t.children.filter((c) => (c.feature ? hasFeature(c.feature) : true));
+          const children = t.children.filter((c) => (c.feature ? navHasFeature(c.feature) : true));
           if (children.length === 0) return null;
           return { ...t, children };
         }
         if (t.path === '/reports') return showReports ? t : null;
-        if (t.feature) return hasFeature(t.feature) ? t : null;
+        if (t.feature) return navHasFeature(t.feature) ? t : null;
         return t;
       }).filter(Boolean);
 

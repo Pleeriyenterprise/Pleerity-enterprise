@@ -118,6 +118,25 @@ def test_contractor_completed_submit_invoice_no_invoice():
     assert ids == ["submit_invoice"]
 
 
+def test_contractor_completed_compliance_no_proof_upload_only():
+    w = _wo(status=ms.STATUS_COMPLETED, work_order_kind=ms.WORK_ORDER_KIND_COMPLIANCE, evidence_keys=[])
+    assert _ids(contractor_next_job_actions(w, invoice=None)) == ["upload_completion_proof"]
+
+
+def test_contractor_completed_compliance_with_proof_submit_invoice():
+    w = _wo(
+        status=ms.STATUS_COMPLETED,
+        work_order_kind=ms.WORK_ORDER_KIND_COMPLIANCE,
+        evidence_keys=["file:abc"],
+    )
+    assert _ids(contractor_next_job_actions(w, invoice=None)) == ["submit_invoice"]
+
+
+def test_contractor_completed_maintenance_expected_doc_no_evidence_upload_only():
+    w = _wo(status=ms.STATUS_COMPLETED, expected_output_document_type="CERTIFICATE", evidence_keys=[])
+    assert _ids(contractor_next_job_actions(w, invoice=None)) == ["upload_completion_proof"]
+
+
 def test_contractor_completed_invoice_pending_view_invoice():
     w = _wo(status=ms.STATUS_COMPLETED)
     inv = {"invoice_id": "inv-1", "status": "pending"}

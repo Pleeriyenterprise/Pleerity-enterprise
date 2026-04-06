@@ -1,21 +1,32 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { User, Bell, CreditCard, Palette } from 'lucide-react';
+import { useEntitlements } from '../contexts/EntitlementsContext';
 
-const TABS = [
+const BASE_TABS = [
   { path: '/settings/profile', label: 'Profile', icon: User },
   { path: '/settings/notifications', label: 'Notifications', icon: Bell },
   { path: '/settings/billing', label: 'Billing', icon: CreditCard },
-  { path: '/settings/branding', label: 'Branding', icon: Palette },
+  { path: '/settings/branding', label: 'Branding', icon: Palette, feature: 'white_label_reports' },
 ];
 
 export default function SettingsLayout() {
+  const { hasFeature, entitlementsLoadFailed } = useEntitlements();
+  const tabs = useMemo(
+    () =>
+      BASE_TABS.filter((t) => {
+        if (!t.feature) return true;
+        return entitlementsLoadFailed || hasFeature(t.feature);
+      }),
+    [hasFeature, entitlementsLoadFailed]
+  );
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-midnight-blue mb-2">Settings</h1>
       <p className="text-gray-600 mb-6">Profile, notifications, and plan.</p>
       <nav className="flex gap-2 border-b border-gray-200 mb-6">
-        {TABS.map(({ path, label, icon: Icon }) => (
+        {tabs.map(({ path, label, icon: Icon }) => (
           <NavLink
             key={path}
             to={path}

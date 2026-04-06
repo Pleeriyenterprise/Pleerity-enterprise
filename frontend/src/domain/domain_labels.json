@@ -221,6 +221,13 @@
     "NOT_REQUIRED": { "client_label": "Not applicable", "admin_label": "Not required" },
     "WAIVED": { "client_label": "Waived", "admin_label": "Waived" }
   },
+  "today_inbox_action_titles": {
+    "risk_signal": "Review this risk and choose your next step",
+    "work_order": "Keep this job moving forward",
+    "issue": "Take action on this maintenance issue",
+    "approval": "Review or approve this invoice",
+    "tenant_message": "Reply to your tenant’s portal message"
+  },
   "suggested_action_codes": {
     "create_issue": { "client_label": "Log an issue", "admin_label": "Create issue" },
     "create_work_order": { "client_label": "Book a work order", "admin_label": "Create work order" },

@@ -44,6 +44,7 @@ import {
   LifeBuoy,
   ListChecks,
   Receipt,
+  MessageSquareText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -274,6 +275,8 @@ function ClientJobDetailInner() {
   });
   const [linkDocId, setLinkDocId] = useState('');
   const [exceptionChoice, setExceptionChoice] = useState('');
+  const [decisionNote, setDecisionNote] = useState('');
+  const [decisionSubmitting, setDecisionSubmitting] = useState(false);
   const visitSectionRef = useRef(null);
 
   const clientProgress = useMemo(
@@ -1045,6 +1048,62 @@ function ClientJobDetailInner() {
             <li>Completed: {formatWhen(job.completed_at)}</li>
           </ul>
         )}
+      </SectionCard>
+
+      <SectionCard title="Decision log" icon={MessageSquareText}>
+        <p className="text-xs text-gray-600 mb-3">
+          Short notes on what was decided or agreed (no chat thread). Visible on this job for your team.
+        </p>
+        {(job.decision_log || []).length > 0 ? (
+          <ul className="space-y-3 mb-4 text-sm border border-gray-100 rounded-lg p-3 bg-gray-50/50">
+            {job.decision_log.map((row, idx) => (
+              <li key={`${row.timestamp}-${idx}`} className="border-b border-gray-100 last:border-0 last:pb-0 pb-3">
+                <p className="text-gray-900 whitespace-pre-wrap break-words">{row.message}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {String(row.actor || 'unknown').replace(/^./, (c) => c.toUpperCase())} · {formatWhen(row.timestamp)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-gray-500 mb-3">No entries yet.</p>
+        )}
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+          <textarea
+            className="flex-1 min-h-[72px] border rounded-lg px-3 py-2 text-sm"
+            placeholder="Add a decision or note…"
+            value={decisionNote}
+            maxLength={2000}
+            onChange={(e) => setDecisionNote(e.target.value)}
+            disabled={decisionSubmitting}
+          />
+          <Button
+            type="button"
+            size="sm"
+            className="shrink-0 bg-midnight-blue hover:bg-midnight-blue/90"
+            disabled={decisionSubmitting || !decisionNote.trim()}
+            onClick={async () => {
+              if (!jobId || !decisionNote.trim()) return;
+              setDecisionSubmitting(true);
+              try {
+                const res = await clientAPI.postJobDecisionLog(jobId, { message: decisionNote.trim() });
+                if (res.data && typeof res.data === 'object' && (res.data.job_id || res.data.work_order_id)) {
+                  setJob(res.data);
+                } else {
+                  await load();
+                }
+                setDecisionNote('');
+                toast.success('Decision saved');
+              } catch (err) {
+                toast.error(parseApiError(err, 'Could not save note'));
+              } finally {
+                setDecisionSubmitting(false);
+              }
+            }}
+          >
+            {decisionSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add entry'}
+          </Button>
+        </div>
       </SectionCard>
 
       <SectionCard title="Support / notes" icon={LifeBuoy}>

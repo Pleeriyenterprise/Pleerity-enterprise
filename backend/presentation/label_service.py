@@ -62,6 +62,20 @@ def requirement_action_phrase(code: Optional[str]) -> str:
     return f"Complete this obligation: {requirement_label(code, 'client')}"
 
 
+def today_inbox_action_title(source_type: Optional[str]) -> Optional[str]:
+    """
+    Single voice for Today inbox titles (non-requirement rows). Copy lives in domain_labels.json
+    under today_inbox_action_titles; requirement rows use requirement_action_phrase instead.
+    """
+    st = (source_type or "").strip()
+    if not st:
+        return None
+    block = (_raw_data().get("today_inbox_action_titles") or {}).get(st)
+    if isinstance(block, str) and block.strip():
+        return block.strip()
+    return None
+
+
 def issue_status_label(status: Optional[str], audience: str = "client") -> str:
     s = (status or "").strip().lower()
     if not s:

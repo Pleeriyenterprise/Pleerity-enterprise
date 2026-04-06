@@ -8,6 +8,7 @@ and document validation. Property-scoped requirement listing lives on routes/pro
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, UploadFile
@@ -360,6 +361,43 @@ async def get_job_detail(request: Request, job_id: str, user: Dict[str, Any] = D
     if not wo:
         raise HTTPException(status_code=404, detail="Job not found")
     return serialize_client_job(wo)
+
+
+class DecisionLogAppendBody(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000)
+
+
+@router.post("/jobs/{job_id}/decision-log")
+async def post_job_decision_log(
+    request: Request,
+    job_id: str,
+    body: DecisionLogAppendBody,
+    user: Dict[str, Any] = Depends(_require_maintenance_workflows),
+):
+    """
+    Append a lightweight decision note (no threading). Actor is client for portal-authenticated calls.
+    """
+    db = database.get_db()
+    wid = job_id.strip()
+    wo = await load_client_work_order(work_order_id=wid, client_id=user["client_id"])
+    if not wo:
+        raise HTTPException(status_code=404, detail="Job not found")
+    msg = body.message.strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail="message is required")
+    now = datetime.now(timezone.utc).isoformat()
+    # Portal route: actor is always client; admin/contractor surfaces may append with other actors later.
+    entry = {"message": msg[:2000], "actor": "client", "timestamp": now}
+    r = await db.work_orders.update_one(
+        {"work_order_id": wid, "client_id": user["client_id"]},
+        {"$push": {"decision_log": {"$each": [entry], "$slice": -150}}, "$set": {"updated_at": now}},
+    )
+    if r.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Job not found")
+    fresh = await load_client_work_order(work_order_id=wid, client_id=user["client_id"])
+    if not fresh:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return serialize_client_job(fresh)
 
 
 @router.get("/jobs/{job_id}/assignable-contractors")

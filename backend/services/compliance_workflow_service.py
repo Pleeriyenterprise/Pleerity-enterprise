@@ -15,7 +15,7 @@ request-booking, reschedule (alias), confirm-booking, cancel-booking (schedule o
 mark-no-access, mark-reschedule-required (operational exceptions → canonical NO_ACCESS / RESCHEDULE_REQUIRED),
 start, awaiting-parts (maintenance IN_PROGRESS → AWAITING_PARTS), complete,
 link-document (compliance), attach-completion-proof (maintenance), verify (compliance only), close (maintenance only),
-operational-exception, resume-after-parts, cancel (whole job).
+operational-exception, resume-after-parts, cancel (whole job), decision-log (append-only notes).
 """
 from __future__ import annotations
 
@@ -605,6 +605,17 @@ def contractor_next_job_actions(
         return _contractor_terminal_billing_actions(invoice)
 
     if st == maintenance_service.STATUS_COMPLETED:
+        need = contractor_completion_proof_required(wo)
+        has = contractor_has_completion_proof(wo)
+        if need and not has:
+            return [
+                _action(
+                    "upload_completion_proof",
+                    "Upload proof",
+                    "Upload completion proof before invoicing.",
+                    section="evidence",
+                ),
+            ]
         return _contractor_terminal_billing_actions(invoice)
 
     if st in (maintenance_service.STATUS_OPEN, maintenance_service.STATUS_ASSIGNED):
@@ -792,6 +803,33 @@ def apply_contractor_job_enrichment(
     wo["linked_invoice"] = linked
 
 
+_ALLOWED_DECISION_ACTORS = frozenset({"client", "admin", "contractor"})
+
+
+def normalize_decision_log_for_client(raw: Any) -> List[Dict[str, Any]]:
+    """Sanitize persisted decision_log for API clients (message, actor, timestamp only)."""
+    if not isinstance(raw, list):
+        return []
+    out: List[Dict[str, Any]] = []
+    for x in raw:
+        if not isinstance(x, dict):
+            continue
+        m = x.get("message")
+        if m is None or not str(m).strip():
+            continue
+        actor = str(x.get("actor") or "unknown").strip().lower()
+        if actor not in _ALLOWED_DECISION_ACTORS:
+            actor = "unknown"
+        out.append(
+            {
+                "message": str(m).strip()[:4000],
+                "actor": actor,
+                "timestamp": str(x.get("timestamp") or ""),
+            }
+        )
+    return out
+
+
 def client_job_timeline_events(wo: Dict[str, Any]) -> List[Dict[str, str]]:
     """Read-only milestone list for client job UI (no separate query)."""
     out: List[Dict[str, str]] = []
@@ -855,6 +893,7 @@ def serialize_client_job(wo: Dict[str, Any]) -> Dict[str, Any]:
         "completed_at": wo.get("completed_at"),
         "next_actions": next_job_actions(wo),
         "timeline_events": client_job_timeline_events(wo),
+        "decision_log": normalize_decision_log_for_client(wo.get("decision_log")),
         "resolution_outcome": wo.get("resolution_outcome"),
     }
     if kind == WORK_ORDER_KIND_COMPLIANCE:

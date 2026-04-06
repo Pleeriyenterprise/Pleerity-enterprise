@@ -4,6 +4,10 @@ import { clientAPI } from '../api/client';
 
 const EntitlementsContext = createContext(null);
 
+/** Shown in UI only — never forward API exception text or `detail` to users. */
+export const ENTITLEMENTS_UNAVAILABLE_USER_MESSAGE =
+  "We couldn't load your plan information. Please try again in a moment.";
+
 export function EntitlementsProvider({ children }) {
   const { user } = useAuth();
   const [entitlements, setEntitlements] = useState(null);
@@ -17,6 +21,7 @@ export function EntitlementsProvider({ children }) {
       setEntitlements(null);
       setUsageContext(null);
       setLoading(false);
+      setError(null);
       return false;
     }
     setLoading(true);
@@ -28,9 +33,13 @@ export function EntitlementsProvider({ children }) {
       ]);
       setEntitlements(entRes.data);
       setUsageContext(ctxRes?.data ?? null);
+      setError(null);
       return true;
     } catch (err) {
-      setError(err.response?.data?.detail ?? err.message ?? 'Failed to load entitlements');
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[entitlements] fetch failed', err);
+      }
+      setError(ENTITLEMENTS_UNAVAILABLE_USER_MESSAGE);
       setEntitlements(null);
       setUsageContext(null);
       return false;
@@ -63,11 +72,14 @@ export function EntitlementsProvider({ children }) {
     [entitlements]
   );
 
+  const entitlementsLoadFailed = Boolean(error);
+
   const value = {
     entitlements,
     usageContext,
     loading,
     error,
+    entitlementsLoadFailed,
     hasFeature,
     plan: entitlements?.plan ?? null,
     planName: entitlements?.plan_name ?? null,
@@ -91,6 +103,7 @@ export function useEntitlements() {
       usageContext: null,
       loading: false,
       error: null,
+      entitlementsLoadFailed: false,
       hasFeature: () => false,
       plan: null,
       planName: null,

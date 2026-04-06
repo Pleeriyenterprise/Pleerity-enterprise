@@ -36,6 +36,23 @@ def _invoice_state_rank(inv: Dict[str, Any]) -> int:
     return {_INV_PAID: 5, _INV_APPROVED: 4, _INV_PENDING: 3, _INV_NEEDS_INFO: 2, _INV_REJECTED: 1}.get(s, 0)
 
 
+def _assert_work_order_eligible_for_invoicing(wo: Dict[str, Any]) -> None:
+    """
+    Invoices linked to a work order are only allowed when the job is verified/closed,
+    or completed with completion proof rules satisfied (same as contractor completion gate).
+    """
+    from services import compliance_workflow_service as cws
+    from services import maintenance_service as ms
+
+    st = (wo.get("status") or "").strip().upper()
+    if st in (ms.STATUS_VERIFIED, ms.STATUS_CLOSED):
+        return
+    if st != ms.STATUS_COMPLETED:
+        raise ValueError("Invoices can only be created when the work order is completed with proof or verified.")
+    if cws.contractor_completion_proof_required(wo) and not cws.contractor_has_completion_proof(wo):
+        raise ValueError("Upload completion proof for this job before creating or resubmitting an invoice.")
+
+
 def work_order_cost_benchmark(wo: Dict[str, Any]) -> Tuple[Optional[float], Optional[float]]:
     """Estimate band from work order for invoice benchmark_fit."""
     mn = wo.get("cost_estimate_min")
@@ -113,6 +130,21 @@ async def contractor_resubmit_invoice(
     st = (inv.get("status") or "").strip().lower()
     if st not in (_INV_NEEDS_INFO, _INV_REJECTED):
         raise ValueError("Invoice cannot be resubmitted in its current state")
+
+    wo = await db.work_orders.find_one(
+        {"work_order_id": inv.get("work_order_id"), "client_id": inv.get("client_id")},
+        {
+            "_id": 0,
+            "work_order_id": 1,
+            "status": 1,
+            "evidence_keys": 1,
+            "work_order_kind": 1,
+            "expected_output_document_type": 1,
+        },
+    )
+    if not wo:
+        raise ValueError("Work order not found for this invoice")
+    _assert_work_order_eligible_for_invoicing(wo)
 
     now = datetime.now(timezone.utc)
     benchmark_min = inv.get("benchmark_min")
@@ -270,7 +302,15 @@ async def create_invoice(
     # Validate work order belongs to client
     wo = await db.work_orders.find_one(
         {"work_order_id": work_order_id, "client_id": client_id},
-        {"_id": 0, "work_order_id": 1, "property_id": 1},
+        {
+            "_id": 0,
+            "work_order_id": 1,
+            "property_id": 1,
+            "status": 1,
+            "evidence_keys": 1,
+            "work_order_kind": 1,
+            "expected_output_document_type": 1,
+        },
     )
     if not wo:
         raise ValueError("Work order not found or does not belong to this client")
@@ -293,6 +333,8 @@ async def create_invoice(
     )
     if not prop:
         raise ValueError("Property not found or does not belong to this client")
+
+    _assert_work_order_eligible_for_invoicing(wo)
 
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
