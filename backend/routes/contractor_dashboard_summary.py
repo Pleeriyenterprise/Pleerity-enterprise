@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
 from database import database
+from services.compliance_workflow_service import contractor_next_job_actions
 
 # Align with maintenance_service terminal / active semantics
 _TERMINAL = frozenset({"CANCELLED", "COMPLETED", "CLOSED", "VERIFIED"})
@@ -43,6 +44,39 @@ def _is_pending_schedule(wo: Dict[str, Any]) -> bool:
     if ss == "confirmed" and wo.get("scheduled_at"):
         return False
     return True
+
+
+def _invoice_rank(inv: Dict[str, Any]) -> int:
+    s = (inv.get("status") or "").lower()
+    return {"paid": 5, "approved": 4, "pending": 3, "needs_info": 2, "rejected": 1}.get(s, 0)
+
+
+def _best_invoice_by_work_order(contractor_id: str, invoices: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    best: Dict[str, Dict[str, Any]] = {}
+    cid = (contractor_id or "").strip()
+    for inv in invoices:
+        if (inv.get("contractor_id") or "").strip() != cid:
+            continue
+        w = (inv.get("work_order_id") or "").strip()
+        if not w:
+            continue
+        prev = best.get(w)
+        if not prev or _invoice_rank(inv) > _invoice_rank(prev):
+            best[w] = inv
+    return best
+
+
+def _scheduled_today_utc(wo: Dict[str, Any], now: datetime) -> bool:
+    st = (wo.get("status") or "").strip().upper()
+    if st in _TERMINAL:
+        return False
+    sat = wo.get("scheduled_at")
+    if not sat:
+        return False
+    d = _parse_iso(sat)
+    if not d:
+        return False
+    return d.date() == now.date()
 
 
 def _is_overdue_sla(wo: Dict[str, Any], now: datetime) -> bool:
@@ -123,6 +157,42 @@ async def build_contractor_dashboard_summary(contractor_id: str) -> Dict[str, An
         except (TypeError, ValueError):
             pass
 
+    inv_by_wo = _best_invoice_by_work_order(contractor_id, invoices)
+    wf_action = {
+        "visit_confirmation": 0,
+        "proof_upload": 0,
+        "invoice_submission": 0,
+        "invoice_correction": 0,
+    }
+    jobs_active = 0
+    jobs_scheduled_today = 0
+    for wo in work_orders:
+        st = (wo.get("status") or "").strip().upper()
+        wid = (wo.get("work_order_id") or "").strip()
+        if _work_order_active(st):
+            jobs_active += 1
+        if _scheduled_today_utc(wo, now):
+            jobs_scheduled_today += 1
+        inv = inv_by_wo.get(wid) if wid else None
+        acts = contractor_next_job_actions(wo, invoice=inv)
+        ids = {a.get("id") for a in acts if a.get("id")}
+        if "confirm_visit" in ids:
+            wf_action["visit_confirmation"] += 1
+        if "upload_completion_proof" in ids:
+            wf_action["proof_upload"] += 1
+        if "submit_invoice" in ids:
+            wf_action["invoice_submission"] += 1
+        if "edit_invoice" in ids:
+            wf_action["invoice_correction"] += 1
+
+    awaiting_approval_jobs = 0
+    for inv in inv_by_wo.values():
+        ist = (inv.get("status") or "").lower()
+        if ist in ("pending", "needs_info"):
+            awaiting_approval_jobs += 1
+
+    submit_invoice_primary_cta = wf_action["invoice_submission"] > 0
+
     return {
         "generated_at": now.isoformat(),
         "work_orders": {
@@ -136,6 +206,20 @@ async def build_contractor_dashboard_summary(contractor_id: str) -> Dict[str, An
             "ready_to_invoice_jobs": ready_to_invoice_jobs,
             "ready_to_invoice_estimated_total": round(ready_to_invoice_estimated, 2),
             "paid_this_month_total": round(paid_month_total, 2),
+        },
+        "workflow": {
+            "action_needed": wf_action,
+            "payments": {
+                "ready_to_invoice_jobs": ready_to_invoice_jobs,
+                "awaiting_approval_jobs": awaiting_approval_jobs,
+                "paid_this_month_total": round(paid_month_total, 2),
+            },
+            "jobs": {
+                "active": jobs_active,
+                "scheduled_today": jobs_scheduled_today,
+                "overdue_at_risk": overdue,
+            },
+            "submit_invoice_primary_cta": submit_invoice_primary_cta,
         },
         "notes": {
             "ready_to_invoice": "ready_to_invoice_jobs = completed work orders with no invoice. "

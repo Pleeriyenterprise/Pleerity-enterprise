@@ -3,7 +3,7 @@ Contractor portal API: work orders assigned to the contractor, status updates, e
 All routes require contractor_route_guard (JWT with role=ROLE_CONTRACTOR and contractor_id).
 Contractors only see and act on work orders where contractor_id matches their own.
 """
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -20,8 +20,50 @@ from services import work_order_schedule_service as wo_schedule
 from services.work_order_schedule_constants import SCHEDULE_ACTOR_CONTRACTOR
 from routes.contractor_dashboard_summary import build_contractor_dashboard_summary
 from services.contractor_work_order_status_policy import validate_contractor_status_patch
+from services.compliance_workflow_service import apply_contractor_job_enrichment
 
 router = APIRouter(prefix="/api/contractor", tags=["contractor-portal"], dependencies=[Depends(contractor_route_guard)])
+
+
+def _invoice_rank(inv: dict) -> int:
+    s = (inv.get("status") or "").lower()
+    return {"paid": 5, "approved": 4, "pending": 3, "needs_info": 2, "rejected": 1}.get(s, 0)
+
+
+async def _best_invoices_by_work_order(db, contractor_id: str, work_order_ids: list) -> dict:
+    ids = [w for w in work_order_ids if w]
+    if not ids or not contractor_id:
+        return {}
+    cursor = db.invoices.find(
+        {"contractor_id": contractor_id, "work_order_id": {"$in": list(set(ids))}},
+        {"_id": 0},
+    )
+    items = await cursor.to_list(length=1000)
+    best: dict = {}
+    for inv in items:
+        w = inv.get("work_order_id")
+        if not w:
+            continue
+        prev = best.get(w)
+        if not prev or _invoice_rank(inv) > _invoice_rank(prev):
+            best[w] = inv
+    return best
+
+
+async def _enrich_contractor_work_order(db, wo: dict, contractor_id: str) -> None:
+    wid = wo.get("work_order_id")
+    inv_map = await _best_invoices_by_work_order(db, contractor_id, [wid] if wid else [])
+    apply_contractor_job_enrichment(wo, invoice=inv_map.get(wid))
+
+
+_TERMINAL_FOR_CONTRACTOR_OE = frozenset(
+    {
+        maintenance_service.STATUS_CANCELLED,
+        maintenance_service.STATUS_COMPLETED,
+        maintenance_service.STATUS_CLOSED,
+        maintenance_service.STATUS_VERIFIED,
+    }
+)
 
 
 def _ensure_assigned_to_me(work_order: dict, contractor_id: str) -> None:
@@ -63,6 +105,10 @@ async def list_my_work_orders(request: Request, status_filter: Optional[str] = N
                 wo["property_address"] = prop.get("nickname") or ", ".join(
                     p for p in [prop.get("address_line_1"), prop.get("city"), prop.get("postcode")] if p
                 ) or wo["property_id"]
+    woids = [w.get("work_order_id") for w in result.get("work_orders") or [] if w.get("work_order_id")]
+    inv_map = await _best_invoices_by_work_order(db, contractor_id, woids)
+    for wo in result.get("work_orders") or []:
+        apply_contractor_job_enrichment(wo, invoice=inv_map.get(wo.get("work_order_id")))
     return result
 
 
@@ -85,6 +131,7 @@ async def get_my_work_order(request: Request, work_order_id: str):
             wo["property_address"] = prop.get("nickname") or ", ".join(
                 p for p in [prop.get("address_line_1"), prop.get("city"), prop.get("postcode")] if p
             ) or wo["property_id"]
+    await _enrich_contractor_work_order(db, wo, contractor_id)
     return wo
 
 
@@ -93,6 +140,60 @@ class UpdateWorkOrderBody(BaseModel):
     contractor_notes: Optional[str] = None
     completion_notes: Optional[str] = None
     evidence_keys: Optional[List[str]] = None  # append these storage keys
+
+
+class ContractorMarkNoAccessBody(BaseModel):
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
+@router.post("/work-orders/{work_order_id}/mark-no-access")
+async def contractor_mark_no_access(
+    request: Request,
+    work_order_id: str,
+    body: ContractorMarkNoAccessBody = Body(default_factory=ContractorMarkNoAccessBody),
+):
+    """Record a no-access operational hold (same semantics as client mark-no-access)."""
+    user = await contractor_route_guard(request)
+    contractor_id = user.get("contractor_id")
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    _ensure_assigned_to_me(wo, contractor_id)
+    st = (wo.get("status") or "").strip().upper()
+    if st in (maintenance_service.STATUS_OPEN, maintenance_service.STATUS_ASSIGNED):
+        raise HTTPException(status_code=400, detail="Accept the assignment before reporting access issues")
+    if st in _TERMINAL_FOR_CONTRACTOR_OE:
+        raise HTTPException(status_code=400, detail="This job cannot be put on hold in its current state")
+    if (wo.get("operational_exception") or "").strip():
+        raise HTTPException(status_code=400, detail="This job is already on an operational hold")
+    note = (body.notes or "").strip()
+    merged_notes = None
+    if note:
+        prev = (wo.get("contractor_notes") or "").strip()
+        line = f"[No access] {note}"
+        merged_notes = f"{prev}\n{line}".strip() if prev else line
+    try:
+        updated = await maintenance_service.update_work_order(
+            work_order_id,
+            operational_exception=maintenance_service.OPERATIONAL_EXCEPTION_NO_ACCESS,
+            assigned_by=contractor_id,
+            contractor_notes=merged_notes,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not updated:
+        raise HTTPException(status_code=500, detail="Update failed")
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_WORK_ORDER_STATUS_CHANGED,
+        actor_id=contractor_id,
+        client_id=wo.get("client_id"),
+        resource_type="work_order",
+        resource_id=work_order_id,
+        metadata={"operational_exception": maintenance_service.OPERATIONAL_EXCEPTION_NO_ACCESS, "via": "contractor_portal"},
+    )
+    db = database.get_db()
+    await _enrich_contractor_work_order(db, updated, contractor_id)
+    return updated
 
 
 @router.patch("/work-orders/{work_order_id}")
@@ -136,6 +237,8 @@ async def update_my_work_order(request: Request, work_order_id: str, body: Updat
             resource_id=work_order_id,
             metadata={"keys_count": len(body.evidence_keys)},
         )
+    db = database.get_db()
+    await _enrich_contractor_work_order(db, updated, contractor_id)
     return updated
 
 
@@ -155,8 +258,9 @@ async def contractor_schedule_propose(request: Request, work_order_id: str, body
     contractor_id = user.get("contractor_id")
     role = user.get("role")
     actor_id = user.get("portal_user_id") or user.get("email") or user.get("user_id") or contractor_id
+    db = database.get_db()
     try:
-        return await wo_schedule.propose_schedule(
+        res = await wo_schedule.propose_schedule(
             work_order_id,
             actor_type=SCHEDULE_ACTOR_CONTRACTOR,
             actor_id=actor_id,
@@ -172,6 +276,8 @@ async def contractor_schedule_propose(request: Request, work_order_id: str, body
         raise HTTPException(status_code=404, detail="Work order not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    await _enrich_contractor_work_order(db, res, contractor_id)
+    return res
 
 
 @router.post("/work-orders/{work_order_id}/schedule/confirm")
@@ -180,8 +286,9 @@ async def contractor_schedule_confirm(request: Request, work_order_id: str):
     contractor_id = user.get("contractor_id")
     role = user.get("role")
     actor_id = user.get("portal_user_id") or user.get("email") or user.get("user_id") or contractor_id
+    db = database.get_db()
     try:
-        return await wo_schedule.confirm_schedule(
+        res = await wo_schedule.confirm_schedule(
             work_order_id,
             actor_type=SCHEDULE_ACTOR_CONTRACTOR,
             actor_id=actor_id,
@@ -194,6 +301,8 @@ async def contractor_schedule_confirm(request: Request, work_order_id: str):
         raise HTTPException(status_code=404, detail="Work order not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    await _enrich_contractor_work_order(db, res, contractor_id)
+    return res
 
 
 @router.post("/work-orders/{work_order_id}/schedule/reschedule-request")
@@ -202,8 +311,9 @@ async def contractor_schedule_reschedule_request(request: Request, work_order_id
     contractor_id = user.get("contractor_id")
     role = user.get("role")
     actor_id = user.get("portal_user_id") or user.get("email") or user.get("user_id") or contractor_id
+    db = database.get_db()
     try:
-        return await wo_schedule.request_reschedule(
+        res = await wo_schedule.request_reschedule(
             work_order_id,
             actor_type=SCHEDULE_ACTOR_CONTRACTOR,
             actor_id=actor_id,
@@ -217,6 +327,8 @@ async def contractor_schedule_reschedule_request(request: Request, work_order_id
         raise HTTPException(status_code=404, detail="Work order not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    await _enrich_contractor_work_order(db, res, contractor_id)
+    return res
 
 
 @router.post("/work-orders/{work_order_id}/schedule/cancel")
@@ -225,8 +337,9 @@ async def contractor_schedule_cancel(request: Request, work_order_id: str):
     contractor_id = user.get("contractor_id")
     role = user.get("role")
     actor_id = user.get("portal_user_id") or user.get("email") or user.get("user_id") or contractor_id
+    db = database.get_db()
     try:
-        return await wo_schedule.cancel_schedule(
+        res = await wo_schedule.cancel_schedule(
             work_order_id,
             actor_type=SCHEDULE_ACTOR_CONTRACTOR,
             actor_id=actor_id,
@@ -239,6 +352,8 @@ async def contractor_schedule_cancel(request: Request, work_order_id: str):
         raise HTTPException(status_code=404, detail="Work order not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    await _enrich_contractor_work_order(db, res, contractor_id)
+    return res
 
 
 @router.get("/work-orders/{work_order_id}/schedule/ics")
@@ -286,7 +401,10 @@ async def accept_assignment(request: Request, work_order_id: str):
         resource_id=work_order_id,
         metadata={},
     )
-    return updated or wo
+    out = updated if updated is not None else wo
+    db = database.get_db()
+    await _enrich_contractor_work_order(db, out, contractor_id)
+    return out
 
 
 @router.get("/work-orders/{work_order_id}/evidence/file")
@@ -367,6 +485,8 @@ async def upload_work_order_evidence(request: Request, work_order_id: str, file:
         resource_id=work_order_id,
         metadata={"storage_key": storage_key, "via": "multipart"},
     )
+    db = database.get_db()
+    await _enrich_contractor_work_order(db, updated, contractor_id)
     return {"storage_key": storage_key, "work_order": updated}
 
 
@@ -395,9 +515,17 @@ async def decline_assignment(request: Request, work_order_id: str):
 
 class SubmitInvoiceBody(BaseModel):
     work_order_id: str
-    reference: Optional[str] = None
+    reference: str = Field(..., min_length=1)
     description: Optional[str] = None
-    submitted_amount: Optional[float] = None
+    submitted_amount: float = Field(..., gt=0)
+    currency: Optional[str] = "GBP"
+    attachment_storage_key: Optional[str] = None
+
+
+class ResubmitInvoiceBody(BaseModel):
+    reference: str = Field(..., min_length=1)
+    description: Optional[str] = None
+    submitted_amount: float = Field(..., gt=0)
     currency: Optional[str] = "GBP"
     attachment_storage_key: Optional[str] = None
 
@@ -414,29 +542,50 @@ async def submit_invoice(request: Request, body: SubmitInvoiceBody):
     if not wo.get("property_id") or not wo.get("client_id"):
         raise HTTPException(status_code=400, detail="Work order missing property or client")
     try:
-        doc = await invoice_service.create_invoice(
-            client_id=wo["client_id"],
-            property_id=wo["property_id"],
-            contractor_id=contractor_id,
-            work_order_id=body.work_order_id,
-            reference=(body.reference or "").strip() or None,
+        doc, kind = await invoice_service.contractor_submit_or_resubmit_for_work_order(
+            wo,
+            contractor_id,
+            reference=body.reference,
             description=body.description,
             submitted_amount=body.submitted_amount,
             currency=body.currency or "GBP",
             attachment_storage_key=body.attachment_storage_key,
-            source=invoice_service.SOURCE_CONTRACTOR,
-            created_by_id=contractor_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    await create_audit_log(
-        action=AuditAction.CONTRACTOR_INVOICE_SUBMITTED,
-        actor_id=contractor_id,
-        client_id=wo["client_id"],
-        resource_type="invoice",
-        resource_id=doc.get("invoice_id"),
-        metadata={"work_order_id": body.work_order_id, "submitted_amount": body.submitted_amount},
-    )
+    if kind == "created":
+        await create_audit_log(
+            action=AuditAction.CONTRACTOR_INVOICE_SUBMITTED,
+            actor_id=contractor_id,
+            client_id=wo["client_id"],
+            resource_type="invoice",
+            resource_id=doc.get("invoice_id"),
+            metadata={"work_order_id": body.work_order_id, "submitted_amount": body.submitted_amount},
+        )
+    return doc
+
+
+@router.patch("/invoices/{invoice_id}/resubmit")
+async def resubmit_invoice(request: Request, invoice_id: str, body: ResubmitInvoiceBody):
+    """Resubmit an invoice after client needs_info or rejected (same contractor only)."""
+    user = await contractor_route_guard(request)
+    contractor_id = user.get("contractor_id")
+    if not contractor_id:
+        raise HTTPException(status_code=403, detail="Contractor context required")
+    try:
+        doc = await invoice_service.contractor_resubmit_invoice(
+            invoice_id,
+            contractor_id,
+            reference=body.reference,
+            description=body.description,
+            submitted_amount=body.submitted_amount,
+            currency=body.currency or "GBP",
+            attachment_storage_key=body.attachment_storage_key,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not doc:
+        raise HTTPException(status_code=404, detail="Invoice not found")
     return doc
 
 
@@ -456,6 +605,9 @@ async def list_my_invoices(request: Request, limit: int = 50):
             inv["submitted_at"] = inv["submitted_at"].isoformat()
         if inv.get("paid_at") and hasattr(inv["paid_at"], "isoformat"):
             inv["paid_at"] = inv["paid_at"].isoformat()
+        if inv.get("reviewed_at") and hasattr(inv["reviewed_at"], "isoformat"):
+            inv["reviewed_at"] = inv["reviewed_at"].isoformat()
+        invoice_service.enrich_invoice_for_contractor_portal(inv)
     return {"invoices": items, "total": len(items)}
 
 
@@ -476,4 +628,6 @@ async def get_my_profile(request: Request):
         "email": doc.get("email"),
         "phone": doc.get("phone"),
         "region": doc.get("region"),
+        "account_status": doc.get("status"),
+        "portal_access": doc.get("portal_access"),
     }

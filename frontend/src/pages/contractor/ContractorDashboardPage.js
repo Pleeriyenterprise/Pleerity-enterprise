@@ -17,8 +17,6 @@ import {
   Loader2,
   X,
   FileText,
-  CheckCircle,
-  XCircle,
   Upload,
   AlertCircle,
   Info,
@@ -26,25 +24,37 @@ import {
   PoundSterling,
   ChevronRight,
   CalendarClock,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   buildInvoiceByWorkOrderId,
   formatMoneyGbp,
-  getAllowedNextStatuses,
   getBlockOrCancelReason,
   getEvidenceGuidance,
   getJobTypeLabel,
   getJobValueDisplay,
-  getLifecycleBadge,
-  getLifecycleStage,
   getNextStepMessage,
   isCompletedPipeline,
   isPendingScheduling,
   isSlaOverdue,
+  parseIsoDate,
   sortWorkOrdersForDashboard,
-  statusValueToLabel,
-  toneToClasses,
+  contractorNextStepLineFromNextActions,
+  contractorJobStatusLabel,
+  contractorDetailExecutionProgressFromWorkOrder,
+  contractorPortalExecutableActions,
+  contractorListPrimaryAction,
+  CONTRACTOR_DETAIL_JOB_ACTION_IDS,
+  contractorBillingPhaseForWorkOrder,
+  contractorDetailTimelineSorted,
+  contractorBillingActionButtonLabel,
+  isContractorExecutionActive,
+  isContractorInvoiceEligible,
+  isContractorWaitingOnOthers,
+  isScheduledTodayUtc,
+  defaultInvoiceAmountFieldFromWorkOrder,
+  formatContractorInvoiceStateLabel,
 } from '../../utils/contractorWorkflow';
 
 function contractorDebugLog(event, payload) {
@@ -91,12 +101,6 @@ function scheduleProposedByLabel(by) {
   return by || '—';
 }
 
-function contractorMayConfirmSchedule(wo) {
-  if ((wo?.schedule_status || '').toLowerCase() !== 'proposed') return false;
-  const sb = (wo?.scheduled_by || '').toLowerCase();
-  return sb === 'client' || sb === 'admin';
-}
-
 export default function ContractorDashboardPage() {
   const navigate = useNavigate();
   const [token, setToken] = useState(null);
@@ -129,6 +133,15 @@ export default function ContractorDashboardPage() {
   const [dashboardSummary, setDashboardSummary] = useState(null);
   const [dashboardSummaryError, setDashboardSummaryError] = useState(null);
   const invoicesSectionRef = useRef(null);
+  const completionProofInputRef = useRef(null);
+  const scheduleSectionRef = useRef(null);
+  const urgentSectionRef = useRef(null);
+  const activeJobsSectionRef = useRef(null);
+  const readyToInvoiceSectionRef = useRef(null);
+  const waitingSectionRef = useRef(null);
+  const completedMonthSectionRef = useRef(null);
+  const [detailOpenFocus, setDetailOpenFocus] = useState(null);
+  const [activeJobFilter, setActiveJobFilter] = useState('all');
 
   useEffect(() => {
     const t = getContractorToken();
@@ -227,6 +240,15 @@ export default function ContractorDashboardPage() {
 
   const invoiceByWorkOrderId = useMemo(() => buildInvoiceByWorkOrderId(invoices), [invoices]);
 
+  const detailPortalActions = useMemo(() => contractorPortalExecutableActions(detail || {}), [detail]);
+
+  const detailPrimaryAction = useMemo(() => (detail ? contractorListPrimaryAction(detail) : null), [detail]);
+
+  const detailActionIds = useMemo(
+    () => new Set(detailPortalActions.map((a) => a.id)),
+    [detailPortalActions],
+  );
+
   const sortedWorkOrders = useMemo(() => sortWorkOrdersForDashboard(workOrders), [workOrders]);
 
   const actionCounts = useMemo(() => {
@@ -276,6 +298,215 @@ export default function ContractorDashboardPage() {
     };
   }, [dashboardSummary, invoices, workOrders]);
 
+  const displayWorkflow = useMemo(() => {
+    const w = dashboardSummary?.workflow;
+    if (w) {
+      return {
+        action: w.action_needed,
+        payments: w.payments,
+        jobs: w.jobs,
+        submitPrimary: !!w.submit_invoice_primary_cta,
+      };
+    }
+    const action = {
+      visit_confirmation: 0,
+      proof_upload: 0,
+      invoice_submission: 0,
+      invoice_correction: 0,
+    };
+    (workOrders || []).forEach((wo) => {
+      (wo.next_actions || []).forEach((a) => {
+        if (!a?.id) return;
+        if (a.id === 'confirm_visit') action.visit_confirmation += 1;
+        if (a.id === 'upload_completion_proof') action.proof_upload += 1;
+        if (a.id === 'submit_invoice') action.invoice_submission += 1;
+        if (a.id === 'edit_invoice') action.invoice_correction += 1;
+      });
+    });
+    const submitPrimary = action.invoice_submission > 0;
+    const now = new Date();
+    let active = 0;
+    let scheduledToday = 0;
+    (workOrders || []).forEach((wo) => {
+      const s = (wo.status || '').toUpperCase();
+      if (['OPEN', 'ASSIGNED', 'SCHEDULED', 'IN_PROGRESS', 'AWAITING_PARTS'].includes(s)) active += 1;
+      if (s !== 'CANCELLED' && wo.scheduled_at) {
+        try {
+          const d = new Date(wo.scheduled_at);
+          if (
+            d.getUTCFullYear() === now.getUTCFullYear() &&
+            d.getUTCMonth() === now.getUTCMonth() &&
+            d.getUTCDate() === now.getUTCDate()
+          ) {
+            scheduledToday += 1;
+          }
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    });
+    const awaitingApprovalJobs = new Set(
+      (invoices || [])
+        .filter((i) => ['pending', 'needs_info'].includes((i.status || '').toLowerCase()))
+        .map((i) => i.work_order_id)
+        .filter(Boolean),
+    ).size;
+    return {
+      action,
+      payments: {
+        ready_to_invoice_jobs: earningsDisplay.ready_to_invoice_jobs,
+        awaiting_approval_jobs: awaitingApprovalJobs,
+        paid_this_month_total: earningsDisplay.paid_this_month_total,
+      },
+      jobs: {
+        active,
+        scheduled_today: scheduledToday,
+        overdue_at_risk: (workOrders || []).filter((w) => isSlaOverdue(w)).length,
+      },
+      submitPrimary,
+    };
+  }, [dashboardSummary, workOrders, invoices, earningsDisplay]);
+
+  const profileAwaitingApproval = useMemo(() => {
+    const s = (profile?.account_status || '').toLowerCase();
+    const pa = (profile?.portal_access || '').toLowerCase();
+    return ['pending_review', 'pending_approval', 'invited'].includes(s) || pa === 'invite_pending';
+  }, [profile]);
+
+  const URGENT_ACTION_IDS = useMemo(
+    () =>
+      new Set(['accept_assignment', 'confirm_visit', 'upload_completion_proof', 'submit_invoice', 'edit_invoice']),
+    [],
+  );
+
+  const urgentItems = useMemo(() => {
+    const out = [];
+    sortedWorkOrders.forEach((wo) => {
+      const hit = contractorPortalExecutableActions(wo).find((a) => URGENT_ACTION_IDS.has(a.id));
+      if (hit) out.push({ wo, action: hit });
+    });
+    return out;
+  }, [sortedWorkOrders, URGENT_ACTION_IDS]);
+
+  const performanceMetrics = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    let completedMonth = 0;
+    const closeDays = [];
+    let holds = 0;
+    (workOrders || []).forEach((wo) => {
+      if ((wo.operational_exception || '').trim()) holds += 1;
+      const st = (wo.status || '').toUpperCase();
+      const comp = parseIsoDate(wo.completed_at);
+      if (comp && comp >= monthStart && ['COMPLETED', 'VERIFIED', 'CLOSED'].includes(st)) completedMonth += 1;
+      const created = parseIsoDate(wo.created_at);
+      if (created && comp && ['COMPLETED', 'VERIFIED', 'CLOSED'].includes(st)) {
+        closeDays.push((comp.getTime() - created.getTime()) / 86400000);
+      }
+    });
+    const avgClose =
+      closeDays.length > 0
+        ? Math.round((closeDays.reduce((a, b) => a + b, 0) / closeDays.length) * 10) / 10
+        : null;
+    return { completedMonth, avgCloseDays: avgClose, holds };
+  }, [workOrders]);
+
+  const workOrderById = useMemo(() => {
+    const m = {};
+    (workOrders || []).forEach((w) => {
+      if (w.work_order_id) m[w.work_order_id] = w;
+    });
+    return m;
+  }, [workOrders]);
+
+  const activeJobsFiltered = useMemo(() => {
+    let list = sortedWorkOrders.filter((w) => isContractorExecutionActive(w) && !isContractorWaitingOnOthers(w));
+    if (activeJobFilter === 'scheduled_today') list = list.filter((w) => isScheduledTodayUtc(w));
+    if (activeJobFilter === 'at_risk') list = list.filter((w) => isSlaOverdue(w));
+    return list;
+  }, [sortedWorkOrders, activeJobFilter]);
+
+  const executionActiveCount = useMemo(
+    () => sortedWorkOrders.filter((w) => isContractorExecutionActive(w) && !isContractorWaitingOnOthers(w)).length,
+    [sortedWorkOrders],
+  );
+  const scheduledTodayActiveCount = useMemo(
+    () =>
+      sortedWorkOrders.filter(
+        (w) => isContractorExecutionActive(w) && !isContractorWaitingOnOthers(w) && isScheduledTodayUtc(w),
+      ).length,
+    [sortedWorkOrders],
+  );
+  const atRiskActiveCount = useMemo(
+    () =>
+      sortedWorkOrders.filter((w) => isContractorExecutionActive(w) && !isContractorWaitingOnOthers(w) && isSlaOverdue(w))
+        .length,
+    [sortedWorkOrders],
+  );
+
+  const readyToInvoiceJobs = useMemo(
+    () => sortedWorkOrders.filter((w) => isContractorInvoiceEligible(w)),
+    [sortedWorkOrders],
+  );
+
+  const waitingJobs = useMemo(() => sortedWorkOrders.filter((w) => isContractorWaitingOnOthers(w)), [sortedWorkOrders]);
+
+  const completedMonthJobs = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    return sortedWorkOrders.filter((w) => {
+      const comp = parseIsoDate(w.completed_at);
+      const st = (w.status || '').toUpperCase();
+      return comp && comp >= monthStart && ['COMPLETED', 'VERIFIED', 'CLOSED'].includes(st);
+    });
+  }, [sortedWorkOrders]);
+
+  const paymentTableRows = useMemo(() => {
+    const rows = [...(invoices || [])];
+    rows.sort((a, b) => {
+      const pa = a.paid_at ? new Date(a.paid_at).getTime() : 0;
+      const pb = b.paid_at ? new Date(b.paid_at).getTime() : 0;
+      if (pb !== pa) return pb - pa;
+      const sa = a.submitted_at ? new Date(a.submitted_at).getTime() : 0;
+      const sb = b.submitted_at ? new Date(b.submitted_at).getTime() : 0;
+      return sb - sa;
+    });
+    return rows;
+  }, [invoices]);
+
+  const detailNextIdleMessage = useMemo(() => {
+    if (!detail) return null;
+    if (contractorPortalExecutableActions(detail).length > 0) return null;
+    const st = (detail.status || '').toUpperCase();
+    if (st === 'CANCELLED') return 'This job was cancelled. No further action.';
+    if (['COMPLETED', 'VERIFIED', 'CLOSED'].includes(st)) return 'This job is complete. No further action required.';
+    return 'No action available right now.';
+  }, [detail]);
+
+  const detailJobPanelActions = useMemo(() => {
+    const pid = detailPrimaryAction?.id;
+    return detailPortalActions.filter((a) => CONTRACTOR_DETAIL_JOB_ACTION_IDS.has(a.id) && a.id !== pid);
+  }, [detailPortalActions, detailPrimaryAction]);
+
+  const detailBillingPanelActions = useMemo(() => {
+    const pid = detailPrimaryAction?.id;
+    return detailPortalActions.filter((a) => a.section === 'billing' && a.id !== pid);
+  }, [detailPortalActions, detailPrimaryAction]);
+
+  const detailBillingPhase = useMemo(
+    () => (detail ? contractorBillingPhaseForWorkOrder(detail, invoiceByWorkOrderId) : null),
+    [detail, invoiceByWorkOrderId],
+  );
+
+  const detailTimelineSorted = useMemo(
+    () => (detail?.timeline_events?.length ? contractorDetailTimelineSorted(detail.timeline_events) : []),
+    [detail?.timeline_events],
+  );
+
+  const scrollToRef = (r) => {
+    requestAnimationFrame(() => r?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+
   useEffect(() => {
     if (!api) {
       setBootstrapLoading(false);
@@ -316,50 +547,29 @@ export default function ContractorDashboardPage() {
     }
   }, [detail]);
 
+  useEffect(() => {
+    if (!detail || !detailOpenFocus) return undefined;
+    if (detailOpenFocus === 'proof') {
+      const t = setTimeout(() => {
+        completionProofInputRef.current?.click?.();
+        setDetailOpenFocus(null);
+      }, 200);
+      return () => clearTimeout(t);
+    }
+    if (detailOpenFocus === 'schedule') {
+      const t = setTimeout(() => {
+        scheduleSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+        setDetailOpenFocus(null);
+      }, 200);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [detail, detailOpenFocus]);
+
   const handleLogout = () => {
     localStorage.removeItem('contractor_token');
     localStorage.removeItem('contractor_user');
     navigate('/contractor/login', { replace: true });
-  };
-
-  const handleAccept = (id) => {
-    setActionLoading(id);
-    api.acceptAssignment(id)
-      .then(() => {
-        toast.success('Assignment accepted');
-        loadWorkOrders();
-        loadDashboardSummary();
-        setDetailId(null);
-      })
-      .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
-      .finally(() => setActionLoading(null));
-  };
-
-  const handleDecline = (id) => {
-    if (!confirm('Decline this assignment? The work order will be unassigned.')) return;
-    setActionLoading(id);
-    api.declineAssignment(id)
-      .then(() => {
-        toast.success('Assignment declined');
-        loadWorkOrders();
-        loadDashboardSummary();
-        setDetailId(null);
-      })
-      .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
-      .finally(() => setActionLoading(null));
-  };
-
-  const handleStatusChange = (id, status) => {
-    setActionLoading(id);
-    api.updateWorkOrder(id, { status })
-      .then(() => {
-        toast.success('Status updated');
-        loadWorkOrders();
-        loadDashboardSummary();
-        if (detailId === id) api.getWorkOrder(id).then((r) => setDetail(r.data));
-      })
-      .catch((e) => toast.error(e.response?.data?.detail || 'Failed'))
-      .finally(() => setActionLoading(null));
   };
 
   const handleSaveNotes = () => {
@@ -384,6 +594,121 @@ export default function ContractorDashboardPage() {
     if (!api || !id) return Promise.resolve();
     return api.getWorkOrder(id).then((r) => setDetail(r.data));
   };
+
+  const executeContractorAction = useCallback(
+    async (wo, action, ev) => {
+      ev?.stopPropagation?.();
+      if (!api || !wo?.work_order_id || !action?.id) return;
+      const wid = wo.work_order_id;
+      const aid = action.id;
+      const refreshListAndDetail = async () => {
+        await loadWorkOrders();
+        await loadDashboardSummary();
+        if (detailId === wid) {
+          const r = await api.getWorkOrder(wid);
+          setDetail(r.data);
+        }
+      };
+      try {
+        if (aid === 'accept_assignment') {
+          setActionLoading(wid);
+          await api.acceptAssignment(wid);
+          toast.success('Assignment accepted');
+          setDetailId(null);
+          await refreshListAndDetail();
+        } else if (aid === 'decline_assignment') {
+          if (!window.confirm('Decline this assignment? The work order will be unassigned.')) return;
+          setActionLoading(wid);
+          await api.declineAssignment(wid);
+          toast.success('Assignment declined');
+          setDetailId(null);
+          await refreshListAndDetail();
+        } else if (aid === 'confirm_visit') {
+          setScheduleActionLoading(true);
+          await api.confirmSchedule(wid);
+          toast.success('Visit confirmed');
+          await refreshListAndDetail();
+        } else if (aid === 'reschedule_visit') {
+          const reason = window.prompt('Reason for reschedule request (optional)') ?? '';
+          setScheduleActionLoading(true);
+          await api.requestScheduleReschedule(wid, { reason: reason.trim() || undefined });
+          toast.success('Reschedule request sent');
+          await refreshListAndDetail();
+        } else if (aid === 'propose_visit') {
+          setDetailId(wid);
+          setDetailOpenFocus('schedule');
+        } else if (aid === 'start_job') {
+          setActionLoading(wid);
+          await api.updateWorkOrder(wid, { status: 'IN_PROGRESS' });
+          toast.success('Job started');
+          await refreshListAndDetail();
+        } else if (aid === 'awaiting_parts') {
+          setActionLoading(wid);
+          await api.updateWorkOrder(wid, { status: 'AWAITING_PARTS' });
+          toast.success('Marked awaiting parts');
+          await refreshListAndDetail();
+        } else if (aid === 'resume_job') {
+          setActionLoading(wid);
+          await api.updateWorkOrder(wid, { status: 'IN_PROGRESS' });
+          toast.success('Job resumed');
+          await refreshListAndDetail();
+        } else if (aid === 'complete_job') {
+          if (wo.completion_proof_required && !wo.completion_proof_satisfied) {
+            toast.error('Upload completion proof before completing this job.');
+            return;
+          }
+          setActionLoading(wid);
+          await api.updateWorkOrder(wid, { status: 'COMPLETED' });
+          toast.success('Job marked complete');
+          await refreshListAndDetail();
+        } else if (aid === 'submit_invoice') {
+          setDetailId(wid);
+          setInvoiceForm({
+            reference: '',
+            description: '',
+            submitted_amount: defaultInvoiceAmountFieldFromWorkOrder(wo),
+          });
+          setInvoiceModal({ mode: 'create', workOrder: wo, invoice: null });
+        } else if (aid === 'view_invoice' || aid === 'edit_invoice') {
+          setDetailId(wid);
+          const inv = wo.linked_invoice || invoiceByWorkOrderId[wid];
+          setInvoiceForm({
+            reference: inv?.reference || '',
+            description: inv?.description || '',
+            submitted_amount: inv?.submitted_amount != null ? String(inv.submitted_amount) : '',
+          });
+          setInvoiceModal({
+            mode: aid === 'edit_invoice' ? 'edit' : 'view',
+            workOrder: wo,
+            invoice: inv || null,
+          });
+        } else if (aid === 'upload_completion_proof') {
+          setDetailId(wid);
+          setDetailOpenFocus('proof');
+        } else if (aid === 'open_job_detail') {
+          setDetailId(wid);
+        } else if (aid === 'mark_no_access') {
+          const notes = window.prompt('Optional note for your client (e.g. why access was not possible)') ?? '';
+          setActionLoading(wid);
+          await api.markNoAccess(wid, { notes: notes.trim() || undefined });
+          toast.success('No access recorded. Your client can reschedule or clear the hold.');
+          await refreshListAndDetail();
+        } else if (aid === 'cancel_scheduled_visit') {
+          if (!window.confirm('Cancel this scheduled visit? The booking will be cleared.')) return;
+          setScheduleActionLoading(true);
+          await api.cancelSchedule(wid);
+          toast.success('Visit cancelled');
+          await refreshListAndDetail();
+        }
+      } catch (e) {
+        toast.error(e.response?.data?.detail || 'Action failed');
+      } finally {
+        setActionLoading(null);
+        setScheduleActionLoading(false);
+      }
+    },
+    [api, loadWorkOrders, loadDashboardSummary, detailId, invoiceByWorkOrderId],
+  );
 
   const handleProposeVisitSchedule = () => {
     if (!detail || !api) return;
@@ -440,30 +765,6 @@ export default function ContractorDashboardPage() {
       .finally(() => setScheduleActionLoading(false));
   };
 
-  const handleCancelVisitSchedule = () => {
-    if (!detail || !api) return;
-    if (!window.confirm('Cancel this scheduled visit?')) return;
-    setScheduleActionLoading(true);
-    api
-      .cancelSchedule(detail.work_order_id)
-      .then(() => {
-        toast.success('Visit cancelled');
-        return refreshContractorDetail(detail.work_order_id);
-      })
-      .then(() => loadWorkOrders())
-      .then(() => loadDashboardSummary())
-      .catch((e) => toast.error(e.response?.data?.detail || 'Could not cancel'))
-      .finally(() => setScheduleActionLoading(false));
-  };
-
-  const handleDownloadScheduleIcs = () => {
-    if (!detail || !api) return;
-    api
-      .getScheduleIcs(detail.work_order_id)
-      .then((res) => openBlobApiResponse(res, `visit-${detail.work_order_id}.ics`))
-      .catch((e) => toast.error(e.response?.data?.detail || 'Download failed'));
-  };
-
   const onEvidenceSelected = (e) => {
     const file = e.target.files?.[0];
     if (!file || !detail || !api) return;
@@ -504,24 +805,39 @@ export default function ContractorDashboardPage() {
   const handleSubmitInvoice = (e) => {
     e.preventDefault();
     if (!invoiceModal || !api) return;
+    if (invoiceModal.mode === 'view') return;
+    const ref = (invoiceForm.reference || '').trim();
+    if (!ref) {
+      toast.error('Invoice reference is required');
+      return;
+    }
+    const amt = parseFloat(String(invoiceForm.submitted_amount).replace(/,/g, ''));
+    if (Number.isNaN(amt) || amt <= 0) {
+      toast.error('Enter a valid invoice amount greater than zero');
+      return;
+    }
+    const wo = invoiceModal.workOrder;
+    if (!wo?.work_order_id) return;
     setInvoiceSaving(true);
-    api.submitInvoice({
-      work_order_id: invoiceModal.work_order_id,
-      reference: invoiceForm.reference || undefined,
-      description: invoiceForm.description || undefined,
-      submitted_amount: invoiceForm.submitted_amount ? parseFloat(invoiceForm.submitted_amount) : undefined,
-    })
-      .then(() => {
-        toast.success('Invoice submitted. It will appear in the client’s Approvals.');
-        setInvoiceModal(null);
-        setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
-        setInvoicesRefreshing(true);
-        loadInvoices()
-          .then(() => loadDashboardSummary())
-          .finally(() => setInvoicesRefreshing(false));
-      })
-      .catch((err) => toast.error(err.response?.data?.detail || 'Failed'))
-      .finally(() => setInvoiceSaving(false));
+    const body = {
+      reference: ref,
+      description: (invoiceForm.description || '').trim() || undefined,
+      submitted_amount: amt,
+    };
+    const finishOk = () => {
+      toast.success(
+        invoiceModal.mode === 'edit' ? 'Invoice updated and resubmitted for approval.' : 'Invoice submitted for approval.',
+      );
+      setInvoiceModal(null);
+      setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
+      setInvoicesRefreshing(true);
+      Promise.all([loadInvoices(), loadWorkOrders(), loadDashboardSummary()]).finally(() => setInvoicesRefreshing(false));
+    };
+    const req =
+      invoiceModal.mode === 'edit' && invoiceModal.invoice?.invoice_id
+        ? api.resubmitInvoice(invoiceModal.invoice.invoice_id, body)
+        : api.submitInvoice({ work_order_id: wo.work_order_id, ...body });
+    req.then(finishOk).catch((err) => toast.error(err.response?.data?.detail || 'Failed')).finally(() => setInvoiceSaving(false));
   };
 
   if (!token) return null;
@@ -557,17 +873,33 @@ export default function ContractorDashboardPage() {
           </div>
         ) : (
           <>
-            {!workOrdersError && !invoicesError && !profileError && workOrders.length === 0 && invoices.length === 0 && (
-              <Alert className="mb-6 border-electric-teal/30 bg-teal-50/80">
-                <Info className="h-4 w-4 text-electric-teal" />
-                <AlertDescription>
-                  <span className="font-medium text-midnight-blue">Your account is active.</span>
-                  <span className="block mt-1 text-gray-700">
-                    When a client assigns work to you, it will appear below. You can also open secure job links from assignment emails without signing in.
-                  </span>
+            {!workOrdersError &&
+              !invoicesError &&
+              !profileError &&
+              workOrders.length === 0 &&
+              invoices.length === 0 &&
+              !profileAwaitingApproval && (
+                <Alert className="mb-6 border-electric-teal/30 bg-teal-50/80">
+                  <Info className="h-4 w-4 text-electric-teal" />
+                  <AlertDescription>
+                    <span className="font-medium text-midnight-blue">Your account is active.</span>
+                    <span className="block mt-1 text-gray-700">
+                      When a client assigns work to you, it will appear below. You can also open secure job links from assignment
+                      emails without signing in.
+                    </span>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+            {profileAwaitingApproval ? (
+              <Alert className="mb-6 border-amber-300 bg-amber-50">
+                <AlertCircle className="h-4 w-4 text-amber-700" />
+                <AlertDescription className="text-amber-950">
+                  <span className="font-medium">Your account is awaiting approval.</span>
+                  <span className="block mt-1 text-sm">You will be able to use the full portal once your client or administrator activates your profile.</span>
                 </AlertDescription>
               </Alert>
-            )}
+            ) : null}
 
             {dashboardSummaryError ? (
               <Alert className="mb-4 border-amber-200 bg-amber-50">
@@ -576,114 +908,187 @@ export default function ContractorDashboardPage() {
               </Alert>
             ) : null}
 
-            <section className="mb-8" aria-label="Action required summary">
-              <h1 className="text-lg font-bold text-midnight-blue tracking-tight mb-3">Action required</h1>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Card className={`border-l-4 ${actionCounts.overdue > 0 ? 'border-l-red-500 shadow-sm' : 'border-l-red-200'}`}>
-                  <CardContent className="pt-4 pb-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-red-800">Overdue SLA</p>
-                    <p className="text-3xl font-bold text-red-700 mt-1">{actionCounts.overdue ?? 0}</p>
-                    <p className="text-xs text-gray-600 mt-1">Past agreed complete-by date — act today.</p>
-                  </CardContent>
-                </Card>
-                <Card className={`border-l-4 ${actionCounts.pending_scheduling > 0 ? 'border-l-amber-500 shadow-sm' : 'border-l-amber-200'}`}>
-                  <CardContent className="pt-4 pb-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">Pending scheduling</p>
-                    <p className="text-3xl font-bold text-amber-800 mt-1">{actionCounts.pending_scheduling ?? 0}</p>
-                    <p className="text-xs text-gray-600 mt-1">Needs a confirmed visit time.</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-l-4 border-l-emerald-500">
-                  <CardContent className="pt-4 pb-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900">Completed</p>
-                    <p className="text-3xl font-bold text-emerald-800 mt-1">{actionCounts.completed ?? 0}</p>
-                    <p className="text-xs text-gray-600 mt-1">Finished jobs (awaiting invoice if needed).</p>
-                  </CardContent>
-                </Card>
-              </div>
+            <section ref={urgentSectionRef} className="mb-8 scroll-mt-24" aria-label="Urgent actions">
+              <h2 className="text-sm font-bold text-midnight-blue tracking-tight mb-3 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-500" />
+                Urgent actions
+              </h2>
+              {urgentItems.length === 0 ? (
+                <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
+                  You&apos;re up to date. No urgent contractor actions right now.
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {urgentItems.map(({ wo, action }) => (
+                    <li
+                      key={`${wo.work_order_id}-${action.id}`}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-midnight-blue truncate">{wo.description || wo.work_order_id}</p>
+                        <p className="text-xs text-gray-500">
+                          {action.label} · {wo.property_address || wo.property_id}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="shrink-0 bg-electric-teal hover:bg-electric-teal/90 text-white"
+                        disabled={!!actionLoading && actionLoading === wo.work_order_id}
+                        onClick={(e) => executeContractorAction(wo, action, e)}
+                      >
+                        {actionLoading === wo.work_order_id ? <Loader2 className="w-4 h-4 animate-spin" /> : action.label}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
 
-            <section className="mb-8" aria-label="Earnings and invoices">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                <h2 className="text-lg font-bold text-midnight-blue flex items-center gap-2">
-                  <PoundSterling className="w-5 h-5 text-electric-teal" />
-                  Earnings &amp; invoices
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="border-electric-teal text-midnight-blue"
-                    onClick={() => {
-                      const first = sortedWorkOrders.find(
-                        (w) =>
-                          ['COMPLETED', 'VERIFIED', 'CLOSED'].includes((w.status || '').toUpperCase()) &&
-                          !invoiceByWorkOrderId[w.work_order_id],
-                      );
-                      if (first) {
-                        setDetailId(first.work_order_id);
-                        setTimeout(() => setInvoiceModal(first), 300);
-                      } else {
-                        toast.message('No completed jobs waiting for an invoice', {
-                          description: 'Open a completed job from the list below to submit an invoice.',
-                        });
+            <section className="mb-10" aria-label="Primary metrics">
+              <h2 className="text-sm font-bold text-midnight-blue tracking-tight mb-3 flex items-center gap-2">
+                <PoundSterling className="w-4 h-4 text-electric-teal" />
+                Primary metrics
+              </h2>
+              <p className="text-xs text-gray-500 mb-4">Tap a tile to jump to the matching list or section.</p>
+              <div className="grid lg:grid-cols-3 gap-6">
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">A. Jobs</h3>
+                  <div className="grid gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveJobFilter('all');
+                        scrollToRef(activeJobsSectionRef);
+                      }}
+                      className="text-left rounded-lg border border-gray-200 bg-white p-3 hover:border-electric-teal/50 hover:bg-teal-50/40 transition-colors"
+                    >
+                      <p className="text-xs text-gray-500">Active jobs</p>
+                      <p className="text-2xl font-bold text-midnight-blue">{executionActiveCount}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Show active execution list</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveJobFilter('scheduled_today');
+                        scrollToRef(activeJobsSectionRef);
+                      }}
+                      className="text-left rounded-lg border border-gray-200 bg-white p-3 hover:border-sky-300 hover:bg-sky-50/50 transition-colors"
+                    >
+                      <p className="text-xs text-gray-500">Scheduled today (UTC)</p>
+                      <p className="text-2xl font-bold text-midnight-blue">{scheduledTodayActiveCount}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Filter active list</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveJobFilter('at_risk');
+                        scrollToRef(activeJobsSectionRef);
+                      }}
+                      className="text-left rounded-lg border border-red-100 bg-white p-3 hover:border-red-300 hover:bg-red-50/40 transition-colors"
+                    >
+                      <p className="text-xs text-gray-500">At risk (SLA)</p>
+                      <p className="text-2xl font-bold text-red-700">{atRiskActiveCount}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Filter overdue active jobs</p>
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">B. Billing</h3>
+                  <div className="grid gap-2">
+                    <button
+                      type="button"
+                      onClick={() => scrollToRef(readyToInvoiceSectionRef)}
+                      className="text-left rounded-lg border border-gray-200 bg-white p-3 hover:border-electric-teal/50 hover:bg-teal-50/40 transition-colors"
+                    >
+                      <p className="text-xs text-gray-500">Ready to invoice</p>
+                      <p className="text-2xl font-bold text-midnight-blue">{displayWorkflow.payments.ready_to_invoice_jobs ?? 0}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Jump to ready-to-invoice</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => scrollToRef(waitingSectionRef)}
+                      className="text-left rounded-lg border border-gray-200 bg-white p-3 hover:border-violet-200 hover:bg-violet-50/40 transition-colors"
+                    >
+                      <p className="text-xs text-gray-500">Awaiting approval</p>
+                      <p className="text-2xl font-bold text-midnight-blue">{displayWorkflow.payments.awaiting_approval_jobs ?? 0}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        {formatMoneyGbp(earningsDisplay.pending_approval_total) || '£0.00'} in review · see Waiting on others
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => scrollToRef(invoicesSectionRef)}
+                      className="text-left rounded-lg border border-emerald-100 bg-white p-3 hover:border-emerald-300 hover:bg-emerald-50/40 transition-colors"
+                    >
+                      <p className="text-xs text-gray-500">Paid this month</p>
+                      <p className="text-2xl font-bold text-emerald-800">
+                        {formatMoneyGbp(displayWorkflow.payments.paid_this_month_total) || '£0.00'}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-1">Jump to payment history</p>
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">C. Performance</h3>
+                  <div className="grid gap-2">
+                    <button
+                      type="button"
+                      onClick={() => scrollToRef(completedMonthSectionRef)}
+                      className="text-left rounded-lg border border-gray-200 bg-white p-3 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                    >
+                      <p className="text-xs text-gray-500">Completed this month (UTC)</p>
+                      <p className="text-2xl font-bold text-midnight-blue">{performanceMetrics.completedMonth}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Jump to list</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toast.message('Average close time', {
+                          description:
+                            performanceMetrics.avgCloseDays != null
+                              ? `About ${performanceMetrics.avgCloseDays} days from job created to completed (jobs with both dates).`
+                              : 'Not enough completed jobs with dates to calculate yet.',
+                        })
                       }
-                    }}
-                  >
-                    <FileText className="w-4 h-4 mr-1" />
-                    Submit invoice
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => invoicesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                  >
-                    <ClipboardList className="w-4 h-4 mr-1" />
-                    View payment history
-                  </Button>
+                      className="text-left rounded-lg border border-gray-200 bg-white p-3 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                    >
+                      <p className="text-xs text-gray-500">Avg. close time</p>
+                      <p className="text-2xl font-bold text-midnight-blue">
+                        {performanceMetrics.avgCloseDays != null ? `${performanceMetrics.avgCloseDays}d` : '—'}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-1">Tap for detail</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => scrollToRef(waitingSectionRef)}
+                      className="text-left rounded-lg border border-gray-200 bg-white p-3 hover:border-amber-200 hover:bg-amber-50/40 transition-colors"
+                    >
+                      <p className="text-xs text-gray-500">Operational holds</p>
+                      <p className="text-2xl font-bold text-amber-900">{performanceMetrics.holds}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">No access / reschedule holds · Waiting on others</p>
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Card className="border border-gray-200 shadow-sm">
-                  <CardContent className="pt-4 pb-4">
-                    <p className="text-xs font-medium text-gray-500 uppercase">Pending approval</p>
-                    <p className="text-2xl font-bold text-midnight-blue mt-1">
-                      {formatMoneyGbp(earningsDisplay.pending_approval_total) || '£0.00'}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">With client for review.</p>
-                  </CardContent>
-                </Card>
-                <Card className="border border-gray-200 shadow-sm">
-                  <CardContent className="pt-4 pb-4">
-                    <p className="text-xs font-medium text-gray-500 uppercase">Ready to invoice</p>
-                    <p className="text-2xl font-bold text-midnight-blue mt-1">
-                      {earningsDisplay.ready_to_invoice_jobs ?? 0}{' '}
-                      <span className="text-sm font-normal text-gray-500">jobs</span>
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Est. value {formatMoneyGbp(earningsDisplay.ready_to_invoice_estimated_total) || '£0.00'} (from job estimates)
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card className="border border-gray-200 shadow-sm">
-                  <CardContent className="pt-4 pb-4">
-                    <p className="text-xs font-medium text-gray-500 uppercase">Paid this month</p>
-                    <p className="text-2xl font-bold text-emerald-800 mt-1">
-                      {formatMoneyGbp(earningsDisplay.paid_this_month_total) || '£0.00'}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">Recorded on invoices (UTC month).</p>
-                  </CardContent>
-                </Card>
-              </div>
+              <p className="text-xs text-gray-400 mt-4">
+                Scheduling queue: {actionCounts.pending_scheduling ?? 0} · Completed (all time): {actionCounts.completed ?? 0}
+              </p>
             </section>
 
-            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <CalendarClock className="w-5 h-5 text-electric-teal" />
-              My work orders
-              {total > 0 ? <span className="text-sm font-normal text-gray-500">({total})</span> : null}
-            </h2>
+            <section ref={activeJobsSectionRef} className="mb-10 scroll-mt-24" aria-label="Active jobs">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h2 className="text-lg font-bold text-midnight-blue flex items-center gap-2">
+                  <CalendarClock className="w-5 h-5 text-electric-teal" />
+                  Active jobs
+                  {total > 0 ? <span className="text-sm font-normal text-gray-500">({total} assigned)</span> : null}
+                </h2>
+                {activeJobFilter !== 'all' ? (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setActiveJobFilter('all')}>
+                    Clear filter
+                  </Button>
+                ) : null}
+              </div>
             {workOrdersError ? (
               <Alert variant="destructive" className="mb-4" data-testid="contractor-work-orders-error">
                 <AlertCircle className="h-4 w-4" />
@@ -694,80 +1099,227 @@ export default function ContractorDashboardPage() {
               </Alert>
             ) : null}
             {workOrders.length === 0 && !workOrdersError ? (
-              <Card>
-                <CardContent className="py-8 text-center text-gray-600">
-                  <p className="font-medium text-midnight-blue">No work orders assigned yet</p>
-                  <p className="text-sm mt-2 text-gray-500">Check your email for job links, or wait for your client to assign you.</p>
+              <Card className="mb-10">
+                <CardContent className="py-10 text-center text-gray-600">
+                  <p className="font-semibold text-midnight-blue text-lg">You have no active jobs yet.</p>
+                  <p className="text-sm mt-2 text-gray-500">Jobs will appear here when assigned.</p>
                 </CardContent>
               </Card>
-            ) : workOrders.length > 0 ? (
-              <div className="space-y-4">
-                {sortedWorkOrders.map((wo) => {
-                  const stage = getLifecycleStage(wo, invoiceByWorkOrderId);
-                  const badge = getLifecycleBadge(stage);
-                  const overdue = isSlaOverdue(wo);
-                  const borderClass = overdue ? 'border-l-red-500' : isPendingScheduling(wo) ? 'border-l-amber-400' : 'border-l-teal-500';
-                  const reason = getBlockOrCancelReason(wo);
-                  const nextLine = getNextStepMessage(wo, invoiceByWorkOrderId);
-                  return (
-                    <Card
-                      key={wo.work_order_id}
-                      className={`cursor-pointer hover:shadow-md transition-shadow border-l-4 ${borderClass} overflow-hidden`}
-                      onClick={() => setDetailId(wo.work_order_id)}
-                    >
-                      <CardContent className="py-4 px-4 md:px-5">
-                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-                          <div className="min-w-0 flex-1 space-y-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${toneToClasses(badge.tone)}`}>
-                                {badge.label}
-                              </span>
-                              {overdue ? (
-                                <span className="text-xs font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded">SLA overdue</span>
-                              ) : null}
-                            </div>
-                            <p className="text-xs font-medium text-electric-teal uppercase tracking-wide">{getJobTypeLabel(wo)}</p>
-                            <p className="font-semibold text-midnight-blue leading-snug">{wo.description || wo.work_order_id}</p>
-                            <p className="text-sm text-gray-700">{wo.property_address || wo.property_id}</p>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
-                              <span>
-                                <span className="text-gray-400">SLA / due:</span> {formatDate(wo.sla_complete_by)}
-                              </span>
-                              <span>
-                                <span className="text-gray-400">Job value:</span> {getJobValueDisplay(wo)}
-                              </span>
-                            </div>
-                            {reason ? (
-                              <p className="text-xs text-red-800 bg-red-50 border border-red-100 rounded px-2 py-1.5">{reason}</p>
-                            ) : null}
-                            <p className="text-sm text-gray-700 border-t border-gray-100 pt-2 mt-1">
-                              <span className="font-medium text-midnight-blue">Next step:</span> {nextLine}
-                            </p>
-                          </div>
-                          <div className="flex md:flex-col items-center md:items-end gap-2 shrink-0">
-                            <Button
-                              size="sm"
-                              className="bg-electric-teal hover:bg-electric-teal/90 text-white"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDetailId(wo.work_order_id);
-                              }}
-                            >
-                              View details
-                              <ChevronRight className="w-4 h-4 ml-1" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
             ) : null}
+            {workOrders.length > 0 && !workOrdersError ? (
+              activeJobsFiltered.length === 0 ? (
+                <Card className="mb-10">
+                  <CardContent className="py-8 text-center text-gray-600 text-sm">
+                    No active jobs match this filter.{' '}
+                    <button type="button" className="text-electric-teal underline font-medium" onClick={() => setActiveJobFilter('all')}>
+                      Show all active jobs
+                    </button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4 mb-10">
+                  {activeJobsFiltered.map((wo) => {
+                    const overdue = isSlaOverdue(wo);
+                    const borderClass = overdue ? 'border-l-red-500' : isPendingScheduling(wo) ? 'border-l-amber-400' : 'border-l-teal-500';
+                    const reason = getBlockOrCancelReason(wo);
+                    const hasServerActions = Array.isArray(wo.next_actions);
+                    const nextLine = hasServerActions
+                      ? contractorNextStepLineFromNextActions(wo)
+                      : getNextStepMessage(wo, invoiceByWorkOrderId);
+                    const primaryAction = hasServerActions ? contractorListPrimaryAction(wo) : null;
+                    const schedLabel = scheduleLifecycleLabel(wo);
+                    const schedWhen =
+                      wo.scheduled_at && (wo.schedule_status || '').toLowerCase() !== 'cancelled'
+                        ? formatScheduleInstant(wo.scheduled_at, wo.scheduled_timezone)
+                        : null;
+                    return (
+                      <Card
+                        key={wo.work_order_id}
+                        className={`border-l-4 ${borderClass} overflow-hidden shadow-sm`}
+                      >
+                        <CardContent className="py-4 px-4 md:px-5">
+                          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded border bg-teal-50 text-teal-900 border-teal-200">
+                                  {contractorJobStatusLabel(wo)}
+                                </span>
+                                {overdue ? (
+                                  <span className="text-xs font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded">At risk (SLA)</span>
+                                ) : null}
+                              </div>
+                              <p className="text-xs font-medium text-electric-teal uppercase tracking-wide">{getJobTypeLabel(wo)}</p>
+                              <p className="font-semibold text-midnight-blue leading-snug">{wo.description || wo.work_order_id}</p>
+                              <p className="text-sm text-gray-700">{wo.property_address || wo.property_id}</p>
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+                                <span>
+                                  <span className="text-gray-400">Visit:</span> {schedWhen || schedLabel}
+                                </span>
+                                <span>
+                                  <span className="text-gray-400">SLA:</span> {formatDate(wo.sla_complete_by)}
+                                </span>
+                                <span>
+                                  <span className="text-gray-400">Value:</span> {getJobValueDisplay(wo)}
+                                </span>
+                              </div>
+                              {reason ? (
+                                <p className="text-xs text-red-800 bg-red-50 border border-red-100 rounded px-2 py-1.5">{reason}</p>
+                              ) : null}
+                              <p className="text-sm text-gray-700 border-t border-gray-100 pt-2 mt-1">
+                                <span className="font-medium text-midnight-blue">Next step:</span> {nextLine}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-stretch md:items-end gap-2 shrink-0 min-w-[10rem]">
+                              {primaryAction ? (
+                                <Button
+                                  size="sm"
+                                  className="bg-electric-teal hover:bg-electric-teal/90 text-white"
+                                  disabled={!!actionLoading && actionLoading === wo.work_order_id}
+                                  onClick={(e) => executeContractorAction(wo, primaryAction, e)}
+                                >
+                                  {actionLoading === wo.work_order_id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <>
+                                      {primaryAction.label}
+                                      <ChevronRight className="w-4 h-4 ml-1" />
+                                    </>
+                                  )}
+                                </Button>
+                              ) : (
+                                <p className="text-xs text-gray-500 md:text-right">No primary action — open job for details.</p>
+                              )}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="border-gray-300"
+                                onClick={() => setDetailId(wo.work_order_id)}
+                              >
+                                Open job
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )
+            ) : null}
+            </section>
 
-            {/* My invoices */}
-            <div className="mt-10 scroll-mt-24" ref={invoicesSectionRef}>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Payment history</h2>
+            <section ref={readyToInvoiceSectionRef} className="mb-10 scroll-mt-24" aria-label="Ready to invoice">
+              <h2 className="text-lg font-bold text-midnight-blue mb-2 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-electric-teal" />
+                Ready to invoice
+              </h2>
+              {readyToInvoiceJobs.length === 0 ? (
+                <p className="text-sm text-gray-600 border border-dashed border-gray-200 rounded-lg px-4 py-6 bg-white text-center">
+                  No jobs are ready to invoice yet.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {readyToInvoiceJobs.map((wo) => {
+                    const proofLine = wo.completion_proof_required
+                      ? wo.completion_proof_satisfied
+                        ? 'Completion proof on file'
+                        : 'Proof still required — open the job to upload'
+                      : 'Proof not required for this job type';
+                    return (
+                      <Card key={wo.work_order_id} className="border-l-4 border-l-violet-500 shadow-sm">
+                        <CardContent className="py-4 px-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-midnight-blue">{wo.description || wo.work_order_id}</p>
+                            <p className="text-sm text-gray-600">{wo.property_address || wo.property_id}</p>
+                            <p className="text-xs text-gray-500 mt-1">{proofLine}</p>
+                            <p className="text-xs text-gray-500">Estimate: {getJobValueDisplay(wo)}</p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="shrink-0 bg-electric-teal hover:bg-electric-teal/90 text-white"
+                            onClick={(e) =>
+                              executeContractorAction(wo, { id: 'submit_invoice', label: 'Submit invoice', section: 'billing' }, e)
+                            }
+                          >
+                            Submit invoice
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section ref={waitingSectionRef} className="mb-10 scroll-mt-24" aria-label="Waiting on others">
+              <h2 className="text-lg font-bold text-midnight-blue mb-2">Waiting on others</h2>
+              <p className="text-xs text-gray-500 mb-4">
+                Invoice review, client confirmation, payment processing, or holds — nothing for you to push until the client or system
+                moves forward.
+              </p>
+              {waitingJobs.length === 0 ? (
+                <p className="text-sm text-gray-600 border border-dashed border-gray-200 rounded-lg px-4 py-6 bg-white text-center">
+                  Nothing in this queue. When a client is reviewing an invoice or confirming a visit, it will show here.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {waitingJobs.map((wo) => {
+                    const nextLine = contractorNextStepLineFromNextActions(wo);
+                    const inv = wo.linked_invoice || invoiceByWorkOrderId[wo.work_order_id];
+                    return (
+                      <Card key={wo.work_order_id} className="border border-gray-200 bg-gray-50/60">
+                        <CardContent className="py-4 px-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-medium text-midnight-blue">{wo.description || wo.work_order_id}</p>
+                            <p className="text-sm text-gray-600">{wo.property_address || wo.property_id}</p>
+                            <p className="text-sm text-gray-700 mt-2">{nextLine}</p>
+                            {inv ? (
+                              <p className="text-xs text-gray-500 mt-1">Invoice: {formatContractorInvoiceStateLabel(inv)}</p>
+                            ) : null}
+                            {(wo.operational_exception || '').trim() ? (
+                              <p className="text-xs text-amber-900 mt-1">Hold: {(wo.operational_exception || '').replace(/_/g, ' ')}</p>
+                            ) : null}
+                          </div>
+                          <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={() => setDetailId(wo.work_order_id)}>
+                            Open job
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section ref={completedMonthSectionRef} className="mb-10 scroll-mt-24" aria-label="Completed this month">
+              <h2 className="text-base font-bold text-midnight-blue mb-3">Completed this month (UTC)</h2>
+              {completedMonthJobs.length === 0 ? (
+                <p className="text-sm text-gray-600">No jobs marked complete in the current UTC month yet.</p>
+              ) : (
+                <ul className="space-y-2 text-sm border border-gray-200 rounded-lg bg-white divide-y divide-gray-100">
+                  {completedMonthJobs.map((wo) => (
+                    <li key={wo.work_order_id} className="px-4 py-2 flex justify-between gap-2">
+                      <span className="font-medium text-midnight-blue truncate">{wo.description || wo.work_order_id}</span>
+                      <button
+                        type="button"
+                        className="text-electric-teal text-xs shrink-0 underline"
+                        onClick={() => setDetailId(wo.work_order_id)}
+                      >
+                        Open
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <div className="mt-6 scroll-mt-24" ref={invoicesSectionRef}>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-electric-teal" />
+                Payment history
+              </h2>
               {invoicesError ? (
                 <Alert variant="destructive" className="mb-4" data-testid="contractor-invoices-error">
                   <AlertCircle className="h-4 w-4" />
@@ -788,25 +1340,48 @@ export default function ContractorDashboardPage() {
                 </Card>
               ) : invoices.length > 0 ? (
                 <Card>
-                  <CardContent className="p-0">
-                    <table className="w-full text-sm">
+                  <CardContent className="p-0 overflow-x-auto">
+                    <table className="w-full text-sm min-w-[640px]">
                       <thead>
                         <tr className="border-b bg-gray-50">
-                          <th className="text-left p-3 font-medium">Reference</th>
+                          <th className="text-left p-3 font-medium">Date paid</th>
+                          <th className="text-left p-3 font-medium">Invoice</th>
+                          <th className="text-left p-3 font-medium">Job</th>
+                          <th className="text-left p-3 font-medium">Property</th>
                           <th className="text-right p-3 font-medium">Amount</th>
-                          <th className="p-3 font-medium">Status</th>
-                          <th className="p-3 font-medium">Submitted</th>
+                          <th className="text-left p-3 font-medium">Status</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {invoices.map((inv) => (
-                          <tr key={inv.invoice_id} className="border-b last:border-0">
-                            <td className="p-3">{inv.reference || inv.invoice_id}</td>
-                            <td className="p-3 text-right">{inv.submitted_amount != null ? `£${Number(inv.submitted_amount).toFixed(2)}` : '—'}</td>
-                            <td className="p-3"><span className={`px-1.5 py-0.5 rounded ${inv.status === 'approved' || inv.status === 'paid' ? 'bg-green-100 text-green-800' : inv.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{inv.status || '—'}</span></td>
-                            <td className="p-3">{formatDate(inv.submitted_at)}</td>
-                          </tr>
-                        ))}
+                        {paymentTableRows.map((inv) => {
+                          const wo = workOrderById[inv.work_order_id];
+                          return (
+                            <tr key={inv.invoice_id} className="border-b last:border-0">
+                              <td className="p-3 whitespace-nowrap">{formatDate(inv.paid_at) || '—'}</td>
+                              <td className="p-3">{inv.reference || inv.invoice_id}</td>
+                              <td className="p-3 max-w-[200px] truncate" title={wo?.description || inv.work_order_id}>
+                                {wo?.description || inv.work_order_id || '—'}
+                              </td>
+                              <td className="p-3 max-w-[180px] truncate">{wo?.property_address || wo?.property_id || '—'}</td>
+                              <td className="p-3 text-right whitespace-nowrap">
+                                {inv.submitted_amount != null ? `£${Number(inv.submitted_amount).toFixed(2)}` : '—'}
+                              </td>
+                              <td className="p-3">
+                                <span
+                                  className={`px-1.5 py-0.5 rounded inline-block ${
+                                    inv.status === 'approved' || inv.status === 'paid'
+                                      ? 'bg-green-100 text-green-800'
+                                      : inv.status === 'rejected'
+                                        ? 'bg-red-100 text-red-800'
+                                        : 'bg-amber-100 text-amber-800'
+                                  }`}
+                                >
+                                  {formatContractorInvoiceStateLabel(inv)}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </CardContent>
@@ -819,10 +1394,21 @@ export default function ContractorDashboardPage() {
         {/* Detail drawer */}
         {detailId && (
           <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={() => setDetailId(null)}>
-            <div className="w-full max-w-2xl bg-white shadow-2xl overflow-y-auto border-l border-gray-200" onClick={(e) => e.stopPropagation()}>
-              <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b bg-white/95 backdrop-blur">
-                <h2 className="font-semibold text-midnight-blue">Job control</h2>
-                <button type="button" onClick={() => setDetailId(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+            <div className="w-full max-w-3xl bg-white shadow-2xl overflow-y-auto border-l border-gray-200" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 z-10 flex items-start justify-between gap-3 p-4 border-b bg-white/95 backdrop-blur">
+                <div className="min-w-0 pr-2">
+                  <h2 className="font-semibold text-midnight-blue leading-snug">
+                    {detailLoading ? 'Loading…' : detail?.description || detail?.work_order_id || 'Job'}
+                  </h2>
+                  {!detailLoading && detail ? (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {getJobTypeLabel(detail)} · {detail.property_address || detail.property_id}
+                    </p>
+                  ) : null}
+                </div>
+                <button type="button" onClick={() => setDetailId(null)} className="p-1 rounded hover:bg-gray-100 shrink-0" aria-label="Close">
+                  <X className="w-5 h-5" />
+                </button>
               </div>
               <div className="p-4 md:p-6 space-y-8">
                 {detailLoading ? (
@@ -830,160 +1416,235 @@ export default function ContractorDashboardPage() {
                 ) : detail ? (
                   <>
                     {(() => {
-                      const dStage = getLifecycleStage(detail, invoiceByWorkOrderId);
-                      const dBadge = getLifecycleBadge(dStage);
-                      const nextLine = getNextStepMessage(detail, invoiceByWorkOrderId);
+                      const primary = detailPrimaryAction;
                       return (
-                        <section className="rounded-xl border border-gray-200 bg-slate-50/80 p-4">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Next step</p>
-                          <p className="text-sm text-midnight-blue leading-relaxed">{nextLine}</p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <span className={`text-xs font-semibold px-2 py-1 rounded border ${toneToClasses(dBadge.tone)}`}>{dBadge.label}</span>
-                            <span className="text-xs text-gray-500 px-2 py-1 bg-white rounded border border-gray-200">
-                              System status: {detail.status}
+                        <section
+                          className="rounded-xl border-2 border-electric-teal/80 bg-gradient-to-b from-teal-50 via-white to-white shadow-md p-5 md:p-6"
+                          aria-label="Next action"
+                        >
+                          <p className="text-[11px] font-bold text-electric-teal uppercase tracking-[0.12em] mb-3">Next action</p>
+                          {detailNextIdleMessage ? (
+                            <p className="text-base text-midnight-blue font-medium leading-relaxed">{detailNextIdleMessage}</p>
+                          ) : primary ? (
+                            <>
+                              {primary.hint ? (
+                                <p className="text-base text-gray-800 leading-relaxed mb-5">{primary.hint}</p>
+                              ) : null}
+                              <Button
+                                type="button"
+                                size="lg"
+                                className="w-full sm:w-auto min-h-[48px] px-8 text-base font-semibold bg-electric-teal hover:bg-electric-teal/90 text-white shadow-sm"
+                                disabled={
+                                  (!!actionLoading && actionLoading === detail.work_order_id) ||
+                                  (primary.id === 'complete_job' &&
+                                    detail.completion_proof_required &&
+                                    !detail.completion_proof_satisfied)
+                                }
+                                onClick={(e) => executeContractorAction(detail, primary, e)}
+                              >
+                                {actionLoading === detail.work_order_id ? (
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                  primary.label
+                                )}
+                              </Button>
+                            </>
+                          ) : (
+                            <p className="text-base text-gray-700">No action available right now.</p>
+                          )}
+                          <div className="mt-4 pt-4 border-t border-teal-100/80 flex flex-wrap gap-2 items-center">
+                            <span className="text-xs text-gray-600 px-2 py-1 bg-white/90 rounded border border-gray-200">
+                              Job status: {contractorJobStatusLabel(detail)} ({detail.status})
                             </span>
                           </div>
                         </section>
                       );
                     })()}
 
-                    <section>
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">A. Job overview</h3>
-                      <p className="font-semibold text-midnight-blue mb-1">{detail.description || detail.work_order_id}</p>
-                      <p className="text-sm text-electric-teal font-medium mb-3">{getJobTypeLabel(detail)}</p>
-                      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                        <div>
-                          <dt className="text-gray-500">Property</dt>
-                          <dd className="font-medium text-gray-900">{detail.property_address || detail.property_id}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-gray-500">Job value (estimate)</dt>
-                          <dd className="font-medium text-gray-900">{getJobValueDisplay(detail)}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-gray-500">SLA complete by</dt>
-                          <dd className="font-medium text-gray-900">{formatDate(detail.sla_complete_by)}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-gray-500">Work order ID</dt>
-                          <dd className="font-mono text-xs text-gray-700 break-all">{detail.work_order_id}</dd>
-                        </div>
-                      </dl>
-                    </section>
+                    {(() => {
+                      const progress = contractorDetailExecutionProgressFromWorkOrder(detail);
+                      return (
+                        <section className="rounded-xl border border-gray-200 bg-white p-4" aria-label="Progress indicator">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Progress indicator</p>
+                          <p className="text-[11px] text-gray-500 mb-2">Assigned → Scheduled → In progress → Proof uploaded → Completed → Closed</p>
+                          <div className="flex flex-wrap items-center gap-1 text-[10px] sm:text-xs">
+                            {progress.steps.map((label, idx) => {
+                              const cancelled = progress.currentIndex < 0;
+                              const active = !cancelled && progress.currentIndex === idx;
+                              const done = !cancelled && progress.currentIndex > idx;
+                              return (
+                                <span key={label} className="flex items-center gap-1">
+                                  {idx > 0 ? <span className="text-gray-300">→</span> : null}
+                                  <span
+                                    className={`px-2 py-1 rounded font-medium ${
+                                      cancelled
+                                        ? 'bg-gray-100 text-gray-400'
+                                        : active
+                                          ? 'bg-electric-teal text-white'
+                                          : done
+                                            ? 'bg-emerald-100 text-emerald-900'
+                                            : 'bg-gray-100 text-gray-500'
+                                    }`}
+                                  >
+                                    {label}
+                                  </span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      );
+                    })()}
 
-                    <section>
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">B. Required actions</h3>
+                    <section ref={scheduleSectionRef} aria-label="Visit and scheduling">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">Visit / scheduling</h3>
                       {getBlockOrCancelReason(detail) ? (
                         <p className="text-sm text-red-800 bg-red-50 border border-red-100 rounded-md p-3 mb-3">{getBlockOrCancelReason(detail)}</p>
                       ) : null}
-                    {(detail.status === 'ASSIGNED' || detail.status === 'OPEN') && (
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        <Button size="sm" onClick={() => handleAccept(detail.work_order_id)} disabled={!!actionLoading}>
-                          {actionLoading === detail.work_order_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-1" />}
-                          Accept assignment
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDecline(detail.work_order_id)} disabled={!!actionLoading}>
-                          <XCircle className="w-4 h-4 mr-1" /> Decline
-                        </Button>
-                      </div>
-                    )}
-                    {(() => {
-                      const st = (detail.status || '').toUpperCase();
-                      const woTerminal = ['CANCELLED', 'COMPLETED', 'CLOSED', 'VERIFIED'].includes(st);
-                      const ss = (detail.schedule_status || '').toLowerCase();
-                      const canUseSchedule = !woTerminal;
-                      const showPropose =
-                        canUseSchedule &&
-                        (!ss || ss === 'cancelled' || ss === 'reschedule_requested' || (!detail.scheduled_at && !ss));
-                      const showReschedule =
-                        canUseSchedule && detail.scheduled_at && (ss === 'proposed' || ss === 'confirmed');
-                      const showCancel =
-                        canUseSchedule &&
-                        detail.scheduled_at &&
-                        ss !== 'cancelled' &&
-                        ss !== 'completed';
-                      return (
-                        <div className="rounded-lg border border-gray-200 bg-white p-3 mb-2 text-sm">
-                          <p className="font-medium text-midnight-blue mb-2">Visit scheduling</p>
-                          <p className="text-gray-800 mb-1">{scheduleLifecycleLabel(detail)}</p>
-                          {detail.scheduled_at ? (
-                            <p className="text-gray-700 text-xs mb-1">
-                              {formatScheduleInstant(detail.scheduled_at, detail.scheduled_timezone)}
-                            </p>
-                          ) : null}
-                          {detail.scheduled_by ? (
-                            <p className="text-gray-600 text-xs mb-2">Set by: {scheduleProposedByLabel(detail.scheduled_by)}</p>
-                          ) : (
-                            <p className="text-gray-600 text-xs mb-2">&nbsp;</p>
-                          )}
-                          {canUseSchedule ? (
-                            <div className="space-y-2 mt-2">
-                              {showPropose ? (
-                                <div className="space-y-2 border-t border-gray-200 pt-2">
-                                  <p className="text-xs font-medium text-gray-700">Propose visit time</p>
-                                  <input
-                                    type="datetime-local"
-                                    className="border border-gray-200 rounded-md px-2 py-1.5 text-xs w-full max-w-xs"
-                                    value={scheduleForm.datetimeLocal}
-                                    onChange={(e) => setScheduleForm((f) => ({ ...f, datetimeLocal: e.target.value }))}
-                                  />
-                                  <input
-                                    type="text"
-                                    className="border border-gray-200 rounded-md px-2 py-1.5 text-xs w-full max-w-xs"
-                                    placeholder="IANA timezone (e.g. Europe/London)"
-                                    value={scheduleForm.timezone}
-                                    onChange={(e) => setScheduleForm((f) => ({ ...f, timezone: e.target.value }))}
-                                  />
-                                  <input
-                                    type="text"
-                                    className="border border-gray-200 rounded-md px-2 py-1.5 text-xs w-full"
-                                    placeholder="Notes (optional)"
-                                    value={scheduleForm.notes}
-                                    onChange={(e) => setScheduleForm((f) => ({ ...f, notes: e.target.value }))}
-                                  />
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="secondary"
-                                    disabled={scheduleActionLoading}
-                                    onClick={handleProposeVisitSchedule}
-                                  >
-                                    Propose visit time
-                                  </Button>
+                      {(() => {
+                        const st = (detail.status || '').toUpperCase();
+                        const woTerminal = ['CANCELLED', 'COMPLETED', 'CLOSED', 'VERIFIED'].includes(st);
+                        const canUseSchedule = !woTerminal;
+                        const hasVisit =
+                          detail.scheduled_at && (detail.schedule_status || '').toLowerCase() !== 'cancelled';
+                        const showProposeForm = detailActionIds.has('propose_visit') && canUseSchedule;
+                        const markNoAccessAction = detailPortalActions.find((a) => a.id === 'mark_no_access');
+                        const proposeVisitAction = detailPortalActions.find((a) => a.id === 'propose_visit');
+                        return (
+                          <div className="rounded-lg border border-gray-200 bg-white p-3 mb-2 text-sm">
+                            {!hasVisit ? (
+                              <>
+                                <p className="font-medium text-midnight-blue mb-2">No visit scheduled</p>
+                                {canUseSchedule && proposeVisitAction && detailPrimaryAction?.id !== 'propose_visit' ? (
+                                  <div className="mb-3">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={(e) => executeContractorAction(detail, proposeVisitAction, e)}
+                                    >
+                                      Propose time
+                                    </Button>
+                                  </div>
+                                ) : null}
+                              </>
+                            ) : (
+                              <>
+                                <p className="font-medium text-midnight-blue mb-1">{scheduleLifecycleLabel(detail)}</p>
+                                <p className="text-gray-700 text-sm mb-1">
+                                  {formatScheduleInstant(detail.scheduled_at, detail.scheduled_timezone)}
+                                </p>
+                                {detail.scheduled_by ? (
+                                  <p className="text-gray-600 text-xs mb-2">Set by: {scheduleProposedByLabel(detail.scheduled_by)}</p>
+                                ) : null}
+                              </>
+                            )}
+                            {canUseSchedule ? (
+                              <div className="space-y-2 mt-2">
+                                {showProposeForm ? (
+                                  <div className="space-y-2 border-t border-gray-200 pt-2">
+                                    <p className="text-xs font-medium text-gray-700">Propose time</p>
+                                    <input
+                                      type="datetime-local"
+                                      className="border border-gray-200 rounded-md px-2 py-1.5 text-xs w-full max-w-xs"
+                                      value={scheduleForm.datetimeLocal}
+                                      onChange={(e) => setScheduleForm((f) => ({ ...f, datetimeLocal: e.target.value }))}
+                                    />
+                                    <input
+                                      type="text"
+                                      className="border border-gray-200 rounded-md px-2 py-1.5 text-xs w-full max-w-xs"
+                                      placeholder="IANA timezone (e.g. Europe/London)"
+                                      value={scheduleForm.timezone}
+                                      onChange={(e) => setScheduleForm((f) => ({ ...f, timezone: e.target.value }))}
+                                    />
+                                    <input
+                                      type="text"
+                                      className="border border-gray-200 rounded-md px-2 py-1.5 text-xs w-full"
+                                      placeholder="Notes (optional)"
+                                      value={scheduleForm.notes}
+                                      onChange={(e) => setScheduleForm((f) => ({ ...f, notes: e.target.value }))}
+                                    />
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="secondary"
+                                      disabled={scheduleActionLoading}
+                                      onClick={handleProposeVisitSchedule}
+                                    >
+                                      Propose time
+                                    </Button>
+                                  </div>
+                                ) : null}
+                                <div className="flex flex-wrap gap-2">
+                                  {detailActionIds.has('confirm_visit') ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="secondary"
+                                      disabled={scheduleActionLoading}
+                                      onClick={handleConfirmVisitSchedule}
+                                    >
+                                      Confirm visit
+                                    </Button>
+                                  ) : null}
+                                  {detailActionIds.has('reschedule_visit') ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={scheduleActionLoading}
+                                      onClick={handleRequestVisitReschedule}
+                                    >
+                                      Reschedule
+                                    </Button>
+                                  ) : null}
+                                  {markNoAccessAction ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={!!actionLoading && actionLoading === detail.work_order_id}
+                                      onClick={(e) => executeContractorAction(detail, markNoAccessAction, e)}
+                                    >
+                                      Mark no access
+                                    </Button>
+                                  ) : null}
+                                  {detailActionIds.has('cancel_scheduled_visit') ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-amber-900 border-amber-200"
+                                      disabled={scheduleActionLoading}
+                                      onClick={(e) =>
+                                        executeContractorAction(
+                                          detail,
+                                          { id: 'cancel_scheduled_visit', label: 'Cancel visit' },
+                                          e,
+                                        )
+                                      }
+                                    >
+                                      Cancel visit
+                                    </Button>
+                                  ) : null}
                                 </div>
-                              ) : null}
-                              <div className="flex flex-wrap gap-2">
-                                {contractorMayConfirmSchedule(detail) ? (
-                                  <Button type="button" size="sm" disabled={scheduleActionLoading} onClick={handleConfirmVisitSchedule}>
-                                    Confirm visit
-                                  </Button>
-                                ) : null}
-                                {showReschedule ? (
-                                  <Button type="button" size="sm" variant="outline" disabled={scheduleActionLoading} onClick={handleRequestVisitReschedule}>
-                                    Request change
-                                  </Button>
-                                ) : null}
-                                {showCancel ? (
-                                  <Button type="button" size="sm" variant="outline" disabled={scheduleActionLoading} onClick={handleCancelVisitSchedule}>
-                                    Cancel visit
-                                  </Button>
-                                ) : null}
-                                {detail.scheduled_at ? (
-                                  <Button type="button" size="sm" variant="ghost" disabled={scheduleActionLoading} onClick={handleDownloadScheduleIcs}>
-                                    Download .ics
-                                  </Button>
-                                ) : null}
                               </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })()}
+                            ) : null}
+                          </div>
+                        );
+                      })()}
                     </section>
 
-                    <section>
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">C. Evidence upload</h3>
+                    <section aria-label="Completion proof">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">Completion proof</h3>
                       <p className="text-sm text-gray-700 mb-3 leading-relaxed">{getEvidenceGuidance(detail)}</p>
+                      {detail.completion_proof_required ? (
+                        <p className="text-xs font-medium text-amber-900 bg-amber-50 border border-amber-100 rounded px-2 py-1.5 mb-2">
+                          {detail.completion_proof_satisfied
+                            ? 'Completion proof on file — you can complete the job when ready.'
+                            : 'Completion proof required — upload a file before marking the job complete. Complete job stays blocked until proof is on file.'}
+                        </p>
+                      ) : null}
                       <p className="text-xs text-gray-500 mb-2">PDF, images, or Word — max 20MB. Accept the assignment first if the upload is disabled.</p>
                       {(detail.evidence_keys || []).length > 0 && (
                         <ul className="text-sm text-gray-700 mb-2 space-y-2 max-h-40 overflow-y-auto">
@@ -1024,10 +1685,11 @@ export default function ContractorDashboardPage() {
                           })}
                         </ul>
                       )}
-                      <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <label className="inline-flex items-center gap-2 text-sm font-medium text-midnight-blue cursor-pointer rounded-lg border border-electric-teal/40 bg-teal-50/50 px-4 py-2.5 hover:bg-teal-50">
                         <Upload className="w-4 h-4 shrink-0 text-electric-teal" />
-                        <span>{evidenceUploading ? 'Uploading…' : 'Choose file'}</span>
+                        <span>{evidenceUploading ? 'Uploading…' : 'Upload completion proof'}</span>
                         <input
+                          ref={completionProofInputRef}
                           type="file"
                           className="sr-only"
                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,application/pdf"
@@ -1037,55 +1699,116 @@ export default function ContractorDashboardPage() {
                       </label>
                     </section>
 
-                    <section>
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">D. Progress &amp; billing</h3>
+                    <section aria-label="Job actions">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">Job actions</h3>
                       <p className="text-xs text-gray-600 mb-2">
-                        Current job status: <strong className="text-midnight-blue">{detail.status}</strong>. Progress is{' '}
-                        <strong>one step at a time</strong> (for example, mark in progress before complete).
+                        Only actions your client workflow currently allows (same list as the server). The primary step stays in Next
+                        action above.
                       </p>
-                      {!['OPEN', 'ASSIGNED'].includes((detail.status || '').toUpperCase()) &&
-                      !['CANCELLED', 'COMPLETED', 'CLOSED', 'VERIFIED'].includes((detail.status || '').toUpperCase()) ? (
-                        <div className="space-y-2 mb-4">
-                          <p className="text-xs font-medium text-gray-600">Set status to:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {getAllowedNextStatuses(detail).map((val) => (
-                              <Button
-                                key={val}
-                                type="button"
-                                size="sm"
-                                variant={detail.status === val ? 'default' : 'outline'}
-                                className={detail.status === val ? 'bg-electric-teal hover:bg-electric-teal/90' : ''}
-                                disabled={!!actionLoading || detail.status === val}
-                                onClick={() => handleStatusChange(detail.work_order_id, val)}
-                              >
-                                {statusValueToLabel(val)}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                      {['CANCELLED'].includes((detail.status || '').toUpperCase()) ? (
-                        <p className="text-sm text-gray-600">This job is closed — no status changes.</p>
-                      ) : null}
-                      {['COMPLETED', 'VERIFIED', 'CLOSED'].includes((detail.status || '').toUpperCase()) ? (
-                        <div className="space-y-3">
-                          <p className="text-sm text-gray-700">Work is marked complete. Submit an invoice for the client to approve and record payment.</p>
-                          {!invoiceByWorkOrderId[detail.work_order_id] ? (
-                            <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => setInvoiceModal(detail)}>
-                              <FileText className="w-4 h-4 mr-1" /> Submit invoice
+                      {detailJobPanelActions.length > 0 ? (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {detailJobPanelActions.map((a) => (
+                            <Button
+                              key={a.id}
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="border-gray-300"
+                              disabled={
+                                (!!actionLoading && actionLoading === detail.work_order_id) ||
+                                (a.id === 'complete_job' &&
+                                  detail.completion_proof_required &&
+                                  !detail.completion_proof_satisfied)
+                              }
+                              onClick={(e) => executeContractorAction(detail, a, e)}
+                            >
+                              {a.label}
                             </Button>
-                          ) : (
-                            <p className="text-sm text-gray-600">
-                              Invoice status:{' '}
-                              <span className="font-medium">{invoiceByWorkOrderId[detail.work_order_id].status || '—'}</span>
-                            </p>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 mb-2">No extra job actions right now — use Next action if shown.</p>
+                      )}
+                      {['CANCELLED'].includes((detail.status || '').toUpperCase()) ? (
+                        <p className="text-sm text-gray-600">This job is cancelled — no further actions.</p>
+                      ) : null}
+                      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 mt-3">
+                        <div>
+                          <dt className="text-gray-400">Work order ID</dt>
+                          <dd className="font-mono break-all">{detail.work_order_id}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-400">Job value</dt>
+                          <dd>{getJobValueDisplay(detail)}</dd>
+                        </div>
+                      </dl>
+                    </section>
+
+                    <section className="rounded-xl border border-violet-100 bg-violet-50/40 p-4" aria-label="Billing">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b border-violet-100 pb-2">
+                        Billing
+                      </h3>
+                      {detailBillingPhase ? (
+                        <p className="text-sm text-gray-800 mb-1">
+                          <span className="font-medium text-gray-600">Invoice state: </span>
+                          <span className="font-semibold text-midnight-blue">{detailBillingPhase.label}</span>
+                        </p>
+                      ) : null}
+                      {detail.linked_invoice || invoiceByWorkOrderId[detail.work_order_id] ? (
+                        <p className="text-xs text-gray-600 mb-3">
+                          Detail:{' '}
+                          {formatContractorInvoiceStateLabel(
+                            detail.linked_invoice || invoiceByWorkOrderId[detail.work_order_id],
                           )}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-600 mb-3">No invoice on file for this job yet.</p>
+                      )}
+                      {detailBillingPanelActions.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {detailBillingPanelActions.map((a) => (
+                            <Button
+                              key={a.id}
+                              type="button"
+                              size="sm"
+                              variant={a.id === 'view_invoice' ? 'outline' : 'default'}
+                              className={
+                                a.id === 'submit_invoice' || a.id === 'edit_invoice'
+                                  ? 'bg-electric-teal hover:bg-electric-teal/90 text-white border-0'
+                                  : ''
+                              }
+                              disabled={!!actionLoading && actionLoading === detail.work_order_id}
+                              onClick={(e) => executeContractorAction(detail, a, e)}
+                            >
+                              {contractorBillingActionButtonLabel(a, detail, invoiceByWorkOrderId)}
+                            </Button>
+                          ))}
                         </div>
                       ) : null}
                     </section>
 
-                    <section>
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">E. Notes</h3>
+                    <section aria-label="Timeline">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">Timeline</h3>
+                      <p className="text-xs text-gray-500 mb-2">Chronological milestones (read-only).</p>
+                      {detailTimelineSorted.length > 0 ? (
+                        <ul className="text-xs text-gray-700 space-y-1.5 border border-gray-100 rounded-md p-3 bg-gray-50/80 max-h-48 overflow-y-auto">
+                          {detailTimelineSorted.map((ev, idx) => (
+                            <li
+                              key={`${ev.label}-${ev.at}-${idx}`}
+                              className="flex flex-col sm:flex-row sm:justify-between sm:gap-2 border-b border-gray-100/80 pb-1.5 last:border-0 last:pb-0"
+                            >
+                              <span className="font-medium text-midnight-blue">{ev.label}</span>
+                              <span className="text-gray-600 tabular-nums">{formatScheduleInstant(ev.at, null)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-gray-500">No timeline events yet.</p>
+                      )}
+                    </section>
+
+                    <section aria-label="Notes">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">Notes</h3>
                       <div className="space-y-2">
                         <Input
                           placeholder="On-site / internal notes (optional)"
@@ -1122,27 +1845,107 @@ export default function ContractorDashboardPage() {
         {/* Invoice modal */}
         {invoiceModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setInvoiceModal(null)}>
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-semibold mb-4">Submit invoice</h3>
-              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-4">Pleerity coordinates work orders and invoice approval. Payment responsibility lies with the client. Pleerity does not process contractor payments. Follow up with the client for payment.</p>
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold mb-4">
+                {invoiceModal.mode === 'view'
+                  ? 'View invoice'
+                  : invoiceModal.mode === 'edit'
+                    ? 'Edit and resubmit invoice'
+                    : 'Submit invoice'}
+              </h3>
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-4">
+                Pleerity coordinates work orders and invoice approval. Payment responsibility lies with the client. Pleerity does
+                not process contractor payments. Follow up with the client for payment.
+              </p>
+              {invoiceModal.workOrder ? (
+                <dl className="text-xs text-gray-600 space-y-1 mb-4 border border-gray-100 rounded-md p-3 bg-gray-50/80">
+                  <div>
+                    <dt className="inline text-gray-500">Job: </dt>
+                    <dd className="inline font-medium text-midnight-blue">
+                      {invoiceModal.workOrder.description || invoiceModal.workOrder.work_order_id}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline text-gray-500">Property: </dt>
+                    <dd className="inline">{invoiceModal.workOrder.property_address || invoiceModal.workOrder.property_id}</dd>
+                  </div>
+                  <div>
+                    <dt className="inline text-gray-500">Job ID: </dt>
+                    <dd className="inline font-mono break-all">{invoiceModal.workOrder.work_order_id}</dd>
+                  </div>
+                  <div>
+                    <dt className="inline text-gray-500">Visit / completion: </dt>
+                    <dd className="inline">
+                      {invoiceModal.workOrder.completed_at
+                        ? formatScheduleInstant(invoiceModal.workOrder.completed_at, invoiceModal.workOrder.scheduled_timezone)
+                        : invoiceModal.workOrder.scheduled_at
+                          ? formatScheduleInstant(
+                              invoiceModal.workOrder.scheduled_at,
+                              invoiceModal.workOrder.scheduled_timezone,
+                            )
+                          : '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline text-gray-500">Estimate: </dt>
+                    <dd className="inline">{getJobValueDisplay(invoiceModal.workOrder)}</dd>
+                  </div>
+                </dl>
+              ) : null}
               <form onSubmit={handleSubmitInvoice} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Reference (optional)</label>
-                  <input type="text" value={invoiceForm.reference} onChange={(e) => setInvoiceForm((f) => ({ ...f, reference: e.target.value }))} className="border border-gray-300 rounded-md px-3 py-2 w-full" placeholder="INV-001" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Invoice reference{invoiceModal.mode === 'view' ? '' : ' *'}
+                  </label>
+                  <input
+                    type="text"
+                    readOnly={invoiceModal.mode === 'view'}
+                    value={invoiceForm.reference}
+                    onChange={(e) => setInvoiceForm((f) => ({ ...f, reference: e.target.value }))}
+                    className="border border-gray-300 rounded-md px-3 py-2 w-full read-only:bg-gray-50"
+                    placeholder="INV-001"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
-                  <textarea value={invoiceForm.description} onChange={(e) => setInvoiceForm((f) => ({ ...f, description: e.target.value }))} className="border border-gray-300 rounded-md px-3 py-2 w-full" rows={2} />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                  <textarea
+                    readOnly={invoiceModal.mode === 'view'}
+                    value={invoiceForm.description}
+                    onChange={(e) => setInvoiceForm((f) => ({ ...f, description: e.target.value }))}
+                    className="border border-gray-300 rounded-md px-3 py-2 w-full read-only:bg-gray-50"
+                    rows={2}
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount £ (optional)</label>
-                  <input type="number" step="0.01" min="0" value={invoiceForm.submitted_amount} onChange={(e) => setInvoiceForm((f) => ({ ...f, submitted_amount: e.target.value }))} className="border border-gray-300 rounded-md px-3 py-2 w-full" placeholder="0.00" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Amount £{invoiceModal.mode === 'view' ? '' : ' *'}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    readOnly={invoiceModal.mode === 'view'}
+                    value={invoiceForm.submitted_amount}
+                    onChange={(e) => setInvoiceForm((f) => ({ ...f, submitted_amount: e.target.value }))}
+                    className="border border-gray-300 rounded-md px-3 py-2 w-full read-only:bg-gray-50"
+                    placeholder="0.00"
+                  />
                 </div>
                 <div className="flex gap-2">
-                  <Button type="submit" disabled={invoiceSaving} className="bg-electric-teal hover:bg-electric-teal/90">
-                    {invoiceSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit'}
+                  {invoiceModal.mode !== 'view' ? (
+                    <Button type="submit" disabled={invoiceSaving} className="bg-electric-teal hover:bg-electric-teal/90">
+                      {invoiceSaving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : invoiceModal.mode === 'edit' ? (
+                        'Resubmit invoice'
+                      ) : (
+                        'Submit invoice'
+                      )}
+                    </Button>
+                  ) : null}
+                  <Button type="button" variant="outline" onClick={() => setInvoiceModal(null)}>
+                    {invoiceModal.mode === 'view' ? 'Close' : 'Cancel'}
                   </Button>
-                  <Button type="button" variant="outline" onClick={() => setInvoiceModal(null)}>Cancel</Button>
                 </div>
               </form>
             </div>

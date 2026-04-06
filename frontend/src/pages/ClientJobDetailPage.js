@@ -14,7 +14,7 @@
  * Cancel is status-gated (non-terminal raw status) and is not driven by next_actions — API may still
  * reject cancel in edge cases; primary safe path is the actions list.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { clientAPI, parseApiError, contractorEvidenceFilenameFromKey, isContractorFileEvidenceKey, openBlobApiResponse } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
@@ -32,8 +32,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
-import { Loader2, ArrowLeft, Wrench, Calendar, User, ClipboardList, FileText, History } from 'lucide-react';
+import {
+  Loader2,
+  ArrowLeft,
+  Wrench,
+  Calendar,
+  User,
+  ClipboardList,
+  FileText,
+  History,
+  LifeBuoy,
+  ListChecks,
+  Receipt,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  clientCurrentUpdateSummary,
+  clientHeroOversightAction,
+  clientJobProgressFromJob,
+} from '../utils/jobWorkflowUi';
 
 function formatWhen(iso) {
   if (!iso) return '—';
@@ -189,12 +206,12 @@ function recoveryLineFromNextActions(job) {
     const a = na.find((x) => x.id === id);
     if (a) {
       const tail = a.hint ? ` — ${a.hint}` : '';
-      return `Next step: ${a.label}${tail}`;
+      return `When you're ready: ${a.label}${tail}`;
     }
   }
   if (na[0]) {
     const tail = na[0].hint ? ` — ${na[0].hint}` : '';
-    return `Next step: ${na[0].label}${tail}`;
+    return `When you're ready: ${na[0].label}${tail}`;
   }
   return null;
 }
@@ -257,6 +274,20 @@ function ClientJobDetailInner() {
   });
   const [linkDocId, setLinkDocId] = useState('');
   const [exceptionChoice, setExceptionChoice] = useState('');
+  const visitSectionRef = useRef(null);
+
+  const clientProgress = useMemo(
+    () => (job ? clientJobProgressFromJob(job) : { steps: [], currentIndex: -1, completedFlags: [] }),
+    [job],
+  );
+  const currentUpdate = useMemo(
+    () => (job ? clientCurrentUpdateSummary(job) : { headline: '', lines: [], canonical: '' }),
+    [job],
+  );
+  const heroOversightAction = useMemo(
+    () => (job ? clientHeroOversightAction(job.next_actions) : null),
+    [job],
+  );
 
   const load = useCallback(async () => {
     if (!jobId) return;
@@ -538,38 +569,26 @@ function ClientJobDetailInner() {
 
   const isCompliance = (job.work_order_kind || '').toUpperCase() === 'COMPLIANCE';
   const na = job.next_actions || [];
+  const certificateLinked = (job.evidence_keys || []).some((k) => String(k).startsWith('document:'));
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" variant="ghost" size="sm" onClick={() => navigate(resolveClientPortalPath('/operations/work-orders', '/operations/work-orders'))}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          All jobs
-        </Button>
-        <Badge variant="outline">{kindLabel}</Badge>
-        <Badge>{job.job_status || job.status || '—'}</Badge>
-        {job.operational_exception ? (
-          <Badge variant="secondary">Hold: {String(job.operational_exception).replace(/_/g, ' ')}</Badge>
-        ) : null}
-      </div>
-
-      {(() => {
-        const banner = exceptionStateBanner(job);
-        if (!banner) return null;
-        return (
-          <Alert className="border-amber-200 bg-amber-50/90 text-amber-950">
-            <AlertDescription className="space-y-1 text-sm">
-              <p className="font-semibold text-amber-950">{banner.label}</p>
-              <p className="text-amber-900/90">{banner.explanation}</p>
-              {banner.recovery ? <p className="text-amber-950 font-medium pt-1">{banner.recovery}</p> : null}
-            </AlertDescription>
-          </Alert>
-        );
-      })()}
-
-      <SectionCard title="Summary" icon={Wrench}>
-        <p className="text-xs font-mono text-gray-500">{job.work_order_id}</p>
-        <p className="text-gray-900 font-medium">{job.description || '—'}</p>
+      <header className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" variant="ghost" size="sm" onClick={() => navigate(resolveClientPortalPath('/operations/work-orders', '/operations/work-orders'))}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            All jobs
+          </Button>
+          <Badge variant="outline">{kindLabel}</Badge>
+          <Badge>{job.job_status || job.status || '—'}</Badge>
+          {job.operational_exception ? (
+            <Badge variant="secondary">Hold: {String(job.operational_exception).replace(/_/g, ' ')}</Badge>
+          ) : null}
+        </div>
+        <div>
+          <p className="text-xs font-mono text-gray-500">{job.work_order_id}</p>
+          <h1 className="text-lg font-semibold text-midnight-blue leading-snug">{job.description || 'Job'}</h1>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
           {job.property_id ? (
             <p>
@@ -606,27 +625,88 @@ function ClientJobDetailInner() {
           ) : null}
           {job.issue_resolution_hint ? <p className="sm:col-span-2 text-gray-600">{job.issue_resolution_hint}</p> : null}
         </div>
-        <p className="text-xs text-gray-600 border-t border-gray-100 pt-2 mt-2">
-          Creating the job is not the outcome — finish booking, execution, and proof so compliance and maintenance records stay accurate.
+      </header>
+
+      {(() => {
+        const banner = exceptionStateBanner(job);
+        if (!banner) return null;
+        return (
+          <Alert className="border-amber-200 bg-amber-50/90 text-amber-950">
+            <AlertDescription className="space-y-1 text-sm">
+              <p className="font-semibold text-amber-950">{banner.label}</p>
+              <p className="text-amber-900/90">{banner.explanation}</p>
+              {banner.recovery ? <p className="text-amber-950 font-medium pt-1">{banner.recovery}</p> : null}
+            </AlertDescription>
+          </Alert>
+        );
+      })()}
+
+      <SectionCard title="Current update" icon={Wrench}>
+        <p className="text-sm font-medium text-midnight-blue">{currentUpdate.headline}</p>
+        {currentUpdate.lines?.length ? (
+          <ul className="text-sm text-gray-700 space-y-1 list-disc list-inside">
+            {currentUpdate.lines.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        ) : null}
+        <p className="text-xs text-gray-600 pt-1">
+          Details for booking, field work, and proof live in the sections below — this line is your oversight snapshot only.
         </p>
-        {na.filter((a) => a.id !== 'none').length > 0 ? (
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Suggested next steps</p>
-            <ul className="space-y-1 text-xs text-gray-700">
-              {na
-                .filter((a) => a.id !== 'none')
-                .map((a) => (
-                  <li key={a.id}>
-                    <span className="font-medium text-midnight-blue">{a.label}</span>
-                    {a.hint ? <span className="text-gray-500"> — {a.hint}</span> : null}
-                  </li>
-                ))}
-            </ul>
+        {heroOversightAction ? (
+          <div className="pt-3 border-t border-gray-100">
+            <Button
+              type="button"
+              size="sm"
+              className="bg-midnight-blue hover:bg-midnight-blue/90"
+              onClick={() => visitSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            >
+              {heroOversightAction.label}
+            </Button>
           </div>
         ) : null}
+        <div className="pt-3 border-t border-gray-100 flex flex-wrap gap-x-4 gap-y-2 text-xs">
+          {hasFeature('invoicing') ? (
+            <Link to={resolveClientPortalPath('/operations/approvals', '/operations/approvals')} className="text-electric-teal hover:underline inline-flex items-center gap-1 font-medium">
+              Review invoice
+            </Link>
+          ) : null}
+          <Link to={resolveClientPortalPath('/help', '/help')} className="text-electric-teal hover:underline inline-flex items-center gap-1 font-medium">
+            <LifeBuoy className="w-3.5 h-3.5" />
+            Contact support
+          </Link>
+        </div>
       </SectionCard>
 
-      <SectionCard title="Assignment" icon={User}>
+      <SectionCard title="Progress" icon={ListChecks}>
+        <div className="flex flex-wrap items-center gap-1 text-[10px] sm:text-xs">
+          {clientProgress.steps.map((label, idx) => {
+            const cancelled = clientProgress.currentIndex < 0;
+            const active = !cancelled && clientProgress.currentIndex === idx;
+            const done = !cancelled && clientProgress.currentIndex > idx;
+            return (
+              <span key={label} className="flex items-center gap-1">
+                {idx > 0 ? <span className="text-gray-300">→</span> : null}
+                <span
+                  className={`px-2 py-1 rounded font-medium ${
+                    cancelled
+                      ? 'bg-gray-100 text-gray-400'
+                      : active
+                        ? 'bg-electric-teal text-white'
+                        : done
+                          ? 'bg-emerald-100 text-emerald-900'
+                          : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  {label}
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Contractor" icon={User}>
         <p className="text-xs text-gray-600">
           Use an assigned contractor before requesting a booking. Add new contractors only from this job — not from requirement
           cards or Today.
@@ -645,7 +725,8 @@ function ClientJobDetailInner() {
         ) : null}
       </SectionCard>
 
-      <SectionCard title="Scheduling" icon={Calendar}>
+      <div ref={visitSectionRef} id="client-job-visit" className="scroll-mt-24">
+        <SectionCard title="Visit" icon={Calendar}>
         <dl className="grid grid-cols-2 gap-2 text-xs">
           <dt className="text-gray-500">Schedule status</dt>
           <dd>{job.schedule_status || '—'}</dd>
@@ -757,9 +838,10 @@ function ClientJobDetailInner() {
             </div>
           </div>
         ) : null}
-      </SectionCard>
+        </SectionCard>
+      </div>
 
-      <SectionCard title="Execution" icon={ClipboardList}>
+      <SectionCard title="During / after the visit" icon={ClipboardList}>
         <div className="flex flex-wrap gap-2">
           {na.some((a) => a.id === 'start') ? (
             <Button type="button" size="sm" disabled={!!actionBusy} onClick={() => handleLifecycleClick('start')}>
@@ -856,12 +938,41 @@ function ClientJobDetailInner() {
         )}
       </SectionCard>
 
-      <SectionCard title={isCompliance ? 'Evidence' : 'Completion proof'} icon={FileText}>
+      <SectionCard title="Proof / outcome" icon={FileText}>
         {!isCompliance ? (
           <p className="text-xs text-gray-600">Link vault documents as completion evidence after the visit or repair.</p>
         ) : (
           <p className="text-xs text-gray-600">Attach the compliance certificate from your vault before verification.</p>
         )}
+        {isCompliance ? (
+          <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 space-y-1 text-xs text-gray-800">
+            <p className="font-semibold text-midnight-blue">Compliance status</p>
+            <p>
+              Certificate uploaded:{' '}
+              <span className="font-medium">{certificateLinked ? 'Yes' : 'Not yet'}</span>
+            </p>
+            {job.compliance_proof_status != null && String(job.compliance_proof_status).trim() !== '' ? (
+              <p>
+                Validation: <span className="font-medium">{String(job.compliance_proof_status).replace(/_/g, ' ')}</span>
+              </p>
+            ) : (
+              <p className="text-gray-600">Validation: pending or not yet recorded for this job.</p>
+            )}
+            <p className="text-gray-600">
+              Requirement compliance is tracked on the requirement record —{' '}
+              {job.linked_property_requirement_id ? (
+                <Link
+                  to={resolveClientPortalPath(`/requirements?view_requirement=${encodeURIComponent(job.linked_property_requirement_id)}`, '/requirements')}
+                  className="text-electric-teal hover:underline font-medium"
+                >
+                  open requirement
+                </Link>
+              ) : (
+                'link this job to a requirement where applicable.'
+              )}
+            </p>
+          </div>
+        ) : null}
         <ul className="space-y-1 text-xs font-mono break-all">
           {(job.evidence_keys || []).length === 0 ? <li className="text-gray-500">No evidence keys yet.</li> : null}
           {(job.evidence_keys || []).map((k) => (
@@ -906,6 +1017,18 @@ function ClientJobDetailInner() {
         </Link>
       </SectionCard>
 
+      {hasFeature('invoicing') ? (
+        <SectionCard title="Billing / approvals" icon={Receipt}>
+          <p className="text-sm text-gray-700">
+            When your contractor submits costs for this job, they appear under Approvals for review (approve, reject, or request
+            more information).
+          </p>
+          <Button size="sm" variant="secondary" className="mt-2" asChild>
+            <Link to={resolveClientPortalPath('/operations/approvals', '/operations/approvals')}>Open Approvals</Link>
+          </Button>
+        </SectionCard>
+      ) : null}
+
       <SectionCard title="Timeline" icon={History}>
         {(job.timeline_events || []).length > 0 ? (
           <ul className="text-xs text-gray-600 space-y-1">
@@ -922,6 +1045,16 @@ function ClientJobDetailInner() {
             <li>Completed: {formatWhen(job.completed_at)}</li>
           </ul>
         )}
+      </SectionCard>
+
+      <SectionCard title="Support / notes" icon={LifeBuoy}>
+        <p className="text-sm text-gray-700">
+          If something looks wrong or you need help coordinating this job, reach your usual support channel or open Help in the
+          app.
+        </p>
+        <Link to={resolveClientPortalPath('/help', '/help')} className="text-sm text-electric-teal hover:underline inline-block mt-2 font-medium">
+          Open Help
+        </Link>
       </SectionCard>
 
       <Dialog open={bookingGuardOpen} onOpenChange={setBookingGuardOpen}>

@@ -2,7 +2,7 @@
  * Secure job link page: contractor interacts with a single work order via token (no login).
  * Token is in URL ?token=... from assignment email.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   createJobLinkAPI,
@@ -16,6 +16,11 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Wrench, Loader2, X, FileText, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  contractorPortalExecutableActions,
+  defaultInvoiceAmountFieldFromWorkOrder,
+  formatContractorInvoiceStateLabel,
+} from '../../utils/contractorWorkflow';
 
 function formatDate(s) {
   if (!s) return '—';
@@ -40,7 +45,7 @@ export default function JobPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [invoiceModal, setInvoiceModal] = useState(false);
+  const [invoiceModal, setInvoiceModal] = useState(null);
   const [invoiceForm, setInvoiceForm] = useState({ reference: '', description: '', submitted_amount: '' });
   const [invoiceSaving, setInvoiceSaving] = useState(false);
   const [notesForm, setNotesForm] = useState({ contractor_notes: '', completion_notes: '' });
@@ -167,19 +172,63 @@ export default function JobPage() {
       .finally(() => setEvidenceFileLoadingKey(null));
   };
 
+  const billingAction = useMemo(() => {
+    if (!workOrder) return null;
+    return contractorPortalExecutableActions(workOrder).find((a) =>
+      ['submit_invoice', 'view_invoice', 'edit_invoice'].includes(a.id),
+    );
+  }, [workOrder]);
+
+  const openInvoiceModal = () => {
+    if (!workOrder || !billingAction) return;
+    const li = workOrder.linked_invoice;
+    if (billingAction.id === 'submit_invoice') {
+      setInvoiceForm({
+        reference: '',
+        description: '',
+        submitted_amount: defaultInvoiceAmountFieldFromWorkOrder(workOrder),
+      });
+      setInvoiceModal({ mode: 'create' });
+      return;
+    }
+    setInvoiceForm({
+      reference: li?.reference || '',
+      description: li?.description || '',
+      submitted_amount: li?.submitted_amount != null ? String(li.submitted_amount) : '',
+    });
+    setInvoiceModal({ mode: billingAction.id === 'edit_invoice' ? 'edit' : 'view' });
+  };
+
   const handleSubmitInvoice = (e) => {
     e.preventDefault();
-    if (!api) return;
+    if (!api || !invoiceModal) return;
+    if (invoiceModal.mode === 'view') return;
+    const ref = (invoiceForm.reference || '').trim();
+    if (!ref) {
+      toast.error('Invoice reference is required');
+      return;
+    }
+    const amt = parseFloat(String(invoiceForm.submitted_amount).replace(/,/g, ''));
+    if (Number.isNaN(amt) || amt <= 0) {
+      toast.error('Enter a valid invoice amount greater than zero');
+      return;
+    }
     setInvoiceSaving(true);
-    api.submitInvoice({
-      reference: invoiceForm.reference || undefined,
-      description: invoiceForm.description || undefined,
-      submitted_amount: invoiceForm.submitted_amount ? parseFloat(invoiceForm.submitted_amount) : undefined,
-    })
+    api
+      .submitInvoice({
+        reference: ref,
+        description: (invoiceForm.description || '').trim() || undefined,
+        submitted_amount: amt,
+      })
       .then(() => {
-        toast.success('Invoice submitted. It will appear in the client’s Approvals.');
-        setInvoiceModal(false);
+        toast.success(
+          invoiceModal.mode === 'edit'
+            ? 'Invoice updated and resubmitted for approval.'
+            : 'Invoice submitted for approval.',
+        );
+        setInvoiceModal(null);
         setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
+        loadWorkOrder();
       })
       .catch((err) => toast.error(parseApiError(err, 'Could not submit invoice')))
       .finally(() => setInvoiceSaving(false));
@@ -349,38 +398,122 @@ export default function JobPage() {
               </label>
             </div>
 
-            {['COMPLETED', 'VERIFIED', 'CLOSED'].includes((detail.status || '').toUpperCase()) && (
-              <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => setInvoiceModal(true)}>
-                <FileText className="w-4 h-4 mr-1" /> Submit invoice
+            {billingAction ? (
+              <Button
+                size="sm"
+                variant={billingAction.id === 'submit_invoice' ? 'default' : 'outline'}
+                className={
+                  billingAction.id === 'submit_invoice'
+                    ? 'bg-electric-teal hover:bg-electric-teal/90'
+                    : 'border-electric-teal text-midnight-blue'
+                }
+                onClick={openInvoiceModal}
+              >
+                <FileText className="w-4 h-4 mr-1" /> {billingAction.label}
               </Button>
+            ) : null}
+            {workOrder?.linked_invoice && (
+              <p className="text-sm text-gray-600">
+                Invoice: <span className="font-medium">{formatContractorInvoiceStateLabel(workOrder.linked_invoice)}</span>
+              </p>
             )}
           </CardContent>
         </Card>
       </main>
 
       {invoiceModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setInvoiceModal(false)}>
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-4">Submit invoice</h3>
-            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-4">Pleerity coordinates work orders and invoice approval. Payment responsibility lies with the client. Pleerity does not process contractor payments. Follow up with the client for payment.</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setInvoiceModal(null)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-4">
+              {invoiceModal.mode === 'view'
+                ? 'View invoice'
+                : invoiceModal.mode === 'edit'
+                  ? 'Edit and resubmit invoice'
+                  : 'Submit invoice'}
+            </h3>
+            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-4">
+              Pleerity coordinates work orders and invoice approval. Payment responsibility lies with the client. Pleerity does not
+              process contractor payments. Follow up with the client for payment.
+            </p>
+            {workOrder ? (
+              <dl className="text-xs text-gray-600 space-y-1 mb-4 border border-gray-100 rounded-md p-3 bg-gray-50/80">
+                <div>
+                  <dt className="inline text-gray-500">Job: </dt>
+                  <dd className="inline font-medium text-gray-900">{workOrder.description || workOrder.work_order_id}</dd>
+                </div>
+                <div>
+                  <dt className="inline text-gray-500">Property: </dt>
+                  <dd className="inline">{workOrder.property_address || workOrder.property_id}</dd>
+                </div>
+                <div>
+                  <dt className="inline text-gray-500">Job ID: </dt>
+                  <dd className="inline font-mono break-all text-[11px]">{workOrder.work_order_id}</dd>
+                </div>
+                <div>
+                  <dt className="inline text-gray-500">Visit / completion: </dt>
+                  <dd className="inline">
+                    {workOrder.completed_at
+                      ? formatDate(workOrder.completed_at)
+                      : workOrder.scheduled_at
+                        ? formatDate(workOrder.scheduled_at)
+                        : '—'}
+                  </dd>
+                </div>
+              </dl>
+            ) : null}
             <form onSubmit={handleSubmitInvoice} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Reference (optional)</label>
-                <Input value={invoiceForm.reference} onChange={(e) => setInvoiceForm((f) => ({ ...f, reference: e.target.value }))} placeholder="INV-001" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Invoice reference{invoiceModal.mode === 'view' ? '' : ' *'}
+                </label>
+                <Input
+                  readOnly={invoiceModal.mode === 'view'}
+                  value={invoiceForm.reference}
+                  onChange={(e) => setInvoiceForm((f) => ({ ...f, reference: e.target.value }))}
+                  placeholder="INV-001"
+                  className={invoiceModal.mode === 'view' ? 'bg-gray-50' : ''}
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
-                <textarea value={invoiceForm.description} onChange={(e) => setInvoiceForm((f) => ({ ...f, description: e.target.value }))} className="border border-gray-300 rounded-md px-3 py-2 w-full min-h-[80px]" rows={2} />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                <textarea
+                  readOnly={invoiceModal.mode === 'view'}
+                  value={invoiceForm.description}
+                  onChange={(e) => setInvoiceForm((f) => ({ ...f, description: e.target.value }))}
+                  className={`border border-gray-300 rounded-md px-3 py-2 w-full min-h-[80px] ${invoiceModal.mode === 'view' ? 'bg-gray-50' : ''}`}
+                  rows={2}
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount £ (optional)</label>
-                <Input type="number" step="0.01" min="0" value={invoiceForm.submitted_amount} onChange={(e) => setInvoiceForm((f) => ({ ...f, submitted_amount: e.target.value }))} placeholder="0.00" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Amount £{invoiceModal.mode === 'view' ? '' : ' *'}
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  readOnly={invoiceModal.mode === 'view'}
+                  value={invoiceForm.submitted_amount}
+                  onChange={(e) => setInvoiceForm((f) => ({ ...f, submitted_amount: e.target.value }))}
+                  placeholder="0.00"
+                  className={invoiceModal.mode === 'view' ? 'bg-gray-50' : ''}
+                />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" disabled={invoiceSaving} className="bg-electric-teal hover:bg-electric-teal/90">
-                  {invoiceSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit'}
+                {invoiceModal.mode !== 'view' ? (
+                  <Button type="submit" disabled={invoiceSaving} className="bg-electric-teal hover:bg-electric-teal/90">
+                    {invoiceSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : invoiceModal.mode === 'edit' ? (
+                      'Resubmit invoice'
+                    ) : (
+                      'Submit invoice'
+                    )}
+                  </Button>
+                ) : null}
+                <Button type="button" variant="outline" onClick={() => setInvoiceModal(null)}>
+                  {invoiceModal.mode === 'view' ? 'Close' : 'Cancel'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setInvoiceModal(false)}>Cancel</Button>
               </div>
             </form>
           </div>

@@ -4,7 +4,7 @@ Token is created when contractor is assigned; link is sent in assignment email.
 All routes require a valid job token (query ?token= or header X-Job-Token).
 """
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, File, HTTPException, Request, Query, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, Query, UploadFile, status
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -33,6 +33,7 @@ from auth import hash_token
 from services import work_order_schedule_service as wo_schedule
 from services.work_order_schedule_constants import SCHEDULE_ACTOR_CONTRACTOR
 from services.contractor_work_order_status_policy import validate_contractor_status_patch
+from services.compliance_workflow_service import apply_contractor_job_enrichment
 import logging
 
 logger = logging.getLogger(__name__)
@@ -209,6 +210,8 @@ async def get_work_order(request: Request, ctx: dict = Depends(job_context_dep))
             "scheduled_at": wo.get("scheduled_at"),
             "linked_property_requirement_id": wo.get("linked_property_requirement_id"),
         }
+    inv = await invoice_service.contractor_best_invoice_for_work_order(contractor_id, work_order_id)
+    apply_contractor_job_enrichment(wo, invoice=inv)
     return wo
 
 
@@ -354,6 +357,72 @@ async def job_schedule_cancel(request: Request, ctx: dict = Depends(job_context_
         raise HTTPException(status_code=404, detail="Work order not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class JobMarkNoAccessBody(BaseModel):
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
+_JOB_LINK_TERMINAL_OE = frozenset(
+    {
+        maintenance_service.STATUS_CANCELLED,
+        maintenance_service.STATUS_COMPLETED,
+        maintenance_service.STATUS_CLOSED,
+        maintenance_service.STATUS_VERIFIED,
+    }
+)
+
+
+@router.post("/work-order/mark-no-access")
+async def job_mark_no_access(
+    request: Request,
+    body: JobMarkNoAccessBody = Body(default_factory=JobMarkNoAccessBody),
+    ctx: dict = Depends(job_context_dep),
+):
+    """Job token: record no-access operational hold (aligned with contractor portal)."""
+    work_order_id = ctx["work_order_id"]
+    contractor_id = ctx["contractor_id"]
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    if (wo.get("contractor_id") or "").strip() != (contractor_id or "").strip():
+        raise HTTPException(status_code=404, detail="Work order not found or not assigned to you")
+    st = (wo.get("status") or "").strip().upper()
+    if st in (maintenance_service.STATUS_OPEN, maintenance_service.STATUS_ASSIGNED):
+        raise HTTPException(status_code=400, detail="Accept the assignment before reporting access issues")
+    if st in _JOB_LINK_TERMINAL_OE:
+        raise HTTPException(status_code=400, detail="This job cannot be put on hold in its current state")
+    if (wo.get("operational_exception") or "").strip():
+        raise HTTPException(status_code=400, detail="This job is already on an operational hold")
+    note = (body.notes or "").strip()
+    merged_notes = None
+    if note:
+        prev = (wo.get("contractor_notes") or "").strip()
+        line = f"[No access] {note}"
+        merged_notes = f"{prev}\n{line}".strip() if prev else line
+    try:
+        updated = await maintenance_service.update_work_order(
+            work_order_id,
+            operational_exception=maintenance_service.OPERATIONAL_EXCEPTION_NO_ACCESS,
+            assigned_by=contractor_id,
+            contractor_notes=merged_notes,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not updated:
+        raise HTTPException(status_code=500, detail="Update failed")
+    await create_audit_log(
+        action=AuditAction.CONTRACTOR_WORK_ORDER_STATUS_CHANGED,
+        actor_id=contractor_id,
+        client_id=wo.get("client_id"),
+        resource_type="work_order",
+        resource_id=work_order_id,
+        metadata={
+            "operational_exception": maintenance_service.OPERATIONAL_EXCEPTION_NO_ACCESS,
+            "via": "job_link",
+        },
+    )
+    return updated
 
 
 @router.get("/work-order/schedule/ics")
@@ -531,9 +600,9 @@ async def decline_assignment(request: Request, ctx: dict = Depends(job_context_d
 
 
 class SubmitInvoiceBody(BaseModel):
-    reference: Optional[str] = None
+    reference: str = Field(..., min_length=1)
     description: Optional[str] = None
-    submitted_amount: Optional[float] = None
+    submitted_amount: float = Field(..., gt=0)
     currency: Optional[str] = "GBP"
     attachment_storage_key: Optional[str] = None
 
@@ -551,27 +620,24 @@ async def submit_invoice(request: Request, body: SubmitInvoiceBody, ctx: dict = 
     if not wo.get("property_id") or not wo.get("client_id"):
         raise HTTPException(status_code=400, detail="Work order missing property or client")
     try:
-        doc = await invoice_service.create_invoice(
-            client_id=wo["client_id"],
-            property_id=wo["property_id"],
-            contractor_id=contractor_id,
-            work_order_id=work_order_id,
-            reference=(body.reference or "").strip() or None,
+        doc, kind = await invoice_service.contractor_submit_or_resubmit_for_work_order(
+            wo,
+            contractor_id,
+            reference=body.reference,
             description=body.description,
             submitted_amount=body.submitted_amount,
             currency=body.currency or "GBP",
             attachment_storage_key=body.attachment_storage_key,
-            source=invoice_service.SOURCE_CONTRACTOR,
-            created_by_id=contractor_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    await create_audit_log(
-        action=AuditAction.CONTRACTOR_INVOICE_SUBMITTED,
-        actor_id=contractor_id,
-        client_id=wo["client_id"],
-        resource_type="invoice",
-        resource_id=doc.get("invoice_id"),
-        metadata={"work_order_id": work_order_id, "submitted_amount": body.submitted_amount, "via": "job_link"},
-    )
+    if kind == "created":
+        await create_audit_log(
+            action=AuditAction.CONTRACTOR_INVOICE_SUBMITTED,
+            actor_id=contractor_id,
+            client_id=wo["client_id"],
+            resource_type="invoice",
+            resource_id=doc.get("invoice_id"),
+            metadata={"work_order_id": work_order_id, "submitted_amount": body.submitted_amount, "via": "job_link"},
+        )
     return doc

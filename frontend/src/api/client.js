@@ -769,6 +769,8 @@ export function createContractorAPI(accessToken) {
     acceptAssignment: (id) => apiClient.post(`/contractor/work-orders/${id}/accept`, {}, { headers }),
     declineAssignment: (id) => apiClient.post(`/contractor/work-orders/${id}/decline`, {}, { headers }),
     submitInvoice: (body) => apiClient.post('/contractor/invoices', body, { headers }),
+    resubmitInvoice: (invoiceId, body) =>
+      apiClient.patch(`/contractor/invoices/${encodeURIComponent(invoiceId)}/resubmit`, body, { headers }),
     getProfile: () => apiClient.get('/contractor/profile', { headers }),
     getDashboardSummary: () => apiClient.get('/contractor/dashboard-summary', { headers }),
     getInvoices: (params = {}) => apiClient.get('/contractor/invoices', { params, headers }),
@@ -791,6 +793,8 @@ export function createContractorAPI(accessToken) {
       apiClient.post(`/contractor/work-orders/${workOrderId}/schedule/reschedule-request`, body, { headers }),
     cancelSchedule: (workOrderId) =>
       apiClient.post(`/contractor/work-orders/${workOrderId}/schedule/cancel`, {}, { headers }),
+    markNoAccess: (workOrderId, body = {}) =>
+      apiClient.post(`/contractor/work-orders/${workOrderId}/mark-no-access`, body, { headers }),
     getScheduleIcs: (workOrderId) =>
       apiClient.get(`/contractor/work-orders/${workOrderId}/schedule/ics`, { headers, responseType: 'blob' }),
   };
@@ -822,6 +826,7 @@ export function createJobLinkAPI(jobToken) {
     confirmSchedule: () => apiClient.post('/job/work-order/schedule/confirm', {}, config()),
     requestScheduleReschedule: (body) => apiClient.post('/job/work-order/schedule/reschedule-request', body, config()),
     cancelSchedule: () => apiClient.post('/job/work-order/schedule/cancel', {}, config()),
+    markNoAccess: (body = {}) => apiClient.post('/job/work-order/mark-no-access', body, config()),
     getScheduleIcs: () => apiClient.get('/job/work-order/schedule/ics', { ...config(), responseType: 'blob' }),
   };
 }

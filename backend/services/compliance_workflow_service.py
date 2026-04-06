@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from services import invoice_service
 from services import maintenance_service
 from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE
 from services.work_order_schedule_constants import SCHEDULE_STATUS_CONFIRMED, SCHEDULE_STATUS_PROPOSED
@@ -149,8 +150,12 @@ def _action(
     hint: str = "",
     *,
     section: str = "execution",
-) -> Dict[str, str]:
-    return {"id": action_id, "label": label, "hint": hint, "section": section}
+    payload: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    out: Dict[str, Any] = {"id": action_id, "label": label, "hint": hint, "section": section}
+    if payload:
+        out["payload"] = payload
+    return out
 
 
 def _maintenance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) -> List[Dict[str, str]]:
@@ -484,6 +489,307 @@ def next_job_actions(wo: Dict[str, Any]) -> List[Dict[str, str]]:
     if kind == WORK_ORDER_KIND_MAINTENANCE:
         return _maintenance_next_job_actions(wo, canonical, st)
     return _compliance_next_job_actions(wo, canonical, st)
+
+
+def contractor_completion_proof_required(wo: Dict[str, Any]) -> bool:
+    """Whether the contractor should upload completion proof before marking work complete."""
+    kind = (wo.get("work_order_kind") or "").strip().upper() or WORK_ORDER_KIND_MAINTENANCE
+    if kind == WORK_ORDER_KIND_COMPLIANCE:
+        return True
+    if (wo.get("expected_output_document_type") or "").strip():
+        return True
+    return False
+
+
+def contractor_has_completion_proof(wo: Dict[str, Any]) -> bool:
+    """True if any evidence pointer exists (vault link or uploaded file)."""
+    return maintenance_has_completion_evidence(wo)
+
+
+def _contractor_terminal_billing_actions(invoice: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Next billing steps when the job is completed/verified/closed (contractor portal)."""
+    if not invoice:
+        return [
+            _action(
+                "submit_invoice",
+                "Submit invoice",
+                "Send your invoice to the client for approval.",
+                section="billing",
+            )
+        ]
+    inv_id = (invoice.get("invoice_id") or "").strip()
+    payload = {"invoice_id": inv_id} if inv_id else {}
+    raw = (invoice.get("status") or "").strip().lower()
+    if raw == "pending":
+        return [
+            _action(
+                "view_invoice",
+                "View invoice",
+                "Waiting for approval",
+                section="billing",
+                payload=payload,
+            )
+        ]
+    if raw == "needs_info":
+        return [
+            _action(
+                "edit_invoice",
+                "Edit and resubmit invoice",
+                "The client requested changes or clarification.",
+                section="billing",
+                payload=payload,
+            )
+        ]
+    if raw == "rejected":
+        return [
+            _action(
+                "edit_invoice",
+                "Edit and resubmit invoice",
+                "Update your invoice and send it back for review.",
+                section="billing",
+                payload=payload,
+            )
+        ]
+    if raw == "approved":
+        return [
+            _action(
+                "view_invoice",
+                "View invoice",
+                "Approved — awaiting payment from your client.",
+                section="billing",
+                payload=payload,
+            )
+        ]
+    if raw == "paid":
+        paid_raw = invoice.get("paid_at")
+        paid_hint = f"Paid on {paid_raw}" if paid_raw else "Payment recorded."
+        return [
+            _action(
+                "view_invoice",
+                "View invoice",
+                paid_hint,
+                section="billing",
+                payload=payload,
+            )
+        ]
+    return []
+
+
+def contractor_next_job_actions(
+    wo: Dict[str, Any],
+    *,
+    invoice: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Portal-only next steps: ids are mapped in the contractor frontend to contractor API calls.
+    Includes scheduling (propose_visit, confirm_visit, reschedule_visit, cancel_scheduled_visit),
+    execution (start_job, awaiting_parts, resume_job, complete_job), evidence (upload_completion_proof),
+    operational (mark_no_access → POST .../mark-no-access), billing (submit_invoice), and navigation (open_job_detail).
+    """
+    st = (wo.get("status") or "").strip().upper()
+    if st == maintenance_service.STATUS_CANCELLED:
+        return []
+
+    oe = (wo.get("operational_exception") or "").strip().upper()
+    if oe in (OE_NO_ACCESS, OE_RESCHEDULE, OE_FOLLOW_UP):
+        return [
+            _action(
+                "open_job_detail",
+                "Open job",
+                "This job is on hold. Review details or contact your client.",
+                section="navigation",
+            )
+        ]
+
+    if st in (maintenance_service.STATUS_VERIFIED, maintenance_service.STATUS_CLOSED):
+        return _contractor_terminal_billing_actions(invoice)
+
+    if st == maintenance_service.STATUS_COMPLETED:
+        return _contractor_terminal_billing_actions(invoice)
+
+    if st in (maintenance_service.STATUS_OPEN, maintenance_service.STATUS_ASSIGNED):
+        return [
+            _action(
+                "accept_assignment",
+                "Accept job",
+                "Confirm you will take this job to unlock scheduling and field work.",
+                section="assignment",
+            ),
+            _action("decline_assignment", "Decline", "Decline if you cannot take this job.", section="assignment"),
+        ]
+
+    if st == maintenance_service.STATUS_SCHEDULED:
+        ss = (wo.get("schedule_status") or "").strip().lower()
+        sat = (wo.get("scheduled_at") or "").strip()
+        sb = (wo.get("scheduled_by") or "").strip().lower()
+
+        if not sat or ss == "cancelled":
+            return [
+                _action(
+                    "propose_visit",
+                    "Propose time",
+                    "Suggest when you can attend the property.",
+                    section="scheduling",
+                )
+            ]
+
+        if ss == "proposed":
+            if sb in ("client", "admin"):
+                return [
+                    _action("confirm_visit", "Confirm visit", "Confirm the proposed visit time.", section="scheduling"),
+                    _action(
+                        "reschedule_visit",
+                        "Reschedule",
+                        "Request a different visit time.",
+                        section="scheduling",
+                    ),
+                    _action(
+                        "cancel_scheduled_visit",
+                        "Cancel visit",
+                        "Withdraw this proposed visit before it is confirmed.",
+                        section="scheduling",
+                    ),
+                ]
+            return [
+                _action(
+                    "open_job_detail",
+                    "Open job",
+                    "Waiting for the client to confirm your proposed visit time.",
+                    section="navigation",
+                )
+            ]
+
+        if ss == "confirmed":
+            return [
+                _action(
+                    "start_job",
+                    "Start job",
+                    "Mark the job in progress when you arrive or begin work.",
+                    section="execution",
+                ),
+                _action(
+                    "mark_no_access",
+                    "Mark no access",
+                    "Record that the visit could not go ahead (property not accessible, etc.). Your client can reschedule.",
+                    section="scheduling",
+                ),
+                _action(
+                    "reschedule_visit",
+                    "Reschedule",
+                    "Request a different visit time.",
+                    section="scheduling",
+                ),
+                _action(
+                    "cancel_scheduled_visit",
+                    "Cancel visit",
+                    "Cancel this scheduled visit window if the booking should be cleared.",
+                    section="scheduling",
+                ),
+            ]
+
+        return [
+            _action(
+                "propose_visit",
+                "Propose time",
+                "Suggest when you can attend the property.",
+                section="scheduling",
+            )
+        ]
+
+    if st == maintenance_service.STATUS_IN_PROGRESS:
+        need = contractor_completion_proof_required(wo)
+        has = contractor_has_completion_proof(wo)
+        if need and not has:
+            return [
+                _action(
+                    "upload_completion_proof",
+                    "Upload proof",
+                    "Upload certificate or photos before marking the job complete.",
+                    section="evidence",
+                ),
+                _action(
+                    "awaiting_parts",
+                    "Awaiting parts",
+                    "Pause the job until parts arrive.",
+                    section="execution",
+                ),
+                _action(
+                    "mark_no_access",
+                    "Mark no access",
+                    "Put the job on hold if the visit could not proceed.",
+                    section="scheduling",
+                ),
+            ]
+        return [
+            _action("complete_job", "Complete job", "Mark work finished when the job is done.", section="execution"),
+            _action(
+                "awaiting_parts",
+                "Awaiting parts",
+                "Pause the job until parts arrive.",
+                section="execution",
+            ),
+            _action(
+                "mark_no_access",
+                "Mark no access",
+                "Put the job on hold if the visit could not proceed.",
+                section="scheduling",
+            ),
+        ]
+
+    if st == maintenance_service.STATUS_AWAITING_PARTS:
+        need = contractor_completion_proof_required(wo)
+        has = contractor_has_completion_proof(wo)
+        primary_complete = not (need and not has)
+        out = [
+            _action(
+                "resume_job",
+                "Resume job",
+                "Continue work when parts are on site.",
+                section="execution",
+            )
+        ]
+        if primary_complete:
+            out.append(
+                _action("complete_job", "Complete job", "Mark work finished when the job is done.", section="execution")
+            )
+        else:
+            out.append(
+                _action(
+                    "upload_completion_proof",
+                    "Upload proof",
+                    "Upload certificate or photos before completing.",
+                    section="evidence",
+                )
+            )
+        out.append(
+            _action(
+                "mark_no_access",
+                "Mark no access",
+                "Put the job on hold if the visit could not proceed.",
+                section="scheduling",
+            )
+        )
+        return out
+
+    return []
+
+
+def apply_contractor_job_enrichment(
+    wo: Dict[str, Any],
+    *,
+    invoice: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Mutates work order dict in place for contractor portal list/detail responses."""
+    wo["job_status"] = derive_canonical_job_status(wo)
+    wo["next_actions"] = contractor_next_job_actions(wo, invoice=invoice)
+    wo["completion_proof_required"] = contractor_completion_proof_required(wo)
+    wo["completion_proof_satisfied"] = contractor_has_completion_proof(wo)
+    wo["timeline_events"] = client_job_timeline_events(wo)
+    linked: Optional[Dict[str, Any]] = None
+    if invoice:
+        linked = {k: v for k, v in invoice.items() if k != "_id"}
+        invoice_service.enrich_invoice_for_contractor_portal(linked)
+    wo["linked_invoice"] = linked
 
 
 def client_job_timeline_events(wo: Dict[str, Any]) -> List[Dict[str, str]]:

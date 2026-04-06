@@ -29,6 +29,38 @@ export function formatMoneyGbp(n) {
   return `£${v.toFixed(2)}`;
 }
 
+/** Pre-fill invoice amount from job estimate (max, else min). */
+export function defaultInvoiceAmountFieldFromWorkOrder(wo) {
+  const mx = wo?.cost_estimate_max != null ? Number(wo.cost_estimate_max) : null;
+  const mn = wo?.cost_estimate_min != null ? Number(wo.cost_estimate_min) : null;
+  if (mx != null && !Number.isNaN(mx)) return String(mx);
+  if (mn != null && !Number.isNaN(mn)) return String(mn);
+  return '';
+}
+
+/** Map API contractor_invoice_state / raw status to short UI copy. */
+export function formatContractorInvoiceStateLabel(inv) {
+  const mapped = (inv?.contractor_invoice_state || '').toUpperCase();
+  const raw = (inv?.status || '').toLowerCase();
+  if (mapped === 'PAID' || raw === 'paid') {
+    return inv?.paid_at
+      ? `Paid on ${new Date(inv.paid_at).toLocaleDateString(undefined, { dateStyle: 'medium' })}`
+      : 'Paid';
+  }
+  const labels = {
+    SUBMITTED: 'Waiting for approval',
+    UNDER_REVIEW: 'Correction requested',
+    APPROVED: 'Approved',
+    REJECTED: 'Rejected',
+  };
+  if (labels[mapped]) return labels[mapped];
+  if (raw === 'pending') return 'Waiting for approval';
+  if (raw === 'needs_info') return 'Correction requested';
+  if (raw === 'approved') return 'Approved';
+  if (raw === 'rejected') return 'Rejected';
+  return inv?.status || '—';
+}
+
 export function getJobValueDisplay(wo) {
   const mn = wo?.cost_estimate_min;
   const mx = wo?.cost_estimate_max;
@@ -261,4 +293,215 @@ export function sortWorkOrdersForDashboard(workOrders, now = new Date()) {
   };
   list.sort((a, b) => score(b) - score(a));
   return list;
+}
+
+const CONTRACTOR_PROGRESS_STEPS = ['Assigned', 'Scheduled', 'In progress', 'Completed', 'Closed'];
+
+const EXECUTION_ACTIVE = new Set(['OPEN', 'ASSIGNED', 'SCHEDULED', 'IN_PROGRESS', 'AWAITING_PARTS']);
+
+/** Work order is still in the execution pipeline (not completed / verified / closed / cancelled). */
+export function isContractorExecutionActive(wo) {
+  const st = (wo?.status || '').toUpperCase();
+  return EXECUTION_ACTIVE.has(st);
+}
+
+/** Job has submit_invoice in next_actions (invoice-eligible). */
+export function isContractorInvoiceEligible(wo) {
+  return (wo?.next_actions || []).some((a) => a?.id === 'submit_invoice');
+}
+
+const CONTRACTOR_PUSH_ACTION_IDS = new Set([
+  'accept_assignment',
+  'decline_assignment',
+  'confirm_visit',
+  'upload_completion_proof',
+  'submit_invoice',
+  'edit_invoice',
+  'start_job',
+  'resume_job',
+  'complete_job',
+  'propose_visit',
+  'awaiting_parts',
+  'mark_no_access',
+  'cancel_scheduled_visit',
+  'reschedule_visit',
+]);
+
+/** Waiting on client / payment / clearance — not something the contractor can push right now. */
+export function isContractorWaitingOnOthers(wo) {
+  const ids = (wo?.next_actions || []).map((a) => a?.id).filter(Boolean);
+  if (!ids.length) return false;
+  if (ids.some((id) => CONTRACTOR_PUSH_ACTION_IDS.has(id))) return false;
+  return ids.every((id) => id === 'open_job_detail' || id === 'view_invoice');
+}
+
+export function isScheduledTodayUtc(wo, now = new Date()) {
+  const st = (wo?.status || '').toUpperCase();
+  if (st === 'CANCELLED' || !wo?.scheduled_at) return false;
+  try {
+    const d = new Date(wo.scheduled_at);
+    return (
+      d.getUTCFullYear() === now.getUTCFullYear() &&
+      d.getUTCMonth() === now.getUTCMonth() &&
+      d.getUTCDate() === now.getUTCDate()
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Single dominant list CTA: first executable action except open_job_detail when other steps exist. */
+export function contractorListPrimaryAction(wo) {
+  const list = contractorPortalExecutableActions(wo);
+  if (!list.length) return null;
+  const withoutNav = list.filter((a) => a.id !== 'open_job_detail');
+  const pick = withoutNav.length ? withoutNav[0] : list[0];
+  return pick;
+}
+
+const DETAIL_PROGRESS_STEPS = ['Assigned', 'Scheduled', 'In progress', 'Proof uploaded', 'Completed', 'Closed'];
+
+/**
+ * Drawer progress: Assigned → Scheduled → In progress → Proof uploaded → Completed → Closed
+ */
+export function contractorDetailExecutionProgressFromWorkOrder(wo) {
+  const steps = DETAIL_PROGRESS_STEPS;
+  const st = (wo?.status || '').toUpperCase();
+  if (st === 'CANCELLED') return { steps, currentIndex: -1 };
+  if (st === 'VERIFIED' || st === 'CLOSED') return { steps, currentIndex: 5 };
+  if (st === 'COMPLETED') return { steps, currentIndex: 4 };
+  const proofRequired = !!wo?.completion_proof_required;
+  const proofSatisfied = !!wo?.completion_proof_satisfied;
+  if (proofRequired && !proofSatisfied && (st === 'IN_PROGRESS' || st === 'AWAITING_PARTS')) {
+    return { steps, currentIndex: 3 };
+  }
+  if (st === 'IN_PROGRESS' || st === 'AWAITING_PARTS') return { steps, currentIndex: 2 };
+  const schedOk = (wo?.schedule_status || '').toLowerCase() === 'confirmed' && !!wo?.scheduled_at;
+  if (st === 'SCHEDULED' && schedOk) return { steps, currentIndex: 2 };
+  if (st === 'SCHEDULED') return { steps, currentIndex: 1 };
+  if (st === 'OPEN' || st === 'ASSIGNED') return { steps, currentIndex: 0 };
+  return { steps, currentIndex: 0 };
+}
+
+/** Actions returned by GET /api/contractor/work-orders (next_actions). */
+export function contractorPortalExecutableActions(wo) {
+  return (wo?.next_actions || []).filter((a) => a && a.id && a.id !== 'none');
+}
+
+/** Job detail panel — execution row only (server-driven; no scheduling/billing/assignment here). */
+export const CONTRACTOR_DETAIL_JOB_ACTION_IDS = new Set([
+  'start_job',
+  'awaiting_parts',
+  'resume_job',
+  'complete_job',
+]);
+
+/**
+ * Billing phase label for contractor job detail (uses invoice when present, else next_actions for ready-to-invoice).
+ * @param {Record<string, unknown>|null|undefined} wo
+ * @param {Record<string, Record<string, unknown>>|null|undefined} invoiceByWo
+ */
+export function contractorBillingPhaseForWorkOrder(wo, invoiceByWo) {
+  const wid = wo?.work_order_id;
+  const inv = wo?.linked_invoice || (invoiceByWo && wid ? invoiceByWo[wid] : null);
+  const raw = (inv?.status || '').toLowerCase();
+  const mapped = (inv?.contractor_invoice_state || '').toUpperCase();
+  if (raw === 'paid' || mapped === 'PAID') return { key: 'paid', label: 'Paid' };
+  if (raw === 'rejected' || mapped === 'REJECTED') return { key: 'rejected', label: 'Rejected' };
+  if (raw === 'pending' || raw === 'needs_info') return { key: 'submitted', label: 'Submitted — awaiting client review' };
+  if (raw === 'approved' || mapped === 'APPROVED') return { key: 'approved', label: 'Approved — arrange payment with client' };
+  const na = wo?.next_actions || [];
+  if (na.some((a) => a.id === 'submit_invoice')) return { key: 'ready', label: 'Ready to invoice' };
+  return { key: 'not_ready', label: 'Not ready to invoice' };
+}
+
+/** Chronological timeline for job detail (oldest first). */
+export function contractorDetailTimelineSorted(events) {
+  if (!Array.isArray(events) || !events.length) return [];
+  return [...events].sort((a, b) => {
+    const ta = parseIsoDate(a?.at)?.getTime() ?? 0;
+    const tb = parseIsoDate(b?.at)?.getTime() ?? 0;
+    if (ta !== tb) return ta - tb;
+    return String(a?.label || '').localeCompare(String(b?.label || ''));
+  });
+}
+
+/** Button label for billing CTAs from next_actions (e.g. view → View payment when paid). */
+export function contractorBillingActionButtonLabel(action, wo, invoiceByWo) {
+  if (!action?.id) return '';
+  if (action.id !== 'view_invoice') return action.label || '';
+  const wid = wo?.work_order_id;
+  const inv = wo?.linked_invoice || (invoiceByWo && wid ? invoiceByWo[wid] : null);
+  const raw = (inv?.status || '').toLowerCase();
+  if (raw === 'paid') return 'View payment';
+  return action.label || 'View invoice';
+}
+
+export function contractorNextStepLineFromNextActions(wo) {
+  const list = contractorPortalExecutableActions(wo);
+  if (list.length === 0) return 'No action required';
+  const a = list[0];
+  return a.hint || a.label || '';
+}
+
+export function contractorPrimarySecondaryFromNextActions(wo) {
+  const list = contractorPortalExecutableActions(wo);
+  if (!list.length) return { primary: null, secondary: null };
+  return { primary: list[0], secondary: list[1] || null };
+}
+
+export function contractorJobStatusLabel(wo) {
+  const j = (wo?.job_status || wo?.status || '').toString().toUpperCase();
+  const map = {
+    OPEN: 'Open',
+    ASSIGNED: 'Assigned',
+    BOOKED: 'Booked',
+    BOOKING_REQUESTED: 'Booking requested',
+    SCHEDULED: 'Scheduled',
+    IN_PROGRESS: 'In progress',
+    AWAITING_PARTS: 'Awaiting parts',
+    COMPLETED: 'Completed',
+    VERIFIED: 'Verified',
+    CLOSED: 'Closed',
+    CANCELLED: 'Cancelled',
+    NO_ACCESS: 'No access',
+    RESCHEDULE_REQUIRED: 'Reschedule required',
+    FOLLOW_UP_REQUIRED: 'Follow-up required',
+    DRAFT: 'Draft',
+  };
+  return map[j] || (j ? j.replace(/_/g, ' ') : '—');
+}
+
+/** Progress strip: Assigned → Scheduled → In progress → Completed → Closed */
+export function contractorProgressFromWorkOrder(wo) {
+  const steps = CONTRACTOR_PROGRESS_STEPS;
+  const st = (wo?.status || '').toUpperCase();
+  const js = (wo?.job_status || '').toUpperCase();
+  const schedOk =
+    ((wo?.schedule_status || '').toLowerCase() === 'confirmed' && !!wo?.scheduled_at) || js === 'BOOKED';
+
+  if (st === 'CANCELLED' || js === 'CANCELLED') {
+    return { steps, currentIndex: -1 };
+  }
+  if (st === 'VERIFIED' || st === 'CLOSED' || js === 'VERIFIED' || js === 'CLOSED') {
+    return { steps, currentIndex: 4 };
+  }
+  if (st === 'COMPLETED' || js === 'COMPLETED') {
+    return { steps, currentIndex: 3 };
+  }
+  if (
+    st === 'IN_PROGRESS' ||
+    st === 'AWAITING_PARTS' ||
+    js === 'IN_PROGRESS' ||
+    js === 'AWAITING_PARTS' ||
+    js === 'NO_ACCESS' ||
+    js === 'RESCHEDULE_REQUIRED' ||
+    js === 'FOLLOW_UP_REQUIRED'
+  ) {
+    return { steps, currentIndex: 2 };
+  }
+  if (schedOk || js === 'BOOKED' || (st === 'SCHEDULED' && schedOk)) {
+    return { steps, currentIndex: 1 };
+  }
+  return { steps, currentIndex: 0 };
 }
