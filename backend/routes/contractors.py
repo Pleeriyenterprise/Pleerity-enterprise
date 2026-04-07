@@ -25,6 +25,7 @@ class ContractorCreate(BaseModel):
     notes: Optional[str] = None
     execution_capabilities: Optional[str] = None
     supported_requirement_codes: Optional[List[str]] = None
+    service_regions: Optional[List[str]] = None
 
 
 class ContractorUpdate(BaseModel):
@@ -49,6 +50,7 @@ class ContractorUpdate(BaseModel):
     declared_credentials: Optional[List[str]] = None
     verified_execution_capabilities: Optional[str] = None
     verified_supported_requirement_codes: Optional[List[str]] = None
+    service_regions: Optional[List[str]] = None
 
 
 class ApproveContractorBody(BaseModel):
@@ -167,6 +169,7 @@ async def create_contractor(request: Request, body: ContractorCreate):
             notes=body.notes,
             execution_capabilities=body.execution_capabilities,
             supported_requirement_codes=body.supported_requirement_codes,
+            service_regions=body.service_regions,
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -199,6 +202,7 @@ async def create_network_contractor(request: Request, body: ContractorNetworkCre
         areas_served=body.areas_served,
         contact_name=body.contact_name.strip() if body.contact_name else None,
         notes=body.notes.strip() if body.notes else None,
+        service_regions=body.service_regions,
     )
     return doc
 
@@ -336,6 +340,7 @@ async def update_contractor(request: Request, contractor_id: str, body: Contract
             verified_execution_capabilities=body.verified_execution_capabilities,
             verified_supported_requirement_codes=body.verified_supported_requirement_codes,
             verified_by=user.get("user_id") or user.get("email") or user.get("portal_user_id"),
+            service_regions=body.service_regions,
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))

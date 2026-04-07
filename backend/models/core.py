@@ -402,6 +402,7 @@ class AuditAction(str, Enum):
     ONBOARDING_CHECKLIST_COMPLETED = "ONBOARDING_CHECKLIST_COMPLETED"
     ONBOARDING_CHECKLIST_ITEM_COMPLETED = "ONBOARDING_CHECKLIST_ITEM_COMPLETED"
     ONBOARDING_CHECKLIST_PROGRESS_SYNCED = "ONBOARDING_CHECKLIST_PROGRESS_SYNCED"
+    JURISDICTION_FALLBACK_ASSUMPTIONS_ACKNOWLEDGED = "JURISDICTION_FALLBACK_ASSUMPTIONS_ACKNOWLEDGED"
     JURISDICTION_SETTINGS_CHANGED = "JURISDICTION_SETTINGS_CHANGED"
 
     # Contractor visibility and sharing
@@ -803,6 +804,8 @@ class Contractor(BaseModel):
     phone: Optional[str] = None
     company_name: Optional[str] = None
     areas_served: Optional[List[str]] = None  # postcode prefixes or region names
+    # UK portfolio regions this contractor accepts work in (Scotland | England | Wales | Northern Ireland). Omit or empty = no restriction (legacy).
+    service_regions: Optional[List[str]] = None
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
@@ -815,6 +818,10 @@ class Requirement(BaseModel):
     client_id: str
     property_id: str
     requirement_type: str
+    # Canonical code aligned with compliance registry / scoring (e.g. gas_safety); optional for legacy rows
+    requirement_code: Optional[str] = None
+    # Portfolio jurisdiction label when the row was generated (Scotland | England | Wales | Northern Ireland)
+    jurisdiction: Optional[str] = None
     description: str
     frequency_days: int
     due_date: datetime
@@ -852,6 +859,8 @@ class RequirementRule(BaseModel):
     risk_weight: int = Field(default=1, ge=1, le=5)  # 1-5, higher = more critical
     regulatory_reference: Optional[str] = None  # Link to regulation
     notes: Optional[str] = None
+    # Optional list of portfolio jurisdiction labels or scoring keys (SCOTLAND | ENGLAND_WALES); omit = all regions
+    jurisdictions: Optional[List[str]] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     created_by: Optional[str] = None
@@ -877,6 +886,10 @@ class Document(BaseModel):
     source: Optional[str] = None  # e.g. portal, intake, system
     notes: Optional[str] = None
     work_order_id: Optional[str] = None  # Optional compliance execution WO this vault document evidences
+    # Upload-time metadata JSON (jurisdiction-aware validation inputs); audit / re-validation
+    document_metadata: Optional[Dict[str, Any]] = None
+    # Snapshot from last upload-time validation (when requirement-linked); includes valid, jurisdiction, validated_at, missing_metadata_fields
+    validation_result: Optional[Dict[str, Any]] = None
 
 class AuditLog(BaseModel):
     model_config = ConfigDict(extra="ignore")

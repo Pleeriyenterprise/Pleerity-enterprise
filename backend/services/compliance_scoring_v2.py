@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone, date
 from typing import Any, Dict, List, Optional, Tuple
 
+from services.compliance_expiry_policy import get_default_expiring_soon_days
 from services.document_status_service import (
-    EXPIRING_SOON_DAYS,
     STATUS_TO_FRACTION,
     compute_requirement_status,
     pick_evidence_document,
@@ -16,6 +16,10 @@ from services.requirement_truth import (
     infer_date_source_for_scoring,
 )
 from presentation.label_service import requirement_label
+from services.compliance_rules_registry import (
+    expiring_soon_days_for_requirement,
+    expects_expiry_for_requirement,
+)
 
 
 BUCKET_WEIGHTS = {
@@ -29,26 +33,24 @@ BUCKET_WEIGHTS = {
 ESTIMATED_DATE_LEGAL_CORE_MULTIPLIER = 0.93
 
 
+# Scoring weights / risk labels: intentionally mirrored EW ↔ Scotland until product defines divergence.
+# Per-code "expiring soon" windows use compliance_rules_registry + get_default_expiring_soon_days() as profile default.
+_JURISDICTION_DEFAULT_DAYS = get_default_expiring_soon_days()
+_SHARED_LEGAL_CORE_WEIGHTS = {
+    "GAS_SAFETY": {"weight": 15.0, "risk_level_if_failed": "HIGH"},
+    "EICR": {"weight": 15.0, "risk_level_if_failed": "HIGH"},
+    "EPC": {"weight": 10.0, "risk_level_if_failed": "MEDIUM"},
+    "FIRE_DETECTION": {"weight": 10.0, "risk_level_if_failed": "HIGH"},
+    "LEGIONELLA": {"weight": 10.0, "risk_level_if_failed": "MEDIUM"},
+}
 JURISDICTION_PROFILES: Dict[str, Dict[str, Any]] = {
     "ENGLAND_WALES": {
-        "requirements": {
-            "GAS_SAFETY": {"weight": 15.0, "risk_level_if_failed": "HIGH"},
-            "EICR": {"weight": 15.0, "risk_level_if_failed": "HIGH"},
-            "EPC": {"weight": 10.0, "risk_level_if_failed": "MEDIUM"},
-            "FIRE_DETECTION": {"weight": 10.0, "risk_level_if_failed": "HIGH"},
-            "LEGIONELLA": {"weight": 10.0, "risk_level_if_failed": "MEDIUM"},
-        },
-        "expiring_soon_days": EXPIRING_SOON_DAYS,
+        "requirements": dict(_SHARED_LEGAL_CORE_WEIGHTS),
+        "expiring_soon_days": _JURISDICTION_DEFAULT_DAYS,
     },
     "SCOTLAND": {
-        "requirements": {
-            "GAS_SAFETY": {"weight": 15.0, "risk_level_if_failed": "HIGH"},
-            "EICR": {"weight": 15.0, "risk_level_if_failed": "HIGH"},
-            "EPC": {"weight": 10.0, "risk_level_if_failed": "MEDIUM"},
-            "FIRE_DETECTION": {"weight": 10.0, "risk_level_if_failed": "HIGH"},
-            "LEGIONELLA": {"weight": 10.0, "risk_level_if_failed": "MEDIUM"},
-        },
-        "expiring_soon_days": EXPIRING_SOON_DAYS,
+        "requirements": dict(_SHARED_LEGAL_CORE_WEIGHTS),
+        "expiring_soon_days": _JURISDICTION_DEFAULT_DAYS,
     },
 }
 
@@ -106,9 +108,16 @@ def _parse_due(v: Any) -> Optional[date]:
         return None
 
 
-def _status_fraction_from_doc(code: str, docs: List[Dict[str, Any]], as_of: date, expiring_soon_days: int) -> Tuple[float, str, Optional[str], Optional[str], List[str]]:
+def _status_fraction_from_doc(
+    code: str,
+    docs: List[Dict[str, Any]],
+    as_of: date,
+    expiring_soon_days: int,
+    *,
+    expects_expiry: bool,
+) -> Tuple[float, str, Optional[str], Optional[str], List[str]]:
     doc = pick_evidence_document(docs, REQ_TO_DOC_TYPE.get(code, ""))
-    status_result = compute_requirement_status(as_of, doc, expects_expiry=code in ("GAS_SAFETY", "EICR", "EPC"), expiring_soon_days=expiring_soon_days)
+    status_result = compute_requirement_status(as_of, doc, expects_expiry=expects_expiry, expiring_soon_days=expiring_soon_days)
     fraction = STATUS_TO_FRACTION.get(status_result["status"], 0.0)
     expiry_date = status_result.get("expiry_date")
     verified_at = None
@@ -119,9 +128,17 @@ def _status_fraction_from_doc(code: str, docs: List[Dict[str, Any]], as_of: date
     return fraction, status_result["status"], expiry_date, verified_at, status_result.get("reason_codes") or []
 
 
-def _status_fraction_from_requirement(code: str, req: Optional[Dict[str, Any]], docs: List[Dict[str, Any]], as_of: date, expiring_soon_days: int) -> Tuple[float, str, Optional[str], Optional[str], List[str]]:
+def _status_fraction_from_requirement(
+    code: str,
+    req: Optional[Dict[str, Any]],
+    docs: List[Dict[str, Any]],
+    as_of: date,
+    expiring_soon_days: int,
+    *,
+    expects_expiry: bool,
+) -> Tuple[float, str, Optional[str], Optional[str], List[str]]:
     if not req:
-        return _status_fraction_from_doc(code, docs, as_of, expiring_soon_days)
+        return _status_fraction_from_doc(code, docs, as_of, expiring_soon_days, expects_expiry=expects_expiry)
     req_status = (req.get("status") or "").upper()
     due = _parse_due(req.get("due_date") or req.get("expiry_date"))
     verified_at = req.get("verified_at")
@@ -142,7 +159,7 @@ def _status_fraction_from_requirement(code: str, req: Optional[Dict[str, Any]], 
         return 0.0, "EXPIRED", due.isoformat() if due else None, str(verified_at) if verified_at else None, ["DOCUMENT_EXPIRED"]
     if req_status in ("PENDING", "MISSING"):
         return 0.0, "MISSING", due.isoformat() if due else None, str(verified_at) if verified_at else None, ["NO_DOCUMENT_FOUND"]
-    return _status_fraction_from_doc(code, docs, as_of, expiring_soon_days)
+    return _status_fraction_from_doc(code, docs, as_of, expiring_soon_days, expects_expiry=expects_expiry)
 
 
 def _applies_if(code: str, property_doc: Dict[str, Any]) -> bool:
@@ -168,7 +185,7 @@ def compute_property_score_v2(
     today = now.date()
     jurisdiction = normalize_jurisdiction(property_doc.get("jurisdiction") or (client_doc or {}).get("default_jurisdiction"))
     profile = JURISDICTION_PROFILES[jurisdiction]
-    expiring_soon_days = int(profile.get("expiring_soon_days", EXPIRING_SOON_DAYS))
+    expiring_soon_days = int(profile.get("expiring_soon_days", get_default_expiring_soon_days()))
 
     req_by_code: Dict[str, Dict[str, Any]] = {}
     docs_by_code: Dict[str, List[Dict[str, Any]]] = {}
@@ -208,12 +225,15 @@ def compute_property_score_v2(
             continue
 
         applicable_points += float(cfg["weight"])
+        code_expiring = expiring_soon_days_for_requirement(jurisdiction, code, expiring_soon_days)
+        code_expects_expiry = expects_expiry_for_requirement(jurisdiction, code)
         fraction, status, expiry_date, verified_at, reasons = _status_fraction_from_requirement(
             code,
             req_by_code.get(code),
             docs_by_code.get(code, []),
             today,
-            expiring_soon_days,
+            code_expiring,
+            expects_expiry=code_expects_expiry,
         )
         docs_for_code = docs_by_code.get(code, [])
         evidence_state = evidence_state_for_documents_list(docs_for_code)

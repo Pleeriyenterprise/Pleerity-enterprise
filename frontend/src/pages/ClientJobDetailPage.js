@@ -76,6 +76,14 @@ const TRADE_SERVICE_OPTIONS = [
 
 const TRADE_FILTER_OPTIONS = [{ value: 'all', label: 'All trades (no filter)' }, ...TRADE_SERVICE_OPTIONS];
 
+/** UK portfolio labels aligned with backend contractor.service_regions / job jurisdiction. */
+const UK_SERVICE_REGION_OPTIONS = [
+  { value: 'Scotland', label: 'Scotland' },
+  { value: 'England', label: 'England' },
+  { value: 'Wales', label: 'Wales' },
+  { value: 'Northern Ireland', label: 'Northern Ireland' },
+];
+
 function defaultTradeForJob(job) {
   if (!job) return 'general';
   const cat = (job.category || '').toLowerCase().trim();
@@ -162,6 +170,9 @@ function contractorOptionLabel(c) {
   const bits = [primary];
   if (c.company_name && c.name && c.company_name !== c.name) bits.push(c.company_name);
   if (c.email) bits.push(c.email);
+  if (Array.isArray(c.service_regions) && c.service_regions.length > 0) {
+    bits.push(`Regions: ${c.service_regions.join(', ')}`);
+  }
   return bits.join(' · ');
 }
 
@@ -248,6 +259,8 @@ function ClientJobDetailInner() {
   const [error, setError] = useState('');
   const [actionBusy, setActionBusy] = useState(null);
   const [assignableContractors, setAssignableContractors] = useState([]);
+  /** Effective job jurisdiction from assignable-contractors API (for filtering + UX). */
+  const [assignableJobJurisdiction, setAssignableJobJurisdiction] = useState(null);
   const [assignableLoading, setAssignableLoading] = useState(false);
   const [contractorFilter, setContractorFilter] = useState('');
   const [tradeTypeFilter, setTradeTypeFilter] = useState('all');
@@ -272,6 +285,8 @@ function ClientJobDetailInner() {
     accreditation: '',
     notes: '',
     areas_served: '',
+    /** @type {string[]} */
+    service_regions: [],
   });
   const [linkDocId, setLinkDocId] = useState('');
   const [exceptionChoice, setExceptionChoice] = useState('');
@@ -323,16 +338,22 @@ function ClientJobDetailInner() {
       setShowAddContractorForm(!!focusAdd);
       const suggested = defaultTradeForJob(job);
       setTradeTypeFilter(suggested);
-      setNewContractor((prev) => ({
-        ...prev,
-        tradeType: suggested,
-      }));
+      setNewContractor((prev) => ({ ...prev, tradeType: suggested }));
       setAssignableLoading(true);
       try {
         const r = await clientAPI.getJobAssignableContractors(jobId, { limit: 200 });
         setAssignableContractors(r.data?.contractors || []);
+        const jj = r.data?.job_jurisdiction ?? null;
+        setAssignableJobJurisdiction(jj);
+        setNewContractor((prev) => ({
+          ...prev,
+          tradeType: suggested,
+          service_regions:
+            (job?.work_order_kind || '').toUpperCase() === 'COMPLIANCE' && jj ? [jj] : [],
+        }));
       } catch {
         setAssignableContractors([]);
+        setAssignableJobJurisdiction(null);
         toast.error('Could not load assignable contractors');
       } finally {
         setAssignableLoading(false);
@@ -495,6 +516,10 @@ function ClientJobDetailInner() {
           accreditation_certification: newContractor.accreditation.trim() || undefined,
           notes: newContractor.notes.trim() || undefined,
           work_order_id: jobId,
+          service_regions:
+            Array.isArray(newContractor.service_regions) && newContractor.service_regions.length > 0
+              ? newContractor.service_regions
+              : undefined,
         };
         const cr = await clientAPI.createWorkflowContractor(body);
         const cid = cr.data?.contractor_id;
@@ -583,6 +608,11 @@ function ClientJobDetailInner() {
             All jobs
           </Button>
           <Badge variant="outline">{kindLabel}</Badge>
+          {job.jurisdiction ? (
+            <Badge variant="outline" title="Portfolio jurisdiction for this job">
+              {job.jurisdiction}
+            </Badge>
+          ) : null}
           <Badge>{job.job_status || job.status || '—'}</Badge>
           {job.operational_exception ? (
             <Badge variant="secondary">Hold: {String(job.operational_exception).replace(/_/g, ' ')}</Badge>
@@ -1169,6 +1199,15 @@ function ClientJobDetailInner() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm">
+            {assignableJobJurisdiction ? (
+              <Alert className="border-slate-200 bg-slate-50 text-slate-800 py-2">
+                <AlertDescription className="text-xs">
+                  This job is in the <strong>{assignableJobJurisdiction}</strong> jurisdiction. Only contractors whose
+                  service regions include that area are listed. If the list is empty, add a contractor and set their regions
+                  accordingly.
+                </AlertDescription>
+              </Alert>
+            ) : null}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Filter by trade / service</label>
               <select
@@ -1215,7 +1254,10 @@ function ClientJobDetailInner() {
                     ))}
                   </select>
                   {!filteredAssignableContractors.length ? (
-                    <p className="text-xs text-amber-800 mt-1">No matching contractors. Widen the trade filter or add a new one below.</p>
+                    <p className="text-xs text-amber-800 mt-1">
+                      No matching contractors. Widen the trade filter, check jurisdiction coverage (see note above), or add a
+                      new contractor below.
+                    </p>
                   ) : null}
                 </div>
                 <Button type="button" size="sm" disabled={!!actionBusy} onClick={handleAssign}>
@@ -1284,6 +1326,37 @@ function ClientJobDetailInner() {
                   value={newContractor.region}
                   onChange={(e) => setNewContractor((f) => ({ ...f, region: e.target.value }))}
                 />
+                <div>
+                  <p className="text-xs font-medium text-gray-700 mb-1">Service regions (UK)</p>
+                  <p className="text-[11px] text-gray-500 mb-2">
+                    For compliance jobs, regions default to this job&apos;s jurisdiction; adjust if the contractor covers more
+                    than one.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {UK_SERVICE_REGION_OPTIONS.map((o) => {
+                      const checked = (newContractor.service_regions || []).includes(o.value);
+                      return (
+                        <label
+                          key={o.value}
+                          className="inline-flex items-center gap-1.5 text-xs border rounded-md px-2 py-1 bg-white cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              setNewContractor((f) => {
+                                const cur = f.service_regions || [];
+                                const next = checked ? cur.filter((x) => x !== o.value) : [...cur, o.value];
+                                return { ...f, service_regions: next };
+                              });
+                            }}
+                          />
+                          {o.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
                 <input
                   className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                   placeholder="Areas served — comma-separated (optional)"

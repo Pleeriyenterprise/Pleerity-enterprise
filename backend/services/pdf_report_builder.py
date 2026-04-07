@@ -15,6 +15,10 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 import io
 from utils.branding import COMPANY_NAME, TAGLINE, get_branding_website_url, SUPPORT_EMAIL
+from presentation.jurisdiction_reporting import (
+    jurisdiction_default_fallback_report_disclaimer,
+    portfolio_jurisdiction_summary_sentence,
+)
 
 PDF_FOOTER_DISCLAIMER = "This report does not constitute legal advice."
 
@@ -180,6 +184,18 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     Missing evidence: <b>{derived['missing_count']}</b>
     """
     elements.append(Paragraph(summary_text, styles["body"]))
+    elements.append(Spacer(1, 16))
+    elements.append(Paragraph("Jurisdiction scope", styles["heading"]))
+    elements.append(Paragraph(portfolio_jurisdiction_summary_sentence(client, properties), styles["body"]))
+    elements.append(Spacer(1, 12))
+    jn = report_data.get("jurisdiction_compliance_notice") or {}
+    if jn.get("active"):
+        elements.append(
+            Paragraph(
+                "<b>Default jurisdiction notice:</b> " + jurisdiction_default_fallback_report_disclaimer(),
+                styles["body"],
+            )
+        )
     elements.append(Spacer(1, 20))
 
     # Top risk drivers (if any)
@@ -242,6 +258,7 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     elements.append(Paragraph("Scoring methodology summary", styles["heading"]))
     elements.append(Paragraph(
         "Scores are evidence-based: each applicable requirement contributes a weight; status (Evidence in place, Expiring soon, Expired/overdue, Missing evidence) maps to a factor. "
+        "Expiring-soon uses the same jurisdiction- and requirement-aware window as the live portal (not a fixed calendar constant). "
         "Risk level is derived from overall score and critical requirement status. This is not a legal compliance opinion.",
         styles["body"],
     ))
@@ -349,6 +366,21 @@ def build_score_explanation_report(
     <b>Properties monitored:</b> {props_count} &nbsp;|&nbsp; <b>Data completeness:</b> {completeness_str} &nbsp;|&nbsp; <b>Model:</b> CVP Score v{model_ver}
     """
     elements.append(Paragraph(snapshot_text, styles["body"]))
+    elements.append(Spacer(1, 16))
+    elements.append(Paragraph("Jurisdiction scope", styles["heading"]))
+    elements.append(Paragraph(
+        portfolio_jurisdiction_summary_sentence(client_doc, score_payload.get("property_breakdown") or []),
+        styles["body"],
+    ))
+    jn_score = score_payload.get("jurisdiction_compliance_notice") or {}
+    if jn_score.get("active"):
+        elements.append(Spacer(1, 10))
+        elements.append(
+            Paragraph(
+                "<b>Default jurisdiction notice:</b> " + jurisdiction_default_fallback_report_disclaimer(),
+                styles["small"],
+            )
+        )
     elements.append(Spacer(1, 24))
 
     # —— 3. What the score means ——
@@ -362,7 +394,9 @@ def build_score_explanation_report(
         styles["body"],
     ))
     elements.append(Paragraph(
-        "<b>Definitions:</b> Valid = current and in date; Expiring soon = due within the configured window; Overdue = due date passed; Missing evidence = no upload; Not applicable = excluded from score.",
+        "<b>Definitions:</b> Valid = current and in date; Expiring soon = due within the portal rule window "
+        "(accounting for jurisdiction and requirement type where configured); Overdue = due date passed; "
+        "Missing evidence = no upload; Not applicable = excluded from score.",
         styles["body"],
     ))
     elements.append(Paragraph(
@@ -535,6 +569,18 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     Missing evidence: <b>{derived['missing_count']}</b>
     """
     elements.append(Paragraph(summary_text, styles["body"]))
+    elements.append(Spacer(1, 16))
+    elements.append(Paragraph("Jurisdiction scope", styles["heading"]))
+    elements.append(Paragraph(portfolio_jurisdiction_summary_sentence(client, properties), styles["body"]))
+    elements.append(Spacer(1, 12))
+    jn_prop = report_data.get("jurisdiction_compliance_notice") or {}
+    if jn_prop.get("active"):
+        elements.append(
+            Paragraph(
+                "<b>Default jurisdiction notice:</b> " + jurisdiction_default_fallback_report_disclaimer(),
+                styles["body"],
+            )
+        )
     elements.append(Spacer(1, 20))
 
     if top_risks:
@@ -572,7 +618,9 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     # Methodology
     elements.append(Paragraph("Scoring methodology summary", styles["heading"]))
     elements.append(Paragraph(
-        "Scores are evidence-based; status (Evidence in place, Expiring soon, Expired/overdue, Missing evidence) maps to a factor. Risk level is derived from score. This is not a legal compliance opinion.",
+        "Scores are evidence-based; status (Evidence in place, Expiring soon, Expired/overdue, Missing evidence) maps to a factor. "
+        "Expiring-soon uses the jurisdiction- and requirement-aware portal window. Risk level is derived from score. "
+        "This is not a legal compliance opinion.",
         styles["body"],
     ))
     elements.append(Spacer(1, 20))

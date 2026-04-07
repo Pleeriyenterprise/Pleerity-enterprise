@@ -125,6 +125,7 @@ async def create_work_order(
     compliance_generated_from: Optional[str] = None,
     expected_output_document_type: Optional[str] = None,
     linked_property_requirement_id: Optional[str] = None,
+    jurisdiction: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Create a work order. source: tenant_request | client | admin.
     Optional: asset_id, issue_id, cost estimates, initial_status (default OPEN), SLA overrides.
@@ -132,16 +133,9 @@ async def create_work_order(
     Compliance execution work orders (work_order_kind=COMPLIANCE) skip maintenance triage and use explicit metadata.
     """
     db = database.get_db()
-    now = datetime.now(timezone.utc).isoformat()
+    now_dt = datetime.now(timezone.utc)
+    now = now_dt.isoformat()
     work_order_id = str(uuid.uuid4())
-    sla_respond_hours = 24
-    sla_complete_days = 5
-    default_respond = (datetime.now(timezone.utc) + timedelta(hours=sla_respond_hours)).isoformat()
-    default_complete = (datetime.now(timezone.utc) + timedelta(days=sla_complete_days)).isoformat()
-    status = (initial_status or STATUS_OPEN).strip().upper() if initial_status else STATUS_OPEN
-    if status not in ALL_STATUSES:
-        status = STATUS_OPEN
-
     kind = (work_order_kind or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
     if kind not in (WORK_ORDER_KIND_MAINTENANCE, WORK_ORDER_KIND_COMPLIANCE):
         kind = WORK_ORDER_KIND_MAINTENANCE
@@ -152,6 +146,46 @@ async def create_work_order(
             raise ValueError("COMPLIANCE work orders require requirement_code")
         if not lpr:
             raise ValueError("COMPLIANCE work orders require linked_property_requirement_id")
+
+    jurisdiction_for_wo = (jurisdiction or "").strip() or None
+    if not jurisdiction_for_wo and linked_property_requirement_id:
+        r = await db.requirements.find_one(
+            {"requirement_id": linked_property_requirement_id.strip()},
+            {"_id": 0, "jurisdiction": 1},
+        )
+        jurisdiction_for_wo = (r or {}).get("jurisdiction")
+    if not jurisdiction_for_wo:
+        from services.compliance_rules_registry import portfolio_jurisdiction_label
+
+        p = await db.properties.find_one(
+            {"property_id": property_id, "client_id": client_id},
+            {"_id": 0, "jurisdiction": 1},
+        )
+        c = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1})
+        jurisdiction_for_wo = portfolio_jurisdiction_label(p or {}, c or {})
+
+    sla_respond_hours = 24
+    sla_complete_days = 5
+    compliance_sla_meta: Dict[str, Any] = {}
+    if kind == WORK_ORDER_KIND_COMPLIANCE:
+        from services.compliance_rules_registry import compliance_execution_sla_policy
+
+        pol = compliance_execution_sla_policy(jurisdiction_for_wo, requirement_code)
+        sla_respond_hours = pol["respond_hours"]
+        sla_complete_days = pol["complete_days"]
+        compliance_sla_meta = {
+            "compliance_sla_complete_days": pol["complete_days"],
+            "compliance_sla_respond_hours": pol["respond_hours"],
+            "compliance_sla_risk_days_before_complete": pol["risk_days_before_complete"],
+            "compliance_sla_risk_hours_before_respond": pol["risk_hours_before_respond"],
+        }
+
+    default_respond = (now_dt + timedelta(hours=sla_respond_hours)).isoformat()
+    default_complete = (now_dt + timedelta(days=sla_complete_days)).isoformat()
+    status = (initial_status or STATUS_OPEN).strip().upper() if initial_status else STATUS_OPEN
+    if status not in ALL_STATUSES:
+        status = STATUS_OPEN
+
     use_triage_effective = use_triage and kind != WORK_ORDER_KIND_COMPLIANCE
     if kind == WORK_ORDER_KIND_COMPLIANCE:
         eff_category = WORK_ORDER_CATEGORY_COMPLIANCE
@@ -249,14 +283,22 @@ async def create_work_order(
     if kind == WORK_ORDER_KIND_COMPLIANCE:
         doc["compliance_booking_status"] = COMPLIANCE_BOOKING_BOOKING_REQUESTED
         doc["compliance_proof_status"] = COMPLIANCE_PROOF_NOT_SUBMITTED
+        doc.update(compliance_sla_meta)
     if created_from:
         doc["created_from"] = (created_from or "").strip()
     if triggering_rule:
         doc["triggering_rule"] = (triggering_rule or "").strip()
     if operational_root_key:
         doc["operational_root_key"] = (operational_root_key or "").strip()
+
+    if jurisdiction_for_wo:
+        doc["jurisdiction"] = jurisdiction_for_wo
+
     await db.work_orders.insert_one(doc)
     doc.pop("_id", None)
+    from services.compliance_workflow_service import client_job_sla_policy
+
+    doc["sla_policy"] = client_job_sla_policy(doc)
     return doc
 
 
@@ -323,8 +365,11 @@ async def list_work_orders(
             q["work_order_kind"] = wk
     cursor = db.work_orders.find(q).sort("created_at", -1).skip(skip).limit(limit)
     items = await cursor.to_list(limit)
+    from services.compliance_workflow_service import client_job_sla_policy
+
     for d in items:
         d.pop("_id", None)
+        d["sla_policy"] = client_job_sla_policy(d)
     total = await db.work_orders.count_documents(q)
     return {"work_orders": items, "total": total, "skip": skip, "limit": limit}
 
@@ -335,6 +380,9 @@ async def get_work_order(work_order_id: str) -> Optional[Dict[str, Any]]:
     doc = await db.work_orders.find_one({"work_order_id": work_order_id})
     if doc:
         doc.pop("_id", None)
+        from services.compliance_workflow_service import client_job_sla_policy
+
+        doc["sla_policy"] = client_job_sla_policy(doc)
     return doc
 
 

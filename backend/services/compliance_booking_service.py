@@ -90,7 +90,7 @@ async def create_compliance_execution_work_order(
             "client_id": client_id.strip(),
             "property_id": property_id.strip(),
         },
-        {"_id": 0, "requirement_code": 1, "requirement_type": 1},
+        {"_id": 0, "requirement_code": 1, "requirement_type": 1, "jurisdiction": 1},
     )
     if not req_row:
         raise ValueError("Linked property requirement not found for this property")
@@ -137,6 +137,7 @@ async def create_compliance_execution_work_order(
         compliance_generated_from=gen_from,
         expected_output_document_type=expected_doc,
         linked_property_requirement_id=linked_property_requirement_id,
+        jurisdiction=(req_row.get("jurisdiction") or "").strip() or None,
     )
 
     try:

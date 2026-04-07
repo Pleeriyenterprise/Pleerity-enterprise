@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { User, Bell, CreditCard, Palette } from 'lucide-react';
+import { User, Bell, CreditCard, Palette, Globe2 } from 'lucide-react';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 
 const BASE_TABS = [
   { path: '/settings/profile', label: 'Profile', icon: User },
+  { path: '/settings/jurisdiction', label: 'Jurisdiction', icon: Globe2 },
   { path: '/settings/notifications', label: 'Notifications', icon: Bell },
   { path: '/settings/billing', label: 'Billing', icon: CreditCard },
   { path: '/settings/branding', label: 'Branding', icon: Palette, feature: 'white_label_reports' },
@@ -24,7 +25,7 @@ export default function SettingsLayout() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-midnight-blue mb-2">Settings</h1>
-      <p className="text-gray-600 mb-6">Profile, notifications, and plan.</p>
+      <p className="text-gray-600 mb-6">Profile, compliance jurisdiction, notifications, and plan.</p>
       <nav className="flex gap-2 border-b border-gray-200 mb-6">
         {tabs.map(({ path, label, icon: Icon }) => (
           <NavLink

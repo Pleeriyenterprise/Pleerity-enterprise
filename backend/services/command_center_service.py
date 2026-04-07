@@ -137,6 +137,21 @@ async def get_command_center_bundle(
 
         cs = await calculate_compliance_score(client_id)
         stats = cs.get("stats") if isinstance(cs.get("stats"), dict) else {}
+        notice = cs.get("jurisdiction_compliance_notice") or {}
+        jreq_ids = list(cs.get("jurisdiction_required_property_ids") or [])
+        jreq = bool(cs.get("jurisdiction_required"))
+        jconf = cs.get("compliance_confidence")
+        if property_id_filter:
+            aff = [x for x in (notice.get("affected_property_ids") or []) if x == property_id_filter]
+            notice = {
+                **notice,
+                "affected_property_ids": aff,
+                "affected_property_count": len(aff),
+                "active": bool(aff),
+                "compliance_basis": "default_fallback" if aff else None,
+            }
+            jreq = property_id_filter in jreq_ids
+            jconf = "fallback" if jreq else "explicit"
         compliance_status_summary = {
             "score": cs.get("score"),
             "grade": cs.get("grade"),
@@ -146,10 +161,27 @@ async def get_command_center_bundle(
             "requirements_overdue": stats.get("overdue"),
             "requirements_expiring_soon": stats.get("expiring_soon"),
             "requirements_pending": stats.get("pending"),
+            "jurisdiction_compliance_notice": notice,
+            "jurisdiction_required": jreq,
+            "compliance_confidence": jconf,
+            "jurisdiction_fallback_acknowledged": cs.get("jurisdiction_fallback_acknowledged"),
         }
     except Exception as e:
         logger.warning("command_center compliance score failed: %s", e)
-        compliance_status_summary = {"score": None, "grade": None, "message": None}
+        compliance_status_summary = {
+            "score": None,
+            "grade": None,
+            "message": None,
+            "jurisdiction_compliance_notice": {
+                "active": False,
+                "compliance_basis": None,
+                "affected_property_ids": [],
+                "affected_property_count": 0,
+            },
+            "jurisdiction_required": None,
+            "compliance_confidence": None,
+            "jurisdiction_fallback_acknowledged": None,
+        }
 
     recent_activity = digest.get("activity_feed") or []
 

@@ -8,8 +8,9 @@ from utils.api_errors import log_api_error, structured_error
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from config.security_limits import security_limits
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 import asyncio
+import json
 import os
 import uuid
 import logging
@@ -24,6 +25,56 @@ from services.work_order_execution_constants import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+
+def _build_validation_result_persist(
+    document_validation: Dict[str, Any],
+    *,
+    document_type_input: Optional[str],
+    validated_at_iso: str,
+) -> Dict[str, Any]:
+    """Stable snapshot for Mongo + audit (re-validation)."""
+    missing = document_validation.get("missing_metadata_fields")
+    if missing is None:
+        missing_list: List[Any] = []
+    elif isinstance(missing, list):
+        missing_list = list(missing)
+    else:
+        missing_list = [missing]
+    return {
+        "valid": bool(document_validation.get("valid")),
+        "jurisdiction": document_validation.get("jurisdiction"),
+        "validated_at": validated_at_iso,
+        "missing_metadata_fields": missing_list,
+        "reason": document_validation.get("reason"),
+        "scoring_jurisdiction": document_validation.get("scoring_jurisdiction"),
+        "portfolio_jurisdiction": document_validation.get("portfolio_jurisdiction"),
+        "document_type_input": document_type_input,
+    }
+
+
+def _parse_upload_document_metadata(document_metadata: Optional[str]) -> Optional[Dict[str, Any]]:
+    if not document_metadata or not str(document_metadata).strip():
+        return None
+    try:
+        parsed = json.loads(document_metadata)
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=structured_error(
+                "INVALID_DOCUMENT_METADATA",
+                "document_metadata must be a JSON object (e.g. {\"issue_date\":\"2024-01-15\",\"engineer_id\":\"REG123\"}).",
+            ),
+        )
+    if not isinstance(parsed, dict):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=structured_error(
+                "INVALID_DOCUMENT_METADATA",
+                "document_metadata must be a JSON object (e.g. {\"issue_date\":\"2024-01-15\",\"engineer_id\":\"REG123\"}).",
+            ),
+        )
+    return dict(parsed)
 
 
 async def _enforce_document_upload_rate_limit(client_id: str) -> None:
@@ -1011,6 +1062,7 @@ async def perform_client_document_upload(
     document_type: Optional[str] = None,
     notes: Optional[str] = None,
     source: Optional[str] = None,
+    document_metadata: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Persist a client compliance upload (shared by POST /api/documents/upload and requirement-scoped routes).
@@ -1039,6 +1091,11 @@ async def perform_client_document_upload(
             },
         )
 
+    client_row = await db.clients.find_one(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "default_jurisdiction": 1},
+    ) or {}
+
     requirement = None
     rid = (requirement_id or "").strip()
     if rid:
@@ -1063,6 +1120,36 @@ async def perform_client_document_upload(
         requirement_id=requirement_id,
     )
 
+    meta_dict = _parse_upload_document_metadata(document_metadata)
+
+    document_validation: Optional[Dict[str, Any]] = None
+    if requirement:
+        from services.compliance_rules_registry import validate_document_upload_for_requirement
+
+        document_validation = validate_document_upload_for_requirement(
+            document_type,
+            requirement,
+            meta_dict,
+            property_doc=property_doc,
+            client_doc=client_row,
+        )
+        if not document_validation.get("valid"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=structured_error(
+                    "DOCUMENT_VALIDATION_FAILED",
+                    document_validation.get("reason") or "Document validation failed",
+                    validation={
+                        "valid": document_validation.get("valid"),
+                        "reason": document_validation.get("reason"),
+                        "jurisdiction": document_validation.get("jurisdiction"),
+                        "scoring_jurisdiction": document_validation.get("scoring_jurisdiction"),
+                        "portfolio_jurisdiction": document_validation.get("portfolio_jurisdiction"),
+                        "missing_metadata_fields": document_validation.get("missing_metadata_fields") or [],
+                    },
+                ),
+            )
+
     file_extension = Path(file.filename).suffix
     unique_filename = f"{uuid.uuid4()}{file_extension}"
     file_path = DOCUMENT_STORAGE_PATH / user["client_id"] / unique_filename
@@ -1073,6 +1160,16 @@ async def perform_client_document_upload(
         f.write(contents)
 
     stored_path = f"{user['client_id']}/{unique_filename}"
+
+    validated_at_iso = datetime.now(timezone.utc).isoformat()
+    document_type_stored = document_type.strip() if isinstance(document_type, str) else None
+    validation_result_persist: Optional[Dict[str, Any]] = None
+    if document_validation is not None:
+        validation_result_persist = _build_validation_result_persist(
+            document_validation,
+            document_type_input=document_type_stored,
+            validated_at_iso=validated_at_iso,
+        )
 
     document = Document(
         client_id=user["client_id"],
@@ -1085,9 +1182,11 @@ async def perform_client_document_upload(
         mime_type=file.content_type or "application/octet-stream",
         status=DocumentStatus.UPLOADED,
         uploaded_by=user["portal_user_id"],
-        document_type=document_type.strip() if isinstance(document_type, str) else None,
+        document_type=document_type_stored,
         source=(source.strip() if isinstance(source, str) and source.strip() else None) or "portal",
         notes=notes.strip() if isinstance(notes, str) else None,
+        document_metadata=meta_dict,
+        validation_result=validation_result_persist,
     )
 
     doc = document.model_dump()
@@ -1183,11 +1282,23 @@ async def perform_client_document_upload(
     except Exception as outcome_err:
         logger.debug("Action outcome skip for document upload: %s", outcome_err)
 
-    return {
+    out: Dict[str, Any] = {
         "message": "Document uploaded successfully",
         "document_id": document.document_id,
         "outcome": outcome,
     }
+    if document_validation is not None:
+        out["document_validation"] = {
+            "valid": document_validation.get("valid"),
+            "reason": document_validation.get("reason"),
+            "jurisdiction": document_validation.get("jurisdiction"),
+            "scoring_jurisdiction": document_validation.get("scoring_jurisdiction"),
+            "portfolio_jurisdiction": document_validation.get("portfolio_jurisdiction"),
+            "missing_metadata_fields": document_validation.get("missing_metadata_fields") or [],
+        }
+    out["document_metadata"] = meta_dict
+    out["validation_result"] = validation_result_persist
+    return out
 
 
 @router.post("/upload")
@@ -1200,6 +1311,10 @@ async def upload_document(
     document_type: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     source: Optional[str] = Form(None),
+    document_metadata: Optional[str] = Form(
+        None,
+        description='Optional JSON object for jurisdiction-aware checks, e.g. {"issue_date":"2024-06-01","engineer_id":"GAS123"}',
+    ),
 ):
     """Upload a compliance document (client or admin). requirement_id optional for 'Other' docs (link later)."""
     user = await client_route_guard(request)
@@ -1215,6 +1330,7 @@ async def upload_document(
             document_type=document_type,
             notes=notes,
             source=source,
+            document_metadata=document_metadata,
         )
 
     except HTTPException:

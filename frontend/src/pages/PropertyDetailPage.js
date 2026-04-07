@@ -4,6 +4,7 @@ import apiClient, { clientAPI } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Alert, AlertDescription } from '../components/ui/alert';
 import ErrorBanner from '../components/ErrorBanner';
 import {
   ArrowLeft,
@@ -57,6 +58,11 @@ import {
   portalDrawerPanelClass,
 } from '../components/client/ClientPortalPatterns';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import {
+  JURISDICTION_FALLBACK_ALERT_BODY_PROPERTY,
+  JURISDICTION_FALLBACK_ALERT_TITLE,
+  JURISDICTION_FALLBACK_CTA,
+} from '../utils/jurisdictionComplianceCopy';
 import PropertyOperatingHub from '../components/property/PropertyOperatingHub';
 
 const NOT_REQUIRED_REASONS = [
@@ -795,6 +801,14 @@ export default function PropertyDetailPage() {
     ? [property.address_line_1, property.address_line_2, property.postcode].filter(Boolean).join(', ') || 'Unnamed property'
     : 'Property';
 
+  // Property-level signal only: do not suppress with client onboarding acknowledgement — this is where jurisdiction truth lives.
+  const showJurisdictionFallback =
+    property?.compliance_basis === 'default_fallback' ||
+    complianceDetail?.compliance_basis === 'default_fallback' ||
+    property?.jurisdiction_required === true ||
+    property?.compliance_confidence === 'fallback' ||
+    complianceDetail?.compliance_confidence === 'fallback';
+
   return (
     <div className={portalPageRoot}>
       <div className="flex items-center justify-between gap-4 mb-4">
@@ -814,6 +828,22 @@ export default function PropertyDetailPage() {
           {refreshing ? 'Refreshing…' : 'Refresh'}
         </Button>
       </div>
+
+      {showJurisdictionFallback && (
+        <Alert
+          className="mb-4 border-amber-300 bg-amber-50/95 text-amber-950"
+          data-testid="jurisdiction-fallback-property-alert"
+        >
+          <AlertCircle className="h-4 w-4 text-amber-800 shrink-0" />
+          <AlertDescription>
+            <p className="font-semibold text-amber-950">{JURISDICTION_FALLBACK_ALERT_TITLE}</p>
+            <p className="text-sm mt-1.5 text-amber-950/95">{JURISDICTION_FALLBACK_ALERT_BODY_PROPERTY}</p>
+            <Button type="button" variant="outline" size="sm" className="mt-3 border-amber-400 bg-white hover:bg-amber-100" asChild>
+              <Link to="/settings/jurisdiction">{JURISDICTION_FALLBACK_CTA}</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* A — Property header: identity, compliance snapshot, primary actions only */}
       <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6 mb-4 min-w-0">

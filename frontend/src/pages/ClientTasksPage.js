@@ -35,11 +35,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
-import { Loader2, LayoutList, Info, ExternalLink, Bell, EyeOff, CheckCircle, RotateCcw, History } from 'lucide-react';
+import { Loader2, LayoutList, Info, ExternalLink, Bell, EyeOff, CheckCircle, RotateCcw, History, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { TodayUrgencyRow } from '../components/client/UrgencyDisplay';
 import { resolveClientPortalPath } from '../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../utils/ctaRegistry';
+import {
+  JURISDICTION_FALLBACK_ALERT_BODY,
+  JURISDICTION_FALLBACK_ALERT_TITLE,
+  JURISDICTION_FALLBACK_CTA,
+  JURISDICTION_PORTFOLIO_REMINDER_COMPACT,
+} from '../utils/jurisdictionComplianceCopy';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All' },
@@ -485,6 +491,10 @@ export default function ClientTasksPage() {
   const [dismissModalTask, setDismissModalTask] = useState(null);
   const [dismissReason, setDismissReason] = useState('');
   const [complianceBookingBusyId, setComplianceBookingBusyId] = useState(null);
+  /** From GET /client/command-center (same scoping as Dashboard when property_id is set). */
+  const [jurisdictionComplianceNotice, setJurisdictionComplianceNotice] = useState(null);
+  const [commandCenterComplianceConfidence, setCommandCenterComplianceConfidence] = useState(null);
+  const [commandCenterFallbackAcknowledged, setCommandCenterFallbackAcknowledged] = useState(null);
 
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
 
@@ -510,6 +520,25 @@ export default function ClientTasksPage() {
     setLoading(true);
     setError('');
     const params = propertyFilter ? { property_id: propertyFilter } : {};
+    setJurisdictionComplianceNotice(null);
+    setCommandCenterComplianceConfidence(null);
+    setCommandCenterFallbackAcknowledged(null);
+    clientAPI
+      .getCommandCenter(params)
+      .then((res) => {
+        const summary = res.data?.compliance_status_summary;
+        const notice = summary?.jurisdiction_compliance_notice;
+        setJurisdictionComplianceNotice(notice && typeof notice === 'object' ? notice : null);
+        setCommandCenterComplianceConfidence(summary?.compliance_confidence ?? null);
+        setCommandCenterFallbackAcknowledged(
+          typeof summary?.jurisdiction_fallback_acknowledged === 'boolean'
+            ? summary.jurisdiction_fallback_acknowledged
+            : null,
+        );
+      })
+      .catch(() => {
+        /* Do not surface errors; Today does not depend on command-center. */
+      });
     clientAPI
       .getTodayItems(params)
       .then((res) => setPayload(res.data))
@@ -585,6 +614,23 @@ export default function ClientTasksPage() {
       count: spend.invoice_count,
     };
   }, [spend, hasFeature]);
+
+  const jurisdictionTodayBanner = useMemo(() => {
+    const noticeActive =
+      jurisdictionComplianceNotice?.active &&
+      jurisdictionComplianceNotice?.compliance_basis === 'default_fallback';
+    const fallbackConfidence = commandCenterComplianceConfidence === 'fallback';
+    const concern = noticeActive || fallbackConfidence;
+    const acked = commandCenterFallbackAcknowledged === true;
+    return {
+      showFull: concern && !acked,
+      showCompact: concern && acked,
+    };
+  }, [
+    jurisdictionComplianceNotice,
+    commandCenterComplianceConfidence,
+    commandCenterFallbackAcknowledged,
+  ]);
 
   const showRiskInline = hasFeature('predictive_maintenance') && hasFeature('maintenance_workflows');
   const showComplianceBooking =
@@ -817,6 +863,43 @@ export default function ClientTasksPage() {
           </span>
         </p>
       </div>
+
+      {jurisdictionTodayBanner.showFull && (
+          <Alert
+            className="mb-4 border-amber-300 bg-amber-50/95 text-amber-950"
+            data-testid="jurisdiction-fallback-today-alert"
+          >
+            <AlertCircle className="h-4 w-4 text-amber-800" />
+            <AlertDescription>
+              <p className="font-semibold text-amber-950">{JURISDICTION_FALLBACK_ALERT_TITLE}</p>
+              <p className="text-sm mt-1.5 text-amber-950/95">{JURISDICTION_FALLBACK_ALERT_BODY}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3 border-amber-400 bg-white hover:bg-amber-100"
+                onClick={() => navigate('/settings/jurisdiction')}
+              >
+                {JURISDICTION_FALLBACK_CTA}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+      {jurisdictionTodayBanner.showCompact && (
+        <Alert
+          className="mb-4 border-amber-200/90 bg-amber-50/60 text-amber-950"
+          data-testid="jurisdiction-fallback-today-reminder"
+        >
+          <Info className="h-4 w-4 text-amber-700 shrink-0" />
+          <AlertDescription className="text-sm text-amber-950/95">
+            <span>{JURISDICTION_PORTFOLIO_REMINDER_COMPACT} </span>
+            <Link to="/settings/jurisdiction" className="font-medium text-electric-teal hover:underline">
+              {JURISDICTION_FALLBACK_CTA}
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {summary?.habit &&
         (summary.habit.urgent_open_total > 0 ||

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
@@ -25,6 +25,30 @@ import {
 } from '../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../utils/ctaRegistry';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
+import { Checkbox } from '../components/ui/checkbox';
+import {
+  JURISDICTION_FALLBACK_ALERT_BODY,
+  JURISDICTION_FALLBACK_ALERT_TITLE,
+  JURISDICTION_FALLBACK_ACK_CHECKBOX_LABEL,
+  JURISDICTION_FALLBACK_ACK_SUBMIT_LABEL,
+  JURISDICTION_FALLBACK_ACK_VALIDATION_ERROR,
+  JURISDICTION_FALLBACK_CTA,
+  JURISDICTION_IMPACT_INTRO,
+  JURISDICTION_ONBOARDING_GATE_CONSEQUENCE,
+  JURISDICTION_ONBOARDING_GATE_CTA_HINT,
+  JURISDICTION_ONBOARDING_GATE_LEAD,
+  JURISDICTION_ONBOARDING_GATE_TITLE,
+  JURISDICTION_PORTFOLIO_REMINDER_COMPACT,
+  JURISDICTION_SCOPE_GLOBAL,
+} from '../utils/jurisdictionComplianceCopy';
 
 const KPI_NO_DATA = 'No data yet';
 
@@ -129,6 +153,8 @@ const ClientDashboard = () => {
   const [onboardingChecklist, setOnboardingChecklist] = useState(null);
   const [completingItemId, setCompletingItemId] = useState(null);
   const [onboardingItemError, setOnboardingItemError] = useState('');
+  const [jurisdictionAckConfirm, setJurisdictionAckConfirm] = useState(false);
+  const [jurisdictionAckSubmitting, setJurisdictionAckSubmitting] = useState(false);
   const [valueInsights, setValueInsights] = useState(null);
   // Operations data for dashboard KPIs and action queue
   const [workOrdersList, setWorkOrdersList] = useState([]);
@@ -158,6 +184,19 @@ const ClientDashboard = () => {
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
   const contractorNetworkEnabled = hasFeature('contractor_network');
+
+  const showJurisdictionOnboardingGate = useMemo(
+    () =>
+      Boolean(
+        isClientUser &&
+          onboardingChecklist &&
+          !onboardingChecklist.completed_at &&
+          onboardingChecklist.jurisdiction_onboarding &&
+          onboardingChecklist.jurisdiction_onboarding.jurisdiction_required &&
+          !onboardingChecklist.jurisdiction_onboarding.jurisdiction_fallback_acknowledged,
+      ),
+    [isClientUser, onboardingChecklist],
+  );
 
   useEffect(() => {
     if (!isClientUser || !contractorNetworkEnabled) {
@@ -641,6 +680,44 @@ const ClientDashboard = () => {
       .finally(() => setCompletingItemId(null));
   };
 
+  useEffect(() => {
+    if (!showJurisdictionOnboardingGate) setJurisdictionAckConfirm(false);
+  }, [showJurisdictionOnboardingGate]);
+
+  const submitJurisdictionFallbackAck = () => {
+    if (!jurisdictionAckConfirm) {
+      setOnboardingItemError(JURISDICTION_FALLBACK_ACK_VALIDATION_ERROR);
+      return;
+    }
+    setOnboardingItemError('');
+    setJurisdictionAckSubmitting(true);
+    clientAPI
+      .acknowledgeJurisdictionFallbackAssumptions({ confirm: true })
+      .then((r) => setOnboardingChecklist(r.data))
+      .catch((err) => {
+        setOnboardingItemError(parseApiError(err, 'Could not record acknowledgement. Please try again.'));
+      })
+      .finally(() => setJurisdictionAckSubmitting(false));
+  };
+
+  /** Portfolio surfaces: full amber banner before acknowledgement; compact reminder after (property pages stay strong). */
+  const jurisdictionPortfolioBanner = useMemo(() => {
+    const summary = commandCenter?.compliance_status_summary;
+    if (!summary || typeof summary !== 'object') {
+      return { showFull: false, showCompact: false };
+    }
+    const noticeActive =
+      summary.jurisdiction_compliance_notice?.active &&
+      summary.jurisdiction_compliance_notice?.compliance_basis === 'default_fallback';
+    const fallbackConfidence = summary.compliance_confidence === 'fallback';
+    const concern = noticeActive || fallbackConfidence;
+    const acked = summary.jurisdiction_fallback_acknowledged === true;
+    return {
+      showFull: concern && !acked,
+      showCompact: concern && acked,
+    };
+  }, [commandCenter]);
+
   // Whether to show the "documents missing" step: requirements that may need docs/confirmation (REQUIRED/UNKNOWN without confirmed expiry)
   const needsDocumentsStep = useMemo(() => {
     if (!requirementsList.length) return false;
@@ -790,6 +867,55 @@ const ClientDashboard = () => {
     <div className={portalPageRoot} data-testid="client-dashboard">
         <ErrorBanner message={error} onRetry={fetchDashboard} retryLabel="Retry" />
 
+        <Dialog open={showJurisdictionOnboardingGate} modal>
+          <DialogContent
+            className="max-w-md [&>button.absolute]:hidden sm:max-w-lg"
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+            data-testid="jurisdiction-onboarding-gate-dialog"
+          >
+            <DialogHeader>
+              <DialogTitle className="text-midnight-blue">{JURISDICTION_ONBOARDING_GATE_TITLE}</DialogTitle>
+              <DialogDescription asChild>
+                <div className="text-left text-gray-600 space-y-3 text-sm">
+                  <p>{JURISDICTION_ONBOARDING_GATE_LEAD}</p>
+                  <p className="text-gray-800 font-medium">{JURISDICTION_ONBOARDING_GATE_CONSEQUENCE}</p>
+                  <p className="text-gray-600">{JURISDICTION_ONBOARDING_GATE_CTA_HINT}</p>
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-3 text-sm text-gray-700">
+              <Button
+                type="button"
+                className="w-full bg-electric-teal hover:bg-electric-teal/90"
+                onClick={() => navigate('/settings/jurisdiction?from=onboarding')}
+              >
+                {JURISDICTION_FALLBACK_CTA}
+              </Button>
+              <label className="flex items-start gap-3 cursor-pointer rounded-md border border-gray-200 p-3">
+                <Checkbox
+                  checked={jurisdictionAckConfirm}
+                  onCheckedChange={(v) => setJurisdictionAckConfirm(v === true)}
+                  className="mt-0.5"
+                  data-testid="jurisdiction-fallback-ack-checkbox"
+                />
+                <span>{JURISDICTION_FALLBACK_ACK_CHECKBOX_LABEL}</span>
+              </label>
+            </div>
+            <DialogFooter className="sm:justify-start">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!jurisdictionAckConfirm || jurisdictionAckSubmitting}
+                onClick={submitJurisdictionFallbackAck}
+                data-testid="jurisdiction-fallback-ack-submit"
+              >
+                {jurisdictionAckSubmitting ? 'Saving…' : JURISDICTION_FALLBACK_ACK_SUBMIT_LABEL}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {systemBanners.length > 0 && (
           <div className="mb-6 space-y-2">
             {systemBanners.map((b) => {
@@ -917,27 +1043,49 @@ const ClientDashboard = () => {
               {onboardingChecklist?.items?.length > 0 ? (
                 <ul className="space-y-3 text-sm text-gray-700">
                   {onboardingChecklist.items.map((item) => (
-                    <li key={item.id} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-gray-50">
-                      <span className="flex items-center gap-2 flex-1">
-                        {item.completed_at ? (
-                          <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
-                        ) : (
-                          <ClipboardCheck className="w-4 h-4 text-electric-teal shrink-0" />
-                        )}
-                        <span className={item.completed_at ? 'text-gray-500 line-through' : ''}>{item.label}</span>
-                      </span>
-                      <span className="flex items-center gap-2 shrink-0">
-                        {!item.completed_at && (
-                          <>
-                            <Button variant="outline" size="sm" onClick={() => navigate(item.deep_link || '/properties')}>
-                              Go
-                            </Button>
-                            <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => completeOnboardingItem(item.id)} disabled={completingItemId === item.id}>
-                              {completingItemId === item.id ? '…' : 'Mark done'}
-                            </Button>
-                          </>
-                        )}
-                      </span>
+                    <li key={item.id} className="p-2 rounded-lg bg-gray-50 space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="flex items-center gap-2 flex-1 min-w-0">
+                          {item.completed_at ? (
+                            <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                          ) : (
+                            <ClipboardCheck className="w-4 h-4 text-electric-teal shrink-0" />
+                          )}
+                          <span className={item.completed_at ? 'text-gray-500 line-through' : 'font-medium text-midnight-blue'}>
+                            {item.label}
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-2 shrink-0">
+                          {!item.completed_at && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const base = item.deep_link || '/properties';
+                                  const extra =
+                                    item.id === 'set_jurisdictions' && setupView === 'checklist'
+                                      ? `${base.includes('?') ? '&' : '?'}from=onboarding`
+                                      : '';
+                                  navigate(`${base}${extra}`);
+                                }}
+                              >
+                                Go
+                              </Button>
+                              <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => completeOnboardingItem(item.id)} disabled={completingItemId === item.id}>
+                                {completingItemId === item.id ? '…' : 'Mark done'}
+                              </Button>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      {item.id === 'set_jurisdictions' && !item.completed_at ? (
+                        <div className="pl-6 sm:pl-8 border-l-2 border-electric-teal/40 text-xs text-gray-700 space-y-1.5">
+                          <p className="font-medium text-gray-900">Core compliance configuration</p>
+                          <p>{JURISDICTION_IMPACT_INTRO}</p>
+                          <p className="text-gray-600">{JURISDICTION_SCOPE_GLOBAL}</p>
+                        </div>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -1043,7 +1191,12 @@ const ClientDashboard = () => {
                     variant="outline"
                     size="sm"
                     className="border-amber-300 text-amber-800 hover:bg-amber-100"
-                    onClick={() => navigate(item.deep_link || '/properties')}
+                    onClick={() => {
+                      const base = item.deep_link || '/properties';
+                      const extra =
+                        item.id === 'set_jurisdictions' ? `${base.includes('?') ? '&' : '?'}from=onboarding` : '';
+                      navigate(`${base}${extra}`);
+                    }}
                   >
                     {item.label}
                   </Button>
@@ -1624,6 +1777,43 @@ const ClientDashboard = () => {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {!setupView && jurisdictionPortfolioBanner.showFull && (
+            <Alert
+              className="mb-6 border-amber-300 bg-amber-50/95 text-amber-950"
+              data-testid="jurisdiction-fallback-dashboard-alert"
+            >
+              <AlertCircle className="h-4 w-4 text-amber-800" />
+              <AlertDescription>
+                <p className="font-semibold text-amber-950">{JURISDICTION_FALLBACK_ALERT_TITLE}</p>
+                <p className="text-sm mt-1.5 text-amber-950/95">{JURISDICTION_FALLBACK_ALERT_BODY}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 border-amber-400 bg-white hover:bg-amber-100"
+                  onClick={() => navigate('/settings/jurisdiction')}
+                >
+                  {JURISDICTION_FALLBACK_CTA}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+        {!setupView && jurisdictionPortfolioBanner.showCompact && (
+          <Alert
+            className="mb-6 border-amber-200/90 bg-amber-50/60 text-amber-950"
+            data-testid="jurisdiction-fallback-dashboard-reminder"
+          >
+            <Info className="h-4 w-4 text-amber-700 shrink-0" />
+            <AlertDescription className="text-sm text-amber-950/95">
+              <span>{JURISDICTION_PORTFOLIO_REMINDER_COMPACT} </span>
+              <Link to="/settings/jurisdiction" className="font-medium text-electric-teal hover:underline">
+                {JURISDICTION_FALLBACK_CTA}
+              </Link>
+            </AlertDescription>
+          </Alert>
         )}
 
         {!setupView && commandCenter && typeof commandCenter === 'object' && (

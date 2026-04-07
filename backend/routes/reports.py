@@ -306,7 +306,7 @@ async def get_score_explanation_pdf(
         db = database.get_db()
         client = await db.clients.find_one(
             {"client_id": user["client_id"]},
-            {"_id": 0, "full_name": 1, "company_name": 1, "customer_reference": 1},
+            {"_id": 0, "full_name": 1, "company_name": 1, "customer_reference": 1, "default_jurisdiction": 1},
         )
         client_doc = client or {}
         try:

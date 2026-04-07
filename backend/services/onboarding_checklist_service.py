@@ -7,6 +7,11 @@ from database import database
 from datetime import datetime, timezone
 import logging
 
+from services.compliance_rules_registry import (
+    build_portfolio_jurisdiction_attestation,
+    property_has_explicit_portfolio_jurisdiction,
+)
+
 logger = logging.getLogger(__name__)
 
 # Checklist item ids (used in client.onboarding_checklist.items[].id)
@@ -60,12 +65,12 @@ async def get_checklist_items_for_client(client_id: str) -> List[Dict[str, Any]]
         "completed_at": completed_map.get(ITEM_ADD_PROPERTIES),
     })
 
-    # Required: Set jurisdictions defaults
+    # Required: Set jurisdictions defaults + each property’s jurisdiction (or acknowledge default assumptions)
     items.append({
         "id": ITEM_SET_JURISDICTIONS,
-        "label": "Set jurisdiction defaults (Scotland, England, Wales, Northern Ireland)",
+        "label": "Set jurisdictions — defaults and each property (or acknowledge continuing with default assumptions)",
         "required": True,
-        "deep_link": "/settings",
+        "deep_link": "/settings/jurisdiction",
         "completed_at": completed_map.get(ITEM_SET_JURISDICTIONS),
     })
 
@@ -127,13 +132,28 @@ async def validate_item_completion(client_id: str, item_id: str) -> bool:
         count = await db.properties.count_documents({"client_id": client_id})
         return count >= 1
     if item_id == ITEM_SET_JURISDICTIONS:
+        # Client-level ack is onboarding gating only; per-property jurisdiction remains the compliance source of truth.
         client = await db.clients.find_one(
             {"client_id": client_id},
-            {"_id": 0, "default_jurisdiction": 1, "enabled_jurisdictions": 1},
+            {
+                "_id": 0,
+                "default_jurisdiction": 1,
+                "enabled_jurisdictions": 1,
+                "jurisdiction_fallback_acknowledged_at": 1,
+            },
         )
         if client is None:
             return False
-        return bool(client.get("default_jurisdiction") and client.get("enabled_jurisdictions"))
+        if not client.get("default_jurisdiction") or not client.get("enabled_jurisdictions"):
+            return False
+        props = await db.properties.find(
+            {"client_id": client_id},
+            {"_id": 0, "jurisdiction": 1},
+        ).to_list(10000)
+        for p in props:
+            if not property_has_explicit_portfolio_jurisdiction(p):
+                return bool(client.get("jurisdiction_fallback_acknowledged_at"))
+        return True
     if item_id == ITEM_REVIEW_REQUIREMENTS:
         n = await db.requirements.count_documents({"client_id": client_id})
         return n >= 1
@@ -299,11 +319,12 @@ async def get_checklist_state(client_id: str, *, portal_user_id: Optional[str] =
             "next_step": None,
             "phase_status": "not_started",
             "onboarding_progress": None,
+            "jurisdiction_onboarding": None,
         }
     await sync_auto_completed_items(client_id, portal_user_id=portal_user_id)
     client = await db.clients.find_one(
         {"client_id": client_id},
-        {"_id": 0, "onboarding_checklist": 1, "onboarding_progress": 1},
+        {"_id": 0, "onboarding_checklist": 1, "onboarding_progress": 1, "jurisdiction_fallback_acknowledged_at": 1},
     )
     items = await get_checklist_items_for_client(client_id)
     o = (client or {}).get("onboarding_checklist") or {}
@@ -322,6 +343,15 @@ async def get_checklist_state(client_id: str, *, portal_user_id: Optional[str] =
                 "required": bool(i.get("required")),
             }
             break
+    props_min = await db.properties.find(
+        {"client_id": client_id},
+        {"_id": 0, "property_id": 1, "jurisdiction": 1},
+    ).to_list(10000)
+    att = build_portfolio_jurisdiction_attestation({}, props_min)
+    jurisdiction_onboarding = {
+        **att,
+        "jurisdiction_fallback_acknowledged": bool((client or {}).get("jurisdiction_fallback_acknowledged_at")),
+    }
     return {
         "items": items,
         "completed_at": completed_at,
@@ -334,6 +364,7 @@ async def get_checklist_state(client_id: str, *, portal_user_id: Optional[str] =
         "onboarding_progress": (client or {}).get("onboarding_progress"),
         "next_step": next_step,
         "phase_status": (o or {}).get("phase_status") or status,
+        "jurisdiction_onboarding": jurisdiction_onboarding,
     }
 
 

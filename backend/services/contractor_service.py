@@ -12,6 +12,10 @@ from services.compliance_contractor_capability import (
     parse_execution_capabilities,
     parse_verified_execution_capabilities,
 )
+from services.compliance_rules_registry import (
+    canonicalize_uk_portfolio_label,
+    portfolio_jurisdiction_label,
+)
 from services.requirement_code_registry import CANONICAL_REQUIREMENT_CODES, normalize_requirement_code
 from services.work_order_execution_constants import (
     ALLOWED_EXECUTION_CAPABILITIES,
@@ -63,6 +67,87 @@ RECOMMENDED_TYPE_TO_TRADES = {
     "damp_inspection": ["damp", "inspection", "damp_inspection"],
     "general": ["general", "handyman"],
 }
+
+
+def normalize_contractor_service_regions_list(raw: Optional[List[str]]) -> Optional[List[str]]:
+    """Canonical UK portfolio labels only; None = caller should treat as unrestricted."""
+    if not raw:
+        return None
+    out: List[str] = []
+    for x in raw:
+        c = canonicalize_uk_portfolio_label(x)
+        if c and c not in out:
+            out.append(c)
+    return out if out else None
+
+
+def _merged_service_regions_for_create(
+    service_regions: Optional[List[str]],
+    region: Optional[str],
+) -> Optional[List[str]]:
+    out = list(normalize_contractor_service_regions_list(service_regions) or [])
+    c = canonicalize_uk_portfolio_label(region)
+    if c and c not in out:
+        out.append(c)
+    return out if out else None
+
+
+def contractor_service_regions_allow_jurisdiction(contractor: Dict[str, Any], job_jurisdiction: str) -> bool:
+    """When contractor.service_regions is set, job portfolio label must be included."""
+    regions = contractor.get("service_regions")
+    if not regions or not isinstance(regions, list):
+        return True
+    canon_c = normalize_contractor_service_regions_list(regions)
+    if not canon_c:
+        return True
+    job_c = canonicalize_uk_portfolio_label(job_jurisdiction)
+    if not job_c:
+        return True
+    return job_c in canon_c
+
+
+async def resolve_effective_work_order_jurisdiction(
+    db,
+    work_order: Dict[str, Any],
+    client_id: str,
+) -> str:
+    """Effective portfolio label for the job (same resolution as work order creation)."""
+    j = canonicalize_uk_portfolio_label(work_order.get("jurisdiction"))
+    if j:
+        return j
+    lpr = (work_order.get("linked_property_requirement_id") or "").strip()
+    if lpr:
+        r = await db.requirements.find_one(
+            {"requirement_id": lpr, "client_id": client_id},
+            {"_id": 0, "jurisdiction": 1},
+        )
+        j2 = canonicalize_uk_portfolio_label((r or {}).get("jurisdiction"))
+        if j2:
+            return j2
+    pid = work_order.get("property_id")
+    if pid:
+        p = await db.properties.find_one(
+            {"property_id": pid, "client_id": client_id},
+            {"_id": 0, "jurisdiction": 1},
+        )
+        c = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1})
+        return portfolio_jurisdiction_label(p or {}, c or {})
+    c_only = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1})
+    return portfolio_jurisdiction_label({}, c_only or {})
+
+
+async def _assert_contractor_jurisdiction_for_assignment(
+    db,
+    contractor_s: Dict[str, Any],
+    wo: Dict[str, Any],
+    client_id: str,
+) -> None:
+    job_j = await resolve_effective_work_order_jurisdiction(db, wo, client_id)
+    if not contractor_service_regions_allow_jurisdiction(contractor_s, job_j):
+        raise ValueError(
+            "Contractor service regions do not cover this job's jurisdiction "
+            f"({job_j}). Update the contractor's regions or choose a different contractor."
+        )
 
 
 def normalize_email_for_lookup(email: Optional[str]) -> str:
@@ -427,6 +512,7 @@ async def create_contractor(
     declared_credentials: Optional[List[str]] = None,
     verified_execution_capabilities: Optional[str] = None,
     verified_supported_requirement_codes: Optional[List[str]] = None,
+    service_regions: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Create a new contractor. Sets source_type/status when provided; defaults for backward compat."""
     from datetime import datetime, timezone
@@ -482,6 +568,9 @@ async def create_contractor(
         "execution_capabilities": eff_exec,
         "supported_requirement_codes": eff_req_codes,
     }
+    mr = _merged_service_regions_for_create(service_regions, region)
+    if mr:
+        doc["service_regions"] = mr
     if declared_execution_capabilities is not None:
         doc["declared_execution_capabilities"] = _coerce_execution_capabilities(declared_execution_capabilities)
     if declared_supported_requirement_codes is not None:
@@ -558,6 +647,7 @@ async def update_contractor(
     verified_supported_requirement_codes: Optional[List[str]] = None,
     verified_at: Optional[str] = None,
     verified_by: Optional[str] = None,
+    service_regions: Optional[List[str]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Update a contractor. Only provided fields are updated."""
     from datetime import datetime, timezone
@@ -607,6 +697,9 @@ async def update_contractor(
         update["contact_name"] = contact_name
     if region is not None:
         update["region"] = region
+    if service_regions is not None:
+        norm_sr = normalize_contractor_service_regions_list(service_regions)
+        update["service_regions"] = norm_sr
     if submitted_to_network_at is not None:
         update["submitted_to_network_at"] = submitted_to_network_at
     if approved_for_network_at is not None:
@@ -713,6 +806,7 @@ async def create_contractor_landlord(
     execution_capabilities: Optional[str] = None,
     supported_requirement_codes: Optional[List[str]] = None,
     pending_admin_review: bool = False,
+    service_regions: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Landlord adds a contractor: source_type=landlord_added, org-private. Optional pending_admin_review for portal clients."""
     name = contact_name or company_name
@@ -747,6 +841,7 @@ async def create_contractor_landlord(
         coverage_area=areas_served,
         execution_capabilities=execution_capabilities,
         supported_requirement_codes=supported_requirement_codes,
+        service_regions=service_regions,
     )
 
 
@@ -766,6 +861,7 @@ async def create_contractor_client_supplied_personal(
     extra_notes: Optional[str] = None,
     *,
     pending_admin_review: bool = False,
+    service_regions: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Client-added contractor for assignment without prior portal onboarding.
@@ -829,6 +925,7 @@ async def create_contractor_client_supplied_personal(
         coverage_area=areas_served,
         execution_capabilities=execution_capabilities,
         supported_requirement_codes=supported_requirement_codes,
+        service_regions=service_regions,
     )
 
 
@@ -848,6 +945,7 @@ async def create_contractor_for_client_job_portal(
     accreditation_certification: Optional[str] = None,
     notes: Optional[str] = None,
     work_order: Optional[Dict[str, Any]] = None,
+    service_regions: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Single implementation for client job UI contractor creation (POST /api/contractors and legacy assign route).
@@ -873,6 +971,13 @@ async def create_contractor_for_client_job_portal(
             if norm and norm in CANONICAL_REQUIREMENT_CODES:
                 sup_codes = [norm]
 
+    merged_sr = _merged_service_regions_for_create(service_regions, region)
+    if not merged_sr and work_order and (work_order.get("work_order_kind") or "").strip().upper() == WORK_ORDER_KIND_COMPLIANCE:
+        db = database.get_db()
+        jl = await resolve_effective_work_order_jurisdiction(db, work_order, client_id)
+        if jl:
+            merged_sr = [jl]
+
     email_stripped = (email or "").strip()
     phone_stripped = (phone or "").strip()
     if email_stripped:
@@ -893,6 +998,7 @@ async def create_contractor_for_client_job_portal(
                 insurance_details=(insurance_details or "").strip() or None,
                 extra_notes=(notes or "").strip() or None,
                 pending_admin_review=True,
+                service_regions=merged_sr,
             )
         return await create_contractor_landlord(
             client_id=client_id,
@@ -909,6 +1015,7 @@ async def create_contractor_for_client_job_portal(
             execution_capabilities=exec_cap,
             supported_requirement_codes=sup_codes,
             pending_admin_review=False,
+            service_regions=merged_sr,
         )
     if not phone_stripped:
         raise ValueError("email or phone is required")
@@ -927,6 +1034,7 @@ async def create_contractor_for_client_job_portal(
         execution_capabilities=exec_cap,
         supported_requirement_codes=sup_codes,
         pending_admin_review=pending_client,
+        service_regions=merged_sr,
     )
 
 
@@ -942,6 +1050,7 @@ async def create_contractor_network(
     contact_name: Optional[str] = None,
     notes: Optional[str] = None,
     skip_email_duplicate_check: bool = False,
+    service_regions: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Admin adds to platform network: client_id=null, vetted=True, status=approved, source_type=platform_network."""
     name = contact_name or company_name
@@ -965,6 +1074,7 @@ async def create_contractor_network(
         vetting_status="approved",
         coverage_area=areas_served,
         skip_email_duplicate_check=skip_email_duplicate_check,
+        service_regions=service_regions,
     )
 
 
@@ -1325,10 +1435,17 @@ async def validate_contractor_for_work_order_assignment(
             raise ValueError("Personal contractor must have an email before assignment")
         wo = await db.work_orders.find_one(
             {"work_order_id": work_order_id},
-            {"_id": 0, "client_id": 1},
+            {
+                "_id": 0,
+                "client_id": 1,
+                "property_id": 1,
+                "jurisdiction": 1,
+                "linked_property_requirement_id": 1,
+            },
         )
         if not wo or (wo.get("client_id") or "").strip() != (client_id or "").strip():
             raise ValueError("Work order not found for this client")
+        await _assert_contractor_jurisdiction_for_assignment(db, contractor_s, wo, client_id)
         return
     if assignment_profile == ASSIGNMENT_PROFILE_CLIENT_PORTAL_LANDLORD:
         st = normalize_lifecycle_status(contractor_s.get("status"))
@@ -1349,6 +1466,8 @@ async def validate_contractor_for_work_order_assignment(
                 "category": 1,
                 "work_order_kind": 1,
                 "requirement_code": 1,
+                "jurisdiction": 1,
+                "linked_property_requirement_id": 1,
             },
         )
         if not wo or (wo.get("client_id") or "").strip() != (client_id or "").strip():
@@ -1375,6 +1494,7 @@ async def validate_contractor_for_work_order_assignment(
         if kind == WORK_ORDER_KIND_MAINTENANCE:
             if not contractor_trade_matches_category(contractor_s, wo.get("category")):
                 raise ValueError("Contractor trade types do not match this maintenance work order category")
+        await _assert_contractor_jurisdiction_for_assignment(db, contractor_s, wo, client_id)
         return
     ok, reason = contractor_is_assignable(contractor_s)
     if not ok:
@@ -1391,6 +1511,8 @@ async def validate_contractor_for_work_order_assignment(
             "category": 1,
             "work_order_kind": 1,
             "requirement_code": 1,
+            "jurisdiction": 1,
+            "linked_property_requirement_id": 1,
         },
     )
     if not wo or (wo.get("client_id") or "").strip() != (client_id or "").strip():
@@ -1417,6 +1539,7 @@ async def validate_contractor_for_work_order_assignment(
     if kind == WORK_ORDER_KIND_MAINTENANCE:
         if not contractor_trade_matches_category(contractor_s, wo.get("category")):
             raise ValueError("Contractor trade types do not match this maintenance work order category")
+    await _assert_contractor_jurisdiction_for_assignment(db, contractor_s, wo, client_id)
 
 
 async def list_assignable_contractors_for_work_order(
@@ -1429,10 +1552,20 @@ async def list_assignable_contractors_for_work_order(
     db = database.get_db()
     wo = await db.work_orders.find_one(
         {"work_order_id": work_order_id},
-        {"_id": 0, "client_id": 1, "property_id": 1, "category": 1, "work_order_kind": 1, "requirement_code": 1},
+        {
+            "_id": 0,
+            "client_id": 1,
+            "property_id": 1,
+            "category": 1,
+            "work_order_kind": 1,
+            "requirement_code": 1,
+            "jurisdiction": 1,
+            "linked_property_requirement_id": 1,
+        },
     )
     if not wo or wo.get("client_id") != client_id:
-        return {"contractors": [], "total": 0, "skip": skip, "limit": limit}
+        return {"contractors": [], "total": 0, "skip": skip, "limit": limit, "job_jurisdiction": None}
+    job_jurisdiction = await resolve_effective_work_order_jurisdiction(db, wo, client_id)
     prop_pc = None
     if wo.get("property_id"):
         prop = await db.properties.find_one(
@@ -1461,10 +1594,18 @@ async def list_assignable_contractors_for_work_order(
         if kind == WORK_ORDER_KIND_MAINTENANCE:
             if not contractor_trade_matches_category(c, wo.get("category")):
                 continue
+        if not contractor_service_regions_allow_jurisdiction(c, job_jurisdiction):
+            continue
         matched.append(c)
     total = len(matched)
     page = matched[skip : skip + limit]
-    return {"contractors": page, "total": total, "skip": skip, "limit": limit}
+    return {
+        "contractors": page,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "job_jurisdiction": job_jurisdiction,
+    }
 
 
 async def approve_contractor(
@@ -1812,6 +1953,8 @@ async def recommend_contractors_for_work_order(
             "work_order_kind": 1,
             "requirement_code": 1,
             "compliance_purpose": 1,
+            "jurisdiction": 1,
+            "linked_property_requirement_id": 1,
         },
     )
     if not wo:
@@ -1853,6 +1996,12 @@ async def recommend_contractors_for_work_order(
             {"_id": 0, "postcode": 1, "region": 1},
         )
     prop_pc = (property_doc or {}).get("postcode")
+    eff_client = str(cid or wo.get("client_id") or "").strip()
+    job_jurisdiction = (
+        await resolve_effective_work_order_jurisdiction(db, wo, eff_client)
+        if eff_client
+        else portfolio_jurisdiction_label({}, {})
+    )
     filtered_raw: List[Dict[str, Any]] = []
     for raw in all_contractors:
         c = _sanitize_doc(raw)
@@ -1871,6 +2020,8 @@ async def recommend_contractors_for_work_order(
         if wk == WORK_ORDER_KIND_MAINTENANCE:
             if not contractor_trade_matches_category(c, wo.get("category")):
                 continue
+        if not contractor_service_regions_allow_jurisdiction(c, job_jurisdiction):
+            continue
         filtered_raw.append(raw)
     perf_map: Dict[str, Tuple[int, int]] = {}
     if cid:

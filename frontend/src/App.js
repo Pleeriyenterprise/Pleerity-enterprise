@@ -107,6 +107,7 @@ import RequirementsPage from './pages/RequirementsPage';
 import ComplianceScorePage from './pages/ComplianceScorePage';
 import AssistantPage from './pages/AssistantPage';
 import ProfilePage from './pages/ProfilePage';
+import JurisdictionSettingsPage from './pages/JurisdictionSettingsPage';
 import PropertyCreatePage from './pages/PropertyCreatePage';
 import DocumentsPage from './pages/DocumentsPage';
 import BulkUploadPage from './pages/BulkUploadPage';
@@ -411,6 +412,7 @@ function App() {
             <Route path="/app/integrations" element={<Navigate to="/integrations" replace />} />
             <Route path="/app/billing" element={<Navigate to="/settings/billing" replace />} />
             <Route path="/app/billing/receipts" element={<Navigate to="/settings/billing?tab=account" replace />} />
+            <Route path="/app/settings/jurisdiction" element={<Navigate to="/settings/jurisdiction" replace />} />
             <Route path="/app/settings/branding" element={<Navigate to="/settings/branding" replace />} />
             <Route path="/app/branding" element={<Navigate to="/settings/branding" replace />} />
             <Route path="/app/orders/:orderId/provide-info" element={<Navigate to="/orders/:orderId/provide-info" replace />} />

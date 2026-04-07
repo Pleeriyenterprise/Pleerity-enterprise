@@ -422,6 +422,9 @@ export const clientAPI = {
   /** Mark a checklist item complete (server-validates). */
   completeOnboardingItem: (itemId) =>
     apiClient.post(`/client/onboarding/checklist/items/${encodeURIComponent(itemId)}/complete`),
+  /** Explicit acknowledgement to continue onboarding while some properties lack jurisdiction on record. */
+  acknowledgeJurisdictionFallbackAssumptions: (body) =>
+    apiClient.post('/client/onboarding/jurisdiction-fallback-acknowledgement', body),
   /** Achievements, at-risk counts, plan unlock copy (billing-backed entitlements). */
   getValueInsights: () => apiClient.get('/client/value-insights'),
   /** Jurisdiction settings (default + enabled list). */

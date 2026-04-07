@@ -125,6 +125,36 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
             spaceAfter=6,
         )
         body.append(Paragraph(html.escape(str(model["digest_score_scope_note"])), info_style))
+    if model.get("digest_jurisdiction_framing"):
+        jur_style = ParagraphStyle(
+            name="DigestJurisdiction",
+            parent=styles["Normal"],
+            fontSize=9,
+            textColor=colors.HexColor("#0f172a"),
+            spaceBefore=6,
+            spaceAfter=6,
+        )
+        body.append(
+            Paragraph(
+                "<b>Jurisdiction context:</b> " + html.escape(str(model["digest_jurisdiction_framing"])),
+                jur_style,
+            )
+        )
+    if model.get("digest_jurisdiction_fallback_disclaimer"):
+        fb_style = ParagraphStyle(
+            name="DigestJurFallback",
+            parent=styles["Normal"],
+            fontSize=8,
+            textColor=colors.HexColor("#92400e"),
+            spaceBefore=8,
+            spaceAfter=6,
+        )
+        body.append(
+            Paragraph(
+                "<b>Default jurisdiction:</b> " + html.escape(str(model["digest_jurisdiction_fallback_disclaimer"])),
+                fb_style,
+            )
+        )
     body.append(PageBreak())
 
     # Section 2 — Executive summary

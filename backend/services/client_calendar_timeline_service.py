@@ -146,14 +146,18 @@ def _stable_event_id(parts: List[str]) -> str:
     return f"evt_{h}"
 
 
-async def load_client_calendar_context(client_id: str) -> Tuple[Dict[str, Any], List[str]]:
+async def load_client_calendar_context(client_id: str) -> Tuple[Dict[str, Any], List[str], Dict[str, Any]]:
     db = database.get_db()
+    client_doc = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "default_jurisdiction": 1},
+    ) or {}
     properties = await db.properties.find(
         {"client_id": client_id},
-        {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1, "nickname": 1},
+        {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1, "nickname": 1, "jurisdiction": 1},
     ).to_list(500)
     property_map = {p["property_id"]: p for p in properties}
-    return property_map, list(property_map.keys())
+    return property_map, list(property_map.keys()), client_doc
 
 
 def build_requirement_timeline_events(
@@ -162,6 +166,7 @@ def build_requirement_timeline_events(
     start: datetime,
     end: datetime,
     req_to_doc: Optional[Dict[str, str]] = None,
+    client_doc: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     req_to_doc = req_to_doc or {}
     out: List[Dict[str, Any]] = []
@@ -173,8 +178,8 @@ def build_requirement_timeline_events(
             continue
         if not (start <= effective < end):
             continue
-        computed = get_computed_status(req)
         prop = property_map.get(req.get("property_id"), {})
+        computed = get_computed_status(req, property_doc=prop, client_doc=client_doc or {})
         pid = req.get("property_id")
         rid = req.get("requirement_id")
         date_key = effective.strftime("%Y-%m-%d")
@@ -422,7 +427,7 @@ async def get_timeline_events_for_range(
     include_work_orders: bool = True,
 ) -> List[Dict[str, Any]]:
     db = database.get_db()
-    property_map, property_ids = await load_client_calendar_context(client_id)
+    property_map, property_ids, client_doc = await load_client_calendar_context(client_id)
     if not property_ids:
         return []
 
@@ -438,7 +443,9 @@ async def get_timeline_events_for_range(
             if rid and rid not in req_to_doc:
                 req_to_doc[rid] = doc.get("document_id")
 
-    ev_req = build_requirement_timeline_events(requirements, property_map, start, end, req_to_doc)
+    ev_req = build_requirement_timeline_events(
+        requirements, property_map, start, end, req_to_doc, client_doc=client_doc
+    )
     ev_wo: List[Dict[str, Any]] = []
     if include_work_orders:
         try:

@@ -651,8 +651,8 @@ export default function ContractorDashboardPage() {
           logActionTaken();
           setActionLoading(wid);
           await api.declineAssignment(wid);
-          toast.success('Assignment declined');
-          setDetailId(null);
+        toast.success('Assignment declined');
+        setDetailId(null);
           await refreshListAndDetail();
         } else if (aid === 'confirm_visit') {
           setScheduleActionLoading(true);
@@ -876,8 +876,8 @@ export default function ContractorDashboardPage() {
       toast.success(
         invoiceModal.mode === 'edit' ? 'Invoice updated and resubmitted for approval.' : 'Invoice submitted for approval.',
       );
-      setInvoiceModal(null);
-      setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
+        setInvoiceModal(null);
+        setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
       setInvoicesRefreshing(true);
       Promise.all([loadInvoices(), loadWorkOrders(), loadDashboardSummary()]).finally(() => setInvoicesRefreshing(false));
     };
@@ -1000,7 +1000,7 @@ export default function ContractorDashboardPage() {
               </h2>
               <p className="text-xs text-gray-500 mb-4">Tap a tile to jump to the matching list or section.</p>
               <div className="grid lg:grid-cols-3 gap-6">
-                <div>
+                  <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">A. Jobs</h3>
                   <div className="grid gap-2">
                     <button
@@ -1040,7 +1040,7 @@ export default function ContractorDashboardPage() {
                       <p className="text-[10px] text-gray-400 mt-1">Filter overdue active jobs</p>
                     </button>
                   </div>
-                </div>
+                  </div>
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">B. Billing</h3>
                   <div className="grid gap-2">
@@ -1195,7 +1195,7 @@ export default function ContractorDashboardPage() {
                                 {overdue ? (
                                   <span className="text-xs font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded">At risk (SLA)</span>
                                 ) : null}
-                              </div>
+          </div>
                               <p className="text-xs font-medium text-electric-teal uppercase tracking-wide">{getJobTypeLabel(wo)}</p>
                               <p className="font-semibold text-midnight-blue leading-snug">{wo.description || wo.work_order_id}</p>
                               <p className="text-sm text-gray-700">{wo.property_address || wo.property_id}</p>
@@ -1381,7 +1381,7 @@ export default function ContractorDashboardPage() {
               {invoicesRefreshing ? (
                 <div className="flex gap-2 text-gray-500 py-4"><Loader2 className="w-5 h-5 animate-spin" /> Refreshing invoices…</div>
               ) : invoices.length === 0 && !invoicesError ? (
-                <Card>
+            <Card>
                   <CardContent className="py-6 text-center text-gray-600">
                     <p className="font-medium text-midnight-blue">No invoices submitted yet</p>
                     <p className="text-sm mt-2 text-gray-500">After you complete a job, you can submit an invoice from the work order details.</p>
@@ -1391,23 +1391,23 @@ export default function ContractorDashboardPage() {
                 <Card>
                   <CardContent className="p-0 overflow-x-auto">
                     <table className="w-full text-sm min-w-[640px]">
-                      <thead>
-                        <tr className="border-b bg-gray-50">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
                           <th className="text-left p-3 font-medium">Date paid</th>
                           <th className="text-left p-3 font-medium">Invoice</th>
                           <th className="text-left p-3 font-medium">Job</th>
                           <th className="text-left p-3 font-medium">Property</th>
-                          <th className="text-right p-3 font-medium">Amount</th>
+                      <th className="text-right p-3 font-medium">Amount</th>
                           <th className="text-left p-3 font-medium">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    </tr>
+                  </thead>
+                  <tbody>
                         {paymentTableRows.map((inv) => {
                           const wo = workOrderById[inv.work_order_id];
                           return (
-                            <tr key={inv.invoice_id} className="border-b last:border-0">
+                      <tr key={inv.invoice_id} className="border-b last:border-0">
                               <td className="p-3 whitespace-nowrap">{formatDate(inv.paid_at) || '—'}</td>
-                              <td className="p-3">{inv.reference || inv.invoice_id}</td>
+                        <td className="p-3">{inv.reference || inv.invoice_id}</td>
                               <td className="p-3 max-w-[200px] truncate" title={wo?.description || inv.work_order_id}>
                                 {wo?.description || inv.work_order_id || '—'}
                               </td>
@@ -1428,15 +1428,15 @@ export default function ContractorDashboardPage() {
                                   {formatContractorInvoiceStateLabel(inv)}
                                 </span>
                               </td>
-                            </tr>
+                      </tr>
                           );
                         })}
-                      </tbody>
-                    </table>
-                  </CardContent>
-                </Card>
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
               ) : null}
-            </div>
+        </div>
           </>
         )}
 
@@ -1454,7 +1454,7 @@ export default function ContractorDashboardPage() {
                       {getJobTypeLabel(detail)} · {detail.property_address || detail.property_id}
                     </p>
                   ) : null}
-                </div>
+              </div>
                 <button type="button" onClick={() => setDetailId(null)} className="p-1 rounded hover:bg-gray-100 shrink-0" aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
@@ -1503,7 +1503,7 @@ export default function ContractorDashboardPage() {
                                 ) : (
                                   primary.label
                                 )}
-                              </Button>
+                        </Button>
                             </>
                           ) : (
                             <p className="text-base text-gray-700">No action available right now.</p>
@@ -1580,8 +1580,8 @@ export default function ContractorDashboardPage() {
                                       onClick={(e) => executeContractorAction(detail, proposeVisitAction, e)}
                                     >
                                       Propose time
-                                    </Button>
-                                  </div>
+                        </Button>
+                      </div>
                                 ) : null}
                               </>
                             ) : (
@@ -1781,7 +1781,7 @@ export default function ContractorDashboardPage() {
                               {a.label}
                             </Button>
                           ))}
-                        </div>
+                      </div>
                       ) : (
                         <p className="text-sm text-gray-500 mb-2">No extra job actions right now — use Next action if shown.</p>
                       )}
@@ -1837,7 +1837,7 @@ export default function ContractorDashboardPage() {
                               onClick={(e) => executeContractorAction(detail, a, e)}
                             >
                               {contractorBillingActionButtonLabel(a, detail, invoiceByWorkOrderId)}
-                            </Button>
+                      </Button>
                           ))}
                         </div>
                       ) : null}
@@ -1989,7 +1989,7 @@ export default function ContractorDashboardPage() {
                 </div>
                 <div className="flex gap-2">
                   {invoiceModal.mode !== 'view' ? (
-                    <Button type="submit" disabled={invoiceSaving} className="bg-electric-teal hover:bg-electric-teal/90">
+                  <Button type="submit" disabled={invoiceSaving} className="bg-electric-teal hover:bg-electric-teal/90">
                       {invoiceSaving ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : invoiceModal.mode === 'edit' ? (
@@ -1997,7 +1997,7 @@ export default function ContractorDashboardPage() {
                       ) : (
                         'Submit invoice'
                       )}
-                    </Button>
+                  </Button>
                   ) : null}
                   <Button type="button" variant="outline" onClick={() => setInvoiceModal(null)}>
                     {invoiceModal.mode === 'view' ? 'Close' : 'Cancel'}

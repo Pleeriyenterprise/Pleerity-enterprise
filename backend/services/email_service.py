@@ -334,6 +334,24 @@ class EmailService:
                 f"{html_module.escape(str(dsn))}"
                 "</p>"
             )
+        jur_note_html = ""
+        djn = m.get("digest_jurisdiction_framing")
+        if djn:
+            jur_note_html = (
+                '<p style="margin:12px 0;padding:10px 12px;background:#f1f5f9;border-left:4px solid #0f172a;'
+                'font-size:13px;color:#0f172a;line-height:1.5;">'
+                f"<strong>Jurisdiction context:</strong> {html_module.escape(str(djn))}"
+                "</p>"
+            )
+        jur_fb_html = ""
+        djfb = m.get("digest_jurisdiction_fallback_disclaimer")
+        if djfb:
+            jur_fb_html = (
+                '<p style="margin:12px 0;padding:10px 12px;background:#fffbeb;border-left:4px solid #d97706;'
+                'font-size:13px;color:#78350f;line-height:1.5;">'
+                f"<strong>Default jurisdiction notice:</strong> {html_module.escape(str(djfb))}"
+                "</p>"
+            )
         score = int(m.get("compliance_score") or 0)
         risk = html_module.escape(str(m.get("risk_level") or "—"))
         total = int(m.get("total_requirements") or 0)
@@ -488,6 +506,8 @@ class EmailService:
 {crn_line}
 <p style="margin:8px 0 0 0;color:#64748b;font-size:13px;">Properties in scope: <strong>{props}</strong> · Generated: {gen}</p>
 {scope_note_html}
+{jur_note_html}
+{jur_fb_html}
 <div style="height:16px;"></div>
 {cards}
 {top_prop_html}

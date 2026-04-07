@@ -20,9 +20,26 @@ from database import database
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
 from utils.risk_bands import score_to_grade_color_message, risk_level_to_grade_color_message
+from services.compliance_rules_registry import (
+    build_jurisdiction_compliance_notice,
+    build_portfolio_jurisdiction_attestation,
+    property_jurisdiction_requirement_flags,
+    resolve_portfolio_jurisdiction,
+)
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _jurisdiction_api_fields(client_row: Dict[str, Any], properties: List[Dict[str, Any]]) -> Dict[str, Any]:
+    att = build_portfolio_jurisdiction_attestation(client_row, properties)
+    return {
+        "jurisdiction_required": att["jurisdiction_required"],
+        "compliance_confidence": att["compliance_confidence"],
+        "jurisdiction_required_property_ids": att["jurisdiction_required_property_ids"],
+        "jurisdiction_required_property_count": att["jurisdiction_required_property_count"],
+        "jurisdiction_fallback_acknowledged": bool((client_row or {}).get("jurisdiction_fallback_acknowledged_at")),
+    }
 
 
 # ============================================================================
@@ -100,6 +117,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "components": {},
                 "property_breakdown": [],
                 "drivers": [],
+                **_jurisdiction_api_fields({}, []),
             }
         from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_LAZY_BACKFILL, ACTOR_SYSTEM
         need_backfill = [p for p in properties if p.get("compliance_score") is None]
@@ -120,6 +138,11 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         ).to_list(100)
         scores = [p.get("compliance_score") for p in properties if p.get("compliance_score") is not None]
         if not scores:
+            client_row_nr = await db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "default_jurisdiction": 1, "jurisdiction_fallback_acknowledged_at": 1},
+            ) or {}
+            _notice_nr = build_jurisdiction_compliance_notice(client_row_nr, properties)
             return {
                 "score": 100,
                 "grade": "A",
@@ -137,6 +160,8 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "components": {},
                 "property_breakdown": [],
                 "drivers": [],
+                "jurisdiction_compliance_notice": _notice_nr,
+                **_jurisdiction_api_fields(client_row_nr, properties),
             }
         client_score = round(sum(scores) / len(scores))
         breakdowns = [p.get("compliance_breakdown") or {} for p in properties if isinstance(p.get("compliance_breakdown"), dict)]
@@ -237,6 +262,16 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "hmo_properties": sum(1 for p in properties if p.get("is_hmo")),
         }
         prop_map = {p["property_id"]: p for p in properties}
+        client_row = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "default_jurisdiction": 1, "jurisdiction_fallback_acknowledged_at": 1},
+        ) or {}
+        jurisdiction_compliance_notice = build_jurisdiction_compliance_notice(client_row, properties)
+        res_by_pid = {
+            p["property_id"]: resolve_portfolio_jurisdiction(p, client_row)
+            for p in properties
+            if p.get("property_id")
+        }
         by_property = {}
         for r in requirements:
             pid = r.get("property_id")
@@ -253,6 +288,8 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         for p in properties:
             pid = p["property_id"]
             bp = by_property.get(pid, {})
+            jr = res_by_pid.get(pid)
+            jf = property_jurisdiction_requirement_flags(p)
             property_breakdown.append({
                 "property_id": pid,
                 "name": p.get("nickname") or p.get("address_line_1") or "Property",
@@ -261,6 +298,10 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "valid": bp.get("valid", 0),
                 "expiring": bp.get("expiring", 0),
                 "overdue": bp.get("overdue", 0),
+                "compliance_basis": jr.compliance_basis if jr else None,
+                "effective_jurisdiction_label": jr.effective_label if jr else None,
+                "jurisdiction_required": jf["jurisdiction_required"],
+                "compliance_confidence": jf["compliance_confidence"],
             })
         due_0_30 = due_31_60 = due_61_90 = 0
         for r in requirements:
@@ -426,10 +467,23 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                     "property_id": p.get("property_id"),
                     "name": p.get("nickname") or p.get("address_line_1") or p.get("property_id"),
                     "jurisdiction": p.get("jurisdiction"),
+                    "compliance_basis": (
+                        res_by_pid.get(p.get("property_id")).compliance_basis
+                        if p.get("property_id") in res_by_pid
+                        else None
+                    ),
+                    "effective_jurisdiction_label": (
+                        res_by_pid.get(p.get("property_id")).effective_label
+                        if p.get("property_id") in res_by_pid
+                        else None
+                    ),
+                    **property_jurisdiction_requirement_flags(p),
                     "score_breakdown": p.get("score_breakdown") or [],
                 }
                 for p in properties
             ],
+            "jurisdiction_compliance_notice": jurisdiction_compliance_notice,
+            **_jurisdiction_api_fields(client_row, properties),
         }
         # Single source of truth: when catalog-driven portfolio exists, use its score/risk so dashboard, compliance-score page, and reports all show the same number.
         try:
@@ -472,6 +526,13 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "components": {},
             "property_breakdown": [],
             "drivers": [],
+            "jurisdiction_compliance_notice": {
+                "active": False,
+                "compliance_basis": None,
+                "affected_property_ids": [],
+                "affected_property_count": 0,
+            },
+            **_jurisdiction_api_fields({}, []),
         }
 
 

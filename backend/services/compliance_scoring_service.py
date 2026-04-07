@@ -89,6 +89,14 @@ async def calculate_property_compliance(
         {"property_id": property_id, "status": {"$nin": ["resolved"]}}
     )
 
+    from services.compliance_rules_registry import (
+        property_jurisdiction_requirement_flags,
+        resolve_portfolio_jurisdiction,
+    )
+
+    _jr = resolve_portfolio_jurisdiction(property_doc, client_doc)
+    _juris_flags = property_jurisdiction_requirement_flags(property_doc)
+
     result = compute_property_score_v2(
         property_doc=property_doc,
         client_doc=client_doc,
@@ -135,6 +143,10 @@ async def calculate_property_compliance(
         "top_deficits": result.get("top_deficits") or [],
         "top_next_actions": result.get("top_next_actions") or [],
         "jurisdiction": result.get("jurisdiction"),
+        "compliance_basis": _jr.compliance_basis,
+        "effective_jurisdiction_label": _jr.effective_label,
+        "jurisdiction_required": _juris_flags["jurisdiction_required"],
+        "compliance_confidence": _juris_flags["compliance_confidence"],
         "breakdown": breakdown_legacy,
         "stats": stats,
         "weights_version": WEIGHTS_VERSION,

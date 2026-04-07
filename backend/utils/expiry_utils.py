@@ -2,14 +2,14 @@
 Deterministic certificate expiry: single source of truth for effective date and status.
 Use confirmed_expiry_date if present, else extracted_expiry_date, else none.
 Calendar and reminders must use this same rule.
+
+"Expiring soon" uses compliance_expiry_policy.resolve_expiring_soon_days_for_requirement when
+property_doc/client_doc are supplied; otherwise requirement.jurisdiction alone can inform the bucket.
 """
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from models import Applicability, ExpirySource, RequirementStatus
-
-# Days within which we consider "expiring soon"
-EXPIRING_SOON_DAYS = 30
 
 
 def _parse_date(value: Any) -> Optional[datetime]:
@@ -39,11 +39,22 @@ def get_effective_expiry_date(requirement: Dict[str, Any]) -> Optional[datetime]
     return due
 
 
-def get_computed_status(requirement: Dict[str, Any], as_of: Optional[datetime] = None) -> str:
+def get_computed_status(
+    requirement: Dict[str, Any],
+    as_of: Optional[datetime] = None,
+    *,
+    property_doc: Optional[Dict[str, Any]] = None,
+    client_doc: Optional[Dict[str, Any]] = None,
+) -> str:
     """
     Compute status from applicability and effective expiry: VALID | EXPIRING_SOON | OVERDUE | UNKNOWN_DATE | NOT_REQUIRED.
     Returns string for API compatibility (COMPLIANT used as VALID equivalent where existing code expects it).
+
+    expiring_soon window is jurisdiction- and requirement-code-aware when property_doc / client_doc are provided
+    (or requirement.jurisdiction is set); see compliance_expiry_policy.
     """
+    from services.compliance_expiry_policy import resolve_expiring_soon_days_for_requirement
+
     now = as_of or datetime.now(timezone.utc)
     applicability = (requirement.get("applicability") or "UNKNOWN").strip().upper()
     if applicability == "NOT_REQUIRED":
@@ -56,7 +67,8 @@ def get_computed_status(requirement: Dict[str, Any], as_of: Optional[datetime] =
     days = (effective - now).days
     if days < 0:
         return RequirementStatus.OVERDUE.value
-    if days <= EXPIRING_SOON_DAYS:
+    window = resolve_expiring_soon_days_for_requirement(requirement, property_doc, client_doc)
+    if days <= window:
         return RequirementStatus.EXPIRING_SOON.value
     return RequirementStatus.COMPLIANT.value  # VALID equivalent
 

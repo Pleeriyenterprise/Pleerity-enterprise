@@ -88,7 +88,8 @@ class TestGetComputedStatus:
         assert get_computed_status(req) == "EXPIRING_SOON"
 
     def test_compliant(self):
-        future = (datetime.now(timezone.utc) + timedelta(days=60)).isoformat()
+        # Beyond default expiring-soon window (COMPLIANCE_EXPIRING_SOON_DAYS, default 60)
+        future = (datetime.now(timezone.utc) + timedelta(days=90)).isoformat()
         req = {"due_date": future, "applicability": "REQUIRED"}
         assert get_computed_status(req) == "COMPLIANT"
 

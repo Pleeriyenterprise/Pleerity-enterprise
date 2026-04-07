@@ -10,6 +10,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
 from presentation.label_service import compliance_requirement_status_label, requirement_label
+from presentation.jurisdiction_reporting import (
+    digest_jurisdiction_notice_text,
+    jurisdiction_default_fallback_report_disclaimer,
+)
+from services.compliance_rules_registry import build_jurisdiction_compliance_notice
 from services.monthly_digest_snapshot_service import (
     build_fingerprint_map,
     compute_deltas,
@@ -437,6 +442,8 @@ async def assemble_monthly_digest_payload(
     portal_today_url = f"{base_url}/today"
     portal_requirements_url = f"{base_url}/requirements"
 
+    _jur_notice = build_jurisdiction_compliance_notice(client, properties)
+
     payload: Dict[str, Any] = {
         "period_start": period_start.isoformat(),
         "period_end": period_end.isoformat(),
@@ -486,6 +493,11 @@ async def assemble_monthly_digest_payload(
             else None
         ),
         "digest_subset_unknown_property_ids": subset_unknown_ids or None,
+        "digest_jurisdiction_framing": digest_jurisdiction_notice_text(client, properties),
+        "digest_jurisdiction_fallback_disclaimer": (
+            jurisdiction_default_fallback_report_disclaimer() if _jur_notice.get("active") else None
+        ),
+        "jurisdiction_compliance_notice": _jur_notice,
         **digest_prefs,
     }
 

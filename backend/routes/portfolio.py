@@ -217,6 +217,19 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
     else:
         response["score_delta"] = None
         response["score_change_summary"] = None
+    prop_full = await db.properties.find_one(
+        {"property_id": property_id, "client_id": client_id},
+        {"_id": 0, "jurisdiction": 1},
+    ) or {}
+    client_doc = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "default_jurisdiction": 1},
+    ) or {}
+    from services.compliance_rules_registry import resolve_portfolio_jurisdiction
+
+    _jr = resolve_portfolio_jurisdiction(prop_full, client_doc)
+    response["compliance_basis"] = _jr.compliance_basis
+    response["effective_jurisdiction_label"] = _jr.effective_label
     return response
 
 

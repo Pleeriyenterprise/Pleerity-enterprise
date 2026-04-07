@@ -96,6 +96,23 @@ async def get_property_compliance_detail(
     )
     if not prop:
         return None
+    client_row = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "default_jurisdiction": 1},
+    ) or {}
+    from services.compliance_rules_registry import (
+        property_jurisdiction_requirement_flags,
+        resolve_portfolio_jurisdiction,
+    )
+
+    _rj = resolve_portfolio_jurisdiction(prop, client_row)
+    _jf = property_jurisdiction_requirement_flags(prop)
+    _jurisdiction_extra = {
+        "compliance_basis": _rj.compliance_basis,
+        "effective_jurisdiction_label": _rj.effective_label,
+        "jurisdiction_required": _jf["jurisdiction_required"],
+        "compliance_confidence": _jf["compliance_confidence"],
+    }
     catalog = await _load_catalog(db)
     if not catalog:
         return None
@@ -217,6 +234,7 @@ async def get_property_compliance_detail(
         "risk_index": round(risk_index_val, 2),
         "risk_level": risk_level,
         "kpis": kpis,
+        **_jurisdiction_extra,
     }
 
 

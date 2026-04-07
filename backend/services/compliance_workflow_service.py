@@ -861,6 +861,59 @@ def maintenance_issue_resolution_hint(wo: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def client_job_sla_policy(wo: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Effective compliance SLA policy for API transparency. Uses stamped work order fields only;
+    does not call the registry. Maintenance jobs → None. Legacy compliance jobs without stamps
+    → default constants with policy_source \"default\".
+    """
+    kind = (wo.get("work_order_kind") or "").strip().upper() or WORK_ORDER_KIND_MAINTENANCE
+    if kind != WORK_ORDER_KIND_COMPLIANCE:
+        return None
+
+    from services.compliance_rules_registry import (
+        DEFAULT_COMPLIANCE_WO_SLA_COMPLETE_DAYS,
+        DEFAULT_COMPLIANCE_WO_SLA_RESPOND_HOURS,
+        DEFAULT_COMPLIANCE_WO_SLA_RISK_DAYS_BEFORE_COMPLETE,
+        DEFAULT_COMPLIANCE_WO_SLA_RISK_HOURS_BEFORE_RESPOND,
+    )
+
+    jurisdiction = wo.get("jurisdiction")
+    requirement_code = wo.get("requirement_code")
+
+    def _defaults_payload() -> Dict[str, Any]:
+        return {
+            "jurisdiction": jurisdiction,
+            "requirement_code": requirement_code,
+            "compliance_sla_complete_days": DEFAULT_COMPLIANCE_WO_SLA_COMPLETE_DAYS,
+            "compliance_sla_respond_hours": DEFAULT_COMPLIANCE_WO_SLA_RESPOND_HOURS,
+            "compliance_sla_risk_days_before_complete": DEFAULT_COMPLIANCE_WO_SLA_RISK_DAYS_BEFORE_COMPLETE,
+            "compliance_sla_risk_hours_before_respond": DEFAULT_COMPLIANCE_WO_SLA_RISK_HOURS_BEFORE_RESPOND,
+            "policy_source": "default",
+        }
+
+    if wo.get("compliance_sla_complete_days") is None:
+        return _defaults_payload()
+
+    try:
+        cd = int(wo["compliance_sla_complete_days"])
+        rh = int(wo["compliance_sla_respond_hours"])
+        rd = int(wo["compliance_sla_risk_days_before_complete"])
+        rr = int(wo["compliance_sla_risk_hours_before_respond"])
+    except (TypeError, ValueError, KeyError):
+        return _defaults_payload()
+
+    return {
+        "jurisdiction": jurisdiction,
+        "requirement_code": requirement_code,
+        "compliance_sla_complete_days": cd,
+        "compliance_sla_respond_hours": rh,
+        "compliance_sla_risk_days_before_complete": rd,
+        "compliance_sla_risk_hours_before_respond": rr,
+        "policy_source": "compliance_registry",
+    }
+
+
 def serialize_client_job(wo: Dict[str, Any]) -> Dict[str, Any]:
     """Canonical GET /api/jobs/{id} payload for any work order kind."""
     wid = wo.get("work_order_id")
@@ -891,6 +944,7 @@ def serialize_client_job(wo: Dict[str, Any]) -> Dict[str, Any]:
         "created_at": wo.get("created_at"),
         "updated_at": wo.get("updated_at"),
         "completed_at": wo.get("completed_at"),
+        "jurisdiction": wo.get("jurisdiction"),
         "next_actions": next_job_actions(wo),
         "timeline_events": client_job_timeline_events(wo),
         "decision_log": normalize_decision_log_for_client(wo.get("decision_log")),
@@ -906,6 +960,7 @@ def serialize_client_job(wo: Dict[str, Any]) -> Dict[str, Any]:
         mh = maintenance_issue_resolution_hint(wo)
         if mh:
             base["issue_resolution_hint"] = mh
+    base["sla_policy"] = client_job_sla_policy(wo)
     return base
 
 

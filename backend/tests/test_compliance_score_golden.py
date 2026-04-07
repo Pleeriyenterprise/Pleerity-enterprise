@@ -86,6 +86,8 @@ def _make_db_mock(
     db.documents.find = MagicMock(
         return_value=MagicMock(to_list=AsyncMock(side_effect=_docs_to_list))
     )
+    db.clients = MagicMock()
+    db.clients.find_one = AsyncMock(return_value={})
     return db
 
 

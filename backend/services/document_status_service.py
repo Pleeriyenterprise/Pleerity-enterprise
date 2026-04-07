@@ -6,8 +6,10 @@ import os
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional
 
-# Config: env override
-EXPIRING_SOON_DAYS = int(os.environ.get("COMPLIANCE_EXPIRING_SOON_DAYS", "60"))
+from services.compliance_expiry_policy import get_default_expiring_soon_days
+
+# Back-compat name: same as compliance_expiry_policy / scoring profile default.
+EXPIRING_SOON_DAYS = get_default_expiring_soon_days()
 _CONFIDENCE_THRESHOLD_ENV = os.environ.get("COMPLIANCE_CONFIDENCE_THRESHOLD")
 CONFIDENCE_THRESHOLD: Optional[float] = float(_CONFIDENCE_THRESHOLD_ENV) if _CONFIDENCE_THRESHOLD_ENV else None
 

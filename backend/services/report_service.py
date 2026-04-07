@@ -44,7 +44,7 @@ async def generate_evidence_readiness_pdf(
 
     client = await db.clients.find_one(
         {"client_id": client_id},
-        {"_id": 0, "company_name": 1, "full_name": 1, "customer_reference": 1},
+        {"_id": 0, "company_name": 1, "full_name": 1, "customer_reference": 1, "default_jurisdiction": 1},
     )
     company_name = (client or {}).get("company_name") or (client or {}).get("full_name") or "Client"
     crn = (client or {}).get("customer_reference") or client_id
@@ -254,7 +254,7 @@ async def load_evidence_readiness_data(
 
     client = await db.clients.find_one(
         {"client_id": client_id},
-        {"_id": 0, "company_name": 1, "full_name": 1, "customer_reference": 1},
+        {"_id": 0, "company_name": 1, "full_name": 1, "customer_reference": 1, "default_jurisdiction": 1},
     )
     company_name = (client or {}).get("company_name") or (client or {}).get("full_name") or "Client"
     property_ids = [p["property_id"] for p in properties]
@@ -275,6 +275,9 @@ async def load_evidence_readiness_data(
     except Exception:
         pass
 
+    from services.compliance_rules_registry import build_jurisdiction_compliance_notice
+
+    notice = build_jurisdiction_compliance_notice(client or {}, properties)
     report_data = {
         "client": client or {},
         "properties": properties,
@@ -282,6 +285,7 @@ async def load_evidence_readiness_data(
         "audit_logs": audit_logs,
         "now_iso": now.isoformat(),
         "branding": branding,
+        "jurisdiction_compliance_notice": notice,
     }
 
     if scope == "property" and property_id:

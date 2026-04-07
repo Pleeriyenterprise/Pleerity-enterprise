@@ -77,6 +77,10 @@ async def create_property(request: Request, data: CreatePropertyRequest):
                 detail=detail,
             )
         
+        valid_j = frozenset({"Scotland", "England", "Wales", "Northern Ireland"})
+        default_j = (client.get("default_jurisdiction") or "").strip()
+        prop_jurisdiction = default_j if default_j in valid_j else None
+
         # Create property
         property_obj = Property(
             client_id=user["client_id"],
@@ -87,7 +91,8 @@ async def create_property(request: Request, data: CreatePropertyRequest):
             postcode=data.postcode,
             property_type=data.property_type,
             number_of_units=data.number_of_units,
-            compliance_status=ComplianceStatus.RED
+            compliance_status=ComplianceStatus.RED,
+            jurisdiction=prop_jurisdiction,
         )
         
         prop_doc = property_obj.model_dump()
@@ -300,10 +305,15 @@ async def mark_requirement_not_applicable(
     # Property must belong to client
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": client_id},
-        {"_id": 0, "property_id": 1},
+        {"_id": 0, "property_id": 1, "jurisdiction": 1},
     )
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+
+    client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1})
+    from services.compliance_rules_registry import portfolio_jurisdiction_label
+
+    portfolio_juris = portfolio_jurisdiction_label(prop, client_doc or {})
 
     code = (data.requirement_code or "").strip().lower()
     if not code:
@@ -360,6 +370,7 @@ async def mark_requirement_not_applicable(
             property_id=property_id,
             requirement_type=code,
             requirement_code=code,
+            jurisdiction=portfolio_juris,
             description=title,
             frequency_days=0,
             due_date=datetime.now(timezone.utc),
@@ -427,6 +438,15 @@ async def patch_requirement(
     if not req:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found")
 
+    prop_row = await db.properties.find_one(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0, "jurisdiction": 1},
+    ) or {}
+    client_row = await db.clients.find_one(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "default_jurisdiction": 1},
+    ) or {}
+
     update = {"updated_at": datetime.now(timezone.utc).isoformat()}
     if data.confirmed_expiry_date is not None:
         try:
@@ -479,7 +499,7 @@ async def patch_requirement(
 
     # Set status from deterministic rule when expiry or applicability changed
     merged = {**req, **update}
-    update["status"] = get_computed_status(merged)
+    update["status"] = get_computed_status(merged, property_doc=prop_row, client_doc=client_row)
 
     await db.requirements.update_one(
         {"requirement_id": requirement_id, "property_id": property_id, "client_id": user["client_id"]},

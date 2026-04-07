@@ -282,9 +282,22 @@ async def reopen_requirement(request: Request, requirement_id: str, user: Dict[s
     prop_id = str(req.get("property_id") or "").strip()
     from datetime import datetime, timezone
 
+    prop_row = (
+        await db.properties.find_one(
+            {"property_id": prop_id, "client_id": user["client_id"]},
+            {"_id": 0, "jurisdiction": 1},
+        )
+        if prop_id
+        else None
+    ) or {}
+    client_row = await db.clients.find_one(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "default_jurisdiction": 1},
+    ) or {}
+
     now = datetime.now(timezone.utc).isoformat()
     merged = {**req, "applicability": "REQUIRED", "not_required_reason": None, "not_applicable_audit_reason": None}
-    new_status = get_computed_status(merged)
+    new_status = get_computed_status(merged, property_doc=prop_row, client_doc=client_row)
     await db.requirements.update_one(
         {"requirement_id": rid, "client_id": user["client_id"]},
         {
@@ -325,6 +338,10 @@ async def upload_document_for_requirement(
     document_type: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     work_order_id: Optional[str] = Form(None),
+    document_metadata: Optional[str] = Form(
+        None,
+        description='Optional JSON object for jurisdiction-aware validation, e.g. {"issue_date":"2024-06-01","engineer_id":"GAS123"}',
+    ),
     user: Dict[str, Any] = Depends(_require_client),
 ):
     await _enforce_document_upload_rate_limit(user["client_id"])
@@ -347,6 +364,7 @@ async def upload_document_for_requirement(
             document_type=document_type,
             notes=notes,
             source="portal_requirement_upload",
+            document_metadata=document_metadata,
         )
     except HTTPException:
         raise
@@ -438,6 +456,10 @@ class WorkflowCreateContractorBody(BaseModel):
         None,
         description="When set, must be a job owned by the client; compliance jobs get compliance execution capability.",
     )
+    service_regions: Optional[List[str]] = Field(
+        None,
+        description="UK portfolio regions (Scotland, England, Wales, Northern Ireland). Omit on compliance jobs to default to the job's jurisdiction.",
+    )
 
 
 @router.post("/contractors")
@@ -474,6 +496,7 @@ async def post_workflow_contractor(
             accreditation_certification=body.accreditation_certification.strip() if body.accreditation_certification else None,
             notes=body.notes.strip() if body.notes else None,
             work_order=wo_ctx,
+            service_regions=body.service_regions,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

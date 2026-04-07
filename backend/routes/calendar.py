@@ -119,10 +119,15 @@ async def get_expiry_calendar(
             start_date = datetime(year, 1, 1, tzinfo=timezone.utc)
             end_date = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
         
+        client_row = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "default_jurisdiction": 1},
+        ) or {}
+
         # Get all properties for this client
         properties = await db.properties.find(
             {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1}
+            {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1, "jurisdiction": 1},
         ).to_list(100)
         
         property_map = {p["property_id"]: p for p in properties}
@@ -145,7 +150,7 @@ async def get_expiry_calendar(
             if date_key not in events_by_date:
                 events_by_date[date_key] = []
             property_info = property_map.get(req["property_id"], {})
-            status = get_computed_status(req)
+            status = get_computed_status(req, property_doc=property_info, client_doc=client_row)
             status_color = "red" if status in ["OVERDUE"] else "amber" if status == "EXPIRING_SOON" else "green" if status == "COMPLIANT" else "blue"
             events_by_date[date_key].append({
                 "requirement_id": req["requirement_id"],

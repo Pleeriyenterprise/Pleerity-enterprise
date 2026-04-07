@@ -7,11 +7,11 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from services.requirement_catalog import get_applicable_requirements, REQUIREMENT_KEY_TO_DOCUMENT_TYPE
+from services.compliance_expiry_policy import resolve_expiring_soon_days_for_v1_catalog_key
 from services.document_status_service import (
     pick_evidence_document,
     compute_requirement_status,
     STATUS_TO_FRACTION,
-    EXPIRING_SOON_DAYS,
 )
 
 # Base weights keyed by canonical catalog key (used only for applicable requirements; renormalized to 100)
@@ -213,7 +213,8 @@ def compute_property_score(
         document_type = REQUIREMENT_KEY_TO_DOCUMENT_TYPE.get(key, "")
         evidence_doc = pick_evidence_document(candidate_docs, document_type)
         expects_expiry = key in expects_expiry_keys
-        status_result = compute_requirement_status(today, evidence_doc, expects_expiry, EXPIRING_SOON_DAYS)
+        exp_window = resolve_expiring_soon_days_for_v1_catalog_key(key, property_doc, None)
+        status_result = compute_requirement_status(today, evidence_doc, expects_expiry, exp_window)
         fraction = STATUS_TO_FRACTION.get(status_result["status"], 0.0)
         # Low-weight uncertainty penalty: UNKNOWN with missing evidence => 0.5 instead of 0.0
         if has_unknown and fraction <= 0.0 and not evidence_doc:

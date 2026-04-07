@@ -1308,6 +1308,53 @@ async def get_portal_context(request: Request):
         )
 
 
+class JurisdictionFallbackAcknowledgementBody(BaseModel):
+    """Phase-1 portfolio acknowledgement; property records remain authoritative for scoring accuracy."""
+
+    confirm: bool = False
+
+
+@router.post("/onboarding/jurisdiction-fallback-acknowledgement")
+async def acknowledge_jurisdiction_fallback_assumptions(
+    request: Request,
+    body: JurisdictionFallbackAcknowledgementBody,
+):
+    """
+    Record explicit consent to continue while some properties lack jurisdiction on the property record.
+    Does not change scoring; enables onboarding checklist completion when defaults apply.
+    """
+    user = await client_route_guard(request)
+    if not body.confirm:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=structured_error(
+                "CONFIRMATION_REQUIRED",
+                "Use the in-app confirmation step: you must acknowledge that scores and rules may be wrong for properties without a saved jurisdiction.",
+                retry_suggested=False,
+            ),
+        )
+    db = database.get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    await db.clients.update_one(
+        {"client_id": user["client_id"]},
+        {"$set": {"jurisdiction_fallback_acknowledged_at": now}},
+    )
+    from services.onboarding_checklist_service import get_checklist_state, sync_auto_completed_items
+    from models import AuditAction
+    from utils.audit import create_audit_log
+
+    await sync_auto_completed_items(user["client_id"], portal_user_id=user.get("portal_user_id"))
+    await create_audit_log(
+        action=AuditAction.JURISDICTION_FALLBACK_ASSUMPTIONS_ACKNOWLEDGED,
+        actor_id=user.get("portal_user_id"),
+        client_id=user["client_id"],
+        resource_type="client",
+        resource_id=user["client_id"],
+        metadata={"acknowledged_at": now},
+    )
+    return await get_checklist_state(user["client_id"], portal_user_id=user.get("portal_user_id"))
+
+
 @router.post("/onboarding/checklist/items/{item_id}/complete")
 async def complete_onboarding_item(request: Request, item_id: str):
     """Mark one checklist item complete. Server-validates before accepting."""
@@ -1380,13 +1427,38 @@ async def update_jurisdiction_settings(request: Request, body: JurisdictionSetti
             raise HTTPException(status_code=400, detail="enabled_jurisdictions must be a list of Scotland, England, Wales, Northern Ireland")
         updates["enabled_jurisdictions"] = body.enabled_jurisdictions
     if not updates:
-        return {"ok": True}
+        return {"ok": True, "recalc_enqueued": 0}
     db = database.get_db()
     await db.clients.update_one(
         {"client_id": user["client_id"]},
         {"$set": updates},
     )
-    return {"ok": True}
+    # Re-score every property so jurisdiction profile, weights, and downstream risk regen stay aligned.
+    from services.compliance_recalc_queue import (
+        enqueue_compliance_recalc,
+        TRIGGER_CLIENT_JURISDICTION_UPDATED,
+        ACTOR_CLIENT,
+    )
+
+    prop_rows = await db.properties.find(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "property_id": 1},
+    ).to_list(10000)
+    enq = 0
+    for row in prop_rows:
+        pid = row.get("property_id")
+        if not pid:
+            continue
+        if await enqueue_compliance_recalc(
+            property_id=pid,
+            client_id=user["client_id"],
+            trigger_reason=TRIGGER_CLIENT_JURISDICTION_UPDATED,
+            actor_type=ACTOR_CLIENT,
+            actor_id=user.get("portal_user_id"),
+            correlation_id=f"JURISDICTION_UPDATED:{pid}",
+        ):
+            enq += 1
+    return {"ok": True, "recalc_enqueued": enq}
 
 
 @router.get("/properties")
@@ -1400,8 +1472,26 @@ async def get_properties(request: Request):
             {"client_id": user["client_id"]},
             {"_id": 0}
         ).to_list(100)
-        
-        return {"properties": properties}
+        from services.compliance_rules_registry import (
+            build_jurisdiction_compliance_notice,
+            property_jurisdiction_requirement_flags,
+            resolve_portfolio_jurisdiction,
+        )
+
+        client_doc = await db.clients.find_one(
+            {"client_id": user["client_id"]},
+            {"_id": 0, "default_jurisdiction": 1},
+        ) or {}
+        for p in properties:
+            r = resolve_portfolio_jurisdiction(p, client_doc)
+            p["compliance_basis"] = r.compliance_basis
+            p["effective_jurisdiction_label"] = r.effective_label
+            p.update(property_jurisdiction_requirement_flags(p))
+
+        return {
+            "properties": properties,
+            "jurisdiction_compliance_notice": build_jurisdiction_compliance_notice(client_doc, properties),
+        }
     
     except Exception as e:
         logger.error(f"Properties error: {e}")
@@ -1535,11 +1625,17 @@ async def mark_requirement_not_applicable(request: Request, property_id: str):
     ).to_list(200)
     existing_row = next((r for r in reqs if _matches(r)), None)
     now = datetime.now(timezone.utc)
+    client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1})
+    from services.compliance_rules_registry import portfolio_jurisdiction_label
+
+    portfolio_juris = portfolio_jurisdiction_label(prop, client_doc or {})
+
     if existing_row:
         update = {
             "applicability": "NOT_REQUIRED",
             "not_required_reason": not_required_reason or None,
             "status": "NOT_REQUIRED",
+            "jurisdiction": portfolio_juris,
             "updated_at": now.isoformat(),
         }
         await db.requirements.update_one(
@@ -1556,6 +1652,7 @@ async def mark_requirement_not_applicable(request: Request, property_id: str):
             "property_id": property_id,
             "requirement_type": code,
             "requirement_code": code,
+            "jurisdiction": portfolio_juris,
             "description": title,
             "frequency_days": 0,
             "due_date": due_far.isoformat(),

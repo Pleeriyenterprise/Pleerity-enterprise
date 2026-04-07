@@ -1064,17 +1064,39 @@ async def run_work_order_sla_breach_job():
     db = database.get_db()
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
-    risk_threshold_respond = now + timedelta(hours=4)
-    risk_threshold_complete = now + timedelta(days=1)
 
     cursor = db.work_orders.find(
         {"status": {"$nin": [STATUS_COMPLETED, STATUS_CANCELLED]}},
-        {"_id": 1, "work_order_id": 1, "sla_respond_by": 1, "sla_complete_by": 1, "sla_breached_at": 1, "sla_breach_risk_at": 1},
+        {
+            "_id": 1,
+            "work_order_id": 1,
+            "sla_respond_by": 1,
+            "sla_complete_by": 1,
+            "sla_breached_at": 1,
+            "sla_breach_risk_at": 1,
+            "compliance_sla_risk_days_before_complete": 1,
+            "compliance_sla_risk_hours_before_respond": 1,
+        },
     )
     work_orders = await cursor.to_list(500)
     at_risk_updated = 0
     breached_updated = 0
     for wo in work_orders:
+        risk_hours = wo.get("compliance_sla_risk_hours_before_respond")
+        if risk_hours is None:
+            risk_hours = 4
+        risk_days = wo.get("compliance_sla_risk_days_before_complete")
+        if risk_days is None:
+            risk_days = 1
+        try:
+            risk_threshold_respond = now + timedelta(hours=float(risk_hours))
+        except (TypeError, ValueError):
+            risk_threshold_respond = now + timedelta(hours=4)
+        try:
+            risk_threshold_complete = now + timedelta(days=float(risk_days))
+        except (TypeError, ValueError):
+            risk_threshold_complete = now + timedelta(days=1)
+
         respond_by = wo.get("sla_respond_by")
         complete_by = wo.get("sla_complete_by")
         already_breached = wo.get("sla_breached_at")
