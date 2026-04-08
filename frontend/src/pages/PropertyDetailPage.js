@@ -226,8 +226,9 @@ export default function PropertyDetailPage() {
   }, [propertyId]);
 
   useEffect(() => {
-    if (property) setJurisdictionDraft(property.jurisdiction ?? '');
-  }, [property?.property_id, property?.jurisdiction]);
+    if (property?.property_id !== propertyId) return;
+    setJurisdictionDraft(property.jurisdiction ?? '');
+  }, [propertyId, property]);
 
   const jurisdictionDirty = useMemo(() => {
     if (!property) return false;
