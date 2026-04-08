@@ -358,6 +358,7 @@ function App() {
             <Route path="/settings" element={<ClientPortal><SettingsLayout /></ClientPortal>}>
               <Route index element={<Navigate to="/settings/profile" replace />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="jurisdiction" element={<JurisdictionSettingsPage />} />
               <Route path="notifications" element={<NotificationPreferencesPage />} />
               <Route path="inbox" element={<ClientNotificationInboxPage />} />
               <Route path="billing" element={<BillingPage />} />
