@@ -41,6 +41,7 @@ import {
   JURISDICTION_FALLBACK_ACK_SUBMIT_LABEL,
   JURISDICTION_FALLBACK_ACK_VALIDATION_ERROR,
   JURISDICTION_FALLBACK_CTA,
+  JURISDICTION_CHECKLIST_SET_JURISDICTIONS_NOTE,
   JURISDICTION_IMPACT_INTRO,
   JURISDICTION_ONBOARDING_GATE_CONSEQUENCE,
   JURISDICTION_ONBOARDING_GATE_CTA_HINT,
@@ -1084,6 +1085,9 @@ const ClientDashboard = () => {
                           <p className="font-medium text-gray-900">Core compliance configuration</p>
                           <p>{JURISDICTION_IMPACT_INTRO}</p>
                           <p className="text-gray-600">{JURISDICTION_SCOPE_GLOBAL}</p>
+                          <p className="text-amber-900/90 bg-amber-50/80 border border-amber-200/80 rounded-md px-2 py-1.5">
+                            {JURISDICTION_CHECKLIST_SET_JURISDICTIONS_NOTE}
+                          </p>
                         </div>
                       ) : null}
                     </li>

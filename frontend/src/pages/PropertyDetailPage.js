@@ -59,9 +59,11 @@ import {
 } from '../components/client/ClientPortalPatterns';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import {
+  JURISDICTION_ACCOUNT_DEFAULT_NOTICE_TITLE,
   JURISDICTION_FALLBACK_ALERT_BODY_PROPERTY,
   JURISDICTION_FALLBACK_ALERT_TITLE,
   JURISDICTION_FALLBACK_CTA,
+  jurisdictionAccountDefaultNoticeBody,
 } from '../utils/jurisdictionComplianceCopy';
 import PropertyOperatingHub from '../components/property/PropertyOperatingHub';
 
@@ -807,13 +809,13 @@ export default function PropertyDetailPage() {
     ? [property.address_line_1, property.address_line_2, property.postcode].filter(Boolean).join(', ') || 'Unnamed property'
     : 'Property';
 
-  // Property-level signal only: do not suppress with client onboarding acknowledgement — this is where jurisdiction truth lives.
-  const showJurisdictionFallback =
-    property?.compliance_basis === 'default_fallback' ||
-    complianceDetail?.compliance_basis === 'default_fallback' ||
-    property?.jurisdiction_required === true ||
-    property?.compliance_confidence === 'fallback' ||
-    complianceDetail?.compliance_confidence === 'fallback';
+  // compliance_basis is authoritative: property_explicit | client_default | default_fallback (from portfolio + properties APIs).
+  const effectiveComplianceBasis =
+    complianceDetail?.compliance_basis ?? property?.compliance_basis ?? null;
+  const effectiveJurisdictionLabel =
+    complianceDetail?.effective_jurisdiction_label ?? property?.effective_jurisdiction_label ?? '';
+  const showJurisdictionHardWarning = effectiveComplianceBasis === 'default_fallback';
+  const showJurisdictionAccountDefaultNotice = effectiveComplianceBasis === 'client_default';
 
   return (
     <div className={portalPageRoot}>
@@ -835,7 +837,7 @@ export default function PropertyDetailPage() {
         </Button>
       </div>
 
-      {showJurisdictionFallback && (
+      {showJurisdictionHardWarning && (
         <Alert
           className="mb-4 border-amber-300 bg-amber-50/95 text-amber-950"
           data-testid="jurisdiction-fallback-property-alert"
@@ -847,6 +849,28 @@ export default function PropertyDetailPage() {
             <Button type="button" variant="outline" size="sm" className="mt-3 border-amber-400 bg-white hover:bg-amber-100" asChild>
               <Link to="/settings/jurisdiction">{JURISDICTION_FALLBACK_CTA}</Link>
             </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {showJurisdictionAccountDefaultNotice && (
+        <Alert
+          className="mb-4 border-sky-200 bg-sky-50/95 text-sky-950"
+          data-testid="jurisdiction-account-default-notice"
+        >
+          <Info className="h-4 w-4 text-sky-700 shrink-0" />
+          <AlertDescription>
+            <p className="font-semibold text-sky-950">{JURISDICTION_ACCOUNT_DEFAULT_NOTICE_TITLE}</p>
+            <p className="text-sm mt-1.5 text-sky-950/95">
+              {jurisdictionAccountDefaultNoticeBody(effectiveJurisdictionLabel)}
+            </p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Button type="button" variant="outline" size="sm" className="border-sky-300 bg-white hover:bg-sky-100" asChild>
+                <Link to="/settings/jurisdiction">Account jurisdiction</Link>
+              </Button>
+              <Button type="button" variant="outline" size="sm" className="border-sky-300 bg-white hover:bg-sky-100" asChild>
+                <Link to="/properties">Portfolio / properties</Link>
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}

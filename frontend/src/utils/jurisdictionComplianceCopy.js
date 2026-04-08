@@ -19,7 +19,23 @@ export const JURISDICTION_FALLBACK_ALERT_BODY =
   'At least one context is using the system default (England & Wales–style rules) because no jurisdiction is set on the property record and no account default is saved. Your score and dates may not match the right region until you set jurisdiction.';
 
 export const JURISDICTION_FALLBACK_ALERT_BODY_PROPERTY =
-  'This property is scored using the system default (England & Wales–style rules) because neither the property nor your account has a jurisdiction set. Set your account default or ask your administrator to set this property’s jurisdiction.';
+  'This property is scored using the system default (England & Wales–style rules) because neither the property record nor your account has a recognised jurisdiction saved. Set your account default in settings, or set jurisdiction on this property.';
+
+/** Property page when compliance_basis is client_default (account default applies; property record has no explicit jurisdiction). */
+export const JURISDICTION_ACCOUNT_DEFAULT_NOTICE_TITLE = 'Using your account default jurisdiction';
+
+export function jurisdictionAccountDefaultNoticeBody(effectiveLabel) {
+  const label = (effectiveLabel || '').trim();
+  const where = label ? ` (${label})` : '';
+  return (
+    `This property does not have its own jurisdiction on the record yet. Scoring and rules are using your account default${where} until you set a jurisdiction on this property. ` +
+    'That is usually fine when the home matches your portfolio default; set it on the property if this address is in a different region.'
+  );
+}
+
+/** Checklist step “Set jurisdictions” opens account settings only — does not bulk-update existing properties. */
+export const JURISDICTION_CHECKLIST_SET_JURISDICTIONS_NOTE =
+  'This step saves your account default only. It does not automatically add jurisdiction to every existing property. Each property can still have its own jurisdiction on its record when you need an override.';
 
 export const JURISDICTION_FALLBACK_CTA = 'Set jurisdiction';
 
