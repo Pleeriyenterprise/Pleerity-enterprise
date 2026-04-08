@@ -1402,7 +1402,8 @@ async def get_jurisdiction_settings(request: Request):
         {"_id": 0, "default_jurisdiction": 1, "enabled_jurisdictions": 1},
     )
     return {
-        "default_jurisdiction": client.get("default_jurisdiction") or "Scotland",
+        # Persisted value only — omit coercing to Scotland so APIs and DB stay aligned (UI may default the picker locally).
+        "default_jurisdiction": client.get("default_jurisdiction"),
         "enabled_jurisdictions": client.get("enabled_jurisdictions") or ["Scotland", "England", "Wales", "Northern Ireland"],
     }
 
@@ -1461,6 +1462,63 @@ async def update_jurisdiction_settings(request: Request, body: JurisdictionSetti
     return {"ok": True, "recalc_enqueued": enq}
 
 
+@router.post("/settings/jurisdiction/apply-to-missing-properties")
+async def apply_default_jurisdiction_to_missing_properties(request: Request):
+    """
+    Set property.jurisdiction to the client's saved default only where the property has no explicit
+    UK portfolio label yet. Does not overwrite properties that already have a jurisdiction on record
+    (supports mixed-jurisdiction portfolios).
+    """
+    user = await client_route_guard(request)
+    db = database.get_db()
+    from services.compliance_rules_registry import (
+        canonicalize_uk_portfolio_label,
+        property_has_explicit_portfolio_jurisdiction,
+    )
+    from services.compliance_recalc_queue import (
+        ACTOR_CLIENT,
+        TRIGGER_PROPERTY_UPDATED,
+        enqueue_compliance_recalc,
+    )
+
+    client = await db.clients.find_one(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "default_jurisdiction": 1},
+    ) or {}
+    default_label = canonicalize_uk_portfolio_label(client.get("default_jurisdiction"))
+    if not default_label:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Save a valid account default jurisdiction first, then run this action.",
+        )
+    props = await db.properties.find(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "property_id": 1, "jurisdiction": 1},
+    ).to_list(10000)
+    now = datetime.now(timezone.utc).isoformat()
+    updated = 0
+    enq = 0
+    for p in props:
+        pid = p.get("property_id")
+        if not pid or property_has_explicit_portfolio_jurisdiction(p):
+            continue
+        await db.properties.update_one(
+            {"property_id": pid, "client_id": user["client_id"]},
+            {"$set": {"jurisdiction": default_label, "updated_at": now}},
+        )
+        updated += 1
+        if await enqueue_compliance_recalc(
+            property_id=pid,
+            client_id=user["client_id"],
+            trigger_reason=TRIGGER_PROPERTY_UPDATED,
+            actor_type=ACTOR_CLIENT,
+            actor_id=user.get("portal_user_id"),
+            correlation_id=f"JURISDICTION_APPLY_MISSING:{pid}",
+        ):
+            enq += 1
+    return {"ok": True, "properties_updated": updated, "recalc_enqueued": enq}
+
+
 @router.get("/properties")
 async def get_properties(request: Request):
     """Get client properties."""
@@ -1474,8 +1532,8 @@ async def get_properties(request: Request):
         ).to_list(100)
         from services.compliance_rules_registry import (
             build_jurisdiction_compliance_notice,
+            jurisdiction_attribution_for_property,
             property_jurisdiction_requirement_flags,
-            resolve_portfolio_jurisdiction,
         )
 
         client_doc = await db.clients.find_one(
@@ -1483,14 +1541,16 @@ async def get_properties(request: Request):
             {"_id": 0, "default_jurisdiction": 1},
         ) or {}
         for p in properties:
-            r = resolve_portfolio_jurisdiction(p, client_doc)
-            p["compliance_basis"] = r.compliance_basis
-            p["effective_jurisdiction_label"] = r.effective_label
+            att = jurisdiction_attribution_for_property(p, client_doc)
+            p["compliance_basis"] = att["compliance_basis"]
+            p["effective_jurisdiction_label"] = att["effective_jurisdiction_label"]
+            p["jurisdiction_source"] = att["jurisdiction_source"]
             p.update(property_jurisdiction_requirement_flags(p))
 
         return {
             "properties": properties,
             "jurisdiction_compliance_notice": build_jurisdiction_compliance_notice(client_doc, properties),
+            "client_default_jurisdiction": client_doc.get("default_jurisdiction"),
         }
     
     except Exception as e:

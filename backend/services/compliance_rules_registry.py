@@ -25,8 +25,12 @@ Product-risk (steady-state)
 """
 from __future__ import annotations
 
+import logging
+import os
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Optional, Set, Tuple
+
+logger = logging.getLogger(__name__)
 
 # Portfolio labels stored on requirement / work_order / property
 UK_PORTFOLIO_LABELS: Set[str] = frozenset({"Scotland", "England", "Wales", "Northern Ireland"})
@@ -54,9 +58,8 @@ COMPLIANCE_CONFIDENCE_FALLBACK = "fallback"
 
 
 def property_has_explicit_portfolio_jurisdiction(property_doc: Dict[str, Any]) -> bool:
-    """True when property.jurisdiction is a recognised UK portfolio label."""
-    p = (property_doc.get("jurisdiction") or "").strip()
-    return p in UK_PORTFOLIO_LABELS
+    """True when property.jurisdiction is a recognised UK portfolio label (case-insensitive)."""
+    return canonicalize_uk_portfolio_label(property_doc.get("jurisdiction")) is not None
 
 
 def property_jurisdiction_requirement_flags(property_doc: Dict[str, Any]) -> Dict[str, Any]:
@@ -113,16 +116,70 @@ def resolve_portfolio_jurisdiction(
     """
     Resolve jurisdiction label and whether compliance used explicit property data, client default, or system fallback.
 
-    compliance_basis == COMPLIANCE_BASIS_DEFAULT_FALLBACK when both property.jurisdiction and
-    client.default_jurisdiction are missing or not in UK_PORTFOLIO_LABELS — evaluation then assumes England / EW bucket.
+    compliance_basis == COMPLIANCE_BASIS_DEFAULT_FALLBACK when the property has no recognised jurisdiction and
+    client.default_jurisdiction is missing or not a recognised UK portfolio label — evaluation then assumes England / EW bucket.
+
+    Property and client values are normalised with canonicalize_uk_portfolio_label (case-insensitive) so stored variants
+    still resolve to client_default instead of incorrectly falling through to default_fallback.
     """
-    p = (property_doc.get("jurisdiction") or "").strip()
-    if p in UK_PORTFOLIO_LABELS:
-        return PortfolioJurisdictionResolution(p, COMPLIANCE_BASIS_PROPERTY_EXPLICIT)
-    c = ((client_doc or {}).get("default_jurisdiction") or "").strip()
-    if c in UK_PORTFOLIO_LABELS:
-        return PortfolioJurisdictionResolution(c, COMPLIANCE_BASIS_CLIENT_DEFAULT)
+    p_label = canonicalize_uk_portfolio_label(property_doc.get("jurisdiction"))
+    if p_label:
+        return PortfolioJurisdictionResolution(p_label, COMPLIANCE_BASIS_PROPERTY_EXPLICIT)
+    c_label = canonicalize_uk_portfolio_label((client_doc or {}).get("default_jurisdiction"))
+    if c_label:
+        return PortfolioJurisdictionResolution(c_label, COMPLIANCE_BASIS_CLIENT_DEFAULT)
     return PortfolioJurisdictionResolution("England", COMPLIANCE_BASIS_DEFAULT_FALLBACK)
+
+
+def jurisdiction_attribution_for_property(
+    property_doc: Dict[str, Any],
+    client_doc: Optional[Dict[str, Any]],
+    *,
+    _resolution: Optional[PortfolioJurisdictionResolution] = None,
+) -> Dict[str, Any]:
+    """
+    Per-property jurisdiction context for APIs and UI (mixed-jurisdiction portfolios).
+
+    jurisdiction_source:
+      - property_record: explicit recognised label on the property document (authoritative).
+      - account_default: property has no explicit label; client's default_jurisdiction applies.
+      - system_default: neither property nor client has a valid label; scoring uses England / EW bucket.
+    """
+    r = _resolution or resolve_portfolio_jurisdiction(property_doc, client_doc)
+    if r.compliance_basis == COMPLIANCE_BASIS_PROPERTY_EXPLICIT:
+        src = "property_record"
+    elif r.compliance_basis == COMPLIANCE_BASIS_CLIENT_DEFAULT:
+        src = "account_default"
+    else:
+        src = "system_default"
+    return {
+        "jurisdiction_source": src,
+        "compliance_basis": r.compliance_basis,
+        "effective_jurisdiction_label": r.effective_label,
+    }
+
+
+def log_jurisdiction_resolution_debug(
+    *,
+    context: str,
+    property_id: Optional[str],
+    raw_property_jurisdiction: Any,
+    raw_client_default_jurisdiction: Any,
+    resolution: PortfolioJurisdictionResolution,
+) -> None:
+    """Temporary diagnostics; enable with JURISDICTION_RESOLUTION_DEBUG=1."""
+    if (os.environ.get("JURISDICTION_RESOLUTION_DEBUG") or "").strip().lower() not in ("1", "true", "yes"):
+        return
+    logger.info(
+        "JURISDICTION_RESOLUTION_DEBUG context=%s property_id=%s property.jurisdiction(raw)=%r "
+        "client.default_jurisdiction(raw)=%r compliance_basis=%s effective_jurisdiction_label=%s",
+        context,
+        property_id,
+        raw_property_jurisdiction,
+        raw_client_default_jurisdiction,
+        resolution.compliance_basis,
+        resolution.effective_label,
+    )
 
 
 def build_jurisdiction_compliance_notice(

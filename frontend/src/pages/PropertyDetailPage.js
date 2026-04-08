@@ -4,6 +4,14 @@ import apiClient, { clientAPI } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Label } from '../components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import ErrorBanner from '../components/ErrorBanner';
 import {
@@ -63,7 +71,9 @@ import {
   JURISDICTION_FALLBACK_ALERT_BODY_PROPERTY,
   JURISDICTION_FALLBACK_ALERT_TITLE,
   JURISDICTION_FALLBACK_CTA,
+  JURISDICTION_OPTIONS,
   jurisdictionAccountDefaultNoticeBody,
+  jurisdictionSourceLabel,
 } from '../utils/jurisdictionComplianceCopy';
 import PropertyOperatingHub from '../components/property/PropertyOperatingHub';
 
@@ -169,6 +179,8 @@ export default function PropertyDetailPage() {
   const [bookInspectionSignalId, setBookInspectionSignalId] = useState(null);
   const [bookInspectionReqPick, setBookInspectionReqPick] = useState('');
   const [bookInspectionSaving, setBookInspectionSaving] = useState(false);
+  const [jurisdictionDraft, setJurisdictionDraft] = useState('');
+  const [jurisdictionSaving, setJurisdictionSaving] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -212,6 +224,33 @@ export default function PropertyDetailPage() {
       setRefreshing(false);
     }
   }, [propertyId]);
+
+  useEffect(() => {
+    if (property) setJurisdictionDraft(property.jurisdiction ?? '');
+  }, [property?.property_id, property?.jurisdiction]);
+
+  const jurisdictionDirty = useMemo(() => {
+    if (!property) return false;
+    const cur = property.jurisdiction ?? '';
+    return (jurisdictionDraft ?? '') !== cur;
+  }, [property, jurisdictionDraft]);
+
+  const savePropertyJurisdiction = useCallback(async () => {
+    if (!propertyId || !property) return;
+    setJurisdictionSaving(true);
+    try {
+      await clientAPI.patchProperty(propertyId, { jurisdiction: (jurisdictionDraft ?? '').trim() || '' });
+      toast.success('Property jurisdiction updated', {
+        description: 'Scores and obligations will refresh for this property.',
+      });
+      await fetchData();
+    } catch (e) {
+      const d = e.response?.data?.detail;
+      toast.error(typeof d === 'string' ? d : 'Could not update jurisdiction.');
+    } finally {
+      setJurisdictionSaving(false);
+    }
+  }, [propertyId, property, jurisdictionDraft, fetchData]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -814,6 +853,8 @@ export default function PropertyDetailPage() {
     complianceDetail?.compliance_basis ?? property?.compliance_basis ?? null;
   const effectiveJurisdictionLabel =
     complianceDetail?.effective_jurisdiction_label ?? property?.effective_jurisdiction_label ?? '';
+  const effectiveJurisdictionSource =
+    complianceDetail?.jurisdiction_source ?? property?.jurisdiction_source ?? null;
   const showJurisdictionHardWarning = effectiveComplianceBasis === 'default_fallback';
   const showJurisdictionAccountDefaultNotice = effectiveComplianceBasis === 'client_default';
 
@@ -874,6 +915,62 @@ export default function PropertyDetailPage() {
           </AlertDescription>
         </Alert>
       )}
+
+      {property ? (
+        <Card className="mb-4 border border-gray-200 bg-white" data-testid="property-jurisdiction-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-midnight-blue">Portfolio jurisdiction</CardTitle>
+            <CardDescription className="text-sm text-gray-600 space-y-1">
+              <p>
+                <span className="text-gray-500">Source: </span>
+                <span className="font-medium text-midnight-blue">{jurisdictionSourceLabel(effectiveJurisdictionSource)}</span>
+              </p>
+              <p>
+                <span className="text-gray-500">Effective region for scoring: </span>
+                <span className="font-medium text-midnight-blue">{effectiveJurisdictionLabel || '—'}</span>
+              </p>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="space-y-2 flex-1 min-w-[220px] max-w-md">
+              <Label htmlFor="property-jurisdiction-select" className="text-sm text-midnight-blue">
+                Jurisdiction on this property
+              </Label>
+              <Select
+                value={jurisdictionDraft}
+                onValueChange={setJurisdictionDraft}
+                disabled={jurisdictionSaving}
+              >
+                <SelectTrigger id="property-jurisdiction-select" data-testid="property-jurisdiction-select">
+                  <SelectValue placeholder="Choose" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Not set (account default, then system default if needed)</SelectItem>
+                  {JURISDICTION_OPTIONS.map((j) => (
+                    <SelectItem key={j} value={j}>
+                      {j}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                className="bg-electric-teal hover:bg-electric-teal/90"
+                disabled={!jurisdictionDirty || jurisdictionSaving}
+                onClick={savePropertyJurisdiction}
+                data-testid="property-jurisdiction-save"
+              >
+                {jurisdictionSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Save jurisdiction
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* A — Property header: identity, compliance snapshot, primary actions only */}
       <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6 mb-4 min-w-0">

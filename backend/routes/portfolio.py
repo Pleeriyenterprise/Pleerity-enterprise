@@ -225,11 +225,25 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
         {"client_id": client_id},
         {"_id": 0, "default_jurisdiction": 1},
     ) or {}
-    from services.compliance_rules_registry import resolve_portfolio_jurisdiction
+    from services.compliance_rules_registry import (
+        jurisdiction_attribution_for_property,
+        log_jurisdiction_resolution_debug,
+        resolve_portfolio_jurisdiction,
+    )
 
     _jr = resolve_portfolio_jurisdiction(prop_full, client_doc)
-    response["compliance_basis"] = _jr.compliance_basis
-    response["effective_jurisdiction_label"] = _jr.effective_label
+    log_jurisdiction_resolution_debug(
+        context="portfolio.compliance-detail",
+        property_id=property_id,
+        raw_property_jurisdiction=prop_full.get("jurisdiction"),
+        raw_client_default_jurisdiction=client_doc.get("default_jurisdiction"),
+        resolution=_jr,
+    )
+    _att = jurisdiction_attribution_for_property(prop_full, client_doc, _resolution=_jr)
+    response["compliance_basis"] = _att["compliance_basis"]
+    response["effective_jurisdiction_label"] = _att["effective_jurisdiction_label"]
+    response["jurisdiction_source"] = _att["jurisdiction_source"]
+    response["client_default_jurisdiction"] = client_doc.get("default_jurisdiction")
     return response
 
 

@@ -36,6 +36,7 @@ export default function JurisdictionSettingsPage() {
   const [loadError, setLoadError] = useState('');
   const [justSaved, setJustSaved] = useState(false);
   const [recalcHint, setRecalcHint] = useState(null);
+  const [bulkMissingLoading, setBulkMissingLoading] = useState(false);
 
   const [defaultJurisdiction, setDefaultJurisdiction] = useState('Scotland');
   const [enabledSet, setEnabledSet] = useState(() => new Set(JURISDICTION_OPTIONS));
@@ -48,9 +49,9 @@ export default function JurisdictionSettingsPage() {
     setLoadError('');
     try {
       const res = await clientAPI.getJurisdictionSettings();
-      const d = res.data?.default_jurisdiction || 'Scotland';
+      const d = res.data?.default_jurisdiction;
       const en = Array.isArray(res.data?.enabled_jurisdictions) ? res.data.enabled_jurisdictions : JURISDICTION_OPTIONS;
-      setDefaultJurisdiction(JURISDICTION_OPTIONS.includes(d) ? d : 'Scotland');
+      setDefaultJurisdiction(d && JURISDICTION_OPTIONS.includes(d) ? d : 'Scotland');
       const next = new Set(en.filter((j) => JURISDICTION_OPTIONS.includes(j)));
       if (next.size === 0) JURISDICTION_OPTIONS.forEach((j) => next.add(j));
       setEnabledSet(next);
@@ -119,6 +120,37 @@ export default function JurisdictionSettingsPage() {
       toast.error(typeof d === 'string' ? d : 'Could not save jurisdiction settings.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const applyDefaultToMissingProperties = async () => {
+    const ok = window.confirm(
+      'Apply your saved account default jurisdiction only to properties that have no jurisdiction on the property record? ' +
+        'Properties that already have a jurisdiction set will not be changed.',
+    );
+    if (!ok) return;
+    setBulkMissingLoading(true);
+    try {
+      const res = await clientAPI.applyDefaultJurisdictionToMissingProperties();
+      const updated = typeof res.data?.properties_updated === 'number' ? res.data.properties_updated : 0;
+      const enq = typeof res.data?.recalc_enqueued === 'number' ? res.data.recalc_enqueued : 0;
+      if (updated > 0) {
+        toast.success(`Updated ${updated} propert${updated === 1 ? 'y' : 'ies'}`, {
+          description:
+            enq > 0
+              ? `Background refresh started for ${enq} propert${enq === 1 ? 'y' : 'ies'}.`
+              : undefined,
+        });
+      } else {
+        toast.message('No changes needed', {
+          description: 'Every property already has a jurisdiction on record, or your default could not be applied.',
+        });
+      }
+    } catch (err) {
+      const d = err.response?.data?.detail;
+      toast.error(typeof d === 'string' ? d : 'Could not apply default to properties.');
+    } finally {
+      setBulkMissingLoading(false);
     }
   };
 
@@ -262,6 +294,28 @@ export default function JurisdictionSettingsPage() {
               Save compliance defaults
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-gray-200 shadow-sm" data-testid="jurisdiction-bulk-missing-card">
+        <CardHeader>
+          <CardTitle className="text-lg text-midnight-blue">Properties missing jurisdiction</CardTitle>
+          <CardDescription className="text-gray-600 text-sm">
+            Apply your saved account default only to properties with no jurisdiction on the property record. Properties that
+            already have a jurisdiction set are not changed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={applyDefaultToMissingProperties}
+            disabled={bulkMissingLoading || saving}
+            data-testid="jurisdiction-apply-missing-btn"
+          >
+            {bulkMissingLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            Apply default to missing properties only
+          </Button>
         </CardContent>
       </Card>
     </div>

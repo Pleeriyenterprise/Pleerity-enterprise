@@ -11,6 +11,7 @@ from services.compliance_rules_registry import (
     COMPLIANCE_CONFIDENCE_FALLBACK,
     build_jurisdiction_compliance_notice,
     build_portfolio_jurisdiction_attestation,
+    jurisdiction_attribution_for_property,
     property_jurisdiction_requirement_flags,
     resolve_portfolio_jurisdiction,
 )
@@ -26,6 +27,12 @@ def test_resolve_portfolio_jurisdiction_property_explicit():
 def test_resolve_portfolio_jurisdiction_client_default_when_property_missing():
     r = resolve_portfolio_jurisdiction({}, {"default_jurisdiction": "Wales"})
     assert r.effective_label == "Wales"
+    assert r.compliance_basis == COMPLIANCE_BASIS_CLIENT_DEFAULT
+
+
+def test_resolve_portfolio_jurisdiction_client_default_case_insensitive():
+    r = resolve_portfolio_jurisdiction({}, {"default_jurisdiction": "  england  "})
+    assert r.effective_label == "England"
     assert r.compliance_basis == COMPLIANCE_BASIS_CLIENT_DEFAULT
 
 
@@ -233,3 +240,33 @@ async def test_command_center_scoped_filter_hides_notice_when_property_not_affec
     summ = bundle["compliance_status_summary"]
     assert summ["jurisdiction_required"] is False
     assert summ["compliance_confidence"] == "explicit"
+
+
+def test_jurisdiction_attribution_property_record():
+    att = jurisdiction_attribution_for_property(
+        {"jurisdiction": "Wales"}, {"default_jurisdiction": "Scotland"}
+    )
+    assert att["jurisdiction_source"] == "property_record"
+    assert att["effective_jurisdiction_label"] == "Wales"
+    assert att["compliance_basis"] == COMPLIANCE_BASIS_PROPERTY_EXPLICIT
+
+
+def test_jurisdiction_attribution_account_default():
+    att = jurisdiction_attribution_for_property({}, {"default_jurisdiction": "England"})
+    assert att["jurisdiction_source"] == "account_default"
+    assert att["effective_jurisdiction_label"] == "England"
+    assert att["compliance_basis"] == COMPLIANCE_BASIS_CLIENT_DEFAULT
+
+
+def test_jurisdiction_attribution_system_default():
+    att = jurisdiction_attribution_for_property({}, {})
+    assert att["jurisdiction_source"] == "system_default"
+    assert att["compliance_basis"] == COMPLIANCE_BASIS_DEFAULT_FALLBACK
+
+
+def test_jurisdiction_attribution_reuses_resolution():
+    """When callers already resolved jurisdiction, attribution must honour _resolution (no double resolve)."""
+    r = resolve_portfolio_jurisdiction({"jurisdiction": "Northern Ireland"}, {"default_jurisdiction": "Wales"})
+    att = jurisdiction_attribution_for_property({}, {}, _resolution=r)
+    assert att["jurisdiction_source"] == "property_record"
+    assert att["effective_jurisdiction_label"] == "Northern Ireland"

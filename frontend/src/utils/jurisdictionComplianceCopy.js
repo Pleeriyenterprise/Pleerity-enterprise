@@ -5,6 +5,19 @@
 
 export const JURISDICTION_OPTIONS = ['Scotland', 'England', 'Wales', 'Northern Ireland'];
 
+/** API `jurisdiction_source` — how the effective jurisdiction is chosen for this property. */
+export const JURISDICTION_SOURCE_LABEL = {
+  property_record: 'Property',
+  account_default: 'Account default',
+  /** No valid jurisdiction on property or account — scoring uses system default until resolved. */
+  system_default: 'Required',
+};
+
+export function jurisdictionSourceLabel(source) {
+  if (!source) return '—';
+  return JURISDICTION_SOURCE_LABEL[source] || source;
+}
+
 /** Backend scoring buckets (compliance_scoring_v2.normalize_jurisdiction). */
 export function scoringProfileForDefaultLabel(defaultJurisdiction) {
   const j = (defaultJurisdiction || '').trim();
@@ -35,7 +48,10 @@ export function jurisdictionAccountDefaultNoticeBody(effectiveLabel) {
 
 /** Checklist step “Set jurisdictions” opens account settings only — does not bulk-update existing properties. */
 export const JURISDICTION_CHECKLIST_SET_JURISDICTIONS_NOTE =
-  'This step saves your account default only. It does not automatically add jurisdiction to every existing property. Each property can still have its own jurisdiction on its record when you need an override.';
+  'Saving your default in Jurisdiction settings updates your account only — it does not write onto existing property records. ' +
+  'New properties may use that default until you set them on each property. ' +
+  'To backfill many empty records at once, save your default then use “Apply default to missing properties only” on the same settings page (it never overwrites a jurisdiction already on a property). ' +
+  'You can still set a different jurisdiction on any property when you need an override.';
 
 export const JURISDICTION_FALLBACK_CTA = 'Set jurisdiction';
 

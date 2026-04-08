@@ -701,7 +701,7 @@ const ClientDashboard = () => {
       .finally(() => setJurisdictionAckSubmitting(false));
   };
 
-  /** Portfolio surfaces: full amber banner before acknowledgement; compact reminder after (property pages stay strong). */
+  /** Hard banner only when at least one property uses system default_fallback — not when account default (client_default) fills gaps. */
   const jurisdictionPortfolioBanner = useMemo(() => {
     const summary = commandCenter?.compliance_status_summary;
     if (!summary || typeof summary !== 'object') {
@@ -710,12 +710,10 @@ const ClientDashboard = () => {
     const noticeActive =
       summary.jurisdiction_compliance_notice?.active &&
       summary.jurisdiction_compliance_notice?.compliance_basis === 'default_fallback';
-    const fallbackConfidence = summary.compliance_confidence === 'fallback';
-    const concern = noticeActive || fallbackConfidence;
     const acked = summary.jurisdiction_fallback_acknowledged === true;
     return {
-      showFull: concern && !acked,
-      showCompact: concern && acked,
+      showFull: noticeActive && !acked,
+      showCompact: noticeActive && acked,
     };
   }, [commandCenter]);
 

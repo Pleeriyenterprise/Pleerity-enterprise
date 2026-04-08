@@ -9,6 +9,7 @@ import { ArrowLeft, Plus, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../api/client';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
+import { JURISDICTION_OPTIONS } from '../utils/jurisdictionComplianceCopy';
 
 const PropertyCreatePage = () => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const PropertyCreatePage = () => {
     address_line_2: '',
     city: '',
     postcode: '',
+    jurisdiction: '',
     property_type: 'residential',
     number_of_units: 1
   });
@@ -39,6 +41,8 @@ const PropertyCreatePage = () => {
       const payload = { ...formData };
       if (!payload.nickname?.trim()) delete payload.nickname;
       else payload.nickname = payload.nickname.trim();
+      if (!payload.jurisdiction?.trim()) delete payload.jurisdiction;
+      else payload.jurisdiction = payload.jurisdiction.trim();
       await api.post('/properties/create', payload);
 
       setSuccess(true);
@@ -198,6 +202,26 @@ const PropertyCreatePage = () => {
                     data-testid="postcode-input"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Jurisdiction (optional)</label>
+                <select
+                  value={formData.jurisdiction}
+                  onChange={(e) => setFormData({ ...formData, jurisdiction: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                  data-testid="create-property-jurisdiction-select"
+                >
+                  <option value="">Use account default</option>
+                  {JURISDICTION_OPTIONS.map((j) => (
+                    <option key={j} value={j}>
+                      {j}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500">
+                  Leave blank to use your saved account default. Set explicitly when this address is in a different region.
+                </p>
               </div>
 
               <div className="space-y-2">

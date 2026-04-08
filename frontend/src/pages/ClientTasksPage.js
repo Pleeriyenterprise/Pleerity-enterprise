@@ -493,7 +493,6 @@ export default function ClientTasksPage() {
   const [complianceBookingBusyId, setComplianceBookingBusyId] = useState(null);
   /** From GET /client/command-center (same scoping as Dashboard when property_id is set). */
   const [jurisdictionComplianceNotice, setJurisdictionComplianceNotice] = useState(null);
-  const [commandCenterComplianceConfidence, setCommandCenterComplianceConfidence] = useState(null);
   const [commandCenterFallbackAcknowledged, setCommandCenterFallbackAcknowledged] = useState(null);
 
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -521,7 +520,6 @@ export default function ClientTasksPage() {
     setError('');
     const params = propertyFilter ? { property_id: propertyFilter } : {};
     setJurisdictionComplianceNotice(null);
-    setCommandCenterComplianceConfidence(null);
     setCommandCenterFallbackAcknowledged(null);
     clientAPI
       .getCommandCenter(params)
@@ -529,7 +527,6 @@ export default function ClientTasksPage() {
         const summary = res.data?.compliance_status_summary;
         const notice = summary?.jurisdiction_compliance_notice;
         setJurisdictionComplianceNotice(notice && typeof notice === 'object' ? notice : null);
-        setCommandCenterComplianceConfidence(summary?.compliance_confidence ?? null);
         setCommandCenterFallbackAcknowledged(
           typeof summary?.jurisdiction_fallback_acknowledged === 'boolean'
             ? summary.jurisdiction_fallback_acknowledged
@@ -619,18 +616,12 @@ export default function ClientTasksPage() {
     const noticeActive =
       jurisdictionComplianceNotice?.active &&
       jurisdictionComplianceNotice?.compliance_basis === 'default_fallback';
-    const fallbackConfidence = commandCenterComplianceConfidence === 'fallback';
-    const concern = noticeActive || fallbackConfidence;
     const acked = commandCenterFallbackAcknowledged === true;
     return {
-      showFull: concern && !acked,
-      showCompact: concern && acked,
+      showFull: noticeActive && !acked,
+      showCompact: noticeActive && acked,
     };
-  }, [
-    jurisdictionComplianceNotice,
-    commandCenterComplianceConfidence,
-    commandCenterFallbackAcknowledged,
-  ]);
+  }, [jurisdictionComplianceNotice, commandCenterFallbackAcknowledged]);
 
   const showRiskInline = hasFeature('predictive_maintenance') && hasFeature('maintenance_workflows');
   const showComplianceBooking =

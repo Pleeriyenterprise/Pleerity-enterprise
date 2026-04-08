@@ -373,6 +373,11 @@ export const clientAPI = {
   getMaintenanceSpendThisMonth: () => apiClient.get('/client/finance/maintenance-spend-this-month'),
   getEntitlements: () => apiClient.get('/client/entitlements'),
   getProperties: () => apiClient.get('/client/properties'),
+  /** PATCH /api/properties/{id} — partial property update (e.g. jurisdiction). */
+  patchProperty: (propertyId, body) => apiClient.patch(`/properties/${encodeURIComponent(propertyId)}`, body),
+  /** Writes account default onto properties that have no explicit jurisdiction (mixed portfolios safe). */
+  applyDefaultJurisdictionToMissingProperties: () =>
+    apiClient.post('/client/settings/jurisdiction/apply-to-missing-properties', {}),
   getPropertyRequirements: (propertyId) => apiClient.get(`/client/properties/${propertyId}/requirements`),
   getRequirementExplanation: (propertyId, params) => apiClient.get(`/client/properties/${propertyId}/requirements/explanation`, { params: params || {} }),
   /** Mark a catalog requirement as not applicable for this property (creates/updates requirement row). */

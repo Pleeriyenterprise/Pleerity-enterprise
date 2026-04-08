@@ -9,6 +9,7 @@ import logging
 
 from services.compliance_rules_registry import (
     build_portfolio_jurisdiction_attestation,
+    canonicalize_uk_portfolio_label,
     property_has_explicit_portfolio_jurisdiction,
 )
 
@@ -144,7 +145,9 @@ async def validate_item_completion(client_id: str, item_id: str) -> bool:
         )
         if client is None:
             return False
-        if not client.get("default_jurisdiction") or not client.get("enabled_jurisdictions"):
+        if not canonicalize_uk_portfolio_label(client.get("default_jurisdiction")) or not client.get(
+            "enabled_jurisdictions"
+        ):
             return False
         props = await db.properties.find(
             {"client_id": client_id},

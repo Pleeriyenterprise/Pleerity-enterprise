@@ -7,7 +7,7 @@ from middleware import client_route_guard
 from models import Property, ComplianceStatus, AuditAction, UserRole
 from utils.expiry_utils import get_effective_expiry_date, get_computed_status, is_included_for_calendar
 from utils.audit import create_audit_log
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime, timezone
 import logging
@@ -23,6 +23,8 @@ class CreatePropertyRequest(BaseModel):
     postcode: str
     property_type: str = "residential"
     number_of_units: int = 1
+    # Optional override; when omitted, new properties use the client's saved default_jurisdiction (canonicalised).
+    jurisdiction: Optional[str] = Field(None, description="Scotland | England | Wales | Northern Ireland")
 
 @router.post("/create")
 async def create_property(request: Request, data: CreatePropertyRequest):
@@ -77,9 +79,17 @@ async def create_property(request: Request, data: CreatePropertyRequest):
                 detail=detail,
             )
         
-        valid_j = frozenset({"Scotland", "England", "Wales", "Northern Ireland"})
-        default_j = (client.get("default_jurisdiction") or "").strip()
-        prop_jurisdiction = default_j if default_j in valid_j else None
+        from services.compliance_rules_registry import canonicalize_uk_portfolio_label
+
+        if data.jurisdiction is not None and str(data.jurisdiction).strip():
+            prop_jurisdiction = canonicalize_uk_portfolio_label(data.jurisdiction)
+            if not prop_jurisdiction:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="jurisdiction must be Scotland, England, Wales, or Northern Ireland",
+                )
+        else:
+            prop_jurisdiction = canonicalize_uk_portfolio_label(client.get("default_jurisdiction"))
 
         # Create property
         property_obj = Property(
@@ -189,6 +199,8 @@ class PatchPropertyRequest(BaseModel):
     tenancy_active: Optional[bool] = None
     furnished: Optional[bool] = None
     is_active: Optional[bool] = None  # False = archived (read-only) when over property limit
+    # Set to Scotland | England | Wales | Northern Ireland, or "" / null to clear the property record (fall back to account default).
+    jurisdiction: Optional[str] = None
 
 
 @router.patch("/{property_id}")
@@ -209,7 +221,25 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
 
     update = {}
+    jurisdiction_changed = False
     payload = data.model_dump(exclude_none=True)
+    from services.compliance_rules_registry import canonicalize_uk_portfolio_label
+
+    if "jurisdiction" in data.model_fields_set:
+        payload.pop("jurisdiction", None)
+        raw_j = data.jurisdiction
+        if raw_j is None or (isinstance(raw_j, str) and not raw_j.strip()):
+            update["jurisdiction"] = None
+        else:
+            canon = canonicalize_uk_portfolio_label(raw_j)
+            if not canon:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="jurisdiction must be Scotland, England, Wales, or Northern Ireland (or empty to clear)",
+                )
+            update["jurisdiction"] = canon
+        jurisdiction_changed = True
+
     for key, value in payload.items():
         update[key] = value
 
@@ -248,7 +278,7 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
     from services.provisioning_status_hook import update_provisioning_status_for_property
     await update_provisioning_status_for_property(user["client_id"], property_id)
 
-    if applicability_changed:
+    if applicability_changed or jurisdiction_changed:
         from services.compliance_recalc_queue import (
             enqueue_compliance_recalc,
             TRIGGER_PROPERTY_UPDATED,

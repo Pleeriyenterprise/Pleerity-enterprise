@@ -39,6 +39,8 @@ def _jurisdiction_api_fields(client_row: Dict[str, Any], properties: List[Dict[s
         "jurisdiction_required_property_ids": att["jurisdiction_required_property_ids"],
         "jurisdiction_required_property_count": att["jurisdiction_required_property_count"],
         "jurisdiction_fallback_acknowledged": bool((client_row or {}).get("jurisdiction_fallback_acknowledged_at")),
+        # Raw DB value (may be null); resolution uses canonicalize_uk_portfolio_label in resolve_portfolio_jurisdiction.
+        "client_default_jurisdiction": (client_row or {}).get("default_jurisdiction"),
     }
 
 

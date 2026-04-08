@@ -101,15 +101,26 @@ async def get_property_compliance_detail(
         {"_id": 0, "default_jurisdiction": 1},
     ) or {}
     from services.compliance_rules_registry import (
+        jurisdiction_attribution_for_property,
+        log_jurisdiction_resolution_debug,
         property_jurisdiction_requirement_flags,
         resolve_portfolio_jurisdiction,
     )
 
     _rj = resolve_portfolio_jurisdiction(prop, client_row)
+    log_jurisdiction_resolution_debug(
+        context="catalog_compliance.get_property_compliance_detail",
+        property_id=property_id,
+        raw_property_jurisdiction=prop.get("jurisdiction"),
+        raw_client_default_jurisdiction=(client_row or {}).get("default_jurisdiction"),
+        resolution=_rj,
+    )
+    _att = jurisdiction_attribution_for_property(prop, client_row, _resolution=_rj)
     _jf = property_jurisdiction_requirement_flags(prop)
     _jurisdiction_extra = {
-        "compliance_basis": _rj.compliance_basis,
-        "effective_jurisdiction_label": _rj.effective_label,
+        "compliance_basis": _att["compliance_basis"],
+        "effective_jurisdiction_label": _att["effective_jurisdiction_label"],
+        "jurisdiction_source": _att["jurisdiction_source"],
         "jurisdiction_required": _jf["jurisdiction_required"],
         "compliance_confidence": _jf["compliance_confidence"],
     }
@@ -127,6 +138,7 @@ async def get_property_compliance_detail(
             "risk_index": 0.0,
             "risk_level": "Low Risk",
             "kpis": {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0},
+            **_jurisdiction_extra,
         }
     reqs = await db.requirements.find(
         {"client_id": client_id, "property_id": property_id},

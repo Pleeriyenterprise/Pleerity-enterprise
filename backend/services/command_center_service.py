@@ -132,6 +132,7 @@ async def get_command_center_bundle(
             logger.warning("command_center risk signals failed: %s", e)
 
     compliance_status_summary: Dict[str, Any] = {}
+    prow_scoped: Optional[Dict[str, Any]] = None
     try:
         from services.compliance_score import calculate_compliance_score
 
@@ -150,8 +151,16 @@ async def get_command_center_bundle(
                 "active": bool(aff),
                 "compliance_basis": "default_fallback" if aff else None,
             }
-            jreq = property_id_filter in jreq_ids
-            jconf = "fallback" if jreq else "explicit"
+            prow_scoped = next(
+                (x for x in (cs.get("property_breakdown") or []) if x.get("property_id") == property_id_filter),
+                None,
+            )
+            if prow_scoped is not None:
+                jreq = bool(prow_scoped.get("jurisdiction_required"))
+                jconf = prow_scoped.get("compliance_confidence")
+            else:
+                jreq = property_id_filter in jreq_ids
+                jconf = "fallback" if jreq else "explicit"
         compliance_status_summary = {
             "score": cs.get("score"),
             "grade": cs.get("grade"),
@@ -165,7 +174,16 @@ async def get_command_center_bundle(
             "jurisdiction_required": jreq,
             "compliance_confidence": jconf,
             "jurisdiction_fallback_acknowledged": cs.get("jurisdiction_fallback_acknowledged"),
+            "client_default_jurisdiction": cs.get("client_default_jurisdiction"),
         }
+        if property_id_filter and prow_scoped:
+            compliance_status_summary["scoped_property_jurisdiction"] = {
+                "property_id": property_id_filter,
+                "compliance_basis": prow_scoped.get("compliance_basis"),
+                "effective_jurisdiction_label": prow_scoped.get("effective_jurisdiction_label"),
+                "jurisdiction_required": prow_scoped.get("jurisdiction_required"),
+                "compliance_confidence": prow_scoped.get("compliance_confidence"),
+            }
     except Exception as e:
         logger.warning("command_center compliance score failed: %s", e)
         compliance_status_summary = {
@@ -181,6 +199,7 @@ async def get_command_center_bundle(
             "jurisdiction_required": None,
             "compliance_confidence": None,
             "jurisdiction_fallback_acknowledged": None,
+            "client_default_jurisdiction": None,
         }
 
     recent_activity = digest.get("activity_feed") or []
