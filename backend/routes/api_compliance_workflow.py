@@ -19,9 +19,11 @@ from middleware import client_route_guard, contractor_route_guard
 from models import AuditAction
 from routes.documents import _enforce_document_upload_rate_limit, perform_client_document_upload
 from services import contractor_service
+from services import invoice_service
 from services import maintenance_service
 from services.compliance_booking_service import create_compliance_execution_work_order
 from services.compliance_workflow_service import (
+    apply_contractor_job_enrichment,
     derive_requirement_workflow_fields,
     find_active_compliance_job_for_requirement,
     load_client_work_order,
@@ -905,10 +907,12 @@ async def job_submit_quote(request: Request, job_id: str, body: SubmitJobQuoteBo
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    wo = await maintenance_service.get_work_order(job_id.strip())
+    wo = await maintenance_service.get_work_order(ctx["work_order_id"])
     if not wo:
         raise HTTPException(status_code=404, detail="Job not found")
-    return serialize_client_job(wo)
+    inv = await invoice_service.contractor_best_invoice_for_work_order(ctx["contractor_id"], ctx["work_order_id"])
+    apply_contractor_job_enrichment(wo, invoice=inv)
+    return wo
 
 
 class RejectQuoteBody(BaseModel):
@@ -957,10 +961,12 @@ async def job_mark_inspection_complete(request: Request, job_id: str):
         await mark_inspection_complete_for_work_order(ctx["work_order_id"], ctx["contractor_id"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    wo = await maintenance_service.get_work_order(job_id.strip())
+    wo = await maintenance_service.get_work_order(ctx["work_order_id"])
     if not wo:
         raise HTTPException(status_code=404, detail="Job not found")
-    return serialize_client_job(wo)
+    inv = await invoice_service.contractor_best_invoice_for_work_order(ctx["contractor_id"], ctx["work_order_id"])
+    apply_contractor_job_enrichment(wo, invoice=inv)
+    return wo
 
 
 class LinkDocumentBody(BaseModel):

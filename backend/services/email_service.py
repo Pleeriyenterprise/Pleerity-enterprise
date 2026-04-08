@@ -99,6 +99,7 @@ SYSTEM_CRITICAL_ALIASES = {
     EmailTemplateAlias.CONTRACTOR_INVOICE_READY,
     EmailTemplateAlias.CLIENT_PROOF_UPLOADED,
     EmailTemplateAlias.CLIENT_INVOICE_REVIEW_REQUIRED,
+    EmailTemplateAlias.CLIENT_QUOTE_REVIEW_REQUIRED,
 }
 
 # Landlord onboarding sequence: aliases and content for 7-day emails (customer layout, reporting_notifications).
