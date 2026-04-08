@@ -507,6 +507,12 @@ async def get_dashboard(request: Request):
             pid = r.get("property_id")
             if pid:
                 reqs_by_property.setdefault(pid, []).append(r)
+        from services.compliance_rules_registry import (
+            jurisdiction_attribution_for_property,
+            property_jurisdiction_requirement_flags,
+        )
+
+        client_doc = client or {}
         # Override each property's compliance_status with live-computed value (RED/AMBER/GREEN)
         properties_out = []
         for prop in properties:
@@ -514,6 +520,11 @@ async def get_dashboard(request: Request):
             p["compliance_status"] = _compute_property_compliance_status(
                 reqs_by_property.get(p.get("property_id"), [])
             )
+            att = jurisdiction_attribution_for_property(p, client_doc)
+            p["compliance_basis"] = att["compliance_basis"]
+            p["effective_jurisdiction_label"] = att["effective_jurisdiction_label"]
+            p["jurisdiction_source"] = att["jurisdiction_source"]
+            p.update(property_jurisdiction_requirement_flags(p))
             properties_out.append(p)
         
         # Onboarding checklist (server-driven; for banner and deep-links)

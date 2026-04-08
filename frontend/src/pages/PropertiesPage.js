@@ -23,6 +23,7 @@ import {
 import { Button } from '../components/ui/button';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 
 const PropertiesPage = () => {
   const navigate = useNavigate();
@@ -313,6 +314,25 @@ const PropertiesPage = () => {
                             <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">HMO</span>
                           )}
                         </div>
+                        {(property.jurisdiction_source || property.effective_jurisdiction_label) && (
+                          <p className="text-xs text-gray-500 mt-1.5">
+                            {property.jurisdiction_source ? (
+                              <>
+                                <span className="text-gray-500">Source: </span>
+                                <span className="font-medium text-midnight-blue/85">
+                                  {jurisdictionSourceLabel(property.jurisdiction_source)}
+                                </span>
+                              </>
+                            ) : null}
+                            {property.effective_jurisdiction_label ? (
+                              <>
+                                {property.jurisdiction_source ? <span className="text-gray-400"> · </span> : null}
+                                <span className="text-gray-500">Region: </span>
+                                <span className="font-medium text-midnight-blue/85">{property.effective_jurisdiction_label}</span>
+                              </>
+                            ) : null}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-4 shrink-0 self-end sm:self-auto">

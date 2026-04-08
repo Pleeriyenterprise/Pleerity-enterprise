@@ -75,6 +75,7 @@ import {
   jurisdictionAccountDefaultNoticeBody,
   jurisdictionSourceLabel,
 } from '../utils/jurisdictionComplianceCopy';
+import { propertyPageJurisdictionBanners } from '../utils/jurisdictionUiPolicy';
 import PropertyOperatingHub from '../components/property/PropertyOperatingHub';
 
 const NOT_REQUIRED_REASONS = [
@@ -856,8 +857,8 @@ export default function PropertyDetailPage() {
     complianceDetail?.effective_jurisdiction_label ?? property?.effective_jurisdiction_label ?? '';
   const effectiveJurisdictionSource =
     complianceDetail?.jurisdiction_source ?? property?.jurisdiction_source ?? null;
-  const showJurisdictionHardWarning = effectiveComplianceBasis === 'default_fallback';
-  const showJurisdictionAccountDefaultNotice = effectiveComplianceBasis === 'client_default';
+  const { showHardWarning: showJurisdictionHardWarning, showSoftAccountDefaultNotice: showJurisdictionAccountDefaultNotice } =
+    propertyPageJurisdictionBanners(effectiveComplianceBasis);
 
   return (
     <div className={portalPageRoot}>

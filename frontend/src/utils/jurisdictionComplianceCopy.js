@@ -10,7 +10,7 @@ export const JURISDICTION_SOURCE_LABEL = {
   property_record: 'Property',
   account_default: 'Account default',
   /** No valid jurisdiction on property or account — scoring uses system default until resolved. */
-  system_default: 'Required',
+  system_default: 'Required / System default',
 };
 
 export function jurisdictionSourceLabel(source) {
@@ -42,6 +42,7 @@ export function jurisdictionAccountDefaultNoticeBody(effectiveLabel) {
   const where = label ? ` (${label})` : '';
   return (
     `This property does not have its own jurisdiction on the record yet. Scoring and rules are using your account default${where} until you set a jurisdiction on this property. ` +
+    'Your account default is acceptable for scoring, but you should still review and confirm the correct region on each property record for accuracy. ' +
     'That is usually fine when the home matches your portfolio default; set it on the property if this address is in a different region.'
   );
 }
@@ -59,7 +60,8 @@ export const JURISDICTION_FALLBACK_CTA = 'Set jurisdiction';
 export const JURISDICTION_ONBOARDING_GATE_TITLE = 'Set jurisdiction on each property record';
 
 export const JURISDICTION_ONBOARDING_GATE_LEAD =
-  'One or more properties have no jurisdiction saved on the property itself. Until you set it, the product may use your account default or, where nothing valid is set, a system default (England & Wales–style rules).';
+  'One or more properties have no jurisdiction saved on the property record. Your account default can be used for scoring until then, but you should still review and set the correct jurisdiction on each property for accuracy. ' +
+  'Where no valid default exists, the product may use a system default (England & Wales–style rules).';
 
 export const JURISDICTION_ONBOARDING_GATE_CONSEQUENCE =
   'Your portfolio score, obligation lists, due dates, and risk signals for those properties may not reflect the correct region. That is an accuracy risk — not a legal ruling — but it can mis-prioritise work and mis-state standing if the wrong profile is applied.';

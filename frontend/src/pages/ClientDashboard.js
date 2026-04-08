@@ -50,6 +50,7 @@ import {
   JURISDICTION_PORTFOLIO_REMINDER_COMPACT,
   JURISDICTION_SCOPE_GLOBAL,
 } from '../utils/jurisdictionComplianceCopy';
+import { portfolioJurisdictionBannerState } from '../utils/jurisdictionUiPolicy';
 
 const KPI_NO_DATA = 'No data yet';
 
@@ -701,20 +702,16 @@ const ClientDashboard = () => {
       .finally(() => setJurisdictionAckSubmitting(false));
   };
 
-  /** Hard banner only when at least one property uses system default_fallback — not when account default (client_default) fills gaps. */
+  /** Hard amber only when jurisdiction_compliance_notice is active for default_fallback — never from compliance_confidence alone. */
   const jurisdictionPortfolioBanner = useMemo(() => {
     const summary = commandCenter?.compliance_status_summary;
     if (!summary || typeof summary !== 'object') {
       return { showFull: false, showCompact: false };
     }
-    const noticeActive =
-      summary.jurisdiction_compliance_notice?.active &&
-      summary.jurisdiction_compliance_notice?.compliance_basis === 'default_fallback';
-    const acked = summary.jurisdiction_fallback_acknowledged === true;
-    return {
-      showFull: noticeActive && !acked,
-      showCompact: noticeActive && acked,
-    };
+    return portfolioJurisdictionBannerState(
+      summary.jurisdiction_compliance_notice,
+      summary.jurisdiction_fallback_acknowledged,
+    );
   }, [commandCenter]);
 
   // Whether to show the "documents missing" step: requirements that may need docs/confirmation (REQUIRED/UNKNOWN without confirmed expiry)

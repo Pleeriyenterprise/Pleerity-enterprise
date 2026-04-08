@@ -39,6 +39,7 @@ import { Loader2, LayoutList, Info, ExternalLink, Bell, EyeOff, CheckCircle, Rot
 import { toast } from 'sonner';
 import { TodayUrgencyRow } from '../components/client/UrgencyDisplay';
 import { resolveClientPortalPath } from '../utils/clientPortalNavigation';
+import { portfolioJurisdictionBannerState } from '../utils/jurisdictionUiPolicy';
 import { resolveTaskCta } from '../utils/ctaRegistry';
 import {
   JURISDICTION_FALLBACK_ALERT_BODY,
@@ -612,16 +613,11 @@ export default function ClientTasksPage() {
     };
   }, [spend, hasFeature]);
 
-  const jurisdictionTodayBanner = useMemo(() => {
-    const noticeActive =
-      jurisdictionComplianceNotice?.active &&
-      jurisdictionComplianceNotice?.compliance_basis === 'default_fallback';
-    const acked = commandCenterFallbackAcknowledged === true;
-    return {
-      showFull: noticeActive && !acked,
-      showCompact: noticeActive && acked,
-    };
-  }, [jurisdictionComplianceNotice, commandCenterFallbackAcknowledged]);
+  const jurisdictionTodayBanner = useMemo(
+    () =>
+      portfolioJurisdictionBannerState(jurisdictionComplianceNotice, commandCenterFallbackAcknowledged),
+    [jurisdictionComplianceNotice, commandCenterFallbackAcknowledged],
+  );
 
   const showRiskInline = hasFeature('predictive_maintenance') && hasFeature('maintenance_workflows');
   const showComplianceBooking =

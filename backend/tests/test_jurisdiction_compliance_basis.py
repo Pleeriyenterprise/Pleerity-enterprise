@@ -270,3 +270,23 @@ def test_jurisdiction_attribution_reuses_resolution():
     att = jurisdiction_attribution_for_property({}, {}, _resolution=r)
     assert att["jurisdiction_source"] == "property_record"
     assert att["effective_jurisdiction_label"] == "Northern Ireland"
+
+
+def test_dashboard_hard_notice_inactive_when_portfolio_only_uses_account_default():
+    """Hard portfolio warning (default_fallback) must not activate when client default covers all properties."""
+    client = {"default_jurisdiction": "Wales"}
+    props = [{"property_id": "p1"}, {"property_id": "p2"}]
+    n = build_jurisdiction_compliance_notice(client, props)
+    assert n["active"] is False
+    assert n.get("compliance_basis") != COMPLIANCE_BASIS_DEFAULT_FALLBACK
+
+
+def test_onboarding_attestation_still_pressures_explicit_jurisdiction_despite_account_default():
+    """Onboarding gate: any property without explicit jurisdiction on record stays flagged, even if account default exists."""
+    att = build_portfolio_jurisdiction_attestation(
+        {"default_jurisdiction": "Scotland"},
+        [{"property_id": "needs_explicit"}, {"property_id": "ok", "jurisdiction": "England"}],
+    )
+    assert att["jurisdiction_required"] is True
+    assert att["compliance_confidence"] == COMPLIANCE_CONFIDENCE_FALLBACK
+    assert att["jurisdiction_required_property_ids"] == ["needs_explicit"]

@@ -252,8 +252,17 @@ export default function JurisdictionSettingsPage() {
               Default jurisdiction
             </Label>
             <p className="text-sm text-gray-600">
-              Applied when a property has no jurisdiction set — including new properties until you edit them.
+              Applied when a property has no jurisdiction set — including new properties until you edit them. Scoring may use this
+              value when the property record is blank; you should still confirm jurisdiction on each property record when you can.
             </p>
+            <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1 mt-2">
+              <li>Saving here updates your account only — it does not backfill existing property records automatically.</li>
+              <li>
+                After you save, use “Apply default to missing properties only” (below) to write this default onto properties that
+                have no jurisdiction on record.
+              </li>
+              <li>That action does not overwrite properties that already have explicit jurisdiction on the property record.</li>
+            </ul>
             <Select value={defaultJurisdiction} onValueChange={setDefaultJurisdiction}>
               <SelectTrigger id="default-jurisdiction" className="max-w-md">
                 <SelectValue placeholder="Choose default" />
@@ -300,9 +309,12 @@ export default function JurisdictionSettingsPage() {
       <Card className="border border-gray-200 shadow-sm" data-testid="jurisdiction-bulk-missing-card">
         <CardHeader>
           <CardTitle className="text-lg text-midnight-blue">Properties missing jurisdiction</CardTitle>
-          <CardDescription className="text-gray-600 text-sm">
-            Apply your saved account default only to properties with no jurisdiction on the property record. Properties that
-            already have a jurisdiction set are not changed.
+          <CardDescription className="text-gray-600 text-sm space-y-2">
+            <p>
+              Apply your saved account default only to properties with no jurisdiction on the property record. Properties that
+              already have explicit jurisdiction saved are never overwritten.
+            </p>
+            <p>This does not replace reviewing each property — it only fills empty records to match your current account default.</p>
           </CardDescription>
         </CardHeader>
         <CardContent>
