@@ -294,7 +294,7 @@ async def get_tenant_property_details(request: Request, property_id: str):
             "compliance_status": property_doc.get("compliance_status", "UNKNOWN")
         },
         "certificates": certificates,
-        "note": "This view shows the compliance status of certificates for your rental property. Contact your landlord for more details."
+        "note": "This view shows safety checks for your rental property. Renewals are your landlord's responsibility—contact them if you need an update."
     }
 
 
@@ -344,7 +344,7 @@ async def get_tenant_compliance_pack(request: Request, property_id: str):
         pdf_bytes = await compliance_pack_service.generate_compliance_pack(
             property_id=property_id,
             client_id=client_id,
-            include_expired=False,  # Tenants only see valid certificates
+            include_expired=False,  # For tenants the pack service still lists overdue rows for transparency
             requested_by=tenant_id,
             requested_by_role="ROLE_TENANT"
         )

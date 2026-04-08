@@ -294,6 +294,91 @@ def test_update_work_order_allows_assign_when_allow_direct_true():
     )
 
 
+def test_update_work_order_sends_quote_required_email_when_price_awaiting_quote():
+    async def _run():
+        mock_db = MagicMock()
+        assigned = {
+            "work_order_id": "wo-quote-1",
+            "status": "ASSIGNED",
+            "client_id": "cli-1",
+            "property_id": "prop-1",
+            "contractor_id": "ctr-q",
+            "description": "Quoted repair",
+            "work_order_kind": "MAINTENANCE",
+            "price_status": "AWAITING_QUOTE",
+            "jurisdiction": "England",
+            "sla_complete_by": None,
+        }
+
+        async def find_one_filter(*args, **kwargs):
+            proj = kwargs.get("projection") or (args[1] if len(args) > 1 else None)
+            if proj == {"status": 1}:
+                return {"status": "OPEN"}
+            return {
+                "status": "OPEN",
+                "client_id": "cli-1",
+                "property_id": "prop-1",
+                "requires_client_assignment_confirmation": True,
+            }
+
+        mock_db.work_orders.find_one = AsyncMock(side_effect=find_one_filter)
+        mock_db.work_orders.find_one_and_update = AsyncMock(return_value=dict(assigned))
+        mock_db.contractor_assignments.insert_one = AsyncMock()
+        mock_db.contractor_job_tokens.insert_one = AsyncMock()
+        mock_db.contractors.find_one = AsyncMock(
+            return_value={"email": "q@example.com", "name": "Pat Contractor", "company_name": "PC Ltd"}
+        )
+        mock_db.properties.find_one = AsyncMock(
+            return_value={"address_line_1": "9 Quote St", "city": "York", "postcode": "YO1 1AA"}
+        )
+
+        send_mock = AsyncMock(return_value={"ok": True})
+
+        with (
+            patch.object(db_singleton, "get_db", return_value=mock_db),
+            patch(
+                "services.contractor_service.validate_contractor_for_work_order_assignment",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch(
+                "services.notification_orchestrator.notification_orchestrator.send",
+                send_mock,
+            ),
+            patch("utils.audit.create_audit_log", new_callable=AsyncMock, return_value=None),
+            patch("services.webhook_service.fire_work_order_status_changed", new_callable=AsyncMock),
+            patch(
+                "services.maintenance_service.generate_secure_token",
+                return_value="quote-tok-32chars-minimum______",
+            ),
+            patch("utils.public_app_url.get_frontend_base_url", return_value="https://app.example.com"),
+        ):
+            await maintenance_service.update_work_order(
+                "wo-quote-1",
+                contractor_id="ctr-q",
+                assigned_by="admin@test.com",
+                allow_direct_contractor_assignment=True,
+            )
+        return send_mock
+
+    send_mock = asyncio.run(_run())
+
+    quote_sends = [
+        c
+        for c in send_mock.await_args_list
+        if c.kwargs.get("template_key") == "CONTRACTOR_JOB_ASSIGNMENT_QUOTE_REQUIRED"
+    ]
+    assert len(quote_sends) == 1
+    assert quote_sends[0].kwargs.get("idempotency_key") == "contractor_quote_required:wo-quote-1:ctr-q"
+    ctx = quote_sends[0].kwargs.get("context") or {}
+    assert ctx.get("recipient") == "q@example.com"
+    assert ctx.get("job_kind") == "MAINTENANCE"
+    assert ctx.get("jurisdiction") == "England"
+    assert ctx.get("contractor_name") == "Pat Contractor"
+    assert "https://app.example.com/job?token=quote-tok-32chars-minimum______" == str(ctx.get("secure_job_link") or "")
+    assert not any(c.kwargs.get("template_key") == "CONTRACTOR_ASSIGNED" for c in send_mock.await_args_list)
+
+
 def test_scenario_c_chained_request_contractor_then_confirm_assigns_and_notifies():
     """
     Scenario C (enterprise): request recommendation updates routing state; confirm assigns contractor

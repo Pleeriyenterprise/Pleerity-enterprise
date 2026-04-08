@@ -5,6 +5,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import { CheckCircle, XCircle, Clock, Building2, ArrowLeft, Download, Wrench } from 'lucide-react';
+import {
+  formatCertStatusLabel,
+  getCertificateResponsibilityHint,
+} from '../utils/tenantPortalTrust';
+
+function summarizePropertySafety(status) {
+  switch (status) {
+    case 'GREEN':
+      return 'Your safety checks look up to date from what we show here.';
+    case 'AMBER':
+      return 'Some checks will need renewal soon. Your landlord is expected to handle this.';
+    case 'RED':
+      return "Some checks need attention. Renewals are your landlord's responsibility.";
+    default:
+      return null;
+  }
+}
 
 function getCertStyles(status) {
   switch (status) {
@@ -23,6 +40,7 @@ const TenantPropertyDetailPage = () => {
   const [error, setError] = useState('');
   const [reportDescription, setReportDescription] = useState('');
   const [reportCategory, setReportCategory] = useState('general');
+  const [reportSeverity, setReportSeverity] = useState('Routine');
   const [reportSubmitting, setReportSubmitting] = useState(false);
 
   useEffect(() => {
@@ -42,15 +60,17 @@ const TenantPropertyDetailPage = () => {
       return;
     }
     setReportSubmitting(true);
+    const descriptionWithSeverity = `[Severity: ${reportSeverity}]\n\n${reportDescription.trim()}`;
     try {
       await api.post('/tenant/report-issue', {
         property_id: propertyId,
-        description: reportDescription.trim(),
+        description: descriptionWithSeverity,
         category: reportCategory || undefined,
       });
       toast.success('Issue reported. Your landlord will triage and follow up.');
       setReportDescription('');
       setReportCategory('general');
+      setReportSeverity('Routine');
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Failed to report issue');
     } finally {
@@ -69,9 +89,9 @@ const TenantPropertyDetailPage = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      toast.success('Compliance pack downloaded!');
+      toast.success('Property safety pack downloaded.');
     } catch (err) {
-      toast.error('Failed to download compliance pack');
+      toast.error('Failed to download pack');
     }
   };
 
@@ -110,25 +130,29 @@ const TenantPropertyDetailPage = () => {
         </h1>
         <Button onClick={handleDownloadPack} className="shrink-0">
           <Download className="w-4 h-4 mr-2" />
-          Download compliance pack
+          Download safety pack
         </Button>
       </div>
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-midnight-blue">Compliance status</CardTitle>
+          <CardTitle className="text-midnight-blue">Safety checks overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-600 capitalize">
-            <span className="font-medium">Status:</span> {property?.compliance_status}
+          <p className="text-gray-700">
+            {summarizePropertySafety(property?.compliance_status) || (
+              <>
+                <span className="font-medium">Status:</span> {property?.compliance_status}
+              </>
+            )}
           </p>
-          <p className="text-gray-600 mt-1 capitalize">
-            <span className="font-medium">Type:</span> {property?.type}
+          <p className="text-gray-600 mt-2 capitalize">
+            <span className="font-medium">Property type:</span> {property?.type}
           </p>
         </CardContent>
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle className="text-midnight-blue">Certificates</CardTitle>
+          <CardTitle className="text-midnight-blue">Safety checks</CardTitle>
         </CardHeader>
         <CardContent>
           {!certificates?.length ? (
@@ -137,16 +161,23 @@ const TenantPropertyDetailPage = () => {
             <ul className="space-y-3">
               {certificates.map((cert, idx) => {
                 const styles = getCertStyles(cert.status);
+                const statusWords = formatCertStatusLabel(cert.status);
+                const respHint = getCertificateResponsibilityHint(cert.status);
                 return (
-                  <li key={idx} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                    <div className="flex items-center gap-3">
-                      <span className={`p-1.5 rounded ${styles.bg} ${styles.color}`}>{styles.icon}</span>
+                  <li key={idx} className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 py-2 border-b border-gray-100 last:border-0">
+                    <div className="flex items-start gap-3">
+                      <span className={`p-1.5 rounded shrink-0 ${styles.bg} ${styles.color}`}>{styles.icon}</span>
                       <div>
-                        <p className="font-medium text-midnight-blue">{cert.description || cert.type}</p>
-                        <p className="text-sm text-gray-500">Expiry: {cert.expiry_date}</p>
+                        <p className="font-medium text-midnight-blue">
+                          {cert.description || cert.type}
+                          {' — '}
+                          <span className={styles.color}>{statusWords.toUpperCase()}</span>
+                        </p>
+                        <p className="text-sm text-gray-500 mt-0.5">Expires: {cert.expiry_date}</p>
+                        <p className="text-xs text-gray-600 mt-1">Responsibility: Landlord</p>
+                        {respHint && <p className="text-xs text-gray-600 mt-1">{respHint}</p>}
                       </div>
                     </div>
-                    <span className={`text-sm font-medium ${styles.color}`}>{cert.status}</span>
                   </li>
                 );
               })}
@@ -180,6 +211,18 @@ const TenantPropertyDetailPage = () => {
               </select>
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">How urgent is this?</label>
+              <select
+                value={reportSeverity}
+                onChange={(e) => setReportSeverity(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+              >
+                <option value="Emergency">Emergency</option>
+                <option value="Urgent">Urgent</option>
+                <option value="Routine">Routine</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
               <textarea
                 value={reportDescription}
@@ -188,6 +231,12 @@ const TenantPropertyDetailPage = () => {
                 placeholder="e.g. Boiler not heating, leak under sink..."
                 required
               />
+              <p className="text-xs text-gray-500 mt-1.5">
+                Use this to report issues like:
+                <span className="block mt-0.5">— Heating not working</span>
+                <span className="block">— Water leaks</span>
+                <span className="block">— Electrical faults</span>
+              </p>
             </div>
             <Button type="submit" disabled={reportSubmitting} className="bg-amber-600 hover:bg-amber-700">
               {reportSubmitting ? 'Submitting…' : 'Submit report'}

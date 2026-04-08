@@ -292,6 +292,8 @@ function ClientJobDetailInner() {
   const [exceptionChoice, setExceptionChoice] = useState('');
   const [decisionNote, setDecisionNote] = useState('');
   const [decisionSubmitting, setDecisionSubmitting] = useState(false);
+  const [quoteRejectOpen, setQuoteRejectOpen] = useState(false);
+  const [quoteRejectReason, setQuoteRejectReason] = useState('');
   const visitSectionRef = useRef(null);
 
   const clientProgress = useMemo(
@@ -370,7 +372,7 @@ function ClientJobDetailInner() {
 
   const nextBySection = useMemo(() => {
     const list = job?.next_actions || [];
-    const m = { summary: [], assignment: [], scheduling: [], execution: [], evidence: [], timeline: [] };
+    const m = { summary: [], assignment: [], scheduling: [], execution: [], evidence: [], timeline: [], billing: [] };
     for (const a of list) {
       const sec = (a.section || 'execution').toLowerCase();
       if (m[sec]) m[sec].push(a);
@@ -404,6 +406,10 @@ function ClientJobDetailInner() {
 
   const handleLifecycleClick = (actionId) => {
     if (!jobId) return;
+    if (actionId === 'reject_quote') {
+      setQuoteRejectOpen(true);
+      return;
+    }
     if (
       scheduleTimeActions.includes(actionId) &&
       !(job?.contractor_id || '').toString().trim()
@@ -429,6 +435,7 @@ function ClientJobDetailInner() {
       resume_after_parts: () => clientAPI.complianceJobResumeAfterParts(jobId).then((r) => r.data),
       clear_operational_exception: () =>
         clientAPI.complianceJobSetOperationalException(jobId, '').then((r) => r.data),
+      approve_quote: () => clientAPI.complianceJobApproveQuote(jobId).then((r) => r.data),
       link_document: () => clientAPI.complianceJobLinkDocument(jobId, { document_id: linkDocId.trim() }).then((r) => r.data),
       attach_completion_proof: () =>
         clientAPI.complianceJobAttachCompletionProof(jobId, { document_id: linkDocId.trim() }).then((r) => r.data),
@@ -673,6 +680,31 @@ function ClientJobDetailInner() {
           </Alert>
         );
       })()}
+
+      {job.pricing?.pricing_workflow &&
+      String(job.pricing.pricing_mode || '').toUpperCase() === 'MAINTENANCE_INSPECTION_REQUIRED' ? (
+        <Alert className="border-sky-200 bg-sky-50/90 text-sky-950">
+          <AlertDescription className="text-sm space-y-1">
+            <p className="font-semibold text-sky-950">Inspection before final price</p>
+            <p className="text-sky-900/90">
+              Your contractor can attend for an inspection visit before you approve a repair quote. Repair work itself should not
+              proceed until you have approved their quoted price in Pleerity — then they can schedule completion and invoice up to
+              that agreed amount.
+            </p>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {job.pricing?.pricing_workflow &&
+      String(job.work_order_kind || '').toUpperCase() === 'COMPLIANCE' &&
+      String(job.pricing.pricing_mode || '').toUpperCase() === 'COMPLIANCE_FIXED_QUOTE' ? (
+        <Alert className="border-slate-200 bg-slate-50 text-slate-900">
+          <AlertDescription className="text-sm">
+            <span className="font-semibold">Quote approval required: </span>
+            The contractor must submit a price for your approval before work is marked in progress or invoiced.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <SectionCard title="Current update" icon={Wrench}>
         <p className="text-sm font-medium text-midnight-blue">{currentUpdate.headline}</p>
@@ -1052,9 +1084,53 @@ function ClientJobDetailInner() {
 
       {hasFeature('invoicing') ? (
         <SectionCard title="Billing / approvals" icon={Receipt}>
+          {job.pricing?.pricing_workflow ? (
+            <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-xs text-gray-800 space-y-1 mb-3">
+              <p className="font-semibold text-midnight-blue">Quote status</p>
+              <p>
+                <span className="text-gray-500">Status:</span>{' '}
+                <span className="font-medium">{(job.pricing.price_status || '—').replace(/_/g, ' ')}</span>
+              </p>
+              {job.pricing.quoted_price != null && job.pricing.quoted_price !== '' ? (
+                <p>
+                  <span className="text-gray-500">Quoted:</span>{' '}
+                  <span className="font-medium">
+                    £{Number(job.pricing.quoted_price).toFixed(2)} {job.pricing.price_currency || 'GBP'}
+                  </span>
+                </p>
+              ) : null}
+              {job.pricing.quote_notes ? (
+                <p className="text-gray-700 whitespace-pre-wrap break-words">Contractor notes: {job.pricing.quote_notes}</p>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {na.some((a) => a.id === 'approve_quote') ? (
+              <Button
+                type="button"
+                size="sm"
+                className="bg-teal-700 hover:bg-teal-800"
+                disabled={!!actionBusy}
+                onClick={() => handleLifecycleClick('approve_quote')}
+              >
+                {actionBusy === 'approve_quote' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve quote'}
+              </Button>
+            ) : null}
+            {na.some((a) => a.id === 'reject_quote') ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={!!actionBusy}
+                onClick={() => handleLifecycleClick('reject_quote')}
+              >
+                Reject quote
+              </Button>
+            ) : null}
+          </div>
           <p className="text-sm text-gray-700">
-            When your contractor submits costs for this job, they appear under Approvals for review (approve, reject, or request
-            more information).
+            When your contractor submits an invoice for this job, it appears under Approvals for review (approve, reject, or
+            request more information). Your team reference on the invoice is the Pleerity invoice number where one has been issued.
           </p>
           <Button size="sm" variant="secondary" className="mt-2" asChild>
             <Link to={resolveClientPortalPath('/operations/approvals', '/operations/approvals')}>Open Approvals</Link>
@@ -1145,6 +1221,59 @@ function ClientJobDetailInner() {
           Open Help
         </Link>
       </SectionCard>
+
+      <Dialog
+        open={quoteRejectOpen}
+        onOpenChange={(open) => {
+          setQuoteRejectOpen(open);
+          if (!open) setQuoteRejectReason('');
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject this quote?</DialogTitle>
+            <DialogDescription>
+              The contractor can submit a revised price. Optionally add a short reason (e.g. budget). This is not a counter-offer
+              tool — they will submit a new quote for you to approve or reject again.
+            </DialogDescription>
+          </DialogHeader>
+          <textarea
+            className="w-full border rounded-lg px-3 py-2 text-sm min-h-[88px]"
+            placeholder="Reason (optional)"
+            value={quoteRejectReason}
+            onChange={(e) => setQuoteRejectReason(e.target.value)}
+          />
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button type="button" variant="outline" onClick={() => setQuoteRejectOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!!actionBusy}
+              onClick={async () => {
+                setActionBusy('reject_quote');
+                try {
+                  const r = await clientAPI.complianceJobRejectQuote(jobId, {
+                    reason: quoteRejectReason.trim() || undefined,
+                  });
+                  if (r.data && typeof r.data === 'object' && (r.data.job_id || r.data.work_order_id)) setJob(r.data);
+                  else await load();
+                  setQuoteRejectOpen(false);
+                  setQuoteRejectReason('');
+                  toast.success('Quote rejected — the contractor can submit a revised price.');
+                } catch (err) {
+                  toast.error(parseApiError(err, 'Could not reject quote'));
+                } finally {
+                  setActionBusy(null);
+                }
+              }}
+            >
+              {actionBusy === 'reject_quote' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reject quote'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={bookingGuardOpen} onOpenChange={setBookingGuardOpen}>
         <DialogContent className="sm:max-w-md">

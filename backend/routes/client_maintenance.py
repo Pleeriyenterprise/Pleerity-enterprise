@@ -90,6 +90,10 @@ class CreateWorkOrderBody(BaseModel):
     risk_signal_id: Optional[str] = None
     cost_estimate_min: Optional[float] = None
     cost_estimate_max: Optional[float] = None
+    inspection_required: Optional[bool] = Field(
+        None,
+        description="When true, maintenance job uses inspection-before-quote pricing flow",
+    )
 
 
 async def _require_maintenance_work_order_not_compliance(work_order_id: str, client_id: str) -> None:
@@ -232,6 +236,7 @@ async def create_work_order(request: Request, body: CreateWorkOrderBody):
             created_from=wo_created_from,
             triggering_rule=wo_triggering,
             operational_root_key=wo_root,
+            inspection_required=bool(body.inspection_required) if body.inspection_required is not None else False,
         )
     except ValueError as e:
         log_api_error(

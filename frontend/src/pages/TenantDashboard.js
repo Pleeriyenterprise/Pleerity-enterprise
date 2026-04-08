@@ -1,7 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  getCertificateResponsibilityHint,
+  getDashboardReassuranceState,
+  getTenantRecommendedAction,
+  formatCertStatusLabel,
+  TENANT_RECOMMENDED_ACTION_LABEL,
+} from '../utils/tenantPortalTrust';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
@@ -45,13 +52,7 @@ function getTenantFirstName(tenantName) {
 /**
  * Tenant Dashboard - Enhanced view for tenants
  *
- * Shows:
- * ✅ Property compliance status (GREEN/AMBER/RED)
- * ✅ Certificate status and expiry dates
- * ✅ Basic summaries
- * ✅ Download compliance pack
- * ✅ Request certificate updates
- * ✅ Contact landlord
+ * Shows property safety checks, certificate rows, summaries, pack download, and light actions.
  */
 const TenantDashboard = () => {
   const navigate = useNavigate();
@@ -67,8 +68,14 @@ const TenantDashboard = () => {
   const [contactForm, setContactForm] = useState({ subject: '', message: '' });
   const [requestForm, setRequestForm] = useState({ certificate_type: '', message: '' });
   const [reportForm, setReportForm] = useState({ description: '', category: 'general' });
+  const [reportSeverity, setReportSeverity] = useState('Routine');
   const [reportType, setReportType] = useState('issue'); // 'issue' = report-issue (triage), 'work_order' = report-maintenance
   const [submitting, setSubmitting] = useState(false);
+
+  const reassuranceState = useMemo(
+    () => getDashboardReassuranceState(data?.properties),
+    [data?.properties]
+  );
 
   useEffect(() => {
     fetchDashboard();
@@ -98,7 +105,7 @@ const TenantDashboard = () => {
           border: 'border-green-200',
           text: 'text-green-700',
           icon: <CheckCircle className="w-6 h-6 text-green-500" />,
-          label: 'Fully Compliant'
+          label: 'Safety: up to date'
         };
       case 'AMBER':
         return {
@@ -106,7 +113,7 @@ const TenantDashboard = () => {
           border: 'border-yellow-200',
           text: 'text-yellow-700',
           icon: <AlertTriangle className="w-6 h-6 text-yellow-500" />,
-          label: 'Attention Needed'
+          label: 'Safety: renewals due soon'
         };
       case 'RED':
         return {
@@ -114,7 +121,7 @@ const TenantDashboard = () => {
           border: 'border-red-200',
           text: 'text-red-700',
           icon: <XCircle className="w-6 h-6 text-red-500" />,
-          label: 'Action Required'
+          label: 'Safety: needs attention'
         };
       default:
         return {
@@ -157,9 +164,9 @@ const TenantDashboard = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
       
-      toast.success('Compliance pack downloaded!');
+      toast.success('Property safety pack downloaded.');
     } catch (err) {
-      toast.error('Failed to download compliance pack');
+      toast.error('Failed to download pack');
     }
   };
 
@@ -226,6 +233,7 @@ const TenantDashboard = () => {
   const openReportModal = (property) => {
     setSelectedProperty(property);
     setReportForm({ description: '', category: 'general' });
+    setReportSeverity('Routine');
     setReportType('issue');
     setShowReportModal(true);
   };
@@ -238,24 +246,26 @@ const TenantDashboard = () => {
     }
     if (!selectedProperty?.property_id) return;
     setSubmitting(true);
+    const descriptionWithSeverity = `[Severity: ${reportSeverity}]\n\n${reportForm.description.trim()}`;
     try {
       if (reportType === 'issue') {
         await api.post('/tenant/report-issue', {
           property_id: selectedProperty.property_id,
-          description: reportForm.description.trim(),
+          description: descriptionWithSeverity,
           category: reportForm.category || undefined,
         });
         toast.success('Issue reported. Your landlord will triage and follow up.');
       } else {
         await api.post('/tenant/report-maintenance', {
           property_id: selectedProperty.property_id,
-          description: reportForm.description.trim(),
+          description: descriptionWithSeverity,
           category: reportForm.category || undefined,
         });
         toast.success('Repair reported. Your landlord will be notified.');
       }
       setShowReportModal(false);
       setReportForm({ description: '', category: 'general' });
+      setReportSeverity('Routine');
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Failed to report');
     } finally {
@@ -323,15 +333,53 @@ const TenantDashboard = () => {
               <h2 className="text-xl font-bold text-midnight-blue">
                 Welcome, {getTenantFirstName(data?.tenant_name)}
               </h2>
+              <h3 className="text-base font-semibold text-midnight-blue mt-3">Your property safety status</h3>
               <p className="text-gray-600 mt-1">
-                View the compliance status of your rental property below. Green means fully compliant, 
-                amber means attention is needed soon, and red requires immediate action by your landlord.
+                We monitor key safety checks like gas, electrical, and fire systems.
+                If anything needs attention, you&apos;ll see it below.
               </p>
               <p className="text-sm text-gray-500 mt-2">
                 Last updated: {new Date(data?.last_updated).toLocaleString()}
               </p>
             </div>
           </div>
+        </div>
+
+        <div
+          className={`rounded-xl border p-4 mb-8 ${
+            reassuranceState.kind === 'overdue'
+              ? 'bg-amber-50 border-amber-200 text-amber-900'
+              : reassuranceState.kind === 'status_gap'
+                ? 'bg-slate-50 border-slate-200 text-slate-800'
+                : 'bg-green-50 border-green-200 text-green-900'
+          }`}
+          data-testid="tenant-reassurance-banner"
+        >
+          {reassuranceState.kind === 'overdue' && (
+            <>
+              <p className="font-medium">Some safety checks need attention.</p>
+              <p className="text-sm mt-1 opacity-90">
+                Renewals are your landlord&apos;s responsibility. They use the same portal to track what is due and can arrange engineers and certificates—you do not need to fix these yourself.
+              </p>
+            </>
+          )}
+          {reassuranceState.kind === 'status_gap' && (
+            <>
+              <p className="font-medium">Overall safety isn&apos;t shown as fully up to date.</p>
+              <p className="text-sm mt-1 opacity-90">
+                We&apos;re not listing any checks as overdue below—sometimes the summary moves first, or a renewal is due soon.
+                Your landlord manages renewals; expand a property for line-by-line detail.
+              </p>
+            </>
+          )}
+          {reassuranceState.kind === 'all_clear' && (
+            <>
+              <p className="font-medium">Your property is currently safe and up to date.</p>
+              <p className="text-sm mt-1 opacity-90">
+                We are not showing any overdue safety checks for your home right now. If something changes, it will appear here.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Summary Cards */}
@@ -345,19 +393,19 @@ const TenantDashboard = () => {
           <Card className="border-green-200" data-testid="stat-fully-compliant">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-green-600">{data?.summary?.fully_compliant || 0}</div>
-              <div className="text-sm text-gray-500">Fully Compliant</div>
+              <div className="text-sm text-gray-500">All checks OK</div>
             </CardContent>
           </Card>
           <Card className="border-yellow-200" data-testid="stat-needs-attention">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-yellow-600">{data?.summary?.needs_attention || 0}</div>
-              <div className="text-sm text-gray-500">Needs Attention</div>
+              <div className="text-sm text-gray-500">Renewals due soon</div>
             </CardContent>
           </Card>
           <Card className="border-red-200" data-testid="stat-action-required">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-red-600">{data?.summary?.action_required || 0}</div>
-              <div className="text-sm text-gray-500">Action Required</div>
+              <div className="text-sm text-gray-500">Safety: needs attention</div>
             </CardContent>
           </Card>
         </div>
@@ -400,6 +448,13 @@ const TenantDashboard = () => {
                           <div>
                             <h3 className="font-semibold text-midnight-blue">{property.address}</h3>
                             <p className="text-sm text-gray-500 capitalize">{property.property_type}</p>
+                            {(property.compliance_status === 'RED' ||
+                              property.compliance_status === 'AMBER') && (
+                              <p className="text-xs font-medium text-gray-600 mt-1">
+                                Safety status:{' '}
+                                {property.compliance_status === 'RED' ? 'Needs attention' : 'Renewals due soon'}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -413,29 +468,37 @@ const TenantDashboard = () => {
                       {/* Certificates List */}
                       {isExpanded && property.certificates && (
                         <div className="border-t bg-white p-4 space-y-3" data-testid={`certificates-${property.property_id}`}>
-                          <h4 className="text-sm font-medium text-gray-700 mb-2">Certificate Status</h4>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">Safety checks</h4>
                           {property.certificates.length === 0 ? (
                             <p className="text-sm text-gray-500">No certificates on record</p>
                           ) : (
                             property.certificates.map((cert, idx) => {
                               const certStyles = getCertStatusStyles(cert.status);
+                              const statusWords = formatCertStatusLabel(cert.status);
+                              const respHint = getCertificateResponsibilityHint(cert.status);
                               return (
                                 <div 
                                   key={idx}
-                                  className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                                  className="flex items-start justify-between py-2 border-b border-gray-100 last:border-0 gap-2"
                                   data-testid={`cert-${property.property_id}-${idx}`}
                                 >
-                                  <div className="flex items-center gap-3">
-                                    <div className={`p-1.5 rounded ${certStyles.bg} ${certStyles.color}`}>
+                                  <div className="flex items-start gap-3 min-w-0">
+                                    <div className={`p-1.5 rounded shrink-0 ${certStyles.bg} ${certStyles.color}`}>
                                       {certStyles.icon}
                                     </div>
-                                    <div>
-                                      <p className="font-medium text-sm text-gray-900">{cert.description || cert.type}</p>
-                                      <p className="text-xs text-gray-500">{cert.type}</p>
+                                    <div className="min-w-0">
+                                      <p className="font-medium text-sm text-gray-900">
+                                        {cert.description || cert.type}
+                                        {' — '}
+                                        <span className={certStyles.color}>{statusWords.toUpperCase()}</span>
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-0.5">Responsibility: Landlord</p>
+                                      {respHint && (
+                                        <p className="text-xs text-gray-600 mt-1">{respHint}</p>
+                                      )}
                                     </div>
                                   </div>
-                                  <div className="text-right">
-                                    <p className={`text-sm font-medium ${certStyles.color}`}>{cert.status}</p>
+                                  <div className="text-right shrink-0">
                                     {cert.expiry !== 'N/A' && (
                                       <p className="text-xs text-gray-500 flex items-center gap-1 justify-end">
                                         <Calendar className="w-3 h-3" />
@@ -450,46 +513,65 @@ const TenantDashboard = () => {
                           
                           {/* Action Buttons */}
                           <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDownloadPack(property.property_id)}
-                              className="text-electric-teal border-electric-teal hover:bg-teal-50"
-                              data-testid={`download-pack-${property.property_id}`}
-                            >
-                              <Download className="w-4 h-4 mr-2" />
-                              Download Compliance Pack
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openRequestModal(property)}
-                              className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                              data-testid={`request-cert-${property.property_id}`}
-                            >
-                              <FileText className="w-4 h-4 mr-2" />
-                              Request Certificate
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openContactModal(property)}
-                              className="text-gray-600 border-gray-300 hover:bg-gray-50"
-                              data-testid={`contact-landlord-${property.property_id}`}
-                            >
-                              <MessageSquare className="w-4 h-4 mr-2" />
-                              Contact Landlord
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openReportModal(property)}
-                              className="text-amber-700 border-amber-300 hover:bg-amber-50"
-                              data-testid={`report-repair-${property.property_id}`}
-                            >
-                              <Wrench className="w-4 h-4 mr-2" />
-                              Report a repair
-                            </Button>
+                            {(() => {
+                              const primaryAction = getTenantRecommendedAction(property.certificates);
+                              const primaryClass =
+                                'bg-electric-teal hover:bg-teal-600 text-white border-transparent shadow-sm';
+                              const outlineClass = 'border-gray-300 text-gray-700 hover:bg-gray-50';
+                              return (
+                                <>
+                                  {primaryAction && (
+                                    <p className="w-full text-sm text-midnight-blue font-medium mb-1">
+                                      Recommended action: {TENANT_RECOMMENDED_ACTION_LABEL[primaryAction]}
+                                    </p>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDownloadPack(property.property_id)}
+                                    className={outlineClass}
+                                    data-testid={`download-pack-${property.property_id}`}
+                                  >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Download safety pack
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openRequestModal(property)}
+                                    className={
+                                      primaryAction === 'request_certificate' ? primaryClass : outlineClass
+                                    }
+                                    data-testid={`request-cert-${property.property_id}`}
+                                  >
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Request certificate
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openContactModal(property)}
+                                    className={
+                                      primaryAction === 'contact_landlord' ? primaryClass : outlineClass
+                                    }
+                                    data-testid={`contact-landlord-${property.property_id}`}
+                                  >
+                                    <MessageSquare className="w-4 h-4 mr-2" />
+                                    Contact landlord
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openReportModal(property)}
+                                    className={outlineClass}
+                                    data-testid={`report-repair-${property.property_id}`}
+                                  >
+                                    <Wrench className="w-4 h-4 mr-2" />
+                                    Report a repair
+                                  </Button>
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       )}
@@ -506,10 +588,10 @@ const TenantDashboard = () => {
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-blue-600 mt-0.5" />
             <div>
-              <h4 className="font-medium text-blue-800">About This Portal</h4>
+              <h4 className="font-medium text-blue-800">About this portal</h4>
               <p className="text-sm text-blue-700 mt-1">
-                This tenant portal provides access to your rental property&apos;s compliance status. 
-                You can download compliance packs, request certificate updates, and contact your landlord.
+                This is a simple view of safety checks for your home. You can download a summary pack,
+                ask for certificate updates, report repairs, or message your landlord if you are unsure.
               </p>
             </div>
           </div>
@@ -601,7 +683,7 @@ const TenantDashboard = () => {
             <div className="p-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-semibold text-midnight-blue flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-600" />
-                Request Certificate Update
+                Request certificate update
               </h3>
               <button 
                 onClick={() => setShowRequestModal(false)}
@@ -748,6 +830,19 @@ const TenantDashboard = () => {
                 </div>
               )}
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">How urgent is this?</label>
+                <select
+                  value={reportSeverity}
+                  onChange={(e) => setReportSeverity(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
+                  data-testid="report-severity"
+                >
+                  <option value="Emergency">Emergency</option>
+                  <option value="Urgent">Urgent</option>
+                  <option value="Routine">Routine</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Describe the issue *</label>
                 <textarea
                   value={reportForm.description}
@@ -757,6 +852,12 @@ const TenantDashboard = () => {
                   required
                   data-testid="report-repair-description"
                 />
+                <p className="text-xs text-gray-500 mt-1.5">
+                  Use this to report issues like:
+                  <span className="block mt-0.5">— Heating not working</span>
+                  <span className="block">— Water leaks</span>
+                  <span className="block">— Electrical faults</span>
+                </p>
               </div>
               <div className="flex gap-2">
                 <Button

@@ -481,14 +481,49 @@ def _compliance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) ->
     return []
 
 
+def _apply_client_pricing_overrides(wo: Dict[str, Any], actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    from services.work_order_pricing_service import (
+        client_may_offer_start_for_pricing,
+        pricing_workflow_applies,
+        quote_is_approved_for_api,
+    )
+    from services.work_order_pricing_constants import PRICE_STATUS_QUOTED
+
+    if not pricing_workflow_applies(wo):
+        return actions
+    ps = (wo.get("price_status") or "").strip().upper()
+    extra: List[Dict[str, Any]] = []
+    if ps == PRICE_STATUS_QUOTED:
+        extra.append(
+            _action(
+                "approve_quote",
+                "Approve quote",
+                "Confirm the contractor's price before work continues or invoices are submitted.",
+                section="billing",
+            )
+        )
+        extra.append(_action("reject_quote", "Reject quote", "Decline the quote; the contractor can submit a revised price.", section="billing"))
+    filtered: List[Dict[str, Any]] = []
+    for a in actions:
+        aid = a.get("id")
+        if aid == "start" and not client_may_offer_start_for_pricing(wo):
+            continue
+        if aid == "complete" and not quote_is_approved_for_api(wo):
+            continue
+        filtered.append(a)
+    return extra + filtered
+
+
 def next_job_actions(wo: Dict[str, Any]) -> List[Dict[str, str]]:
     """Next steps for COMPLIANCE or MAINTENANCE work orders (labels aligned with client job UI)."""
     kind = (wo.get("work_order_kind") or "").strip().upper() or WORK_ORDER_KIND_MAINTENANCE
     canonical = derive_canonical_job_status(wo)
     st = (wo.get("status") or "").strip().upper()
     if kind == WORK_ORDER_KIND_MAINTENANCE:
-        return _maintenance_next_job_actions(wo, canonical, st)
-    return _compliance_next_job_actions(wo, canonical, st)
+        base = _maintenance_next_job_actions(wo, canonical, st)
+    else:
+        base = _compliance_next_job_actions(wo, canonical, st)
+    return _apply_client_pricing_overrides(wo, base)
 
 
 def contractor_completion_proof_required(wo: Dict[str, Any]) -> bool:
@@ -506,8 +541,22 @@ def contractor_has_completion_proof(wo: Dict[str, Any]) -> bool:
     return maintenance_has_completion_evidence(wo)
 
 
-def _contractor_terminal_billing_actions(invoice: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _contractor_terminal_billing_actions(
+    wo: Dict[str, Any],
+    invoice: Optional[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
     """Next billing steps when the job is completed/verified/closed (contractor portal)."""
+    from services.work_order_pricing_service import pricing_workflow_applies, quote_is_approved_for_api
+
+    if pricing_workflow_applies(wo) and not quote_is_approved_for_api(wo):
+        return [
+            _action(
+                "open_job_detail",
+                "Quote approval required",
+                "The client must approve your quote before you can submit an invoice for this job.",
+                section="billing",
+            ),
+        ]
     if not invoice:
         return [
             _action(
@@ -602,7 +651,7 @@ def contractor_next_job_actions(
         ]
 
     if st in (maintenance_service.STATUS_VERIFIED, maintenance_service.STATUS_CLOSED):
-        return _contractor_terminal_billing_actions(invoice)
+        return _contractor_terminal_billing_actions(wo, invoice)
 
     if st == maintenance_service.STATUS_COMPLETED:
         need = contractor_completion_proof_required(wo)
@@ -616,7 +665,7 @@ def contractor_next_job_actions(
                     section="evidence",
                 ),
             ]
-        return _contractor_terminal_billing_actions(invoice)
+        return _contractor_terminal_billing_actions(wo, invoice)
 
     if st in (maintenance_service.STATUS_OPEN, maintenance_service.STATUS_ASSIGNED):
         return [
@@ -785,6 +834,59 @@ def contractor_next_job_actions(
     return []
 
 
+def _filter_contractor_actions_for_pricing(wo: Dict[str, Any], actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    from services.work_order_pricing_service import contractor_may_offer_complete_job, contractor_may_offer_start_job
+
+    out: List[Dict[str, Any]] = []
+    for a in actions:
+        aid = a.get("id")
+        if aid == "start_job" and not contractor_may_offer_start_job(wo):
+            continue
+        if aid == "complete_job" and not contractor_may_offer_complete_job(wo):
+            continue
+        out.append(a)
+    return out
+
+
+def _prepend_contractor_pricing_actions(wo: Dict[str, Any]) -> List[Dict[str, Any]]:
+    from services.work_order_pricing_constants import (
+        PRICE_STATUS_AWAITING_QUOTE,
+        PRICE_STATUS_REJECTED,
+        PRICING_MODE_MAINTENANCE_INSPECTION_REQUIRED,
+    )
+    from services.work_order_pricing_service import pricing_workflow_applies
+
+    if not pricing_workflow_applies(wo):
+        return []
+    st = (wo.get("status") or "").strip().upper()
+    if st in (maintenance_service.STATUS_OPEN, maintenance_service.STATUS_ASSIGNED):
+        return []
+    if not (wo.get("contractor_id") or "").strip():
+        return []
+    mode = (wo.get("pricing_mode") or "").strip().upper()
+    ps = (wo.get("price_status") or "").strip().upper()
+    extra: List[Dict[str, Any]] = []
+    if mode == PRICING_MODE_MAINTENANCE_INSPECTION_REQUIRED and not wo.get("inspection_completed_at"):
+        if st in (maintenance_service.STATUS_SCHEDULED, maintenance_service.STATUS_IN_PROGRESS):
+            extra.append(
+                _action(
+                    "mark_inspection_complete",
+                    "Mark inspection complete",
+                    "After the inspection visit, confirm it is done; then submit a quote for any repair work.",
+                    section="execution",
+                )
+            )
+        return extra
+    if ps in (PRICE_STATUS_AWAITING_QUOTE, PRICE_STATUS_REJECTED):
+        hint = (
+            "The client declined the last quote — submit a revised price."
+            if ps == PRICE_STATUS_REJECTED
+            else "Propose a fixed price for this job for client approval before further work and invoicing."
+        )
+        extra.append(_action("submit_quote", "Submit quote", hint, section="billing"))
+    return extra
+
+
 def apply_contractor_job_enrichment(
     wo: Dict[str, Any],
     *,
@@ -792,7 +894,9 @@ def apply_contractor_job_enrichment(
 ) -> None:
     """Mutates work order dict in place for contractor portal list/detail responses."""
     wo["job_status"] = derive_canonical_job_status(wo)
-    wo["next_actions"] = contractor_next_job_actions(wo, invoice=invoice)
+    base_actions = contractor_next_job_actions(wo, invoice=invoice)
+    merged = _prepend_contractor_pricing_actions(wo) + base_actions
+    wo["next_actions"] = _filter_contractor_actions_for_pricing(wo, merged)
     wo["completion_proof_required"] = contractor_completion_proof_required(wo)
     wo["completion_proof_satisfied"] = contractor_has_completion_proof(wo)
     wo["timeline_events"] = client_job_timeline_events(wo)
@@ -961,6 +1065,9 @@ def serialize_client_job(wo: Dict[str, Any]) -> Dict[str, Any]:
         if mh:
             base["issue_resolution_hint"] = mh
     base["sla_policy"] = client_job_sla_policy(wo)
+    from services.work_order_pricing_service import serialize_pricing_snapshot
+
+    base["pricing"] = serialize_pricing_snapshot(wo)
     return base
 
 

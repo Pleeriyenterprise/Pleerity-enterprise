@@ -36,6 +36,7 @@ import { toast } from 'sonner';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot, portalDrawerPanelClass } from '../components/client/ClientPortalPatterns';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import { invoiceDisplayLabel } from '../utils/invoiceDisplay';
 import { cn } from '../lib/utils';
 
 const STATUS_OPTIONS = [
@@ -430,7 +431,7 @@ function ClientApprovalsPageInner() {
             <ul className="space-y-2">
               {exceptions.slice(0, 10).map((ex) => (
                 <li key={ex.invoice_id} className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="font-medium">{ex.reference || ex.invoice_id}</span>
+                  <span className="font-medium">{invoiceDisplayLabel(ex)}</span>
                   <span className="text-gray-600">{ex.property_label}</span>
                   <span className="text-gray-600">{ex.contractor_label}</span>
                   <span className="text-amber-700">{ex.reason_flagged}</span>
@@ -477,7 +478,7 @@ function ClientApprovalsPageInner() {
                   <Card key={row.invoice_id} className={cn('border p-4', row.benchmark_fit === 'above' ? 'border-amber-200 bg-amber-50/40' : 'border-gray-200')}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="font-semibold text-midnight-blue">{row.reference || row.invoice_id}</p>
+                        <p className="font-semibold text-midnight-blue">{invoiceDisplayLabel(row)}</p>
                         <p className="text-sm text-gray-600 mt-1">{row.property_label ?? '—'}</p>
                         <p className="text-sm text-gray-600">{row.contractor_label ?? '—'}</p>
                         <p className="text-lg font-semibold text-midnight-blue mt-2">{formatAmount(row.submitted_amount, row.currency)}</p>
@@ -531,7 +532,7 @@ function ClientApprovalsPageInner() {
                         key={row.invoice_id}
                         className={row.benchmark_fit === 'above' ? 'bg-amber-50/50' : ''}
                       >
-                        <TableCell className="font-medium">{row.reference || row.invoice_id}</TableCell>
+                        <TableCell className="font-medium">{invoiceDisplayLabel(row)}</TableCell>
                         <TableCell>{row.property_label ?? '—'}</TableCell>
                         <TableCell>{row.work_order_id ? (row.work_order_label || row.work_order_id) : <span className="text-amber-600">—</span>}</TableCell>
                         <TableCell>{row.contractor_label ?? '—'}</TableCell>
@@ -571,7 +572,7 @@ function ClientApprovalsPageInner() {
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
         <SheetContent side="right" className={cn(portalDrawerPanelClass, 'sm:max-w-lg')}>
           <SheetHeader>
-            <SheetTitle>{detail ? (detail.reference || detail.invoice_id) : 'Approval detail'}</SheetTitle>
+            <SheetTitle>{detail ? invoiceDisplayLabel(detail) : 'Approval detail'}</SheetTitle>
             <SheetDescription>
               {detail && (
                 <>

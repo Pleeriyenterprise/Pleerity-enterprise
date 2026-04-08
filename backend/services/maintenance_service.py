@@ -5,6 +5,7 @@ Gated by MAINTENANCE_WORKFLOWS feature flag for client/tenant.
 """
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
+import hashlib
 import os
 import uuid
 from database import database
@@ -28,6 +29,10 @@ from services.work_order_execution_constants import (
     WORK_ORDER_KIND_COMPLIANCE,
     WORK_ORDER_KIND_MAINTENANCE,
 )
+from services.work_order_pricing_constants import (
+    PRICING_MODE_MAINTENANCE_INSPECTION_REQUIRED,
+    PRICE_STATUS_AWAITING_QUOTE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +47,201 @@ def _contractor_job_token_ttl_days() -> int:
         return max(1, min(n, 365))
     except ValueError:
         return 30
+
+
+def _proof_type_hint_for_contractor_email(wo: Dict[str, Any]) -> str:
+    """Short label for the kind of evidence expected (email copy)."""
+    kind = (wo.get("work_order_kind") or "").strip().upper() or WORK_ORDER_KIND_MAINTENANCE
+    if kind == WORK_ORDER_KIND_COMPLIANCE:
+        return "certificate"
+    if (wo.get("expected_output_document_type") or "").strip():
+        return "certificate or specified completion document"
+    return "photos, report, or invoice evidence"
+
+
+async def _maybe_send_contractor_proof_required_email(
+    wo: Dict[str, Any],
+    *,
+    proof_required_state: str,
+) -> None:
+    """Notify contractor when a job enters a state that requires completion proof (orchestrator + message_logs)."""
+    from services import compliance_workflow_service as cws
+
+    if not cws.contractor_completion_proof_required(wo) or cws.contractor_has_completion_proof(wo):
+        return
+    cid = (wo.get("client_id") or "").strip()
+    wid = (wo.get("work_order_id") or "").strip()
+    ctr = (wo.get("contractor_id") or "").strip()
+    if not cid or not wid or not ctr:
+        return
+    db = database.get_db()
+    contractor = await db.contractors.find_one(
+        {"contractor_id": ctr},
+        {"_id": 0, "email": 1, "name": 1, "company_name": 1},
+    )
+    to_email = (contractor or {}).get("email") if contractor else None
+    if not to_email or not str(to_email).strip():
+        return
+    contractor_disp = (
+        (str((contractor or {}).get("name") or "").strip())
+        or (str((contractor or {}).get("company_name") or "").strip())
+        or None
+    )
+    property_address = "Property"
+    prop_id = wo.get("property_id")
+    if prop_id:
+        prop = await db.properties.find_one(
+            {"property_id": prop_id, "client_id": cid},
+            {"_id": 0, "address_line_1": 1, "city": 1, "postcode": 1},
+        )
+        if prop:
+            parts = [prop.get("address_line_1"), prop.get("city"), prop.get("postcode")]
+            property_address = ", ".join(p for p in parts if p) or property_address
+    job_link_final = "See portal"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    try:
+        from utils.public_app_url import get_frontend_base_url
+
+        raw_token = generate_secure_token()
+        token_hash = hash_token(raw_token)
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=_contractor_job_token_ttl_days())).isoformat()
+        await db.contractor_job_tokens.insert_one(
+            {
+                "token_hash": token_hash,
+                "work_order_id": wid,
+                "contractor_id": ctr,
+                "created_at": now_iso,
+                "expires_at": expires_at,
+                "revoked_at": None,
+            }
+        )
+        base_url = get_frontend_base_url().rstrip("/")
+        job_link_final = f"{base_url}/job?token={raw_token}"
+    except Exception as exc:
+        logger.warning("Contractor proof-required email: job token failed (non-fatal): %s", exc)
+
+    kind = (wo.get("work_order_kind") or "").strip().upper()
+    is_compliance = kind == WORK_ORDER_KIND_COMPLIANCE
+    hint = _proof_type_hint_for_contractor_email(wo)
+    state_key = (proof_required_state or "").strip().upper()
+    from services.notification_orchestrator import notification_orchestrator
+
+    await notification_orchestrator.send(
+        template_key="CONTRACTOR_PROOF_REQUIRED",
+        client_id=cid,
+        context={
+            "recipient": str(to_email).strip(),
+            "subject": "Completion proof required for this job",
+            "contractor_name": contractor_disp or "",
+            "property_address": property_address,
+            "job_title": (wo.get("description") or "Work order")[:200],
+            "work_order_id": wid,
+            "secure_job_link": job_link_final,
+            "proof_type_hint": hint,
+            "completion_proof_required": True,
+            "completion_proof_satisfied": False,
+            "is_compliance": is_compliance,
+        },
+        idempotency_key=f"contractor_proof_required:{wid}:{state_key}",
+        event_type="CONTRACTOR_PROOF_REQUIRED",
+    )
+
+
+def _client_proof_upload_event_id(new_keys: List[str]) -> str:
+    """Stable id for this upload batch (dedupe orchestrator / message_logs)."""
+    clean = sorted({str(k).strip() for k in new_keys if k and str(k).strip()})
+    if not clean:
+        return ""
+    return hashlib.sha256("|".join(clean).encode("utf-8")).hexdigest()[:32]
+
+
+async def _maybe_send_client_proof_uploaded_email(
+    wo: Dict[str, Any],
+    *,
+    proof_event_id: str,
+) -> None:
+    """Notify client contact when new evidence keys are appended to a work order (orchestrator + message_logs)."""
+    cid = (wo.get("client_id") or "").strip()
+    wid = (wo.get("work_order_id") or "").strip()
+    if not cid or not wid or not proof_event_id:
+        return
+    db = database.get_db()
+    client = await db.clients.find_one(
+        {"client_id": cid},
+        {"_id": 0, "contact_email": 1, "email": 1, "full_name": 1, "contact_name": 1, "customer_reference": 1},
+    )
+    if not client:
+        return
+    to_email = (client.get("contact_email") or client.get("email") or "").strip()
+    if not to_email:
+        return
+    property_address = "Property"
+    prop_id = wo.get("property_id")
+    if prop_id:
+        prop = await db.properties.find_one(
+            {"property_id": prop_id, "client_id": cid},
+            {"_id": 0, "address_line_1": 1, "city": 1, "postcode": 1},
+        )
+        if prop:
+            parts = [prop.get("address_line_1"), prop.get("city"), prop.get("postcode")]
+            property_address = ", ".join(p for p in parts if p) or property_address
+    ctr = (wo.get("contractor_id") or "").strip()
+    contractor_name = "Contractor"
+    if ctr:
+        contractor_row = await db.contractors.find_one(
+            {"contractor_id": ctr},
+            {"_id": 0, "name": 1, "company_name": 1},
+        )
+        if contractor_row:
+            contractor_name = (
+                (str(contractor_row.get("name") or "").strip())
+                or (str(contractor_row.get("company_name") or "").strip())
+                or "Contractor"
+            )
+    client_name = (
+        (str(client.get("full_name") or "").strip())
+        or (str(client.get("contact_name") or "").strip())
+        or None
+    )
+    from utils.public_app_url import get_frontend_base_url
+
+    base = get_frontend_base_url().rstrip("/")
+    client_job_link = f"{base}/operations/jobs/{wid}"
+
+    kind = (wo.get("work_order_kind") or "").strip().upper()
+    is_compliance = kind == WORK_ORDER_KIND_COMPLIANCE
+    compliance_outcome_hint = ""
+    if is_compliance:
+        compliance_outcome_hint = (
+            "This evidence will be used as part of compliance review. "
+            "Formal compliance status is not final until validation is complete."
+        )
+    elif (wo.get("expected_output_document_type") or "").strip():
+        compliance_outcome_hint = "Please confirm the upload matches what you expected for this job."
+
+    from services.notification_orchestrator import notification_orchestrator
+
+    await notification_orchestrator.send(
+        template_key="CLIENT_PROOF_UPLOADED",
+        client_id=cid,
+        context={
+            "recipient": to_email,
+            "subject": "Evidence uploaded for your job",
+            "client_name": client_name or "",
+            "property_address": property_address,
+            "job_title": (wo.get("description") or "Work order")[:200],
+            "work_order_id": wid,
+            "contractor_name": contractor_name,
+            "client_job_link": client_job_link,
+            "secure_client_job_link": client_job_link,
+            "portal_link": client_job_link,
+            "is_compliance": is_compliance,
+            "compliance_outcome_hint": compliance_outcome_hint,
+            "customer_reference": client.get("customer_reference"),
+        },
+        idempotency_key=f"client_proof_uploaded:{wid}:{proof_event_id}",
+        event_type="CLIENT_PROOF_UPLOADED",
+    )
 
 
 # Work order status lifecycle (existing + additive)
@@ -126,6 +326,7 @@ async def create_work_order(
     expected_output_document_type: Optional[str] = None,
     linked_property_requirement_id: Optional[str] = None,
     jurisdiction: Optional[str] = None,
+    inspection_required: bool = False,
 ) -> Dict[str, Any]:
     """Create a work order. source: tenant_request | client | admin.
     Optional: asset_id, issue_id, cost estimates, initial_status (default OPEN), SLA overrides.
@@ -293,6 +494,15 @@ async def create_work_order(
 
     if jurisdiction_for_wo:
         doc["jurisdiction"] = jurisdiction_for_wo
+
+    from services.work_order_pricing_service import default_pricing_fields_for_create
+
+    doc.update(
+        default_pricing_fields_for_create(
+            work_order_kind=kind,
+            inspection_required=bool(inspection_required) if kind == WORK_ORDER_KIND_MAINTENANCE else False,
+        )
+    )
 
     await db.work_orders.insert_one(doc)
     doc.pop("_id", None)
@@ -468,6 +678,14 @@ async def update_work_order(
     if status is not None:
         status = status.strip().upper()
         if status in ALL_STATUSES:
+            if status == STATUS_IN_PROGRESS:
+                wo_full = await db.work_orders.find_one({"work_order_id": work_order_id}, {"_id": 0})
+                if wo_full:
+                    wm = dict(wo_full)
+                    wm["evidence_keys"] = merged_evidence
+                    from services.work_order_pricing_service import assert_may_transition_to_in_progress
+
+                    assert_may_transition_to_in_progress(wm)
             if status == STATUS_COMPLETED and prev_snapshot:
                 try:
                     from services.work_order_schedule_service import assert_completion_schedule_policy
@@ -485,6 +703,13 @@ async def update_work_order(
                     raise ValueError(
                         "Completion proof is required for this job. Upload evidence before marking complete."
                     )
+                wo_full = await db.work_orders.find_one({"work_order_id": work_order_id}, {"_id": 0})
+                if wo_full:
+                    wm = dict(wo_full)
+                    wm["evidence_keys"] = merged_evidence
+                    from services.work_order_pricing_service import assert_may_transition_to_completed
+
+                    assert_may_transition_to_completed(wm)
             set_fields["status"] = status
             if status == STATUS_COMPLETED:
                 set_fields["completed_at"] = now
@@ -576,6 +801,42 @@ async def update_work_order(
                 )
             except Exception as wh_e:
                 logger.warning("Work order status webhook failed (non-fatal): %s", wh_e)
+        if (
+            status is not None
+            and new_status
+            and str(new_status).upper() in (STATUS_IN_PROGRESS, STATUS_AWAITING_PARTS)
+            and str(prev_status or "").upper() != str(new_status).upper()
+            and result.get("contractor_id")
+            and result.get("client_id")
+        ):
+            try:
+                await _maybe_send_contractor_proof_required_email(
+                    dict(result),
+                    proof_required_state=str(new_status).upper(),
+                )
+            except Exception as pr_e:
+                logger.warning("Contractor proof-required email failed: %s", pr_e)
+        if (
+            status is not None
+            and new_status
+            and result.get("contractor_id")
+            and result.get("client_id")
+        ):
+            ns = str(new_status).upper()
+            ps = str(prev_status or "").upper()
+            if ns in (STATUS_COMPLETED, STATUS_VERIFIED, STATUS_CLOSED) and ps != ns:
+                skip_invoice_ready = ns in (STATUS_VERIFIED, STATUS_CLOSED) and ps == STATUS_COMPLETED
+                if not skip_invoice_ready:
+                    try:
+                        from services.invoice_service import maybe_send_contractor_invoice_ready_notification
+
+                        el_ts = result.get("completed_at") if ns == STATUS_COMPLETED else now
+                        await maybe_send_contractor_invoice_ready_notification(
+                            dict(result),
+                            eligibility_timestamp_iso=str(el_ts or now),
+                        )
+                    except Exception as ir_e:
+                        logger.warning("Contractor invoice-ready email failed: %s", ir_e)
         if contractor_id is not None:
             try:
                 await db.contractor_assignments.insert_one({
@@ -626,7 +887,7 @@ async def update_work_order(
             try:
                 contractor = await db.contractors.find_one(
                     {"contractor_id": contractor_id},
-                    {"_id": 0, "email": 1},
+                    {"_id": 0, "email": 1, "name": 1, "company_name": 1},
                 )
                 to_email = (contractor or {}).get("email") if contractor else None
                 if to_email and str(to_email).strip():
@@ -643,39 +904,92 @@ async def update_work_order(
                     due_date_str = due_date if due_date else "See job link"
                     job_link_final = job_link if job_link else "See portal"
                     wo_kind_mail = (result.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
-                    if wo_kind_mail == WORK_ORDER_KIND_COMPLIANCE:
+                    price_status_upper = (str(result.get("price_status") or "")).strip().upper()
+                    from services.notification_orchestrator import notification_orchestrator
+
+                    if price_status_upper == PRICE_STATUS_AWAITING_QUOTE:
+                        job_kind_label = "COMPLIANCE" if wo_kind_mail == WORK_ORDER_KIND_COMPLIANCE else "MAINTENANCE"
+                        contractor_disp = (
+                            (str((contractor or {}).get("name") or "").strip())
+                            or (str((contractor or {}).get("company_name") or "").strip())
+                            or None
+                        )
+                        jurisdiction_val = (str(result.get("jurisdiction") or "")).strip()
+                        await notification_orchestrator.send(
+                            template_key="CONTRACTOR_JOB_ASSIGNMENT_QUOTE_REQUIRED",
+                            client_id=result.get("client_id"),
+                            context={
+                                "recipient": str(to_email).strip(),
+                                "subject": "You've been assigned a job — submit your quote",
+                                "contractor_name": contractor_disp or "",
+                                "property_address": property_address or "See portal",
+                                "job_title": desc,
+                                "work_order_id": work_order_id,
+                                "secure_job_link": job_link_final,
+                                "due_date": due_date_str if due_date else "",
+                                "sla_summary": "",
+                                "job_kind": job_kind_label,
+                                "jurisdiction": jurisdiction_val,
+                                "is_compliance": wo_kind_mail == WORK_ORDER_KIND_COMPLIANCE,
+                            },
+                            idempotency_key=f"contractor_quote_required:{work_order_id}:{contractor_id}",
+                            event_type="CONTRACTOR_JOB_ASSIGNMENT_QUOTE_REQUIRED",
+                        )
+                    elif wo_kind_mail == WORK_ORDER_KIND_COMPLIANCE:
                         subj = "Compliance work order assignment"
                         body = (
                             f"You have been assigned to a compliance execution work order (inspection/renewal/certification): "
                             f"{work_order_id}. Description: {desc}. Property: {property_address or 'See portal'}. "
-                            f"Due: {due_date_str}. View and respond (no login required): {job_link_final}. "
+                            f"Due: {due_date_str}. Use your secure access link to view and respond: {job_link_final}. "
                             f"This assignment is for compliance evidence work, not ad-hoc maintenance repair unless stated. "
                             f"Payment responsibility: Pleerity coordinates work orders and invoice approval but does not process "
                             f"contractor payments; follow up with the client for payment."
                         )
+                        await notification_orchestrator.send(
+                            template_key="CONTRACTOR_ASSIGNED",
+                            client_id=result.get("client_id"),
+                            context={
+                                "recipient": str(to_email).strip(),
+                                "subject": subj,
+                                "body": body,
+                                "job_link": job_link_final,
+                                "due_date": due_date_str,
+                            },
+                            idempotency_key=f"contractor_assign_{work_order_id}_{contractor_id}",
+                            event_type="CONTRACTOR_ASSIGNED",
+                        )
                     else:
                         subj = "Maintenance work order assignment"
+                        inspect_first = (
+                            (result.get("pricing_mode") or "").strip().upper()
+                            == PRICING_MODE_MAINTENANCE_INSPECTION_REQUIRED
+                        )
+                        inspect_note = (
+                            " This job is inspection-first: you can attend to inspect before a final repair price is agreed, "
+                            "but do not carry out billable repair work until the client has approved your quote in writing in the platform. "
+                            if inspect_first
+                            else ""
+                        )
                         body = (
                             f"You have been assigned to a maintenance repair work order: {work_order_id}. Description: {desc}. "
                             f"Property: {property_address or 'See portal'}. Due: {due_date_str}. "
-                            f"View and respond (no login required): {job_link_final}. "
+                            f"Use your secure access link to view and respond: {job_link_final}.{inspect_note} "
                             f"Payment responsibility: Pleerity coordinates work orders and invoice approval but does not process "
                             f"contractor payments. Payment responsibility lies with the client; please follow up with the client for payment."
                         )
-                    from services.notification_orchestrator import notification_orchestrator
-                    await notification_orchestrator.send(
-                        template_key="CONTRACTOR_ASSIGNED",
-                        client_id=result.get("client_id"),
-                        context={
-                            "recipient": str(to_email).strip(),
-                            "subject": subj,
-                            "body": body,
-                            "job_link": job_link_final,
-                            "due_date": due_date_str,
-                        },
-                        idempotency_key=f"contractor_assign_{work_order_id}_{contractor_id}",
-                        event_type="CONTRACTOR_ASSIGNED",
-                    )
+                        await notification_orchestrator.send(
+                            template_key="CONTRACTOR_ASSIGNED",
+                            client_id=result.get("client_id"),
+                            context={
+                                "recipient": str(to_email).strip(),
+                                "subject": subj,
+                                "body": body,
+                                "job_link": job_link_final,
+                                "due_date": due_date_str,
+                            },
+                            idempotency_key=f"contractor_assign_{work_order_id}_{contractor_id}",
+                            event_type="CONTRACTOR_ASSIGNED",
+                        )
                     try:
                         from models import AuditAction
                         from utils.audit import create_audit_log
@@ -686,7 +1000,13 @@ async def update_work_order(
                             client_id=result.get("client_id"),
                             resource_type="work_order",
                             resource_id=work_order_id,
-                            metadata={"contractor_id": contractor_id, "recipient": str(to_email).strip()},
+                            metadata={
+                                "contractor_id": contractor_id,
+                                "recipient": str(to_email).strip(),
+                                "template_key": "CONTRACTOR_JOB_ASSIGNMENT_QUOTE_REQUIRED"
+                                if price_status_upper == PRICE_STATUS_AWAITING_QUOTE
+                                else "CONTRACTOR_ASSIGNED",
+                            },
                         )
                     except Exception as aud_e:
                         logger.warning("Audit assignment email sent failed: %s", aud_e)
@@ -802,6 +1122,16 @@ async def update_work_order(
                 )
             except Exception as cert_e:
                 logger.debug("Compliance certificate_uploaded outcome skip: %s", cert_e)
+        if evidence_keys_append and result and result.get("client_id"):
+            prev_keys = set((prev_snapshot or {}).get("evidence_keys") or [])
+            newly_added = [k for k in (evidence_keys_append or []) if k and str(k).strip() and k not in prev_keys]
+            if newly_added:
+                try:
+                    peid = _client_proof_upload_event_id(newly_added)
+                    if peid:
+                        await _maybe_send_client_proof_uploaded_email(dict(result), proof_event_id=peid)
+                except Exception as cpu_e:
+                    logger.warning("Client proof-uploaded email failed: %s", cpu_e)
     return result
 
 

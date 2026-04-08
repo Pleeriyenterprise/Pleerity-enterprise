@@ -49,6 +49,17 @@ def _format_greeting(client_name: Optional[str]) -> str:
     return f"Hello {first},"
 
 
+def _format_currency_amount_for_email(amount: Any, currency: Optional[str]) -> str:
+    """Human-facing amount for quote / invoice lines in email (HTML and text)."""
+    code = (currency or "GBP").strip().upper()
+    sym = "£" if code == "GBP" else "€" if code == "EUR" else "$" if code == "USD" else f"{code} "
+    try:
+        n = float(amount)
+    except (TypeError, ValueError):
+        return f"{sym}—"
+    return f"{sym}{n:.2f}"
+
+
 def _email_app_base() -> str:
     from utils.app_urls import get_app_base_url
 
@@ -81,6 +92,13 @@ SYSTEM_CRITICAL_ALIASES = {
     EmailTemplateAlias.SUBSCRIPTION_CANCELED,
     EmailTemplateAlias.CLEARFORM_WELCOME,
     EmailTemplateAlias.INTERNAL_ALERT,
+    EmailTemplateAlias.CONTRACTOR_JOB_ASSIGNMENT_QUOTE_REQUIRED,
+    EmailTemplateAlias.CONTRACTOR_QUOTE_APPROVED,
+    EmailTemplateAlias.CONTRACTOR_VISIT_CONFIRMED,
+    EmailTemplateAlias.CONTRACTOR_PROOF_REQUIRED,
+    EmailTemplateAlias.CONTRACTOR_INVOICE_READY,
+    EmailTemplateAlias.CLIENT_PROOF_UPLOADED,
+    EmailTemplateAlias.CLIENT_INVOICE_REVIEW_REQUIRED,
 }
 
 # Landlord onboarding sequence: aliases and content for 7-day emails (customer layout, reporting_notifications).
@@ -974,6 +992,472 @@ class EmailService:
         elif template_alias == EmailTemplateAlias.CLEARFORM_WELCOME:
             # Use the dedicated ClearForm method (customer-facing but custom layout)
             return self._build_clearform_welcome_html(model)
+        elif template_alias == EmailTemplateAlias.CLIENT_QUOTE_REVIEW_REQUIRED:
+            esc = html_module.escape
+            greeting = _format_greeting(model.get("client_name"))
+            prop = esc(str(model.get("property_address") or "See portal"))
+            job_title = esc(str(model.get("job_title") or "Work order"))
+            contractor = esc(str(model.get("contractor_name") or "Contractor"))
+            woid = esc(str(model.get("work_order_id") or ""))
+            amount_disp = esc(_format_currency_amount_for_email(model.get("quoted_price"), model.get("price_currency")))
+            notes_raw = (str(model.get("quote_notes") or "")).strip()
+            notes_block = ""
+            if notes_raw:
+                notes_block = (
+                    f'<p style="margin: 12px 0 0 0;"><strong>Notes:</strong> {esc(notes_raw)}</p>'
+                )
+            job_link = str(model.get("client_job_link") or model.get("secure_client_job_link") or "#").strip()
+            ref_badge = ""
+            if model.get("customer_reference"):
+                ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{html_module.escape(str(model["customer_reference"]))}</span></p>'
+            body_inner = f"""
+            <p>A quote has been submitted for your job.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Job details</h2>
+            <p style="margin: 0; line-height: 1.6;">
+              <strong>Property:</strong> {prop}<br />
+              <strong>Job:</strong> {job_title}<br />
+              <strong>Contractor:</strong> {contractor}<br />
+              <strong>Work order ID:</strong> {woid}
+            </p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Quote summary</h2>
+            <p style="margin: 0;"><strong>Amount:</strong> {amount_disp}</p>
+            {notes_block}
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">▶ Next step: Review and approve</h2>
+            <p>Work will not begin until you approve the quote in the platform.</p>
+            <p style="margin: 12px 0 8px 0;"><strong>Review the quote:</strong></p>
+            <p style="margin: 0;"><a href="{job_link}" style="color: #00B8A9; word-break: break-all;">{esc(job_link)}</a></p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">What happens next</h2>
+            <ul style="margin: 8px 0; padding-left: 20px; color: #334155; line-height: 1.6;">
+              <li><strong>Approve</strong> — the contractor can proceed with the job</li>
+              <li><strong>Reject</strong> — the contractor can submit a revised quote for you to review again</li>
+            </ul>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Important</h2>
+            <ul style="margin: 8px 0; padding-left: 20px; color: #334155; line-height: 1.6;">
+              <li>Do not ask the contractor to start billable work until you have approved the quote here</li>
+            </ul>
+            """
+            return _customer_email_html(
+                model,
+                greeting=greeting,
+                body_html=body_inner,
+                header_title="Quote submitted — your review needed",
+                ref_badge=ref_badge,
+                cta_label="Review quote",
+                cta_url=job_link or "#",
+                why_received="a contractor submitted a quote for a job linked to your account.",
+                show_preferences_link=True,
+                preferences_url=_notification_preferences_url(model) or None,
+                customer_reference=model.get("customer_reference"),
+            )
+        elif template_alias == EmailTemplateAlias.CLIENT_PROOF_UPLOADED:
+            esc = html_module.escape
+            greeting = _format_greeting(model.get("client_name"))
+            prop = esc(str(model.get("property_address") or "See portal"))
+            job_title = esc(str(model.get("job_title") or "Work order"))
+            contractor = esc(str(model.get("contractor_name") or "Contractor"))
+            woid = esc(str(model.get("work_order_id") or ""))
+            job_link = str(
+                model.get("client_job_link") or model.get("secure_client_job_link") or model.get("portal_link") or "#"
+            ).strip()
+            hint = str(model.get("compliance_outcome_hint") or "").strip()
+            hint_block = ""
+            if hint:
+                hint_block = (
+                    f'<p style="margin: 16px 0 0 0; line-height: 1.6; color: #64748b; font-size: 14px;">{esc(hint)}</p>'
+                )
+            compl_extra = ""
+            if model.get("is_compliance"):
+                compl_extra = (
+                    '<p style="margin: 16px 0 0 0; line-height: 1.6; color: #334155;">'
+                    "You can review the evidence now; compliance validation may still be in progress."
+                    "</p>"
+                )
+            ref_badge = ""
+            if model.get("customer_reference"):
+                ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{html_module.escape(str(model["customer_reference"]))}</span></p>'
+            body_inner = f"""
+            <p>Evidence has been uploaded for your job.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Job details</h2>
+            <p style="margin: 0; line-height: 1.6;">
+              <strong>Property:</strong> {prop}<br />
+              <strong>Job:</strong> {job_title}<br />
+              <strong>Contractor:</strong> {contractor}<br />
+              <strong>Work order ID:</strong> {woid}
+            </p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">▶ Next step: Review evidence</h2>
+            <p style="margin: 0; line-height: 1.6;">You can now review the uploaded evidence in your portal.</p>
+            <p style="margin: 12px 0 8px 0;"><strong>Access your job:</strong></p>
+            <p style="margin: 0;"><a href="{job_link}" style="color: #00B8A9; word-break: break-all;">{esc(job_link)}</a></p>
+            {compl_extra}
+            {hint_block}
+            """
+            return _customer_email_html(
+                model,
+                greeting=greeting,
+                body_html=body_inner,
+                header_title="New evidence on your job",
+                ref_badge=ref_badge,
+                cta_label="Review evidence",
+                cta_url=job_link or "#",
+                why_received="a contractor uploaded evidence for a job linked to your account.",
+                show_preferences_link=True,
+                preferences_url=_notification_preferences_url(model) or None,
+                customer_reference=model.get("customer_reference"),
+            )
+        elif template_alias == EmailTemplateAlias.CLIENT_INVOICE_REVIEW_REQUIRED:
+            esc = html_module.escape
+            greeting = _format_greeting(model.get("client_name"))
+            prop = esc(str(model.get("property_address") or "See portal"))
+            job_title = esc(str(model.get("job_title") or "Work order"))
+            contractor = esc(str(model.get("contractor_name") or "Contractor"))
+            woid = esc(str(model.get("work_order_id") or ""))
+            iid = esc(str(model.get("invoice_id") or ""))
+            inv_no_raw = str(model.get("invoice_number") or "").strip()
+            inv_no_line = ""
+            if inv_no_raw:
+                inv_no_line = f'<p style="margin: 6px 0 0 0;"><strong>Invoice reference:</strong> {esc(inv_no_raw)}</p>'
+            amount_disp = esc(_format_currency_amount_for_email(model.get("invoice_amount"), model.get("price_currency")))
+            review_link = str(
+                model.get("invoice_review_link")
+                or model.get("secure_client_job_link")
+                or model.get("portal_link")
+                or model.get("client_job_link")
+                or "#"
+            ).strip()
+            job_link = str(model.get("client_job_link") or "#").strip()
+            has_quote = bool(model.get("has_agreed_price"))
+            agreed_line = ""
+            if has_quote:
+                agreed_line = (
+                    "<li>This invoice is expected to align with the agreed quote for this job—please confirm it looks right before you approve.</li>"
+                )
+            ref_badge = ""
+            if model.get("customer_reference"):
+                ref_badge = f'<p style="margin-top: 10px;"><span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 13px;">{html_module.escape(str(model["customer_reference"]))}</span></p>'
+            body_inner = f"""
+            <p>An invoice has been submitted for your review.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Job details</h2>
+            <p style="margin: 0; line-height: 1.6;">
+              <strong>Property:</strong> {prop}<br />
+              <strong>Job:</strong> {job_title}<br />
+              <strong>Contractor:</strong> {contractor}<br />
+              <strong>Work order ID:</strong> {woid}
+            </p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Invoice summary</h2>
+            <p style="margin: 0;"><strong>Amount:</strong> {amount_disp}</p>
+            <p style="margin: 6px 0 0 0;"><strong>Invoice ID:</strong> {iid}</p>
+            {inv_no_line}
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">▶ Next step: Review invoice</h2>
+            <p style="margin: 0; line-height: 1.6;">Please review and approve or reject the invoice in your portal.</p>
+            <p style="margin: 12px 0 8px 0;"><strong>Open Approvals:</strong></p>
+            <p style="margin: 0;"><a href="{review_link}" style="color: #00B8A9; word-break: break-all;">{esc(review_link)}</a></p>
+            <p style="margin: 12px 0 0 0; font-size: 14px; color: #64748b;">Related job: <a href="{job_link}" style="color: #00B8A9;">{esc(job_link)}</a></p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Important</h2>
+            <ul style="margin: 8px 0; padding-left: 20px; color: #334155; line-height: 1.6;">
+              {agreed_line}
+              <li>Review the amount and description before you approve.</li>
+              <li>You can approve, reject, or request more information from Approvals.</li>
+            </ul>
+            """
+            return _customer_email_html(
+                model,
+                greeting=greeting,
+                body_html=body_inner,
+                header_title="Invoice ready for review",
+                ref_badge=ref_badge,
+                cta_label="Review invoice",
+                cta_url=review_link or "#",
+                why_received="a contractor submitted an invoice linked to your account for approval.",
+                show_preferences_link=True,
+                preferences_url=_notification_preferences_url(model) or None,
+                customer_reference=model.get("customer_reference"),
+            )
+        elif template_alias == EmailTemplateAlias.CONTRACTOR_JOB_ASSIGNMENT_QUOTE_REQUIRED:
+            esc = html_module.escape
+            contractor_key = model.get("contractor_name")
+            greeting = _format_greeting(str(contractor_key).strip() if contractor_key else None)
+            prop = esc(str(model.get("property_address") or "See portal"))
+            job_title = esc(str(model.get("job_title") or "Work order"))
+            woid = esc(str(model.get("work_order_id") or ""))
+            job_kind = esc(str(model.get("job_kind") or "MAINTENANCE"))
+            juris = (str(model.get("jurisdiction") or "")).strip()
+            juris_block = (
+                f'<p style="margin: 8px 0 0 0;"><strong>Jurisdiction:</strong> {esc(juris)}</p>' if juris else ""
+            )
+            due_raw = (str(model.get("due_date") or "")).strip()
+            sla_raw = (str(model.get("sla_summary") or "")).strip()
+            due_block = ""
+            if due_raw:
+                due_block = f'<p style="margin: 8px 0 0 0;"><strong>Due:</strong> {esc(due_raw)}</p>'
+            elif sla_raw:
+                due_block = f'<p style="margin: 8px 0 0 0;">{esc(sla_raw)}</p>'
+            secure = str(model.get("secure_job_link") or "#").strip()
+            is_compl = bool(model.get("is_compliance"))
+            compliance_li = ""
+            if is_compl:
+                compliance_li = (
+                    "<li>Completion requires a certificate or proof uploaded in the platform.</li>"
+                )
+            body_inner = f"""
+            <p>You've been assigned a new job.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Job details</h2>
+            <p style="margin: 0; line-height: 1.6;">
+              <strong>Property:</strong> {prop}<br />
+              <strong>Job:</strong> {job_title}<br />
+              <strong>Work order ID:</strong> {woid}<br />
+              <strong>Job type:</strong> {job_kind}
+            </p>
+            {juris_block}
+            {due_block}
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">▶ Next step: Submit your quote</h2>
+            <p>Before any work can begin, please provide your price for this job.</p>
+            <p style="margin: 12px 0 8px 0;"><strong>Access the job securely</strong> using the button below (same link for reference):</p>
+            <p style="margin: 0;"><a href="{secure}" style="color: #00B8A9; word-break: break-all;">{esc(secure)}</a></p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">What happens next</h2>
+            <ul style="margin: 8px 0; padding-left: 20px; color: #334155; line-height: 1.6;">
+              <li>You submit your quote</li>
+              <li>The client reviews and approves</li>
+              <li>Once approved, you can schedule and carry out the work</li>
+            </ul>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Important</h2>
+            <ul style="margin: 8px 0; padding-left: 20px; color: #334155; line-height: 1.6;">
+              <li>Work cannot begin until your quote is approved</li>
+              <li>Your invoice must match the approved price</li>
+              {compliance_li}
+            </ul>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Payment</h2>
+            <p style="margin: 0; line-height: 1.6;">The client pays you directly.<br />
+            Pleerity Enterprise manages job tracking and invoice approval.</p>
+            """
+            return _customer_email_html(
+                model,
+                greeting=greeting,
+                body_html=body_inner,
+                header_title="New job — submit your quote",
+                cta_label="View job and submit quote",
+                cta_url=secure or "#",
+                why_received="you have been assigned a work order and the client requires an approved quote before work can begin.",
+                show_preferences_link=False,
+                customer_reference=None,
+            )
+        elif template_alias == EmailTemplateAlias.CONTRACTOR_QUOTE_APPROVED:
+            esc = html_module.escape
+            greeting = _format_greeting(str(model.get("contractor_name") or "").strip() or None)
+            prop = esc(str(model.get("property_address") or "See portal"))
+            job_title = esc(str(model.get("job_title") or "Work order"))
+            price_disp = esc(
+                _format_currency_amount_for_email(model.get("approved_price"), model.get("price_currency"))
+            )
+            secure = str(model.get("secure_job_link") or "#").strip()
+            next_action = esc(str(model.get("next_action") or "Schedule and carry out the agreed work."))
+            is_compl = bool(model.get("is_compliance"))
+            compliance_li = ""
+            if is_compl:
+                compliance_li = (
+                    "<li>A valid certificate or proof must be uploaded in the platform to complete the job.</li>"
+                )
+            body_inner = f"""
+            <p>Your quote has been approved.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Job details</h2>
+            <p style="margin: 0; line-height: 1.6;">
+              <strong>Property:</strong> {prop}<br />
+              <strong>Job:</strong> {job_title}
+            </p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Approved price</h2>
+            <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0B1D3A;">{price_disp}</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">▶ Next step: Proceed with the job</h2>
+            <p>You can now schedule and carry out the work.</p>
+            <p style="margin: 12px 0 8px 0; line-height: 1.6;">{next_action}</p>
+            <p style="margin: 12px 0 8px 0;"><strong>Access the job securely</strong> using the button below (link for reference):</p>
+            <p style="margin: 0;"><a href="{secure}" style="color: #00B8A9; word-break: break-all;">{esc(secure)}</a></p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Important</h2>
+            <ul style="margin: 8px 0; padding-left: 20px; color: #334155; line-height: 1.6;">
+              {compliance_li}
+              <li>Your invoice must match the approved price.</li>
+            </ul>
+            """
+            return _customer_email_html(
+                model,
+                greeting=greeting,
+                body_html=body_inner,
+                header_title="Your quote was approved",
+                cta_label="Open job",
+                cta_url=secure or "#",
+                why_received="the client approved your quote for a job assigned to you.",
+                show_preferences_link=False,
+                customer_reference=None,
+            )
+        elif template_alias == EmailTemplateAlias.CONTRACTOR_VISIT_CONFIRMED:
+            esc = html_module.escape
+            greeting = _format_greeting(str(model.get("contractor_name") or "").strip() or None)
+            prop = esc(str(model.get("property_address") or "See portal"))
+            job_title = esc(str(model.get("job_title") or "Work order"))
+            wid = esc(str(model.get("work_order_id") or ""))
+            sched_date = esc(str(model.get("scheduled_date") or ""))
+            sched_time = esc(str(model.get("scheduled_time") or ""))
+            tz_disp = esc(str(model.get("timezone") or "UTC"))
+            secure = str(model.get("secure_job_link") or "#").strip()
+            kind_note = ""
+            if model.get("is_compliance"):
+                kind_note = (
+                    '<p style="margin: 0 0 0 0; line-height: 1.6; color: #64748b; font-size: 14px;">'
+                    "This is a compliance visit—please upload the required certificate or proof when the work is complete."
+                    "</p>"
+                )
+            body_inner = f"""
+            <p>Your visit has been confirmed.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Job details</h2>
+            <p style="margin: 0; line-height: 1.6;">
+              <strong>Property:</strong> {prop}<br />
+              <strong>Job:</strong> {job_title}<br />
+              <strong>Work order:</strong> {wid}
+            </p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Scheduled time</h2>
+            <p style="margin: 0; line-height: 1.6; font-size: 16px;">
+              <strong>{sched_date} at {sched_time}</strong> ({tz_disp})
+            </p>
+            {kind_note}
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <p style="margin: 0; line-height: 1.6;">Open the job for full details and next actions.</p>
+            <p style="margin: 12px 0 0 0; line-height: 1.6;">Please attend as scheduled and update the job status when appropriate.</p>
+            """
+            return _customer_email_html(
+                model,
+                greeting=greeting,
+                body_html=body_inner,
+                header_title="Your visit is confirmed",
+                cta_label="View job",
+                cta_url=secure or "#",
+                why_received="a visit time for a job assigned to you was confirmed.",
+                show_preferences_link=False,
+                customer_reference=None,
+            )
+        elif template_alias == EmailTemplateAlias.CONTRACTOR_PROOF_REQUIRED:
+            esc = html_module.escape
+            greeting = _format_greeting(str(model.get("contractor_name") or "").strip() or None)
+            prop = esc(str(model.get("property_address") or "See portal"))
+            job_title = esc(str(model.get("job_title") or "Work order"))
+            wid = esc(str(model.get("work_order_id") or ""))
+            hint = esc(str(model.get("proof_type_hint") or "completion proof"))
+            secure = str(model.get("secure_job_link") or "#").strip()
+            is_compl = bool(model.get("is_compliance"))
+            if is_compl:
+                important_ul = (
+                    "<ul style=\"margin: 8px 0; padding-left: 20px; color: #334155; line-height: 1.6;\">"
+                    "<li>The job cannot be completed or verified without valid proof.</li>"
+                    "<li>A certificate (or required compliance document) must be uploaded for validation.</li>"
+                    "</ul>"
+                )
+            else:
+                important_ul = (
+                    "<ul style=\"margin: 8px 0; padding-left: 20px; color: #334155; line-height: 1.6;\">"
+                    "<li>The job cannot be completed or verified without valid proof.</li>"
+                    "<li>Please upload relevant evidence (photos, report, or invoice documentation) as appropriate.</li>"
+                    "</ul>"
+                )
+            body_inner = f"""
+            <p>This job requires completion proof before it can be finalised.</p>
+            <p style="margin: 12px 0 0 0; line-height: 1.6;">Upload the required evidence to continue. We are looking for: <strong>{hint}</strong>.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Job details</h2>
+            <p style="margin: 0; line-height: 1.6;">
+              <strong>Property:</strong> {prop}<br />
+              <strong>Job:</strong> {job_title}<br />
+              <strong>Work order:</strong> {wid}
+            </p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">▶ Next step: Upload proof</h2>
+            <p style="margin: 0; line-height: 1.6;">Please upload the required evidence in the job.</p>
+            <p style="margin: 12px 0 8px 0;"><strong>Access the job securely:</strong></p>
+            <p style="margin: 0;"><a href="{secure}" style="color: #00B8A9; word-break: break-all;">{esc(secure)}</a></p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Important</h2>
+            {important_ul}
+            """
+            return _customer_email_html(
+                model,
+                greeting=greeting,
+                body_html=body_inner,
+                header_title="Completion proof required",
+                cta_label="Upload proof",
+                cta_url=secure or "#",
+                why_received="your job is in a stage where completion evidence must be uploaded before it can be finalised.",
+                show_preferences_link=False,
+                customer_reference=None,
+            )
+        elif template_alias == EmailTemplateAlias.CONTRACTOR_INVOICE_READY:
+            esc = html_module.escape
+            greeting = _format_greeting(str(model.get("contractor_name") or "").strip() or None)
+            prop = esc(str(model.get("property_address") or "See portal"))
+            job_title = esc(str(model.get("job_title") or "Work order"))
+            wid = esc(str(model.get("work_order_id") or ""))
+            ap = model.get("approved_price")
+            ap_line = str(model.get("approved_price_display") or "").strip()
+            if ap_line:
+                price_disp = esc(ap_line)
+            elif ap is not None:
+                price_disp = esc(_format_currency_amount_for_email(ap, model.get("price_currency")))
+            else:
+                price_disp = esc("As agreed with your client (see job details)")
+            secure = str(model.get("secure_job_link") or "#").strip()
+            body_inner = f"""
+            <p>This job is now ready for invoicing.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Job details</h2>
+            <p style="margin: 0; line-height: 1.6;">
+              <strong>Property:</strong> {prop}<br />
+              <strong>Job:</strong> {job_title}<br />
+              <strong>Work order:</strong> {wid}
+            </p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Approved price</h2>
+            <p style="margin: 0; font-size: 18px; font-weight: 600; color: #0B1D3A;">{price_disp}</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">▶ Next step: Submit your invoice</h2>
+            <p style="margin: 0; line-height: 1.6;">Submit your invoice using the approved amount.</p>
+            <p style="margin: 12px 0 8px 0;"><strong>Access the job securely:</strong></p>
+            <p style="margin: 0;"><a href="{secure}" style="color: #00B8A9; word-break: break-all;">{esc(secure)}</a></p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <h2 style="color: #0B1D3A; font-size: 16px; margin: 0 0 12px 0;">Important</h2>
+            <ul style="margin: 8px 0; padding-left: 20px; color: #334155; line-height: 1.6;">
+              <li>Your invoice must match the approved price (or the agreed scope for this job).</li>
+              <li>The official invoice number is generated by Pleerity when you submit.</li>
+              <li>You may include your own reference on the invoice if the form allows it.</li>
+            </ul>
+            """
+            return _customer_email_html(
+                model,
+                greeting=greeting,
+                body_html=body_inner,
+                header_title="Ready for invoicing",
+                cta_label="Submit invoice",
+                cta_url=secure or "#",
+                why_received="your assigned job is now eligible for you to submit an invoice in the platform.",
+                show_preferences_link=False,
+                customer_reference=None,
+            )
         elif template_alias == EmailTemplateAlias.CLIENT_OPERATIONAL_NOTICE:
             body_html = model.get("message") or model.get("body") or "<p></p>"
             header_title = (model.get("email_header_title") or model.get("subject") or "Service notice").strip()[:200]
@@ -1424,6 +1908,315 @@ Always review the output and seek professional advice for legal matters.
             if ts:
                 lines.extend(["", str(ts)])
             return "\n".join(lines) + "\n" + footer
+        elif template_alias == EmailTemplateAlias.CLIENT_QUOTE_REVIEW_REQUIRED:
+            greet = _format_greeting(model.get("client_name"))
+            amt = _format_currency_amount_for_email(model.get("quoted_price"), model.get("price_currency"))
+            notes_raw = (str(model.get("quote_notes") or "")).strip()
+            link = str(model.get("client_job_link") or model.get("secure_client_job_link") or "#")
+            lines = [
+                greet,
+                "",
+                "A quote has been submitted for your job.",
+                "",
+                "Job details",
+                f"Property: {model.get('property_address') or 'See portal'}",
+                f"Job: {model.get('job_title') or 'Work order'}",
+                f"Contractor: {model.get('contractor_name') or 'Contractor'}",
+                f"Work order ID: {model.get('work_order_id') or ''}",
+                "",
+                "Quote summary",
+                f"Amount: {amt}",
+            ]
+            if notes_raw:
+                lines.append(f"Notes: {notes_raw}")
+            lines.extend(
+                [
+                    "",
+                    "Next step: Review and approve",
+                    "",
+                    "Work will not begin until you approve the quote in the platform.",
+                    "",
+                    "Review the quote:",
+                    link,
+                    "",
+                    "What happens next",
+                    "- Approve — the contractor can proceed with the job",
+                    "- Reject — the contractor can submit a revised quote for you to review again",
+                    "",
+                    "Important",
+                    "- Do not ask the contractor to start billable work until you have approved the quote in the portal.",
+                ]
+            )
+            return "\n".join(lines) + footer
+        elif template_alias == EmailTemplateAlias.CLIENT_PROOF_UPLOADED:
+            greet = _format_greeting(model.get("client_name"))
+            link = str(
+                model.get("client_job_link") or model.get("secure_client_job_link") or model.get("portal_link") or "#"
+            )
+            hint = str(model.get("compliance_outcome_hint") or "").strip()
+            lines = [
+                greet,
+                "",
+                "Evidence has been uploaded for your job.",
+                "",
+                "Job details",
+                f"Property: {model.get('property_address') or 'See portal'}",
+                f"Job: {model.get('job_title') or 'Work order'}",
+                f"Contractor: {model.get('contractor_name') or 'Contractor'}",
+                f"Work order ID: {model.get('work_order_id') or ''}",
+                "",
+                "Next step: Review evidence",
+                "",
+                "You can now review the uploaded evidence in your portal.",
+                "",
+                "Access your job:",
+                link,
+            ]
+            if model.get("is_compliance"):
+                lines.extend(
+                    [
+                        "",
+                        "You can review the evidence now; compliance validation may still be in progress.",
+                    ]
+                )
+            if hint:
+                lines.extend(["", hint])
+            return "\n".join(lines) + footer
+        elif template_alias == EmailTemplateAlias.CLIENT_INVOICE_REVIEW_REQUIRED:
+            greet = _format_greeting(model.get("client_name"))
+            amt = _format_currency_amount_for_email(model.get("invoice_amount"), model.get("price_currency"))
+            review_link = str(
+                model.get("invoice_review_link")
+                or model.get("secure_client_job_link")
+                or model.get("portal_link")
+                or model.get("client_job_link")
+                or "#"
+            )
+            job_link = str(model.get("client_job_link") or "#")
+            inv_no = str(model.get("invoice_number") or "").strip()
+            lines = [
+                greet,
+                "",
+                "An invoice has been submitted for your review.",
+                "",
+                "Job details",
+                f"Property: {model.get('property_address') or 'See portal'}",
+                f"Job: {model.get('job_title') or 'Work order'}",
+                f"Contractor: {model.get('contractor_name') or 'Contractor'}",
+                f"Work order ID: {model.get('work_order_id') or ''}",
+                "",
+                "Invoice summary",
+                f"Amount: {amt}",
+                f"Invoice ID: {model.get('invoice_id') or ''}",
+            ]
+            if inv_no:
+                lines.append(f"Invoice reference: {inv_no}")
+            lines.extend(
+                [
+                    "",
+                    "Next step: Review invoice",
+                    "",
+                    "Please review and approve or reject the invoice in your portal.",
+                    "",
+                    "Open Approvals:",
+                    review_link,
+                    "",
+                    f"Related job: {job_link}",
+                    "",
+                    "Important",
+                ]
+            )
+            if model.get("has_agreed_price"):
+                lines.append(
+                    "- This invoice is expected to align with the agreed quote for this job—please confirm it looks right before you approve."
+                )
+            lines.extend(
+                [
+                    "- Review the amount and description before you approve.",
+                    "- You can approve, reject, or request more information from Approvals.",
+                ]
+            )
+            return "\n".join(lines) + footer
+        elif template_alias == EmailTemplateAlias.CONTRACTOR_JOB_ASSIGNMENT_QUOTE_REQUIRED:
+            ck = model.get("contractor_name")
+            greet = _format_greeting(str(ck).strip() if ck else None)
+            lines = [
+                greet,
+                "",
+                "You've been assigned a new job.",
+                "",
+                "Job details",
+                f"Property: {model.get('property_address') or 'See portal'}",
+                f"Job: {model.get('job_title') or 'Work order'}",
+                f"Work order ID: {model.get('work_order_id') or ''}",
+                f"Job type: {model.get('job_kind') or 'MAINTENANCE'}",
+            ]
+            if (str(model.get("jurisdiction") or "")).strip():
+                lines.append(f"Jurisdiction: {model.get('jurisdiction')}")
+            if (str(model.get("due_date") or "")).strip():
+                lines.append(f"Due: {model.get('due_date')}")
+            elif (str(model.get("sla_summary") or "")).strip():
+                lines.append(str(model.get("sla_summary")))
+            lines.extend(
+                [
+                    "",
+                    "Next step: Submit your quote",
+                    "",
+                    "Before any work can begin, please provide your price for this job.",
+                    "",
+                    "Access the job securely:",
+                    str(model.get("secure_job_link") or "#"),
+                    "",
+                    "What happens next",
+                    "- You submit your quote",
+                    "- The client reviews and approves",
+                    "- Once approved, you can schedule and carry out the work",
+                    "",
+                    "Important",
+                    "- Work cannot begin until your quote is approved",
+                    "- Your invoice must match the approved price",
+                ]
+            )
+            if model.get("is_compliance"):
+                lines.append("- Completion requires a certificate or proof uploaded in the platform.")
+            lines.extend(
+                [
+                    "",
+                    "Payment",
+                    "The client pays you directly.",
+                    "Pleerity Enterprise manages job tracking and invoice approval.",
+                ]
+            )
+            return "\n".join(lines) + footer
+        elif template_alias == EmailTemplateAlias.CONTRACTOR_QUOTE_APPROVED:
+            greet = _format_greeting(str(model.get("contractor_name") or "").strip() or None)
+            amt = _format_currency_amount_for_email(model.get("approved_price"), model.get("price_currency"))
+            link = str(model.get("secure_job_link") or "#")
+            lines = [
+                greet,
+                "",
+                "Your quote has been approved.",
+                "",
+                "Job details",
+                f"Property: {model.get('property_address') or 'See portal'}",
+                f"Job: {model.get('job_title') or 'Work order'}",
+                "",
+                "Approved price",
+                amt,
+                "",
+                "Next step: Proceed with the job",
+                "",
+                "You can now schedule and carry out the work.",
+                str(model.get("next_action") or "Schedule and carry out the agreed work."),
+                "",
+                "Access the job securely:",
+                link,
+                "",
+                "Important",
+            ]
+            if model.get("is_compliance"):
+                lines.append("- A valid certificate or proof must be uploaded in the platform to complete the job.")
+            lines.append("- Your invoice must match the approved price.")
+            return "\n".join(lines) + footer
+        elif template_alias == EmailTemplateAlias.CONTRACTOR_VISIT_CONFIRMED:
+            greet = _format_greeting(str(model.get("contractor_name") or "").strip() or None)
+            tz_disp = str(model.get("timezone") or "UTC")
+            link = str(model.get("secure_job_link") or "#")
+            lines = [
+                greet,
+                "",
+                "Your visit has been confirmed.",
+                "",
+                "Job details",
+                f"Property: {model.get('property_address') or 'See portal'}",
+                f"Job: {model.get('job_title') or 'Work order'}",
+                f"Work order: {model.get('work_order_id') or ''}",
+                "",
+                "Scheduled time",
+                f"{model.get('scheduled_date') or ''} at {model.get('scheduled_time') or ''} ({tz_disp})",
+                "",
+            ]
+            if model.get("is_compliance"):
+                lines.append(
+                    "This is a compliance visit—upload the required certificate or proof when the work is complete."
+                )
+                lines.append("")
+            lines.extend(
+                [
+                    "Open the job for full details and next actions:",
+                    link,
+                    "",
+                    "Please attend as scheduled and update the job status when appropriate.",
+                ]
+            )
+            return "\n".join(lines) + footer
+        elif template_alias == EmailTemplateAlias.CONTRACTOR_PROOF_REQUIRED:
+            greet = _format_greeting(str(model.get("contractor_name") or "").strip() or None)
+            link = str(model.get("secure_job_link") or "#")
+            hint = str(model.get("proof_type_hint") or "completion proof")
+            lines = [
+                greet,
+                "",
+                "This job requires completion proof before it can be finalised.",
+                "",
+                "Upload the required evidence to continue.",
+                f"We are looking for: {hint}",
+                "",
+                "Job details",
+                f"Property: {model.get('property_address') or 'See portal'}",
+                f"Job: {model.get('job_title') or 'Work order'}",
+                f"Work order: {model.get('work_order_id') or ''}",
+                "",
+                "Next step: Upload proof",
+                "",
+                "Access the job securely:",
+                link,
+                "",
+                "Important",
+                "- The job cannot be completed or verified without valid proof.",
+            ]
+            if model.get("is_compliance"):
+                lines.append("- A certificate (or required compliance document) must be uploaded for validation.")
+            else:
+                lines.append("- Please upload relevant evidence (photos, report, or invoice documentation) as appropriate.")
+            return "\n".join(lines) + footer
+        elif template_alias == EmailTemplateAlias.CONTRACTOR_INVOICE_READY:
+            greet = _format_greeting(str(model.get("contractor_name") or "").strip() or None)
+            link = str(model.get("secure_job_link") or "#")
+            ap = model.get("approved_price")
+            ap_line = str(model.get("approved_price_display") or "").strip()
+            if ap_line:
+                price_line = ap_line
+            elif ap is not None:
+                price_line = _format_currency_amount_for_email(ap, model.get("price_currency"))
+            else:
+                price_line = "As agreed with your client (see job details)"
+            lines = [
+                greet,
+                "",
+                "This job is now ready for invoicing.",
+                "",
+                "Job details",
+                f"Property: {model.get('property_address') or 'See portal'}",
+                f"Job: {model.get('job_title') or 'Work order'}",
+                f"Work order: {model.get('work_order_id') or ''}",
+                "",
+                "Approved price",
+                price_line,
+                "",
+                "Next step: Submit your invoice",
+                "",
+                "Submit your invoice using the approved amount.",
+                "",
+                "Access the job securely:",
+                link,
+                "",
+                "Important",
+                "- Your invoice must match the approved price (or the agreed scope for this job).",
+                "- The official invoice number is generated by Pleerity when you submit.",
+                "- You may include your own reference on the invoice if the form allows it.",
+            ]
+            return "\n".join(lines) + footer
         elif template_alias == EmailTemplateAlias.CLIENT_OPERATIONAL_NOTICE:
             subj = (model.get("subject") or "Service notice").strip()
             plain = (model.get("text_message") or "").strip() or _strip_html_to_text(str(model.get("message") or ""))

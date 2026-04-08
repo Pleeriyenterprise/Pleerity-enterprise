@@ -559,6 +559,13 @@ export const clientAPI = {
     apiClient.post(`/jobs/${encodeURIComponent(jobId)}/operational-exception`, { exception: exception || '' }),
   complianceJobResumeAfterParts: (jobId) =>
     apiClient.post(`/jobs/${encodeURIComponent(jobId)}/resume-after-parts`, {}),
+  complianceJobSubmitQuote: (jobId, body) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/submit-quote`, body),
+  complianceJobApproveQuote: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/approve-quote`, {}),
+  complianceJobRejectQuote: (jobId, body) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/reject-quote`, body ?? {}),
+  complianceJobMarkInspectionComplete: (jobId) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/mark-inspection-complete`, {}),
   complianceJobCreatePersonalContractorAndAssign: (jobId, body) =>
     apiClient.post(`/jobs/${encodeURIComponent(jobId)}/create-personal-contractor-and-assign`, body),
   requestDocumentValidation: (documentId) => apiClient.post(`/documents/${encodeURIComponent(documentId)}/validate`, {}),
@@ -839,6 +846,10 @@ export function createContractorAPI(accessToken) {
     getScheduleIcs: (workOrderId) =>
       apiClient.get(`/contractor/work-orders/${workOrderId}/schedule/ics`, { headers, responseType: 'blob' }),
     postWorkflowUsage: (body) => apiClient.post('/contractor/workflow-usage', body, { headers }),
+    submitJobQuote: (workOrderId, body) =>
+      apiClient.post(`/jobs/${encodeURIComponent(workOrderId)}/submit-quote`, body, { headers }),
+    markJobInspectionComplete: (workOrderId) =>
+      apiClient.post(`/jobs/${encodeURIComponent(workOrderId)}/mark-inspection-complete`, {}, { headers }),
   };
 }
 
@@ -871,5 +882,7 @@ export function createJobLinkAPI(jobToken) {
     markNoAccess: (body = {}) => apiClient.post('/job/work-order/mark-no-access', body, config()),
     getScheduleIcs: () => apiClient.get('/job/work-order/schedule/ics', { ...config(), responseType: 'blob' }),
     postWorkflowUsage: (body) => apiClient.post('/job/workflow-usage', body, config()),
+    submitQuote: (body) => apiClient.post('/job/submit-quote', body, config()),
+    markInspectionComplete: () => apiClient.post('/job/mark-inspection-complete', {}, config()),
   };
 }

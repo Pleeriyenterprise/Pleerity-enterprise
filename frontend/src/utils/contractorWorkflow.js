@@ -317,6 +317,8 @@ const CONTRACTOR_PUSH_ACTION_IDS = new Set([
   'upload_completion_proof',
   'submit_invoice',
   'edit_invoice',
+  'submit_quote',
+  'mark_inspection_complete',
   'start_job',
   'resume_job',
   'complete_job',
@@ -394,6 +396,7 @@ export const CONTRACTOR_DETAIL_JOB_ACTION_IDS = new Set([
   'awaiting_parts',
   'resume_job',
   'complete_job',
+  'mark_inspection_complete',
 ]);
 
 /**

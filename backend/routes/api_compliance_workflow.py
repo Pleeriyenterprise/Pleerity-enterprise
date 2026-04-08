@@ -11,11 +11,11 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel, Field
 
 from database import database
-from middleware import client_route_guard
+from middleware import client_route_guard, contractor_route_guard
 from models import AuditAction
 from routes.documents import _enforce_document_upload_rate_limit, perform_client_document_upload
 from services import contractor_service
@@ -38,6 +38,13 @@ from services.today_projection_service import build_today_payload_from_unified
 from services.unified_tasks_service import get_unified_tasks_for_client
 from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE, WORK_ORDER_KIND_MAINTENANCE
 from services.work_order_schedule_constants import SCHEDULE_ACTOR_CLIENT
+from routes.contractor_job import get_job_context
+from services.work_order_pricing_service import (
+    approve_quote_for_work_order,
+    mark_inspection_complete_for_work_order,
+    reject_quote_for_work_order,
+    submit_quote_for_work_order,
+)
 from utils.audit import create_audit_log
 from utils.expiry_utils import get_computed_status
 
@@ -77,6 +84,25 @@ async def _require_maintenance_workflows(request: Request) -> Dict[str, Any]:
 
 def _actor_id(user: Dict[str, Any]) -> Optional[str]:
     return user.get("portal_user_id") or user.get("email") or user.get("user_id")
+
+
+async def _resolve_contractor_for_job_pricing(request: Request, job_id: str) -> Dict[str, str]:
+    """Contractor JWT or job token (?token= / X-Job-Token); validates assignment to job_id."""
+    raw_q = (request.query_params.get("token") or "").strip()
+    raw_h = (request.headers.get("X-Job-Token") or "").strip()
+    if raw_q or raw_h:
+        ctx = await get_job_context(token=raw_q or None, x_job_token=raw_h or None)
+        if (ctx.get("work_order_id") or "").strip() != job_id.strip():
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Job link does not match this job")
+        return {"contractor_id": ctx["contractor_id"], "work_order_id": ctx["work_order_id"]}
+    user = await contractor_route_guard(request)
+    cid = (user.get("contractor_id") or "").strip()
+    if not cid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor access required")
+    wo = await maintenance_service.get_work_order(job_id.strip())
+    if not wo or (wo.get("contractor_id") or "").strip() != cid:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    return {"contractor_id": cid, "work_order_id": job_id.strip()}
 
 
 def _assignment_profile_for_work_order(wo: Dict[str, Any]) -> str:
@@ -857,6 +883,84 @@ async def job_complete(request: Request, job_id: str, user: Dict[str, Any] = Dep
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
     return serialize_client_job(fresh) if fresh else {}
+
+
+class SubmitJobQuoteBody(BaseModel):
+    amount: float = Field(..., gt=0)
+    currency: str = Field(default="GBP", max_length=12)
+    notes: Optional[str] = Field(None, max_length=4000)
+
+
+@router.post("/jobs/{job_id}/submit-quote")
+async def job_submit_quote(request: Request, job_id: str, body: SubmitJobQuoteBody):
+    """Contractor (portal JWT or secure job link): propose / revise quote after rejection."""
+    ctx = await _resolve_contractor_for_job_pricing(request, job_id.strip())
+    try:
+        await submit_quote_for_work_order(
+            ctx["work_order_id"],
+            ctx["contractor_id"],
+            amount=body.amount,
+            currency=body.currency or "GBP",
+            notes=body.notes,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    wo = await maintenance_service.get_work_order(job_id.strip())
+    if not wo:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return serialize_client_job(wo)
+
+
+class RejectQuoteBody(BaseModel):
+    reason: Optional[str] = Field(None, max_length=2000)
+
+
+@router.post("/jobs/{job_id}/approve-quote")
+async def job_approve_quote(request: Request, job_id: str, user: Dict[str, Any] = Depends(_require_maintenance_workflows)):
+    try:
+        await approve_quote_for_work_order(
+            job_id.strip(),
+            user["client_id"],
+            actor_id=_actor_id(user),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
+    return serialize_client_job(fresh) if fresh else {}
+
+
+@router.post("/jobs/{job_id}/reject-quote")
+async def job_reject_quote(
+    request: Request,
+    job_id: str,
+    user: Dict[str, Any] = Depends(_require_maintenance_workflows),
+    body: RejectQuoteBody = Body(default_factory=RejectQuoteBody),
+):
+    try:
+        await reject_quote_for_work_order(
+            job_id.strip(),
+            user["client_id"],
+            reason=body.reason,
+            actor_id=_actor_id(user),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
+    return serialize_client_job(fresh) if fresh else {}
+
+
+@router.post("/jobs/{job_id}/mark-inspection-complete")
+async def job_mark_inspection_complete(request: Request, job_id: str):
+    """Maintenance inspection-first jobs: contractor confirms inspection visit is done (then submit quote)."""
+    ctx = await _resolve_contractor_for_job_pricing(request, job_id.strip())
+    try:
+        await mark_inspection_complete_for_work_order(ctx["work_order_id"], ctx["contractor_id"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    wo = await maintenance_service.get_work_order(job_id.strip())
+    if not wo:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return serialize_client_job(wo)
 
 
 class LinkDocumentBody(BaseModel):

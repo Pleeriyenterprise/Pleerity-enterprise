@@ -207,11 +207,12 @@ class CompliancePackService:
             {"_id": 0, "full_name": 1, "company_name": 1, "customer_reference": 1}
         )
         
-        # Get requirements
+        # Get requirements (tenants see the full picture, including overdue rows)
+        tenant_view = (requested_by_role or "").strip().upper() in ("ROLE_TENANT", "TENANT")
         req_filter = {"property_id": property_id, "client_id": client_id}
-        if not include_expired:
+        if not tenant_view and not include_expired:
             req_filter["status"] = {"$ne": "OVERDUE"}
-        
+
         requirements = await db.requirements.find(
             req_filter,
             {"_id": 0}
@@ -231,7 +232,11 @@ class CompliancePackService:
             if req_id not in doc_map:
                 doc_map[req_id] = []
             doc_map[req_id].append(doc)
-        
+
+        compliant_count = sum(1 for r in requirements if r.get('status') == 'COMPLIANT')
+        expiring_count = sum(1 for r in requirements if r.get('status') == 'EXPIRING_SOON')
+        overdue_count = sum(1 for r in requirements if r.get('status') == 'OVERDUE')
+
         # Generate PDF
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
@@ -251,7 +256,48 @@ class CompliancePackService:
             f"Generated on {datetime.now(timezone.utc).strftime('%d %B %Y at %H:%M UTC')}",
             self.styles['PackSubtitle']
         ))
-        
+
+        if tenant_view:
+            story.append(Paragraph("Property safety summary", self.styles['SectionHeader']))
+            if overdue_count == 0 and expiring_count == 0:
+                story.append(Paragraph(
+                    "<b>Current status:</b> Your property safety checks look up to date from what we hold on file.",
+                    self.styles['Normal']
+                ))
+                story.append(Spacer(1, 3 * mm))
+                story.append(Paragraph(
+                    "<b>What this means:</b> We are not showing any overdue or soon-to-expire items here. "
+                    "If something changes, your landlord is responsible for keeping records current.",
+                    self.styles['CertificateDetail']
+                ))
+            else:
+                status_line = (
+                    "<b>Current status:</b> Some safety checks need attention."
+                    if overdue_count > 0
+                    else "<b>Current status:</b> Some safety checks will need renewal soon."
+                )
+                story.append(Paragraph(status_line, self.styles['Normal']))
+                story.append(Spacer(1, 3 * mm))
+                if overdue_count > 0:
+                    mean_txt = (
+                        "Some safety checks are overdue or pending on our records. "
+                        "Renewing them is your landlord's responsibility."
+                    )
+                else:
+                    mean_txt = (
+                        "One or more checks are coming up for renewal. "
+                        "Your landlord is expected to arrange this in good time."
+                    )
+                story.append(Paragraph(f"<b>What this means:</b> {mean_txt}", self.styles['CertificateDetail']))
+                story.append(Spacer(1, 2 * mm))
+                story.append(Paragraph(
+                    "<b>What you can do:</b><br/>"
+                    "• Contact your landlord if you are worried or need an update<br/>"
+                    "• Report a concern through your tenant portal if something in the home feels unsafe",
+                    self.styles['CertificateDetail']
+                ))
+            story.append(Spacer(1, 8 * mm))
+
         # Property Info
         address = f"{property_doc.get('address_line_1', '')}"
         if property_doc.get('address_line_2'):
@@ -269,14 +315,18 @@ class CompliancePackService:
         
         # Compliance Status Summary
         story.append(Spacer(1, 10*mm))
-        
-        compliant_count = sum(1 for r in requirements if r.get('status') == 'COMPLIANT')
-        expiring_count = sum(1 for r in requirements if r.get('status') == 'EXPIRING_SOON')
-        overdue_count = sum(1 for r in requirements if r.get('status') == 'OVERDUE')
-        
-        overall_status = "FULLY COMPLIANT" if overdue_count == 0 and expiring_count == 0 else (
-            "ATTENTION NEEDED" if overdue_count == 0 else "ACTION REQUIRED"
-        )
+
+        if tenant_view:
+            if overdue_count == 0 and expiring_count == 0:
+                overall_status = "Up to date"
+            elif overdue_count == 0:
+                overall_status = "Some renewals due soon"
+            else:
+                overall_status = "Some checks need attention"
+        else:
+            overall_status = "FULLY COMPLIANT" if overdue_count == 0 and expiring_count == 0 else (
+                "ATTENTION NEEDED" if overdue_count == 0 else "ACTION REQUIRED"
+            )
         
         status_table_data = [
             ["Overall Status", overall_status],

@@ -108,7 +108,12 @@ export default function PropertyDetailPage() {
   const [riskSignalsLoading, setRiskSignalsLoading] = useState(false);
   const [riskSignalsRecalculating, setRiskSignalsRecalculating] = useState(false);
   const [createWoOpen, setCreateWoOpen] = useState(false);
-  const [createWoForm, setCreateWoForm] = useState({ description: '', category: 'general', severity: 'medium' });
+  const [createWoForm, setCreateWoForm] = useState({
+    description: '',
+    category: 'general',
+    severity: 'medium',
+    inspection_required: false,
+  });
   const [createWoSaving, setCreateWoSaving] = useState(false);
   const [maintenanceIssues, setMaintenanceIssues] = useState([]);
   const [maintenanceIssuesLoading, setMaintenanceIssuesLoading] = useState(false);
@@ -524,11 +529,12 @@ export default function PropertyDetailPage() {
       description: createWoForm.description.trim(),
       category: createWoForm.category || undefined,
       severity: createWoForm.severity || undefined,
+      ...(createWoForm.inspection_required ? { inspection_required: true } : {}),
     })
       .then(() => {
         toast.success('Work order created');
         setCreateWoOpen(false);
-        setCreateWoForm({ description: '', category: 'general', severity: 'medium' });
+        setCreateWoForm({ description: '', category: 'general', severity: 'medium', inspection_required: false });
         loadWorkOrders();
       })
       .catch((err) => toast.error(err?.response?.data?.detail || 'Create failed'))
@@ -1776,6 +1782,22 @@ export default function PropertyDetailPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
                     <textarea value={createWoForm.description} onChange={(e) => setCreateWoForm((f) => ({ ...f, description: e.target.value }))} className="border border-gray-300 rounded-md px-3 py-2 w-full" rows={3} placeholder="Describe the issue..." required />
+                  </div>
+                  <div className="flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50/80 p-3">
+                    <input
+                      id="create-wo-inspection-required"
+                      type="checkbox"
+                      className="mt-1"
+                      checked={!!createWoForm.inspection_required}
+                      onChange={(e) => setCreateWoForm((f) => ({ ...f, inspection_required: e.target.checked }))}
+                    />
+                    <label htmlFor="create-wo-inspection-required" className="text-sm text-gray-700 cursor-pointer">
+                      <span className="font-medium">Inspection before quote</span>
+                      <span className="block text-xs text-gray-600 mt-0.5">
+                        Contractor inspects first; repair price is agreed only after they submit a quote and you approve it in the
+                        portal.
+                      </span>
+                    </label>
                   </div>
                   <div className="flex gap-2 pt-2">
                     <Button type="submit" disabled={createWoSaving} className="bg-electric-teal hover:bg-electric-teal/90">{createWoSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create'}</Button>

@@ -40,6 +40,7 @@ from services import work_order_schedule_service as wo_schedule
 from services.work_order_schedule_constants import SCHEDULE_ACTOR_CONTRACTOR
 from services.contractor_work_order_status_policy import validate_contractor_status_patch
 from services.compliance_workflow_service import apply_contractor_job_enrichment
+from services.work_order_pricing_service import mark_inspection_complete_for_work_order, submit_quote_for_work_order
 from services.contractor_workflow_usage_service import WORKFLOW_USAGE_EVENT_TO_ACTION, log_contractor_workflow_usage
 import logging
 
@@ -680,11 +681,56 @@ async def decline_assignment(request: Request, ctx: dict = Depends(job_context_d
 
 
 class SubmitInvoiceBody(BaseModel):
-    reference: str = Field(..., min_length=1)
+    reference: Optional[str] = Field(None, max_length=500)
+    contractor_reference: Optional[str] = Field(None, max_length=500)
     description: Optional[str] = None
     submitted_amount: float = Field(..., gt=0)
     currency: Optional[str] = "GBP"
     attachment_storage_key: Optional[str] = None
+
+
+class JobLinkSubmitQuoteBody(BaseModel):
+    amount: float = Field(..., gt=0)
+    currency: str = Field(default="GBP", max_length=12)
+    notes: Optional[str] = Field(None, max_length=4000)
+
+
+@router.post("/submit-quote")
+async def job_link_submit_quote(request: Request, body: JobLinkSubmitQuoteBody, ctx: dict = Depends(job_context_dep)):
+    work_order_id = ctx["work_order_id"]
+    contractor_id = ctx["contractor_id"]
+    try:
+        await submit_quote_for_work_order(
+            work_order_id,
+            contractor_id,
+            amount=body.amount,
+            currency=body.currency or "GBP",
+            notes=body.notes,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo:
+        _raise_job_work_order_not_found()
+    inv = await invoice_service.contractor_best_invoice_for_work_order(contractor_id, work_order_id)
+    apply_contractor_job_enrichment(wo, invoice=inv)
+    return wo
+
+
+@router.post("/mark-inspection-complete")
+async def job_link_mark_inspection_complete(request: Request, ctx: dict = Depends(job_context_dep)):
+    work_order_id = ctx["work_order_id"]
+    contractor_id = ctx["contractor_id"]
+    try:
+        await mark_inspection_complete_for_work_order(work_order_id, contractor_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo:
+        _raise_job_work_order_not_found()
+    inv = await invoice_service.contractor_best_invoice_for_work_order(contractor_id, work_order_id)
+    apply_contractor_job_enrichment(wo, invoice=inv)
+    return wo
 
 
 @router.post("/invoices")
@@ -704,6 +750,7 @@ async def submit_invoice(request: Request, body: SubmitInvoiceBody, ctx: dict = 
             wo,
             contractor_id,
             reference=body.reference,
+            contractor_reference=body.contractor_reference,
             description=body.description,
             submitted_amount=body.submitted_amount,
             currency=body.currency or "GBP",

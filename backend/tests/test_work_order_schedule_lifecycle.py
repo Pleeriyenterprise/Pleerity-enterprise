@@ -58,6 +58,8 @@ class FakeScheduleMongo:
         )
         self.db.clients.find_one = AsyncMock(return_value={"email": "client@example.com", "contact_email": None})
         self.db.contractors.find_one = AsyncMock(return_value={"email": "contractor@example.com"})
+        self.db.contractor_job_tokens = MagicMock()
+        self.db.contractor_job_tokens.insert_one = AsyncMock(return_value=None)
         self.db.work_orders.find_one = self._work_orders_find_one
         self.db.work_orders.find_one_and_update = self._work_orders_find_one_and_update
         self.db.work_orders.find = self._work_orders_find
@@ -235,16 +237,22 @@ async def test_scenario_a_client_proposes_contractor_confirms_reminder_sent():
         assert notification_orchestrator.send.await_count == 3
         k2 = _kwargs(notification_orchestrator.send.await_args_list[1])
         k3 = _kwargs(notification_orchestrator.send.await_args_list[2])
-        assert {k2["context"]["recipient"], k3["context"]["recipient"]} == {
-            "client@example.com",
-            "contractor@example.com",
-        }
-        assert k2["event_type"] == AUDIT_EVENT_SCHEDULE_CONFIRMED
-        assert "attachments" in k2["context"]
-        assert "attachments" in k3["context"]
-        att = k2["context"]["attachments"][0]
+        by_recip = {k2["context"]["recipient"]: k2, k3["context"]["recipient"]: k3}
+        assert set(by_recip) == {"client@example.com", "contractor@example.com"}
+        cl = by_recip["client@example.com"]
+        co = by_recip["contractor@example.com"]
+        assert cl["template_key"] == "ADMIN_MANUAL"
+        assert cl["event_type"] == AUDIT_EVENT_SCHEDULE_CONFIRMED
+        assert "attachments" in cl["context"]
+        att = cl["context"]["attachments"][0]
         ics_raw = base64.b64decode(att["Content"])
         assert b"BEGIN:VCALENDAR" in ics_raw
+        assert co["template_key"] == "CONTRACTOR_VISIT_CONFIRMED"
+        assert co["event_type"] == "CONTRACTOR_VISIT_CONFIRMED"
+        assert co["idempotency_key"].startswith("contractor_visit_confirmed:wo-a:")
+        assert "attachments" in co["context"]
+        assert co["context"].get("scheduled_start") and co["context"].get("scheduled_end")
+        assert co["context"].get("secure_job_link")
 
         # Move visit into reminder window (job filters by time, not the initial +7d proposal)
         fake.wo["scheduled_at"] = (datetime.now(timezone.utc) + timedelta(hours=12)).replace(microsecond=0).isoformat()

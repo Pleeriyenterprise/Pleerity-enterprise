@@ -858,6 +858,86 @@ class NotificationOrchestrator:
             text = svc._build_text_body(EmailTemplateAlias.CLIENT_OPERATIONAL_NOTICE, model)
             subj = (context.get("subject") or default_subject).strip()
             return html, text, subj
+        if alias_str == "client-quote-review-required":
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.CLIENT_QUOTE_REVIEW_REQUIRED, model)
+            text = svc._build_text_body(EmailTemplateAlias.CLIENT_QUOTE_REVIEW_REQUIRED, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
+        if alias_str == "client-proof-uploaded":
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.CLIENT_PROOF_UPLOADED, model)
+            text = svc._build_text_body(EmailTemplateAlias.CLIENT_PROOF_UPLOADED, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
+        if alias_str == "client-invoice-review-required":
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.CLIENT_INVOICE_REVIEW_REQUIRED, model)
+            text = svc._build_text_body(EmailTemplateAlias.CLIENT_INVOICE_REVIEW_REQUIRED, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
+        if alias_str == "contractor-job-assignment-quote-required":
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.CONTRACTOR_JOB_ASSIGNMENT_QUOTE_REQUIRED, model)
+            text = svc._build_text_body(EmailTemplateAlias.CONTRACTOR_JOB_ASSIGNMENT_QUOTE_REQUIRED, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
+        if alias_str == "contractor-quote-approved":
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.CONTRACTOR_QUOTE_APPROVED, model)
+            text = svc._build_text_body(EmailTemplateAlias.CONTRACTOR_QUOTE_APPROVED, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
+        if alias_str == "contractor-visit-confirmed":
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.CONTRACTOR_VISIT_CONFIRMED, model)
+            text = svc._build_text_body(EmailTemplateAlias.CONTRACTOR_VISIT_CONFIRMED, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
+        if alias_str == "contractor-proof-required":
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.CONTRACTOR_PROOF_REQUIRED, model)
+            text = svc._build_text_body(EmailTemplateAlias.CONTRACTOR_PROOF_REQUIRED, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
+        if alias_str == "contractor-invoice-ready":
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.CONTRACTOR_INVOICE_READY, model)
+            text = svc._build_text_body(EmailTemplateAlias.CONTRACTOR_INVOICE_READY, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
         # Monthly digest: always code-built (action email + PDF); avoids DB template placeholder leakage.
         if alias_str == "monthly-digest":
             from services.email_service import EmailService

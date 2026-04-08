@@ -8,6 +8,8 @@ import base64
 import logging
 import os
 import re
+
+from auth import generate_secure_token, hash_token
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -37,6 +39,53 @@ from utils.public_app_url import get_frontend_base_url
 logger = logging.getLogger(__name__)
 
 TERMINAL_WO_STATUSES = frozenset({"CANCELLED", "COMPLETED", "CLOSED", "VERIFIED"})
+
+
+def _contractor_job_token_ttl_days() -> int:
+    raw = (os.getenv("CONTRACTOR_JOB_TOKEN_TTL_DAYS") or "").strip()
+    if not raw:
+        return 30
+    try:
+        n = int(raw)
+        return max(1, min(n, 365))
+    except ValueError:
+        return 30
+
+
+def _visit_window_iso_for_dedupe(wo: Dict[str, Any]) -> Tuple[str, str]:
+    """UTC start/end (60-minute window, same as ICS) for idempotency keys."""
+    raw = (wo.get("scheduled_at") or "").strip()
+    if not raw:
+        return "", ""
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return "", ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    dt = dt.astimezone(timezone.utc).replace(microsecond=0)
+    end = (dt + timedelta(minutes=60)).replace(microsecond=0)
+    return dt.isoformat(), end.isoformat()
+
+
+def _visit_local_date_time(scheduled_at_utc_iso: str, tz_name: str) -> Tuple[str, str]:
+    try:
+        dt = datetime.fromisoformat(scheduled_at_utc_iso.replace("Z", "+00:00"))
+    except ValueError:
+        return "", ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    dt = dt.astimezone(timezone.utc)
+    tn = (tz_name or "").strip() or "UTC"
+    try:
+        zi = ZoneInfo(tn)
+    except ZoneInfoNotFoundError:
+        zi = ZoneInfo("UTC")
+        tn = "UTC"
+    local = dt.astimezone(zi)
+    scheduled_date = f"{local.day} {local.strftime('%B %Y')}"
+    scheduled_time = local.strftime("%H:%M")
+    return scheduled_date, scheduled_time
 
 
 def _disallow_past_schedules() -> bool:
@@ -248,6 +297,96 @@ async def _send_schedule_emails(
             )
         except Exception as e:
             logger.warning("Schedule notification send failed (%s): %s", to, e)
+
+
+async def _send_contractor_visit_confirmed_email(
+    wo: Dict[str, Any],
+    *,
+    property_label: str,
+    attachments: Optional[List[Dict[str, Any]]] = None,
+) -> None:
+    """Branded contractor reminder when a proposed visit is confirmed (orchestrator + message_logs)."""
+    cid = (wo.get("client_id") or "").strip()
+    wid = (wo.get("work_order_id") or "").strip()
+    ctr = (wo.get("contractor_id") or "").strip()
+    if not cid or not wid or not ctr:
+        return
+    sat = (wo.get("scheduled_at") or "").strip()
+    tz_nm = (wo.get("scheduled_timezone") or "").strip()
+    if not sat or not tz_nm:
+        return
+    db = database.get_db()
+    contractor = await db.contractors.find_one(
+        {"contractor_id": ctr},
+        {"_id": 0, "email": 1, "name": 1, "company_name": 1},
+    )
+    to_email = (contractor or {}).get("email") if contractor else None
+    if not to_email or not str(to_email).strip():
+        return
+    contractor_disp = (
+        (str((contractor or {}).get("name") or "").strip())
+        or (str((contractor or {}).get("company_name") or "").strip())
+        or None
+    )
+    start_iso, end_iso = _visit_window_iso_for_dedupe(wo)
+    if not start_iso or not end_iso:
+        return
+    scheduled_date, scheduled_time = _visit_local_date_time(sat, tz_nm)
+    job_link_final = "See portal"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    try:
+        raw_token = generate_secure_token()
+        token_hash = hash_token(raw_token)
+        expires_at = (
+            datetime.now(timezone.utc) + timedelta(days=_contractor_job_token_ttl_days())
+        ).isoformat()
+        await db.contractor_job_tokens.insert_one(
+            {
+                "token_hash": token_hash,
+                "work_order_id": wid,
+                "contractor_id": ctr,
+                "created_at": now_iso,
+                "expires_at": expires_at,
+                "revoked_at": None,
+            }
+        )
+        base_url = get_frontend_base_url().rstrip("/")
+        job_link_final = f"{base_url}/job?token={raw_token}"
+    except Exception as exc:
+        logger.warning("Contractor visit-confirmed email: job token failed (non-fatal): %s", exc)
+
+    kind = (wo.get("work_order_kind") or "").strip().upper()
+    is_compliance = kind == WORK_ORDER_KIND_COMPLIANCE
+    from services.notification_orchestrator import notification_orchestrator
+
+    idem = f"contractor_visit_confirmed:{wid}:{start_iso}:{end_iso}"
+    ctx: Dict[str, Any] = {
+        "recipient": str(to_email).strip(),
+        "subject": "Your visit is confirmed",
+        "contractor_name": contractor_disp or "",
+        "property_address": (property_label or "").strip() or "Property",
+        "job_title": (wo.get("description") or "Work order")[:200],
+        "work_order_id": wid,
+        "scheduled_start": start_iso,
+        "scheduled_end": end_iso,
+        "timezone": tz_nm,
+        "scheduled_date": scheduled_date,
+        "scheduled_time": scheduled_time,
+        "secure_job_link": job_link_final,
+        "is_compliance": is_compliance,
+    }
+    if attachments:
+        ctx["attachments"] = attachments
+    try:
+        await notification_orchestrator.send(
+            template_key="CONTRACTOR_VISIT_CONFIRMED",
+            client_id=cid,
+            context=ctx,
+            idempotency_key=idem,
+            event_type="CONTRACTOR_VISIT_CONFIRMED",
+        )
+    except Exception as e:
+        logger.warning("Contractor visit-confirmed notification failed: %s", e)
 
 
 def _schedule_summary_html(wo: Dict[str, Any], prop_label: str) -> str:
@@ -487,16 +626,21 @@ async def confirm_schedule(
         + "<p>A calendar file (.ics) is attached. You can also download it again from your client or contractor portal "
         "(Work orders → visit details).</p>"
     )
-    rec = [e for e in [client_em, contr_em] if e]
-    if rec:
+    if client_em:
         await _send_schedule_emails(
             template_key="ADMIN_MANUAL",
             client_id=cid,
-            recipients=rec,
+            recipients=[client_em],
             subject=subj,
             html=body,
             idempotency_prefix=f"sch_conf_{work_order_id}",
             event_type=AUDIT_EVENT_SCHEDULE_CONFIRMED,
+            attachments=attachments,
+        )
+    if contr_em:
+        await _send_contractor_visit_confirmed_email(
+            merged,
+            property_label=prop_label,
             attachments=attachments,
         )
     return res

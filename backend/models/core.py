@@ -437,6 +437,9 @@ class AuditAction(str, Enum):
     WORK_ORDER_SCHEDULE_RESCHEDULE_REQUESTED = "WORK_ORDER_SCHEDULE_RESCHEDULE_REQUESTED"
     WORK_ORDER_SCHEDULE_CANCELLED = "WORK_ORDER_SCHEDULE_CANCELLED"
     WORK_ORDER_SCHEDULE_REMINDER_SENT = "WORK_ORDER_SCHEDULE_REMINDER_SENT"
+    # Work order pricing (client approve / reject contractor quote)
+    WORK_ORDER_QUOTE_APPROVED_BY_CLIENT = "WORK_ORDER_QUOTE_APPROVED_BY_CLIENT"
+    WORK_ORDER_QUOTE_REJECTED_BY_CLIENT = "WORK_ORDER_QUOTE_REJECTED_BY_CLIENT"
     # Compliance execution (inspection / renewal / certification work orders — not maintenance repair)
     COMPLIANCE_EXECUTION_BOOKING_REQUESTED = "COMPLIANCE_EXECUTION_BOOKING_REQUESTED"
     COMPLIANCE_EXECUTION_WORK_ORDER_CREATED = "COMPLIANCE_EXECUTION_WORK_ORDER_CREATED"
@@ -482,6 +485,22 @@ class EmailTemplateAlias(str, Enum):
     CLEARFORM_WELCOME = "clearform-welcome"  # ClearForm account creation
     # Branded operational message from admin communications (uses customer email layout + branding resolver)
     CLIENT_OPERATIONAL_NOTICE = "client-operational-notice"
+    # Client: contractor submitted a quote — review / approve (unified customer layout + branding)
+    CLIENT_QUOTE_REVIEW_REQUIRED = "client-quote-review-required"
+    # Client: contractor uploaded job evidence / proof (unified customer layout + branding)
+    CLIENT_PROOF_UPLOADED = "client-proof-uploaded"
+    # Client: contractor submitted invoice for approval (unified customer layout + branding)
+    CLIENT_INVOICE_REVIEW_REQUIRED = "client-invoice-review-required"
+    # Contractor: assigned with quote required before work (unified customer layout + branding)
+    CONTRACTOR_JOB_ASSIGNMENT_QUOTE_REQUIRED = "contractor-job-assignment-quote-required"
+    # Contractor: client approved quote — proceed with work (unified customer layout + branding)
+    CONTRACTOR_QUOTE_APPROVED = "contractor-quote-approved"
+    # Contractor: visit time confirmed (unified customer layout + branding)
+    CONTRACTOR_VISIT_CONFIRMED = "contractor-visit-confirmed"
+    # Contractor: completion proof needed before finalising (unified customer layout + branding)
+    CONTRACTOR_PROOF_REQUIRED = "contractor-proof-required"
+    # Contractor: job eligible to submit invoice (unified customer layout + branding)
+    CONTRACTOR_INVOICE_READY = "contractor-invoice-ready"
 
 
 class ReportScheduleFrequency(str, Enum):

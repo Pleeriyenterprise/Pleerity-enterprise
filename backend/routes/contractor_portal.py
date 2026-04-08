@@ -568,7 +568,8 @@ async def decline_assignment(request: Request, work_order_id: str):
 
 class SubmitInvoiceBody(BaseModel):
     work_order_id: str
-    reference: str = Field(..., min_length=1)
+    reference: Optional[str] = Field(None, max_length=500)
+    contractor_reference: Optional[str] = Field(None, max_length=500)
     description: Optional[str] = None
     submitted_amount: float = Field(..., gt=0)
     currency: Optional[str] = "GBP"
@@ -576,7 +577,8 @@ class SubmitInvoiceBody(BaseModel):
 
 
 class ResubmitInvoiceBody(BaseModel):
-    reference: str = Field(..., min_length=1)
+    reference: Optional[str] = Field(None, max_length=500)
+    contractor_reference: Optional[str] = Field(None, max_length=500)
     description: Optional[str] = None
     submitted_amount: float = Field(..., gt=0)
     currency: Optional[str] = "GBP"
@@ -599,6 +601,7 @@ async def submit_invoice(request: Request, body: SubmitInvoiceBody):
             wo,
             contractor_id,
             reference=body.reference,
+            contractor_reference=body.contractor_reference,
             description=body.description,
             submitted_amount=body.submitted_amount,
             currency=body.currency or "GBP",
@@ -630,6 +633,7 @@ async def resubmit_invoice(request: Request, invoice_id: str, body: ResubmitInvo
             invoice_id,
             contractor_id,
             reference=body.reference,
+            contractor_reference=body.contractor_reference,
             description=body.description,
             submitted_amount=body.submitted_amount,
             currency=body.currency or "GBP",

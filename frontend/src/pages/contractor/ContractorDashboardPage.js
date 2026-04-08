@@ -57,6 +57,7 @@ import {
   formatContractorInvoiceStateLabel,
 } from '../../utils/contractorWorkflow';
 import { fireContractorWorkflowUsage } from '../../utils/contractorWorkflowUsage';
+import { invoiceDisplayLabel } from '../../utils/invoiceDisplay';
 
 function contractorDebugLog(event, payload) {
   if (typeof window === 'undefined') return;
@@ -120,6 +121,9 @@ export default function ContractorDashboardPage() {
   const [invoiceModal, setInvoiceModal] = useState(null);
   const [invoiceForm, setInvoiceForm] = useState({ reference: '', description: '', submitted_amount: '' });
   const [invoiceSaving, setInvoiceSaving] = useState(false);
+  const [quoteModal, setQuoteModal] = useState(null);
+  const [quoteForm, setQuoteForm] = useState({ amount: '', notes: '' });
+  const [quoteSaving, setQuoteSaving] = useState(false);
   const [invoices, setInvoices] = useState([]);
   const [invoicesRefreshing, setInvoicesRefreshing] = useState(false);
   const [notesForm, setNotesForm] = useState({ contractor_notes: '', completion_notes: '' });
@@ -377,7 +381,15 @@ export default function ContractorDashboardPage() {
 
   const URGENT_ACTION_IDS = useMemo(
     () =>
-      new Set(['accept_assignment', 'confirm_visit', 'upload_completion_proof', 'submit_invoice', 'edit_invoice']),
+      new Set([
+        'accept_assignment',
+        'confirm_visit',
+        'upload_completion_proof',
+        'submit_invoice',
+        'edit_invoice',
+        'submit_quote',
+        'mark_inspection_complete',
+      ]),
     [],
   );
 
@@ -697,11 +709,23 @@ export default function ContractorDashboardPage() {
             submitted_amount: defaultInvoiceAmountFieldFromWorkOrder(wo),
           });
           setInvoiceModal({ mode: 'create', workOrder: wo, invoice: null });
+        } else if (aid === 'submit_quote') {
+          setDetailId(wid);
+          setQuoteForm({
+            amount: defaultInvoiceAmountFieldFromWorkOrder(wo),
+            notes: '',
+          });
+          setQuoteModal({ workOrder: wo });
+        } else if (aid === 'mark_inspection_complete') {
+          setActionLoading(wid);
+          await api.markJobInspectionComplete(wid);
+          toast.success('Inspection marked complete');
+          await refreshListAndDetail();
         } else if (aid === 'view_invoice' || aid === 'edit_invoice') {
           setDetailId(wid);
           const inv = wo.linked_invoice || invoiceByWorkOrderId[wid];
           setInvoiceForm({
-            reference: inv?.reference || '',
+            reference: inv?.contractor_reference || inv?.reference || '',
             description: inv?.description || '',
             submitted_amount: inv?.submitted_amount != null ? String(inv.submitted_amount) : '',
           });
@@ -850,15 +874,41 @@ export default function ContractorDashboardPage() {
       .finally(() => setEvidenceFileLoadingKey(null));
   };
 
+  const handleSubmitQuote = (e) => {
+    e.preventDefault();
+    if (!quoteModal || !api) return;
+    const amt = parseFloat(String(quoteForm.amount).replace(/,/g, ''));
+    if (Number.isNaN(amt) || amt <= 0) {
+      toast.error('Enter a valid quote amount greater than zero');
+      return;
+    }
+    const wo = quoteModal.workOrder;
+    if (!wo?.work_order_id) return;
+    setQuoteSaving(true);
+    api
+      .submitJobQuote(wo.work_order_id, {
+        amount: amt,
+        notes: (quoteForm.notes || '').trim() || undefined,
+      })
+      .then(() => {
+        toast.success('Quote submitted for client approval');
+        setQuoteModal(null);
+        setQuoteForm({ amount: '', notes: '' });
+        return Promise.all([
+          loadWorkOrders(),
+          loadDashboardSummary(),
+          detailId === wo.work_order_id ? api.getWorkOrder(wo.work_order_id).then((r) => setDetail(r.data)) : Promise.resolve(),
+        ]);
+      })
+      .catch((err) => toast.error(err.response?.data?.detail || 'Failed'))
+      .finally(() => setQuoteSaving(false));
+  };
+
   const handleSubmitInvoice = (e) => {
     e.preventDefault();
     if (!invoiceModal || !api) return;
     if (invoiceModal.mode === 'view') return;
     const ref = (invoiceForm.reference || '').trim();
-    if (!ref) {
-      toast.error('Invoice reference is required');
-      return;
-    }
     const amt = parseFloat(String(invoiceForm.submitted_amount).replace(/,/g, ''));
     if (Number.isNaN(amt) || amt <= 0) {
       toast.error('Enter a valid invoice amount greater than zero');
@@ -868,7 +918,7 @@ export default function ContractorDashboardPage() {
     if (!wo?.work_order_id) return;
     setInvoiceSaving(true);
     const body = {
-      reference: ref,
+      ...(ref ? { contractor_reference: ref } : {}),
       description: (invoiceForm.description || '').trim() || undefined,
       submitted_amount: amt,
     };
@@ -1407,7 +1457,7 @@ export default function ContractorDashboardPage() {
                           return (
                       <tr key={inv.invoice_id} className="border-b last:border-0">
                               <td className="p-3 whitespace-nowrap">{formatDate(inv.paid_at) || '—'}</td>
-                        <td className="p-3">{inv.reference || inv.invoice_id}</td>
+                        <td className="p-3">{invoiceDisplayLabel(inv)}</td>
                               <td className="p-3 max-w-[200px] truncate" title={wo?.description || inv.work_order_id}>
                                 {wo?.description || inv.work_order_id || '—'}
                               </td>
@@ -1829,7 +1879,7 @@ export default function ContractorDashboardPage() {
                               size="sm"
                               variant={a.id === 'view_invoice' ? 'outline' : 'default'}
                               className={
-                                a.id === 'submit_invoice' || a.id === 'edit_invoice'
+                                a.id === 'submit_invoice' || a.id === 'edit_invoice' || a.id === 'submit_quote'
                                   ? 'bg-electric-teal hover:bg-electric-teal/90 text-white border-0'
                                   : ''
                               }
@@ -1898,6 +1948,67 @@ export default function ContractorDashboardPage() {
           </div>
         )}
 
+        {/* Quote modal */}
+        {quoteModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setQuoteModal(null)}>
+            <div
+              className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold mb-4">Submit quote</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Propose a fixed price for client approval. Further billable repair work should wait until they approve in the
+                platform.
+              </p>
+              {quoteModal.workOrder ? (
+                <dl className="text-xs text-gray-600 space-y-1 mb-4 border border-gray-100 rounded-md p-3 bg-gray-50/80">
+                  <div>
+                    <dt className="inline text-gray-500">Job: </dt>
+                    <dd className="inline font-medium text-midnight-blue">
+                      {quoteModal.workOrder.description || quoteModal.workOrder.work_order_id}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline text-gray-500">Property: </dt>
+                    <dd className="inline">{quoteModal.workOrder.property_address || quoteModal.workOrder.property_id}</dd>
+                  </div>
+                </dl>
+              ) : null}
+              <form onSubmit={handleSubmitQuote} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Quote amount £ *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={quoteForm.amount}
+                    onChange={(e) => setQuoteForm((f) => ({ ...f, amount: e.target.value }))}
+                    className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                  <textarea
+                    value={quoteForm.notes}
+                    onChange={(e) => setQuoteForm((f) => ({ ...f, notes: e.target.value }))}
+                    className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                    rows={3}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={quoteSaving} className="bg-electric-teal hover:bg-electric-teal/90">
+                    {quoteSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit quote'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setQuoteModal(null)}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* Invoice modal */}
         {invoiceModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setInvoiceModal(null)}>
@@ -1948,10 +2059,16 @@ export default function ContractorDashboardPage() {
                   </div>
                 </dl>
               ) : null}
+              {invoiceModal.mode !== 'create' && invoiceModal.invoice ? (
+                <p className="text-sm text-gray-700 mb-3">
+                  <span className="text-gray-500">Invoice number: </span>
+                  <span className="font-medium text-midnight-blue">{invoiceDisplayLabel(invoiceModal.invoice)}</span>
+                </p>
+              ) : null}
               <form onSubmit={handleSubmitInvoice} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Invoice reference{invoiceModal.mode === 'view' ? '' : ' *'}
+                    Your invoice reference{invoiceModal.mode === 'view' ? '' : ' (optional)'}
                   </label>
                   <input
                     type="text"

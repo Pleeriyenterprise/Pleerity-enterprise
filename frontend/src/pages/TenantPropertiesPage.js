@@ -8,11 +8,11 @@ import { CheckCircle, XCircle, Clock, AlertTriangle, Building2, ChevronRight } f
 function getComplianceStyles(status) {
   switch (status) {
     case 'GREEN':
-      return { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', icon: <CheckCircle className="w-5 h-5 text-green-500" />, label: 'Fully Compliant' };
+      return { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', icon: <CheckCircle className="w-5 h-5 text-green-500" />, label: 'Safety: up to date' };
     case 'AMBER':
-      return { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700', icon: <AlertTriangle className="w-5 h-5 text-yellow-500" />, label: 'Attention Needed' };
+      return { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700', icon: <AlertTriangle className="w-5 h-5 text-yellow-500" />, label: 'Safety: renewals due soon' };
     case 'RED':
-      return { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', icon: <XCircle className="w-5 h-5 text-red-500" />, label: 'Action Required' };
+      return { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', icon: <XCircle className="w-5 h-5 text-red-500" />, label: 'Safety: needs attention' };
     default:
       return { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', icon: <Clock className="w-5 h-5 text-gray-500" />, label: 'Unknown' };
   }
@@ -84,6 +84,11 @@ const TenantPropertiesPage = () => {
                       <div>
                         <h3 className="font-semibold text-midnight-blue">{property.address}</h3>
                         <p className="text-sm text-gray-500 capitalize">{property.property_type}</p>
+                        {(property.compliance_status === 'RED' || property.compliance_status === 'AMBER') && (
+                          <p className="text-xs font-medium text-gray-600 mt-1">
+                            Safety status: {property.compliance_status === 'RED' ? 'Needs attention' : 'Renewals due soon'}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <span className={`text-sm font-medium ${styles.text}`}>{styles.label}</span>
