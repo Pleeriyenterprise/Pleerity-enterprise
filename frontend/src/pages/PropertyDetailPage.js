@@ -185,6 +185,8 @@ export default function PropertyDetailPage() {
   const [bookInspectionSaving, setBookInspectionSaving] = useState(false);
   const [jurisdictionDraft, setJurisdictionDraft] = useState('');
   const [jurisdictionSaving, setJurisdictionSaving] = useState(false);
+  /** True while user chose "Change jurisdiction" on an already property_explicit record; false when not explicit or after save/cancel. */
+  const [jurisdictionEditing, setJurisdictionEditing] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -231,31 +233,19 @@ export default function PropertyDetailPage() {
 
   useEffect(() => {
     if (property?.property_id !== propertyId) return;
+    if (jurisdictionEditing) return;
     setJurisdictionDraft(property.jurisdiction ?? '');
-  }, [propertyId, property]);
+  }, [propertyId, property, jurisdictionEditing]);
+
+  useEffect(() => {
+    setJurisdictionEditing(false);
+  }, [propertyId]);
 
   const jurisdictionDirty = useMemo(() => {
     if (!property) return false;
     const cur = property.jurisdiction ?? '';
     return (jurisdictionDraft ?? '') !== cur;
   }, [property, jurisdictionDraft]);
-
-  const savePropertyJurisdiction = useCallback(async () => {
-    if (!propertyId || !property) return;
-    setJurisdictionSaving(true);
-    try {
-      await clientAPI.patchProperty(propertyId, { jurisdiction: (jurisdictionDraft ?? '').trim() || '' });
-      toast.success('Property jurisdiction updated', {
-        description: 'Scores and obligations will refresh for this property.',
-      });
-      await fetchData();
-    } catch (e) {
-      const d = e.response?.data?.detail;
-      toast.error(typeof d === 'string' ? d : 'Could not update jurisdiction.');
-    } finally {
-      setJurisdictionSaving(false);
-    }
-  }, [propertyId, property, jurisdictionDraft, fetchData]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -404,6 +394,35 @@ export default function PropertyDetailPage() {
       .catch(() => setComplianceExplainability(null))
       .finally(() => setComplianceExplainabilityLoading(false));
   }, [propertyId]);
+
+  const savePropertyJurisdiction = useCallback(async () => {
+    if (!propertyId || !property) return;
+    setJurisdictionSaving(true);
+    try {
+      await clientAPI.patchProperty(propertyId, { jurisdiction: (jurisdictionDraft ?? '').trim() || '' });
+      toast.success('Jurisdiction saved', {
+        description: 'Compliance score and obligations were recalculated for this property.',
+      });
+      setJurisdictionEditing(false);
+      await fetchData();
+      loadComplianceExplainability();
+    } catch (e) {
+      const d = e.response?.data?.detail;
+      toast.error(typeof d === 'string' ? d : 'Could not update jurisdiction.');
+    } finally {
+      setJurisdictionSaving(false);
+    }
+  }, [propertyId, property, jurisdictionDraft, fetchData, loadComplianceExplainability]);
+
+  const startJurisdictionEdit = useCallback(() => {
+    setJurisdictionDraft(property?.jurisdiction ?? '');
+    setJurisdictionEditing(true);
+  }, [property]);
+
+  const cancelJurisdictionEdit = useCallback(() => {
+    setJurisdictionDraft(property?.jurisdiction ?? '');
+    setJurisdictionEditing(false);
+  }, [property]);
 
   const loadTimeline = useCallback((appendCursor = null) => {
     if (!propertyId) return;
@@ -863,6 +882,9 @@ export default function PropertyDetailPage() {
   const { showHardWarning: showJurisdictionHardWarning, showSoftAccountDefaultNotice: showJurisdictionAccountDefaultNotice } =
     propertyPageJurisdictionBanners(effectiveComplianceBasis);
 
+  const isJurisdictionConfigured = effectiveComplianceBasis === 'property_explicit';
+  const showJurisdictionEditor = !isJurisdictionConfigured || jurisdictionEditing;
+
   return (
     <div className={portalPageRoot}>
       <div className="flex items-center justify-between gap-4 mb-4">
@@ -909,14 +931,6 @@ export default function PropertyDetailPage() {
             <p className="text-sm mt-1.5 text-sky-950/95">
               {jurisdictionAccountDefaultNoticeBody(effectiveJurisdictionLabel)}
             </p>
-            <div className="flex flex-wrap gap-2 mt-3">
-              <Button type="button" variant="outline" size="sm" className="border-sky-300 bg-white hover:bg-sky-100" asChild>
-                <Link to="/settings/jurisdiction">Account jurisdiction</Link>
-              </Button>
-              <Button type="button" variant="outline" size="sm" className="border-sky-300 bg-white hover:bg-sky-100" asChild>
-                <Link to="/properties">Portfolio / properties</Link>
-              </Button>
-            </div>
           </AlertDescription>
         </Alert>
       )}
@@ -924,7 +938,7 @@ export default function PropertyDetailPage() {
       {property ? (
         <Card className="mb-4 border border-gray-200 bg-white" data-testid="property-jurisdiction-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base text-midnight-blue">Portfolio jurisdiction</CardTitle>
+            <CardTitle className="text-base text-midnight-blue">Jurisdiction on this property</CardTitle>
             <CardDescription className="text-sm text-gray-600 space-y-1">
               <p>
                 <span className="text-gray-500">Source: </span>
@@ -936,52 +950,91 @@ export default function PropertyDetailPage() {
               </p>
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-            <div className="space-y-2 flex-1 min-w-[220px] max-w-md">
-              <Label htmlFor="property-jurisdiction-select" className="text-sm text-midnight-blue">
-                Jurisdiction on this property
-              </Label>
-              <Select
-                value={
-                  (jurisdictionDraft ?? '').trim()
-                    ? jurisdictionDraft.trim()
-                    : PROPERTY_JURISDICTION_SELECT_UNSET
-                }
-                onValueChange={(v) =>
-                  setJurisdictionDraft(v === PROPERTY_JURISDICTION_SELECT_UNSET ? '' : v)
-                }
-                disabled={jurisdictionSaving}
-              >
-                <SelectTrigger id="property-jurisdiction-select" data-testid="property-jurisdiction-select">
-                  <SelectValue placeholder="Choose" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={PROPERTY_JURISDICTION_SELECT_UNSET}>
-                    Not set (account default, then system default if needed)
-                  </SelectItem>
-                  {JURISDICTION_OPTIONS.map((j) => (
-                    <SelectItem key={j} value={j}>
-                      {j}
+          {isJurisdictionConfigured && !showJurisdictionEditor ? (
+            <CardContent className="flex flex-col gap-4 pt-0">
+              <p className="text-sm text-gray-600">
+                This property is using its own jurisdiction for compliance scoring.
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500 mb-0.5">Region</p>
+                  <p className="text-sm font-medium text-midnight-blue" data-testid="property-jurisdiction-display">
+                    {property.jurisdiction || effectiveJurisdictionLabel || '—'}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(portalSecondaryButtonClass, 'w-full sm:w-auto shrink-0')}
+                  onClick={startJurisdictionEdit}
+                  data-testid="property-jurisdiction-change"
+                >
+                  Change jurisdiction
+                </Button>
+              </div>
+            </CardContent>
+          ) : (
+            <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end pt-0">
+              <div className="space-y-2 flex-1 min-w-[220px] max-w-md">
+                <Label htmlFor="property-jurisdiction-select" className="text-sm text-midnight-blue">
+                  Region
+                </Label>
+                <Select
+                  value={
+                    (jurisdictionDraft ?? '').trim()
+                      ? jurisdictionDraft.trim()
+                      : PROPERTY_JURISDICTION_SELECT_UNSET
+                  }
+                  onValueChange={(v) =>
+                    setJurisdictionDraft(v === PROPERTY_JURISDICTION_SELECT_UNSET ? '' : v)
+                  }
+                  disabled={jurisdictionSaving}
+                >
+                  <SelectTrigger id="property-jurisdiction-select" data-testid="property-jurisdiction-select">
+                    <SelectValue placeholder="Choose" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={PROPERTY_JURISDICTION_SELECT_UNSET}>
+                      Not set (account default, then system default if needed)
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                className="bg-electric-teal hover:bg-electric-teal/90"
-                disabled={!jurisdictionDirty || jurisdictionSaving}
-                onClick={savePropertyJurisdiction}
-                data-testid="property-jurisdiction-save"
-              >
-                {jurisdictionSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Save jurisdiction
-              </Button>
-            </div>
-          </CardContent>
+                    {JURISDICTION_OPTIONS.map((j) => (
+                      <SelectItem key={j} value={j}>
+                        {j}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  className="bg-electric-teal hover:bg-electric-teal/90"
+                  disabled={!jurisdictionDirty || jurisdictionSaving}
+                  onClick={savePropertyJurisdiction}
+                  data-testid="property-jurisdiction-save"
+                >
+                  {jurisdictionSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Save jurisdiction
+                </Button>
+                {isJurisdictionConfigured && jurisdictionEditing ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={portalSecondaryButtonClass}
+                    disabled={jurisdictionSaving}
+                    onClick={cancelJurisdictionEdit}
+                    data-testid="property-jurisdiction-cancel"
+                  >
+                    Cancel
+                  </Button>
+                ) : null}
+              </div>
+            </CardContent>
+          )}
         </Card>
       ) : null}
 

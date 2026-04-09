@@ -206,7 +206,8 @@ class PatchPropertyRequest(BaseModel):
 @router.patch("/{property_id}")
 async def patch_property(request: Request, property_id: str, data: PatchPropertyRequest):
     """Update a property. Only provided fields are updated.
-    Changing is_hmo, bedrooms, occupancy, licence_required, has_gas_supply, or has_gas triggers compliance score recalc.
+    Changing is_hmo, bedrooms, occupancy, licence_required, has_gas_supply, or has_gas triggers compliance score recalc (queued).
+    Changing jurisdiction runs an immediate compliance score recalculation for this property.
     Setting is_active=False archives the property (read-only); is_active=True counts toward plan limit.
     """
     user = await client_route_guard(request)
@@ -278,7 +279,39 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
     from services.provisioning_status_hook import update_provisioning_status_for_property
     await update_provisioning_status_for_property(user["client_id"], property_id)
 
-    if applicability_changed or jurisdiction_changed:
+    if jurisdiction_changed:
+        from services.compliance_scoring_service import recalculate_and_persist
+        from services.compliance_recalc_queue import (
+            TRIGGER_PROPERTY_UPDATED,
+            ACTOR_CLIENT,
+            enqueue_compliance_recalc,
+        )
+
+        try:
+            await recalculate_and_persist(
+                property_id,
+                TRIGGER_PROPERTY_UPDATED,
+                actor={
+                    "id": user.get("portal_user_id"),
+                    "role": user.get("role") or "ROLE_CLIENT",
+                },
+                context={"correlation_id": f"PROPERTY_JURISDICTION_PATCH:{property_id}"},
+            )
+        except Exception as recalc_err:
+            logger.exception(
+                "patch_property: synchronous compliance recalc failed after jurisdiction update property_id=%s: %s",
+                property_id,
+                recalc_err,
+            )
+            await enqueue_compliance_recalc(
+                property_id=property_id,
+                client_id=user["client_id"],
+                trigger_reason=TRIGGER_PROPERTY_UPDATED,
+                actor_type=ACTOR_CLIENT,
+                actor_id=user.get("portal_user_id"),
+                correlation_id=f"PROPERTY_JURISDICTION_PATCH_FALLBACK:{property_id}",
+            )
+    elif applicability_changed:
         from services.compliance_recalc_queue import (
             enqueue_compliance_recalc,
             TRIGGER_PROPERTY_UPDATED,
@@ -292,15 +325,18 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
             actor_id=user.get("portal_user_id"),
             correlation_id=f"PROPERTY_UPDATED:{property_id}",
         )
+
+    if jurisdiction_changed or applicability_changed:
         try:
             from services.score_events_service import write_score_event, EVENT_PROPERTY_UPDATED, ACTOR_ROLE_CLIENT
+            trig = "jurisdiction_changed" if jurisdiction_changed else "applicability_changed"
             await write_score_event(
                 client_id=user["client_id"],
                 event_type=EVENT_PROPERTY_UPDATED,
                 actor_user_id=user.get("portal_user_id"),
                 actor_role=ACTOR_ROLE_CLIENT,
                 property_id=property_id,
-                metadata={"trigger": "applicability_changed"},
+                metadata={"trigger": trig},
             )
         except Exception as ev_err:
             logger.debug("Score event PROPERTY_UPDATED skip: %s", ev_err)

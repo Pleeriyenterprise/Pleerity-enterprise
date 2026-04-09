@@ -41,9 +41,9 @@ export function jurisdictionAccountDefaultNoticeBody(effectiveLabel) {
   const label = (effectiveLabel || '').trim();
   const where = label ? ` (${label})` : '';
   return (
-    `This property does not have its own jurisdiction on the record yet. Scoring and rules are using your account default${where} until you set a jurisdiction on this property. ` +
-    'Your account default is acceptable for scoring, but you should still review and confirm the correct region on each property record for accuracy. ' +
-    'That is usually fine when the home matches your portfolio default; set it on the property if this address is in a different region.'
+    `This property is using your account default jurisdiction${where} because no region is set on the property record yet. ` +
+    'Choose the correct region in “Jurisdiction on this property” below and save — you can complete this on this page. ' +
+    'After you save, scoring and obligations will use that property-level jurisdiction.'
   );
 }
 
