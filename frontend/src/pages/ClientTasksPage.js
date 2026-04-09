@@ -18,7 +18,8 @@
  *   Clears overrides so the task can reappear; does not mutate underlying requirement/job/document state.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { inboxTitleForDisplay } from '../domain/presentDomain';
+import { inboxTitleForDisplay, titleFromSnake } from '../domain/presentDomain';
+import { workOrderKindClientLabel } from '../utils/jobWorkflowUi';
 import { useNavigate, Link } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -54,7 +55,7 @@ const FILTER_CHIPS = [
   { id: 'operations', label: 'Operations' },
   { id: 'approvals', label: 'Approvals' },
   { id: 'billing', label: 'Billing' },
-  { id: 'risks', label: 'Risk signals' },
+  { id: 'risks', label: 'Issues' },
   { id: 'overdue', label: 'Overdue' },
 ];
 
@@ -75,13 +76,54 @@ function formatWhen(iso) {
 function sourceTypeLabel(st) {
   const map = {
     requirement: 'Requirement',
-    risk_signal: 'Risk signal',
-    work_order: 'Work order',
+    risk_signal: 'Issue',
+    work_order: 'Job',
     approval: 'Approval',
     issue: 'Maintenance issue',
-    priority_action: 'Action',
+    priority_action: 'Suggested action',
   };
-  return map[st] || st || 'Task';
+  if (map[st]) return map[st];
+  if (st && /^[a-z][a-z0-9_]*$/i.test(st)) return titleFromSnake(st);
+  return st ? titleFromSnake(String(st).toLowerCase()) : 'Task';
+}
+
+/** Badge on Today cards: job kind from metadata when source is a work order, else friendly source. */
+function todayTaskCategoryBadge(task) {
+  const st = String(task?.source_type || '').toLowerCase();
+  const meta = task?.metadata || {};
+  if (st === 'work_order') {
+    return workOrderKindClientLabel({ work_order_kind: meta.work_order_kind });
+  }
+  return sourceTypeLabel(st);
+}
+
+const TODAY_CTA_LABEL_MAP = {
+  'view job': 'Manage job',
+  'open job': 'Manage job',
+  'review risk signal': 'Review issue',
+  'view risk signal': 'Review issue',
+};
+
+function sanitizeTodayCtaLabel(primaryLabel, task) {
+  const fromBiz = (task?.business_actions || []).find((a) => a.primary === true || a.id === 'open_primary');
+  const candidate = String(primaryLabel || fromBiz?.label || '').trim();
+  const key = candidate.toLowerCase();
+  if (TODAY_CTA_LABEL_MAP[key]) return TODAY_CTA_LABEL_MAP[key];
+  if (!candidate) return 'Manage job';
+  return candidate;
+}
+
+function sanitizeBusinessActionLabel(label) {
+  const s = String(label || '').trim();
+  const key = s.toLowerCase();
+  if (TODAY_CTA_LABEL_MAP[key]) return TODAY_CTA_LABEL_MAP[key];
+  return s;
+}
+
+function propertyOptionLabel(p) {
+  if (!p) return 'Property';
+  const addr = [p.address_line_1, p.city, p.postcode].filter(Boolean).join(', ');
+  return (p.nickname || p.name || addr || '').trim() || 'Property';
 }
 
 function actionLabel(act) {
@@ -92,7 +134,9 @@ function actionLabel(act) {
     reviewed: 'Marked reviewed',
     restore: 'Restored',
   };
-  return m[act] || act || '—';
+  if (m[act]) return m[act];
+  if (act == null || act === '') return '—';
+  return titleFromSnake(String(act).toLowerCase());
 }
 
 function primaryClickBusinessOutcome(task) {
@@ -147,11 +191,6 @@ function TaskCard({
   const hasComplianceCreateAction = businessActions.some((a) => a.id === 'create_compliance_work_order');
   const displayTitle = inboxTitleForDisplay(task);
   const hasLongContext = Boolean(task.why_matters || task.recommended_action);
-  const entityHint =
-    task.source_entity_type && task.source_entity_id
-      ? `${task.source_entity_type.replace(/_/g, ' ')} · ${String(task.source_entity_id).slice(0, 12)}${String(task.source_entity_id).length > 12 ? '…' : ''}`
-      : null;
-
   return (
     <Card className="border border-gray-200 shadow-sm overflow-hidden">
       <CardContent className="p-4 client-portal-prose">
@@ -159,7 +198,7 @@ function TaskCard({
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="text-xs font-normal shrink-0">
-                {sourceTypeLabel(task.source_type)}
+                {todayTaskCategoryBadge(task)}
               </Badge>
               <TodayUrgencyRow urgency={task.urgency} urgencyLevel={task.urgency_level} timingLabel={meta.timing_label} />
             </div>
@@ -178,11 +217,6 @@ function TaskCard({
             >
               {displayTitle}
             </h3>
-            {entityHint && (
-              <p className="text-[11px] text-gray-400 font-mono break-all" title={task.source_entity_id}>
-                Linked: {entityHint}
-              </p>
-            )}
             {task.property_label && (
               <p className="text-sm text-gray-600 break-words">{task.property_label}</p>
             )}
@@ -196,7 +230,7 @@ function TaskCard({
                 onClick={() => setDetailsOpen((o) => !o)}
                 aria-expanded={detailsOpen}
               >
-                {detailsOpen ? 'Hide details' : 'What’s wrong, why it matters, what to do'}
+                {detailsOpen ? 'Hide details' : 'Show details'}
               </button>
             )}
             {detailsOpen && hasLongContext && (
@@ -221,7 +255,7 @@ function TaskCard({
           <div className="flex flex-col gap-3 pt-2 border-t border-gray-100 min-w-0">
             {businessActions.length > 0 ? (
               <div>
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Business actions</p>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">What you can do now</p>
                 <div className="flex flex-col gap-2">
                   {businessActions.map((act) => {
                     const isPrimary = act.primary === true || act.id === 'open_primary';
@@ -238,7 +272,7 @@ function TaskCard({
                         disabled={bookingBusy}
                         onClick={() => onRunBusinessAction(act, task)}
                       >
-                        {act.label}
+                        {sanitizeBusinessActionLabel(act.label)}
                       </Button>
                     );
                   })}
@@ -252,7 +286,7 @@ function TaskCard({
                   disabled={bookingBusy}
                   onClick={() => onPrimaryNavigate(task)}
                 >
-                  {task.primary_action_label || 'Open'}
+                  {sanitizeTodayCtaLabel(task.primary_action_label, task)}
                 </Button>
               </div>
             )}
@@ -316,7 +350,7 @@ function TaskCard({
                 className="w-full min-h-11 h-11 text-electric-teal justify-center text-sm"
                 onClick={() => onPrimaryNavigate(task, 'secondary')}
               >
-                {task.secondary_action_label}
+                {sanitizeBusinessActionLabel(task.secondary_action_label)}
                 <ExternalLink className="w-3.5 h-3.5 ml-1 shrink-0" />
               </Button>
             )}
@@ -326,7 +360,7 @@ function TaskCard({
                   Inbox visibility only
                 </p>
                 <p className="text-xs text-gray-500 leading-snug">
-                  These actions change what you see here — not compliance outcomes, approvals, or job state.
+                  These options only affect this list. They don’t change your property or compliance status.
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   {(task.visibility_actions || []).map((va) => {
@@ -387,7 +421,9 @@ function HiddenTaskCard({ item, onRestore, busy }) {
       <CardContent className="p-4 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <Badge variant="outline" className="text-xs mb-1">{kind}</Badge>
-          <p className="font-medium text-midnight-blue text-sm">{item.title || item.task_id}</p>
+          <p className="font-medium text-midnight-blue text-sm">
+            {inboxTitleForDisplay({ title: item.title, metadata: item.metadata || {} })}
+          </p>
           {item.dismiss_reason ? (
             <p className="text-xs text-gray-600 mt-1 break-words">
               <span className="font-medium text-gray-700">Reason:</span> {item.dismiss_reason}
@@ -409,7 +445,9 @@ function SnoozedTaskCard({ task, onRestore, busy }) {
     <Card className="border border-amber-200 bg-amber-50/40 shadow-sm">
       <CardContent className="p-4 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-medium text-midnight-blue text-sm">{task.title}</p>
+          <p className="font-medium text-midnight-blue text-sm">
+            {inboxTitleForDisplay(task)}
+          </p>
           {task.property_label && <p className="text-xs text-gray-600">{task.property_label}</p>}
           <p className="text-xs text-amber-900 mt-1">
             Snoozed until {formatWhen(task.snoozed_until) || task.snoozed_until || '—'}
@@ -834,8 +872,8 @@ export default function ClientTasksPage() {
           <h1 className="text-2xl md:text-3xl font-bold">Today</h1>
         </div>
         <p className="text-gray-600 text-sm md:text-base">
-          Command centre for your portfolio: each card links to a real requirement, job, approval, or risk signal.
-          Primary actions move work forward; snooze and dismiss only change what you see here.
+          Your priority list for the portfolio: each card opens the related requirement, job, approval, or issue.
+          Primary actions move work forward; snooze and dismiss only change what appears here.
         </p>
         <p className="text-xs text-gray-500 mt-2 leading-relaxed">
           <Link
@@ -993,7 +1031,7 @@ export default function ClientTasksPage() {
               <option value="">All properties</option>
               {propertyOptions.map((p) => (
                 <option key={p.property_id} value={p.property_id}>
-                  {p.nickname || p.name || p.address_line_1 || p.property_id}
+                  {propertyOptionLabel(p)}
                 </option>
               ))}
             </select>
@@ -1166,9 +1204,11 @@ export default function ClientTasksPage() {
                     {payload.activity_feed.map((row) => (
                       <li key={row.event_id || `${row.task_id}-${row.created_at}`} className="flex flex-wrap gap-x-2 gap-y-0.5">
                         <span className="font-medium text-midnight-blue">{actionLabel(row.action)}</span>
-                        <span className="text-gray-500 font-mono text-xs truncate max-w-[12rem]" title={row.task_id}>
-                          {row.task_id}
-                        </span>
+                        {row.task_title ? (
+                          <span className="text-gray-600 text-xs truncate max-w-[16rem]" title={row.task_id || undefined}>
+                            {row.task_title}
+                          </span>
+                        ) : null}
                         <span className="text-gray-400 text-xs">{formatWhen(row.created_at)}</span>
                       </li>
                     ))}

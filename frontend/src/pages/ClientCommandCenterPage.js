@@ -14,7 +14,13 @@ import ErrorBanner from '../components/ErrorBanner';
 import { AlertCircle, Gauge, Sparkles, Building2, Wrench, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { recordClientPortalInteraction, resolveClientPortalPath } from '../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../utils/ctaRegistry';
-import { workOrderStatusLabel } from '../domain/presentDomain';
+import {
+  inboxTitleForDisplay,
+  requirementLabel,
+  urgencyLevelLabel,
+  workOrderStatusLabel,
+} from '../domain/presentDomain';
+import { workOrderKindClientLabel } from '../utils/jobWorkflowUi';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import {
   aggregateJobSignals,
@@ -136,6 +142,18 @@ export default function ClientCommandCenterPage() {
   const awaitingProofJobCount = useMemo(() => activeJobs.filter((wo) => isAwaitingProof(wo)).length, [activeJobs]);
 
   const propertiesAtRisk = useMemo(() => countPropertiesAtRisk(portfolioSummary), [portfolioSummary]);
+
+  const propertyLabelById = useMemo(() => {
+    const m = new Map();
+    for (const p of portfolioSummary?.properties || []) {
+      const id = p.property_id;
+      if (!id) continue;
+      const addr = [p.address_line_1, p.city, p.postcode].filter(Boolean).join(', ');
+      const lbl = String(p.nickname || p.name || addr || '').trim();
+      if (lbl) m.set(id, lbl);
+    }
+    return m;
+  }, [portfolioSummary]);
 
   const verdict = useMemo(
     () =>
@@ -298,13 +316,13 @@ export default function ClientCommandCenterPage() {
           )}
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <span className="text-gray-700">
-              <span className="font-medium text-midnight-blue">{riskCount}</span> active risk signal
+              <span className="font-medium text-midnight-blue">{riskCount}</span> open issue
               {riskCount === 1 ? '' : 's'}
-              {!predictiveEnabled && <span className="text-gray-500"> (risk signals not enabled)</span>}
+              {!predictiveEnabled && <span className="text-gray-500"> (issue insights not enabled)</span>}
             </span>
             {predictiveEnabled && riskCount > 0 && (
               <Button variant="link" className="h-auto p-0 text-electric-teal" asChild>
-                <Link to="/operations/risk-signals">Review risk signals</Link>
+                <Link to="/operations/risk-signals">Review issues</Link>
               </Button>
             )}
           </div>
@@ -343,11 +361,11 @@ export default function ClientCommandCenterPage() {
                         className="text-left text-midnight-blue hover:underline font-medium break-words"
                         onClick={() => onUrgentClick(t)}
                       >
-                        {t.title || 'Task'}
+                        {inboxTitleForDisplay(t)}
                       </button>
                       {(t.urgency_level || t.priority_level) && (
-                        <p className="text-xs text-gray-500 mt-0.5 capitalize">
-                          Priority: {String(t.urgency_level || t.priority_level).replace(/_/g, ' ')}
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Priority: {urgencyLevelLabel(t.urgency_level || t.priority_level)}
                         </p>
                       )}
                     </div>
@@ -497,6 +515,14 @@ export default function ClientCommandCenterPage() {
                 <ul className="space-y-3 text-sm">
                   {rankedJobs.map((wo) => {
                     const badge = attentionBadgeForJob(wo);
+                    const jobTitle = (() => {
+                      const d = String(wo.description || wo.title || '').trim();
+                      if (d) return d;
+                      const rt = wo.requirement_type || wo.compliance_requirement_type;
+                      if (rt) return requirementLabel(rt);
+                      return 'Job';
+                    })();
+                    const propLbl = wo.property_id ? propertyLabelById.get(wo.property_id) : null;
                     return (
                       <li
                         key={wo.work_order_id}
@@ -511,7 +537,7 @@ export default function ClientCommandCenterPage() {
                                 navigate(`/operations/jobs/${encodeURIComponent(wo.work_order_id)}`)
                               }
                             >
-                              {wo.description || wo.title || wo.work_order_id}
+                              {jobTitle}
                             </button>
                             {badge && (
                               <span
@@ -522,8 +548,10 @@ export default function ClientCommandCenterPage() {
                             )}
                           </div>
                           <p className="text-xs text-gray-500 mt-0.5">
+                            {workOrderKindClientLabel(wo)}
+                            {' · '}
                             {workOrderStatusLabel(wo.status)}
-                            {wo.property_id ? ` · ${wo.property_id}` : ''}
+                            {propLbl ? ` · ${propLbl}` : ''}
                           </p>
                         </div>
                         <Button
@@ -532,7 +560,7 @@ export default function ClientCommandCenterPage() {
                           className="shrink-0 w-full sm:w-auto"
                           onClick={() => navigate(`/operations/jobs/${encodeURIComponent(wo.work_order_id)}`)}
                         >
-                          Open job
+                          Manage job
                         </Button>
                       </li>
                     );

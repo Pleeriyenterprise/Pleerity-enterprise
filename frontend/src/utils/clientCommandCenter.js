@@ -2,6 +2,7 @@
  * Client Command Center — pure helpers for verdict copy, job attention ranking, and stuck signals.
  * Keeps UI pages from accumulating a second business-rules layer; aligns with API field names.
  */
+import { titleFromSnake } from '../domain/presentDomain';
 
 const TERMINAL_WORK_ORDER_STATUSES = new Set(['COMPLETED', 'VERIFIED', 'CLOSED', 'CANCELLED']);
 
@@ -115,8 +116,9 @@ export function attentionBadgeForJob(wo) {
   if (hasTruthyIso(wo.sla_breached_at)) return { label: 'SLA overdue', className: 'bg-red-100 text-red-900' };
   if (hasTruthyIso(wo.sla_breach_risk_at)) return { label: 'SLA at risk', className: 'bg-amber-100 text-amber-900' };
   if (isOperationalHold(wo)) {
-    const raw = String(wo.operational_exception || '').replace(/_/g, ' ').toLowerCase();
-    return { label: raw ? `On hold (${raw})` : 'On hold', className: 'bg-amber-100 text-amber-900' };
+    const ex = String(wo.operational_exception || '').trim();
+    const human = ex ? titleFromSnake(ex.toLowerCase()) : '';
+    return { label: human ? `On hold (${human})` : 'On hold', className: 'bg-amber-100 text-amber-900' };
   }
   if (isAwaitingProof(wo)) return { label: 'Awaiting proof', className: 'bg-violet-100 text-violet-900' };
   if (isAwaitingParts(wo)) return { label: 'Awaiting parts', className: 'bg-slate-200 text-slate-900' };

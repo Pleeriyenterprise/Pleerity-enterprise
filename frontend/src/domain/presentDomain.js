@@ -19,7 +19,7 @@ export function normalizeRequirementCode(code) {
     .replace(/^_|_$/g, '');
 }
 
-function titleFromSnake(s) {
+export function titleFromSnake(s) {
   if (!s) return '';
   const specials = { eicr: 'EICR', epc: 'EPC', pat: 'PAT', hmo: 'HMO', cp12: 'CP12', co: 'CO' };
   return s
@@ -227,14 +227,45 @@ export function issueSeverityLabel(severity) {
   return map[v] || titleFromSnake(v);
 }
 
+const INBOX_TITLE_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Remove trailing " (requirement_code)" when it duplicates metadata — avoids "Label (label) (code)" in inbox. */
+function stripTrailingMatchingRequirementParen(title, meta) {
+  let t = String(title || '').trim();
+  if (!t || !meta || typeof meta !== 'object') return t;
+  const codes = [meta.requirement_type, meta.requirement_code, meta.code].filter(
+    (c) => c != null && String(c).trim() !== '',
+  );
+  for (const c of codes) {
+    const esc = String(c).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`\\s+\\(${esc}\\)\\s*$`, 'i');
+    if (re.test(t)) {
+      t = t.replace(re, '').trim();
+      break;
+    }
+    const nk = normalizeRequirementCode(String(c));
+    if (nk) {
+      const re2 = new RegExp(`\\s+\\(${nk.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)\\s*$`, 'i');
+      if (re2.test(t)) {
+        t = t.replace(re2, '').trim();
+        break;
+      }
+    }
+  }
+  return t;
+}
+
 /**
  * When the API uses a bare requirement code as title, show the catalogue label instead.
  */
 export function inboxTitleForDisplay(task) {
-  const raw = String(task?.title || '').trim();
+  let raw = String(task?.title || '').trim();
   if (!raw) return 'Task';
+  if (INBOX_TITLE_UUID_RE.test(raw)) return 'Task';
   const meta = task?.metadata || {};
-  // Today projection sets action-oriented titles; do not replace with short requirement labels.
+  raw = stripTrailingMatchingRequirementParen(raw, meta);
+  // Today projection sets action-oriented titles; strip duplicate codes only — keep full sentence.
   if (meta.today_action_title) return raw;
   const code = meta.requirement_type || meta.requirement_code || meta.code;
   if (code && typeof code === 'string') {
