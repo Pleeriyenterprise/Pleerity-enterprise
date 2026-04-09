@@ -20,7 +20,9 @@ def build_internal_alert_html(model: Dict[str, Any]) -> str:
     severity = model.get("severity", "P2")
     title = model.get("title", "Internal alert")
     component = model.get("component", "")
-    last_run = model.get("last_successful_run")
+    last_successful_run = model.get("last_successful_run")
+    last_run_at = model.get("last_run_at")
+    degraded = bool(model.get("degraded_run"))
     expected_interval = model.get("expected_interval")
     current_status = model.get("current_status")
     possible_impact = model.get("possible_impact")
@@ -39,12 +41,12 @@ def build_internal_alert_html(model: Dict[str, Any]) -> str:
         sections.append(f'<p style="margin: 0 0 12px 0;">{description}</p>')
     if component:
         sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Component:</strong> {component}</p>')
-    if degraded and last_run_any is not None and str(last_run_any).strip():
-        sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Last run (degraded outcome):</strong> {last_run_any}</p>')
-    if last_run_success is not None and str(last_run_success).strip():
-        sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Last successful run:</strong> {last_run_success}</p>')
-    elif not degraded and last_run_any is not None and str(last_run_any).strip():
-        sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Last successful run:</strong> {last_run_any}</p>')
+    if degraded and last_run_at is not None and str(last_run_at).strip():
+        sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Last run (degraded outcome):</strong> {last_run_at}</p>')
+    if last_successful_run is not None and str(last_successful_run).strip():
+        sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Last successful run:</strong> {last_successful_run}</p>')
+    elif not degraded and last_run_at is not None and str(last_run_at).strip():
+        sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Last successful run:</strong> {last_run_at}</p>')
     if expected_interval is not None and str(expected_interval).strip():
         sections.append(f'<p style="margin: 0 0 8px 0;"><strong>Expected interval:</strong> {expected_interval}</p>')
     if current_status is not None and str(current_status).strip():

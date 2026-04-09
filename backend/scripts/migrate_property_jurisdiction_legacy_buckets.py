@@ -37,7 +37,7 @@ MongoDB equivalents (mongosh) for ad-hoc checks without Python:
     ],
   })
 
-Requires MONGODB_URI (or project env) as used by database.database.
+Requires MONGO_URL and DB_NAME in the environment (same as database.database.connect()).
 """
 from __future__ import annotations
 
@@ -169,15 +169,19 @@ async def run_apply(coll) -> None:
 async def run(mode: Literal["count", "dry_run", "apply"], as_json: bool) -> None:
     from database import database
 
-    db = database.get_db()
-    coll = db.properties
+    await database.connect()
+    try:
+        db = database.get_db()
+        coll = db.properties
 
-    if mode == "count":
-        await run_count(coll, as_json=as_json)
-    elif mode == "dry_run":
-        await run_dry_run(coll)
-    else:
-        await run_apply(coll)
+        if mode == "count":
+            await run_count(coll, as_json=as_json)
+        elif mode == "dry_run":
+            await run_dry_run(coll)
+        else:
+            await run_apply(coll)
+    finally:
+        await database.close()
 
 
 def main() -> None:
