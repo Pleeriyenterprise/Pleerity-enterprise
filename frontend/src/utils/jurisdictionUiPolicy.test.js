@@ -3,6 +3,7 @@ import {
   portfolioJurisdictionBannerState,
   propertyPageJurisdictionBanners,
 } from './jurisdictionUiPolicy';
+import { jurisdictionSourceLabel } from './jurisdictionComplianceCopy';
 
 describe('propertyPageJurisdictionBanners', () => {
   it('property_explicit: no banners', () => {
@@ -65,5 +66,13 @@ describe('portfolio hard fallback (Dashboard / Today)', () => {
     );
     expect(state.showFull).toBe(false);
     expect(state.showCompact).toBe(true);
+  });
+});
+
+describe('jurisdiction source labels', () => {
+  it('maps API sources to product labels', () => {
+    expect(jurisdictionSourceLabel('property_record')).toBe('Property');
+    expect(jurisdictionSourceLabel('account_default')).toBe('Account default');
+    expect(jurisdictionSourceLabel('system_default')).toBe('Required / System default');
   });
 });

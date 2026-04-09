@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-do
 import api, { adminAPI } from '../api/client';
 import { useStepUpApi } from '../hooks/useStepUpApi';
 import { toast } from 'sonner';
+import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { 
   LayoutDashboard, 
@@ -1360,6 +1361,13 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
                         Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : 'N/A'}
                         {doc.property?.nickname ? ` • ${doc.property.nickname}` : ''}
                         {!doc.property?.nickname && doc.property?.address_line_1 ? ` • ${doc.property.address_line_1}` : ''}
+                        {doc.property?.effective_jurisdiction_label
+                          ? ` • ${doc.property.effective_jurisdiction_label}${
+                              doc.property.jurisdiction_source
+                                ? ` · Source: ${jurisdictionSourceLabel(doc.property.jurisdiction_source)}`
+                                : ''
+                            }`
+                          : ''}
                       </p>
                     </div>
                   </div>
@@ -1402,6 +1410,13 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
                         Due {req.due_date ? new Date(req.due_date).toLocaleDateString() : 'N/A'}
                         {req.property?.nickname ? ` • ${req.property.nickname}` : ''}
                         {!req.property?.nickname && req.property?.address_line_1 ? ` • ${req.property.address_line_1}` : ''}
+                        {req.property?.effective_jurisdiction_label
+                          ? ` • ${req.property.effective_jurisdiction_label}${
+                              req.property.jurisdiction_source
+                                ? ` · Source: ${jurisdictionSourceLabel(req.property.jurisdiction_source)}`
+                                : ''
+                            }`
+                          : ''}
                       </p>
                     </div>
                   </div>
@@ -1440,7 +1455,16 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
                     </div>
                     <div>
                       <p className="font-medium text-midnight-blue">{property.nickname || property.address_line_1 || 'Property'}</p>
-                      <p className="text-sm text-gray-500">{property.postcode} • {property.local_authority || 'N/A'}</p>
+                      <p className="text-sm text-gray-500">
+                        {property.postcode} • {property.local_authority || 'N/A'}
+                        {property.effective_jurisdiction_label
+                          ? ` • ${property.effective_jurisdiction_label}${
+                              property.jurisdiction_source
+                                ? ` · Source: ${jurisdictionSourceLabel(property.jurisdiction_source)}`
+                                : ''
+                            }`
+                          : ''}
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">

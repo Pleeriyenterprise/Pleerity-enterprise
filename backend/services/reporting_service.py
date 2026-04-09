@@ -7,6 +7,7 @@ Report Types:
 """
 from database import database
 from models import AuditAction
+from services.compliance_rules_registry import jurisdiction_attribution_for_property
 from utils.audit import create_audit_log
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
@@ -118,15 +119,19 @@ class ReportingService:
         if include_details:
             # Add property details
             property_details = []
+            client_doc = client or {}
             for prop in properties:
                 prop_reqs = [r for r in requirements if r.get("property_id") == prop["property_id"]]
+                _att = jurisdiction_attribution_for_property(prop, client_doc)
                 property_details.append({
                     "address": f"{prop.get('address_line_1', '')}, {prop.get('city', '')} {prop.get('postcode', '')}",
                     "property_type": prop.get("property_type", "N/A"),
                     "compliance_status": prop.get("compliance_status", "UNKNOWN"),
                     "total_requirements": len(prop_reqs),
                     "compliant": sum(1 for r in prop_reqs if r.get("status") == "COMPLIANT"),
-                    "overdue": sum(1 for r in prop_reqs if r.get("status") == "OVERDUE")
+                    "overdue": sum(1 for r in prop_reqs if r.get("status") == "OVERDUE"),
+                    "effective_jurisdiction_label": _att.get("effective_jurisdiction_label"),
+                    "jurisdiction_source": _att.get("jurisdiction_source"),
                 })
             report_data["properties"] = property_details
         
@@ -158,11 +163,16 @@ class ReportingService:
         
         requirements = await db.requirements.find(query, {"_id": 0}).to_list(10000)
         
+        client_row = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "default_jurisdiction": 1},
+        )
+
         # Get properties for address info
         prop_ids = list(set(r.get("property_id") for r in requirements if r.get("property_id")))
         properties = await db.properties.find(
             {"property_id": {"$in": prop_ids}},
-            {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1}
+            {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1, "jurisdiction": 1}
         ).to_list(1000)
         prop_map = {p["property_id"]: p for p in properties}
         
@@ -185,13 +195,17 @@ class ReportingService:
             "requirements": []
         }
         
+        client_doc = client_row or {}
         for req in requirements:
             prop = prop_map.get(req.get("property_id"), {})
             docs = doc_map.get(req.get("requirement_id"), [])
-            
+            _att = jurisdiction_attribution_for_property(prop or {}, client_doc)
+
             report_data["requirements"].append({
                 "requirement_id": req.get("requirement_id"),
                 "property_address": f"{prop.get('address_line_1', 'N/A')}, {prop.get('city', '')} {prop.get('postcode', '')}",
+                "effective_jurisdiction_label": _att.get("effective_jurisdiction_label"),
+                "jurisdiction_source": _att.get("jurisdiction_source"),
                 "requirement_type": req.get("requirement_type", "N/A"),
                 "description": req.get("description", "N/A"),
                 "status": req.get("status", "UNKNOWN"),
@@ -310,7 +324,8 @@ class ReportingService:
         if 'properties' in data:
             output.write("=== PROPERTIES ===\n")
             writer = csv.DictWriter(output, fieldnames=[
-                'address', 'property_type', 'compliance_status', 
+                'address', 'property_type', 'compliance_status',
+                'effective_jurisdiction_label', 'jurisdiction_source',
                 'total_requirements', 'compliant', 'overdue'
             ])
             writer.writeheader()
@@ -336,8 +351,9 @@ class ReportingService:
         output.write(f"Total Requirements: {len(data['requirements'])}\n\n")
         
         writer = csv.DictWriter(output, fieldnames=[
-            'property_address', 'requirement_type', 'description', 'status',
-            'due_date', 'frequency_days', 'documents_count', 
+            'property_address', 'effective_jurisdiction_label', 'jurisdiction_source',
+            'requirement_type', 'description', 'status',
+            'due_date', 'frequency_days', 'documents_count',
             'latest_document', 'latest_doc_status'
         ])
         writer.writeheader()

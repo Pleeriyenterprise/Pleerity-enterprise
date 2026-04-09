@@ -35,6 +35,7 @@ from services.portal_user_lifecycle_service import (
     permanent_delete_preflight,
 )
 from services.client_lifecycle_service import default_active_client_match, derive_client_lifecycle_status
+from services.compliance_rules_registry import jurisdiction_attribution_for_property
 from models import ClientLifecycleStatus
 
 logger = logging.getLogger(__name__)
@@ -2310,14 +2311,20 @@ async def get_kpi_properties(
         
         total = await db.properties.count_documents(query)
         
-        # Enrich with client info
+        # Enrich with client info and jurisdiction attribution (display-only)
         for prop in properties:
-            client = await db.clients.find_one(
+            client_row = await db.clients.find_one(
                 {"client_id": prop.get("client_id")},
-                {"_id": 0, "full_name": 1, "email": 1, "customer_reference": 1}
+                {"_id": 0, "full_name": 1, "email": 1, "customer_reference": 1, "default_jurisdiction": 1},
             )
-            prop["client"] = client
-        
+            if client_row:
+                prop["client"] = {k: v for k, v in client_row.items() if k != "default_jurisdiction"}
+            else:
+                prop["client"] = None
+            att = jurisdiction_attribution_for_property(prop, client_row or {})
+            prop["effective_jurisdiction_label"] = att.get("effective_jurisdiction_label")
+            prop["jurisdiction_source"] = att.get("jurisdiction_source")
+
         return {
             "properties": properties,
             "total": total,
@@ -2395,15 +2402,23 @@ async def get_kpi_requirements(
         for req in requirements:
             prop = await db.properties.find_one(
                 {"property_id": req.get("property_id")},
-                {"_id": 0, "nickname": 1, "address_line_1": 1, "postcode": 1, "client_id": 1}
+                {"_id": 0, "nickname": 1, "address_line_1": 1, "postcode": 1, "client_id": 1, "jurisdiction": 1}
             )
             if prop:
-                req["property"] = prop
-                client = await db.clients.find_one(
+                client_row = await db.clients.find_one(
                     {"client_id": prop.get("client_id")},
-                    {"_id": 0, "full_name": 1, "customer_reference": 1}
+                    {"_id": 0, "full_name": 1, "customer_reference": 1, "default_jurisdiction": 1},
                 )
-                req["client"] = client
+                att = jurisdiction_attribution_for_property(prop, client_row or {})
+                prop_out = dict(prop)
+                prop_out["effective_jurisdiction_label"] = att.get("effective_jurisdiction_label")
+                prop_out["jurisdiction_source"] = att.get("jurisdiction_source")
+                req["property"] = prop_out
+                req["client"] = (
+                    {k: v for k, v in client_row.items() if k != "default_jurisdiction"}
+                    if client_row
+                    else None
+                )
 
         from services.requirement_truth import enrich_requirements_for_admin
 
@@ -2478,7 +2493,7 @@ async def get_kpi_documents(
         if client_ids:
             async for c in db.clients.find(
                 {"client_id": {"$in": client_ids}},
-                {"_id": 0, "client_id": 1, "full_name": 1, "customer_reference": 1},
+                {"_id": 0, "client_id": 1, "full_name": 1, "customer_reference": 1, "default_jurisdiction": 1},
             ):
                 cid = c.get("client_id")
                 if cid:
@@ -2488,16 +2503,31 @@ async def get_kpi_documents(
         if property_ids:
             async for p in db.properties.find(
                 {"property_id": {"$in": property_ids}},
-                {"_id": 0, "property_id": 1, "nickname": 1, "address_line_1": 1, "postcode": 1},
+                {"_id": 0, "property_id": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "client_id": 1, "jurisdiction": 1},
             ):
                 pid = p.get("property_id")
                 if pid:
                     property_map[pid] = p
 
+        for pid, p in list(property_map.items()):
+            cid = p.get("client_id")
+            client_row = client_map.get(cid) if cid else None
+            att = jurisdiction_attribution_for_property(p, client_row or {})
+            property_map[pid] = {
+                **p,
+                "effective_jurisdiction_label": att.get("effective_jurisdiction_label"),
+                "jurisdiction_source": att.get("jurisdiction_source"),
+            }
+
         for doc in documents:
             cid = doc.get("client_id")
             pid = doc.get("property_id")
-            doc["client"] = client_map.get(cid) if cid else None
+            crow = client_map.get(cid) if cid else None
+            doc["client"] = (
+                {k: v for k, v in crow.items() if k != "default_jurisdiction"}
+                if crow
+                else None
+            )
             doc["property"] = property_map.get(pid) if pid else None
 
         return {

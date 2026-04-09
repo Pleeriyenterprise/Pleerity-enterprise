@@ -272,6 +272,24 @@ def test_jurisdiction_attribution_reuses_resolution():
     assert att["effective_jurisdiction_label"] == "Northern Ireland"
 
 
+def test_mixed_portfolio_properties_resolve_independently():
+    client = {"default_jurisdiction": "England"}
+    props = [
+        {"property_id": "a", "jurisdiction": "Wales"},
+        {"property_id": "b", "jurisdiction": "Scotland"},
+        {"property_id": "c"},
+    ]
+    a = jurisdiction_attribution_for_property(props[0], client)
+    b = jurisdiction_attribution_for_property(props[1], client)
+    c = jurisdiction_attribution_for_property(props[2], client)
+    assert a["effective_jurisdiction_label"] == "Wales"
+    assert b["effective_jurisdiction_label"] == "Scotland"
+    assert c["effective_jurisdiction_label"] == "England"
+    assert a["jurisdiction_source"] == "property_record"
+    assert b["jurisdiction_source"] == "property_record"
+    assert c["jurisdiction_source"] == "account_default"
+
+
 def test_dashboard_hard_notice_inactive_when_portfolio_only_uses_account_default():
     """Hard portfolio warning (default_fallback) must not activate when client default covers all properties."""
     client = {"default_jurisdiction": "Wales"}

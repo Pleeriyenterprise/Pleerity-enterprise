@@ -133,13 +133,14 @@ export default function JurisdictionSettingsPage() {
     try {
       const res = await clientAPI.applyDefaultJurisdictionToMissingProperties();
       const updated = typeof res.data?.properties_updated === 'number' ? res.data.properties_updated : 0;
+      const updatedIds = Array.isArray(res.data?.updated_property_ids) ? res.data.updated_property_ids : [];
       const enq = typeof res.data?.recalc_enqueued === 'number' ? res.data.recalc_enqueued : 0;
       if (updated > 0) {
         toast.success(`Updated ${updated} propert${updated === 1 ? 'y' : 'ies'}`, {
           description:
             enq > 0
               ? `Background refresh started for ${enq} propert${enq === 1 ? 'y' : 'ies'}.`
-              : undefined,
+              : (updatedIds.length ? `Updated IDs: ${updatedIds.slice(0, 5).join(', ')}${updatedIds.length > 5 ? '…' : ''}` : undefined),
         });
       } else {
         toast.message('No changes needed', {
@@ -252,8 +253,9 @@ export default function JurisdictionSettingsPage() {
               Default jurisdiction
             </Label>
             <p className="text-sm text-gray-600">
-              Applied when a property has no jurisdiction set — including new properties until you edit them. Scoring may use this
-              value when the property record is blank; you should still confirm jurisdiction on each property record when you can.
+              Default jurisdiction is used for new properties and any property that does not yet have its own jurisdiction set.
+              Scoring may use this value when the property record is blank; you should still confirm jurisdiction on each property
+              record when you can.
             </p>
             <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1 mt-2">
               <li>Saving here updates your account only — it does not backfill existing property records automatically.</li>

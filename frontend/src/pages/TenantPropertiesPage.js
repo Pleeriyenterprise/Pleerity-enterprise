@@ -4,6 +4,7 @@ import api from '../api/client';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { resolveTenantPropertyPath } from '../utils/clientPortalNavigation';
 import { CheckCircle, XCircle, Clock, AlertTriangle, Building2, ChevronRight } from 'lucide-react';
+import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 
 function getComplianceStyles(status) {
   switch (status) {
@@ -84,6 +85,14 @@ const TenantPropertiesPage = () => {
                       <div>
                         <h3 className="font-semibold text-midnight-blue">{property.address}</h3>
                         <p className="text-sm text-gray-500 capitalize">{property.property_type}</p>
+                        {(property.effective_jurisdiction_label || property.jurisdiction_source) && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {property.effective_jurisdiction_label ? `Jurisdiction: ${property.effective_jurisdiction_label}` : 'Jurisdiction: —'}
+                            {property.jurisdiction_source
+                              ? ` · Source: ${jurisdictionSourceLabel(property.jurisdiction_source)}`
+                              : ''}
+                          </p>
+                        )}
                         {(property.compliance_status === 'RED' || property.compliance_status === 'AMBER') && (
                           <p className="text-xs font-medium text-gray-600 mt-1">
                             Safety status: {property.compliance_status === 'RED' ? 'Needs attention' : 'Renewals due soon'}

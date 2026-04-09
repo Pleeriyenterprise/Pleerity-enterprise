@@ -18,6 +18,7 @@ from typing import Optional
 from models import AuditAction
 from utils.audit import create_audit_log
 from services.requirement_code_registry import normalize_requirement_code_strict
+from services.compliance_rules_registry import jurisdiction_attribution_for_property
 import logging
 import uuid
 
@@ -130,6 +131,11 @@ async def get_tenant_dashboard(request: Request):
         assigned_property_ids = [tp["property_id"] for tp in tenant_properties]
         property_filter["property_id"] = {"$in": assigned_property_ids}
     
+    client_doc = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "default_jurisdiction": 1},
+    ) or {}
+
     # Get properties with limited fields
     properties = await db.properties.find(
         property_filter,
@@ -140,7 +146,8 @@ async def get_tenant_dashboard(request: Request):
             "city": 1,
             "postcode": 1,
             "property_type": 1,
-            "compliance_status": 1
+            "compliance_status": 1,
+            "jurisdiction": 1,
         }
     ).to_list(100)
     
@@ -162,6 +169,7 @@ async def get_tenant_dashboard(request: Request):
     # Build simplified response
     property_summaries = []
     for prop in properties:
+        att = jurisdiction_attribution_for_property(prop, client_doc)
         prop_reqs = [r for r in requirements if r.get("property_id") == prop["property_id"]]
         
         # Simplify requirement info for tenants
@@ -179,6 +187,8 @@ async def get_tenant_dashboard(request: Request):
             "address": f"{prop.get('address_line_1', '')}, {prop.get('city', '')} {prop.get('postcode', '')}",
             "property_type": prop.get("property_type", "N/A"),
             "compliance_status": prop.get("compliance_status", "UNKNOWN"),
+            "effective_jurisdiction_label": att["effective_jurisdiction_label"],
+            "jurisdiction_source": att["jurisdiction_source"],
             "certificates": cert_summary
         })
     
@@ -215,6 +225,11 @@ async def get_tenant_property_details(request: Request, property_id: str):
     client_id = user.get("client_id")
     tenant_id = user.get("portal_user_id")
     
+    client_doc = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "default_jurisdiction": 1},
+    ) or {}
+
     # Verify property access
     property_doc = await db.properties.find_one(
         {"property_id": property_id, "client_id": client_id},
@@ -226,7 +241,8 @@ async def get_tenant_property_details(request: Request, property_id: str):
             "city": 1,
             "postcode": 1,
             "property_type": 1,
-            "compliance_status": 1
+            "compliance_status": 1,
+            "jurisdiction": 1,
         }
     )
     
@@ -286,12 +302,15 @@ async def get_tenant_property_details(request: Request, property_id: str):
             "renewal_frequency": f"Every {req.get('frequency_days', 0)} days" if req.get("frequency_days") else "N/A"
         })
     
+    att = jurisdiction_attribution_for_property(property_doc, client_doc)
     return {
         "property": {
             "property_id": property_id,
             "address": f"{property_doc.get('address_line_1', '')}, {property_doc.get('city', '')} {property_doc.get('postcode', '')}",
             "type": property_doc.get("property_type", "N/A"),
-            "compliance_status": property_doc.get("compliance_status", "UNKNOWN")
+            "compliance_status": property_doc.get("compliance_status", "UNKNOWN"),
+            "effective_jurisdiction_label": att["effective_jurisdiction_label"],
+            "jurisdiction_source": att["jurisdiction_source"],
         },
         "certificates": certificates,
         "note": "This view shows safety checks for your rental property. Renewals are your landlord's responsibility—contact them if you need an update."

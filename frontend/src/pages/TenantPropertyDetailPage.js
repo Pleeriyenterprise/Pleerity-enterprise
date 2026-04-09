@@ -9,6 +9,7 @@ import {
   formatCertStatusLabel,
   getCertificateResponsibilityHint,
 } from '../utils/tenantPortalTrust';
+import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 
 function summarizePropertySafety(status) {
   switch (status) {
@@ -148,6 +149,14 @@ const TenantPropertyDetailPage = () => {
           <p className="text-gray-600 mt-2 capitalize">
             <span className="font-medium">Property type:</span> {property?.type}
           </p>
+          {(property?.effective_jurisdiction_label || property?.jurisdiction_source) && (
+            <p className="text-gray-600 mt-2">
+              <span className="font-medium">Jurisdiction:</span> {property?.effective_jurisdiction_label || '—'}
+              {property?.jurisdiction_source
+                ? ` · Source: ${jurisdictionSourceLabel(property.jurisdiction_source)}`
+                : ''}
+            </p>
+          )}
         </CardContent>
       </Card>
       <Card>

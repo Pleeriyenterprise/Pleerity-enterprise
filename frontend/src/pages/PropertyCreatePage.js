@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
@@ -18,6 +18,7 @@ const PropertyCreatePage = () => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [isPlanLimit, setIsPlanLimit] = useState(false);
+  const [defaultJurisdiction, setDefaultJurisdiction] = useState('');
 
   const [formData, setFormData] = useState({
     nickname: '',
@@ -29,6 +30,26 @@ const PropertyCreatePage = () => {
     property_type: 'residential',
     number_of_units: 1
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get('/client/settings/jurisdiction')
+      .then((res) => {
+        if (cancelled) return;
+        const d = typeof res.data?.default_jurisdiction === 'string' ? res.data.default_jurisdiction.trim() : '';
+        if (d && JURISDICTION_OPTIONS.includes(d)) {
+          setDefaultJurisdiction(d);
+          setFormData((prev) => (prev.jurisdiction ? prev : { ...prev, jurisdiction: d }));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDefaultJurisdiction('');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -220,7 +241,8 @@ const PropertyCreatePage = () => {
                   ))}
                 </select>
                 <p className="text-xs text-gray-500">
-                  Leave blank to use your saved account default. Set explicitly when this address is in a different region.
+                  Default jurisdiction is used for new properties and any property that does not yet have its own jurisdiction set.
+                  {defaultJurisdiction ? ` Current account default: ${defaultJurisdiction}.` : ''}
                 </p>
               </div>
 

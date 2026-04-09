@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
+import { JURISDICTION_OPTIONS } from '../utils/jurisdictionComplianceCopy';
 
 const BulkPropertyImportPage = () => {
   const navigate = useNavigate();
@@ -31,6 +32,24 @@ const BulkPropertyImportPage = () => {
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState(null);
   const [fileName, setFileName] = useState('');
+  const [accountDefaultJurisdiction, setAccountDefaultJurisdiction] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get('/client/settings/jurisdiction')
+      .then((res) => {
+        if (cancelled) return;
+        const d = res.data?.default_jurisdiction;
+        setAccountDefaultJurisdiction(typeof d === 'string' ? d.trim() : '');
+      })
+      .catch(() => {
+        if (!cancelled) setAccountDefaultJurisdiction('');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -54,6 +73,11 @@ const BulkPropertyImportPage = () => {
         // Validate and map data
         const validationErrors = [];
         const mappedData = data.map((row, idx) => {
+          const rawJurisdiction =
+            row.jurisdiction || row.Jurisdiction || row['Property Jurisdiction'] || row['property_jurisdiction'] || '';
+          const canonicalJurisdiction = JURISDICTION_OPTIONS.find(
+            (j) => j.toLowerCase() === String(rawJurisdiction || '').trim().toLowerCase(),
+          );
           const mapped = {
             address_line_1: row.address_line_1 || row.address || row.Address || row['Address Line 1'] || '',
             address_line_2: row.address_line_2 || row['Address Line 2'] || '',
@@ -61,6 +85,7 @@ const BulkPropertyImportPage = () => {
             postcode: row.postcode || row.Postcode || row['Post Code'] || row.zip || '',
             property_type: (row.property_type || row.type || row.Type || 'residential').toLowerCase(),
             number_of_units: parseInt(row.number_of_units || row.units || row.Units || '1', 10) || 1,
+            jurisdiction: canonicalJurisdiction || '',
             _rowIndex: idx + 2 // +2 for header row and 0-indexing
           };
 
@@ -73,6 +98,12 @@ const BulkPropertyImportPage = () => {
           }
           if (!mapped.postcode) {
             validationErrors.push({ row: mapped._rowIndex, error: 'Missing postcode' });
+          }
+          if (rawJurisdiction && !canonicalJurisdiction) {
+            validationErrors.push({
+              row: mapped._rowIndex,
+              error: 'Invalid jurisdiction (use Scotland, England, Wales, or Northern Ireland)',
+            });
           }
 
           return mapped;
@@ -139,10 +170,10 @@ const BulkPropertyImportPage = () => {
   };
 
   const downloadTemplate = () => {
-    const template = `address_line_1,address_line_2,city,postcode,property_type,number_of_units
-123 Main Street,Flat 1,London,SW1A 1AA,residential,1
-456 High Street,,Manchester,M1 1AA,hmo,4
-789 Park Road,Unit 2B,Birmingham,B1 1AA,commercial,2`;
+    const template = `address_line_1,address_line_2,city,postcode,property_type,number_of_units,jurisdiction
+123 Main Street,Flat 1,London,SW1A 1AA,residential,1,England
+456 High Street,,Cardiff,CF10 1AA,hmo,4,Wales
+789 Park Road,Unit 2B,Edinburgh,EH1 1AA,commercial,2,`;
     
     const blob = new Blob([template], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -243,7 +274,11 @@ const BulkPropertyImportPage = () => {
                     <li><strong>postcode</strong> (required) - UK postcode</li>
                     <li><strong>property_type</strong> (optional) - residential, hmo, commercial</li>
                     <li><strong>number_of_units</strong> (optional) - Number of units (default: 1)</li>
+                    <li><strong>jurisdiction</strong> (optional) - Scotland, England, Wales, Northern Ireland</li>
                   </ul>
+                  <p className="mt-2 text-blue-700/90">
+                    Import rule: explicit row jurisdiction wins; blank rows use your account default ({accountDefaultJurisdiction || 'none saved'}).
+                  </p>
                 </div>
               </div>
             </div>
@@ -330,6 +365,10 @@ const BulkPropertyImportPage = () => {
                           <dt className="text-gray-500">Units</dt>
                           <dd className="text-right">{prop.number_of_units ?? '—'}</dd>
                         </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">Jurisdiction</dt>
+                          <dd className="text-right">{prop.jurisdiction || accountDefaultJurisdiction || 'System fallback'}</dd>
+                        </div>
                       </dl>
                     </div>
                   );
@@ -345,6 +384,7 @@ const BulkPropertyImportPage = () => {
                       <th className="px-3 py-2 text-left font-medium text-gray-600">Postcode</th>
                       <th className="px-3 py-2 text-left font-medium text-gray-600">Type</th>
                       <th className="px-3 py-2 text-left font-medium text-gray-600">Units</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-600">Jurisdiction</th>
                       <th className="px-3 py-2 text-center font-medium text-gray-600">Action</th>
                     </tr>
                   </thead>
@@ -366,6 +406,7 @@ const BulkPropertyImportPage = () => {
                           <td className="px-3 py-2">{prop.postcode || <span className="text-red-500">Missing</span>}</td>
                           <td className="px-3 py-2 capitalize">{prop.property_type}</td>
                           <td className="px-3 py-2">{prop.number_of_units}</td>
+                          <td className="px-3 py-2">{prop.jurisdiction || accountDefaultJurisdiction || 'System fallback'}</td>
                           <td className="px-3 py-2 text-center">
                             <button
                               type="button"

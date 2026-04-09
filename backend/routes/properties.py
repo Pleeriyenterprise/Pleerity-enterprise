@@ -607,10 +607,32 @@ class BulkPropertyItem(BaseModel):
     postcode: str
     property_type: str = "residential"
     number_of_units: int = 1
+    # Optional per-row override from CSV/import source.
+    jurisdiction: Optional[str] = Field(None, description="Scotland | England | Wales | Northern Ireland")
 
 
 class BulkImportRequest(BaseModel):
     properties: List[BulkPropertyItem]
+
+
+def _resolve_bulk_import_jurisdiction(raw_jurisdiction: Optional[str], client_default_jurisdiction: Optional[str]) -> Optional[str]:
+    """
+    Resolve import-row jurisdiction safely for mixed portfolios.
+
+    Order:
+      1) Explicit per-row jurisdiction (if valid)
+      2) Client default jurisdiction (if valid)
+      3) None (system fallback only at scoring-time if both missing/invalid)
+    """
+    from services.compliance_rules_registry import canonicalize_uk_portfolio_label
+
+    raw = str(raw_jurisdiction or "").strip()
+    row_label = canonicalize_uk_portfolio_label(raw)
+    if raw and not row_label:
+        raise ValueError("jurisdiction must be Scotland, England, Wales, or Northern Ireland when provided")
+    if row_label:
+        return row_label
+    return canonicalize_uk_portfolio_label(client_default_jurisdiction)
 
 
 @router.post("/bulk-import")
@@ -708,6 +730,11 @@ async def bulk_import_properties(request: Request, data: BulkImportRequest):
                     })
                     continue
                 
+                prop_jurisdiction = _resolve_bulk_import_jurisdiction(
+                    prop_data.jurisdiction,
+                    client.get("default_jurisdiction"),
+                )
+
                 # Create property
                 property_obj = Property(
                     client_id=user["client_id"],
@@ -717,7 +744,8 @@ async def bulk_import_properties(request: Request, data: BulkImportRequest):
                     postcode=prop_data.postcode,
                     property_type=prop_data.property_type,
                     number_of_units=prop_data.number_of_units,
-                    compliance_status=ComplianceStatus.RED
+                    compliance_status=ComplianceStatus.RED,
+                    jurisdiction=prop_jurisdiction,
                 )
                 
                 prop_doc = property_obj.model_dump()
@@ -741,6 +769,7 @@ async def bulk_import_properties(request: Request, data: BulkImportRequest):
                 results["created_properties"].append({
                     "property_id": property_obj.property_id,
                     "address": f"{prop_data.address_line_1}, {prop_data.city}",
+                    "jurisdiction": prop_jurisdiction,
                     "requirements_created": req_count
                 })
                 

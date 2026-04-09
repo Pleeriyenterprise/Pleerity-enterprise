@@ -1508,6 +1508,7 @@ async def apply_default_jurisdiction_to_missing_properties(request: Request):
     ).to_list(10000)
     now = datetime.now(timezone.utc).isoformat()
     updated = 0
+    updated_property_ids = []
     enq = 0
     for p in props:
         pid = p.get("property_id")
@@ -1518,6 +1519,7 @@ async def apply_default_jurisdiction_to_missing_properties(request: Request):
             {"$set": {"jurisdiction": default_label, "updated_at": now}},
         )
         updated += 1
+        updated_property_ids.append(pid)
         if await enqueue_compliance_recalc(
             property_id=pid,
             client_id=user["client_id"],
@@ -1527,7 +1529,12 @@ async def apply_default_jurisdiction_to_missing_properties(request: Request):
             correlation_id=f"JURISDICTION_APPLY_MISSING:{pid}",
         ):
             enq += 1
-    return {"ok": True, "properties_updated": updated, "recalc_enqueued": enq}
+    return {
+        "ok": True,
+        "properties_updated": updated,
+        "updated_property_ids": updated_property_ids,
+        "recalc_enqueued": enq,
+    }
 
 
 @router.get("/properties")

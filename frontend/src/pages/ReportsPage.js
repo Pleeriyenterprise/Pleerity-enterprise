@@ -43,7 +43,16 @@ import {
 } from '../domain/presentDomain';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { cn } from '../lib/utils';
+
+function reportPropertyOptionLabel(p) {
+  const base = [p.address_line_1, p.city].filter(Boolean).join(', ') || p.nickname || p.property_id;
+  if (!p.effective_jurisdiction_label && !p.jurisdiction_source) return base;
+  const j = p.effective_jurisdiction_label ? ` · ${p.effective_jurisdiction_label}` : '';
+  const src = p.jurisdiction_source ? ` (Source: ${jurisdictionSourceLabel(p.jurisdiction_source)})` : '';
+  return `${base}${j}${src}`;
+}
 
 const ReportsPage = () => {
   const navigate = useNavigate();
@@ -323,22 +332,26 @@ const ReportsPage = () => {
       
       autoTable(doc, {
         startY: yPosition,
-        head: [['Property', 'Type', 'Description', 'Status', 'Due Date']],
+        head: [['Property', 'Jurisdiction', 'Src', 'Type', 'Description', 'Status', 'Due']],
         body: reportData.requirements.map(r => [
-          r.property_address?.substring(0, 30) || 'N/A',
+          r.property_address?.substring(0, 24) || 'N/A',
+          (r.effective_jurisdiction_label || '—').substring(0, 12),
+          r.jurisdiction_source ? jurisdictionSourceLabel(r.jurisdiction_source).substring(0, 14) : '—',
           requirementLabel(r.requirement_type),
-          r.description?.substring(0, 25) || 'N/A',
+          r.description?.substring(0, 20) || 'N/A',
           complianceRequirementStatusLabel(r.status),
           r.due_date || 'N/A'
         ]),
         styles: { fontSize: 7 },
         headStyles: { fillColor: [26, 39, 68] },
         columnStyles: {
-          0: { cellWidth: 40 },
-          1: { cellWidth: 25 },
-          2: { cellWidth: 40 },
-          3: { cellWidth: 25 },
-          4: { cellWidth: 25 }
+          0: { cellWidth: 32 },
+          1: { cellWidth: 22 },
+          2: { cellWidth: 24 },
+          3: { cellWidth: 22 },
+          4: { cellWidth: 32 },
+          5: { cellWidth: 22 },
+          6: { cellWidth: 18 }
         }
       });
     }
@@ -978,7 +991,7 @@ const ReportsPage = () => {
                     <option value="">Select property…</option>
                     {properties.map((p) => (
                       <option key={p.property_id} value={p.property_id}>
-                        {p.address_line_1 || p.nickname || p.property_id}
+                        {reportPropertyOptionLabel(p)}
                       </option>
                     ))}
                   </select>
@@ -1232,7 +1245,7 @@ const ReportsPage = () => {
                   <option value="">All Properties</option>
                   {properties.map(p => (
                     <option key={p.property_id} value={p.property_id}>
-                      {p.address_line_1}, {p.city}
+                      {reportPropertyOptionLabel(p)}
                     </option>
                   ))}
                 </select>

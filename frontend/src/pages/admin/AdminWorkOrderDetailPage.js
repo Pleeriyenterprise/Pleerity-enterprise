@@ -21,6 +21,7 @@ import {
   adminSimplifiedProgressFromWorkOrder,
   deriveCanonicalJobStatus,
 } from '../../utils/jobWorkflowUi';
+import { jurisdictionSourceLabel } from '../../utils/jurisdictionComplianceCopy';
 
 const STATUS_OPTIONS = [
   { value: 'OPEN', label: 'Open' },
@@ -177,6 +178,15 @@ export default function AdminWorkOrderDetailPage() {
           <CardContent className="space-y-2 text-sm">
             <p><span className="font-medium text-gray-700">Client:</span> {clientLabel(wo.client_id)}</p>
             <p><span className="font-medium text-gray-700">Property:</span> {wo.property_id}</p>
+            {(wo.property_effective_jurisdiction_label || wo.property_jurisdiction_source) ? (
+              <p className="text-gray-600">
+                <span className="font-medium text-gray-700">Jurisdiction:</span>{' '}
+                {wo.property_effective_jurisdiction_label || '—'}
+                {wo.property_jurisdiction_source
+                  ? ` · Source: ${jurisdictionSourceLabel(wo.property_jurisdiction_source)}`
+                  : ''}
+              </p>
+            ) : null}
             <p><span className="font-medium text-gray-700">Category:</span> {wo.category || '—'}</p>
             <p><span className="font-medium text-gray-700">Severity:</span> {wo.severity || '—'}</p>
             <p><span className="font-medium text-gray-700">Created:</span> {formatDate(wo.created_at)}</p>

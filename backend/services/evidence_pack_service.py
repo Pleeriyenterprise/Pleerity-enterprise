@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from bson import ObjectId
 from database import database
+from services.compliance_rules_registry import jurisdiction_attribution_for_property
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +144,19 @@ async def _load_requirements(
 async def _load_properties(client_id: str) -> List[Dict[str, Any]]:
     db = database.get_db()
     cur = db.properties.find({"client_id": client_id}, {"_id": 0}).limit(2000)
-    return await cur.to_list(length=2000)
+    rows = await cur.to_list(length=2000)
+    client_doc = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "default_jurisdiction": 1},
+    ) or {}
+    out: List[Dict[str, Any]] = []
+    for p in rows:
+        d = dict(p)
+        att = jurisdiction_attribution_for_property(d, client_doc)
+        d["effective_jurisdiction_label"] = att.get("effective_jurisdiction_label")
+        d["jurisdiction_source"] = att.get("jurisdiction_source")
+        out.append(d)
+    return out
 
 
 async def _load_documents_meta(
@@ -255,6 +268,8 @@ async def build_evidence_pack_zip_bytes(
         "postcode",
         "compliance_status",
         "property_type",
+        "effective_jurisdiction_label",
+        "jurisdiction_source",
     ]
     doc_fields = [
         "document_id",

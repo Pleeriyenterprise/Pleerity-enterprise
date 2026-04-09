@@ -10,6 +10,7 @@ from typing import Optional, List
 from database import database
 from middleware import admin_route_guard, require_owner_or_admin
 from services import maintenance_service
+from services.compliance_rules_registry import jurisdiction_attribution_for_property
 from services import contractor_service
 from services import contractor_evidence_service
 from services import work_order_schedule_service as wo_schedule
@@ -139,6 +140,23 @@ async def get_work_order(request: Request, work_order_id: str):
     doc = await maintenance_service.get_work_order(work_order_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Work order not found")
+    pid = doc.get("property_id")
+    cid = doc.get("client_id")
+    if pid and cid:
+        db = database.get_db()
+        prop = await db.properties.find_one(
+            {"property_id": pid, "client_id": cid},
+            {"_id": 0, "jurisdiction": 1},
+        )
+        client_row = await db.clients.find_one(
+            {"client_id": cid},
+            {"_id": 0, "default_jurisdiction": 1},
+        )
+        if prop is not None:
+            att = jurisdiction_attribution_for_property(prop, client_row or {})
+            doc = dict(doc)
+            doc["property_effective_jurisdiction_label"] = att.get("effective_jurisdiction_label")
+            doc["property_jurisdiction_source"] = att.get("jurisdiction_source")
     return doc
 
 

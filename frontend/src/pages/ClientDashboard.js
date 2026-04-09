@@ -49,6 +49,7 @@ import {
   JURISDICTION_ONBOARDING_GATE_TITLE,
   JURISDICTION_PORTFOLIO_REMINDER_COMPACT,
   JURISDICTION_SCOPE_GLOBAL,
+  jurisdictionSourceLabel,
 } from '../utils/jurisdictionComplianceCopy';
 import { portfolioJurisdictionBannerState } from '../utils/jurisdictionUiPolicy';
 
@@ -1116,7 +1117,15 @@ const ClientDashboard = () => {
                     const displayName = p.nickname || p.address_line_1 || (p.address_line_1 && p.city ? `${p.address_line_1}, ${p.city}` : null) || (p.postcode ? `Property ${p.postcode}` : null) || p.property_id;
                     return (
                       <li key={p.property_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="font-medium text-midnight-blue">{displayName}</span>
+                        <div>
+                          <span className="font-medium text-midnight-blue">{displayName}</span>
+                          {(p.effective_jurisdiction_label || p.jurisdiction_source) && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {p.effective_jurisdiction_label ? `Jurisdiction: ${p.effective_jurisdiction_label}` : 'Jurisdiction: —'}
+                              {p.jurisdiction_source ? ` · Source: ${jurisdictionSourceLabel(p.jurisdiction_source)}` : ''}
+                            </p>
+                          )}
+                        </div>
                         <span className="text-gray-500 text-xs">{p.property_type || '—'}{p.bedrooms != null ? ` · ${p.bedrooms} bed` : ''}</span>
                       </li>
                     );
