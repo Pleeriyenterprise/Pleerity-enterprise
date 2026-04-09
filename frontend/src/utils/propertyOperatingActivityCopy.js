@@ -2,19 +2,7 @@
  * User-facing copy for property Operating tab activity (defense in depth vs timeline API).
  */
 
-const SCORE_CHANGE_REASON_LABELS = {
-  CLIENT_JURISDICTION_UPDATED: 'Jurisdiction updated',
-  EXPIRY_RULE: 'Certificate expiry updated',
-  EXPIRY_JOB: 'Certificate expiry updated',
-  PROPERTY_UPDATED: 'Property details updated',
-  SCORE_RECALCULATED: 'Compliance score updated',
-  SCHEDULED_PROPERTY_BATCH: 'Scheduled compliance update',
-  DOCUMENT_UPLOADED: 'Document uploaded',
-  DOCUMENT_DELETED: 'Document removed',
-  REQUIREMENT_CHANGED: 'Requirement updated',
-  EXPIRY_ROLLOVER: 'Expiry rollover',
-  LAZY_BACKFILL: 'Compliance score refreshed',
-};
+import { presentScoreChangeReason } from './timelinePresent';
 
 /**
  * @param {string|null|undefined} s
@@ -24,12 +12,7 @@ export function humanizeOperatingActivityText(s) {
   if (s == null || typeof s !== 'string') return s;
   const t = s.trim();
   if (!t) return t;
-  const key = t.toUpperCase();
-  if (SCORE_CHANGE_REASON_LABELS[key]) return SCORE_CHANGE_REASON_LABELS[key];
-  const slug = t.toUpperCase().replace(/\s+/g, '_');
-  if (SCORE_CHANGE_REASON_LABELS[slug]) return SCORE_CHANGE_REASON_LABELS[slug];
-  if (/^[A-Z][A-Z0-9_]+$/.test(key)) return 'Update recorded';
-  return t;
+  return presentScoreChangeReason(t).title;
 }
 
 /**

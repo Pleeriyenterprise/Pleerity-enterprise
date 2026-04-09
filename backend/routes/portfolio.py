@@ -263,6 +263,12 @@ async def get_property_score_history_route(request: Request, property_id: str, l
         {"property_id": property_id, "client_id": user["client_id"]},
         {"_id": 0, "previous_score": 1, "new_score": 1, "delta": 1, "reason": 1, "changed_requirements": 1, "created_at": 1},
     ).sort("created_at", -1).limit(limit).to_list(limit)
+    from services.property_timeline_service import present_score_change_reason
+
+    for e in entries:
+        pr = present_score_change_reason(e.get("reason"))
+        e["reason_label"] = pr["title"]
+        e["reason_detail"] = pr.get("description") or ""
     return {"property_id": property_id, "entries": entries}
 
 

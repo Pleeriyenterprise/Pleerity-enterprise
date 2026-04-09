@@ -48,7 +48,7 @@ import { SUPPORT_EMAIL } from '../config';
 import { getEvidenceStatus } from '../utils/evidenceStatus';
 import { formatRiskLabel } from '../utils/riskLabel';
 import { humanRiskType, humanSeverity, humanAction, humanizeRiskReasonBullet } from '../utils/riskPresentation';
-import { presentPropertyTimelineItem } from '../utils/timelinePresent';
+import { presentPropertyTimelineItem, presentScoreChangeReason } from '../utils/timelinePresent';
 import {
   clientCurrentUpdateSummary,
   jobPreviewManageJobCtaLabel,
@@ -3603,15 +3603,25 @@ export default function PropertyDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {scoreHistoryEntries.map((e, i) => (
+                    {scoreHistoryEntries.map((e, i) => {
+                      const reasonPresented = e.reason_label
+                        ? { title: e.reason_label, description: e.reason_detail || '' }
+                        : presentScoreChangeReason(e.reason);
+                      return (
                       <tr key={i} className="border-b border-gray-100">
                         <td className="p-2">{e.created_at ? new Date(e.created_at).toLocaleString() : '—'}</td>
                         <td className="p-2">{e.previous_score ?? '—'}</td>
                         <td className="p-2">{e.new_score ?? '—'}</td>
                         <td className={`p-2 font-medium ${e.delta > 0 ? 'text-green-600' : e.delta < 0 ? 'text-red-600' : ''}`}>{e.delta != null ? (e.delta > 0 ? '+' : '') + e.delta : '—'}</td>
-                        <td className="p-2 text-gray-600">{e.reason ?? '—'}</td>
+                        <td className="p-2 text-gray-600">
+                          <span className="font-medium text-gray-800">{reasonPresented.title}</span>
+                          {reasonPresented.description ? (
+                            <span className="block text-xs text-gray-500 mt-0.5">{reasonPresented.description}</span>
+                          ) : null}
+                        </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
                 </div>

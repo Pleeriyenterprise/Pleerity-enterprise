@@ -44,6 +44,7 @@ import {
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
+import { presentPortalAnalyticsEvent } from '../utils/timelinePresent';
 import { cn } from '../lib/utils';
 
 function reportPropertyOptionLabel(p) {
@@ -680,7 +681,7 @@ const ReportsPage = () => {
                   <ul className="border border-gray-100 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
                     {analyticsSummary.by_event.map((row) => (
                       <li key={row.event} className="flex justify-between gap-2 px-3 py-2">
-                        <span className="font-mono text-xs text-gray-800 truncate">{row.event}</span>
+                        <span className="text-sm text-gray-800 truncate" title={row.event}>{presentPortalAnalyticsEvent(row.event)}</span>
                         <span className="text-gray-600 shrink-0">{row.count}</span>
                       </li>
                     ))}

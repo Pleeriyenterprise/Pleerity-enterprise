@@ -30,20 +30,89 @@ VALID_CATEGORIES = {"EVIDENCE", "COMPLIANCE", "MAINTENANCE", "SCORE_RISK", "SYST
 VALID_ACTORS = {"user", "admin", "system"}
 
 
-# score_change_log.reason and similar — user-facing copy (property timeline + full timeline)
+# score_change_log.reason and similar — short titles (property timeline + API)
 _SCORE_CHANGE_REASON_LABELS = {
     "CLIENT_JURISDICTION_UPDATED": "Jurisdiction updated",
-    "EXPIRY_RULE": "Certificate dates reviewed",
-    "EXPIRY_JOB": "Certificate dates reviewed",
+    "EXPIRY_RULE": "Certificate expiry checked",
+    "EXPIRY_JOB": "Certificate expiry checked",
     "PROPERTY_UPDATED": "Property details updated",
     "SCORE_RECALCULATED": "Compliance score updated",
-    "SCHEDULED_PROPERTY_BATCH": "Scheduled compliance check",
+    "SCHEDULED_PROPERTY_BATCH": "System update completed",
     "DOCUMENT_UPLOADED": "Document uploaded",
     "DOCUMENT_DELETED": "Document removed",
+    "DOCUMENT_REMOVED": "Document removed",
     "REQUIREMENT_CHANGED": "Requirement updated",
     "EXPIRY_ROLLOVER": "Certificate rollover",
     "LAZY_BACKFILL": "Compliance score refreshed",
+    "PROVISIONING": "Account provisioning",
+    "PROPERTY_ADDED": "Property added",
+    "TRIGGER_PROVISIONING": "Account provisioning",
 }
+
+_ACTION_OUTCOME_TITLES = {
+    "CERTIFICATE_UPLOADED": "Certificate uploaded",
+    "CERTIFICATE_VERIFIED": "Certificate verified",
+    "ISSUE_CREATED": "Issue logged",
+    "ISSUE_RESOLVED": "Issue resolved",
+    "WORK_ORDER_COMPLETED": "Job completed",
+    "REQUIREMENT_COMPLETED": "Requirement completed",
+    "RISK_SIGNAL_ACKNOWLEDGED": "Risk signal acknowledged",
+    "RISK_SIGNAL_RESOLVED": "Risk signal resolved",
+}
+
+_ACTION_OUTCOME_NARRATIVES = {
+    "CERTIFICATE_UPLOADED": "A certificate was added; the compliance score was refreshed.",
+    "CERTIFICATE_VERIFIED": "Certificate evidence was verified and the score was updated.",
+    "ISSUE_CREATED": "A maintenance or compliance issue was recorded.",
+    "ISSUE_RESOLVED": "An issue was resolved and scoring was recalculated.",
+    "WORK_ORDER_COMPLETED": "A work order was marked complete and the score was updated.",
+    "REQUIREMENT_COMPLETED": "A compliance requirement was satisfied.",
+    "RISK_SIGNAL_ACKNOWLEDGED": "A risk signal was acknowledged.",
+    "RISK_SIGNAL_RESOLVED": "A risk signal was closed out.",
+}
+
+_FALLBACK_SCORE_REASON_TITLE = "System update"
+_FALLBACK_SCORE_REASON_BODY = (
+    "Your compliance position was updated based on the latest data we hold for this property."
+)
+
+
+def present_score_change_reason(reason: Optional[str]) -> Dict[str, str]:
+    """
+    Map score_change_log.reason (and similar) to user-facing title + optional description.
+    Never returns raw internal codes for known patterns.
+    """
+    raw = (reason or "").strip()
+    if not raw:
+        return {"title": _FALLBACK_SCORE_REASON_TITLE, "description": ""}
+
+    m = re.match(r"^ACTION_OUTCOME:\s*([A-Za-z0-9_]+)\s*$", raw, re.IGNORECASE)
+    if m:
+        suffix = m.group(1).upper()
+        title = _ACTION_OUTCOME_TITLES.get(suffix)
+        if title:
+            return {
+                "title": title,
+                "description": _ACTION_OUTCOME_NARRATIVES.get(suffix, ""),
+            }
+        return {
+            "title": _FALLBACK_SCORE_REASON_TITLE,
+            "description": "Your compliance position was refreshed after a workflow outcome was recorded.",
+        }
+
+    up = raw.upper()
+    slug = re.sub(r"\s+", "_", up)
+    if slug in _SCORE_CHANGE_REASON_LABELS:
+        return {
+            "title": _SCORE_CHANGE_REASON_LABELS[slug],
+            "description": _score_change_narrative(slug),
+        }
+
+    # Only treat as internal code if the stored value is already SCREAMING_SNAKE (not Title Case prose).
+    if re.match(r"^[A-Z][A-Z0-9_]+$", raw):
+        return {"title": _FALLBACK_SCORE_REASON_TITLE, "description": _FALLBACK_SCORE_REASON_BODY}
+
+    return {"title": raw, "description": ""}
 
 
 def _score_change_narrative(reason_key: str) -> str:
@@ -52,36 +121,27 @@ def _score_change_narrative(reason_key: str) -> str:
     narratives = {
         "CLIENT_JURISDICTION_UPDATED": "Your portfolio or property region changed, so scoring rules were re-applied for this property.",
         "EXPIRY_RULE": "Expiry rules were applied to obligation dates; the compliance score reflects the latest certificate timelines.",
-        "EXPIRY_JOB": "A background check refreshed obligation dates and the compliance score for this property.",
+        "EXPIRY_JOB": "A scheduled check refreshed certificate dates and the compliance score for this property.",
         "PROPERTY_UPDATED": "Property details changed; obligations and scoring were refreshed where needed.",
         "SCORE_RECALCULATED": "The compliance score was recalculated from your latest evidence and property data.",
         "SCHEDULED_PROPERTY_BATCH": "An automated compliance pass ran for this property and updated the score if anything changed.",
         "DOCUMENT_UPLOADED": "A document was added or updated and contributed to your compliance position.",
         "DOCUMENT_DELETED": "A document was removed; the score reflects what is still on file.",
+        "DOCUMENT_REMOVED": "A document was removed; the score reflects what is still on file.",
         "REQUIREMENT_CHANGED": "A requirement row changed (status, dates, or evidence link).",
         "EXPIRY_ROLLOVER": "A certificate or obligation moved into a new expiry window; dates and score were updated.",
         "LAZY_BACKFILL": "Stored compliance data was refreshed to match your current portfolio records.",
+        "PROVISIONING": "Initial compliance data was set up for your portfolio.",
+        "PROPERTY_ADDED": "This property was added to your portfolio.",
     }
-    return narratives.get(
-        k,
-        "Your compliance position was updated based on the latest data we hold for this property.",
-    )
+    return narratives.get(k, _FALLBACK_SCORE_REASON_BODY)
 
 
 def _friendly_score_change_reason(reason: Optional[str]) -> str:
     """Map internal trigger/reason codes to short user-readable labels."""
     if not reason or not str(reason).strip():
         return "Compliance score updated"
-    raw = str(reason).strip()
-    up = raw.upper()
-    # Underscore codes (e.g. PROPERTY_UPDATED)
-    if re.match(r"^[A-Z][A-Z0-9_]+$", up):
-        return _SCORE_CHANGE_REASON_LABELS.get(up, "Update recorded")
-    # Phrases with spaces (e.g. "Score recalculated") → same map as SCORE_RECALCULATED
-    slug = re.sub(r"\s+", "_", up)
-    if slug in _SCORE_CHANGE_REASON_LABELS:
-        return _SCORE_CHANGE_REASON_LABELS[slug]
-    return raw
+    return present_score_change_reason(reason)["title"]
 
 
 def _parse_iso(ts: Any) -> Optional[datetime]:
@@ -184,18 +244,27 @@ def _score_change_to_item(e: Dict[str, Any], index: int) -> Dict[str, Any]:
     ts_str = created if isinstance(created, str) else (ts.isoformat() if ts else None)
     reason_raw = e.get("reason") or ""
     delta = e.get("delta")
-    title = _friendly_score_change_reason(reason_raw)
+    presented = present_score_change_reason(reason_raw)
+    title = presented["title"]
     desc_parts = []
     if delta is not None and delta != 0:
         desc_parts.append(f"Score {'+' if delta > 0 else ''}{int(delta)}.")
     r_up = (reason_raw or "").strip().upper()
-    if re.match(r"^[A-Z][A-Z0-9_]+$", r_up):
+    m_ao = re.match(r"^ACTION_OUTCOME:\s*([A-Za-z0-9_]+)\s*$", reason_raw or "", re.IGNORECASE)
+    if m_ao:
+        event_type = f"ACTION_OUTCOME:{m_ao.group(1).upper()}"
+    elif re.match(r"^[A-Z][A-Z0-9_]+$", r_up):
         event_type = r_up or "SCORE_RECALCULATED"
     else:
         event_type = re.sub(r"\s+", "_", r_up) or "SCORE_RECALCULATED"
     body = " ".join(desc_parts).strip()
     if not body:
-        body = _score_change_narrative(event_type)
+        narr_key = (
+            event_type.split(":", 1)[1]
+            if event_type.startswith("ACTION_OUTCOME:")
+            else event_type
+        )
+        body = presented.get("description") or _score_change_narrative(narr_key)
     return {
         "id": f"score_log:{ts_str}:{index}" if ts_str else f"score_log:{index}",
         "timestamp": ts_str,

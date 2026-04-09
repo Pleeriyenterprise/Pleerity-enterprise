@@ -5,6 +5,7 @@ import api, { adminAPI } from '../api/client';
 import { useStepUpApi } from '../hooks/useStepUpApi';
 import { toast } from 'sonner';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
+import { presentScoreChangeReason } from '../utils/timelinePresent';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { 
   LayoutDashboard, 
@@ -768,14 +769,20 @@ const ClientDetailModal = ({ clientId, onClose }) => {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-200">
-                                {(scoreHistoryData.history ?? []).map((row, idx) => (
+                                {(scoreHistoryData.history ?? []).map((row, idx) => {
+                                  const pr = presentScoreChangeReason(row.reason);
+                                  return (
                                   <tr key={idx}>
                                     <td className="px-4 py-2">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
                                     <td className="px-4 py-2 font-medium">{row.score ?? '—'}</td>
-                                    <td className="px-4 py-2">{row.reason ?? '—'}</td>
+                                    <td className="px-4 py-2" title={pr.description || undefined}>
+                                      <span className="text-gray-900">{pr.title}</span>
+                                      {pr.description ? <span className="block text-xs text-gray-500 mt-0.5">{pr.description}</span> : null}
+                                    </td>
                                     <td className="px-4 py-2">{row.actor?.role === 'SYSTEM' ? 'System' : (row.actor?.id ?? row.actor?.role ?? '—')}</td>
                                   </tr>
-                                ))}
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -822,14 +829,20 @@ const ClientDetailModal = ({ clientId, onClose }) => {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
-                            {fullHistoryModal.map((row, idx) => (
+                            {fullHistoryModal.map((row, idx) => {
+                              const pr = presentScoreChangeReason(row.reason);
+                              return (
                               <tr key={idx}>
                                 <td className="px-4 py-2">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
                                 <td className="px-4 py-2 font-medium">{row.score ?? '—'}</td>
-                                <td className="px-4 py-2">{row.reason ?? '—'}</td>
+                                <td className="px-4 py-2">
+                                  <span className="text-gray-900">{pr.title}</span>
+                                  {pr.description ? <span className="block text-xs text-gray-500 mt-0.5">{pr.description}</span> : null}
+                                </td>
                                 <td className="px-4 py-2">{row.actor?.role === 'SYSTEM' ? 'System' : (row.actor?.id ?? row.actor?.role ?? '—')}</td>
                               </tr>
-                            ))}
+                              );
+                            })}
                           </tbody>
                         </table>
                       )}
