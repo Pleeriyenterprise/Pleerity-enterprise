@@ -1,5 +1,6 @@
 import {
   recommendedActionClient,
+  requirementLabel,
   riskTypeLabelAdmin,
   riskTypeLabelClient,
 } from '../domain/presentDomain';
@@ -93,6 +94,22 @@ export function presentPropertyName(signalOrRow, fallback = 'Property in portfol
 
 export function presentClientName(signalOrRow, fallback = 'Client account') {
   return signalOrRow?.client_name || signalOrRow?.company_name || signalOrRow?.full_name || fallback;
+}
+
+/** Turn `gas_safety expiring soon` into readable obligation copy for risk cards. */
+export function humanizeRiskReasonBullet(line) {
+  const s = String(line || '').trim();
+  if (!s) return s;
+  const lower = s.toLowerCase();
+  const words = lower.split(/\s+/);
+  const code = words[0].replace(/[^a-z0-9_]/g, '');
+  if (/^[a-z][a-z0-9_]*$/.test(code) && words.length > 1) {
+    return `${requirementLabel(code)} ${words.slice(1).join(' ')}`;
+  }
+  if (/^[a-z][a-z0-9_]*$/.test(lower) && words.length === 1) {
+    return requirementLabel(code);
+  }
+  return s;
 }
 
 export function groupSignalsByProperty(signals = []) {

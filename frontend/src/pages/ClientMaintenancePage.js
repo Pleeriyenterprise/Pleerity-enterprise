@@ -24,6 +24,8 @@ import { issueSeverityLabel, workOrderStatusLabel } from '../domain/presentDomai
 import { assetIdParts } from '../utils/assetDisplay';
 import { normalizeRouteId, resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import { workOrderKindBadgeClassName, workOrderKindClientLabel } from '../utils/jobWorkflowUi';
+import { cn } from '../lib/utils';
 
 const WO_STATUS_OPTIONS = [
   { value: 'DRAFT', label: 'Draft' },
@@ -598,6 +600,7 @@ function ClientMaintenancePageInner() {
                       <div className="flex flex-wrap gap-2">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${statusBadgeClass(wo.status)}`}>{workOrderStatusLabel(wo.status)}</span>
                         <span className={`px-2 py-1 rounded text-xs font-medium ${sla.class}`}>{sla.label}</span>
+                        <span className={cn('px-2 py-1 rounded text-xs font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>
                         <span className="text-xs text-gray-500 ml-auto">{issueSeverityLabel(wo.severity)}</span>
                       </div>
                       <div>
@@ -674,6 +677,7 @@ function ClientMaintenancePageInner() {
                   <thead>
                     <tr className="border-b text-left text-gray-600">
                       <th className="p-2">Ref / Title</th>
+                      <th className="p-2">Job type</th>
                       <th className="p-2">Property</th>
                       <th className="p-2">Issue</th>
                       <th className="p-2">Asset</th>
@@ -695,6 +699,9 @@ function ClientMaintenancePageInner() {
                           <td className="p-2 max-w-[200px]">
                             <span className="font-mono text-xs text-gray-500 block truncate">{wo.work_order_id?.slice(0, 8)}…</span>
                             <span className="font-medium truncate block" title={wo.description}>{wo.description || '—'}</span>
+                          </td>
+                          <td className="p-2 whitespace-nowrap">
+                            <span className={cn('inline-flex px-1.5 py-0.5 rounded text-xs font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>
                           </td>
                           <td className="p-2">
                             <button type="button" onClick={() => {

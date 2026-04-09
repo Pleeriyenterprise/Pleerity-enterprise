@@ -5,10 +5,13 @@ Internal codes remain in APIs for filtering and storage; presentation fields are
 from __future__ import annotations
 
 import json
+import logging
 import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 _DATA_PATH = Path(__file__).resolve().parent / "domain_labels.json"
 
@@ -232,3 +235,64 @@ def document_type_label(raw: Optional[str]) -> str:
     if "_" in s or s.islower():
         return requirement_label(s, "client")
     return s
+
+
+def requirement_upload_document_type_map() -> Dict[str, str]:
+    """
+    Canonical requirement_code -> upload form document_type string.
+    Values must match the client Documents upload control options exactly.
+    """
+    out: Dict[str, str] = {}
+    for key, req in (_raw_data().get("requirement_codes") or {}).items():
+        if not isinstance(key, str) or not isinstance(req, dict):
+            continue
+        v = req.get("upload_document_type")
+        if v is not None and str(v).strip():
+            out[key] = str(v).strip()
+    return out
+
+
+def lookup_requirement_upload_document_type(code: Optional[str]) -> Dict[str, Any]:
+    """
+    Resolve upload document_type for a requirement code; log coverage gaps (unknown or unmapped codes).
+    """
+    key = normalize_requirement_code(code)
+    if not key:
+        return {
+            "requirement_code_normalized": "",
+            "document_type": None,
+            "known_requirement": False,
+            "mapped": False,
+        }
+    reqs = _raw_data().get("requirement_codes") or {}
+    req = reqs.get(key)
+    if not req or not isinstance(req, dict):
+        logger.warning(
+            "requirement_upload_document_type: unknown requirement_code %r (normalized=%s) — add to domain_labels.json requirement_codes",
+            code,
+            key,
+        )
+        return {
+            "requirement_code_normalized": key,
+            "document_type": None,
+            "known_requirement": False,
+            "mapped": False,
+        }
+    ut = req.get("upload_document_type")
+    if ut is None or not str(ut).strip():
+        logger.warning(
+            "requirement_upload_document_type: requirement %s has no upload_document_type — add upload_document_type to domain_labels.json",
+            key,
+        )
+        return {
+            "requirement_code_normalized": key,
+            "document_type": None,
+            "known_requirement": True,
+            "mapped": False,
+        }
+    return {
+        "requirement_code_normalized": key,
+        "document_type": str(ut).strip(),
+        "known_requirement": True,
+        "mapped": True,
+    }

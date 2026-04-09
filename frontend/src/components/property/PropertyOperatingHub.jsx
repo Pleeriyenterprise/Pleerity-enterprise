@@ -1,17 +1,19 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertCircle, Wrench, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-import apiClient, { clientAPI } from '../../api/client';
+import { clientAPI } from '../../api/client';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { complianceRequirementStatusLabel, requirementLabel } from '../../domain/presentDomain';
+import { requirementLabel, requirementDocumentUploadLabel } from '../../domain/presentDomain';
 import { getEvidenceStatus } from '../../utils/evidenceStatus';
 import { humanRiskType, humanSeverity, humanAction } from '../../utils/riskPresentation';
-import { buildSafeQueryPath, buildEntityRoute, resolveClientPortalPath, resolveDocumentsPath } from '../../utils/clientPortalNavigation';
+import { buildEntityRoute, resolveClientPortalPath, resolveDocumentsPath } from '../../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../../utils/ctaRegistry';
 import { PORTAL_COPY } from '../../utils/clientPortalCopy';
 import { cn } from '../../lib/utils';
+import { humanizeOperatingFeedItems } from '../../utils/propertyOperatingActivityCopy';
+import { isRequirementMissingDocument } from '../../utils/propertyDocumentsMatrix';
 import {
   PortalLoadingPanel,
   portalPrimaryButtonClass,
@@ -62,18 +64,6 @@ function rowDays(r) {
   return r.days_to_expiry != null ? r.days_to_expiry : daysLeft(rowExpiry(r));
 }
 
-function evidenceDocStatusLabel(doc) {
-  const s = (doc?.status || '').toUpperCase();
-  if (s === 'VERIFIED') return 'Confirmed';
-  if (s === 'REJECTED') return 'Rejected';
-  if (s === 'EXPIRED') return 'Expired';
-  const hasExtraction = doc?.extraction_id || (doc?.ai_extraction?.status === 'completed' && doc?.ai_extraction?.data);
-  if (hasExtraction && s !== 'VERIFIED') return 'Pending Confirmation';
-  if (s === 'UPLOADED') return 'Extracted';
-  if (!doc?.requirement_id) return 'Unlinked';
-  return 'Uploaded';
-}
-
 /**
  * Mobile-first operating surface for a single property (extracted from PropertyDetailPage).
  */
@@ -92,14 +82,11 @@ export default function PropertyOperatingHub({
   workOrdersLoading,
   evidenceData,
   evidenceLoading,
-  hubLatestDocuments,
   operatingFeedItems,
   operatingFeedLoading,
   setComplianceStatusFilter,
   openBookInspectionFromRisk,
   onOpenNotApplicable,
-  setWoDetailDrawer,
-  onAddWorkOrder,
   onCreateWoFromRiskDescription,
 }) {
   const navigate = useNavigate();
@@ -112,20 +99,20 @@ export default function PropertyOperatingHub({
     contractors: TAB_CONTRACTORS,
   } = tabs;
 
-  const handleEvidenceDocumentDownload = (doc) => {
-    if (!doc?.document_id) return;
-    apiClient
-      .get(`/documents/${doc.document_id}/file`, { params: { download: true }, responseType: 'blob' })
-      .then((res) => {
-        const url = window.URL.createObjectURL(res.data);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = doc.file_name || doc.original_filename || 'document';
-        a.click();
-        window.URL.revokeObjectURL(url);
-      })
-      .catch(() => toast.error('Could not download document'));
-  };
+  const operatingFeedDisplayItems = useMemo(
+    () => humanizeOperatingFeedItems(operatingFeedItems).slice(0, 5),
+    [operatingFeedItems]
+  );
+
+  const openJobKindBreakdown = useMemo(() => {
+    let compliance = 0;
+    let repair = 0;
+    for (const wo of hubActiveWorkOrders || []) {
+      if ((wo.work_order_kind || '').toUpperCase() === 'COMPLIANCE') compliance += 1;
+      else repair += 1;
+    }
+    return { compliance, repair };
+  }, [hubActiveWorkOrders]);
 
   return (
     <div className="space-y-8 min-w-0">
@@ -162,7 +149,7 @@ export default function PropertyOperatingHub({
                           {action.primary_action_label || PORTAL_COPY.viewDetails}
                         </Link>
                       ) : (
-                        <span className="text-xs text-gray-500">No route — open Compliance or Maintenance.</span>
+                        <span className="text-xs text-gray-500">No route — open Compliance or Jobs & issues.</span>
                       )}
                     </li>
                   );
@@ -175,7 +162,7 @@ export default function PropertyOperatingHub({
             <CardContent className="py-6 text-sm text-gray-600">
               <p className="font-medium text-midnight-blue">Nothing urgent from the command center for this property.</p>
               <p className="mt-2 text-xs text-gray-500">
-                If obligations are overdue or jobs are open, they are listed below. You can still upload evidence or add a work order from the header.
+                If obligations are overdue or jobs are open, they are listed below. You can still add documents or create a work order from the header.
               </p>
             </CardContent>
           </Card>
@@ -299,7 +286,7 @@ export default function PropertyOperatingHub({
               {[
                 { label: 'Overdue', count: sum.overdue, filter: 'OVERDUE', tone: 'text-red-600' },
                 { label: 'Expiring', count: sum.expiringSoon, filter: 'EXPIRING_SOON', tone: 'text-amber-600' },
-                { label: 'Missing evidence', count: sum.missingEvidence, filter: 'MISSING', tone: 'text-midnight-blue' },
+                { label: 'Missing documents', count: sum.missingDocuments, filter: 'MISSING', tone: 'text-midnight-blue' },
                 { label: 'Valid', count: sum.valid, filter: 'VALID', tone: 'text-green-700' },
               ].map((p) => (
                 <button
@@ -332,16 +319,17 @@ export default function PropertyOperatingHub({
           <ul className="space-y-3">
             {hubPrioritizedRequirements.map((r) => {
               const st = (r.status || '').toUpperCase();
-              const statusUi = getEvidenceStatus(r.status);
+              const statusUi = getEvidenceStatus(r.status, r);
               const Icon = statusUi.icon;
               const linked = !!r.evidence_doc_id;
               const due = rowExpiry(r);
               const est = r.date_source === 'SYSTEM_ESTIMATED';
+              const needsDocument = isRequirementMissingDocument(r);
               const primaryLabel =
-                ['PENDING', 'MISSING'].includes(st)
-                  ? PORTAL_COPY.uploadDocument
+                needsDocument
+                  ? requirementDocumentUploadLabel(r.requirement_code || r.requirement_type)
                   : linked && ['OVERDUE', 'EXPIRED', 'EXPIRING_SOON'].includes(st)
-                    ? 'Replace evidence'
+                    ? 'Replace document'
                     : linked
                       ? PORTAL_COPY.viewDocuments
                       : PORTAL_COPY.viewDetails;
@@ -354,10 +342,13 @@ export default function PropertyOperatingHub({
                       <div className="flex flex-wrap items-center gap-2 mt-2">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs ${statusUi.className}`}>
                           <Icon className="w-3.5 h-3.5 shrink-0" />
-                          {complianceRequirementStatusLabel(r.status)}
+                          {statusUi.text}
                         </span>
-                        <span className="text-xs text-gray-500">Evidence: {linked ? 'Linked' : 'None'}</span>
+                        <span className="text-xs text-gray-500">Document: {linked ? 'Linked' : 'None'}</span>
                       </div>
+                      {statusUi.subline ? (
+                        <p className="text-xs text-gray-500 mt-1 max-w-prose">{statusUi.subline}</p>
+                      ) : null}
                       {due ? (
                         <p className="text-xs text-gray-600 mt-2">
                           {est ? `${PORTAL_COPY.estimatedDate}: ` : 'Due: '}
@@ -382,10 +373,10 @@ export default function PropertyOperatingHub({
                     </Button>
                     {reqHref ? (
                       <Link to={reqHref} className={cn(portalSecondaryButtonClass, 'inline-flex w-full sm:w-auto justify-center no-underline items-center')}>
-                        {PORTAL_COPY.viewDetails}
+                        Review requirement details
                       </Link>
                     ) : null}
-                    {['PENDING', 'MISSING'].includes(st) && (r.requirement_code || r.requirement_type) ? (
+                    {needsDocument && (r.requirement_code || r.requirement_type) ? (
                       <Button
                         type="button"
                         variant="ghost"
@@ -415,61 +406,57 @@ export default function PropertyOperatingHub({
       {hasFeature('maintenance_workflows') && (
         <section className="min-w-0" aria-labelledby="property-jobs-hub-heading">
           <h2 id="property-jobs-hub-heading" className="text-lg font-semibold text-midnight-blue border-b border-gray-200 pb-2 mb-3">
-            Active {PORTAL_COPY.workOrders.toLowerCase()}
+            Jobs
           </h2>
           {workOrdersLoading && hubActiveWorkOrders.length === 0 ? (
             <PortalLoadingPanel message="Loading jobs…" />
-          ) : hubActiveWorkOrders.length === 0 ? (
+          ) : (
             <Card className="border border-gray-200">
-              <CardContent className="py-8 text-center text-sm text-gray-600">
-                <p className="font-medium text-midnight-blue">No open maintenance jobs.</p>
-                <p className="mt-2 text-xs text-gray-500">Create a work order from the header or open Maintenance for issues and history.</p>
-                <Button
-                  type="button"
-                  className={cn(portalPrimaryButtonClass, 'mt-4 w-full sm:w-auto justify-center bg-electric-teal hover:bg-electric-teal/90')}
-                  onClick={onAddWorkOrder}
-                >
-                  {PORTAL_COPY.addWorkOrder}
+              <CardContent className="py-5 text-sm text-gray-700 space-y-3">
+                {hubActiveWorkOrders.length === 0 ? (
+                  <>
+                    <p className="font-medium text-midnight-blue">No open jobs.</p>
+                    <p className="text-xs text-gray-500">Create a work order from the header when you need one. Full list and history live under Jobs & issues.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-midnight-blue">
+                      <span className="font-semibold">{hubActiveWorkOrders.length}</span> open{' '}
+                      {hubActiveWorkOrders.length === 1 ? 'job' : 'jobs'} for this property.
+                    </p>
+                    {(openJobKindBreakdown.compliance > 0 || openJobKindBreakdown.repair > 0) && (
+                      <p className="text-xs text-gray-600">
+                        {openJobKindBreakdown.compliance > 0 && (
+                          <span>
+                            {openJobKindBreakdown.compliance} compliance job{openJobKindBreakdown.compliance === 1 ? '' : 's'}
+                          </span>
+                        )}
+                        {openJobKindBreakdown.compliance > 0 && openJobKindBreakdown.repair > 0 && <span> · </span>}
+                        {openJobKindBreakdown.repair > 0 && (
+                          <span>
+                            {openJobKindBreakdown.repair} repair / maintenance job{openJobKindBreakdown.repair === 1 ? '' : 's'}
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500">Open Jobs & issues to review status, assign contractors, and close work.</p>
+                  </>
+                )}
+                <Button type="button" className={cn(portalPrimaryButtonClass, 'w-full sm:w-auto justify-center')} onClick={() => onSelectTab(TAB_MAINTENANCE)}>
+                  Jobs & issues
                 </Button>
               </CardContent>
             </Card>
-          ) : (
-            <ul className="space-y-3">
-              {hubActiveWorkOrders.slice(0, 6).map((wo) => (
-                <li key={wo.work_order_id} className="rounded-xl border border-gray-200 p-4 min-w-0">
-                  <p className="font-medium text-midnight-blue text-sm leading-snug">{wo.description || 'Work order'}</p>
-                  <p className="text-xs text-gray-600 mt-2">
-                    <span className="font-medium">{wo.status || '—'}</span>
-                    {wo.sla_complete_by ? <span> · SLA {formatDate(wo.sla_complete_by)}</span> : null}
-                    {wo.contractor_id || wo.contractor_name ? <span> · Contractor assigned</span> : wo.status === 'SCHEDULED' ? <span> · Scheduled</span> : null}
-                  </p>
-                  <div className="flex flex-col gap-2 mt-3 sm:flex-row">
-                    <Button type="button" className={cn(portalPrimaryButtonClass, 'w-full sm:w-auto justify-center')} onClick={() => setWoDetailDrawer(wo.work_order_id)}>
-                      {PORTAL_COPY.viewDetails}
-                    </Button>
-                    <Link
-                      to={buildSafeQueryPath('/operations/work-orders', { work_order_id: wo.work_order_id })}
-                      className={cn(portalSecondaryButtonClass, 'inline-flex w-full sm:w-auto justify-center no-underline items-center')}
-                    >
-                      Open in Operations
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ul>
           )}
-          <Button type="button" variant="ghost" className="mt-3 text-electric-teal min-h-10" onClick={() => onSelectTab(TAB_MAINTENANCE)}>
-            Maintenance workspace
-          </Button>
         </section>
       )}
 
-      <section className="min-w-0" aria-labelledby="property-evidence-hub-heading">
-        <h2 id="property-evidence-hub-heading" className="text-lg font-semibold text-midnight-blue border-b border-gray-200 pb-2 mb-3">
-          Evidence and documents
+      <section className="min-w-0" aria-labelledby="property-documents-hub-heading">
+        <h2 id="property-documents-hub-heading" className="text-lg font-semibold text-midnight-blue border-b border-gray-200 pb-2 mb-3">
+          Documents
         </h2>
         {evidenceLoading && !evidenceData ? (
-          <PortalLoadingPanel message="Loading evidence…" />
+          <PortalLoadingPanel message="Loading documents…" />
         ) : (
           <Card className="border border-gray-200">
             <CardContent className="pt-4 space-y-4">
@@ -488,61 +475,22 @@ export default function PropertyOperatingHub({
                     <p className="text-lg font-semibold text-green-700">{evidenceData.summary.linked ?? 0}</p>
                   </div>
                   <div className="rounded-lg bg-gray-50 px-3 py-2 border border-gray-100">
-                    <p className="text-xs text-gray-500">Total docs</p>
+                    <p className="text-xs text-gray-500">Total documents</p>
                     <p className="text-lg font-semibold text-midnight-blue">{evidenceData.summary.totalDocuments ?? 0}</p>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-gray-600">Evidence summary will appear when loaded.</p>
+                <p className="text-sm text-gray-600">Document summary will appear when loaded.</p>
               )}
-              {hubLatestDocuments.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/50 px-4 py-6 text-center text-sm text-gray-600">
-                  <p>No documents yet for this property.</p>
-                  <Button
-                    type="button"
-                    className={cn(portalPrimaryButtonClass, 'mt-3 w-full sm:w-auto justify-center')}
-                    onClick={() => navigate(resolveDocumentsPath(propertyId))}
-                  >
-                    {PORTAL_COPY.uploadDocument}
-                  </Button>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Latest uploads</p>
-                  <ul className="space-y-2">
-                    {hubLatestDocuments.map((doc) => (
-                      <li key={doc.document_id} className="flex flex-col gap-2 rounded-lg border border-gray-100 p-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-midnight-blue truncate">{doc.file_name || doc.original_filename || doc.document_id}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            {evidenceDocStatusLabel(doc)} · {doc.uploaded_at ? formatRelativeTime(doc.uploaded_at) : '—'}
-                          </p>
-                        </div>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:shrink-0">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="min-h-11 w-full sm:w-auto"
-                            onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}
-                          >
-                            {PORTAL_COPY.viewDocuments}
-                          </Button>
-                          <Button type="button" variant="ghost" size="sm" className="min-h-11 w-full sm:w-auto" onClick={() => handleEvidenceDocumentDownload(doc)}>
-                            Download
-                          </Button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                <Button type="button" className={cn(portalPrimaryButtonClass, 'w-full sm:w-auto justify-center')} onClick={() => navigate(resolveDocumentsPath(propertyId))}>
-                  {PORTAL_COPY.uploadDocument}
+              <p className="text-xs text-gray-500">
+                Files you have provided for this property. Open the Documents tab for uploads and links to requirements.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <Button type="button" className={cn(portalPrimaryButtonClass, 'w-full sm:w-auto justify-center')} onClick={() => onSelectTab(TAB_EVIDENCE)}>
+                  View all documents
                 </Button>
-                <Button type="button" variant="outline" className={cn(portalSecondaryButtonClass, 'w-full sm:w-auto justify-center')} onClick={() => onSelectTab(TAB_EVIDENCE)}>
-                  Full evidence vault
+                <Button type="button" variant="ghost" className="min-h-10 text-electric-teal w-full sm:w-auto justify-center" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
+                  {PORTAL_COPY.uploadDocument}
                 </Button>
               </div>
             </CardContent>
@@ -559,16 +507,17 @@ export default function PropertyOperatingHub({
         ) : operatingFeedItems.length === 0 ? (
           <Card className="border border-gray-200">
             <CardContent className="py-8 text-center text-sm text-gray-600">
-              <p>No recent events in the last 30 days.</p>
+              <p>No recent highlights in the last 30 days.</p>
               <Button type="button" variant="outline" className={cn(portalSecondaryButtonClass, 'mt-4')} onClick={() => onSelectTab(TAB_TIMELINE)}>
-                Open full timeline
+                View full history
               </Button>
             </CardContent>
           </Card>
         ) : (
           <>
+            <p className="text-xs text-gray-500 mb-3">Recent highlights from the last 30 days — open the timeline for the full audit trail.</p>
             <ul className="space-y-2">
-              {operatingFeedItems.map((item) => (
+              {operatingFeedDisplayItems.map((item) => (
                 <li key={item.id} className="rounded-lg border border-gray-100 bg-white px-3 py-3 text-sm min-w-0">
                   <p className="font-medium text-midnight-blue leading-snug">{item.title}</p>
                   {item.description ? <p className="text-xs text-gray-600 mt-1 line-clamp-2">{item.description}</p> : null}
@@ -577,7 +526,7 @@ export default function PropertyOperatingHub({
               ))}
             </ul>
             <Button type="button" variant="outline" className={cn(portalSecondaryButtonClass, 'mt-3 w-full sm:w-auto')} onClick={() => onSelectTab(TAB_TIMELINE)}>
-              Full timeline
+              View full history
             </Button>
           </>
         )}

@@ -106,9 +106,9 @@ const RequirementsPage = () => {
     return properties.find(p => p.property_id === propertyId) || {};
   };
 
-  const getStatusConfig = (status) => {
-    const config = getEvidenceStatus(status);
-    const colorMap = { green: 'green', amber: 'amber', red: 'red', gray: 'gray', blue: 'blue' };
+  /** Use full requirement row so evidence state (e.g. linked doc + pending) matches Property surfaces; no inferred fields. */
+  const getStatusConfig = (req) => {
+    const config = getEvidenceStatus(req.status, req);
     const color = config.className.includes('green') ? 'green' : config.className.includes('amber') ? 'amber' : config.className.includes('red') ? 'red' : config.className.includes('blue') ? 'blue' : 'gray';
     return { ...config, color };
   };
@@ -283,7 +283,7 @@ const RequirementsPage = () => {
 
   const renderRequirementRow = (req) => {
     const property = getPropertyById(req.property_id);
-    const statusConfig = getStatusConfig(req.status);
+    const statusConfig = getStatusConfig(req);
     const StatusIcon = statusConfig.icon;
     const daysUntil = getDaysUntilDue(req.due_date);
     const docCount = documentCountByRequirementId[req.requirement_id] || 0;
@@ -313,6 +313,9 @@ const RequirementsPage = () => {
                   </span>
                 )}
               </div>
+              {statusConfig.subline ? (
+                <p className="text-xs text-gray-500 mt-1 max-w-prose">{statusConfig.subline}</p>
+              ) : null}
               <p className="text-sm text-gray-600 mt-1 line-clamp-2">{req.description || 'No description available'}</p>
               <div className="flex flex-col gap-1 mt-2 text-sm text-gray-500">
                 <div className="flex items-center gap-4 flex-wrap">

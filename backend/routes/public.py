@@ -3,7 +3,7 @@ Public API Routes - NEW FILE
 Handles public website submissions (contact forms, service inquiries)
 NO CVP COLLECTIONS TOUCHED - Writes only to new collections
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
@@ -89,6 +89,26 @@ async def get_presentation_domain_labels():
     from presentation.label_service import get_domain_labels_public_payload
 
     return get_domain_labels_public_payload()
+
+
+@router.get("/presentation/requirement-upload-document-type-map")
+async def get_requirement_upload_document_type_map():
+    """
+    requirement_code -> document_type for the client upload form (backend-driven; keep in sync with domain_labels).
+    """
+    from presentation.label_service import requirement_upload_document_type_map
+
+    return {"map": requirement_upload_document_type_map()}
+
+
+@router.get("/presentation/requirement-upload-document-type-lookup")
+async def lookup_requirement_upload_document_type(requirement_code: str = Query(..., min_length=1)):
+    """
+    Single-code lookup; logs unknown or unmapped codes server-side for mapping coverage.
+    """
+    from presentation.label_service import lookup_requirement_upload_document_type as do_lookup
+
+    return do_lookup(requirement_code)
 
 
 @router.post("/contact")

@@ -153,3 +153,131 @@ export function adminSimplifiedProgressFromWorkOrder(wo) {
   }
   return { steps, currentIndex: 0 };
 }
+
+/**
+ * Priority order for which `next_actions` item to highlight in client UI.
+ * Aligns with `recoveryLineFromNextActions` in `ClientJobDetailPage` (extended for quotes / billing).
+ */
+const CLIENT_JOB_NEXT_ACTION_PRIORITY = [
+  'clear_operational_exception',
+  'resume_after_parts',
+  'propose_schedule',
+  'request_booking',
+  'reschedule_booking',
+  'confirm_visit',
+  'assign_contractor',
+  'approve_quote',
+  'reject_quote',
+  'link_document',
+  'attach_completion_proof',
+  'verify',
+  'complete',
+  'start',
+  'awaiting_parts',
+  'close_job',
+  'set_operational_exception',
+  'cancel_booking',
+  'mark_no_access',
+  'mark_reschedule_required',
+  'cancel',
+];
+
+/** @param {Record<string, unknown>|null|undefined} job */
+export function prioritizedClientJobNextAction(job) {
+  const na = (job?.next_actions || []).filter((a) => a?.id && a.id !== 'none');
+  if (!na.length) return null;
+  for (const id of CLIENT_JOB_NEXT_ACTION_PRIORITY) {
+    const found = na.find((x) => x.id === id);
+    if (found) return found;
+  }
+  return na[0];
+}
+
+function isTerminalClientJob(job) {
+  const st = String(job?.status || '').toUpperCase();
+  if (['COMPLETED', 'VERIFIED', 'CLOSED', 'CANCELLED'].includes(st)) return true;
+  const js = String(job?.job_status || '').toUpperCase();
+  if (['CLOSED', 'CANCELLED', 'VERIFIED'].includes(js)) return true;
+  return false;
+}
+
+/**
+ * Single human-readable “next step” for job preview (same labels as full job page `next_actions`).
+ * @param {Record<string, unknown>|null|undefined} job — workflow job payload (`GET /jobs/:id`)
+ */
+export function jobPreviewNextStepLine(job) {
+  const a = prioritizedClientJobNextAction(job);
+  if (a?.label) return a.hint ? `${a.label} — ${a.hint}` : a.label;
+  if (isTerminalClientJob(job)) return 'No action needed right now';
+  return 'Review progress on the full job page';
+}
+
+/**
+ * Natural clause after "Manage job to …" — tuned so the button does not echo raw API labels mechanically.
+ * Unknown ids fall back to plain "Manage job" (next-step line still shows the full label).
+ */
+const MANAGE_JOB_CTA_PHRASE_BY_ACTION_ID = {
+  clear_operational_exception: 'clear the hold',
+  resume_after_parts: 'resume after parts arrive',
+  propose_schedule: 'propose a visit time',
+  request_booking: 'request a visit',
+  reschedule_booking: 'reschedule the visit',
+  confirm_visit: 'confirm the visit',
+  assign_contractor: 'assign a contractor',
+  approve_quote: 'approve the quote',
+  reject_quote: 'respond to the quote',
+  link_document: 'link certificate or evidence',
+  attach_completion_proof: 'upload completion proof',
+  verify: 'verify the work',
+  complete: 'mark work complete',
+  start: 'start on-site work',
+  awaiting_parts: 'mark that parts are needed',
+  close_job: 'close the job',
+  set_operational_exception: 'put the job on hold',
+  cancel_booking: 'cancel the visit',
+  mark_no_access: 'record no access',
+  mark_reschedule_required: 'mark that a reschedule is needed',
+  cancel: 'cancel the job',
+};
+
+/**
+ * Primary CTA for job preview drawer.
+ * @param {Record<string, unknown>|null|undefined} job
+ */
+export function jobPreviewManageJobCtaLabel(job) {
+  const a = prioritizedClientJobNextAction(job);
+  if (!a) return 'Manage job';
+  const phrase = a.id ? MANAGE_JOB_CTA_PHRASE_BY_ACTION_ID[String(a.id)] : null;
+  if (phrase) return `Manage job to ${phrase}`;
+  return 'Manage job';
+}
+
+/**
+ * Fallback when only maintenance work-order shape is available (no `next_actions`).
+ * @param {Record<string, unknown>|null|undefined} wo
+ */
+export function maintenanceWorkOrderPreviewDecision(wo) {
+  const st = String(wo?.status || '').toUpperCase();
+  if (['COMPLETED', 'VERIFIED', 'CLOSED', 'CANCELLED'].includes(st)) {
+    return { nextStep: 'No action needed right now', cta: 'Manage job' };
+  }
+  if (!(wo?.contractor_id || '').toString().trim()) {
+    return { nextStep: 'Assign a contractor', cta: 'Manage job to assign a contractor' };
+  }
+  return { nextStep: 'Review progress on the full job page', cta: 'Manage job' };
+}
+
+/** Client-facing label: compliance-led vs repair/maintenance (aligned with `ClientJobDetailPage`). */
+export function workOrderKindClientLabel(wo) {
+  const k = String(wo?.work_order_kind || '').toUpperCase();
+  if (k === 'COMPLIANCE') return 'Compliance job';
+  return 'Repair / maintenance';
+}
+
+/** Badge styles so job kind stays visible in dense tables without relying on section grouping alone. */
+export function workOrderKindBadgeClassName(wo) {
+  const k = String(wo?.work_order_kind || '').toUpperCase();
+  return k === 'COMPLIANCE'
+    ? 'bg-sky-50 text-sky-900 border-sky-200'
+    : 'bg-slate-100 text-slate-800 border-slate-200';
+}

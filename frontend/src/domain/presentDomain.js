@@ -46,6 +46,44 @@ export function requirementActionPhrase(code) {
   return `Complete this obligation: ${requirementLabel(code)}`;
 }
 
+/** Subline under “Awaiting verification” chips (who acts next + automation). */
+export function documentVerificationAwaitingSubline() {
+  const block = data.document_verification_copy || {};
+  return String(block.awaiting_verification_subline || '').trim() || '';
+}
+
+/**
+ * Short upload CTA when the obligation type is known (Compliance / Documents / Operating).
+ * Only "Upload document" when the requirement type cannot be resolved.
+ */
+export function requirementDocumentUploadLabel(code) {
+  const key = normalizeRequirementCode(code);
+  if (!key) return 'Upload document';
+  const reportKeys = new Set([
+    'eicr',
+    'fire_risk_assessment',
+    'legionella',
+    'portable_appliance_test',
+    'electrical_safety',
+  ]);
+  const certificateKeys = new Set([
+    'epc',
+    'gas_safety',
+    'gas_safety_certificate',
+    'co_alarms',
+    'smoke_alarms',
+    'fire_alarm',
+    'fire_detection',
+    'hmo_license',
+  ]);
+  const proofKeys = new Set(['deposit_pi', 'right_to_rent', 'how_to_rent', 'tenancy_agreement']);
+  if (reportKeys.has(key)) return 'Upload report';
+  if (certificateKeys.has(key)) return 'Upload certificate';
+  if (proofKeys.has(key)) return 'Upload proof';
+  if (data.requirement_codes && data.requirement_codes[key]) return 'Upload proof';
+  return 'Upload document';
+}
+
 export function issueStatusLabel(status, audience = 'client') {
   const s = String(status || '').trim().toLowerCase();
   if (!s) return 'Open';

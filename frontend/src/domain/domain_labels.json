@@ -3,102 +3,121 @@
     "version": 1,
     "description": "Canonical user-facing labels. Mirror copy: frontend/src/domain/domain_labels.json"
   },
+  "document_verification_copy": {
+    "awaiting_verification_subline": "You (the portfolio user) confirm extracted dates and details on the Documents page. If the file was just uploaded, automation may still be processing it—refresh shortly or open the document to finish confirmation."
+  },
   "requirement_codes": {
     "gas_safety": {
       "display_label": "Gas Safety Certificate (CP12)",
       "short_label": "Gas safety",
       "action_label": "Renew or upload your gas safety certificate",
-      "category": "Safety"
+      "category": "Safety",
+      "upload_document_type": "Gas Safety Certificate"
     },
     "eicr": {
       "display_label": "Electrical Installation Condition Report (EICR)",
       "short_label": "EICR",
       "action_label": "Review your electrical certificate and arrange inspection if needed",
-      "category": "Electrical"
+      "category": "Electrical",
+      "upload_document_type": "EICR"
     },
     "epc": {
       "display_label": "Energy Performance Certificate (EPC)",
       "short_label": "EPC",
       "action_label": "Review or renew your EPC",
-      "category": "Energy"
+      "category": "Energy",
+      "upload_document_type": "EPC"
     },
     "smoke_alarms": {
       "display_label": "Smoke alarms",
       "short_label": "Smoke alarms",
       "action_label": "Confirm smoke alarm compliance and upload evidence if required",
-      "category": "Fire safety"
+      "category": "Fire safety",
+      "upload_document_type": "Smoke/CO evidence"
     },
     "co_alarms": {
       "display_label": "Carbon monoxide alarms",
       "short_label": "CO alarms",
       "action_label": "Confirm CO alarm compliance and upload evidence if required",
-      "category": "Fire safety"
+      "category": "Fire safety",
+      "upload_document_type": "Smoke/CO evidence"
     },
     "deposit_pi": {
       "display_label": "Deposit protection",
       "short_label": "Deposit",
       "action_label": "Complete deposit protection and prescribed information",
-      "category": "Tenancy"
+      "category": "Tenancy",
+      "upload_document_type": "Other"
     },
     "right_to_rent": {
       "display_label": "Right to Rent checks",
       "short_label": "Right to Rent",
       "action_label": "Complete and retain Right to Rent records",
-      "category": "Tenancy"
+      "category": "Tenancy",
+      "upload_document_type": "Other"
     },
     "how_to_rent": {
       "display_label": "How to Rent guide",
       "short_label": "How to Rent",
       "action_label": "Provide the current How to Rent guide to tenants",
-      "category": "Tenancy"
+      "category": "Tenancy",
+      "upload_document_type": "Other"
     },
     "tenancy_agreement": {
       "display_label": "Tenancy agreement",
       "short_label": "Tenancy",
       "action_label": "Retain a signed tenancy agreement",
-      "category": "Tenancy"
+      "category": "Tenancy",
+      "upload_document_type": "Other"
     },
     "hmo_license": {
       "display_label": "HMO licence",
       "short_label": "HMO licence",
       "action_label": "Renew or obtain an HMO licence where required",
-      "category": "Regulatory"
+      "category": "Regulatory",
+      "upload_document_type": "Other"
     },
     "fire_risk_assessment": {
       "display_label": "Fire risk assessment",
       "short_label": "Fire risk",
       "action_label": "Complete or renew the fire risk assessment",
-      "category": "Fire safety"
+      "category": "Fire safety",
+      "upload_document_type": "Fire Risk Assessment"
     },
     "legionella": {
       "display_label": "Legionella risk assessment",
       "short_label": "Legionella",
       "action_label": "Review your legionella assessment and water system records",
-      "category": "Health"
+      "category": "Health",
+      "upload_document_type": "Legionella Assessment"
     },
     "portable_appliance_test": {
       "display_label": "Portable Appliance Testing (PAT)",
       "short_label": "PAT",
       "action_label": "Arrange PAT testing and upload certificates",
-      "category": "Electrical"
+      "category": "Electrical",
+      "upload_document_type": "Other"
     },
     "fire_alarm": {
       "display_label": "Fire alarm inspection",
       "short_label": "Fire alarm",
       "action_label": "Upload your fire alarm inspection certificate",
-      "category": "Fire safety"
+      "category": "Fire safety",
+      "upload_document_type": "Other"
     },
     "fire_detection": {
       "display_label": "Fire alarm inspection",
       "short_label": "Fire detection",
       "action_label": "Upload your fire alarm inspection certificate",
-      "category": "Fire safety"
+      "category": "Fire safety",
+      "upload_document_type": "Other"
     },
     "gas_safety_certificate": {
       "display_label": "Gas Safety Certificate (CP12)",
       "short_label": "Gas safety",
       "action_label": "Renew or upload your gas safety certificate",
-      "category": "Safety"
+      "category": "Safety",
+      "upload_document_type": "Gas Safety Certificate"
     }
   },
   "risk_types": {
@@ -211,10 +230,10 @@
   "compliance_requirement_statuses": {
     "OVERDUE": { "client_label": "Overdue", "admin_label": "Overdue" },
     "EXPIRED": { "client_label": "Expired", "admin_label": "Expired" },
-    "EXPIRING_SOON": { "client_label": "Due soon", "admin_label": "Expiring soon" },
-    "PENDING": { "client_label": "Awaiting evidence", "admin_label": "Pending" },
-    "MISSING": { "client_label": "Evidence needed", "admin_label": "Missing" },
-    "MISSING_EVIDENCE": { "client_label": "Evidence needed", "admin_label": "Missing evidence" },
+    "EXPIRING_SOON": { "client_label": "Expiring", "admin_label": "Expiring soon" },
+    "PENDING": { "client_label": "Pending", "admin_label": "Pending" },
+    "MISSING": { "client_label": "Missing evidence", "admin_label": "Missing" },
+    "MISSING_EVIDENCE": { "client_label": "Missing evidence", "admin_label": "Missing evidence" },
     "COMPLIANT": { "client_label": "Compliant", "admin_label": "Compliant" },
     "VALID": { "client_label": "Valid", "admin_label": "Valid" },
     "NOT_APPLICABLE": { "client_label": "Not applicable", "admin_label": "Not applicable" },

@@ -42,6 +42,40 @@ def test_public_presentation_domain_labels_matches_canonical(api_client):
     assert r.json() == expected
 
 
+def test_public_requirement_upload_document_type_map_matches_service(api_client):
+    from presentation.label_service import requirement_upload_document_type_map
+
+    expected = {"map": requirement_upload_document_type_map()}
+    r = api_client.get("/api/public/presentation/requirement-upload-document-type-map")
+    assert r.status_code == 200
+    assert r.json() == expected
+
+
+def test_public_requirement_upload_document_type_lookup_known_code(api_client):
+    r = api_client.get(
+        "/api/public/presentation/requirement-upload-document-type-lookup",
+        params={"requirement_code": "eicr"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["requirement_code_normalized"] == "eicr"
+    assert body["known_requirement"] is True
+    assert body["mapped"] is True
+    assert body["document_type"] == "EICR"
+
+
+def test_public_requirement_upload_document_type_lookup_unknown_code(api_client):
+    r = api_client.get(
+        "/api/public/presentation/requirement-upload-document-type-lookup",
+        params={"requirement_code": "totally_fake_requirement_xyz"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["known_requirement"] is False
+    assert body["mapped"] is False
+    assert body["document_type"] is None
+
+
 def test_label_service_enriches_risk_signal():
     from presentation.label_service import enrich_risk_signal
 

@@ -47,15 +47,39 @@ import UpgradePrompt, { getFeatureDisplayInfo } from '../components/UpgradePromp
 import { SUPPORT_EMAIL } from '../config';
 import { getEvidenceStatus } from '../utils/evidenceStatus';
 import { formatRiskLabel } from '../utils/riskLabel';
-import { humanRiskType, humanSeverity, humanAction } from '../utils/riskPresentation';
+import { humanRiskType, humanSeverity, humanAction, humanizeRiskReasonBullet } from '../utils/riskPresentation';
+import { presentPropertyTimelineItem } from '../utils/timelinePresent';
+import {
+  clientCurrentUpdateSummary,
+  jobPreviewManageJobCtaLabel,
+  jobPreviewNextStepLine,
+  maintenanceWorkOrderPreviewDecision,
+  workOrderKindBadgeClassName,
+  workOrderKindClientLabel,
+} from '../utils/jobWorkflowUi';
 import {
   requirementLabel,
-  complianceRequirementStatusLabel,
+  normalizeRequirementCode,
   documentTypeLabel,
   issueStatusLabel,
+  requirementDocumentUploadLabel,
+  workOrderStatusLabel,
 } from '../domain/presentDomain';
+import {
+  isRequirementMissingDocument,
+  listRequirementsMissingDocumentsSorted,
+  sortRequirementsCriticalityThenTitle,
+  sortRequirementsAttentionOrder,
+} from '../utils/propertyDocumentsMatrix';
+import {
+  registryFallbackComplianceExplanation,
+  complianceWhatChangedLine,
+  complianceObligationStatusLabel,
+  complianceObligationPrimaryAction,
+  compliancePriorityRecommendedNext,
+} from '../utils/complianceObligationPresent';
 import { toast } from 'sonner';
-import { buildSafeQueryPath, resolveClientPortalPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
+import { buildEntityRoute, buildSafeQueryPath, resolveClientPortalPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
 import { cn } from '../lib/utils';
 import {
   PortalLoadingPanel,
@@ -98,6 +122,63 @@ const TAB_TIMELINE = 'timeline';
 const TAB_RISK_SIGNALS = 'risk_signals';
 const TAB_ASSETS = 'assets';
 
+/**
+ * Obligations missing a linked document — same filter and order as Compliance → Missing documents.
+ */
+function PropertyDocumentsMissingRequirementList({ items, propertyId, navigate, rowTitle, rowReqId, maxItems = 25 }) {
+  if (!items?.length) return null;
+  const truncated = maxItems != null && items.length > maxItems;
+  const list = truncated ? items.slice(0, maxItems) : items;
+  return (
+    <>
+    <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+      {list.map((r) => {
+        const code = r.requirement_code || r.requirement_type;
+        const rid = rowReqId(r);
+        const uploadQuery = rid ? { requirement_id: rid } : code ? { requirement_code: code } : {};
+        const reqHref =
+          rid && propertyId
+            ? buildEntityRoute({ requirement_id: rid, property_id: propertyId, mode: 'requirement' }, '')
+            : '';
+        return (
+          <li
+            key={rid || code || 'row'}
+            className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between min-w-0"
+          >
+            <div className="min-w-0">
+              <p className="font-medium text-midnight-blue leading-snug">{rowTitle(r)}</p>
+              <p className="text-xs text-gray-500 mt-1">{getEvidenceStatus(r.status, r).text}</p>
+            </div>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              <Button
+                type="button"
+                className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-10"
+                onClick={() => navigate(resolveDocumentsPath(propertyId, uploadQuery))}
+              >
+                {requirementDocumentUploadLabel(code)}
+              </Button>
+              {reqHref ? (
+                <Link
+                  to={reqHref}
+                  className={cn(portalSecondaryButtonClass, 'inline-flex items-center justify-center min-h-10 px-4 text-sm no-underline')}
+                >
+                  Review requirement details
+                </Link>
+              ) : null}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+    {truncated ? (
+      <p className="text-xs text-gray-500 mt-2">
+        Showing {maxItems} of {items.length}. Open Compliance with the Missing documents filter for the full matrix.
+      </p>
+    ) : null}
+    </>
+  );
+}
+
 export default function PropertyDetailPage() {
   const { propertyId } = useParams();
   const navigate = useNavigate();
@@ -139,14 +220,12 @@ export default function PropertyDetailPage() {
   const [issueDetailData, setIssueDetailData] = useState(null);
   const [issueDetailLoading, setIssueDetailLoading] = useState(false);
   const [woDetailDrawer, setWoDetailDrawer] = useState(null);
-  const [woDetailData, setWoDetailData] = useState(null);
+  /** `{ source: 'workflow', job }` from `GET /jobs/:id`, or `{ source: 'maintenance', wo }` if that fails. */
+  const [woPreviewPayload, setWoPreviewPayload] = useState(null);
   const [woDetailLoading, setWoDetailLoading] = useState(false);
   const [createIssueOpen, setCreateIssueOpen] = useState(false);
   const [createIssueForm, setCreateIssueForm] = useState({ description: '', category: 'general' });
   const [createIssueSaving, setCreateIssueSaving] = useState(false);
-  const [woRecommendList, setWoRecommendList] = useState(null);
-  const [woRecommendLoading, setWoRecommendLoading] = useState(false);
-  const [woUpdateSaving, setWoUpdateSaving] = useState(false);
   const [assets, setAssets] = useState([]);
   const [assetsSummary, setAssetsSummary] = useState(null);
   const [assetsLoading, setAssetsLoading] = useState(false);
@@ -170,12 +249,13 @@ export default function PropertyDetailPage() {
   const [complianceStatusFilter, setComplianceStatusFilter] = useState('');
   const [complianceSearchQuery, setComplianceSearchQuery] = useState('');
   const [complianceExpandedReqId, setComplianceExpandedReqId] = useState(null);
+  /** Expanded obligation: API explanation when available, else registry (key matches expanded id). */
+  const [complianceExpandExplainByKey, setComplianceExpandExplainByKey] = useState({});
   const [complianceExplainability, setComplianceExplainability] = useState(null);
   const [complianceExplainabilityLoading, setComplianceExplainabilityLoading] = useState(false);
   const [priorityActions, setPriorityActions] = useState({ actions: [], total: 0 });
-  const [urgentExplainKey, setUrgentExplainKey] = useState(null);
-  const [urgentExplainData, setUrgentExplainData] = useState(null);
-  const [urgentExplainLoading, setUrgentExplainLoading] = useState(false);
+  const [urgentExplainOpenId, setUrgentExplainOpenId] = useState(null);
+  const [urgentExplainByReqId, setUrgentExplainByReqId] = useState({});
   const [operatingFeedItems, setOperatingFeedItems] = useState([]);
   const [operatingFeedLoading, setOperatingFeedLoading] = useState(false);
 
@@ -512,6 +592,11 @@ export default function PropertyDetailPage() {
   }, [propertyId, activeTab, hasFeature, loadMaintenanceIssues]);
 
   useEffect(() => {
+    if (!propertyId || activeTab !== TAB_CONTRACTORS) return;
+    if (hasFeature('maintenance_workflows')) loadWorkOrders();
+  }, [propertyId, activeTab, hasFeature, loadWorkOrders]);
+
+  useEffect(() => {
     if (!issueDetailDrawer) { setIssueDetailData(null); return; }
     setIssueDetailLoading(true);
     clientAPI.getMaintenanceIssue(issueDetailDrawer)
@@ -521,14 +606,42 @@ export default function PropertyDetailPage() {
   }, [issueDetailDrawer]);
 
   useEffect(() => {
-    if (!woDetailDrawer) { setWoDetailData(null); setWoRecommendList(null); return; }
+    if (!woDetailDrawer) {
+      setWoPreviewPayload(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setWoPreviewPayload(null);
     setWoDetailLoading(true);
-    setWoRecommendList(null);
-    clientAPI.getMaintenanceWorkOrder(woDetailDrawer)
-      .then((res) => { setWoDetailData(res.data || null); if (hasFeature('contractor_network')) { setWoRecommendLoading(true); clientAPI.getRecommendContractors(woDetailDrawer, { limit: 10 }).then((r) => setWoRecommendList(r.data?.contractors || [])).catch(() => setWoRecommendList([])).finally(() => setWoRecommendLoading(false)); } })
-      .catch(() => setWoDetailData(null))
-      .finally(() => setWoDetailLoading(false));
-  }, [woDetailDrawer, hasFeature]);
+    (async () => {
+      const useMaintenance = async () => {
+        try {
+          const r2 = await clientAPI.getMaintenanceWorkOrder(woDetailDrawer);
+          if (cancelled) return;
+          setWoPreviewPayload({ source: 'maintenance', wo: r2.data || {} });
+        } catch {
+          if (!cancelled) setWoPreviewPayload(null);
+        }
+      };
+      try {
+        const res = await clientAPI.getComplianceWorkflowJob(woDetailDrawer);
+        if (cancelled) return;
+        const job = res.data;
+        if (job && typeof job === 'object' && job.work_order_id) {
+          setWoPreviewPayload({ source: 'workflow', job });
+        } else {
+          await useMaintenance();
+        }
+      } catch {
+        await useMaintenance();
+      } finally {
+        if (!cancelled) setWoDetailLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [woDetailDrawer]);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -549,6 +662,31 @@ export default function PropertyDetailPage() {
       loadComplianceExplainability();
     }
   }, [propertyId, activeTab, loadComplianceExplainability]);
+
+  useEffect(() => {
+    if (!propertyId || !complianceExpandedReqId) return;
+    const reqRowId = (x) => x?.requirement_id || x?.id;
+    const r = requirements.find(
+      (x) => String(reqRowId(x) || x.requirement_code || '') === String(complianceExpandedReqId),
+    );
+    if (!r) return;
+    const key = String(complianceExpandedReqId);
+    const baseline = registryFallbackComplianceExplanation(r);
+    setComplianceExpandExplainByKey((m) => ({ ...m, [key]: baseline }));
+    const rid = reqRowId(r);
+    const params = rid
+      ? { requirement_id: rid }
+      : { requirement_code: r.requirement_code || r.requirement_type };
+    if (!params.requirement_id && !params.requirement_code) return;
+    clientAPI
+      .getRequirementExplanation(propertyId, params)
+      .then((res) => {
+        if (res.data?.why_it_matters) {
+          setComplianceExpandExplainByKey((prev) => ({ ...prev, [key]: res.data }));
+        }
+      })
+      .catch(() => {});
+  }, [propertyId, complianceExpandedReqId, requirements]);
 
   useEffect(() => {
     if (propertyId && activeTab === TAB_EVIDENCE) loadEvidence();
@@ -641,31 +779,6 @@ export default function PropertyDetailPage() {
       .catch((err) => toast.error(err?.response?.data?.detail || 'Failed'));
   };
 
-  const handleUpdateWorkOrderStatus = (workOrderId, status) => {
-    setWoUpdateSaving(true);
-    clientAPI.updateMaintenanceWorkOrder(workOrderId, { status })
-      .then(() => {
-        toast.success('Status updated');
-        loadWorkOrders();
-        if (woDetailDrawer === workOrderId) clientAPI.getMaintenanceWorkOrder(workOrderId).then((r) => setWoDetailData(r.data || null));
-      })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Update failed'))
-      .finally(() => setWoUpdateSaving(false));
-  };
-
-  const handleAssignContractor = (workOrderId, contractorId) => {
-    setWoUpdateSaving(true);
-    clientAPI.updateMaintenanceWorkOrder(workOrderId, { contractor_id: contractorId })
-      .then(() => {
-        toast.success('Contractor assigned');
-        loadWorkOrders();
-        if (woDetailDrawer === workOrderId) clientAPI.getMaintenanceWorkOrder(workOrderId).then((r) => setWoDetailData(r.data || null));
-        setWoRecommendList(null);
-      })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Update failed'))
-      .finally(() => setWoUpdateSaving(false));
-  };
-
   const maintenanceSummary = useMemo(() => {
     const openIssues = maintenanceIssues.filter((i) => (i.status || '').toLowerCase() !== 'closed').length;
     const draftWos = workOrders.filter((wo) => (wo.status || '') === 'DRAFT').length;
@@ -686,6 +799,48 @@ export default function PropertyDetailPage() {
     return workOrders.filter((wo) => (wo.status || '') === maintenanceWoFilter.status);
   }, [workOrders, maintenanceWoFilter.status]);
 
+  const complianceWorkOrdersFiltered = useMemo(
+    () => filteredWorkOrders.filter((wo) => (wo.work_order_kind || '').toUpperCase() === 'COMPLIANCE'),
+    [filteredWorkOrders],
+  );
+  const repairWorkOrdersFiltered = useMemo(
+    () => filteredWorkOrders.filter((wo) => (wo.work_order_kind || '').toUpperCase() !== 'COMPLIANCE'),
+    [filteredWorkOrders],
+  );
+
+  const contractorsFromPropertyJobs = useMemo(() => {
+    const byKey = new Map();
+    workOrders.forEach((wo) => {
+      const id = String(wo.contractor_id || '').trim();
+      const name = String(wo.contractor_name || '').trim();
+      if (!id && !name) return;
+      const key = id || `name:${name}`;
+      const ts = wo.updated_at || wo.created_at;
+      const isCompliance = (wo.work_order_kind || '').toUpperCase() === 'COMPLIANCE';
+      const cur = byKey.get(key);
+      if (!cur) {
+        byKey.set(key, {
+          contractor_id: id || null,
+          displayName: name || id,
+          jobCount: 1,
+          complianceJobCount: isCompliance ? 1 : 0,
+          repairJobCount: isCompliance ? 0 : 1,
+          lastActivity: ts,
+        });
+      } else {
+        cur.jobCount += 1;
+        if (isCompliance) cur.complianceJobCount += 1;
+        else cur.repairJobCount += 1;
+        if (ts && (!cur.lastActivity || new Date(ts) > new Date(cur.lastActivity))) cur.lastActivity = ts;
+        if (!cur.displayName && name) cur.displayName = name;
+        if (!cur.contractor_id && id) cur.contractor_id = id;
+      }
+    });
+    return Array.from(byKey.values()).sort(
+      (a, b) => new Date(b.lastActivity || 0) - new Date(a.lastActivity || 0),
+    );
+  }, [workOrders]);
+
   const slaAtRiskOrBreached = useMemo(() => {
     return workOrders.filter((wo) => {
       if (['COMPLETED', 'CANCELLED'].includes(wo.status || '')) return false;
@@ -699,8 +854,16 @@ export default function PropertyDetailPage() {
     return a ? (a.name || (a.asset_type || '').replace(/_/g, ' ')) : assetId;
   };
 
-  const getStatus = (r) => getEvidenceStatus(r.status);
+  const getStatus = (r) => getEvidenceStatus(r.status, r);
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+  const formatJobPreviewDateTime = (iso) => {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    } catch {
+      return '—';
+    }
+  };
   const formatRelativeTime = (iso) => {
     if (!iso) return '—';
     const d = new Date(iso);
@@ -777,7 +940,7 @@ export default function PropertyDetailPage() {
       valid: kpis.compliant ?? requirements.filter((r) => ['COMPLIANT', 'VALID'].includes((r.status || '').toUpperCase())).length,
       expiringSoon: kpis.expiring_30 ?? requirements.filter((r) => (r.status || '').toUpperCase() === 'EXPIRING_SOON').length,
       overdue: kpis.overdue ?? requirements.filter((r) => ['OVERDUE', 'EXPIRED'].includes((r.status || '').toUpperCase())).length,
-      missingEvidence: kpis.missing ?? requirements.filter((r) => ['PENDING', 'MISSING'].includes((r.status || '').toUpperCase())).length,
+      missingDocuments: kpis.missing ?? requirements.filter(isRequirementMissingDocument).length,
     };
   };
 
@@ -793,52 +956,61 @@ export default function PropertyDetailPage() {
     if (complianceStatusFilter) {
       const s = complianceStatusFilter.toUpperCase();
       if (s === 'VALID') list = list.filter((r) => ['COMPLIANT', 'VALID'].includes((r.status || '').toUpperCase()));
-      else if (s === 'MISSING') list = list.filter((r) => ['PENDING', 'MISSING'].includes((r.status || '').toUpperCase()));
+      else if (s === 'MISSING') list = list.filter(isRequirementMissingDocument);
       else list = list.filter((r) => (r.status || '').toUpperCase() === s);
     }
     if (complianceSearchQuery.trim()) {
       const q = complianceSearchQuery.trim().toLowerCase();
       list = list.filter((r) => (rowTitle(r) || '').toLowerCase().includes(q) || (r.requirement_code || '').toLowerCase().includes(q));
     }
+    if (complianceStatusFilter && complianceStatusFilter.toUpperCase() === 'MISSING') {
+      list = sortRequirementsCriticalityThenTitle(list);
+    }
     return list;
   };
 
-  const getUrgentRequirements = () => {
-    return requirements.filter((r) => {
-      const s = (r.status || '').toUpperCase();
-      return s === 'OVERDUE' || s === 'EXPIRED' || (s === 'EXPIRING_SOON' && (r.days_to_expiry == null || r.days_to_expiry <= 30)) || s === 'MISSING' || s === 'PENDING';
-    });
-  };
-
   const hubPrioritizedRequirements = useMemo(() => {
-    const rank = (s) => {
-      const u = String(s || '').toUpperCase();
-      if (u === 'OVERDUE' || u === 'EXPIRED') return 0;
-      if (u === 'EXPIRING_SOON') return 1;
-      if (u === 'MISSING' || u === 'PENDING') return 2;
-      return 9;
-    };
-    return [...requirements]
-      .filter((r) => ['OVERDUE', 'EXPIRED', 'EXPIRING_SOON', 'MISSING', 'PENDING'].includes((r.status || '').toUpperCase()))
-      .sort((a, b) => rank(a.status) - rank(b.status) || String(rowExpiry(a) || '').localeCompare(String(rowExpiry(b) || '')))
-      .slice(0, 8);
+    const filtered = requirements.filter((r) =>
+      ['OVERDUE', 'EXPIRED', 'EXPIRING_SOON', 'MISSING', 'PENDING'].includes((r.status || '').toUpperCase()),
+    );
+    return sortRequirementsAttentionOrder(filtered, rowExpiry).slice(0, 8);
   }, [requirements]);
+
+  /** Same urgent rules as before, sorted like the obligations matrix (single source: `requirements`). */
+  const urgentRequirementsOrdered = useMemo(() => {
+    const filtered = requirements.filter((r) => {
+      const s = (r.status || '').toUpperCase();
+      const awaitingVerification = s === 'PENDING' && !!r.evidence_doc_id;
+      return (
+        s === 'OVERDUE' ||
+        s === 'EXPIRED' ||
+        (s === 'EXPIRING_SOON' && (r.days_to_expiry == null || r.days_to_expiry <= 30)) ||
+        isRequirementMissingDocument(r) ||
+        awaitingVerification
+      );
+    });
+    return sortRequirementsAttentionOrder(filtered, (r) => r.expiry_date || r.due_date);
+  }, [requirements]);
+
+  /** Same filter and order as Compliance → Missing documents (PENDING / MISSING, criticality first). */
+  const requirementsMissingDocuments = useMemo(() => listRequirementsMissingDocumentsSorted(requirements), [requirements]);
 
   const hubActiveWorkOrders = useMemo(() => {
     const terminal = ['COMPLETED', 'CANCELLED', 'CLOSED', 'VERIFIED'];
     return workOrders.filter((wo) => !terminal.includes(wo.status || ''));
   }, [workOrders]);
 
-  const hubLatestDocuments = useMemo(() => {
-    if (evidenceData?.documents?.length) {
-      return [...evidenceData.documents]
-        .sort((a, b) => new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0))
-        .slice(0, 4);
+  const assetActivitySummary = (a, per) => {
+    const parts = [];
+    if (a.last_service_date) parts.push(`Last service ${formatDate(a.last_service_date)}`);
+    if (per.open_issues != null && per.open_issues > 0) {
+      parts.push(`${per.open_issues} open issue${per.open_issues === 1 ? '' : 's'}`);
     }
-    return [...documents]
-      .sort((a, b) => new Date(b.uploaded_at || b.created_at || 0) - new Date(a.uploaded_at || a.created_at || 0))
-      .slice(0, 4);
-  }, [evidenceData, documents]);
+    if (hasFeature('predictive_maintenance') && per.risk) {
+      parts.push(`Risk: ${String(per.risk).replace(/^\w/, (c) => c.toUpperCase())}`);
+    }
+    return parts.length ? parts.join(' · ') : 'No activity recorded yet — open the asset for details.';
+  };
 
   if (loading) {
     return <PortalLoadingPanel message="Loading property…" />;
@@ -1050,7 +1222,7 @@ export default function PropertyDetailPage() {
                   <span className="text-gray-500"> · </span>
                   <span>{formatRiskLabel(complianceDetail.risk_level)}</span>
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Evidence-based position for this property — not legal advice.</p>
+                <p className="text-xs text-gray-500 mt-1">Compliance snapshot for this property — not legal advice.</p>
                 <div className="flex flex-wrap gap-2 mt-2">
                   <Button
                     type="button"
@@ -1136,8 +1308,8 @@ export default function PropertyDetailPage() {
         {[
           { id: TAB_OPERATING, label: 'Operating', icon: Building2, feature: null },
           { id: TAB_COMPLIANCE, label: 'Compliance', icon: ClipboardCheck, feature: null },
-          { id: TAB_MAINTENANCE, label: 'Maintenance', icon: Wrench, feature: 'maintenance_workflows' },
-          { id: TAB_EVIDENCE, label: 'Evidence', icon: FileText, feature: null },
+          { id: TAB_MAINTENANCE, label: 'Jobs & issues', icon: Wrench, feature: 'maintenance_workflows' },
+          { id: TAB_EVIDENCE, label: 'Documents', icon: FileText, feature: null },
           { id: TAB_CONTRACTORS, label: 'Contractors', icon: Users, feature: 'contractor_network' },
           { id: TAB_TIMELINE, label: 'Timeline', icon: Calendar, feature: null },
           { id: TAB_RISK_SIGNALS, label: 'Risk Signals', icon: AlertCircle, feature: 'predictive_maintenance' },
@@ -1188,7 +1360,6 @@ export default function PropertyDetailPage() {
           workOrdersLoading={workOrdersLoading}
           evidenceData={evidenceData}
           evidenceLoading={evidenceLoading}
-          hubLatestDocuments={hubLatestDocuments}
           operatingFeedItems={operatingFeedItems}
           operatingFeedLoading={operatingFeedLoading}
           setComplianceStatusFilter={setComplianceStatusFilter}
@@ -1196,11 +1367,6 @@ export default function PropertyDetailPage() {
           onOpenNotApplicable={(payload) => {
             setNotApplicableModal(payload);
             setNotApplicableReason('not_applicable');
-          }}
-          setWoDetailDrawer={setWoDetailDrawer}
-          onAddWorkOrder={() => {
-            setActiveTab(TAB_MAINTENANCE);
-            setCreateWoOpen(true);
           }}
           onCreateWoFromRiskDescription={(description) => {
             setActiveTab(TAB_MAINTENANCE);
@@ -1214,10 +1380,61 @@ export default function PropertyDetailPage() {
       {activeTab === TAB_COMPLIANCE && (
         <>
         <div className="space-y-6">
+          <Card className="border border-electric-teal/25 bg-electric-teal/[0.06]">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base text-midnight-blue">Compliance priority for this property</CardTitle>
+              <CardDescription>Counts follow the obligations table below — one list, same definitions.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {(() => {
+                const sum = getComplianceSummary();
+                const nextDue = getNextDueDate();
+                return (
+                  <>
+                    <div className="flex flex-wrap gap-x-6 gap-y-2 text-midnight-blue">
+                      <span>
+                        <strong className="tabular-nums">{sum.missingDocuments}</strong> missing evidence
+                      </span>
+                      <span>
+                        <strong className="tabular-nums">{sum.expiringSoon}</strong> expiring
+                      </span>
+                      <span>
+                        <strong className="tabular-nums">{sum.overdue}</strong> overdue
+                      </span>
+                      <span className="text-gray-600">
+                        Next due: {nextDue ? formatDate(nextDue) : 'None scheduled'}
+                      </span>
+                    </div>
+                    <p className="font-medium text-midnight-blue leading-snug">
+                      {compliancePriorityRecommendedNext(requirements, urgentRequirementsOrdered, rowTitle)}
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Button type="button" variant={complianceStatusFilter === '' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === '' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('')}>
+                        All obligations ({sum.totalApplicable})
+                      </Button>
+                      <Button type="button" variant={complianceStatusFilter === 'VALID' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === 'VALID' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('VALID')}>
+                        Valid ({sum.valid})
+                      </Button>
+                      <Button type="button" variant={complianceStatusFilter === 'EXPIRING_SOON' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === 'EXPIRING_SOON' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('EXPIRING_SOON')}>
+                        Expiring ({sum.expiringSoon})
+                      </Button>
+                      <Button type="button" variant={complianceStatusFilter === 'OVERDUE' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === 'OVERDUE' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('OVERDUE')}>
+                        Overdue ({sum.overdue})
+                      </Button>
+                      <Button type="button" variant={complianceStatusFilter === 'MISSING' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === 'MISSING' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('MISSING')}>
+                        Missing evidence ({sum.missingDocuments})
+                      </Button>
+                    </div>
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
           {complianceDetail && (
             <>
               <div className="mb-4 flex flex-wrap gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
-                <span className="font-medium text-midnight-blue">Evidence readiness score: {(complianceDetail.score != null ? complianceDetail.score : complianceDetail.property_score) ?? '—'}/100</span>
+                <span className="font-medium text-midnight-blue">Compliance score: {(complianceDetail.score != null ? complianceDetail.score : complianceDetail.property_score) ?? '—'}/100</span>
                 <span className="font-medium text-midnight-blue">Risk level: {formatRiskLabel(complianceDetail.risk_level)}</span>
                 {complianceDetail.risk_index != null && complianceDetail.risk_index > 0 && (
                   <span className="text-gray-600">Risk index: {complianceDetail.risk_index}</span>
@@ -1266,20 +1483,26 @@ export default function PropertyDetailPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-electric-teal" />
-                Compliance Explainability
+                Score summary
               </CardTitle>
               <CardDescription>
-                Weighted score with requirement-level rationale and next best actions.
+                How your property score is built — details for each obligation are in the table below, not duplicated here.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {complianceExplainabilityLoading ? (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Loading explainability...
+                  Loading score summary…
                 </div>
               ) : !complianceExplainability ? (
-                <p className="text-sm text-gray-500">Explainability data is currently unavailable.</p>
+                <p className="text-sm text-gray-700">
+                  Score breakdown will appear here when available. Use the priority counts and obligations table to see what needs attention; upload or renew evidence on the{' '}
+                  <button type="button" className="text-electric-teal font-medium underline-offset-2 hover:underline" onClick={() => setActiveTab(TAB_EVIDENCE)}>
+                    Documents
+                  </button>{' '}
+                  tab.
+                </p>
               ) : (
                 <div className="space-y-4">
                   <div className="flex flex-wrap gap-3 text-sm">
@@ -1323,7 +1546,7 @@ export default function PropertyDetailPage() {
 
                   {Array.isArray(complianceExplainability.top_next_actions) && complianceExplainability.top_next_actions.length > 0 && (
                     <div>
-                      <p className="text-sm font-medium text-midnight-blue mb-1">Top next actions</p>
+                      <p className="text-sm font-medium text-midnight-blue mb-1">Suggested score impact (reference)</p>
                       <ul className="space-y-1 text-sm text-gray-700">
                         {complianceExplainability.top_next_actions.slice(0, 5).map((a, idx) => (
                           <li key={`${a.requirement_code || 'req'}-${idx}`} className="flex items-center justify-between gap-2">
@@ -1334,184 +1557,64 @@ export default function PropertyDetailPage() {
                       </ul>
                     </div>
                   )}
-
-                  {Array.isArray(complianceExplainability.score_breakdown) && complianceExplainability.score_breakdown.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium text-midnight-blue mb-1">Requirement breakdown</p>
-                      {(() => {
-                        const breakdownRows = complianceExplainability.score_breakdown
-                          .filter((r) => r?.applies_if)
-                          .sort((a, b) => {
-                            const aMiss = Number(a?.applicable_points || 0) - Number(a?.earned_points || 0);
-                            const bMiss = Number(b?.applicable_points || 0) - Number(b?.earned_points || 0);
-                            return bMiss - aMiss;
-                          })
-                          .slice(0, 8);
-                        return (
-                          <>
-                            <div className="md:hidden space-y-2 mb-3">
-                              {breakdownRows.map((r, idx) => {
-                                const missing = Math.max(0, Number(r?.applicable_points || 0) - Number(r?.earned_points || 0));
-                                const status = String(r?.status || '').toUpperCase();
-                                const isMissingOrExpired = ['MISSING', 'MISSING_EVIDENCE', 'EXPIRED'].includes(status);
-                                const actionLabel = isMissingOrExpired ? PORTAL_COPY.uploadDocument : PORTAL_COPY.viewDetails;
-                                const requirementCode = String(r?.requirement_code || '').toLowerCase();
-                                return (
-                                  <Card key={`${r?.requirement_code || 'req'}-m-${idx}`} className="border border-gray-200 p-3">
-                                    <p className="font-medium text-midnight-blue text-sm">
-                                      {r?.requirement_code ? requirementLabel(r.requirement_code) : '—'}
-                                    </p>
-                                    <p className="text-xs text-gray-600 mt-1">
-                                      {complianceRequirementStatusLabel(r?.status)} · Risk if failed: {String(r?.risk_level_if_failed || '—')}
-                                    </p>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      {r?.expiry_date
-                                        ? r?.date_source === 'SYSTEM_ESTIMATED'
-                                          ? `Est. ${formatDate(r.expiry_date)}`
-                                          : formatDate(r.expiry_date)
-                                        : '—'}
-                                      {' · '}Missing pts: {missing.toFixed(1)}
-                                    </p>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="text-electric-teal border-electric-teal mt-2 min-h-11 w-full sm:w-auto"
-                                      onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_code: requirementCode }))}
-                                    >
-                                      {actionLabel}
-                                    </Button>
-                                  </Card>
-                                );
-                              })}
-                            </div>
-                            <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200">
-                              <table className="w-full text-xs">
-                                <thead>
-                                  <tr className="bg-gray-50 text-left text-gray-600">
-                                    <th className="px-3 py-2">Requirement</th>
-                                    <th className="px-3 py-2">Status</th>
-                                    <th className="px-3 py-2">Risk if failed</th>
-                                    <th className="px-3 py-2">Expiry</th>
-                                    <th className="px-3 py-2 text-right">Missing points</th>
-                                    <th className="px-3 py-2 text-right">Action</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {breakdownRows.map((r, idx) => {
-                                    const missing = Math.max(0, Number(r?.applicable_points || 0) - Number(r?.earned_points || 0));
-                                    const status = String(r?.status || '').toUpperCase();
-                                    const isMissingOrExpired = ['MISSING', 'MISSING_EVIDENCE', 'EXPIRED'].includes(status);
-                                    const actionLabel = isMissingOrExpired ? 'Upload' : 'Review';
-                                    const requirementCode = String(r?.requirement_code || '').toLowerCase();
-                                    return (
-                                      <tr key={`${r?.requirement_code || 'req'}-${idx}`} className="border-t border-gray-100">
-                                        <td className="px-3 py-2 font-medium text-midnight-blue">
-                                          {r?.requirement_code ? requirementLabel(r.requirement_code) : '—'}
-                                        </td>
-                                        <td className="px-3 py-2 text-gray-700">{complianceRequirementStatusLabel(r?.status)}</td>
-                                        <td className="px-3 py-2 text-gray-700">{String(r?.risk_level_if_failed || '—')}</td>
-                                        <td className="px-3 py-2 text-gray-600">
-                                          {r?.expiry_date
-                                            ? r?.date_source === 'SYSTEM_ESTIMATED'
-                                              ? `Est. ${formatDate(r.expiry_date)}`
-                                              : formatDate(r.expiry_date)
-                                            : '—'}
-                                        </td>
-                                        <td className="px-3 py-2 text-right text-gray-700">{missing.toFixed(1)}</td>
-                                        <td className="px-3 py-2 text-right">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="text-electric-teal border-electric-teal"
-                                            onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_code: requirementCode }))}
-                                          >
-                                            {actionLabel}
-                                          </Button>
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  )}
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* A) Compliance Summary Row */}
-          {(() => {
-            const sum = getComplianceSummary();
-            const nextDue = getNextDueDate();
-            return (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                <button type="button" onClick={() => setComplianceStatusFilter('')} className="text-left p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Applicable</p>
-                  <p className="text-lg font-semibold text-midnight-blue">{sum.totalApplicable}</p>
-                </button>
-                <button type="button" onClick={() => setComplianceStatusFilter('VALID')} className="text-left p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Valid</p>
-                  <p className="text-lg font-semibold text-green-600">{sum.valid}</p>
-                </button>
-                <button type="button" onClick={() => setComplianceStatusFilter('EXPIRING_SOON')} className="text-left p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Expiring soon</p>
-                  <p className="text-lg font-semibold text-amber-600">{sum.expiringSoon}</p>
-                </button>
-                <button type="button" onClick={() => setComplianceStatusFilter('OVERDUE')} className="text-left p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Overdue</p>
-                  <p className="text-lg font-semibold text-red-600">{sum.overdue}</p>
-                </button>
-                <button type="button" onClick={() => setComplianceStatusFilter('MISSING')} className="text-left p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Missing evidence</p>
-                  <p className="text-lg font-semibold text-gray-700">{sum.missingEvidence}</p>
-                </button>
-                <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Next due</p>
-                  <p className="text-lg font-semibold text-midnight-blue">{nextDue ? formatDate(nextDue) : '—'}</p>
-                </div>
-              </div>
-            );
-          })()}
+          <p className="text-xs text-gray-600">
+            Obligations below are the source of truth. Use the{' '}
+            <button type="button" className="text-electric-teal font-medium underline-offset-2 hover:underline" onClick={() => setActiveTab(TAB_EVIDENCE)}>
+              Documents
+            </button>{' '}
+            tab to upload, renew, or confirm evidence for each requirement.
+          </p>
 
-          {/* B) Requirement Status Filters */}
           <div className="flex flex-wrap items-center gap-2">
-            {['', 'VALID', 'EXPIRING_SOON', 'OVERDUE', 'MISSING'].map((f) => (
-              <Button
-                key={f || 'all'}
-                variant={complianceStatusFilter === f ? 'default' : 'outline'}
-                size="sm"
-                className={complianceStatusFilter === f ? 'bg-electric-teal text-white' : 'border-gray-200'}
-                onClick={() => setComplianceStatusFilter(f)}
-              >
-                {f === '' ? 'All' : f === 'VALID' ? 'Valid' : f === 'EXPIRING_SOON' ? 'Expiring soon' : f === 'OVERDUE' ? 'Overdue' : 'Missing evidence'}
-              </Button>
-            ))}
+            <label className="text-sm text-gray-600 sr-only" htmlFor="compliance-obligation-search">
+              Search obligations
+            </label>
             <input
-              type="text"
-              placeholder="Search obligation..."
+              id="compliance-obligation-search"
+              type="search"
+              placeholder="Search by obligation name or code…"
               value={complianceSearchQuery}
               onChange={(e) => setComplianceSearchQuery(e.target.value)}
-              className="ml-2 max-w-[200px] px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+              className="max-w-md min-w-[200px] flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
             />
+            {complianceSearchQuery.trim() ? (
+              <Button type="button" variant="ghost" size="sm" className="text-gray-600" onClick={() => setComplianceSearchQuery('')}>
+                Clear search
+              </Button>
+            ) : null}
           </div>
 
           {/* C) Obligation Table / Cards */}
           {requirements.length === 0 ? (
             <Card className="border border-gray-200">
-              <CardContent className="py-12 text-center">
-                <p className="text-gray-600 mb-2">No compliance obligations are currently configured for this property.</p>
-                <Button variant="outline" onClick={handleRefresh}>Review property setup</Button>
+              <CardContent className="py-12 text-center text-gray-600 space-y-3">
+                <p className="font-medium text-midnight-blue">No obligations are listed for this property yet.</p>
+                <p className="text-sm max-w-md mx-auto">When your portfolio is configured, required obligations appear here. Refresh after updating property or jurisdiction settings.</p>
+                <Button variant="outline" onClick={handleRefresh}>
+                  Refresh property data
+                </Button>
               </CardContent>
             </Card>
           ) : getFilteredRequirements().length === 0 ? (
             <Card className="border border-gray-200">
-              <CardContent className="py-8 text-center text-gray-500">
-                No obligations match the current filter. Clear filters to see all.
+              <CardContent className="py-8 text-center text-gray-600 space-y-3">
+                <p className="font-medium text-midnight-blue">No obligations match what you are viewing.</p>
+                <p className="text-sm">Try clearing search or showing all obligations again.</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  <Button type="button" variant="outline" size="sm" onClick={() => { setComplianceSearchQuery(''); setComplianceStatusFilter(''); }}>
+                    Show all obligations
+                  </Button>
+                  {complianceSearchQuery.trim() ? (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setComplianceSearchQuery('')}>
+                      Clear search only
+                    </Button>
+                  ) : null}
+                </div>
               </CardContent>
             </Card>
           ) : (
@@ -1519,11 +1622,111 @@ export default function PropertyDetailPage() {
               {!requirements.some((r) => r.evidence_doc_id) && (
                 <Card className="border-amber-200 bg-amber-50/30">
                   <CardContent className="py-6 text-center">
-                    <p className="text-gray-700 mb-2">No evidence has been uploaded for this property yet.</p>
+                    <p className="text-gray-700 mb-2">No documents have been uploaded for this property yet.</p>
                     <div className="flex flex-wrap justify-center gap-2">
                       <Button className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11" onClick={() => navigate(resolveDocumentsPath(propertyId))}>{PORTAL_COPY.uploadDocument}</Button>
-                      <Button variant="outline" onClick={() => setActiveTab(TAB_EVIDENCE)}>View Evidence tab</Button>
+                      <Button variant="outline" onClick={() => setActiveTab(TAB_EVIDENCE)}>View Documents tab</Button>
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {urgentRequirementsOrdered.length > 0 && (
+                <Card className="border-amber-200 bg-amber-50/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Needs attention now</CardTitle>
+                    <CardDescription>
+                      The same obligations as in the table below — filtered to overdue, expiring within 30 days, missing evidence, or awaiting confirmation.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {urgentRequirementsOrdered.slice(0, 10).map((r, i) => {
+                      const complianceDomId = rowReqId(r) || `rc:${propertyId}:${normalizeRequirementCode(r.requirement_code || r.requirement_type || `u${i}`)}`;
+                      const rid = String(complianceDomId);
+                      const statusUi = getStatus(r);
+                      const stdStatus = complianceObligationStatusLabel(r);
+                      const primaryAct = complianceObligationPrimaryAction(r);
+                      const explainOpen = urgentExplainOpenId === rid;
+                      const explainPayload = urgentExplainByReqId[rid];
+                      const docsHref = resolveDocumentsPath(propertyId, {
+                        requirement_id: rowReqId(r),
+                        ...(primaryAct.verb === 'upload' ? { focus: 'upload' } : {}),
+                      });
+                      return (
+                        <div key={rid} className="rounded border border-amber-200 bg-white overflow-hidden">
+                          <div className="flex flex-wrap items-center justify-between gap-2 p-3">
+                            <div className="min-w-0">
+                              <p className="font-medium text-midnight-blue">{rowTitle(r)}</p>
+                              <p className="text-sm text-gray-600 mt-0.5">
+                                <span className="font-medium text-midnight-blue">{stdStatus}</span>
+                                <span className="text-gray-400"> · </span>
+                                Risk: {complianceImpactLabel(r).label}
+                              </p>
+                              {statusUi.subline ? <p className="text-xs text-gray-500 mt-1">{statusUi.subline}</p> : null}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                className="flex items-center gap-1 text-xs text-electric-teal hover:underline"
+                                onClick={() => {
+                                  if (explainOpen) {
+                                    setUrgentExplainOpenId(null);
+                                    return;
+                                  }
+                                  setUrgentExplainOpenId(rid);
+                                  const baseline = registryFallbackComplianceExplanation(r);
+                                  setUrgentExplainByReqId((m) => ({ ...m, [rid]: baseline }));
+                                  clientAPI
+                                    .getRequirementExplanation(propertyId, { requirement_id: rowReqId(r) })
+                                    .then((res) => {
+                                      if (res.data?.why_it_matters) {
+                                        setUrgentExplainByReqId((m) => ({ ...m, [rid]: res.data }));
+                                      }
+                                    })
+                                    .catch(() => {});
+                                }}
+                              >
+                                <Info className="w-3.5 h-3.5 shrink-0" /> Why this matters{' '}
+                                {explainOpen ? <ChevronUp className="w-3.5 h-3.5 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0" />}
+                              </button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="min-h-9"
+                                onClick={() => {
+                                  const safe = typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(rid) : rid.replace(/"/g, '\\"');
+                                  const el = document.querySelector(`[data-compliance-req-id="${safe}"]`);
+                                  el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                  setComplianceExpandedReqId(rowReqId(r) || r.requirement_code);
+                                }}
+                              >
+                                Show in table
+                              </Button>
+                              <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-9" onClick={() => navigate(docsHref)}>
+                                {primaryAct.label}
+                              </Button>
+                            </div>
+                          </div>
+                          {explainOpen && explainPayload ? (
+                            <div className="px-3 pb-3 pt-0 border-t border-amber-100 bg-amber-50/30 space-y-2">
+                              <div>
+                                <p className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mt-2">Why this matters</p>
+                                <p className="text-sm text-gray-700 mt-1">{explainPayload.why_it_matters}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold text-midnight-blue uppercase tracking-wide">What changed</p>
+                                <p className="text-sm text-gray-700 mt-1">{complianceWhatChangedLine(r)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Recommended action</p>
+                                <p className="text-sm font-medium text-midnight-blue mt-1">{explainPayload.recommended_action_text}</p>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </CardContent>
                 </Card>
               )}
@@ -1540,8 +1743,8 @@ export default function PropertyDetailPage() {
                         <th className="p-3">Category</th>
                         <th className="p-3">Status</th>
                         <th className="p-3">Due date</th>
-                        <th className="p-3">Evidence</th>
-                        <th className="p-3">Impact</th>
+                        <th className="p-3">Documents</th>
+                        <th className="p-3">Risk</th>
                         <th className="p-3">Action</th>
                       </tr>
                     </thead>
@@ -1552,15 +1755,22 @@ export default function PropertyDetailPage() {
                         const days = rowDays(r);
                         const impact = complianceImpactLabel(r);
                         const hasEvidence = !!r.evidence_doc_id;
-                        const statusKey = (r.status || '').toUpperCase();
-                        const isOverdue = ['OVERDUE', 'EXPIRED'].includes(statusKey);
-                        const isExpiringSoon = statusKey === 'EXPIRING_SOON';
-                        const isMissing = ['PENDING', 'MISSING'].includes(statusKey);
-                        const isValid = ['COMPLIANT', 'VALID'].includes(statusKey);
+                        const stdStatus = complianceObligationStatusLabel(r);
+                        const primaryAct = complianceObligationPrimaryAction(r);
+                        const complianceDomId = rowReqId(r) || `rc:${propertyId}:${normalizeRequirementCode(r.requirement_code || r.requirement_type || `t${idx}`)}`;
+                        const isMissing = isRequirementMissingDocument(r);
+                        const regExplain = registryFallbackComplianceExplanation(r);
+                        const expandKey = String(rowReqId(r) || r.requirement_code || '');
+                        const explainPayload = complianceExpandExplainByKey[expandKey] || regExplain;
+                        const docsHref = resolveDocumentsPath(propertyId, {
+                          requirement_id: rowReqId(r),
+                          ...(primaryAct.verb === 'upload' ? { focus: 'upload' } : {}),
+                        });
                         return (
                           <React.Fragment key={rowReqId(r) || r.requirement_code || idx}>
                             <tr
                               className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                              data-compliance-req-id={complianceDomId}
                               onClick={() => setComplianceExpandedReqId(complianceExpandedReqId === (rowReqId(r) || r.requirement_code) ? null : (rowReqId(r) || r.requirement_code))}
                               data-req-code={r.requirement_code || r.requirement_type || ''}
                             >
@@ -1571,10 +1781,15 @@ export default function PropertyDetailPage() {
                                   : '—'}
                               </td>
                               <td className="p-3">
-                                <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs ${status.className}`}>
-                                  <Icon className="w-3.5 h-3.5" />
-                                  {status.text}
-                                </span>
+                                <div>
+                                  <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs ${status.className}`}>
+                                    <Icon className="w-3.5 h-3.5" />
+                                    {stdStatus}
+                                  </span>
+                                  {status.subline ? (
+                                    <p className="text-xs text-gray-500 mt-1 max-w-xs">{status.subline}</p>
+                                  ) : null}
+                                </div>
                               </td>
                               <td className="p-3 text-gray-600">{formatDate(rowExpiry(r))}</td>
                               <td className="p-3 text-gray-600">{hasEvidence ? 'Linked' : '—'}</td>
@@ -1582,47 +1797,55 @@ export default function PropertyDetailPage() {
                                 <span className={`inline-flex px-2 py-1 rounded border text-xs ${impact.className}`}>{impact.label}</span>
                               </td>
                               <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex flex-wrap gap-1">
-                                  {isMissing && (
-                                    <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>
-                                      <Upload className="w-3.5 h-3.5 mr-1" /> Upload
-                                    </Button>
-                                  )}
-                                  {hasEvidence && !isMissing && (
-                                    <>
-                                      <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>
-                                        <Eye className="w-3.5 h-3.5 mr-1" /> View
-                                      </Button>
-                                      {(isOverdue || isExpiringSoon) && (
-                                        <Button size="sm" variant="outline" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>Replace</Button>
-                                      )}
-                                    </>
-                                  )}
-                                  {isValid && hasEvidence && (
-                                    <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>View details</Button>
-                                  )}
+                                <div className="flex flex-wrap gap-1 items-center">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-electric-teal border-electric-teal min-h-9"
+                                    onClick={() => navigate(docsHref)}
+                                  >
+                                    {primaryAct.verb === 'upload' ? <Upload className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
+                                    {primaryAct.verb === 'renew' ? <RefreshCw className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
+                                    {primaryAct.verb === 'review' ? <Eye className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
+                                    {primaryAct.label}
+                                  </Button>
                                   {isMissing && (r.requirement_code || r.requirement_type) && (
-                                    <Button size="sm" variant="ghost" className="text-gray-600" onClick={(e) => { e.stopPropagation(); setNotApplicableModal({ requirement_code: r.requirement_code || r.requirement_type, title: rowTitle(r) }); setNotApplicableReason('not_applicable'); }} data-testid="mark-not-applicable">
+                                    <Button size="sm" variant="ghost" className="text-gray-600 min-h-9" onClick={(e) => { e.stopPropagation(); setNotApplicableModal({ requirement_code: r.requirement_code || r.requirement_type, title: rowTitle(r) }); setNotApplicableReason('not_applicable'); }} data-testid="mark-not-applicable">
                                       <MinusCircle className="w-3.5 h-3.5 mr-1" /> Not applicable
                                     </Button>
                                   )}
-                                  <a href={`mailto:${SUPPORT_EMAIL}?subject=Support request: ${address}`} className="text-sm text-gray-500 hover:text-electric-teal" onClick={(e) => e.stopPropagation()}>Request help</a>
+                                  <a href={`mailto:${SUPPORT_EMAIL}?subject=Support request: ${address}`} className="text-sm text-gray-500 hover:text-electric-teal px-1 py-1" onClick={(e) => e.stopPropagation()}>Request help</a>
                                 </div>
                               </td>
                             </tr>
                             {complianceExpandedReqId === (rowReqId(r) || r.requirement_code) && (
                               <tr className="bg-gray-50 border-b border-gray-200">
                                 <td colSpan={7} className="p-4">
-                                  <div className="text-sm space-y-2">
-                                    <p><strong>Description:</strong> {rowTitle(r)}</p>
-                                    <p><strong>Status:</strong> {status.text}. Status based on portal records.</p>
-                                    <p><strong>Due date:</strong> {formatDate(rowExpiry(r))} {days != null && (days < 0 ? `(${Math.abs(days)} days overdue)` : `(${days} days left)`)}</p>
-                                    <p><strong>Evidence:</strong> {hasEvidence ? 'Document linked' : 'No document linked'}</p>
-                                    <p><strong>Impact:</strong> {impact.label}</p>
-                                    <div className="flex flex-wrap gap-2 pt-2">
-                                      <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_EVIDENCE)}>View Evidence tab</Button>
-                                      <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'COMPLIANCE' })); }}>View in Timeline</Button>
-                                      <a href={`mailto:${SUPPORT_EMAIL}?subject=Support request: ${address}`} className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 text-gray-600">Request help</a>
+                                  <div className="text-sm space-y-3 max-w-3xl">
+                                    <p><span className="font-semibold text-midnight-blue">Obligation:</span> {rowTitle(r)}</p>
+                                    <div>
+                                      <p className="font-semibold text-midnight-blue">Why this matters</p>
+                                      <p className="text-gray-700 mt-1">{explainPayload.why_it_matters}</p>
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold text-midnight-blue">What changed</p>
+                                      <p className="text-gray-700 mt-1">{complianceWhatChangedLine(r)}</p>
+                                    </div>
+                                    <p>
+                                      <span className="font-semibold text-midnight-blue">Status:</span> {stdStatus}
+                                      {status.subline ? ` — ${status.subline}` : ''}
+                                    </p>
+                                    <p>
+                                      <span className="font-semibold text-midnight-blue">Due date:</span> {formatDate(rowExpiry(r))}
+                                      {days != null ? (days < 0 ? ` (${Math.abs(days)} days overdue)` : ` (${days} days left)`) : ''}
+                                    </p>
+                                    <p><span className="font-semibold text-midnight-blue">Document on file:</span> {hasEvidence ? 'Yes' : 'No'}</p>
+                                    <p><span className="font-semibold text-midnight-blue">Risk if not met:</span> {impact.label}</p>
+                                    <p><span className="font-semibold text-midnight-blue">Recommended action:</span> {explainPayload.recommended_action_text}</p>
+                                    <div className="flex flex-wrap gap-2 pt-1">
+                                      <Button size="sm" variant="outline" onClick={() => navigate(docsHref)}>{primaryAct.label}</Button>
+                                      <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_EVIDENCE)}>Open Documents tab</Button>
+                                      <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'COMPLIANCE' })); }}>View timeline</Button>
                                       <Button size="sm" variant="ghost" onClick={() => setComplianceExpandedReqId(null)}><X className="w-4 h-4" /> Close</Button>
                                     </div>
                                   </div>
@@ -1643,23 +1866,33 @@ export default function PropertyDetailPage() {
                   const Icon = status.icon;
                   const impact = complianceImpactLabel(r);
                   const hasEvidence = !!r.evidence_doc_id;
-                  const statusKey = (r.status || '').toUpperCase();
-                  const isMissing = ['PENDING', 'MISSING'].includes(statusKey);
+                  const isMissing = isRequirementMissingDocument(r);
+                  const stdStatus = complianceObligationStatusLabel(r);
+                  const primaryAct = complianceObligationPrimaryAction(r);
+                  const complianceDomId = rowReqId(r) || `rc:${propertyId}:${normalizeRequirementCode(r.requirement_code || r.requirement_type || `m${idx}`)}`;
+                  const docsHref = resolveDocumentsPath(propertyId, {
+                    requirement_id: rowReqId(r),
+                    ...(primaryAct.verb === 'upload' ? { focus: 'upload' } : {}),
+                  });
                   return (
-                    <Card key={rowReqId(r) || idx} className="border border-gray-200 p-3">
+                    <Card key={rowReqId(r) || idx} className="border border-gray-200 p-3" data-compliance-req-id={complianceDomId}>
                       <div className="font-medium text-midnight-blue">{rowTitle(r)}</div>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs ${status.className}`}><Icon className="w-3 h-3" />{status.text}</span>
-                        <span className={`inline-flex px-2 py-0.5 rounded border text-xs ${impact.className}`}>{impact.label}</span>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs ${status.className}`}><Icon className="w-3 h-3" />{stdStatus}</span>
+                        <span className={`inline-flex px-2 py-0.5 rounded border text-xs ${impact.className}`}>Risk: {impact.label}</span>
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">{formatDate(rowExpiry(r))} · {hasEvidence ? 'Linked' : 'No evidence'}</div>
+                      {status.subline ? <p className="text-xs text-gray-500 mt-1">{status.subline}</p> : null}
+                      <div className="text-xs text-gray-500 mt-1">{formatDate(rowExpiry(r))} · {hasEvidence ? 'Document linked' : 'No document'}</div>
                       <div className="flex flex-wrap gap-1 mt-2">
-                        {isMissing ? (
-                          <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>Upload</Button>
-                        ) : (
-                          <Button size="sm" variant="outline" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>View</Button>
-                        )}
-                        <Button size="sm" variant="ghost" onClick={() => setComplianceExpandedReqId(complianceExpandedReqId === (rowReqId(r) || r.requirement_code) ? null : (rowReqId(r) || r.requirement_code))}>Details</Button>
+                        <Button size="sm" variant="outline" className="text-electric-teal border-electric-teal min-h-9" onClick={() => navigate(docsHref)}>
+                          {primaryAct.label}
+                        </Button>
+                        <Button size="sm" variant="ghost" className="min-h-9" onClick={() => setComplianceExpandedReqId(complianceExpandedReqId === (rowReqId(r) || r.requirement_code) ? null : (rowReqId(r) || r.requirement_code))}>Details</Button>
+                        {isMissing && (r.requirement_code || r.requirement_type) ? (
+                          <Button size="sm" variant="ghost" className="text-gray-600 min-h-9" onClick={() => { setNotApplicableModal({ requirement_code: r.requirement_code || r.requirement_type, title: rowTitle(r) }); setNotApplicableReason('not_applicable'); }}>
+                            Not applicable
+                          </Button>
+                        ) : null}
                       </div>
                     </Card>
                   );
@@ -1670,100 +1903,17 @@ export default function PropertyDetailPage() {
             </div>
           )}
 
-          {/* D) Urgent Items Panel */}
-          {getUrgentRequirements().length > 0 && (
-            <Card className="border-amber-200 bg-amber-50/30">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Urgent items</CardTitle>
-                <p className="text-sm text-gray-600 font-normal">Overdue, expiring within 30 days, or missing evidence. Review required.</p>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {getUrgentRequirements().slice(0, 10).map((r, i) => {
-                  const status = getStatus(r);
-                  const days = rowDays(r);
-                  const statusKey = (r.status || '').toUpperCase();
-                  const isOverdue = ['OVERDUE', 'EXPIRED'].includes(statusKey);
-                  const isExpiring = statusKey === 'EXPIRING_SOON';
-                  const isMissing = ['PENDING', 'MISSING'].includes(statusKey);
-                  let explanation = '';
-                  if (isOverdue && days != null) explanation = `Overdue by ${Math.abs(days)} days`;
-                  else if (isExpiring && days != null) explanation = `Expires in ${days} days`;
-                  else if (isMissing) explanation = 'Missing evidence';
-                  else explanation = status.text;
-                  const reqCode = r.requirement_code || r.requirement_type || `req-${i}`;
-                  const isExplainOpen = urgentExplainKey === reqCode;
-                  return (
-                    <div key={rowReqId(r) || i} className="rounded border border-amber-200 bg-white overflow-hidden">
-                      <div className="flex flex-wrap items-center justify-between gap-2 p-3">
-                        <div>
-                          <span className="font-medium text-midnight-blue">{rowTitle(r)}</span>
-                          <span className="text-sm text-gray-600 ml-2">— {explanation}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            className="flex items-center gap-1 text-xs text-electric-teal hover:underline"
-                            onClick={async () => {
-                              const next = !isExplainOpen;
-                              if (!next) {
-                                setUrgentExplainKey(null);
-                                setUrgentExplainData(null);
-                                return;
-                              }
-                              setUrgentExplainKey(reqCode);
-                              if (urgentExplainKey === reqCode && urgentExplainData) return;
-                              setUrgentExplainData(null);
-                              setUrgentExplainLoading(true);
-                              try {
-                                const res = await clientAPI.getRequirementExplanation(propertyId, { requirement_code: reqCode });
-                                setUrgentExplainData(res.data);
-                              } catch {
-                                setUrgentExplainData(null);
-                              } finally {
-                                setUrgentExplainLoading(false);
-                              }
-                            }}
-                          >
-                            <Info className="w-3.5 h-3.5" /> Why this matters {isExplainOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                          </button>
-                          <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}>
-                            {isMissing ? 'Upload evidence' : 'View / replace'}
-                          </Button>
-                        </div>
-                      </div>
-                      {isExplainOpen && (
-                        <div className="px-3 pb-3 pt-0 border-t border-amber-100 bg-amber-50/30">
-                          {urgentExplainLoading ? (
-                            <p className="text-sm text-gray-600 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</p>
-                          ) : urgentExplainData ? (
-                            <>
-                              <p className="text-sm text-gray-700 mt-2">{urgentExplainData.why_it_matters}</p>
-                              <p className="text-xs text-muted-foreground uppercase mt-2">Recommended action</p>
-                              <p className="text-sm font-medium text-midnight-blue">{urgentExplainData.recommended_action_text}</p>
-                            </>
-                          ) : (
-                            <p className="text-sm text-gray-500 mt-2">Could not load explanation.</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          )}
-
           {/* E) Compliance notes strip */}
           <p className="text-xs text-gray-500">Status based on portal records. Informational indicator only. Not legal advice.</p>
         </div>
         </>
       )}
 
-      {/* Tab: Maintenance */}
+      {/* Tab: Jobs & issues (maintenance issues + work orders, including compliance jobs) */}
       {activeTab === TAB_MAINTENANCE && !hasFeature('maintenance_workflows') && (
         <UpgradePrompt
           featureName={getFeatureDisplayInfo('maintenance_workflows').featureName}
-          featureDescription="Create and manage work orders and issues for this property."
+          featureDescription="Create and manage issues, repair work orders, and compliance-led jobs for this property."
           requiredPlan={getFeatureDisplayInfo('maintenance_workflows').requiredPlan}
           requiredPlanName={getFeatureDisplayInfo('maintenance_workflows').requiredPlanName}
           variant="card"
@@ -1772,7 +1922,12 @@ export default function PropertyDetailPage() {
       {activeTab === TAB_MAINTENANCE && hasFeature('maintenance_workflows') && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-midnight-blue">Maintenance</h2>
+            <div>
+              <h2 className="text-lg font-semibold text-midnight-blue">Jobs & issues</h2>
+              <p className="text-sm text-gray-600 mt-1 max-w-2xl">
+                Operational queue for this property: triaged issues, repairs, and jobs raised from compliance (for obligation status and evidence, use the Compliance tab).
+              </p>
+            </div>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" className="min-h-11" onClick={() => setCreateIssueOpen(true)}>
                 <FileText className="w-4 h-4 mr-2" />
@@ -1874,10 +2029,11 @@ export default function PropertyDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Work orders queue */}
+          {/* Jobs queue: compliance vs repairs */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{PORTAL_COPY.workOrders}</CardTitle>
+              <CardDescription>Compliance-led jobs (inspections, renewals) and repair work orders are listed separately.</CardDescription>
               <PortalFilterStack className="mt-2">
                 <select value={maintenanceWoFilter.status} onChange={(e) => setMaintenanceWoFilter((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-2 text-sm min-h-11 w-full md:w-auto">
                   <option value="">All statuses</option><option value="OPEN">Open</option><option value="ASSIGNED">Assigned</option><option value="IN_PROGRESS">In progress</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option>
@@ -1890,55 +2046,127 @@ export default function PropertyDetailPage() {
                 <div className="flex gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
               ) : filteredWorkOrders.length === 0 ? (
                 <div className="py-8 text-center text-gray-500">
-                  <p className="font-medium">No work orders created yet.</p>
+                  <p className="font-medium">No jobs on this property yet.</p>
                   <div className="flex flex-wrap gap-2 justify-center mt-3">
                     <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>Create work order</Button>
-                    {hasFeature('contractor_network') && <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_CONTRACTORS)}>Browse contractors</Button>}
+                    {hasFeature('contractor_network') && <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_CONTRACTORS)}>Contractors</Button>}
                   </div>
                 </div>
               ) : (
-                <>
-                  <div className="md:hidden space-y-3">
-                    {filteredWorkOrders.map((wo) => (
-                      <Card key={wo.work_order_id} className="border border-gray-200 p-3">
-                        <p className="font-medium text-midnight-blue text-sm">{wo.description || '—'}</p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {wo.status || '—'} · {wo.severity || '—'}
-                          {wo.sla_complete_by ? ` · SLA ${formatDate(wo.sla_complete_by)}` : ''}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {wo.updated_at ? formatRelativeTime(wo.updated_at) : '—'} · {assetLabel(wo.asset_id)}
-                          {wo.issue_id ? (
-                            <>
-                              {' · '}
-                              <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>{PORTAL_COPY.maintenanceIssue}</button>
-                            </>
-                          ) : null}
-                        </p>
-                        <Button size="sm" variant="outline" className="min-h-11 w-full mt-3" onClick={() => setWoDetailDrawer(wo.work_order_id)}>{PORTAL_COPY.viewDetails}</Button>
-                      </Card>
-                    ))}
-                  </div>
-                  <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead><tr className="border-b text-left text-gray-600"><th className="p-2">Description</th><th className="p-2">Linked issue</th><th className="p-2">Asset</th><th className="p-2">Severity</th><th className="p-2">Status</th><th className="p-2">SLA due</th><th className="p-2">Updated</th><th className="p-2 text-right">Actions</th></tr></thead>
-                      <tbody>
-                        {filteredWorkOrders.map((wo) => (
-                          <tr key={wo.work_order_id} className="border-b hover:bg-gray-50">
-                            <td className="p-2 font-medium max-w-[180px] truncate" title={wo.description}>{wo.description || '—'}</td>
-                            <td className="p-2 text-gray-600">{wo.issue_id ? <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>Issue</button> : '—'}</td>
-                            <td className="p-2 text-gray-600">{assetLabel(wo.asset_id)}</td>
-                            <td className="p-2"><span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700">{wo.severity || '—'}</span></td>
-                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${wo.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : wo.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800'}`}>{wo.status || '—'}</span></td>
-                            <td className="p-2 text-gray-600">{wo.sla_complete_by ? formatDate(wo.sla_complete_by) : '—'}</td>
-                            <td className="p-2 text-gray-600">{wo.updated_at ? formatRelativeTime(wo.updated_at) : '—'}</td>
-                            <td className="p-2 text-right"><Button size="sm" variant="ghost" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View</Button></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
+                <div className="space-y-8">
+                  <section aria-labelledby="property-compliance-jobs-heading">
+                    <h3 id="property-compliance-jobs-heading" className="text-sm font-semibold text-midnight-blue">Compliance jobs</h3>
+                    <p className="text-xs text-gray-500 mt-0.5 mb-3">Inspections and certificate-led work. Obligation status lives under Compliance.</p>
+                    {complianceWorkOrdersFiltered.length === 0 ? (
+                      <p className="text-sm text-gray-500 py-2">No compliance jobs match these filters.</p>
+                    ) : (
+                      <>
+                        <div className="md:hidden space-y-3">
+                          {complianceWorkOrdersFiltered.map((wo) => (
+                            <Card key={wo.work_order_id} className="border border-gray-200 p-3">
+                              <div className="flex flex-wrap items-start gap-2">
+                                <p className="font-medium text-midnight-blue text-sm flex-1 min-w-0">{wo.description || '—'}</p>
+                                <span className={cn('shrink-0 inline-flex px-1.5 py-0.5 rounded text-xs font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>
+                              </div>
+                              <p className="text-xs text-gray-600 mt-1">
+                                {wo.status || '—'} · {wo.severity || '—'}
+                                {wo.sla_complete_by ? ` · SLA ${formatDate(wo.sla_complete_by)}` : ''}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {wo.updated_at ? formatRelativeTime(wo.updated_at) : '—'} · {assetLabel(wo.asset_id)}
+                                {wo.issue_id ? (
+                                  <>
+                                    {' · '}
+                                    <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>{PORTAL_COPY.maintenanceIssue}</button>
+                                  </>
+                                ) : null}
+                              </p>
+                              <Button size="sm" variant="outline" className="min-h-11 w-full mt-3" onClick={() => setWoDetailDrawer(wo.work_order_id)}>Preview</Button>
+                            </Card>
+                          ))}
+                        </div>
+                        <div className="hidden md:block overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead><tr className="border-b text-left text-gray-600"><th className="p-2">Description</th><th className="p-2">Job type</th><th className="p-2">Linked issue</th><th className="p-2">Asset</th><th className="p-2">Severity</th><th className="p-2">Status</th><th className="p-2">SLA due</th><th className="p-2">Updated</th><th className="p-2 text-right">Actions</th></tr></thead>
+                            <tbody>
+                              {complianceWorkOrdersFiltered.map((wo) => (
+                                <tr key={wo.work_order_id} className="border-b hover:bg-gray-50">
+                                  <td className="p-2 font-medium max-w-[180px] truncate" title={wo.description}>{wo.description || '—'}</td>
+                                  <td className="p-2 whitespace-nowrap">
+                                    <span className={cn('inline-flex px-1.5 py-0.5 rounded text-xs font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>
+                                  </td>
+                                  <td className="p-2 text-gray-600">{wo.issue_id ? <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>Issue</button> : '—'}</td>
+                                  <td className="p-2 text-gray-600">{assetLabel(wo.asset_id)}</td>
+                                  <td className="p-2"><span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700">{wo.severity || '—'}</span></td>
+                                  <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${wo.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : wo.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800'}`}>{wo.status || '—'}</span></td>
+                                  <td className="p-2 text-gray-600">{wo.sla_complete_by ? formatDate(wo.sla_complete_by) : '—'}</td>
+                                  <td className="p-2 text-gray-600">{wo.updated_at ? formatRelativeTime(wo.updated_at) : '—'}</td>
+                                  <td className="p-2 text-right"><Button size="sm" variant="ghost" onClick={() => setWoDetailDrawer(wo.work_order_id)}>Preview</Button></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
+                  </section>
+                  <section aria-labelledby="property-repair-jobs-heading">
+                    <h3 id="property-repair-jobs-heading" className="text-sm font-semibold text-midnight-blue">Repairs & maintenance</h3>
+                    <p className="text-xs text-gray-500 mt-0.5 mb-3">Reactive and planned repair work orders.</p>
+                    {repairWorkOrdersFiltered.length === 0 ? (
+                      <p className="text-sm text-gray-500 py-2">No repair work orders match these filters.</p>
+                    ) : (
+                      <>
+                        <div className="md:hidden space-y-3">
+                          {repairWorkOrdersFiltered.map((wo) => (
+                            <Card key={wo.work_order_id} className="border border-gray-200 p-3">
+                              <div className="flex flex-wrap items-start gap-2">
+                                <p className="font-medium text-midnight-blue text-sm flex-1 min-w-0">{wo.description || '—'}</p>
+                                <span className={cn('shrink-0 inline-flex px-1.5 py-0.5 rounded text-xs font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>
+                              </div>
+                              <p className="text-xs text-gray-600 mt-1">
+                                {wo.status || '—'} · {wo.severity || '—'}
+                                {wo.sla_complete_by ? ` · SLA ${formatDate(wo.sla_complete_by)}` : ''}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {wo.updated_at ? formatRelativeTime(wo.updated_at) : '—'} · {assetLabel(wo.asset_id)}
+                                {wo.issue_id ? (
+                                  <>
+                                    {' · '}
+                                    <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>{PORTAL_COPY.maintenanceIssue}</button>
+                                  </>
+                                ) : null}
+                              </p>
+                              <Button size="sm" variant="outline" className="min-h-11 w-full mt-3" onClick={() => setWoDetailDrawer(wo.work_order_id)}>Preview</Button>
+                            </Card>
+                          ))}
+                        </div>
+                        <div className="hidden md:block overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead><tr className="border-b text-left text-gray-600"><th className="p-2">Description</th><th className="p-2">Job type</th><th className="p-2">Linked issue</th><th className="p-2">Asset</th><th className="p-2">Severity</th><th className="p-2">Status</th><th className="p-2">SLA due</th><th className="p-2">Updated</th><th className="p-2 text-right">Actions</th></tr></thead>
+                            <tbody>
+                              {repairWorkOrdersFiltered.map((wo) => (
+                                <tr key={wo.work_order_id} className="border-b hover:bg-gray-50">
+                                  <td className="p-2 font-medium max-w-[180px] truncate" title={wo.description}>{wo.description || '—'}</td>
+                                  <td className="p-2 whitespace-nowrap">
+                                    <span className={cn('inline-flex px-1.5 py-0.5 rounded text-xs font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>
+                                  </td>
+                                  <td className="p-2 text-gray-600">{wo.issue_id ? <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>Issue</button> : '—'}</td>
+                                  <td className="p-2 text-gray-600">{assetLabel(wo.asset_id)}</td>
+                                  <td className="p-2"><span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700">{wo.severity || '—'}</span></td>
+                                  <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${wo.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : wo.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800'}`}>{wo.status || '—'}</span></td>
+                                  <td className="p-2 text-gray-600">{wo.sla_complete_by ? formatDate(wo.sla_complete_by) : '—'}</td>
+                                  <td className="p-2 text-gray-600">{wo.updated_at ? formatRelativeTime(wo.updated_at) : '—'}</td>
+                                  <td className="p-2 text-right"><Button size="sm" variant="ghost" onClick={() => setWoDetailDrawer(wo.work_order_id)}>Preview</Button></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
+                  </section>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -1951,10 +2179,13 @@ export default function PropertyDetailPage() {
                 <ul className="space-y-2">
                   {slaAtRiskOrBreached.slice(0, 10).map((wo) => (
                     <li key={wo.work_order_id} className="flex flex-wrap items-center justify-between gap-2 p-2 rounded bg-white border border-amber-100">
-                      <span className="font-medium truncate max-w-[200px]">{wo.description || wo.work_order_id}</span>
+                      <span className="font-medium truncate max-w-[200px] flex flex-wrap items-center gap-2 min-w-0">
+                        <span className="truncate">{wo.description || wo.work_order_id}</span>
+                        <span className={cn('shrink-0 inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>
+                      </span>
                       <span className="text-xs text-gray-600">{wo.sla_complete_by ? formatDate(wo.sla_complete_by) : '—'}</span>
                       {wo.sla_breached_at ? <span className="text-xs text-red-600 font-medium">Breached</span> : <span className="text-xs text-amber-600">At risk</span>}
-                      <Button size="sm" variant="outline" onClick={() => setWoDetailDrawer(wo.work_order_id)}>View</Button>
+                      <Button size="sm" variant="outline" onClick={() => setWoDetailDrawer(wo.work_order_id)}>Preview</Button>
                     </li>
                   ))}
                 </ul>
@@ -2078,146 +2309,355 @@ export default function PropertyDetailPage() {
         </div>
       )}
 
-      {/* Work order detail drawer */}
+      {/* Job preview drawer — read-only; decision copy matches `GET /jobs/:id` next_actions (full job page) */}
       {woDetailDrawer && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setWoDetailDrawer(null)}>
           <div className={cn(portalDrawerPanelClass, 'max-w-lg')} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-semibold text-midnight-blue">Work order details</h3>
+              <div className="min-w-0 pr-2">
+                <h3 className="font-semibold text-midnight-blue">Job preview</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Read-only — preview and navigation only.</p>
+              </div>
               <button type="button" onClick={() => setWoDetailDrawer(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-4">
               {woDetailLoading ? (
                 <div className="flex gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
-              ) : woDetailData ? (
-                <>
-                  <p className="font-medium text-gray-900 mb-2">{woDetailData.description || '—'}</p>
-                  <dl className="grid grid-cols-2 gap-2 text-sm mb-4">
-                    <dt className="text-gray-500">Status</dt><dd><span className={`px-1.5 py-0.5 rounded text-xs ${woDetailData.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : woDetailData.status === 'CANCELLED' ? 'bg-gray-100' : 'bg-amber-100 text-amber-800'}`}>{woDetailData.status || '—'}</span></dd>
-                    <dt className="text-gray-500">Severity</dt><dd>{woDetailData.severity || '—'}</dd>
-                    <dt className="text-gray-500">SLA complete by</dt><dd>{woDetailData.sla_complete_by ? formatDate(woDetailData.sla_complete_by) : '—'}</dd>
-                    <dt className="text-gray-500">Asset</dt><dd>{assetLabel(woDetailData.asset_id)}</dd>
-                    <dt className="text-gray-500">Linked issue</dt><dd>{woDetailData.issue_id ? <button type="button" className="text-electric-teal hover:underline" onClick={() => { setIssueDetailDrawer(woDetailData.issue_id); setWoDetailDrawer(null); }}>View issue</button> : '—'}</dd>
-                    <dt className="text-gray-500">Updated</dt><dd>{woDetailData.updated_at ? formatRelativeTime(woDetailData.updated_at) : '—'}</dd>
-                  </dl>
-                  {woDetailData.resolution_outcome && <p className="text-sm text-gray-600 mb-2">Outcome: {woDetailData.resolution_outcome}</p>}
-                  {woDetailData.cost_estimate_min != null && woDetailData.cost_estimate_max != null && <p className="text-sm text-gray-600 mb-4">Cost estimate: £{woDetailData.cost_estimate_min} – £{woDetailData.cost_estimate_max}</p>}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">Update status</label>
-                    <select
-                      value={woDetailData.status || ''}
-                      onChange={(e) => handleUpdateWorkOrderStatus(woDetailData.work_order_id, e.target.value)}
-                      disabled={woUpdateSaving}
-                      className="border border-gray-200 rounded-md px-3 py-2 text-sm"
-                    >
-                      <option value="DRAFT">Draft</option>
-                      <option value="OPEN">Open</option>
-                      <option value="ASSIGNED">Assigned</option>
-                      <option value="SCHEDULED">Scheduled</option>
-                      <option value="IN_PROGRESS">In progress</option>
-                      <option value="AWAITING_PARTS">Awaiting parts</option>
-                      <option value="COMPLETED">Completed</option>
-                      <option value="VERIFIED">Verified</option>
-                      <option value="CLOSED">Closed</option>
-                      <option value="CANCELLED">Cancelled</option>
-                    </select>
-                  </div>
-                  {hasFeature('contractor_network') && (
-                    <div className="mt-4">
-                      <h4 className="font-medium text-gray-700 mb-2">Recommended contractors</h4>
-                      {woRecommendLoading ? <p className="text-sm text-gray-500">Loading…</p> : woRecommendList?.length > 0 ? (
-                        <ul className="space-y-1">
-                          {woRecommendList.slice(0, 5).map((c) => (
-                            <li key={c.contractor_id || c.id} className="flex items-center justify-between gap-2 text-sm">
-                              <span>{c.name || c.contractor_name || c.contractor_id}</span>
-                              <Button size="sm" variant="outline" onClick={() => handleAssignContractor(woDetailData.work_order_id, c.contractor_id || c.id)} disabled={woUpdateSaving}>Assign</Button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : <p className="text-sm text-gray-500">No recommendations.</p>}
+              ) : (() => {
+                const wf = woPreviewPayload?.source === 'workflow' ? woPreviewPayload.job : null;
+                const mw = woPreviewPayload?.source === 'maintenance' ? woPreviewPayload.wo : null;
+                const basis = wf || mw;
+                if (!basis) {
+                  return <p className="text-gray-500 py-4">Could not load this job.</p>;
+                }
+                const workId = basis.work_order_id || woDetailDrawer;
+                const current = clientCurrentUpdateSummary(wf || basis);
+                const slaDue = basis.sla_complete_by ? formatDate(basis.sla_complete_by) : '—';
+                let slaUrgency = slaDue;
+                if (basis.sla_breached_at) slaUrgency = `${slaDue} · SLA breached`;
+                else if (basis.sla_breach_risk_at) slaUrgency = `${slaDue} · SLA at risk`;
+                const cid = String(basis.contractor_id || '').trim();
+                const cname = String(basis.contractor_name || '').trim();
+                const contractorSummary = cid ? (cname && cname !== cid ? `${cname} · ${cid}` : cid) : 'Unassigned';
+                const ss = String(basis.schedule_status || '').toLowerCase();
+                const sched = basis.scheduled_at;
+                let visitSummary = '—';
+                if (sched) {
+                  const when = formatJobPreviewDateTime(sched);
+                  if (ss === 'confirmed') visitSummary = `${when} · Confirmed`;
+                  else if (ss === 'proposed') visitSummary = `${when} · Proposed (confirm on full job page)`;
+                  else visitSummary = `${when}${ss ? ` · ${ss.replace(/_/g, ' ')}` : ''}`;
+                } else if (ss) {
+                  visitSummary = ss.replace(/_/g, ' ');
+                }
+                const pr = basis.pricing;
+                let quoteSummary = null;
+                if (pr?.pricing_workflow) {
+                  const bits = [String(pr.price_status || '—').replace(/_/g, ' ')];
+                  if (pr.quoted_price != null && pr.quoted_price !== '') {
+                    bits.push(`£${Number(pr.quoted_price).toFixed(2)}${pr.price_currency ? ` ${pr.price_currency}` : ''}`);
+                  }
+                  quoteSummary = bits.join(' · ');
+                }
+                const reqId = wf?.linked_property_requirement_id || mw?.linked_property_requirement_id;
+                const reqCode = basis.requirement_code;
+                const reqHref =
+                  reqId && propertyId
+                    ? buildEntityRoute({ requirement_id: reqId, property_id: propertyId, mode: 'requirement' }, '')
+                    : '';
+                const { nextStep, cta } = wf
+                  ? { nextStep: jobPreviewNextStepLine(wf), cta: jobPreviewManageJobCtaLabel(wf) }
+                  : maintenanceWorkOrderPreviewDecision(mw);
+                return (
+                  <>
+                    <div className="mb-3">
+                      <p className="text-xs font-mono text-gray-500 truncate" title={workId}>{workId}</p>
+                      <p className="font-medium text-gray-900 mt-1">{basis.description || '—'}</p>
                     </div>
-                  )}
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_CONTRACTORS); setWoDetailDrawer(null); }}>Browse contractors</Button>
-                    <Button size="sm" variant="outline" onClick={() => setWoDetailDrawer(null)}>Close</Button>
-                  </div>
-                </>
-              ) : <p className="text-gray-500 py-4">Could not load work order.</p>}
+                    <dl className="grid grid-cols-[7.5rem_1fr] gap-x-2 gap-y-2 text-sm text-gray-800 mb-4">
+                      <dt className="text-gray-500">Job type</dt>
+                      <dd>
+                        <span className={cn('inline-flex px-1.5 py-0.5 rounded text-xs font-medium border', workOrderKindBadgeClassName(basis))}>{workOrderKindClientLabel(basis)}</span>
+                      </dd>
+                      <dt className="text-gray-500">Status</dt>
+                      <dd>
+                        <span
+                          className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${basis.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : basis.status === 'CANCELLED' ? 'bg-gray-100 text-gray-700' : 'bg-amber-100 text-amber-800'}`}
+                          title={basis.status ? String(basis.status).replace(/_/g, ' ') : undefined}
+                        >
+                          {workOrderStatusLabel(basis.status)}
+                        </span>
+                        {current.headline ? <span className="block text-xs text-gray-500 mt-0.5">{current.headline}</span> : null}
+                      </dd>
+                      <dt className="text-gray-500">SLA / urgency</dt>
+                      <dd className="text-sm">
+                        <span className="block">{slaUrgency}</span>
+                        {current.lines?.length > 0 ? (
+                          <ul className="mt-1 text-xs text-gray-600 list-disc list-inside space-y-0.5">
+                            {current.lines.map((line, i) => (
+                              <li key={i}>{line}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </dd>
+                      <dt className="text-gray-500">Contractor</dt>
+                      <dd className="text-sm break-words">{contractorSummary}</dd>
+                      <dt className="text-gray-500">Visit</dt>
+                      <dd className="text-sm">{visitSummary}</dd>
+                      {quoteSummary ? (
+                        <>
+                          <dt className="text-gray-500">Quote</dt>
+                          <dd className="text-sm">{quoteSummary}</dd>
+                        </>
+                      ) : null}
+                      <dt className="text-gray-500">Linked issue</dt>
+                      <dd>
+                        {basis.issue_id ? (
+                          <button type="button" className="text-electric-teal hover:underline text-sm" onClick={() => { setIssueDetailDrawer(basis.issue_id); setWoDetailDrawer(null); }}>
+                            Open linked issue
+                          </button>
+                        ) : (
+                          '—'
+                        )}
+                      </dd>
+                      <dt className="text-gray-500">Requirement</dt>
+                      <dd className="text-sm">
+                        {reqHref ? (
+                          <Link to={reqHref} className="text-electric-teal hover:underline" onClick={() => setWoDetailDrawer(null)}>
+                            {reqCode ? requirementLabel(reqCode) : 'Open requirement'}
+                          </Link>
+                        ) : reqCode ? (
+                          requirementLabel(reqCode)
+                        ) : (
+                          '—'
+                        )}
+                      </dd>
+                    </dl>
+                    {basis.resolution_outcome ? <p className="text-xs text-gray-600 mb-3">Outcome: {String(basis.resolution_outcome).replace(/_/g, ' ')}</p> : null}
+                    {!quoteSummary && basis.cost_estimate_min != null && basis.cost_estimate_max != null ? (
+                      <p className="text-xs text-gray-600 mb-3">Cost estimate: £{basis.cost_estimate_min} – £{basis.cost_estimate_max}</p>
+                    ) : null}
+                    <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-3 mb-4">
+                      <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Next step</p>
+                      <p className="text-sm font-medium text-midnight-blue mt-1.5 leading-snug">{nextStep}</p>
+                      <p className="text-xs text-gray-500 mt-2">Manage this job on the full job page to continue.</p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        size="sm"
+                        className="w-full min-h-11 bg-electric-teal hover:bg-electric-teal/90 text-white"
+                        onClick={() => {
+                          if (!workId) return;
+                          navigate(resolveClientPortalPath(`/operations/jobs/${encodeURIComponent(workId)}`, '/operations/work-orders'));
+                          setWoDetailDrawer(null);
+                        }}
+                      >
+                        {cta}
+                      </Button>
+                      {hasFeature('contractor_network') && (
+                        <Button size="sm" variant="outline" className="w-full min-h-11" onClick={() => { setActiveTab(TAB_CONTRACTORS); setWoDetailDrawer(null); }}>
+                          Browse contractors
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="w-full min-h-11 text-gray-600" onClick={() => setWoDetailDrawer(null)}>
+                        Close
+                      </Button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
       )}
 
-      {/* Tab: Evidence */}
+      {/* Tab: Documents (internal id evidence) — files provided for this property */}
       {activeTab === TAB_EVIDENCE && (
-        <div className="space-y-6">
+        <div className="space-y-6" id="property-documents-panel">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-midnight-blue">Evidence vault</h2>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-              <Button
-                className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11"
-                onClick={() => navigate(resolveDocumentsPath(propertyId))}
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                {PORTAL_COPY.uploadDocument}
-              </Button>
-              <Button variant="outline" size="sm" className="border-gray-200 min-h-11" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
-                Open full list
-              </Button>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-midnight-blue">Documents for this property</h2>
+              <p className="text-xs text-gray-500 mt-1">What you have uploaded and linked. Requirements and status stay on the Compliance tab.</p>
             </div>
+            <Button
+              className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11 shrink-0"
+              onClick={() => navigate(resolveDocumentsPath(propertyId))}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              {PORTAL_COPY.uploadDocument}
+            </Button>
           </div>
-          <p className="text-sm text-gray-500">Need help? See: <Link to="/help?article=uploading-evidence" className="text-electric-teal hover:underline">Uploading Evidence guide</Link> in Help Centre.</p>
+          <p className="text-sm text-gray-500">
+            <Link to="/help?article=uploading-evidence" className="text-electric-teal hover:underline">Uploading documents</Link>
+            {' · Obligation status: '}
+            <button
+              type="button"
+              className="text-electric-teal hover:underline p-0 border-0 bg-transparent text-sm font-inherit cursor-pointer"
+              onClick={() => setActiveTab(TAB_COMPLIANCE)}
+            >
+              Compliance tab
+            </button>
+            .
+          </p>
 
           {evidenceLoading ? (
-            <PortalLoadingPanel message="Loading evidence…" />
+            <PortalLoadingPanel message="Loading documents…" />
           ) : !evidenceData ? (
             <Card className="border border-gray-200">
-              <CardContent className="py-8 text-center text-gray-500">
-                Unable to load evidence. Try again or open the Documents page.
+              <CardContent className="py-8 text-center text-gray-500 space-y-3">
+                <p>Unable to load documents for this property.</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    loadEvidence();
+                    handleRefresh();
+                  }}
+                >
+                  Try again
+                </Button>
               </CardContent>
             </Card>
           ) : (
             <>
-              {/* A) Evidence Summary Bar */}
+              {/* A) Summary */}
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <div className="flex flex-wrap gap-6 text-sm">
-                  <span><strong className="text-midnight-blue">Total documents:</strong> {evidenceData.summary?.totalDocuments ?? 0}</span>
-                  <span><strong className="text-midnight-blue">Linked:</strong> {evidenceData.summary?.linked ?? 0}</span>
-                  <span><strong className="text-midnight-blue">Pending confirmation:</strong> {evidenceData.summary?.pendingConfirmation ?? 0}</span>
-                  <span><strong className="text-midnight-blue">Missing critical evidence:</strong> {evidenceData.summary?.missingCriticalEvidence ?? 0}</span>
-                  <span><strong className="text-midnight-blue">Last uploaded:</strong> {evidenceData.summary?.lastUploadedAt ? formatRelativeTime(evidenceData.summary.lastUploadedAt) : '—'}</span>
+                <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
+                  <span>
+                    <strong className="text-midnight-blue">Total documents:</strong> {evidenceData.summary?.totalDocuments ?? 0}
+                  </span>
+                  <span>
+                    <strong className="text-midnight-blue">Linked:</strong> {evidenceData.summary?.linked ?? 0}
+                  </span>
+                  <span>
+                    <strong className="text-midnight-blue">Pending confirmation:</strong> {evidenceData.summary?.pendingConfirmation ?? 0}
+                  </span>
+                  {(evidenceData.summary?.missingCriticalEvidence ?? 0) > 0 ? (
+                    <button
+                      type="button"
+                      className="text-left text-sm border-0 bg-transparent p-0 cursor-pointer hover:underline text-midnight-blue font-inherit"
+                      onClick={() => {
+                        setComplianceStatusFilter('MISSING');
+                        setActiveTab(TAB_COMPLIANCE);
+                      }}
+                    >
+                      <strong className="text-midnight-blue">Missing critical documents:</strong>{' '}
+                      {evidenceData.summary?.missingCriticalEvidence ?? 0}
+                      <span className="text-xs text-gray-500 font-normal"> — view in Compliance</span>
+                    </button>
+                  ) : (
+                    <span>
+                      <strong className="text-midnight-blue">Missing critical documents:</strong> {evidenceData.summary?.missingCriticalEvidence ?? 0}
+                    </span>
+                  )}
+                  <span>
+                    <strong className="text-midnight-blue">Last uploaded:</strong>{' '}
+                    {evidenceData.summary?.lastUploadedAt ? formatRelativeTime(evidenceData.summary.lastUploadedAt) : '—'}
+                  </span>
                 </div>
               </div>
 
-              {/* B) Upload / Add Evidence – CTA already above */}
-
-              {/* Missing critical CTA */}
               {(evidenceData.summary?.missingCriticalEvidence ?? 0) > 0 && (
                 <Card className="border-amber-200 bg-amber-50/50">
-                  <CardContent className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <span className="text-sm text-amber-800">Some requirements are missing evidence. Upload documents to update score and risk.</span>
-                    <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11 shrink-0 w-full sm:w-auto" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
-                      {PORTAL_COPY.uploadDocument}
-                    </Button>
+                  <CardContent className="py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-sm text-amber-800">
+                      Some obligations still need documents. Uploads are opened for this property; pick the obligation when you upload.
+                    </span>
+                    <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
+                      <Button
+                        size="sm"
+                        className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11"
+                        onClick={() => navigate(resolveDocumentsPath(propertyId))}
+                      >
+                        {PORTAL_COPY.uploadDocument}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="min-h-11 border-amber-300 text-amber-900"
+                        onClick={() => {
+                          setComplianceStatusFilter('MISSING');
+                          setActiveTab(TAB_COMPLIANCE);
+                        }}
+                      >
+                        View full missing list in Compliance
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               )}
 
-              {/* C) Evidence Table / Cards */}
+              {requirementsMissingDocuments.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-1">Obligations still needing documents</h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Same filter and order as Compliance → Missing documents (critical items first).
+                  </p>
+                  <PropertyDocumentsMissingRequirementList
+                    items={requirementsMissingDocuments}
+                    propertyId={propertyId}
+                    navigate={navigate}
+                    rowTitle={rowTitle}
+                    rowReqId={rowReqId}
+                    maxItems={12}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 text-electric-teal min-h-9 px-0"
+                    onClick={() => {
+                      setComplianceStatusFilter('MISSING');
+                      setActiveTab(TAB_COMPLIANCE);
+                    }}
+                  >
+                    View full missing list in Compliance
+                  </Button>
+                </div>
+              )}
+
+              {/* All uploaded files */}
               <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">All evidence</h3>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">All documents</h3>
                 {(evidenceData.documents?.length ?? 0) === 0 ? (
                   <Card className="border border-gray-200">
-                    <CardContent className="py-12 text-center">
-                      <p className="text-gray-600 mb-2">No evidence has been uploaded for this property yet.</p>
-                      <div className="flex flex-wrap justify-center gap-2">
-                        <Button className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
-                          {PORTAL_COPY.uploadDocument}
-                        </Button>
-                        <Button variant="outline" onClick={() => setActiveTab(TAB_COMPLIANCE)}>
-                          View Compliance Requirements
-                        </Button>
-                      </div>
+                    <CardContent className="py-6 px-4 sm:px-6 text-center text-sm text-gray-600 space-y-4">
+                      {requirementsMissingDocuments.length > 0 ? (
+                        <>
+                          <p>No files uploaded for this property yet. Use the list above to upload for a specific obligation, or add a file without picking one.</p>
+                          <Button
+                            type="button"
+                            className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11"
+                            onClick={() => navigate(resolveDocumentsPath(propertyId))}
+                          >
+                            {PORTAL_COPY.uploadDocument}
+                          </Button>
+                        </>
+                      ) : requirements.length === 0 ? (
+                        <>
+                          <p>No compliance obligations are configured for this property yet.</p>
+                          <Button type="button" variant="outline" onClick={() => setActiveTab(TAB_COMPLIANCE)}>
+                            Open Compliance
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <p>No files uploaded for this property yet.</p>
+                          <Button
+                            type="button"
+                            className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11"
+                            onClick={() => navigate(resolveDocumentsPath(propertyId))}
+                          >
+                            {PORTAL_COPY.uploadDocument}
+                          </Button>
+                          <div>
+                            <Button type="button" variant="outline" size="sm" onClick={() => setActiveTab(TAB_COMPLIANCE)}>
+                              Review requirements in Compliance
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 ) : (
@@ -2316,11 +2756,11 @@ export default function PropertyDetailPage() {
                 );
               })()}
 
-              {/* E) Evidence History / Audit strip */}
+              {/* C) Recent document-related activity (full audit on Timeline) */}
               {(evidenceData.recentEvents?.length ?? 0) > 0 && (
                 <Card className="border border-gray-200">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Recent evidence activity</CardTitle>
+                    <CardTitle className="text-base">Recent document activity</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-1 text-sm">
@@ -2355,22 +2795,124 @@ export default function PropertyDetailPage() {
         />
       )}
       {activeTab === TAB_CONTRACTORS && hasFeature('contractor_network') && (
-        <Card className="border border-gray-200">
-          <CardHeader><CardTitle className="text-lg">Contractors</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-4">Contractors assigned to work at this property or with past jobs here will appear in this list. You can also view all contractors from Operations.</p>
-            <Button variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate('/operations/contractors')}>
-              View all contractors
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <Card className="border border-gray-200">
+            <CardHeader>
+              <CardTitle className="text-lg">Contractors on this property</CardTitle>
+              <CardDescription>
+                Anyone assigned to jobs here shows below. Your full contractor directory and onboarding live under Operations.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {hasFeature('maintenance_workflows') && workOrdersLoading && workOrders.length === 0 ? (
+                <div className="flex gap-2 text-gray-500 py-6"><Loader2 className="w-5 h-5 animate-spin" /> Loading job history…</div>
+              ) : contractorsFromPropertyJobs.length > 0 ? (
+                <>
+                  <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-100">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 text-left text-gray-600 bg-gray-50">
+                          <th className="p-3">Contractor</th>
+                          <th className="p-3">Job mix</th>
+                          <th className="p-3">Last activity</th>
+                          <th className="p-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {contractorsFromPropertyJobs.map((row) => (
+                          <tr key={row.contractor_id || row.displayName} className="border-b border-gray-100">
+                            <td className="p-3 font-medium text-midnight-blue">{row.displayName}</td>
+                            <td className="p-3 text-gray-700">
+                              <span className="font-medium">{row.jobCount}</span>
+                              <span className="block text-xs text-gray-500 mt-0.5">
+                                {row.complianceJobCount > 0 ? `${row.complianceJobCount} compliance` : null}
+                                {row.complianceJobCount > 0 && row.repairJobCount > 0 ? ' · ' : null}
+                                {row.repairJobCount > 0 ? `${row.repairJobCount} repair` : null}
+                                {row.complianceJobCount === 0 && row.repairJobCount === 0 ? '—' : null}
+                              </span>
+                            </td>
+                            <td className="p-3 text-gray-600">{row.lastActivity ? formatRelativeTime(row.lastActivity) : '—'}</td>
+                            <td className="p-3 text-right">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-electric-teal border-electric-teal"
+                                onClick={() => setActiveTab(TAB_MAINTENANCE)}
+                              >
+                                View jobs & issues
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <ul className="md:hidden space-y-2">
+                    {contractorsFromPropertyJobs.map((row) => (
+                      <li key={row.contractor_id || row.displayName} className="rounded-lg border border-gray-200 p-3">
+                        <p className="font-medium text-midnight-blue">{row.displayName}</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {row.jobCount} job{row.jobCount === 1 ? '' : 's'}
+                          {row.complianceJobCount > 0 || row.repairJobCount > 0 ? (
+                            <span className="text-gray-500">
+                              {' '}
+                              (
+                              {row.complianceJobCount > 0 ? `${row.complianceJobCount} compliance` : null}
+                              {row.complianceJobCount > 0 && row.repairJobCount > 0 ? ', ' : null}
+                              {row.repairJobCount > 0 ? `${row.repairJobCount} repair` : null}
+                              )
+                            </span>
+                          ) : null}
+                          {' · '}
+                          {row.lastActivity ? formatRelativeTime(row.lastActivity) : '—'}
+                        </p>
+                        <Button size="sm" variant="outline" className="mt-2 w-full text-electric-teal border-electric-teal" onClick={() => setActiveTab(TAB_MAINTENANCE)}>
+                          View jobs & issues
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/50 p-6 text-center">
+                  <Users className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+                  <p className="font-medium text-midnight-blue">No contractor assignments on this property yet</p>
+                  <p className="text-sm text-gray-600 mt-1 max-w-md mx-auto">
+                    When you assign someone to a job, they will appear here. Open Jobs to assign from a work order, or browse your network in Operations.
+                  </p>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2 mt-6">
+                <Button variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate('/operations/contractors')}>
+                  View all contractors
+                </Button>
+                {hasFeature('maintenance_workflows') && (
+                  <>
+                    <Button variant="outline" onClick={() => setActiveTab(TAB_MAINTENANCE)}>
+                      Jobs & issues
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate(buildSafeQueryPath('/operations/work-orders', { property_id: propertyId }))}
+                    >
+                      Portfolio jobs (this property)
+                    </Button>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Tab: Timeline */}
       {activeTab === TAB_TIMELINE && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-midnight-blue">Timeline</h2>
+            <div>
+              <h2 className="text-lg font-semibold text-midnight-blue">Timeline</h2>
+              <p className="text-sm text-gray-600 mt-1">Property activity history — what changed, when, and who was involved.</p>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <select
                 value={timelineFilters.category}
@@ -2379,9 +2921,9 @@ export default function PropertyDetailPage() {
                 aria-label="Event type"
               >
                 <option value="">All events</option>
-                <option value="EVIDENCE">Evidence</option>
+                <option value="EVIDENCE">Documents</option>
                 <option value="COMPLIANCE">Compliance</option>
-                <option value="MAINTENANCE">Maintenance</option>
+                <option value="MAINTENANCE">Jobs & repairs</option>
                 <option value="SCORE_RISK">Score & risk</option>
                 <option value="SYSTEM">System</option>
               </select>
@@ -2429,7 +2971,7 @@ export default function PropertyDetailPage() {
               <CardContent className="py-12 text-center">
                 <Calendar className="w-12 h-12 mx-auto text-gray-400 mb-3" />
                 <p className="text-gray-700 font-medium">No activity has been recorded for this property yet.</p>
-                <p className="text-sm text-gray-500 mt-1 mb-4">Upload evidence, report an issue, or complete property setup to see events here.</p>
+                <p className="text-sm text-gray-500 mt-1 mb-4">Upload documents, report an issue, or complete property setup to see events here.</p>
                 <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2">
                   <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal min-h-11" onClick={() => navigate(resolveDocumentsPath(propertyId))}>
                     <Upload className="w-4 h-4 mr-2" />
@@ -2450,6 +2992,7 @@ export default function PropertyDetailPage() {
           ) : (
             <ul className="space-y-3">
               {timelineItems.map((item) => {
+                const presented = presentPropertyTimelineItem(item);
                 const cat = item.category || 'SCORE_RISK';
                 const Icon = cat === 'EVIDENCE' ? FileText : cat === 'COMPLIANCE' ? ClipboardCheck : cat === 'MAINTENANCE' ? Wrench : cat === 'SYSTEM' ? Building2 : BarChart3;
                 const actionTab = cat === 'EVIDENCE' ? TAB_EVIDENCE : cat === 'COMPLIANCE' ? TAB_COMPLIANCE : cat === 'MAINTENANCE' ? TAB_MAINTENANCE : cat === 'SCORE_RISK' ? TAB_RISK_SIGNALS : null;
@@ -2461,8 +3004,8 @@ export default function PropertyDetailPage() {
                         <Icon className="w-5 h-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-midnight-blue">{item.title}</p>
-                        {item.description && <p className="text-sm text-gray-600 mt-0.5">{item.description}</p>}
+                        <p className="font-medium text-midnight-blue">{presented.title}</p>
+                        {presented.description && <p className="text-sm text-gray-600 mt-0.5">{presented.description}</p>}
                         <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500">
                           <span>{formatRelativeTime(item.timestamp)}</span>
                           <span>{item.actorLabel || item.actorType || 'System'}</span>
@@ -2480,7 +3023,7 @@ export default function PropertyDetailPage() {
                             className="mt-2 text-electric-teal hover:text-electric-teal/90 -ml-2"
                             onClick={() => setActiveTab(actionTab)}
                           >
-                            View {actionTab === TAB_EVIDENCE ? 'Evidence' : actionTab === TAB_COMPLIANCE ? 'Compliance' : actionTab === TAB_MAINTENANCE ? 'Maintenance' : 'Risk Signals'}
+                            View {actionTab === TAB_EVIDENCE ? 'Documents' : actionTab === TAB_COMPLIANCE ? 'Compliance' : actionTab === TAB_MAINTENANCE ? 'Jobs & issues' : 'Risk Signals'}
                           </Button>
                         )}
                       </div>
@@ -2534,63 +3077,191 @@ export default function PropertyDetailPage() {
                 </Button>
               </div>
               <ul className="space-y-3">
-                {riskSignalsData.signals.map((s) => (
-                  <li key={s.signal_id} className="flex flex-wrap items-start justify-between gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900">{humanRiskType(s)}</p>
-                      <p className="text-sm text-gray-700 mt-0.5">{humanAction(s.recommended_action, s)}</p>
-                      {Array.isArray(s.reasons) && s.reasons.length > 0 && <ul className="mt-1 text-xs text-gray-600 list-disc list-inside">{s.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
-                      <span className={`inline-block mt-2 text-xs px-1.5 py-0.5 rounded ${['high','critical'].includes((s.risk_level||'').toLowerCase()) ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>{humanSeverity(s.risk_level)}</span>
-                      {s.status && s.status !== 'active' && <span className="ml-2 text-xs text-gray-500">{s.status}</span>}
-                    </div>
-                    <div className="flex flex-wrap gap-2 shrink-0">
-                      {(() => {
-                        const actions = Array.isArray(s.suggested_actions) ? s.suggested_actions : ['create_issue', 'create_work_order'];
-                        return (
-                          <>
-                            {actions.includes('create_work_order') && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={async () => {
-                                  if (hasFeature('maintenance_workflows')) {
-                                    try {
-                                      await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
-                                      toast.success('Work order created');
-                                      loadRiskSignals();
-                                      setActiveTab(TAB_MAINTENANCE);
-                                    } catch (e) {
-                                      toast.error(e?.response?.data?.detail || 'Failed');
-                                    }
-                                  } else {
-                                    setActiveTab(TAB_MAINTENANCE);
-                                    setCreateWoOpen(true);
-                                    setCreateWoForm((f) => ({ ...f, description: s.recommended_action }));
-                                  }
-                                }}
-                              ><Wrench className="w-4 h-4 mr-1" /> Create work order</Button>
-                            )}
-                            {actions.includes('create_issue') && (
-                              <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.createIssueFromRiskSignal(s.signal_id, {}); toast.success('Issue created'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Create issue</Button>
-                            )}
-                            {actions.includes('schedule_inspection') && hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
-                              <Button size="sm" variant="outline" onClick={() => openBookInspectionFromRisk(s.signal_id)}>Create compliance job</Button>
-                            )}
-                            {actions.includes('schedule_inspection') && hasFeature('maintenance_workflows') && !hasFeature('compliance_engine') && (
-                              <Button size="sm" variant="outline" onClick={async () => { try { await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {}); toast.success('Inspection issue logged (maintenance)'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>Log inspection issue</Button>
-                            )}
-                          </>
-                        );
-                      })()}
-                      {s.status === 'active' && (
-                        <>
-                          <Button size="sm" variant="ghost" className="text-gray-600" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'acknowledged'); loadRiskSignals(); } catch (_) {} }}>Acknowledge</Button>
-                          <Button size="sm" variant="ghost" className="text-gray-600" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'resolved'); loadRiskSignals(); } catch (_) {} }}>Resolve</Button>
-                        </>
-                      )}
-                    </div>
-                  </li>
-                ))}
+                {riskSignalsData.signals.map((s) => {
+                  const actions = Array.isArray(s.suggested_actions) ? s.suggested_actions : ['create_issue', 'create_work_order'];
+                  const hasMaint = hasFeature('maintenance_workflows');
+                  const hasComp = hasFeature('compliance_engine');
+                  const wantInspection = actions.includes('schedule_inspection') && hasMaint;
+                  const primaryKind = wantInspection && hasComp
+                    ? 'compliance_job'
+                    : wantInspection && !hasComp
+                      ? 'log_inspection'
+                      : actions.includes('create_work_order') && hasMaint
+                        ? 'work_order'
+                        : actions.includes('create_issue')
+                          ? 'issue'
+                          : actions.includes('create_work_order') && !hasMaint
+                            ? 'upgrade_wo'
+                            : null;
+
+                  const onCreateWo = async () => {
+                    if (hasMaint) {
+                      try {
+                        await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
+                        toast.success('Work order created');
+                        loadRiskSignals();
+                        setActiveTab(TAB_MAINTENANCE);
+                      } catch (e) {
+                        toast.error(e?.response?.data?.detail || 'Failed');
+                      }
+                    } else {
+                      setActiveTab(TAB_MAINTENANCE);
+                      setCreateWoOpen(true);
+                      setCreateWoForm((f) => ({ ...f, description: s.recommended_action }));
+                    }
+                  };
+
+                  const primaryBtnClass = 'w-full lg:w-auto min-h-9 bg-electric-teal hover:bg-electric-teal/90 text-white';
+
+                  let primary = null;
+                  if (primaryKind === 'compliance_job') {
+                    primary = (
+                      <Button size="sm" className={primaryBtnClass} onClick={() => openBookInspectionFromRisk(s.signal_id)}>
+                        Create compliance job
+                      </Button>
+                    );
+                  } else if (primaryKind === 'log_inspection') {
+                    primary = (
+                      <Button
+                        size="sm"
+                        className={primaryBtnClass}
+                        onClick={async () => {
+                          try {
+                            await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {});
+                            toast.success('Inspection issue logged');
+                            loadRiskSignals();
+                          } catch (e) {
+                            toast.error(e?.response?.data?.detail || 'Failed');
+                          }
+                        }}
+                      >
+                        Log inspection issue
+                      </Button>
+                    );
+                  } else if (primaryKind === 'work_order') {
+                    primary = (
+                      <Button size="sm" className={cn(primaryBtnClass, 'inline-flex items-center justify-center')} onClick={onCreateWo}>
+                        <Wrench className="w-4 h-4 mr-1 shrink-0" /> Create work order
+                      </Button>
+                    );
+                  } else if (primaryKind === 'issue') {
+                    primary = (
+                      <Button
+                        size="sm"
+                        className={primaryBtnClass}
+                        onClick={async () => {
+                          try {
+                            await clientAPI.createIssueFromRiskSignal(s.signal_id, {});
+                            toast.success('Issue created');
+                            loadRiskSignals();
+                          } catch (e) {
+                            toast.error(e?.response?.data?.detail || 'Failed');
+                          }
+                        }}
+                      >
+                        Create issue
+                      </Button>
+                    );
+                  } else if (primaryKind === 'upgrade_wo') {
+                    primary = (
+                      <Button size="sm" className={primaryBtnClass} onClick={onCreateWo}>
+                        Create work order
+                      </Button>
+                    );
+                  }
+
+                  const secondaries = [];
+                  if (primaryKind !== 'compliance_job' && wantInspection && hasComp) {
+                    secondaries.push(
+                      <Button key="cj" size="sm" variant="outline" className="h-8 text-xs" onClick={() => openBookInspectionFromRisk(s.signal_id)}>
+                        Compliance job
+                      </Button>,
+                    );
+                  }
+                  if (primaryKind !== 'log_inspection' && wantInspection && !hasComp) {
+                    secondaries.push(
+                      <Button
+                        key="li"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs"
+                        onClick={async () => {
+                          try {
+                            await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {});
+                            toast.success('Inspection issue logged');
+                            loadRiskSignals();
+                          } catch (e) {
+                            toast.error(e?.response?.data?.detail || 'Failed');
+                          }
+                        }}
+                      >
+                        Log inspection issue
+                      </Button>,
+                    );
+                  }
+                  if (primaryKind !== 'work_order' && actions.includes('create_work_order')) {
+                    secondaries.push(
+                      <Button key="wo" size="sm" variant="outline" className="h-8 text-xs" onClick={onCreateWo}>
+                        Work order
+                      </Button>,
+                    );
+                  }
+                  if (primaryKind !== 'issue' && actions.includes('create_issue')) {
+                    secondaries.push(
+                      <Button
+                        key="iss"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs"
+                        onClick={async () => {
+                          try {
+                            await clientAPI.createIssueFromRiskSignal(s.signal_id, {});
+                            toast.success('Issue created');
+                            loadRiskSignals();
+                          } catch (e) {
+                            toast.error(e?.response?.data?.detail || 'Failed');
+                          }
+                        }}
+                      >
+                        Issue
+                      </Button>,
+                    );
+                  }
+
+                  return (
+                    <li key={s.signal_id} className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900">{humanRiskType(s)}</p>
+                        <p className="text-sm text-gray-700 mt-0.5">{humanAction(s.recommended_action, s)}</p>
+                        {Array.isArray(s.reasons) && s.reasons.length > 0 && (
+                          <ul className="mt-1 text-xs text-gray-600 list-disc list-inside space-y-0.5">
+                            {s.reasons.map((r, i) => (
+                              <li key={i}>{humanizeRiskReasonBullet(r)}</li>
+                            ))}
+                          </ul>
+                        )}
+                        <span className={`inline-block mt-2 text-xs px-1.5 py-0.5 rounded ${['high', 'critical'].includes((s.risk_level || '').toLowerCase()) ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>{humanSeverity(s.risk_level)}</span>
+                        {s.status && s.status !== 'active' && <span className="ml-2 text-xs text-gray-500">{s.status}</span>}
+                      </div>
+                      <div className="flex flex-col gap-2 shrink-0 w-full lg:w-auto lg:max-w-xs">
+                        {primary}
+                        {secondaries.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">{secondaries}</div>
+                        )}
+                        {s.status === 'active' && (
+                          <div className="flex flex-wrap gap-1 pt-1 border-t border-gray-200/80">
+                            <Button size="sm" variant="ghost" className="text-gray-600 h-8 text-xs px-2" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'acknowledged'); loadRiskSignals(); } catch (_) {} }}>
+                              Acknowledge
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-gray-600 h-8 text-xs px-2" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'resolved'); loadRiskSignals(); } catch (_) {} }}>
+                              Resolve
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </>
           )}
@@ -2688,12 +3359,8 @@ export default function PropertyDetailPage() {
                     <thead>
                       <tr className="border-b border-gray-200 text-left text-gray-600 bg-gray-50">
                         <th className="p-3">Asset</th>
-                        <th className="p-3">Type</th>
-                        <th className="p-3">Status</th>
-                        <th className="p-3">Last service</th>
-                        <th className="p-3">Open issues</th>
-                        {hasFeature('predictive_maintenance') && <th className="p-3">Risk</th>}
-                        <th className="p-3">Linked evidence</th>
+                        <th className="p-3">Type & status</th>
+                        <th className="p-3 min-w-[200px]">Activity</th>
                         <th className="p-3">Actions</th>
                       </tr>
                     </thead>
@@ -2702,23 +3369,15 @@ export default function PropertyDetailPage() {
                         const per = assetsSummary?.per_asset?.[a.asset_id] || {};
                         const status = (a.status || 'active').toLowerCase();
                         const statusLabel = status === 'active' ? 'Active' : status === 'inactive' ? 'Inactive' : status === 'replaced' ? 'Replaced' : status === 'removed' ? 'Removed' : 'Active';
+                        const typeLabel = (a.asset_type || '—').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
                         return (
                           <tr key={a.asset_id} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="p-3 font-medium text-midnight-blue">{a.name || (a.asset_type || '—').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</td>
-                            <td className="p-3 text-gray-600">{(a.asset_type || '—').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</td>
-                            <td className="p-3 text-gray-600">{statusLabel}</td>
-                            <td className="p-3 text-gray-600">{a.last_service_date ? formatDate(a.last_service_date) : '—'}</td>
-                            <td className="p-3 text-gray-600">{per.open_issues != null && per.open_issues > 0 ? per.open_issues : '—'}</td>
-                            {hasFeature('predictive_maintenance') && (
-                              <td className="p-3">
-                                {per.risk ? (
-                                  <span className={`inline-flex px-2 py-0.5 rounded text-xs ${per.risk === 'high' || per.risk === 'urgent' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
-                                    {(per.risk || '').replace(/^\w/, (c) => c.toUpperCase())}
-                                  </span>
-                                ) : '—'}
-                              </td>
-                            )}
-                            <td className="p-3 text-gray-600">—</td>
+                            <td className="p-3 font-medium text-midnight-blue">{a.name || typeLabel}</td>
+                            <td className="p-3 text-gray-600">
+                              <div>{typeLabel}</div>
+                              <div className="text-xs text-gray-500 mt-0.5">{statusLabel}</div>
+                            </td>
+                            <td className="p-3 text-sm text-gray-700 leading-snug">{assetActivitySummary(a, per)}</td>
                             <td className="p-3">
                               <div className="flex flex-wrap gap-1">
                                 <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => {
@@ -2735,8 +3394,8 @@ export default function PropertyDetailPage() {
                                 <Button variant="outline" size="sm" onClick={() => { setEditAssetModal(a); setEditAssetForm({ name: a.name ?? '', status: a.status ?? 'active', last_service_date: a.last_service_date ?? '', make: a.make ?? '', model: a.model ?? '' }); }}>
                                   Edit
                                 </Button>
-                                <Button variant="outline" size="sm" onClick={() => setActiveTab(TAB_MAINTENANCE)}>
-                                  View issues
+                                <Button variant="ghost" size="sm" className="text-gray-700 h-8 text-xs" onClick={() => setActiveTab(TAB_MAINTENANCE)}>
+                                  Jobs & issues
                                 </Button>
                               </div>
                             </td>
@@ -2755,11 +3414,12 @@ export default function PropertyDetailPage() {
                   return (
                     <Card key={a.asset_id} className="border border-gray-200 p-3">
                       <div className="font-medium text-midnight-blue">{a.name || (a.asset_type || '').replace(/_/g, ' ')}</div>
-                      <div className="text-xs text-gray-500 mt-1">Type: {(a.asset_type || '').replace(/_/g, ' ')} · Status: {statusLabel} · Last service: {a.last_service_date ? formatDate(a.last_service_date) : '—'}</div>
+                      <div className="text-xs text-gray-500 mt-1">{(a.asset_type || '').replace(/_/g, ' ')} · {statusLabel}</div>
+                      <p className="text-sm text-gray-700 mt-2 leading-snug">{assetActivitySummary(a, per)}</p>
                       <div className="flex flex-wrap gap-1 mt-2">
-                        <Button variant="outline" size="sm" onClick={() => { setAssetDetailDrawer(a.asset_id); setAssetDetailData(null); setAssetDetailLoading(true); clientAPI.getPropertyAsset(propertyId, a.asset_id).then((res) => setAssetDetailData(res.data)).catch(() => setAssetDetailData(null)).finally(() => setAssetDetailLoading(false)); }}>View</Button>
-                        <Button variant="outline" size="sm" onClick={() => { setEditAssetModal(a); setEditAssetForm({ name: a.name ?? '', status: a.status ?? 'active', last_service_date: a.last_service_date ?? '', make: a.make ?? '', model: a.model ?? '' }); }}>Edit</Button>
-                        <Button variant="outline" size="sm" onClick={() => setActiveTab(TAB_MAINTENANCE)}>View issues</Button>
+                        <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => { setAssetDetailDrawer(a.asset_id); setAssetDetailData(null); setAssetDetailLoading(true); clientAPI.getPropertyAsset(propertyId, a.asset_id).then((res) => setAssetDetailData(res.data)).catch(() => setAssetDetailData(null)).finally(() => setAssetDetailLoading(false)); }}>View</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs text-gray-700" onClick={() => { setEditAssetModal(a); setEditAssetForm({ name: a.name ?? '', status: a.status ?? 'active', last_service_date: a.last_service_date ?? '', make: a.make ?? '', model: a.model ?? '' }); }}>Edit</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs text-gray-700" onClick={() => setActiveTab(TAB_MAINTENANCE)}>Jobs & issues</Button>
                       </div>
                     </Card>
                   );
@@ -2809,7 +3469,7 @@ export default function PropertyDetailPage() {
                   )}
                   <div className="mt-4 flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => { const a = assets.find((x) => x.asset_id === assetDetailDrawer); if (a) { setEditAssetModal(a); setEditAssetForm({ name: a.name ?? '', status: a.status ?? 'active', last_service_date: a.last_service_date ?? '', make: a.make ?? '', model: a.model ?? '' }); } setAssetDetailDrawer(null); }}>Edit asset</Button>
-                    <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_MAINTENANCE)}>View issues</Button>
+                    <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_MAINTENANCE)}>Jobs & issues</Button>
                   </div>
                 </>
               ) : (

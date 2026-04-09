@@ -34,11 +34,26 @@ import {
   Trash2
 } from 'lucide-react';
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { normalizeRequirementCode } from '../domain/presentDomain';
+
+const EVIDENCE_DOCUMENT_TYPES = [
+  { value: '', label: 'Select type (optional)' },
+  { value: 'Gas Safety Certificate', label: 'Gas Safety Certificate' },
+  { value: 'EICR', label: 'EICR' },
+  { value: 'EPC', label: 'EPC' },
+  { value: 'Fire Risk Assessment', label: 'Fire Risk Assessment' },
+  { value: 'Legionella Assessment', label: 'Legionella Assessment' },
+  { value: 'Smoke/CO evidence', label: 'Smoke/CO evidence' },
+  { value: 'Other', label: 'Other (link requirement later)' },
+];
 
 const DocumentsPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const uploadDeepLinkApplied = useRef('');
+  const uploadTypeLookupLoggedRef = useRef(new Set());
+  const [uploadDocTypeMap, setUploadDocTypeMap] = useState({});
+  const [uploadDocTypeMapLoaded, setUploadDocTypeMapLoaded] = useState(false);
   const { hasFeature } = useEntitlements();
   const [documents, setDocuments] = useState([]);
   const [properties, setProperties] = useState([]);
@@ -70,37 +85,84 @@ const DocumentsPage = () => {
   const pollRef = useRef(null);
   const timeoutRef = useRef(null);
 
-  const EVIDENCE_DOCUMENT_TYPES = [
-    { value: '', label: 'Select type (optional)' },
-    { value: 'Gas Safety Certificate', label: 'Gas Safety Certificate' },
-    { value: 'EICR', label: 'EICR' },
-    { value: 'EPC', label: 'EPC' },
-    { value: 'Fire Risk Assessment', label: 'Fire Risk Assessment' },
-    { value: 'Legionella Assessment', label: 'Legionella Assessment' },
-    { value: 'Smoke/CO evidence', label: 'Smoke/CO evidence' },
-    { value: 'Other', label: 'Other (link requirement later)' },
-  ];
-
   useEffect(() => {
     fetchData();
   }, []);
 
   useEffect(() => {
+    api
+      .get('/public/presentation/requirement-upload-document-type-map')
+      .then((res) => {
+        const m = res.data?.map;
+        setUploadDocTypeMap(m && typeof m === 'object' ? m : {});
+      })
+      .catch(() => setUploadDocTypeMap({}))
+      .finally(() => setUploadDocTypeMapLoaded(true));
+  }, []);
+
+  /**
+   * Property-scoped upload deep links: /documents?property_id=&requirement_id= or &requirement_code=
+   * Optional document_type= (must match a select value) or inferred from backend requirement_code → document_type map.
+   * focus=upload scrolls to the form (still applied when requirement is bound without focus).
+   */
+  useEffect(() => {
     if (loading) return;
     const pid = searchParams.get('property_id');
-    const rid = searchParams.get('requirement_id');
-    if (searchParams.get('focus') !== 'upload' || !pid || !rid) return;
-    const sig = `${pid}:${rid}`;
+    if (!pid) return;
+
+    const ridParam = searchParams.get('requirement_id');
+    const rcode = searchParams.get('requirement_code');
+    const focusUpload = searchParams.get('focus') === 'upload';
+    const docTypeParam = searchParams.get('document_type');
+    const allowedParamType = docTypeParam && EVIDENCE_DOCUMENT_TYPES.some((o) => o.value === docTypeParam && o.value !== '');
+
+    let resolvedRid = ridParam || '';
+    const nk = rcode ? normalizeRequirementCode(rcode) : '';
+    if (!resolvedRid && rcode) {
+      const match = requirements.find((req) => {
+        if (req.property_id !== pid) return false;
+        const rc = normalizeRequirementCode(req.requirement_code || req.requirement_type);
+        return rc === nk;
+      });
+      if (match?.requirement_id) resolvedRid = match.requirement_id;
+    }
+
+    const inferredFromMap =
+      uploadDocTypeMapLoaded && nk ? String(uploadDocTypeMap[nk] || '').trim() : '';
+    const inferredDocType = (allowedParamType ? docTypeParam : '') || inferredFromMap;
+
+    if (uploadDocTypeMapLoaded && rcode && nk && !allowedParamType && !inferredFromMap) {
+      const lk = `lookup:${nk}`;
+      if (!uploadTypeLookupLoggedRef.current.has(lk)) {
+        uploadTypeLookupLoggedRef.current.add(lk);
+        api
+          .get('/public/presentation/requirement-upload-document-type-lookup', { params: { requirement_code: rcode } })
+          .catch(() => {});
+      }
+    }
+
+    const sig = `${pid}|${resolvedRid}|${rcode || ''}|${inferredDocType}|${focusUpload}`;
     if (uploadDeepLinkApplied.current === sig) {
-      document.getElementById('upload-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (focusUpload || resolvedRid || rcode) {
+        document.getElementById('upload-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
       return;
     }
     uploadDeepLinkApplied.current = sig;
-    setUploadForm((f) => ({ ...f, property_id: pid, requirement_id: rid }));
-    requestAnimationFrame(() => {
-      document.getElementById('upload-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }, [loading, searchParams]);
+
+    setUploadForm((f) => ({
+      ...f,
+      property_id: pid,
+      ...(resolvedRid ? { requirement_id: resolvedRid } : {}),
+      ...(inferredDocType ? { document_type: inferredDocType } : {}),
+    }));
+
+    if (focusUpload || resolvedRid || rcode) {
+      requestAnimationFrame(() => {
+        document.getElementById('upload-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [loading, uploadDocTypeMapLoaded, uploadDocTypeMap, searchParams, requirements]);
 
   // Pre-fill confirm modal from extraction when document_id is available (e.g. after upload)
   useEffect(() => {
@@ -632,7 +694,7 @@ const DocumentsPage = () => {
           </Button>
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-midnight-blue">Documents</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Upload evidence and link it to requirements. Awaiting verification shows until dates are confirmed.</p>
+            <p className="text-sm text-gray-500 mt-0.5">Upload documents and link them to requirements. Awaiting verification shows until dates are confirmed.</p>
           </div>
         </div>
         <Button

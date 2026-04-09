@@ -8,6 +8,7 @@ from database import database
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,60 @@ DEFAULT_CATEGORY = "SCORE_RISK"
 # Categories that can be filtered
 VALID_CATEGORIES = {"EVIDENCE", "COMPLIANCE", "MAINTENANCE", "SCORE_RISK", "SYSTEM"}
 VALID_ACTORS = {"user", "admin", "system"}
+
+
+# score_change_log.reason and similar — user-facing copy (property timeline + full timeline)
+_SCORE_CHANGE_REASON_LABELS = {
+    "CLIENT_JURISDICTION_UPDATED": "Jurisdiction updated",
+    "EXPIRY_RULE": "Certificate dates reviewed",
+    "EXPIRY_JOB": "Certificate dates reviewed",
+    "PROPERTY_UPDATED": "Property details updated",
+    "SCORE_RECALCULATED": "Compliance score updated",
+    "SCHEDULED_PROPERTY_BATCH": "Scheduled compliance check",
+    "DOCUMENT_UPLOADED": "Document uploaded",
+    "DOCUMENT_DELETED": "Document removed",
+    "REQUIREMENT_CHANGED": "Requirement updated",
+    "EXPIRY_ROLLOVER": "Certificate rollover",
+    "LAZY_BACKFILL": "Compliance score refreshed",
+}
+
+
+def _score_change_narrative(reason_key: str) -> str:
+    """Full sentence for timeline body — never raw enum names."""
+    k = (reason_key or "").strip().upper()
+    narratives = {
+        "CLIENT_JURISDICTION_UPDATED": "Your portfolio or property region changed, so scoring rules were re-applied for this property.",
+        "EXPIRY_RULE": "Expiry rules were applied to obligation dates; the compliance score reflects the latest certificate timelines.",
+        "EXPIRY_JOB": "A background check refreshed obligation dates and the compliance score for this property.",
+        "PROPERTY_UPDATED": "Property details changed; obligations and scoring were refreshed where needed.",
+        "SCORE_RECALCULATED": "The compliance score was recalculated from your latest evidence and property data.",
+        "SCHEDULED_PROPERTY_BATCH": "An automated compliance pass ran for this property and updated the score if anything changed.",
+        "DOCUMENT_UPLOADED": "A document was added or updated and contributed to your compliance position.",
+        "DOCUMENT_DELETED": "A document was removed; the score reflects what is still on file.",
+        "REQUIREMENT_CHANGED": "A requirement row changed (status, dates, or evidence link).",
+        "EXPIRY_ROLLOVER": "A certificate or obligation moved into a new expiry window; dates and score were updated.",
+        "LAZY_BACKFILL": "Stored compliance data was refreshed to match your current portfolio records.",
+    }
+    return narratives.get(
+        k,
+        "Your compliance position was updated based on the latest data we hold for this property.",
+    )
+
+
+def _friendly_score_change_reason(reason: Optional[str]) -> str:
+    """Map internal trigger/reason codes to short user-readable labels."""
+    if not reason or not str(reason).strip():
+        return "Compliance score updated"
+    raw = str(reason).strip()
+    up = raw.upper()
+    # Underscore codes (e.g. PROPERTY_UPDATED)
+    if re.match(r"^[A-Z][A-Z0-9_]+$", up):
+        return _SCORE_CHANGE_REASON_LABELS.get(up, "Update recorded")
+    # Phrases with spaces (e.g. "Score recalculated") → same map as SCORE_RECALCULATED
+    slug = re.sub(r"\s+", "_", up)
+    if slug in _SCORE_CHANGE_REASON_LABELS:
+        return _SCORE_CHANGE_REASON_LABELS[slug]
+    return raw
 
 
 def _parse_iso(ts: Any) -> Optional[datetime]:
@@ -51,13 +106,17 @@ def _ledger_to_item(e: Dict[str, Any], index: int) -> Dict[str, Any]:
     category = TRIGGER_TO_CATEGORY.get(trigger_type, DEFAULT_CATEGORY)
     actor_type = (e.get("actor_type") or "system").lower()
     delta = e.get("delta")
+    desc = _ledger_description(e)
+    # Avoid title == description (reads like a log echo)
+    if desc and trigger_label and desc.strip().lower() == str(trigger_label).strip().lower():
+        desc = _ledger_narrative_from_trigger(trigger_type, delta)
     return {
         "id": f"ledger:{ts_str}:{index}" if ts_str else f"ledger:{index}",
         "timestamp": ts_str,
         "category": category,
         "eventType": trigger_type,
         "title": trigger_label,
-        "description": _ledger_description(e),
+        "description": desc,
         "actorType": actor_type if actor_type in VALID_ACTORS else "system",
         "actorLabel": _actor_label(actor_type),
         "linkedEntityType": _ledger_linked_type(e),
@@ -66,6 +125,24 @@ def _ledger_to_item(e: Dict[str, Any], index: int) -> Dict[str, Any]:
         "impact": {"scoreDelta": delta, "riskChange": None} if delta is not None else None,
         "source": "ledger",
     }
+
+
+def _ledger_narrative_from_trigger(trigger_type: Optional[str], delta: Any) -> str:
+    """When ledger label is generic, use a property-history sentence."""
+    t = (trigger_type or "").strip().upper()
+    if t in ("SCHEDULED_RECALC",):
+        return "Scheduled processing updated compliance scoring for this property."
+    if t in ("REQUIREMENT_STATUS_CHANGED",):
+        return "An obligation’s status or dates changed; your compliance picture was refreshed."
+    if t in ("CERT_DETAILS_CONFIRMED", "DOCUMENT_UPLOADED", "DOCUMENT_STATUS_CHANGED", "DOCUMENT_REMOVED"):
+        if delta is not None and delta != 0:
+            return f"Evidence changed and your score moved by {int(delta)} points."
+        return "Evidence or certificate details were updated on file."
+    if t in ("PROPERTY_ADDED", "PROPERTY_UPDATED"):
+        return "Property information was updated."
+    if delta is not None and delta != 0:
+        return f"Your compliance score changed by {int(delta)} points."
+    return "Activity was recorded for this property."
 
 
 def _ledger_description(e: Dict[str, Any]) -> str:
@@ -105,15 +182,27 @@ def _score_change_to_item(e: Dict[str, Any], index: int) -> Dict[str, Any]:
     created = e.get("created_at")
     ts = _parse_iso(created)
     ts_str = created if isinstance(created, str) else (ts.isoformat() if ts else None)
-    reason = e.get("reason") or "Score recalculated"
+    reason_raw = e.get("reason") or ""
     delta = e.get("delta")
+    title = _friendly_score_change_reason(reason_raw)
+    desc_parts = []
+    if delta is not None and delta != 0:
+        desc_parts.append(f"Score {'+' if delta > 0 else ''}{int(delta)}.")
+    r_up = (reason_raw or "").strip().upper()
+    if re.match(r"^[A-Z][A-Z0-9_]+$", r_up):
+        event_type = r_up or "SCORE_RECALCULATED"
+    else:
+        event_type = re.sub(r"\s+", "_", r_up) or "SCORE_RECALCULATED"
+    body = " ".join(desc_parts).strip()
+    if not body:
+        body = _score_change_narrative(event_type)
     return {
         "id": f"score_log:{ts_str}:{index}" if ts_str else f"score_log:{index}",
         "timestamp": ts_str,
         "category": "SCORE_RISK",
-        "eventType": "SCORE_RECALCULATED",
-        "title": "Score changed",
-        "description": reason,
+        "eventType": event_type,
+        "title": title,
+        "description": body,
         "actorType": "system",
         "actorLabel": "System",
         "linkedEntityType": None,
@@ -127,15 +216,23 @@ def _score_change_to_item(e: Dict[str, Any], index: int) -> Dict[str, Any]:
 def _work_order_to_item(wo: Dict[str, Any]) -> Dict[str, Any]:
     created = wo.get("created_at")
     ts_str = created if isinstance(created, str) else None
-    desc = (wo.get("description") or "Issue reported").strip()[:200]
+    raw_desc = (wo.get("description") or "").strip()[:200]
     wo_id = wo.get("work_order_id")
+    kind = (wo.get("work_order_kind") or "MAINTENANCE").strip().upper()
+    if kind == "COMPLIANCE":
+        title = "Compliance job started"
+        lead = "A compliance inspection or certification job was created for this property."
+    else:
+        title = "Maintenance job started"
+        lead = "A repair or maintenance work order was opened."
+    body = f"{lead} {raw_desc}".strip() if raw_desc else lead
     return {
         "id": f"wo:{wo_id}" if wo_id else f"wo:{ts_str}",
         "timestamp": ts_str,
         "category": "MAINTENANCE",
         "eventType": "WORK_ORDER_CREATED",
-        "title": "Issue reported",
-        "description": desc or "Work order created.",
+        "title": title,
+        "description": body,
         "actorType": "user",
         "actorLabel": "You",
         "linkedEntityType": "WORK_ORDER",
@@ -153,14 +250,22 @@ def _work_order_completed_to_item(wo: Dict[str, Any]) -> Optional[Dict[str, Any]
         return None
     ts_str = completed_at if isinstance(completed_at, str) else None
     wo_id = wo.get("work_order_id")
-    desc = (wo.get("description") or "Work completed").strip()[:200]
+    raw_desc = (wo.get("description") or "").strip()[:200]
+    kind = (wo.get("work_order_kind") or "MAINTENANCE").strip().upper()
+    if kind == "COMPLIANCE":
+        title = "Compliance job completed"
+        lead = "The compliance job for this property is marked complete."
+    else:
+        title = "Maintenance job completed"
+        lead = "The maintenance work order for this property is marked complete."
+    body = f"{lead} {raw_desc}".strip() if raw_desc else lead
     return {
         "id": f"wo_done:{wo_id}" if wo_id else f"wo_done:{ts_str}",
         "timestamp": ts_str,
         "category": "MAINTENANCE",
         "eventType": "WORK_ORDER_COMPLETED",
-        "title": "Work order completed",
-        "description": desc or "Work order completed.",
+        "title": title,
+        "description": body,
         "actorType": "user",
         "actorLabel": "You",
         "linkedEntityType": "WORK_ORDER",
@@ -271,7 +376,16 @@ async def get_property_timeline(
     # 3) Work orders for this property (synthetic "created" + "completed" + "assigned" events)
     wo_list = await db.work_orders.find(
         {"property_id": property_id, "client_id": client_id},
-        {"_id": 0, "work_order_id": 1, "description": 1, "created_at": 1, "completed_at": 1, "contractor_id": 1, "assigned_at": 1},
+        {
+            "_id": 0,
+            "work_order_id": 1,
+            "description": 1,
+            "created_at": 1,
+            "completed_at": 1,
+            "contractor_id": 1,
+            "assigned_at": 1,
+            "work_order_kind": 1,
+        },
     ).sort("created_at", -1).limit(100).to_list(100)
 
     # Build normalized items

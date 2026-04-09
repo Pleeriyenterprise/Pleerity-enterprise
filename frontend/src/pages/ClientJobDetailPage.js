@@ -51,6 +51,7 @@ import {
   clientCurrentUpdateSummary,
   clientHeroOversightAction,
   clientJobProgressFromJob,
+  prioritizedClientJobNextAction,
 } from '../utils/jobWorkflowUi';
 
 function formatWhen(iso) {
@@ -201,31 +202,10 @@ const EXCEPTION_STATE_PLAYBOOK = {
 };
 
 function recoveryLineFromNextActions(job) {
-  const na = (job?.next_actions || []).filter((a) => a.id && a.id !== 'none');
-  const order = [
-    'clear_operational_exception',
-    'resume_after_parts',
-    'propose_schedule',
-    'request_booking',
-    'confirm_visit',
-    'assign_contractor',
-    'link_document',
-    'verify',
-    'complete',
-    'start',
-  ];
-  for (const id of order) {
-    const a = na.find((x) => x.id === id);
-    if (a) {
-      const tail = a.hint ? ` — ${a.hint}` : '';
-      return `When you're ready: ${a.label}${tail}`;
-    }
-  }
-  if (na[0]) {
-    const tail = na[0].hint ? ` — ${na[0].hint}` : '';
-    return `When you're ready: ${na[0].label}${tail}`;
-  }
-  return null;
+  const a = prioritizedClientJobNextAction(job);
+  if (!a) return null;
+  const tail = a.hint ? ` — ${a.hint}` : '';
+  return `When you're ready: ${a.label}${tail}`;
 }
 
 function exceptionStateBanner(job) {
