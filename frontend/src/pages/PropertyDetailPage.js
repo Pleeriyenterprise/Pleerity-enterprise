@@ -614,7 +614,7 @@ export default function PropertyDetailPage() {
     setWoPreviewPayload(null);
     setWoDetailLoading(true);
     (async () => {
-      const useMaintenance = async () => {
+      const loadMaintenanceWorkOrderPreview = async () => {
         try {
           const r2 = await clientAPI.getMaintenanceWorkOrder(woDetailDrawer);
           if (cancelled) return;
@@ -630,10 +630,10 @@ export default function PropertyDetailPage() {
         if (job && typeof job === 'object' && job.work_order_id) {
           setWoPreviewPayload({ source: 'workflow', job });
         } else {
-          await useMaintenance();
+          await loadMaintenanceWorkOrderPreview();
         }
       } catch {
-        await useMaintenance();
+        await loadMaintenanceWorkOrderPreview();
       } finally {
         if (!cancelled) setWoDetailLoading(false);
       }
