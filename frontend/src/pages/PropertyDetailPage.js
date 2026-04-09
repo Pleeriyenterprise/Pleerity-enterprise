@@ -122,6 +122,22 @@ const TAB_TIMELINE = 'timeline';
 const TAB_RISK_SIGNALS = 'risk_signals';
 const TAB_ASSETS = 'assets';
 
+const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function looksLikeContractorUuid(s) {
+  return UUID_V4_RE.test(String(s || '').trim());
+}
+
+/** Prefer directory `name`, then non-UUID work-order name; never surface raw IDs. */
+function resolveContractorDisplayName(contractorId, nameFromWorkOrders, directoryContractorName) {
+  const fromDir = String(directoryContractorName ?? '').trim();
+  if (fromDir) return fromDir;
+  const fromWo = String(nameFromWorkOrders ?? '').trim();
+  if (fromWo && !looksLikeContractorUuid(fromWo)) return fromWo;
+  if (String(contractorId || '').trim()) return 'Unnamed contractor';
+  return fromWo || 'Unnamed contractor';
+}
+
 /**
  * Obligations missing a linked document — same filter and order as Compliance → Missing documents.
  */
@@ -199,6 +215,8 @@ export default function PropertyDetailPage() {
   // Tab-specific data
   const [workOrders, setWorkOrders] = useState([]);
   const [workOrdersLoading, setWorkOrdersLoading] = useState(false);
+  /** Contractor directory rows for resolving IDs on the Contractors tab (`name` is primary display field). */
+  const [contractorsDirectory, setContractorsDirectory] = useState([]);
   const [predictiveInsights, setPredictiveInsights] = useState(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [riskSignalsData, setRiskSignalsData] = useState(null);
@@ -597,6 +615,39 @@ export default function PropertyDetailPage() {
   }, [propertyId, activeTab, hasFeature, loadWorkOrders]);
 
   useEffect(() => {
+    if (!propertyId || !hasFeature('contractor_network')) {
+      setContractorsDirectory([]);
+      return undefined;
+    }
+    let cancelled = false;
+    clientAPI
+      .getContractors({ limit: 200 })
+      .then((res) => {
+        if (!cancelled) setContractorsDirectory(Array.isArray(res.data?.contractors) ? res.data.contractors : []);
+      })
+      .catch(() => {
+        if (!cancelled) setContractorsDirectory([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [propertyId, hasFeature]);
+
+  const contractorNameById = useMemo(() => {
+    const m = new Map();
+    contractorsDirectory.forEach((c) => {
+      const id = String(c?.contractor_id || '').trim();
+      if (!id) return;
+      const n =
+        String(c?.name || '').trim() ||
+        String(c?.company_name || '').trim() ||
+        String(c?.contact_name || '').trim();
+      if (n) m.set(id, n);
+    });
+    return m;
+  }, [contractorsDirectory]);
+
+  useEffect(() => {
     if (!issueDetailDrawer) { setIssueDetailData(null); return; }
     setIssueDetailLoading(true);
     clientAPI.getMaintenanceIssue(issueDetailDrawer)
@@ -821,7 +872,7 @@ export default function PropertyDetailPage() {
       if (!cur) {
         byKey.set(key, {
           contractor_id: id || null,
-          displayName: name || id,
+          contractorNameFromJobs: name,
           jobCount: 1,
           complianceJobCount: isCompliance ? 1 : 0,
           repairJobCount: isCompliance ? 0 : 1,
@@ -832,7 +883,7 @@ export default function PropertyDetailPage() {
         if (isCompliance) cur.complianceJobCount += 1;
         else cur.repairJobCount += 1;
         if (ts && (!cur.lastActivity || new Date(ts) > new Date(cur.lastActivity))) cur.lastActivity = ts;
-        if (!cur.displayName && name) cur.displayName = name;
+        if (!cur.contractorNameFromJobs && name) cur.contractorNameFromJobs = name;
         if (!cur.contractor_id && id) cur.contractor_id = id;
       }
     });
@@ -840,6 +891,20 @@ export default function PropertyDetailPage() {
       (a, b) => new Date(b.lastActivity || 0) - new Date(a.lastActivity || 0),
     );
   }, [workOrders]);
+
+  const contractorsTabRows = useMemo(
+    () =>
+      contractorsFromPropertyJobs.map((row) => ({
+        ...row,
+        displayLabel: resolveContractorDisplayName(
+          row.contractor_id,
+          row.contractorNameFromJobs,
+          row.contractor_id ? contractorNameById.get(row.contractor_id) : undefined,
+        ),
+        rowKey: row.contractor_id || `name:${row.contractorNameFromJobs || 'unknown'}`,
+      })),
+    [contractorsFromPropertyJobs, contractorNameById],
+  );
 
   const slaAtRiskOrBreached = useMemo(() => {
     return workOrders.filter((wo) => {
@@ -2806,7 +2871,7 @@ export default function PropertyDetailPage() {
             <CardContent>
               {hasFeature('maintenance_workflows') && workOrdersLoading && workOrders.length === 0 ? (
                 <div className="flex gap-2 text-gray-500 py-6"><Loader2 className="w-5 h-5 animate-spin" /> Loading job history…</div>
-              ) : contractorsFromPropertyJobs.length > 0 ? (
+              ) : contractorsTabRows.length > 0 ? (
                 <>
                   <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-100">
                     <table className="w-full text-sm">
@@ -2819,9 +2884,9 @@ export default function PropertyDetailPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {contractorsFromPropertyJobs.map((row) => (
-                          <tr key={row.contractor_id || row.displayName} className="border-b border-gray-100">
-                            <td className="p-3 font-medium text-midnight-blue">{row.displayName}</td>
+                        {contractorsTabRows.map((row) => (
+                          <tr key={row.rowKey} className="border-b border-gray-100">
+                            <td className="p-3 font-medium text-midnight-blue">{row.displayLabel}</td>
                             <td className="p-3 text-gray-700">
                               <span className="font-medium">{row.jobCount}</span>
                               <span className="block text-xs text-gray-500 mt-0.5">
@@ -2848,9 +2913,9 @@ export default function PropertyDetailPage() {
                     </table>
                   </div>
                   <ul className="md:hidden space-y-2">
-                    {contractorsFromPropertyJobs.map((row) => (
-                      <li key={row.contractor_id || row.displayName} className="rounded-lg border border-gray-200 p-3">
-                        <p className="font-medium text-midnight-blue">{row.displayName}</p>
+                    {contractorsTabRows.map((row) => (
+                      <li key={row.rowKey} className="rounded-lg border border-gray-200 p-3">
+                        <p className="font-medium text-midnight-blue">{row.displayLabel}</p>
                         <p className="text-xs text-gray-600 mt-1">
                           {row.jobCount} job{row.jobCount === 1 ? '' : 's'}
                           {row.complianceJobCount > 0 || row.repairJobCount > 0 ? (
