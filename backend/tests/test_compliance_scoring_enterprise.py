@@ -126,9 +126,12 @@ class TestRecalculateAndPersist:
         call = db.properties.update_one.call_args
         update_payload = call[0][1]
         assert call[0][0] == {"property_id": "p1"}
-        assert "compliance_score" in update_payload.get("$set", {})
-        assert "compliance_breakdown" in update_payload.get("$set", {})
-        assert "compliance_last_calculated_at" in update_payload.get("$set", {})
+        s = update_payload.get("$set", {})
+        assert "compliance_score" in s
+        assert "compliance_breakdown" in s
+        assert "compliance_last_calculated_at" in s
+        assert "scoring_jurisdiction_bucket" in s
+        assert "jurisdiction" not in s
         db.property_compliance_score_history.insert_one.assert_called_once()
         history_doc = db.property_compliance_score_history.insert_one.call_args[0][0]
         assert history_doc["property_id"] == "p1"
@@ -137,6 +140,125 @@ class TestRecalculateAndPersist:
         assert audit.call_args[1]["resource_type"] == "property"
         assert audit.call_args[1]["resource_id"] == "p1"
         assert getattr(audit.call_args[1]["action"], "value", str(audit.call_args[1]["action"])) == "COMPLIANCE_SCORE_UPDATED"
+
+
+class TestJurisdictionSeparateFromScoringBucket:
+    """properties.jurisdiction stays a portfolio label; scoring bucket persisted separately on recalc."""
+
+    @pytest.mark.asyncio
+    async def test_recalc_persists_bucket_not_jurisdiction_wales_and_scotland(self):
+        from services.compliance_scoring_service import recalculate_and_persist, REASON_DOCUMENT_UPLOADED
+
+        for stored_label, bucket in (("Wales", "ENGLAND_WALES"), ("Scotland", "SCOTLAND")):
+            computed = {
+                "score": 80,
+                "breakdown": {
+                    "status_score": 80,
+                    "expiry_score": 80,
+                    "document_score": 80,
+                    "overdue_penalty_score": 80,
+                    "risk_score": 100,
+                },
+                "jurisdiction": bucket,
+                "bucket_breakdown": {},
+                "score_breakdown": [],
+                "top_deficits": [],
+                "top_next_actions": [],
+                "weights_version": "v2",
+            }
+            db = MagicMock()
+            prop = {
+                "property_id": "p1",
+                "client_id": "c1",
+                "jurisdiction": stored_label,
+                "compliance_score": 10,
+                "compliance_breakdown": {},
+                "score_breakdown": [],
+            }
+            db.properties.find_one = AsyncMock(return_value=prop)
+            db.properties.update_one = AsyncMock()
+            db.property_compliance_score_history.insert_one = AsyncMock()
+            db.score_change_log.insert_one = AsyncMock()
+            with patch("services.compliance_scoring_service.database.get_db", return_value=db):
+                with patch(
+                    "services.compliance_scoring_service.calculate_property_compliance",
+                    new_callable=AsyncMock,
+                    return_value=computed,
+                ):
+                    with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+                        with patch("services.score_ledger_service.log_score_change", new_callable=AsyncMock):
+                            with patch(
+                                "services.risk_signal_regen_queue.enqueue_risk_signal_regen",
+                                new_callable=AsyncMock,
+                            ):
+                                await recalculate_and_persist(
+                                    "p1",
+                                    REASON_DOCUMENT_UPLOADED,
+                                    {"id": "u1", "role": "ROLE_CLIENT_ADMIN"},
+                                    {"document_id": "d1"},
+                                )
+            s = db.properties.update_one.call_args[0][1]["$set"]
+            assert s.get("scoring_jurisdiction_bucket") == bucket
+            assert "jurisdiction" not in s
+
+    @pytest.mark.asyncio
+    async def test_mixed_portfolio_score_breakdown_preserves_each_property_jurisdiction_label(self):
+        from services.compliance_score import calculate_compliance_score
+
+        bd = {
+            "status_score": 80,
+            "expiry_score": 70,
+            "document_score": 75,
+            "overdue_penalty_score": 80,
+            "risk_score": 100,
+        }
+        mixed = [
+            {
+                "property_id": "p1",
+                "compliance_score": 80,
+                "compliance_breakdown": bd,
+                "is_hmo": False,
+                "jurisdiction": "England",
+                "scoring_jurisdiction_bucket": "ENGLAND_WALES",
+            },
+            {
+                "property_id": "p2",
+                "compliance_score": 80,
+                "compliance_breakdown": bd,
+                "is_hmo": False,
+                "jurisdiction": "Wales",
+                "scoring_jurisdiction_bucket": "ENGLAND_WALES",
+            },
+            {
+                "property_id": "p3",
+                "compliance_score": 80,
+                "compliance_breakdown": bd,
+                "is_hmo": False,
+                "jurisdiction": "Scotland",
+                "scoring_jurisdiction_bucket": "SCOTLAND",
+            },
+        ]
+        db = MagicMock()
+        db.properties.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=mixed)))
+        db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+        db.documents.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+        db.clients.find_one = AsyncMock(return_value={})
+
+        with patch("services.compliance_score.database.get_db", return_value=db):
+            with patch(
+                "services.catalog_compliance.get_portfolio_compliance_from_catalog",
+                new_callable=AsyncMock,
+                return_value=None,
+            ):
+                result = await calculate_compliance_score("c1")
+        by_id = {x["property_id"]: x for x in result["score_breakdown_by_property"]}
+        assert by_id["p1"]["jurisdiction"] == "England"
+        assert by_id["p2"]["jurisdiction"] == "Wales"
+        assert by_id["p3"]["jurisdiction"] == "Scotland"
+        assert by_id["p1"]["scoring_jurisdiction_bucket"] == "ENGLAND_WALES"
+        assert by_id["p2"]["scoring_jurisdiction_bucket"] == "ENGLAND_WALES"
+        assert by_id["p3"]["scoring_jurisdiction_bucket"] == "SCOTLAND"
+        assert sorted(result["jurisdictions"]) == ["England", "Scotland", "Wales"]
 
 
 class TestExpiryRolloverJob:
@@ -187,6 +309,7 @@ class TestDashboardReadsStoredScore:
         db.properties.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=properties_with_stored)))
         db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
         db.documents.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+        db.clients.find_one = AsyncMock(return_value={})
 
         with patch("services.compliance_score.database.get_db", return_value=db):
             with patch(

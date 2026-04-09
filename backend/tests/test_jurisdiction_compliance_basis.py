@@ -15,6 +15,7 @@ from services.compliance_rules_registry import (
     property_jurisdiction_requirement_flags,
     resolve_portfolio_jurisdiction,
 )
+from presentation.jurisdiction_reporting import unique_property_jurisdictions
 from services.command_center_service import get_command_center_bundle
 
 
@@ -308,3 +309,40 @@ def test_onboarding_attestation_still_pressures_explicit_jurisdiction_despite_ac
     assert att["jurisdiction_required"] is True
     assert att["compliance_confidence"] == COMPLIANCE_CONFIDENCE_FALLBACK
     assert att["jurisdiction_required_property_ids"] == ["needs_explicit"]
+
+
+def test_legacy_scotland_scoring_bucket_on_property_resolves_to_portfolio_scotland():
+    r = resolve_portfolio_jurisdiction({"jurisdiction": "SCOTLAND"}, {"default_jurisdiction": "England"})
+    assert r.effective_label == "Scotland"
+    assert r.compliance_basis == COMPLIANCE_BASIS_PROPERTY_EXPLICIT
+
+
+def test_legacy_england_wales_bucket_does_not_override_client_default():
+    """ENGLAND_WALES on the property field is ambiguous; treat like missing label for resolution."""
+    r = resolve_portfolio_jurisdiction({"jurisdiction": "ENGLAND_WALES"}, {"default_jurisdiction": "Wales"})
+    assert r.effective_label == "Wales"
+    assert r.compliance_basis == COMPLIANCE_BASIS_CLIENT_DEFAULT
+
+
+def test_legacy_england_wales_bucket_still_flags_jurisdiction_required():
+    f = property_jurisdiction_requirement_flags({"jurisdiction": "ENGLAND_WALES"})
+    assert f["jurisdiction_required"] is True
+    assert f["compliance_confidence"] == COMPLIANCE_CONFIDENCE_FALLBACK
+
+
+def test_unique_property_jurisdictions_skips_england_wales_bucket_string():
+    labels = unique_property_jurisdictions(
+        [
+            {"jurisdiction": "England"},
+            {"jurisdiction": "ENGLAND_WALES"},
+            {"jurisdiction": "SCOTLAND"},
+        ]
+    )
+    assert labels == ["England", "Scotland"]
+
+
+def test_legacy_england_wales_property_triggers_portfolio_default_fallback_notice():
+    """Ambiguous legacy bucket without client default should surface default_fallback (same as unset)."""
+    n = build_jurisdiction_compliance_notice(None, [{"property_id": "p1", "jurisdiction": "ENGLAND_WALES"}])
+    assert n["active"] is True
+    assert n["affected_property_ids"] == ["p1"]

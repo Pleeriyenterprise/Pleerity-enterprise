@@ -7,13 +7,30 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Sequence
 
+from services.compliance_rules_registry import canonicalize_uk_portfolio_label
+
+
+def _reporting_label_from_property_jurisdiction(raw: Optional[str]) -> Optional[str]:
+    """Map stored property.jurisdiction to a portfolio-facing label; omit legacy ENGLAND_WALES bucket strings."""
+    if not raw or not str(raw).strip():
+        return None
+    canon = canonicalize_uk_portfolio_label(raw)
+    if canon:
+        return canon
+    u = str(raw).strip().upper().replace(" ", "_").replace("/", "_")
+    if u == "SCOTLAND":
+        return "Scotland"
+    if u in ("ENGLAND_WALES", "NORTHERN_IRELAND", "NORTHERNIRELAND"):
+        return None
+    return str(raw).strip()
+
 
 def unique_property_jurisdictions(properties: Sequence[Dict[str, Any]]) -> List[str]:
     seen = []
     for p in properties or []:
-        j = (p.get("jurisdiction") or "").strip()
-        if j and j not in seen:
-            seen.append(j)
+        label = _reporting_label_from_property_jurisdiction(p.get("jurisdiction"))
+        if label and label not in seen:
+            seen.append(label)
     return sorted(seen)
 
 

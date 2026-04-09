@@ -1582,6 +1582,7 @@ async def validate_compliance_score(
                     {"$set": {
                         "compliance_score": computed_score,
                         "compliance_breakdown": new_breakdown,
+                        "scoring_jurisdiction_bucket": result.get("jurisdiction"),
                         "compliance_last_calculated_at": now.isoformat(),
                         "compliance_version": result.get("weights_version", WEIGHTS_VERSION),
                         "compliance_score_pending": False,

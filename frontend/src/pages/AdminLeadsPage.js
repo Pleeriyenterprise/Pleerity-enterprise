@@ -53,6 +53,23 @@ const intentColors = {
   LOW: 'bg-gray-100 text-gray-800 border-gray-200',
 };
 
+/** Radix Select forbids `SelectItem value=""`. */
+const LEAD_INTENT_SCORE_AUTO = '__lead_intent_auto__';
+
+/** Sentinel prefix when API returns blank entries in filter lists (source / stage / intent / service). */
+const LEAD_FILTER_BLANK_PREFIX = '__lead_blank:';
+
+function leadFilterSelectValue(raw, kind, index) {
+  const s = String(raw ?? '').trim();
+  if (s !== '') return String(raw ?? '');
+  return `${LEAD_FILTER_BLANK_PREFIX}${kind}:${index}`;
+}
+
+function decodeLeadFilterSelectValue(value) {
+  if (typeof value !== 'string' || !value.startsWith(LEAD_FILTER_BLANK_PREFIX)) return value;
+  return '';
+}
+
 // Stage colors
 const stageColors = {
   NEW: 'bg-blue-100 text-blue-800',
@@ -175,9 +192,15 @@ export default function AdminLeadsPage() {
     try {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
-      if (sourceFilter !== 'all') params.append('source_platform', sourceFilter);
-      if (stageFilter !== 'all') params.append('stage', stageFilter);
-      if (intentFilter !== 'all') params.append('intent_score', intentFilter);
+      if (sourceFilter !== 'all') {
+        params.append('source_platform', decodeLeadFilterSelectValue(sourceFilter));
+      }
+      if (stageFilter !== 'all') {
+        params.append('stage', decodeLeadFilterSelectValue(stageFilter));
+      }
+      if (intentFilter !== 'all') {
+        params.append('intent_score', decodeLeadFilterSelectValue(intentFilter));
+      }
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (slaBreachOnly) params.append('sla_breach_only', 'true');
       if (lastActivityFrom) params.append('last_activity_from', lastActivityFrom);
@@ -261,7 +284,9 @@ export default function AdminLeadsPage() {
     try {
       const params = new URLSearchParams();
       Object.entries(createForm).forEach(([key, value]) => {
-        if (value) params.append(key, value);
+        const v =
+          typeof value === 'string' ? decodeLeadFilterSelectValue(value) : value;
+        if (v) params.append(key, v);
       });
       
       await client.post(`/admin/leads?${params.toString()}`);
@@ -687,9 +712,14 @@ export default function AdminLeadsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Sources</SelectItem>
-            {(Array.isArray(sources.source_platforms) ? sources.source_platforms : []).map(s => (
-              <SelectItem key={String(s)} value={String(s)}>{String(s).replace(/_/g, ' ')}</SelectItem>
-            ))}
+            {(Array.isArray(sources.source_platforms) ? sources.source_platforms : []).map((s, idx) => {
+              const raw = String(s ?? '');
+              const value = leadFilterSelectValue(s, 'sp', idx);
+              const label = raw.trim() === '' ? '(empty)' : raw.replace(/_/g, ' ');
+              return (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
         <Select value={stageFilter} onValueChange={setStageFilter}>
@@ -698,9 +728,14 @@ export default function AdminLeadsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Stages</SelectItem>
-            {(Array.isArray(sources.stages) ? sources.stages : []).map(s => (
-              <SelectItem key={String(s)} value={String(s)}>{String(s)}</SelectItem>
-            ))}
+            {(Array.isArray(sources.stages) ? sources.stages : []).map((s, idx) => {
+              const raw = String(s ?? '');
+              const value = leadFilterSelectValue(s, 'st', idx);
+              const label = raw.trim() === '' ? '(empty)' : raw;
+              return (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
         <Select value={intentFilter} onValueChange={setIntentFilter}>
@@ -709,9 +744,14 @@ export default function AdminLeadsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Intent</SelectItem>
-            {(Array.isArray(sources.intent_scores) ? sources.intent_scores : []).map(s => (
-              <SelectItem key={String(s)} value={String(s)}>{String(s)}</SelectItem>
-            ))}
+            {(Array.isArray(sources.intent_scores) ? sources.intent_scores : []).map((s, idx) => {
+              const raw = String(s ?? '');
+              const value = leadFilterSelectValue(s, 'int', idx);
+              const label = raw.trim() === '' ? '(empty)' : raw;
+              return (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
         <label className="flex items-center gap-2 text-sm text-gray-600">
@@ -966,26 +1006,41 @@ export default function AdminLeadsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Array.isArray(sources.service_interests) ? sources.service_interests : []).map(s => (
-                      <SelectItem key={String(s)} value={String(s)}>{String(s).replace(/_/g, ' ')}</SelectItem>
-                    ))}
+                    {(Array.isArray(sources.service_interests) ? sources.service_interests : []).map((s, idx) => {
+                      const raw = String(s ?? '');
+                      const value = leadFilterSelectValue(s, 'svc', idx);
+                      const label = raw.trim() === '' ? '(empty)' : raw.replace(/_/g, ' ');
+                      return (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Intent Score</Label>
                 <Select
-                  value={createForm.intent_score ?? ''}
-                  onValueChange={(val) => setCreateForm({ ...createForm, intent_score: val })}
+                  value={createForm.intent_score ? createForm.intent_score : LEAD_INTENT_SCORE_AUTO}
+                  onValueChange={(val) =>
+                    setCreateForm({
+                      ...createForm,
+                      intent_score: val === LEAD_INTENT_SCORE_AUTO ? '' : val,
+                    })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Auto-calculate" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Auto-calculate</SelectItem>
-                    {(Array.isArray(sources.intent_scores) ? sources.intent_scores : []).map(s => (
-                      <SelectItem key={String(s)} value={String(s)}>{String(s)}</SelectItem>
-                    ))}
+                    <SelectItem value={LEAD_INTENT_SCORE_AUTO}>Auto-calculate</SelectItem>
+                    {(Array.isArray(sources.intent_scores) ? sources.intent_scores : []).map((s, idx) => {
+                      const raw = String(s ?? '');
+                      const value = leadFilterSelectValue(s, 'int', idx);
+                      const label = raw.trim() === '' ? '(empty)' : raw;
+                      return (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>

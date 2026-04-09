@@ -142,7 +142,10 @@ async def calculate_property_compliance(
         "applicable_points": result.get("applicable_points"),
         "top_deficits": result.get("top_deficits") or [],
         "top_next_actions": result.get("top_next_actions") or [],
+        # API naming: "jurisdiction" here is the scoring bucket (ENGLAND_WALES | SCOTLAND), not the property record label.
+        # Prefer scoring_jurisdiction_bucket for new clients; keep "jurisdiction" until a versioned API deprecates it.
         "jurisdiction": result.get("jurisdiction"),
+        "scoring_jurisdiction_bucket": result.get("jurisdiction"),
         "compliance_basis": _jr.compliance_basis,
         "effective_jurisdiction_label": _jr.effective_label,
         "jurisdiction_required": _juris_flags["jurisdiction_required"],
@@ -194,6 +197,8 @@ async def recalculate_and_persist(
     score_breakdown = result.get("score_breakdown", [])
     now = datetime.now(timezone.utc)
 
+    # Persist scoring bucket separately from properties.jurisdiction (portfolio label: England/Wales/…).
+    # v2's result["jurisdiction"] is SCOTLAND | ENGLAND_WALES — never write that into jurisdiction.
     set_fields = {
         "compliance_score": new_score,
         "compliance_breakdown": new_breakdown,
@@ -202,7 +207,7 @@ async def recalculate_and_persist(
         "compliance_applicable_points": result.get("applicable_points"),
         "compliance_top_deficits": result.get("top_deficits") or [],
         "compliance_top_next_actions": result.get("top_next_actions") or [],
-        "jurisdiction": result.get("jurisdiction"),
+        "scoring_jurisdiction_bucket": result.get("jurisdiction"),
         "compliance_last_calculated_at": now.isoformat(),
         "compliance_version": result.get("weights_version", WEIGHTS_VERSION),
         "compliance_score_pending": False,

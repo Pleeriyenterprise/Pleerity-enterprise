@@ -85,6 +85,9 @@ const NOT_REQUIRED_REASONS = [
   { value: 'other', label: 'Other' },
 ];
 
+/** Radix Select forbids `SelectItem value=""` (empty string is reserved for clearing the control). */
+const PROPERTY_JURISDICTION_SELECT_UNSET = '__property_jurisdiction_unset__';
+
 /** Default landing: single-property operating hub (not a mini-dashboard). */
 const TAB_OPERATING = 'operating';
 const TAB_COMPLIANCE = 'compliance';
@@ -939,15 +942,23 @@ export default function PropertyDetailPage() {
                 Jurisdiction on this property
               </Label>
               <Select
-                value={jurisdictionDraft}
-                onValueChange={setJurisdictionDraft}
+                value={
+                  (jurisdictionDraft ?? '').trim()
+                    ? jurisdictionDraft.trim()
+                    : PROPERTY_JURISDICTION_SELECT_UNSET
+                }
+                onValueChange={(v) =>
+                  setJurisdictionDraft(v === PROPERTY_JURISDICTION_SELECT_UNSET ? '' : v)
+                }
                 disabled={jurisdictionSaving}
               >
                 <SelectTrigger id="property-jurisdiction-select" data-testid="property-jurisdiction-select">
                   <SelectValue placeholder="Choose" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Not set (account default, then system default if needed)</SelectItem>
+                  <SelectItem value={PROPERTY_JURISDICTION_SELECT_UNSET}>
+                    Not set (account default, then system default if needed)
+                  </SelectItem>
                   {JURISDICTION_OPTIONS.map((j) => (
                     <SelectItem key={j} value={j}>
                       {j}
@@ -1223,7 +1234,18 @@ export default function PropertyDetailPage() {
                       Score: <strong>{complianceExplainability.score ?? '—'}/100</strong>
                     </span>
                     <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
-                      Jurisdiction: <strong>{String(complianceExplainability.jurisdiction || 'ENGLAND_WALES').replace('_', ' ')}</strong>
+                      Portfolio jurisdiction:{' '}
+                      <strong>{complianceExplainability.effective_jurisdiction_label ?? '—'}</strong>
+                    </span>
+                    <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
+                      Scoring rules:{' '}
+                      <strong>
+                        {String(
+                          complianceExplainability.scoring_jurisdiction_bucket ??
+                            complianceExplainability.jurisdiction ??
+                            'ENGLAND_WALES',
+                        ).replace(/_/g, ' ')}
+                      </strong>
                     </span>
                     <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
                       Points: <strong>{Number(complianceExplainability.earned_points || 0).toFixed(1)} / {Number(complianceExplainability.applicable_points || 0).toFixed(1)}</strong>

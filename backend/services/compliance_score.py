@@ -99,7 +99,8 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             {"client_id": client_id},
             {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "compliance_bucket_breakdown": 1, "score_breakdown": 1,
              "compliance_earned_points": 1, "compliance_applicable_points": 1, "compliance_top_deficits": 1, "compliance_top_next_actions": 1,
-             "compliance_last_calculated_at": 1, "is_hmo": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "jurisdiction": 1}
+             "compliance_last_calculated_at": 1, "is_hmo": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "jurisdiction": 1,
+             "scoring_jurisdiction_bucket": 1}
         ).to_list(100)
         if not properties:
             return {
@@ -136,7 +137,8 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             {"client_id": client_id},
             {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "compliance_bucket_breakdown": 1, "score_breakdown": 1,
              "compliance_earned_points": 1, "compliance_applicable_points": 1, "compliance_top_deficits": 1, "compliance_top_next_actions": 1,
-             "is_hmo": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "compliance_last_calculated_at": 1, "jurisdiction": 1}
+             "is_hmo": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "compliance_last_calculated_at": 1, "jurisdiction": 1,
+             "scoring_jurisdiction_bucket": 1}
         ).to_list(100)
         scores = [p.get("compliance_score") for p in properties if p.get("compliance_score") is not None]
         if not scores:
@@ -469,6 +471,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                     "property_id": p.get("property_id"),
                     "name": p.get("nickname") or p.get("address_line_1") or p.get("property_id"),
                     "jurisdiction": p.get("jurisdiction"),
+                    "scoring_jurisdiction_bucket": p.get("scoring_jurisdiction_bucket"),
                     "compliance_basis": (
                         res_by_pid.get(p.get("property_id")).compliance_basis
                         if p.get("property_id") in res_by_pid

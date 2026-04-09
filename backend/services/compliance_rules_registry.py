@@ -57,9 +57,24 @@ COMPLIANCE_CONFIDENCE_EXPLICIT = "explicit"
 COMPLIANCE_CONFIDENCE_FALLBACK = "fallback"
 
 
+def _legacy_scoring_bucket_on_property_field(raw: Optional[str]) -> Optional[str]:
+    """
+    Historically some recalc paths wrote scoring buckets into properties.jurisdiction.
+    Only SCOTLAND maps 1:1 to a portfolio label; ENGLAND_WALES is ambiguous (England vs Wales vs NI) and is not treated as explicit.
+    """
+    if not raw or not str(raw).strip():
+        return None
+    u = str(raw).strip().upper().replace(" ", "_").replace("/", "_")
+    if u == "SCOTLAND":
+        return "Scotland"
+    return None
+
+
 def property_has_explicit_portfolio_jurisdiction(property_doc: Dict[str, Any]) -> bool:
-    """True when property.jurisdiction is a recognised UK portfolio label (case-insensitive)."""
-    return canonicalize_uk_portfolio_label(property_doc.get("jurisdiction")) is not None
+    """True when property.jurisdiction is a recognised UK portfolio label (case-insensitive), or legacy SCOTLAND bucket."""
+    if canonicalize_uk_portfolio_label(property_doc.get("jurisdiction")) is not None:
+        return True
+    return _legacy_scoring_bucket_on_property_field(property_doc.get("jurisdiction")) is not None
 
 
 def property_jurisdiction_requirement_flags(property_doc: Dict[str, Any]) -> Dict[str, Any]:
@@ -125,6 +140,9 @@ def resolve_portfolio_jurisdiction(
     p_label = canonicalize_uk_portfolio_label(property_doc.get("jurisdiction"))
     if p_label:
         return PortfolioJurisdictionResolution(p_label, COMPLIANCE_BASIS_PROPERTY_EXPLICIT)
+    legacy = _legacy_scoring_bucket_on_property_field(property_doc.get("jurisdiction"))
+    if legacy:
+        return PortfolioJurisdictionResolution(legacy, COMPLIANCE_BASIS_PROPERTY_EXPLICIT)
     c_label = canonicalize_uk_portfolio_label((client_doc or {}).get("default_jurisdiction"))
     if c_label:
         return PortfolioJurisdictionResolution(c_label, COMPLIANCE_BASIS_CLIENT_DEFAULT)

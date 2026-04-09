@@ -50,6 +50,21 @@ def test_v2_scores_valid_legal_docs_high():
     assert result["applicable_points"] > 0
 
 
+def test_v2_normalizes_wales_to_england_wales_scoring_bucket():
+    now = datetime.now(timezone.utc)
+    result = compute_property_score_v2(
+        property_doc=_base_property("Wales"),
+        client_doc={"default_jurisdiction": "Wales"},
+        requirements=[],
+        documents=[],
+        open_issues_count=0,
+        overdue_work_orders_count=0,
+        open_risks_count=0,
+        as_of=now,
+    )
+    assert result["jurisdiction"] == "ENGLAND_WALES"
+
+
 def test_v2_generates_top_actions_for_missing_critical():
     result = compute_property_score_v2(
         property_doc=_base_property("Scotland"),

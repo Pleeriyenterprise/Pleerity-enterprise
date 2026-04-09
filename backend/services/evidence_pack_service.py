@@ -268,6 +268,8 @@ async def build_evidence_pack_zip_bytes(
         "postcode",
         "compliance_status",
         "property_type",
+        "jurisdiction",
+        "scoring_jurisdiction_bucket",
         "effective_jurisdiction_label",
         "jurisdiction_source",
     ]

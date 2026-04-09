@@ -642,9 +642,13 @@ export default function AdminPromptManagerPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Services</SelectItem>
-                        {(serviceCodes ?? []).map(sc => (
-                          <SelectItem key={sc?.code ?? sc} value={sc?.code ?? sc}>{sc?.name ?? sc?.code ?? sc}</SelectItem>
-                        ))}
+                        {(serviceCodes ?? [])
+                          .filter((sc) => String(sc?.code ?? '').trim() !== '')
+                          .map((sc) => (
+                            <SelectItem key={sc.code} value={sc.code}>
+                              {sc?.name ?? sc.code}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1211,9 +1215,13 @@ Provide workflow recommendations in JSON format.`}
                       {(Array.isArray(serviceCodes) ? serviceCodes : []).length === 0 ? (
                         <SelectItem value="__none__" disabled className="text-gray-500">No services configured yet</SelectItem>
                       ) : (
-                        (Array.isArray(serviceCodes) ? serviceCodes : []).map(sc => (
-                          <SelectItem key={sc?.code ?? sc} value={sc?.code ?? ''}>{sc?.name ?? sc?.code ?? ''}</SelectItem>
-                        ))
+                        (Array.isArray(serviceCodes) ? serviceCodes : [])
+                          .filter((sc) => String(sc?.code ?? '').trim() !== '')
+                          .map((sc) => (
+                            <SelectItem key={sc.code} value={sc.code}>
+                              {sc?.name ?? sc.code}
+                            </SelectItem>
+                          ))
                       )}
                     </SelectContent>
                   </Select>
@@ -1231,9 +1239,13 @@ Provide workflow recommendations in JSON format.`}
                       {(Array.isArray(docTypes) ? docTypes : []).length === 0 ? (
                         <SelectItem value="__none__" disabled className="text-gray-500">No document types yet</SelectItem>
                       ) : (
-                        (Array.isArray(docTypes) ? docTypes : []).map(dt => (
-                          <SelectItem key={dt?.code ?? dt} value={dt?.code ?? ''}>{dt?.name ?? dt?.code ?? ''}</SelectItem>
-                        ))
+                        (Array.isArray(docTypes) ? docTypes : [])
+                          .filter((dt) => String(dt?.code ?? '').trim() !== '')
+                          .map((dt) => (
+                            <SelectItem key={dt.code} value={dt.code}>
+                              {dt?.name ?? dt.code}
+                            </SelectItem>
+                          ))
                       )}
                     </SelectContent>
                   </Select>

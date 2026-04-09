@@ -43,6 +43,9 @@ const DOCUMENT_ICONS = {
   cv_resume: FileUser,
 };
 
+/** Radix Select forbids `SelectItem value=""`. */
+const CLEARFORM_PROFILE_NONE = '__clearform_no_profile__';
+
 const ClearFormCreatePage = () => {
   const navigate = useNavigate();
   const { user, refreshUser } = useClearFormAuth();
@@ -187,9 +190,10 @@ const ClearFormCreatePage = () => {
   };
 
   const handleProfileChange = async (profileId) => {
-    setSelectedProfile(profileId);
+    const pid = profileId === CLEARFORM_PROFILE_NONE ? null : profileId;
+    setSelectedProfile(pid);
     if (selectedTemplate) {
-      await loadTemplateWithPrefill(selectedTemplate.template_id, profileId);
+      await loadTemplateWithPrefill(selectedTemplate.template_id, pid);
     }
   };
 
@@ -655,15 +659,15 @@ const ClearFormCreatePage = () => {
                                   Saves time
                                 </Badge>
                               </div>
-                              <Select 
-                                value={selectedProfile || ''} 
+                              <Select
+                                value={selectedProfile || CLEARFORM_PROFILE_NONE}
                                 onValueChange={handleProfileChange}
                               >
                                 <SelectTrigger data-testid="profile-selector">
                                   <SelectValue placeholder="Select a profile..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">No profile</SelectItem>
+                                  <SelectItem value={CLEARFORM_PROFILE_NONE}>No profile</SelectItem>
                                   {smartProfiles.map((profile) => (
                                     <SelectItem 
                                       key={profile.profile_id} 
