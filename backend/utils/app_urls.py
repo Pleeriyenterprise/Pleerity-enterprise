@@ -16,6 +16,14 @@ from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
+
+def _running_on_render() -> bool:
+    """True on Render.com (web or worker). RENDER_SERVICE_ID is always set; RENDER may be absent in some setups."""
+    if (os.getenv("RENDER") or "").strip().lower() in ("true", "1", "yes"):
+        return True
+    return bool((os.getenv("RENDER_SERVICE_ID") or "").strip())
+
+
 _CANONICAL_APP_URL = "https://pleerityenterprise.co.uk"
 _DEFAULT_API_DEV = "http://localhost:8000"
 _DEFAULT_APP_DEV = "http://localhost:3000"
@@ -142,7 +150,7 @@ def validate_url_configuration() -> None:
     """
     Production: fail if multiple legacy app URL vars disagree; fail if resolved app URL is not HTTPS
     (unless localhost). Call after env is loaded. Skipped for PYTEST_RUNNING or SKIP_URL_VALIDATION=1.
-    On RENDER=true we log CRITICAL and continue instead of raising so the process can bind to PORT.
+    On Render (RENDER or RENDER_SERVICE_ID) we log CRITICAL and continue instead of raising so the process can bind to PORT.
     """
     if os.getenv("PYTEST_RUNNING") == "1" or os.getenv("SKIP_URL_VALIDATION", "").strip().lower() in (
         "1",
@@ -154,7 +162,7 @@ def validate_url_configuration() -> None:
     if env not in ("production", "prod"):
         return
 
-    _on_render = os.getenv("RENDER", "").strip().lower() in ("true", "1")
+    _on_render = _running_on_render()
 
     pairs = _legacy_app_pairs()
     origins: Set[str] = set()

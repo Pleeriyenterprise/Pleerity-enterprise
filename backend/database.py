@@ -17,7 +17,12 @@ class Database:
     async def connect(self):
         try:
             mongo_url = os.environ['MONGO_URL']
-            self.client = AsyncIOMotorClient(mongo_url)
+            # Bounded timeouts: avoid hanging deploy/health when Mongo is unreachable (e.g. wrong IP allowlist).
+            self.client = AsyncIOMotorClient(
+                mongo_url,
+                serverSelectionTimeoutMS=10_000,
+                connectTimeoutMS=10_000,
+            )
             self.db = self.client[os.environ['DB_NAME']]
             # Verify connection
             await self.db.command("ping")

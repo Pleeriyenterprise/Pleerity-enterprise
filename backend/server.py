@@ -61,10 +61,14 @@ jobstores = {
     )
 }
 
-# Configure job store with MongoDB URL
+# Configure job store with MongoDB URL (bounded timeouts so import-time client cannot hang deploy)
+_MONGO_CLIENT_KWARGS = {
+    "serverSelectionTimeoutMS": 10_000,
+    "connectTimeoutMS": 10_000,
+}
 try:
     from pymongo import MongoClient
-    mongo_client = MongoClient(mongo_url)
+    mongo_client = MongoClient(mongo_url, **_MONGO_CLIENT_KWARGS)
     jobstores['default'] = MongoDBJobStore(
         database=db_name,
         collection='scheduled_jobs',
@@ -192,7 +196,11 @@ async def lifespan(app: FastAPI):
             logger.critical("Startup aborted (URL configuration): %s", e)
             raise
 
-    _render_defer = os.environ.get("RENDER", "").strip().lower() in ("true", "1")
+    # Defer DB/seeds/scheduler until after lifespan yield so Uvicorn can bind $PORT (Render port scan).
+    # RENDER is set on native Render; RENDER_SERVICE_ID is also set and catches blueprints/dashboard drift.
+    _render_defer = os.environ.get("RENDER", "").strip().lower() in ("true", "1", "yes") or bool(
+        (os.environ.get("RENDER_SERVICE_ID") or "").strip()
+    )
     _sched_flag = [False]
 
     async def _heavy_startup():
@@ -980,7 +988,12 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.exception("Background job scheduler failed to start: %s. API will run without scheduled jobs.", e)
     if _render_defer:
-        logger.info("RENDER=true: deferring Mongo/indexes/seeds/scheduler until after PORT bind")
+        logger.info(
+            "Render hosting detected: deferring Mongo/indexes/seeds/scheduler until after PORT bind "
+            "(RENDER=%s RENDER_SERVICE_ID=%s)",
+            os.environ.get("RENDER"),
+            "set" if (os.environ.get("RENDER_SERVICE_ID") or "").strip() else "unset",
+        )
         app.state.db_ready = False
         app.state.startup_failed = False
 

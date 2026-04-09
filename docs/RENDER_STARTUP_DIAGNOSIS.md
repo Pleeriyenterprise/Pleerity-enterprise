@@ -12,7 +12,7 @@ Uvicorn/Starlette **do not open the port until lifespan startup completes**. So 
 | 2 | `ENVIRONMENT` in (`production`, `prod`) | No |
 | 3 | **`require_non_default_jwt_secret()`** | **Yes – raises RuntimeError** if JWT_SECRET missing/default |
 | 4 | **`validate_url_configuration()`** | **Yes – raises RuntimeError** on conflicting origins or non-HTTPS app URL |
-| 5 | `_render_defer` check, `_heavy_startup()`, yield | No raise (defer path only schedules a task then yields) |
+| 5 | `_render_defer` check, `_heavy_startup()`, yield | No raise (defer path only schedules a task then yields). Defer runs when `RENDER` is true/1/yes **or** `RENDER_SERVICE_ID` is set (Render always sets the latter). |
 
 So **steps 3 and 4 run before we ever reach the RENDER-defer logic**. If either raises, lifespan never reaches `yield` → port never opens → "Port scan timeout reached".
 
