@@ -135,7 +135,8 @@ function resolveContractorDisplayName(contractorId, nameFromWorkOrders, director
   const fromWo = String(nameFromWorkOrders ?? '').trim();
   if (fromWo && !looksLikeContractorUuid(fromWo)) return fromWo;
   if (String(contractorId || '').trim()) return 'Unnamed contractor';
-  return fromWo || 'Unnamed contractor';
+  // fromWo is empty or UUID-like; do not return it (avoids surfacing mistaken UUID-as-name with no id key).
+  return 'Unnamed contractor';
 }
 
 /**
