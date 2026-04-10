@@ -18,7 +18,8 @@
  *   Clears overrides so the task can reappear; does not mutate underlying requirement/job/document state.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { inboxTitleForDisplay, titleFromSnake } from '../domain/presentDomain';
+import { inboxTitleForDisplay, requirementLabel, titleFromSnake } from '../domain/presentDomain';
+import domainLabels from '../domain/domain_labels.json';
 import { workOrderKindClientLabel } from '../utils/jobWorkflowUi';
 import { useNavigate, Link } from 'react-router-dom';
 import { clientAPI } from '../api/client';
@@ -126,6 +127,90 @@ function propertyOptionLabel(p) {
   return (p.nickname || p.name || addr || '').trim() || 'Property';
 }
 
+/** Mirrors `domain_labels.json` → `today_inbox_action_titles` (generic inbox titles to replace locally). */
+const GENERIC_TODAY_INBOX_TITLES = new Set(
+  Object.values(domainLabels.today_inbox_action_titles || {}).map((s) => String(s).trim().toLowerCase()),
+);
+
+/**
+ * Rank for “Top priority — act now” (subset of urgent): overdue compliance → missing evidence → risk signals → rest.
+ * Uses existing unified task fields only (`metadata.action_type`, `filter_tags`, `overdue_days`, `urgency`, `impact_score`).
+ */
+function topPriorityRank(task) {
+  const meta = task.metadata || {};
+  const at = String(meta.action_type || '');
+  const tags = Array.isArray(task.filter_tags) ? task.filter_tags : [];
+  const odDays = Number(task.overdue_days || 0);
+  const isCompliance = task.source_type === 'requirement' || tags.includes('compliance');
+  const urgentBand = String(task.urgency || '').toLowerCase();
+
+  let tier = 3;
+  if (at === 'overdue_compliance' || (isCompliance && (odDays > 0 || urgentBand === 'overdue'))) {
+    tier = 0;
+  } else if (at === 'missing_document' || (isCompliance && task.primary_action_type === 'upload_evidence')) {
+    tier = 1;
+  } else if (task.source_type === 'risk_signal') {
+    tier = 2;
+  }
+
+  const sev = String(meta.severity || task.urgency_level || '').toLowerCase();
+  const sevOrder = sev === 'critical' ? 0 : sev === 'high' ? 1 : sev === 'medium' ? 2 : 3;
+
+  return {
+    tier,
+    od: -odDays,
+    sevOrder,
+    impact: -Number(task.impact_score || 0),
+  };
+}
+
+function compareTopPriority(a, b) {
+  const ra = topPriorityRank(a);
+  const rb = topPriorityRank(b);
+  if (ra.tier !== rb.tier) return ra.tier - rb.tier;
+  if (ra.tier === 0 && ra.od !== rb.od) return ra.od - rb.od;
+  if (ra.sevOrder !== rb.sevOrder) return ra.sevOrder - rb.sevOrder;
+  return ra.impact - rb.impact;
+}
+
+/** Decision-layer title: replace generic inbox titles using requirementLabel + existing description/job copy. */
+function todayDecisionLayerTitle(task) {
+  const base = inboxTitleForDisplay(task);
+  const rawTitle = String(task?.title || '').trim();
+  const low = rawTitle.toLowerCase();
+  if (!GENERIC_TODAY_INBOX_TITLES.has(low)) return base;
+
+  const meta = task.metadata || {};
+  const code = meta.requirement_code || meta.requirement_type;
+  const u = String(task.urgency || '').toLowerCase();
+  const od = Number(task.overdue_days || 0) > 0;
+
+  if (task.source_type === 'work_order') {
+    const jobLine = String(task.description || '').trim();
+    if (jobLine.length > 12) return jobLine.length > 160 ? `${jobLine.slice(0, 157)}…` : jobLine;
+    if (code) {
+      if (od || u === 'overdue') return `${requirementLabel(code)} required — action needed`;
+      if (u === 'due_soon') return `${requirementLabel(code)} due soon`;
+      return `${requirementLabel(code)} — action needed`;
+    }
+    return base;
+  }
+
+  if (task.source_type === 'risk_signal') {
+    if (code) return `${requirementLabel(code)} — review and choose next step`;
+    const d = String(task.description || '').trim();
+    if (d.length > 12) return d.length > 160 ? `${d.slice(0, 157)}…` : d;
+    return 'Issue flagged for this property — review next step';
+  }
+
+  if (task.source_type === 'issue') {
+    const d = String(task.description || '').trim();
+    if (d.length > 12) return d.length > 160 ? `${d.slice(0, 157)}…` : d;
+  }
+
+  return base;
+}
+
 function actionLabel(act) {
   const m = {
     snooze: 'Snoozed',
@@ -182,6 +267,7 @@ function TaskCard({
   enableTriage,
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [visibilityOpen, setVisibilityOpen] = useState(false);
   const meta = task.metadata || {};
   const sid = meta.related_risk_signal_id;
   const busy = overrideBusy === task.id;
@@ -189,8 +275,9 @@ function TaskCard({
   const bookingBusy = complianceBookingBusyId === task.id;
   const businessActions = task.business_actions || [];
   const hasComplianceCreateAction = businessActions.some((a) => a.id === 'create_compliance_work_order');
-  const displayTitle = inboxTitleForDisplay(task);
+  const displayTitle = todayDecisionLayerTitle(task);
   const hasLongContext = Boolean(task.why_matters || task.recommended_action);
+  const hasVisibilityActions = enableTriage && (task.visibility_actions || []).length > 0;
   return (
     <Card className="border border-gray-200 shadow-sm overflow-hidden">
       <CardContent className="p-4 client-portal-prose">
@@ -254,41 +341,35 @@ function TaskCard({
 
           <div className="flex flex-col gap-3 pt-2 border-t border-gray-100 min-w-0">
             {businessActions.length > 0 ? (
-              <div>
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">What you can do now</p>
-                <div className="flex flex-col gap-2">
-                  {businessActions.map((act) => {
-                    const isPrimary = act.primary === true || act.id === 'open_primary';
-                    return (
-                      <Button
-                        key={act.id}
-                        type="button"
-                        variant={isPrimary ? 'default' : 'outline'}
-                        className={`w-full min-h-11 h-11 text-sm justify-center ${
-                          isPrimary
-                            ? 'bg-midnight-blue hover:bg-midnight-blue/90 shadow-md ring-2 ring-electric-teal/40 ring-offset-2 ring-offset-white'
-                            : 'border-midnight-blue/20'
-                        }`}
-                        disabled={bookingBusy}
-                        onClick={() => onRunBusinessAction(act, task)}
-                      >
-                        {sanitizeBusinessActionLabel(act.label)}
-                      </Button>
-                    );
-                  })}
-                </div>
+              <div className="flex flex-col gap-2">
+                {businessActions.map((act) => {
+                  const isPrimary = act.primary === true || act.id === 'open_primary';
+                  return (
+                    <Button
+                      key={act.id}
+                      type="button"
+                      variant={isPrimary ? 'default' : 'outline'}
+                      className={`w-full min-h-11 h-11 text-sm justify-center ${
+                        isPrimary
+                          ? 'bg-midnight-blue hover:bg-midnight-blue/90 shadow-md ring-2 ring-electric-teal/40 ring-offset-2 ring-offset-white'
+                          : 'border-midnight-blue/25 text-midnight-blue/90'
+                      }`}
+                      disabled={bookingBusy}
+                      onClick={() => onRunBusinessAction(act, task)}
+                    >
+                      {sanitizeBusinessActionLabel(act.label)}
+                    </Button>
+                  );
+                })}
               </div>
             ) : (
-              <div>
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Next step</p>
-                <Button
-                  className="w-full min-h-12 h-12 text-sm font-semibold justify-center bg-midnight-blue hover:bg-midnight-blue/90 shadow-sm"
-                  disabled={bookingBusy}
-                  onClick={() => onPrimaryNavigate(task)}
-                >
-                  {sanitizeTodayCtaLabel(task.primary_action_label, task)}
-                </Button>
-              </div>
+              <Button
+                className="w-full min-h-12 h-12 text-sm font-semibold justify-center bg-midnight-blue hover:bg-midnight-blue/90 shadow-md ring-2 ring-electric-teal/40 ring-offset-2 ring-offset-white"
+                disabled={bookingBusy}
+                onClick={() => onPrimaryNavigate(task)}
+              >
+                {sanitizeTodayCtaLabel(task.primary_action_label, task)}
+              </Button>
             )}
             {showComplianceBooking && ce?.eligible && !hasComplianceCreateAction && ce.linked_property_requirement_id && (
               <div>
@@ -347,57 +428,69 @@ function TaskCard({
             {task.secondary_action_url && task.secondary_action_label && (
               <Button
                 variant="ghost"
-                className="w-full min-h-11 h-11 text-electric-teal justify-center text-sm"
+                className="w-full min-h-11 h-11 justify-center text-sm text-gray-600 hover:text-midnight-blue hover:bg-gray-50"
                 onClick={() => onPrimaryNavigate(task, 'secondary')}
               >
-                {sanitizeBusinessActionLabel(task.secondary_action_label)}
-                <ExternalLink className="w-3.5 h-3.5 ml-1 shrink-0" />
+                <span className="text-electric-teal">{sanitizeBusinessActionLabel(task.secondary_action_label)}</span>
+                <ExternalLink className="w-3.5 h-3.5 ml-1 shrink-0 text-electric-teal" />
               </Button>
             )}
-            {enableTriage && (task.visibility_actions || []).length > 0 && (
-              <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/50 p-3 space-y-2">
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
-                  Inbox visibility only
-                </p>
-                <p className="text-xs text-gray-500 leading-snug">
-                  These options only affect this list. They don’t change your property or compliance status.
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {(task.visibility_actions || []).map((va) => {
-                    if (va.id === 'dismiss') {
-                      return (
-                        <Button
-                          key={va.id}
-                          type="button"
-                          variant="outline"
-                          className="h-11 text-xs justify-center col-span-2 sm:col-span-1"
-                          disabled={busy}
-                          title="Requires a reason; logged and audited"
-                          onClick={() => onOpenDismissModal(task)}
-                        >
-                          <EyeOff className="w-3.5 h-3.5 mr-1 shrink-0" />
-                          {va.label}
-                        </Button>
-                      );
-                    }
-                    const isSnooze = va.id === 'snooze_1' || va.id === 'snooze_7';
-                    const days = va.snooze_days || (va.id === 'snooze_7' ? 7 : 1);
-                    return (
-                      <Button
-                        key={va.id}
-                        type="button"
-                        variant="outline"
-                        className="h-11 text-xs justify-center"
-                        disabled={busy}
-                        onClick={() => onVisibilityTap(va, task, isSnooze ? days : undefined)}
-                      >
-                        {isSnooze ? <Bell className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
-                        {va.id === 'mark_reviewed' ? <CheckCircle className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
-                        {va.label}
-                      </Button>
-                    );
-                  })}
-                </div>
+            {hasVisibilityActions && (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  className="text-left text-xs font-medium text-gray-500 hover:text-midnight-blue hover:underline py-2 min-h-[44px] sm:min-h-0 w-full"
+                  onClick={() => setVisibilityOpen((v) => !v)}
+                  aria-expanded={visibilityOpen}
+                >
+                  {visibilityOpen ? 'Hide inbox options' : 'Show inbox options (snooze, dismiss, reviewed)'}
+                </button>
+                {visibilityOpen && (
+                  <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/50 p-3 space-y-2 mt-1">
+                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                      Inbox visibility only
+                    </p>
+                    <p className="text-xs text-gray-500 leading-snug">
+                      These options only affect this list. They don’t change your property or compliance status.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(task.visibility_actions || []).map((va) => {
+                        if (va.id === 'dismiss') {
+                          return (
+                            <Button
+                              key={va.id}
+                              type="button"
+                              variant="outline"
+                              className="h-11 text-xs justify-center col-span-2 sm:col-span-1"
+                              disabled={busy}
+                              title="Requires a reason; logged and audited"
+                              onClick={() => onOpenDismissModal(task)}
+                            >
+                              <EyeOff className="w-3.5 h-3.5 mr-1 shrink-0" />
+                              {va.label}
+                            </Button>
+                          );
+                        }
+                        const isSnooze = va.id === 'snooze_1' || va.id === 'snooze_7';
+                        const days = va.snooze_days || (va.id === 'snooze_7' ? 7 : 1);
+                        return (
+                          <Button
+                            key={va.id}
+                            type="button"
+                            variant="outline"
+                            className="h-11 text-xs justify-center"
+                            disabled={busy}
+                            onClick={() => onVisibilityTap(va, task, isSnooze ? days : undefined)}
+                          >
+                            {isSnooze ? <Bell className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
+                            {va.id === 'mark_reviewed' ? <CheckCircle className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
+                            {va.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {busy && (
@@ -631,6 +724,24 @@ export default function ClientTasksPage() {
 
   const sections = payload?.tasks || {};
   const urgent = applyFilter(sections.urgent);
+
+  const topPriorityTasks = useMemo(() => {
+    if (!urgent.length) return [];
+    const sorted = [...urgent].sort(compareTopPriority);
+    const out = [];
+    const seen = new Set();
+    for (const t of sorted) {
+      if (out.length >= 3) break;
+      if (!t?.id || seen.has(t.id)) continue;
+      seen.add(t.id);
+      out.push(t);
+    }
+    return out;
+  }, [urgent]);
+
+  const topPriorityIds = useMemo(() => new Set(topPriorityTasks.map((t) => t.id)), [topPriorityTasks]);
+  const urgentRemaining = useMemo(() => urgent.filter((t) => !topPriorityIds.has(t.id)), [urgent, topPriorityIds]);
+
   const upcoming = applyFilter(sections.upcoming);
   const inProgress = applyFilter(sections.in_progress);
   const recent = applyFilter(sections.recently_completed);
@@ -1080,9 +1191,38 @@ export default function ClientTasksPage() {
 
       {!loading && !error && (
         <>
+          {topPriorityTasks.length > 0 && (
+            <div className="mb-8" data-testid="today-top-priority">
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Top priority — act now</h2>
+              <p className="text-sm text-gray-500 mb-3">
+                Up to three items from your urgent list, ordered the same way as what to push on first in your command
+                centre — overdue compliance, missing evidence, then open issues.
+              </p>
+              <div className="space-y-3">
+                {topPriorityTasks.map((t) => (
+                  <TaskCard
+                    key={t.id}
+                    task={t}
+                    onRiskAction={onRiskAction}
+                    riskLoading={riskLoading}
+                    showRiskInline={showRiskInline}
+                    onOpenDismissModal={openDismissModal}
+                    onPrimaryNavigate={onPrimaryNavigate}
+                    onRunBusinessAction={runBusinessAction}
+                    onVisibilityTap={runVisibilityTap}
+                    onTaskTitleClick={onTaskTitleClick}
+                    overrideBusy={overrideBusyId}
+                    complianceBookingBusyId={complianceBookingBusyId}
+                    showComplianceBooking={showComplianceBooking}
+                    enableTriage
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           <SectionBlock
             title="Urgent"
-            tasks={urgent}
+            tasks={urgentRemaining}
             onRiskAction={onRiskAction}
             riskLoading={riskLoading}
             showRiskInline={showRiskInline}
@@ -1095,7 +1235,11 @@ export default function ClientTasksPage() {
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage
-            emptyHint="Nothing in the urgent queue. Good standing, or try another filter."
+            emptyHint={
+              topPriorityTasks.length > 0
+                ? 'No other urgent items — everything urgent is in Top priority above.'
+                : 'Nothing in the urgent queue. Good standing, or try another filter.'
+            }
           />
           <SectionBlock
             title="Upcoming"
