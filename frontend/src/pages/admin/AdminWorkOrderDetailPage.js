@@ -1,6 +1,6 @@
 /**
- * Admin Ops → Work order detail: full lifecycle, assign, status, recommended contractors panel.
- * Route: /admin/ops/maintenance/work-orders/:workOrderId
+ * Admin Ops → Job detail: full lifecycle, assign, status, recommended contractors panel.
+ * Route: /admin/ops/maintenance/jobs/:workOrderId (legacy /work-orders/… redirects here).
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -57,7 +57,7 @@ export default function AdminWorkOrderDetailPage() {
     setLoading(true);
     adminAPI.getWorkOrder(workOrderId)
       .then((res) => setWo(res.data))
-      .catch(() => { setWo(null); toast.error('Work order not found'); })
+      .catch(() => { setWo(null); toast.error('Job not found'); })
       .finally(() => setLoading(false));
   }, [workOrderId]);
 
@@ -142,9 +142,9 @@ export default function AdminWorkOrderDetailPage() {
         <div className="p-6">
           <Button variant="outline" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/admin/ops/maintenance'))}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Maintenance
+            Back to jobs
           </Button>
-          <p className="mt-4 text-gray-600">Work order not found.</p>
+          <p className="mt-4 text-gray-600">Job not found.</p>
         </div>
       </UnifiedAdminLayout>
     );
@@ -166,7 +166,7 @@ export default function AdminWorkOrderDetailPage() {
             </Button>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <Wrench className="w-7 h-7" />
-              Work order
+              Job
             </h1>
           </div>
         </div>
@@ -200,8 +200,8 @@ export default function AdminWorkOrderDetailPage() {
         {intervention ? (
           <Alert className="mb-6 border-amber-300 bg-amber-50 text-amber-950">
             <AlertDescription className="text-sm font-medium">
-              Intervention required — operational hold or exception is active. Validate proof, confirm assignment, or use override
-              actions after client/contractor coordination.
+              Intervention required — an operational hold is active on this job. Validate proof and assignment after coordination;
+              use override only when policy allows.
             </AlertDescription>
           </Alert>
         ) : null}
@@ -212,7 +212,7 @@ export default function AdminWorkOrderDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <div><dt className="text-gray-500">Work order kind</dt><dd className="font-mono">{kindUpper}</dd></div>
+              <div><dt className="text-gray-500">Job kind</dt><dd className="font-mono">{kindUpper}</dd></div>
               <div><dt className="text-gray-500">Persisted status</dt><dd className="font-mono">{wo.status || '—'}</dd></div>
               <div><dt className="text-gray-500">Canonical job status</dt><dd className="font-mono">{canonicalJobStatus}</dd></div>
               <div><dt className="text-gray-500">Operational exception</dt><dd className="font-mono">{wo.operational_exception || '—'}</dd></div>
@@ -385,10 +385,10 @@ export default function AdminWorkOrderDetailPage() {
         </Card>
 
         <Card className="mb-6">
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileSearch className="w-4 h-4" /> Evidence / validation</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileSearch className="w-4 h-4" /> Documents / validation</CardTitle></CardHeader>
           <CardContent>
             {!(wo.evidence_keys || []).length ? (
-              <p className="text-sm text-gray-500">No evidence keys on this work order.</p>
+              <p className="text-sm text-gray-500">No linked document keys on this job.</p>
             ) : (
               <ul className="space-y-2 text-sm">
                 {(wo.evidence_keys || []).map((key) => {

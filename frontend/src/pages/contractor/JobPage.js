@@ -1,5 +1,5 @@
 /**
- * Secure job link page: contractor interacts with a single work order via token (no login).
+ * Secure job link page: contractor interacts with a single job via token (no login).
  * Token is in URL ?token=... from assignment email.
  * Optimised for fast first paint: preconnect to API host, layout shell while loading, next action first.
  */
@@ -179,7 +179,7 @@ export default function JobPage() {
 
   const handleDecline = useCallback(() => {
     if (!api || !workOrder?.work_order_id) return;
-    if (!window.confirm('Decline this assignment? The work order will be unassigned.')) return;
+    if (!window.confirm('Decline this assignment? The job will be unassigned.')) return;
     const wid = workOrder.work_order_id;
     fireContractorWorkflowUsage(api.postWorkflowUsage, {
       event_type: 'action_taken',
@@ -579,7 +579,7 @@ export default function JobPage() {
           <CardContent className="p-6 text-center">
             <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
             <h1 className="text-lg font-semibold text-gray-900">Invalid link</h1>
-            <p className="text-gray-600 mt-2">Use the link from your work order assignment email.</p>
+            <p className="text-gray-600 mt-2">Use the link from your job assignment email.</p>
           </CardContent>
         </Card>
       </div>
@@ -591,7 +591,7 @@ export default function JobPage() {
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-2">
           <Wrench className="w-6 h-6 text-electric-teal" />
-          <span className="font-semibold text-midnight-blue">Work order</span>
+          <span className="font-semibold text-midnight-blue">Job</span>
         </header>
         <main className="max-w-2xl mx-auto p-4">
           <a href="#job-next-action" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-white focus:px-3 focus:py-2 focus:rounded-md focus:shadow">
@@ -637,7 +637,7 @@ export default function JobPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-2">
         <Wrench className="w-6 h-6 text-electric-teal" />
-        <span className="font-semibold text-midnight-blue">Work order</span>
+        <span className="font-semibold text-midnight-blue">Job</span>
       </header>
 
       <main className="max-w-2xl mx-auto p-4">
@@ -716,7 +716,7 @@ export default function JobPage() {
 
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900">
           <span className="font-medium">Payment: </span>
-          Pleerity does not process contractor payments — follow up with the client after invoice approval.
+          Pleerity does not pay contractors—invoice the client after approval, then follow up with them directly.
         </div>
 
         {String(detail.pricing_mode || '').toUpperCase() === 'MAINTENANCE_INSPECTION_REQUIRED' &&
@@ -726,8 +726,8 @@ export default function JobPage() {
             role="status"
           >
             <span className="font-medium">Inspection first: </span>
-            This job uses inspect-then-quote. Complete the inspection visit, mark inspection complete, then submit your repair
-            quote. Avoid billable repair work until the client approves the quote in the platform.
+            Inspect-then-quote flow—finish the inspection visit, mark inspection complete, then submit your repair quote. Pause billable
+            repair until the client approves the quote here.
           </div>
         ) : null}
 
@@ -738,7 +738,7 @@ export default function JobPage() {
           >
             <p className="font-semibold text-slate-900">This job was cancelled</p>
             <p className="text-slate-600 mt-1">
-              You do not need to take any further action on this work order. Contact the client if that does not match what you
+              You do not need to take any further action on this job. Contact the client if that does not match what you
               expected.
             </p>
           </div>
@@ -819,7 +819,7 @@ export default function JobPage() {
 
             <div ref={evidenceSectionRef}>
               <label className="block text-sm font-medium text-gray-700 mb-1">Evidence</label>
-              <p className="text-xs text-gray-500 mb-2">PDF, images, or Word — max 20MB. Available after you accept the job.</p>
+              <p className="text-xs text-gray-500 mb-2">PDF, images, Word—max 20MB. Available after you accept the job.</p>
               {(detail.evidence_keys || []).length > 0 && (
                 <ul className="text-sm text-gray-700 mb-2 space-y-2 max-h-40 overflow-y-auto">
                   {(detail.evidence_keys || []).map((k) => {
@@ -920,7 +920,7 @@ export default function JobPage() {
                   : 'Submit invoice'}
             </h3>
             <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-4">
-              Pleerity coordinates work orders and invoice approval. Payment responsibility lies with the client. Pleerity does not
+              Pleerity coordinates jobs and invoice approval. Payment responsibility lies with the client. Pleerity does not
               process contractor payments. Follow up with the client for payment.
             </p>
             {workOrder ? (

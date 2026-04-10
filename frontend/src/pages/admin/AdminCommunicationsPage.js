@@ -226,7 +226,7 @@ export default function AdminCommunicationsPage() {
     setSampleRecipients([]);
     setConfirmSend(false);
     setAckHighRisk(false);
-    toast.message('Draft loaded — run preview before send or schedule');
+    toast.message('Draft loaded—run preview before sending.');
   };
 
   const deleteCurrentDraft = async () => {

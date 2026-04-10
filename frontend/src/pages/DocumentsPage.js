@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import api, { clientAPI, parseApiError } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
@@ -7,6 +7,7 @@ import EmptyState from '../components/EmptyState';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
+import { complianceActionToastOptions } from '../utils/confidenceUxCopy';
 import { 
   FileText, 
   Upload, 
@@ -34,7 +35,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
-import { normalizeRequirementCode } from '../domain/presentDomain';
+import { normalizeRequirementCode, documentListStatusLabel } from '../domain/presentDomain';
 
 const EVIDENCE_DOCUMENT_TYPES = [
   { value: '', label: 'Select type (optional)' },
@@ -43,7 +44,7 @@ const EVIDENCE_DOCUMENT_TYPES = [
   { value: 'EPC', label: 'EPC' },
   { value: 'Fire Risk Assessment', label: 'Fire Risk Assessment' },
   { value: 'Legionella Assessment', label: 'Legionella Assessment' },
-  { value: 'Smoke/CO evidence', label: 'Smoke/CO evidence' },
+  { value: 'Smoke/CO evidence', label: 'Smoke/CO documentation' },
   { value: 'Other', label: 'Other (link requirement later)' },
 ];
 
@@ -305,7 +306,7 @@ const DocumentsPage = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success('Download started');
+      toast.success('Download started—open the file from your device when it finishes.');
     } catch (err) {
       const data = err.response?.data;
       if (data instanceof Blob) {
@@ -329,7 +330,7 @@ const DocumentsPage = () => {
     setDeletingDocumentId(doc.document_id);
     try {
       await api.delete(`/documents/${doc.document_id}`);
-      toast.success('Document removed');
+      toast.success('Document removed from vault—linked requirements may show as missing until a new file is uploaded.');
       await fetchData();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to remove document');
@@ -370,10 +371,21 @@ const DocumentsPage = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      const uploadOutcomeMsg = res.data?.outcome?.message;
-      toast.success(uploadOutcomeMsg ? `${uploadOutcomeMsg}. Extracting details…` : 'Document uploaded. Extracting details…');
-      if (res.data?.outcome && typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: res.data.outcome }));
+      const outcome = res.data?.outcome;
+      const uploadOutcomeMsg = outcome?.message;
+      const base = uploadOutcomeMsg || 'Document uploaded — this helps keep your property compliant.';
+      toast.success(
+        base,
+        complianceActionToastOptions(outcome, {
+          fallbackDescription: 'Extraction runs next so renewal and overdue logic stay accurate.',
+        }),
+      );
+      if (typeof window !== 'undefined') {
+        const detail =
+          res.data?.outcome && typeof res.data.outcome === 'object'
+            ? { ...res.data.outcome, report_hint_eligible: true }
+            : { report_hint_eligible: true };
+        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail }));
       }
       const documentId = res.data?.document_id;
       const prop = properties.find(p => p.property_id === uploadForm.property_id);
@@ -407,7 +419,9 @@ const DocumentsPage = () => {
       });
       
       if (response.data.extraction?.status === 'completed' || response.data.success) {
-        toast.success('Document analyzed successfully');
+        toast.success(
+          'Extraction finished—review dates in the modal before applying so renewal and overdue logic stay accurate.',
+        );
         // Update the document in state
         setDocuments(docs => docs.map(d => 
           d.document_id === documentId 
@@ -482,8 +496,17 @@ const DocumentsPage = () => {
         confirmed_data: confirmedData
       });
 
-      const outcomeMsg = response.data?.outcome?.message;
-      toast.success(outcomeMsg || 'Extraction data applied successfully');
+      const outcome = response.data?.outcome;
+      const outcomeMsg = outcome?.message;
+      const base =
+        outcomeMsg ||
+        'Linked fields applied. This requirement can move toward verified compliance once rules confirm the dates.';
+      toast.success(
+        base,
+        complianceActionToastOptions(outcome, {
+          fallbackDescription: 'Linked fields applied—requirement status updates on the next recalculation.',
+        }),
+      );
       if (response.data?.outcome && typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: response.data.outcome }));
       }
@@ -535,12 +558,19 @@ const DocumentsPage = () => {
         `/properties/${confirmDetailsModal.property_id}/requirements/${confirmDetailsModal.requirement_id}`,
         payload
       );
-      toast.success('Details saved. Calendar and reminders will use the confirmed date.');
+      toast.success(
+        'Details saved. Calendar and reminders now use these dates—overdue views update on the next compliance recalculation.',
+      );
       setConfirmDetailsModal(null);
       setConfirmExpiryDate('');
       setConfirmIssueDate('');
       setConfirmCertificateNumber('');
       fetchData();
+      if (confirmDetailsModal.property_id && typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('compliance-outcome', { detail: { property_id: confirmDetailsModal.property_id } }),
+        );
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to save details');
     } finally {
@@ -573,18 +603,24 @@ const DocumentsPage = () => {
   };
 
   const getStatusBadge = (status) => {
+    const key = (status || '').toUpperCase();
     const badges = {
-      PENDING: { icon: Clock, color: 'bg-yellow-100 text-yellow-800' },
-      UPLOADED: { icon: Clock, color: 'bg-blue-100 text-blue-800' },
-      VERIFIED: { icon: CheckCircle, color: 'bg-green-100 text-green-800' },
-      REJECTED: { icon: XCircle, color: 'bg-red-100 text-red-800' }
+      PENDING: { icon: Clock, color: 'bg-yellow-100 text-yellow-800', label: 'Awaiting verification' },
+      UPLOADED: { icon: Clock, color: 'bg-blue-100 text-blue-800', label: 'Uploaded' },
+      VERIFIED: { icon: CheckCircle, color: 'bg-green-100 text-green-800', label: 'Confirmed' },
+      REJECTED: { icon: XCircle, color: 'bg-red-100 text-red-800', label: 'Rejected' },
+      EXPIRED: { icon: XCircle, color: 'bg-red-100 text-red-800', label: 'Expired' },
     };
-    const badge = badges[status] || badges.PENDING;
+    const badge = badges[key] || {
+      icon: Clock,
+      color: 'bg-gray-100 text-gray-700',
+      label: documentListStatusLabel(status),
+    };
     const Icon = badge.icon;
     return (
       <span data-testid={`doc-status-${status?.toLowerCase()}`} className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}>
         <Icon className="w-3 h-3" />
-        {status}
+        {badge.label}
       </span>
     );
   };
@@ -622,7 +658,7 @@ const DocumentsPage = () => {
       ? (doc.ai_extraction?.review_status === 'approved' ? 'CONFIRMED' : doc.ai_extraction?.review_status === 'rejected' ? 'REJECTED' : 'NEEDS_REVIEW')
       : doc.ai_extraction?.status === 'failed' ? 'FAILED' : 'PENDING');
     const config = {
-      PENDING: { label: 'Pending', color: 'bg-gray-100 text-gray-700' },
+      PENDING: { label: 'Awaiting verification', color: 'bg-gray-100 text-gray-700' },
       EXTRACTED: { label: 'Extracted', color: 'bg-teal-100 text-teal-800' },
       NEEDS_REVIEW: { label: 'Needs review', color: 'bg-amber-100 text-amber-800' },
       CONFIRMED: { label: 'Confirmed', color: 'bg-green-100 text-green-800' },
@@ -665,6 +701,22 @@ const DocumentsPage = () => {
     r.property_id === uploadForm.property_id
   );
 
+  const requirementsNeedingDocuments = useMemo(
+    () =>
+      requirements.filter((r) => {
+        const s = String(r.status || '').toUpperCase();
+        return s === 'PENDING' || s === 'OVERDUE' || s === 'MISSING' || s === 'MISSING_EVIDENCE';
+      }).length,
+    [requirements],
+  );
+
+  const selectedUploadRequirementLabel = useMemo(() => {
+    if (!uploadForm.requirement_id) return '';
+    const r = requirements.find((x) => x.requirement_id === uploadForm.requirement_id);
+    if (!r) return '';
+    return String(r.display_label || r.description || r.requirement_type || r.requirement_code || '').trim();
+  }, [uploadForm.requirement_id, requirements]);
+
   const filteredDocuments = documents.filter((doc) => {
     if (filterPropertyId && doc.property_id !== filterPropertyId) return false;
     if (filterStatus && (doc.status || '').toUpperCase() !== filterStatus.toUpperCase()) return false;
@@ -694,7 +746,10 @@ const DocumentsPage = () => {
           </Button>
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-midnight-blue">Documents</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Upload documents and link them to requirements. Awaiting verification shows until dates are confirmed.</p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Documents update requirement status and your compliance score once dates are confirmed. Command Center and Today
+              refresh after you act.
+            </p>
           </div>
         </div>
         <Button
@@ -709,6 +764,20 @@ const DocumentsPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto w-full">
+        {requirementsNeedingDocuments > 0 && (
+          <div
+            className="mb-6 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+            data-testid="documents-missing-requirements-banner"
+          >
+            <p className="text-sm text-amber-950">
+              <span className="font-semibold">{requirementsNeedingDocuments}</span>{' '}
+              {requirementsNeedingDocuments === 1 ? 'requirement needs' : 'requirements need'} a document.
+            </p>
+            <Button variant="outline" size="sm" className="border-amber-300 shrink-0 min-h-10" asChild>
+              <Link to="/requirements?status=OVERDUE_OR_MISSING">View missing requirements</Link>
+            </Button>
+          </div>
+        )}
         {upgradeRequiredDetail ? (
           <div className="flex flex-col items-center justify-center py-12" data-testid="documents-upgrade-required">
             <UpgradeRequired upgradeDetail={upgradeRequiredDetail} showBackToDashboard />
@@ -724,7 +793,13 @@ const DocumentsPage = () => {
                   <Upload className="w-5 h-5 shrink-0" />
                   Upload document
                 </CardTitle>
-                <p className="text-sm text-gray-500 mt-1">Need help? See: <Link to="/help?article=uploading-evidence" className="text-electric-teal hover:underline">Uploading Evidence guide</Link> in Help Centre.</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  This document is required to keep the selected property compliant once linked and verified. Need help?{' '}
+                  <Link to="/help?article=uploading-evidence" className="text-electric-teal hover:underline">
+                    Uploading documents
+                  </Link>{' '}
+                  in Help Centre.
+                </p>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleUpload} className="space-y-4" data-testid="upload-form">
@@ -763,6 +838,11 @@ const DocumentsPage = () => {
                         </option>
                       ))}
                     </select>
+                    {selectedUploadRequirementLabel ? (
+                      <p className="text-xs text-midnight-blue font-medium mt-2" data-testid="upload-requirement-context">
+                        Uploading this will update: {selectedUploadRequirementLabel}
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
@@ -918,9 +998,9 @@ const DocumentsPage = () => {
                         data-testid="filter-by-status"
                       >
                         <option value="">All statuses</option>
-                        <option value="PENDING">Pending</option>
+                        <option value="PENDING">Awaiting verification</option>
                         <option value="UPLOADED">Uploaded</option>
-                        <option value="VERIFIED">Verified</option>
+                        <option value="VERIFIED">Confirmed</option>
                         <option value="REJECTED">Rejected</option>
                       </select>
                       {(filterPropertyId || filterStatus) && (
@@ -1059,7 +1139,7 @@ const DocumentsPage = () => {
                             
                             {(doc.extraction_status === 'EXTRACTED' || doc.extraction_status === 'NEEDS_REVIEW') && (
                               <div className="mt-3 p-3 bg-teal-50 rounded-lg border border-teal-100">
-                                <p className="text-sm text-teal-800 mb-2">Evidence readiness extraction ready for review.</p>
+                                <p className="text-sm text-teal-800 mb-2">Extracted document details are ready for review.</p>
                                 <Button size="sm" onClick={() => openReviewModal(doc)} className="w-full" data-testid={`review-extraction-btn-${doc.document_id}`}>
                                   <FileCheck className="w-4 h-4 mr-2" />
                                   Review extraction

@@ -9,9 +9,9 @@ const ACTION_OUTCOME_RE = /^ACTION_OUTCOME:\s*([A-Za-z0-9_]+)$/i;
 /** Short titles for score_change_log.reason and similar. */
 const SCORE_REASON_TITLE = {
   CLIENT_JURISDICTION_UPDATED: 'Jurisdiction updated',
-  EXPIRY_RULE: 'Certificate expiry checked',
-  EXPIRY_JOB: 'Certificate expiry checked',
-  PROPERTY_UPDATED: 'Property details updated',
+  EXPIRY_RULE: 'Certificate expiry check',
+  EXPIRY_JOB: 'Certificate expiry check',
+  PROPERTY_UPDATED: 'Property updated',
   SCORE_RECALCULATED: 'Compliance score updated',
   SCHEDULED_PROPERTY_BATCH: 'System update completed',
   DOCUMENT_UPLOADED: 'Document uploaded',
@@ -28,16 +28,16 @@ const SCORE_REASON_TITLE = {
 /** Optional longer line (subtitle / table detail). */
 const SCORE_REASON_DESCRIPTION = {
   CLIENT_JURISDICTION_UPDATED: 'Your portfolio or property region changed, so scoring rules were re-applied.',
-  EXPIRY_RULE: 'Expiry rules were applied to obligation dates and the score was refreshed.',
+  EXPIRY_RULE: 'Expiry rules were applied to requirement dates and the score was refreshed.',
   EXPIRY_JOB: 'A scheduled check refreshed certificate dates and the compliance score.',
-  PROPERTY_UPDATED: 'Property details changed; obligations and scoring were refreshed where needed.',
-  SCORE_RECALCULATED: 'The compliance score was recalculated from your latest evidence and data.',
+  PROPERTY_UPDATED: 'Property details changed; requirements and scoring were refreshed where needed.',
+  SCORE_RECALCULATED: 'The compliance score was recalculated from your latest documents and data.',
   SCHEDULED_PROPERTY_BATCH: 'An automated compliance pass ran for this property.',
   DOCUMENT_UPLOADED: 'A document was added or updated.',
   DOCUMENT_DELETED: 'A document was removed.',
   DOCUMENT_REMOVED: 'A document was removed from the property file.',
-  REQUIREMENT_CHANGED: 'A requirement changed (status, dates, or evidence link).',
-  EXPIRY_ROLLOVER: 'A certificate or obligation moved into a new expiry window.',
+  REQUIREMENT_CHANGED: 'A requirement changed (status, dates, or document link).',
+  EXPIRY_ROLLOVER: 'A certificate or requirement moved into a new expiry window.',
   LAZY_BACKFILL: 'Stored compliance data was refreshed to match current records.',
   PROVISIONING: 'Initial compliance data was set up for your portfolio.',
   PROPERTY_ADDED: 'This property was added to your portfolio.',
@@ -50,32 +50,32 @@ const ACTION_OUTCOME_TITLE = {
   ISSUE_RESOLVED: 'Issue resolved',
   WORK_ORDER_COMPLETED: 'Job completed',
   REQUIREMENT_COMPLETED: 'Requirement completed',
-  RISK_SIGNAL_ACKNOWLEDGED: 'Risk signal acknowledged',
-  RISK_SIGNAL_RESOLVED: 'Risk signal resolved',
+  RISK_SIGNAL_ACKNOWLEDGED: 'Issue acknowledged',
+  RISK_SIGNAL_RESOLVED: 'Issue resolved',
 };
 
 const ACTION_OUTCOME_DESCRIPTION = {
   CERTIFICATE_UPLOADED: 'A certificate was added; the compliance score was refreshed.',
-  CERTIFICATE_VERIFIED: 'Certificate evidence was verified and the score was updated.',
+  CERTIFICATE_VERIFIED: 'Certificate document was verified and the score was updated.',
   ISSUE_CREATED: 'A maintenance or compliance issue was recorded.',
   ISSUE_RESOLVED: 'An issue was resolved and scoring was recalculated.',
-  WORK_ORDER_COMPLETED: 'A work order was marked complete and the score was updated.',
+  WORK_ORDER_COMPLETED: 'A job was marked complete and the score was updated.',
   REQUIREMENT_COMPLETED: 'A compliance requirement was satisfied.',
-  RISK_SIGNAL_ACKNOWLEDGED: 'A risk signal was acknowledged.',
-  RISK_SIGNAL_RESOLVED: 'A risk signal was closed out.',
+  RISK_SIGNAL_ACKNOWLEDGED: 'An issue was acknowledged.',
+  RISK_SIGNAL_RESOLVED: 'An issue was closed out.',
 };
 
 const SCORE_REASON_COPY_LEGACY = {
   ...SCORE_REASON_DESCRIPTION,
   SCHEDULED_RECALC: 'Scheduled processing updated compliance scoring.',
-  REQUIREMENT_STATUS_CHANGED: 'An obligation’s status or dates changed.',
+  REQUIREMENT_STATUS_CHANGED: 'A requirement’s status or dates changed.',
   CERT_DETAILS_CONFIRMED: 'Certificate or document details were confirmed.',
   DOCUMENT_STATUS_CHANGED: 'A document’s status changed.',
 };
 
 const LEDGER_EVENT_COPY = {
   SCHEDULED_RECALC: 'Scheduled processing updated compliance scoring.',
-  REQUIREMENT_STATUS_CHANGED: 'An obligation’s status or dates changed.',
+  REQUIREMENT_STATUS_CHANGED: 'A requirement’s status or dates changed.',
   CERT_DETAILS_CONFIRMED: 'Certificate or document details were confirmed.',
   DOCUMENT_UPLOADED: 'A document was added or updated.',
   DOCUMENT_STATUS_CHANGED: 'A document’s status changed.',
@@ -109,7 +109,7 @@ export function presentScoreChangeReason(raw) {
     }
     return {
       title: FALLBACK_TITLE,
-      description: 'Your compliance position was refreshed after a workflow outcome was recorded.',
+      description: 'Your compliance position was refreshed after an outcome was recorded.',
     };
   }
 
@@ -133,7 +133,7 @@ function narrativeForLedgerOrScore(eventType, category) {
   if (SCORE_REASON_COPY_LEGACY[k]) return SCORE_REASON_COPY_LEGACY[k];
   if (LEDGER_EVENT_COPY[k]) return LEDGER_EVENT_COPY[k];
   if (category === 'EVIDENCE') return 'Document or certificate activity was recorded for this property.';
-  if (category === 'COMPLIANCE') return 'Compliance obligations or scoring were updated.';
+  if (category === 'COMPLIANCE') return 'Compliance requirements or scoring were updated.';
   if (category === 'MAINTENANCE') return 'A job or maintenance milestone was recorded.';
   return FALLBACK_DESCRIPTION;
 }

@@ -3,6 +3,8 @@
  * Rejects hash-only links, external URLs, and paths with broken ID segments.
  */
 
+import { CLIENT_INBOX_JOB_FALLBACK_CTA } from './jobWorkflowUi';
+
 function pathPartHasBadIdSegment(pathOnly) {
   if (!pathOnly) return true;
   return pathOnly.includes('/undefined') || /\/null(\/|$)/.test(pathOnly);
@@ -112,6 +114,35 @@ export function resolveTenantPropertyPath(propertyId) {
   const id = normalizeRouteId(propertyId);
   if (!id) return '/tenant';
   return resolveClientPortalPath(`/tenant/properties/${id}`, '/tenant');
+}
+
+/** Short label for workspace links from a resolved client-portal path. */
+export function executionWorkspaceLabelForPath(rawPath) {
+  const pathOnly = String(rawPath || '').split('?')[0];
+  if (!pathOnly || pathOnly === '/today' || pathOnly === '/dashboard') return null;
+  if (pathOnly.startsWith('/documents')) return 'Documents';
+  if (pathOnly.startsWith('/requirements')) return 'Requirements';
+  if (pathOnly.startsWith('/operations/jobs/')) return 'Job';
+  if (pathOnly.startsWith('/operations/work-orders')) return 'Jobs';
+  if (pathOnly.startsWith('/operations/issues')) return 'Issues';
+  if (pathOnly.startsWith('/operations/approvals')) return 'Approvals';
+  return null;
+}
+
+/**
+ * CTA copy for secondary navigation from Today / Command Center into another area.
+ * Use “Continue in …” for hub/list workspaces; single-job path uses same fallback as inbox when task context is unavailable here.
+ */
+export function continueWorkspaceCtaLabel(rawPath) {
+  const pathOnly = String(rawPath || '').split('?')[0];
+  if (!pathOnly || pathOnly === '/today' || pathOnly === '/dashboard') return null;
+  if (pathOnly.startsWith('/documents')) return 'Continue in Documents';
+  if (pathOnly.startsWith('/requirements')) return 'Continue in Requirements';
+  if (/^\/operations\/jobs\/[^/]+/.test(pathOnly)) return CLIENT_INBOX_JOB_FALLBACK_CTA;
+  if (pathOnly.startsWith('/operations/work-orders')) return 'Continue in Jobs';
+  if (pathOnly.startsWith('/operations/issues')) return 'Continue in Issues';
+  if (pathOnly.startsWith('/operations/approvals')) return 'Continue in Approvals';
+  return null;
 }
 
 /**

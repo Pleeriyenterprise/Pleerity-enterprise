@@ -162,7 +162,7 @@ export default function PropertyOperatingHub({
             <CardContent className="py-6 text-sm text-gray-600">
               <p className="font-medium text-midnight-blue">Nothing urgent from the command center for this property.</p>
               <p className="mt-2 text-xs text-gray-500">
-                If obligations are overdue or jobs are open, they are listed below. You can still add documents or create a work order from the header.
+                If requirements are overdue or jobs are open, they are listed below. You can still add documents or create a job from the header.
               </p>
             </CardContent>
           </Card>
@@ -200,7 +200,7 @@ export default function PropertyOperatingHub({
                           if (hasFeature('maintenance_workflows')) {
                             try {
                               await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
-                              toast.success('Work order created');
+                              toast.success('Job created');
                               loadRiskSignals();
                               loadWorkOrders();
                             } catch (e) {
@@ -269,7 +269,7 @@ export default function PropertyOperatingHub({
           </ul>
           {(riskSignalsData.signals || []).filter((s) => (s.status || 'active') === 'active').length > 2 && (
             <Button type="button" variant="outline" className={cn(portalSecondaryButtonClass, 'mt-3 w-full sm:w-auto')} onClick={() => onSelectTab(TAB_RISK_SIGNALS)}>
-              All {PORTAL_COPY.riskSignal.toLowerCase()}s
+              View all flagged issues
             </Button>
           )}
         </section>
@@ -308,8 +308,8 @@ export default function PropertyOperatingHub({
         {hubPrioritizedRequirements.length === 0 ? (
           <Card className="border border-gray-200">
             <CardContent className="py-8 text-center text-sm text-gray-600">
-              <p className="font-medium text-midnight-blue">No obligations in a critical state.</p>
-              <p className="mt-2 text-xs text-gray-500">Open Compliance for the full obligations matrix and filters.</p>
+              <p className="font-medium text-midnight-blue">No requirements in a critical state.</p>
+              <p className="mt-2 text-xs text-gray-500">Open Compliance for the full requirements matrix and filters.</p>
               <Button type="button" variant="outline" className={cn(portalSecondaryButtonClass, 'mt-4')} onClick={() => onSelectTab(TAB_COMPLIANCE)}>
                 Full {PORTAL_COPY.requirements.toLowerCase()}
               </Button>
@@ -399,7 +399,7 @@ export default function PropertyOperatingHub({
           </ul>
         )}
         <Button type="button" variant="outline" className={cn(portalSecondaryButtonClass, 'mt-4 w-full sm:w-auto')} onClick={() => onSelectTab(TAB_COMPLIANCE)}>
-          Full obligations matrix
+          Full requirements matrix
         </Button>
       </section>
 
@@ -416,7 +416,7 @@ export default function PropertyOperatingHub({
                 {hubActiveWorkOrders.length === 0 ? (
                   <>
                     <p className="font-medium text-midnight-blue">No open jobs.</p>
-                    <p className="text-xs text-gray-500">Create a work order from the header when you need one. Full list and history live under Jobs & issues.</p>
+                    <p className="text-xs text-gray-500">Create a job from the header when you need one. Full list and history live under Jobs & issues.</p>
                   </>
                 ) : (
                   <>

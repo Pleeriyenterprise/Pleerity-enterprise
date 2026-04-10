@@ -69,13 +69,166 @@ function navigateForEvent(navigate, event) {
   if (rid && pid) {
     navigate(
       resolveClientPortalPath(
-        buildEntityRoute({ requirement_id: rid, property_id: pid, mode: 'upload' }, '/documents'),
-        '/documents'
+        buildEntityRoute({ requirement_id: rid, property_id: pid, mode: 'requirement' }, '/requirements'),
+        '/requirements'
       )
     );
     return;
   }
   navigate('/calendar');
+}
+
+function countDeadlineAttentionThisWeek(eventsByDate) {
+  if (!eventsByDate || typeof eventsByDate !== 'object') return 0;
+  const today = new Date();
+  const y = today.getFullYear();
+  const mo = String(today.getMonth() + 1).padStart(2, '0');
+  const da = String(today.getDate()).padStart(2, '0');
+  const todayKey = `${y}-${mo}-${da}`;
+  const todayMs = new Date(`${todayKey}T12:00:00`).getTime();
+  const weekEndMs = todayMs + 7 * 24 * 60 * 60 * 1000;
+  let count = 0;
+  for (const [dateKey, list] of Object.entries(eventsByDate)) {
+    const dk = String(dateKey).slice(0, 10);
+    if (!dk) continue;
+    const dm = new Date(`${dk}T12:00:00`).getTime();
+    if (Number.isNaN(dm) || dm < todayMs || dm >= weekEndMs) continue;
+    for (const e of list || []) {
+      const et = e?.event_type;
+      if (et === 'requirement_overdue' || et === 'requirement_expiring_soon') {
+        count += 1;
+        continue;
+      }
+      const sev = String(e?.severity || '').toLowerCase();
+      if (sev === 'critical' || sev === 'high') count += 1;
+    }
+  }
+  return count;
+}
+
+function countTimelineAttentionThisWeek(events) {
+  if (!Array.isArray(events)) return 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(today);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  let count = 0;
+  for (const e of events) {
+    let t = null;
+    if (e.datetime_utc) {
+      t = new Date(e.datetime_utc);
+    } else if (e.date) {
+      t = new Date(`${String(e.date).slice(0, 10)}T12:00:00`);
+    }
+    if (!t || Number.isNaN(t.getTime())) continue;
+    if (t < today || t >= weekEnd) continue;
+    const et = e.event_type;
+    if (et === 'requirement_overdue' || et === 'requirement_expiring_soon') {
+      count += 1;
+      continue;
+    }
+    const sev = String(e.severity || '').toLowerCase();
+    if (sev === 'critical' || sev === 'high') count += 1;
+  }
+  return count;
+}
+
+function calendarWeekWindowMs() {
+  const today = new Date();
+  const y = today.getFullYear();
+  const mo = String(today.getMonth() + 1).padStart(2, '0');
+  const da = String(today.getDate()).padStart(2, '0');
+  const todayKey = `${y}-${mo}-${da}`;
+  const todayMs = new Date(`${todayKey}T12:00:00`).getTime();
+  const weekEndMs = todayMs + 7 * 24 * 60 * 60 * 1000;
+  return { todayMs, weekEndMs };
+}
+
+function eventDecisionTier(event) {
+  const et = event?.event_type;
+  const cat = String(event?.event_category || '');
+  if (et === 'requirement_overdue') return 0;
+  if (et === 'requirement_expiring_soon') return 1;
+  if (cat === 'requirement') {
+    if (et === 'requirement_valid' || String(event?.status || '').toUpperCase() === 'COMPLIANT') return 10;
+    const sev = String(event?.severity || '').toLowerCase();
+    if (sev === 'critical' || sev === 'high') return 2;
+    return 3;
+  }
+  if (cat === 'compliance_job') return 4;
+  if (cat === 'scheduled_job') return 5;
+  return 6;
+}
+
+function headlineForWeekTopEvent(event) {
+  const title = String(event?.title || 'Requirement').trim() || 'Requirement';
+  const et = event?.event_type;
+  const cat = String(event?.event_category || '');
+  if (et === 'requirement_overdue') return `${title} is overdue — act now`;
+  if (et === 'requirement_expiring_soon') return `${title} is due soon — resolve before it expires`;
+  if (cat === 'scheduled_job' || cat === 'compliance_job') return `${title} is scheduled this week — complete prep`;
+  const sev = String(event?.severity || '').toLowerCase();
+  if (sev === 'critical' || sev === 'high') return `${title} needs attention this week — resolve it next`;
+  return `${title} is on your timeline this week — plan the next step`;
+}
+
+function collectCalendarGridWeekRows(eventsByDate) {
+  const { todayMs, weekEndMs } = calendarWeekWindowMs();
+  const rows = [];
+  if (!eventsByDate || typeof eventsByDate !== 'object') return rows;
+  for (const [dateKey, list] of Object.entries(eventsByDate)) {
+    const dk = String(dateKey).slice(0, 10);
+    if (!dk) continue;
+    const dm = new Date(`${dk}T12:00:00`).getTime();
+    if (Number.isNaN(dm) || dm < todayMs || dm >= weekEndMs) continue;
+    for (const e of list || []) {
+      rows.push({ event: e, dateKey: dk });
+    }
+  }
+  return rows;
+}
+
+function collectTimelineWeekRows(events) {
+  if (!Array.isArray(events)) return [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(today);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const rows = [];
+  for (const e of events) {
+    let t = null;
+    if (e.datetime_utc) t = new Date(e.datetime_utc);
+    else if (e.date) t = new Date(`${String(e.date).slice(0, 10)}T12:00:00`);
+    if (!t || Number.isNaN(t.getTime())) continue;
+    if (t < today || t >= weekEnd) continue;
+    rows.push({ event: e });
+  }
+  return rows;
+}
+
+function sortWeekRowsByDecisionPriority(rows) {
+  const sevOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+  return [...rows].sort((a, b) => {
+    const ta = eventDecisionTier(a.event);
+    const tb = eventDecisionTier(b.event);
+    if (ta !== tb) return ta - tb;
+    const sa = sevOrder[String(a.event?.severity || '').toLowerCase()] ?? 4;
+    const sb = sevOrder[String(b.event?.severity || '').toLowerCase()] ?? 4;
+    if (sa !== sb) return sa - sb;
+    return String(a.event?.title || '').localeCompare(String(b.event?.title || ''), undefined, { sensitivity: 'base' });
+  });
+}
+
+function buildCalendarWeekDecisionCopy(view, eventsByDate, timelineEvents) {
+  const rawRows = view === 'calendar' ? collectCalendarGridWeekRows(eventsByDate) : collectTimelineWeekRows(timelineEvents);
+  if (!rawRows.length) return null;
+  const sorted = sortWeekRowsByDecisionPriority(rawRows);
+  const top = sorted[0]?.event;
+  if (!top) return null;
+  const primary = headlineForWeekTopEvent(top);
+  const more = sorted.length - 1;
+  const secondary = more > 0 ? `+ ${more} more ${more === 1 ? 'deadline' : 'deadlines'} this week` : null;
+  return { primary, secondary };
 }
 
 /** Month cells show a capped list; sort so critical/high appear first and are not hidden behind "+N more". */
@@ -283,6 +436,31 @@ const CalendarPage = () => {
 
   const summary = view === 'calendar' ? calendarData?.summary : timelineData?.summary;
 
+  const weekAttentionCount = useMemo(() => {
+    if (view === 'calendar') return countDeadlineAttentionThisWeek(calendarData?.events_by_date);
+    return countTimelineAttentionThisWeek(timelineData?.events);
+  }, [view, calendarData?.events_by_date, timelineData?.events]);
+
+  const urgentRequirementMonth = (summary?.overdue_count ?? 0) + (summary?.expiring_soon_count ?? 0);
+
+  const weekDecisionCopy = useMemo(
+    () => buildCalendarWeekDecisionCopy(view, calendarData?.events_by_date, timelineData?.events),
+    [view, calendarData?.events_by_date, timelineData?.events]
+  );
+
+  const deadlineContextCalmMonth = useMemo(() => {
+    if (
+      view === 'calendar' &&
+      summary &&
+      (summary.total_events ?? 0) > 0 &&
+      urgentRequirementMonth === 0 &&
+      weekAttentionCount === 0
+    ) {
+      return 'No urgent deadlines this month.';
+    }
+    return null;
+  }, [summary, view, urgentRequirementMonth, weekAttentionCount]);
+
   return (
     <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="calendar-page">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
@@ -303,7 +481,8 @@ const CalendarPage = () => {
                   <span className="truncate">Compliance timeline</span>
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                  Obligation dates follow requirement evidence (confirmed, then extracted, then legacy due). Visits appear only when a work order has a stored scheduled visit time.
+                  Upcoming compliance deadlines and scheduled visits. Requirement dates follow linked documents (confirmed,
+                  then extracted, then legacy due). Visits appear when a job has a stored scheduled visit time.
                 </p>
               </div>
             </div>
@@ -372,6 +551,26 @@ const CalendarPage = () => {
               Urgent only
             </label>
           </div>
+          {weekDecisionCopy ? (
+            <div
+              className="mt-3 text-sm text-midnight-blue bg-teal-50/80 border border-teal-100 rounded-lg px-3 py-2 space-y-1"
+              role="status"
+              data-testid="calendar-deadline-context"
+            >
+              <p className="font-semibold leading-snug">{weekDecisionCopy.primary}</p>
+              {weekDecisionCopy.secondary ? (
+                <p className="text-xs text-midnight-blue/85 font-medium">{weekDecisionCopy.secondary}</p>
+              ) : null}
+            </div>
+          ) : deadlineContextCalmMonth ? (
+            <p
+              className="mt-3 text-sm text-midnight-blue font-medium bg-slate-50 border border-slate-100 rounded-lg px-3 py-2"
+              role="status"
+              data-testid="calendar-deadline-context-calm"
+            >
+              {deadlineContextCalmMonth}
+            </p>
+          ) : null}
         </div>
       </header>
 
@@ -413,7 +612,7 @@ const CalendarPage = () => {
                 </div>
                 <div className="bg-red-50 rounded-xl p-3 sm:p-4 border border-red-200">
                   <p className="text-xl sm:text-2xl font-bold text-red-600">{summary.overdue_count ?? 0}</p>
-                  <p className="text-xs sm:text-sm text-red-800">Overdue obligations</p>
+                  <p className="text-xs sm:text-sm text-red-800">Overdue requirements</p>
                 </div>
                 <div className="bg-amber-50 rounded-xl p-3 sm:p-4 border border-amber-200">
                   <p className="text-xl sm:text-2xl font-bold text-amber-600">{summary.expiring_soon_count ?? 0}</p>
@@ -432,7 +631,7 @@ const CalendarPage = () => {
                 <div>
                   <p className="font-medium text-amber-800">No events in this range</p>
                   <p className="text-sm text-amber-800 mt-1">
-                    Adjust filters or add requirement dates (confirmed or extracted) and scheduled visits on work orders.
+                    Adjust filters or add requirement dates (confirmed or extracted) and scheduled visits on jobs.
                   </p>
                 </div>
               </div>
@@ -532,7 +731,7 @@ const CalendarPage = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-green-500 shrink-0" />
-                  <span>Valid obligation</span>
+                  <span>Valid requirement</span>
                 </div>
               </CardContent>
             </Card>

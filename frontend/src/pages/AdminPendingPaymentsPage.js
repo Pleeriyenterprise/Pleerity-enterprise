@@ -577,7 +577,7 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>
                   The organisation must first be archived (or purge-eligible). Permanent delete removes the client document only when
-                  Stripe, subscriptions, properties, contractors, documents, work orders, audit history, and other dependencies are
+                  Stripe, subscriptions, properties, contractors, documents, jobs, audit history, and other dependencies are
                   clear — the check below lists exact blockers.
                 </p>
                 {deleteCheckLoading ? (

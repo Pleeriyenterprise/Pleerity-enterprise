@@ -52,7 +52,7 @@ const SMSNotificationsSection = ({ preferences, setPreferences, handleToggle, se
       const detail = error.response?.data?.detail;
       const code = error.response?.data?.code;
       if (error.response?.status === 503 || code === 'SMS_UNAVAILABLE') {
-        toast.error(detail || 'SMS verification is temporarily unavailable. Please try again later or contact support.');
+        toast.error(detail || 'SMS verification is temporarily unavailable—try again shortly; contact support if it persists.');
       } else {
         toast.error(detail || 'Failed to send verification code');
       }

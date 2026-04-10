@@ -35,10 +35,16 @@ export function getEvidenceStatus(status, row) {
   const key = (status || '').toUpperCase().trim();
   const linked = !!(row && row.evidence_doc_id);
   if (key === 'PENDING' && linked) return { ...VERIFY_CHIP, subline: awaitingVerificationSubline() };
-  if (key === 'MISSING' || key === 'MISSING_EVIDENCE' || (key === 'PENDING' && !linked)) return NO_DOC_CHIP;
+  if (key === 'MISSING' || key === 'MISSING_EVIDENCE' || (key === 'PENDING' && !linked)) {
+    return { ...NO_DOC_CHIP, subline: 'Missing document — blocking compliance.' };
+  }
   if (key === 'PENDING_VERIFICATION') {
     const cfg = EVIDENCE_STATUS_CONFIG.PENDING_VERIFICATION;
     return { ...cfg, subline: awaitingVerificationSubline() };
+  }
+  if (key === 'OVERDUE' || key === 'EXPIRED' || key === 'FAILED') {
+    const cfg = EVIDENCE_STATUS_CONFIG[key] || EVIDENCE_STATUS_CONFIG.OVERDUE;
+    return { ...cfg, subline: 'Overdue — affecting compliance.' };
   }
   return EVIDENCE_STATUS_CONFIG[key] || EVIDENCE_STATUS_CONFIG.PENDING;
 }

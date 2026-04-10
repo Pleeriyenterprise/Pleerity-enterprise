@@ -64,7 +64,7 @@ export default function AdminRiskDashboardPage() {
       .then((res) => setSummary(res.data))
       .catch(() => {
         setSummary(null);
-        toast.error('Failed to load risk signals');
+        toast.error('Failed to load flagged issues');
       })
       .finally(() => setLoading(false));
   }, [clientFilter, riskLevelFilter, riskTypeFilter, statusFilter]);
@@ -320,7 +320,7 @@ export default function AdminRiskDashboardPage() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-gray-700">Response time risks</CardTitle>
-                  <CardDescription>Work orders past agreed response targets</CardDescription>
+                  <CardDescription>Jobs past agreed response targets</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {slaBreachRisks.length ? (

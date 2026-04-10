@@ -279,7 +279,7 @@ export default function ClientOrdersPage() {
       toast.success('Receipt download started');
     } catch (error) {
       console.error('Receipt download failed:', error);
-      toast.error('Receipt download failed. Try again or use the link from your confirmation email.');
+      toast.error('Receipt download failed—retry, then use the link in your confirmation email.');
     }
   };
 

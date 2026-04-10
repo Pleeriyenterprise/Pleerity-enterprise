@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
@@ -40,13 +40,18 @@ import {
 } from 'lucide-react';
 import { resolveNotificationTarget } from '../utils/notificationDeepLink';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import {
+  COMPLIANCE_REPORT_HINT_COOLDOWN_MS,
+  shouldSuggestComplianceReportHint,
+  complianceReportNudgeToastCopy,
+} from '../utils/confidenceUxCopy';
 
 // Operations sub-items (feature-gated). Shown under Operations group; no standalone Maintenance/Contractors.
 const OPERATIONS_CHILDREN = [
   { path: '/operations/issues', label: 'Issues', icon: AlertCircle, feature: 'maintenance_workflows' },
   { path: '/operations/work-orders', label: PORTAL_COPY.jobs, icon: Wrench, feature: 'maintenance_workflows' },
   { path: '/operations/contractors', label: 'Contractors', icon: Briefcase, feature: 'contractor_network' },
-  { path: '/operations/risk-signals', label: 'Risk Signals', icon: TrendingUp, feature: 'predictive_maintenance' },
+  { path: '/operations/risk-signals', label: 'Flagged issues', icon: TrendingUp, feature: 'predictive_maintenance' },
   { path: '/operations/approvals', label: 'Approvals', icon: ClipboardCheck, feature: 'invoicing' },
 ];
 
@@ -98,6 +103,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const [portalTrust, setPortalTrust] = useState(null);
   const [portalTrustLoading, setPortalTrustLoading] = useState(false);
   const [portalTrustError, setPortalTrustError] = useState(false);
+  const complianceReportHintCooldownRef = useRef(0);
 
   const loadInAppNotifications = () => {
     if (isTenant || !isClient) return;
@@ -150,6 +156,23 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient, isTenant, user?.portal_user_id]);
+
+  useEffect(() => {
+    if (!isClient || isTenant) return undefined;
+    const reportsUnlocked = hasFeature('reports_pdf') || hasFeature('reports_csv');
+    if (!reportsUnlocked) return undefined;
+    const onOutcome = (ev) => {
+      const detail = ev && typeof ev === 'object' ? ev.detail : undefined;
+      if (!detail || !shouldSuggestComplianceReportHint(detail)) return;
+      const now = Date.now();
+      if (now - complianceReportHintCooldownRef.current < COMPLIANCE_REPORT_HINT_COOLDOWN_MS) return;
+      complianceReportHintCooldownRef.current = now;
+      const { title, description } = complianceReportNudgeToastCopy(detail);
+      toast.info(title, { description, duration: 9000 });
+    };
+    window.addEventListener('compliance-outcome', onOutcome);
+    return () => window.removeEventListener('compliance-outcome', onOutcome);
+  }, [isClient, isTenant, hasFeature]);
 
   useEffect(() => {
     if (notifOpen) loadInAppNotifications();

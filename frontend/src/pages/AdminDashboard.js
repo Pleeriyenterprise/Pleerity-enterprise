@@ -4546,11 +4546,11 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
         data.text().then((text) => {
           try {
             const j = JSON.parse(text);
-            toast.error(j.detail || 'Document not found or file missing');
+            toast.error(j.detail || 'Document file unavailable');
           } catch {
-            toast.error('Document not found or file missing');
+            toast.error('Document file unavailable');
           }
-        }).catch(() => toast.error('Document not found or file missing'));
+        }).catch(() => toast.error('Document file unavailable'));
       } else {
         toast.error(data?.detail || 'Failed to open document');
       }
@@ -4577,11 +4577,11 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
         data.text().then((text) => {
           try {
             const j = JSON.parse(text);
-            toast.error(j.detail || 'Document not found or file missing');
+            toast.error(j.detail || 'Document file unavailable');
           } catch {
-            toast.error('Document not found or file missing');
+            toast.error('Document file unavailable');
           }
-        }).catch(() => toast.error('Document not found or file missing'));
+        }).catch(() => toast.error('Document file unavailable'));
       } else {
         toast.error(data?.detail || 'Failed to download document');
       }
@@ -4687,7 +4687,7 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
       {/* Operational Priorities / Action Queue */}
       <div className="bg-white rounded-xl border border-gray-200 p-6" data-testid="admin-priority-actions-panel">
         <h3 className="text-lg font-semibold text-midnight-blue mb-2">Operational Priorities</h3>
-        <p className="text-sm text-gray-500 mb-4">Urgent items across compliance, work orders, incidents, approvals, and risk</p>
+        <p className="text-sm text-gray-500 mb-4">Urgent items across compliance, jobs, incidents, approvals, and risk</p>
         <div className="flex flex-wrap items-center gap-4 mb-4">
           <label className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Filter by client</span>

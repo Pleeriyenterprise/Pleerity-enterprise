@@ -18,9 +18,18 @@
  *   Clears overrides so the task can reappear; does not mutate underlying requirement/job/document state.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { inboxTitleForDisplay, requirementLabel, titleFromSnake } from '../domain/presentDomain';
+import {
+  inboxTitleForDisplay,
+  requirementLabel,
+  inboxSourceTypeLabel,
+  inboxTimelineActionLabel,
+} from '../domain/presentDomain';
 import domainLabels from '../domain/domain_labels.json';
-import { workOrderKindClientLabel } from '../utils/jobWorkflowUi';
+import {
+  workOrderKindClientLabel,
+  clientInboxJobCtaLabel,
+  CLIENT_INBOX_JOB_FALLBACK_CTA,
+} from '../utils/jobWorkflowUi';
 import { useNavigate, Link } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -40,7 +49,11 @@ import {
 import { Loader2, LayoutList, Info, ExternalLink, Bell, EyeOff, CheckCircle, RotateCcw, History, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { TodayUrgencyRow } from '../components/client/UrgencyDisplay';
-import { resolveClientPortalPath } from '../utils/clientPortalNavigation';
+import {
+  resolveClientPortalPath,
+  continueWorkspaceCtaLabel,
+  isSafeClientPortalPath,
+} from '../utils/clientPortalNavigation';
 import { portfolioJurisdictionBannerState } from '../utils/jurisdictionUiPolicy';
 import { resolveTaskCta } from '../utils/ctaRegistry';
 import {
@@ -49,6 +62,13 @@ import {
   JURISDICTION_FALLBACK_CTA,
   JURISDICTION_PORTFOLIO_REMINDER_COMPACT,
 } from '../utils/jurisdictionComplianceCopy';
+import { compareTopPriority } from '../utils/clientTopPriorityRanking';
+import {
+  TODAY_PAGE_CONFIDENCE_LINE,
+  todayTaskConfidenceLine,
+  todayTaskSourceAttributionLine,
+  shouldShowTodayTaskConfidence,
+} from '../utils/confidenceUxCopy';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All' },
@@ -75,17 +95,7 @@ function formatWhen(iso) {
 }
 
 function sourceTypeLabel(st) {
-  const map = {
-    requirement: 'Requirement',
-    risk_signal: 'Issue',
-    work_order: 'Job',
-    approval: 'Approval',
-    issue: 'Maintenance issue',
-    priority_action: 'Suggested action',
-  };
-  if (map[st]) return map[st];
-  if (st && /^[a-z][a-z0-9_]*$/i.test(st)) return titleFromSnake(st);
-  return st ? titleFromSnake(String(st).toLowerCase()) : 'Task';
+  return inboxSourceTypeLabel(st);
 }
 
 /** Badge on Today cards: job kind from metadata when source is a work order, else friendly source. */
@@ -98,19 +108,38 @@ function todayTaskCategoryBadge(task) {
   return sourceTypeLabel(st);
 }
 
+const TODAY_GENERIC_JOB_KEYS = new Set(['view job', 'open job']);
+
 const TODAY_CTA_LABEL_MAP = {
-  'view job': 'Manage job',
-  'open job': 'Manage job',
-  'review risk signal': 'Review issue',
-  'view risk signal': 'Review issue',
+  'view job': CLIENT_INBOX_JOB_FALLBACK_CTA,
+  'open job': CLIENT_INBOX_JOB_FALLBACK_CTA,
+  'review risk signal': 'Review flagged issue',
+  'view risk signal': 'Review flagged issue',
 };
 
+/**
+ * Today card primary CTA label (server `primary_action_label` / business_actions).
+ * Order: (1) generic job keys → clientInboxJobCtaLabel || CLIENT_INBOX_JOB_FALLBACK_CTA; (2) other map; (3) empty + work_order → same; (4) empty → Continue in Today; (5) raw candidate.
+ */
 function sanitizeTodayCtaLabel(primaryLabel, task) {
   const fromBiz = (task?.business_actions || []).find((a) => a.primary === true || a.id === 'open_primary');
   const candidate = String(primaryLabel || fromBiz?.label || '').trim();
   const key = candidate.toLowerCase();
-  if (TODAY_CTA_LABEL_MAP[key]) return TODAY_CTA_LABEL_MAP[key];
-  if (!candidate) return 'Manage job';
+  if (TODAY_CTA_LABEL_MAP[key]) {
+    const mapped = TODAY_CTA_LABEL_MAP[key];
+    if (TODAY_GENERIC_JOB_KEYS.has(key) && task) {
+      const specific = clientInboxJobCtaLabel(task);
+      if (specific) return specific;
+      return CLIENT_INBOX_JOB_FALLBACK_CTA;
+    }
+    return mapped;
+  }
+  if (!candidate) {
+    if (String(task?.source_type || '').toLowerCase() === 'work_order') {
+      return clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA;
+    }
+    return 'Continue in Today';
+  }
   return candidate;
 }
 
@@ -132,48 +161,7 @@ const GENERIC_TODAY_INBOX_TITLES = new Set(
   Object.values(domainLabels.today_inbox_action_titles || {}).map((s) => String(s).trim().toLowerCase()),
 );
 
-/**
- * Rank for “Top priority — act now” (subset of urgent): overdue compliance → missing evidence → risk signals → rest.
- * Uses existing unified task fields only (`metadata.action_type`, `filter_tags`, `overdue_days`, `urgency`, `impact_score`).
- */
-function topPriorityRank(task) {
-  const meta = task.metadata || {};
-  const at = String(meta.action_type || '');
-  const tags = Array.isArray(task.filter_tags) ? task.filter_tags : [];
-  const odDays = Number(task.overdue_days || 0);
-  const isCompliance = task.source_type === 'requirement' || tags.includes('compliance');
-  const urgentBand = String(task.urgency || '').toLowerCase();
-
-  let tier = 3;
-  if (at === 'overdue_compliance' || (isCompliance && (odDays > 0 || urgentBand === 'overdue'))) {
-    tier = 0;
-  } else if (at === 'missing_document' || (isCompliance && task.primary_action_type === 'upload_evidence')) {
-    tier = 1;
-  } else if (task.source_type === 'risk_signal') {
-    tier = 2;
-  }
-
-  const sev = String(meta.severity || task.urgency_level || '').toLowerCase();
-  const sevOrder = sev === 'critical' ? 0 : sev === 'high' ? 1 : sev === 'medium' ? 2 : 3;
-
-  return {
-    tier,
-    od: -odDays,
-    sevOrder,
-    impact: -Number(task.impact_score || 0),
-  };
-}
-
-function compareTopPriority(a, b) {
-  const ra = topPriorityRank(a);
-  const rb = topPriorityRank(b);
-  if (ra.tier !== rb.tier) return ra.tier - rb.tier;
-  if (ra.tier === 0 && ra.od !== rb.od) return ra.od - rb.od;
-  if (ra.sevOrder !== rb.sevOrder) return ra.sevOrder - rb.sevOrder;
-  return ra.impact - rb.impact;
-}
-
-/** Decision-layer title: replace generic inbox titles using requirementLabel + existing description/job copy. */
+/** Decision-layer title: `{Name} — {state}` when the inbox title is generic. */
 function todayDecisionLayerTitle(task) {
   const base = inboxTitleForDisplay(task);
   const rawTitle = String(task?.title || '').trim();
@@ -182,25 +170,32 @@ function todayDecisionLayerTitle(task) {
 
   const meta = task.metadata || {};
   const code = meta.requirement_code || meta.requirement_type;
-  const u = String(task.urgency || '').toLowerCase();
+  const u = String(task.urgency || task.urgency_level || '').toLowerCase();
   const od = Number(task.overdue_days || 0) > 0;
+  const timing = String(meta.timing_label || '').trim();
+  const stateFromTiming = timing ? timing.charAt(0).toLowerCase() + timing.slice(1) : '';
 
   if (task.source_type === 'work_order') {
     const jobLine = String(task.description || '').trim();
-    if (jobLine.length > 12) return jobLine.length > 160 ? `${jobLine.slice(0, 157)}…` : jobLine;
     if (code) {
-      if (od || u === 'overdue') return `${requirementLabel(code)} required — action needed`;
-      if (u === 'due_soon') return `${requirementLabel(code)} due soon`;
-      return `${requirementLabel(code)} — action needed`;
+      const name = requirementLabel(code);
+      if (stateFromTiming) return `${name} — ${stateFromTiming}`;
+      if (od || u === 'overdue') return `${name} — overdue`;
+      if (u === 'due_soon' || u === 'high') return `${name} — due soon`;
+      return `${name} — needs attention`;
     }
+    if (jobLine.length > 12) return jobLine.length > 160 ? `${jobLine.slice(0, 157)}…` : jobLine;
     return base;
   }
 
   if (task.source_type === 'risk_signal') {
-    if (code) return `${requirementLabel(code)} — review and choose next step`;
+    if (code) {
+      const name = requirementLabel(code);
+      return stateFromTiming ? `${name} — ${stateFromTiming}` : `${name} — needs review`;
+    }
     const d = String(task.description || '').trim();
     if (d.length > 12) return d.length > 160 ? `${d.slice(0, 157)}…` : d;
-    return 'Issue flagged for this property — review next step';
+    return 'Potential issue — needs review';
   }
 
   if (task.source_type === 'issue') {
@@ -221,7 +216,7 @@ function actionLabel(act) {
   };
   if (m[act]) return m[act];
   if (act == null || act === '') return '—';
-  return titleFromSnake(String(act).toLowerCase());
+  return inboxTimelineActionLabel(act);
 }
 
 function primaryClickBusinessOutcome(task) {
@@ -266,6 +261,7 @@ function TaskCard({
   showComplianceBooking,
   enableTriage,
 }) {
+  const navigate = useNavigate();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [visibilityOpen, setVisibilityOpen] = useState(false);
   const meta = task.metadata || {};
@@ -276,8 +272,28 @@ function TaskCard({
   const businessActions = task.business_actions || [];
   const hasComplianceCreateAction = businessActions.some((a) => a.id === 'create_compliance_work_order');
   const displayTitle = todayDecisionLayerTitle(task);
+  const confidenceLine = shouldShowTodayTaskConfidence(task) ? todayTaskConfidenceLine(task) : null;
   const hasLongContext = Boolean(task.why_matters || task.recommended_action);
   const hasVisibilityActions = enableTriage && (task.visibility_actions || []).length > 0;
+  const sourceAttributionLine = todayTaskSourceAttributionLine(task);
+  const primaryCtaResolved = resolveTaskCta(task, 'primary');
+  const primaryWorkspacePath = resolveClientPortalPath(primaryCtaResolved.route, '/today');
+  /** Secondary link: job detail path → same resolution as primary (specific step || Review job); else hub “Continue in …”. */
+  const jobDetailPath = /^\/operations\/jobs\/[^/]+/.test(String(primaryWorkspacePath || '').split('?')[0]);
+  const continueWorkspaceLabel = jobDetailPath
+    ? clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA
+    : continueWorkspaceCtaLabel(primaryWorkspacePath);
+  const secondaryWorkspacePath =
+    task.secondary_action_url && isSafeClientPortalPath(task.secondary_action_url)
+      ? resolveClientPortalPath(task.secondary_action_url, '')
+      : null;
+  const secondaryMatchesPrimaryWorkspace =
+    secondaryWorkspacePath != null && secondaryWorkspacePath === primaryWorkspacePath;
+  const showContinueWorkspace =
+    Boolean(continueWorkspaceLabel) &&
+    primaryWorkspacePath !== '/today' &&
+    !primaryWorkspacePath.startsWith('/dashboard') &&
+    !secondaryMatchesPrimaryWorkspace;
   return (
     <Card className="border border-gray-200 shadow-sm overflow-hidden">
       <CardContent className="p-4 client-portal-prose">
@@ -340,6 +356,12 @@ function TaskCard({
           </div>
 
           <div className="flex flex-col gap-3 pt-2 border-t border-gray-100 min-w-0">
+            {confidenceLine ? (
+              <p className="text-xs text-gray-600 leading-snug -mt-1">{confidenceLine}</p>
+            ) : null}
+            {sourceAttributionLine ? (
+              <p className="text-[11px] font-medium text-midnight-blue/70 uppercase tracking-wide">{sourceAttributionLine}</p>
+            ) : null}
             {businessActions.length > 0 ? (
               <div className="flex flex-col gap-2">
                 {businessActions.map((act) => {
@@ -371,11 +393,17 @@ function TaskCard({
                 {sanitizeTodayCtaLabel(task.primary_action_label, task)}
               </Button>
             )}
+            {showContinueWorkspace ? (
+              <button
+                type="button"
+                className="w-full text-left text-xs font-medium text-electric-teal hover:underline py-1 min-h-10"
+                onClick={() => navigate(primaryWorkspacePath)}
+              >
+                {continueWorkspaceLabel}
+              </button>
+            ) : null}
             {showComplianceBooking && ce?.eligible && !hasComplianceCreateAction && ce.linked_property_requirement_id && (
               <div>
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Compliance job
-                </p>
                 <Button
                   type="button"
                   variant="outline"
@@ -398,13 +426,12 @@ function TaskCard({
                   {bookingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create compliance job'}
                 </Button>
                 <p className="text-xs text-gray-500 mt-1.5 leading-snug">
-                  Creates the job only. Open the job to assign a contractor and complete booking, execution, and proof.
+                  Creates the job only. Open the job to assign a contractor and finish booking, work, and proof.
                 </p>
               </div>
             )}
             {showRiskInline && task.primary_action_type === 'risk_follow_up' && sid && (
               <div>
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Follow up on risk</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Button
                     variant="outline"
@@ -443,15 +470,12 @@ function TaskCard({
                   onClick={() => setVisibilityOpen((v) => !v)}
                   aria-expanded={visibilityOpen}
                 >
-                  {visibilityOpen ? 'Hide inbox options' : 'Show inbox options (snooze, dismiss, reviewed)'}
+                  {visibilityOpen ? 'Hide options' : 'More options'}
                 </button>
                 {visibilityOpen && (
                   <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/50 p-3 space-y-2 mt-1">
-                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
-                      Inbox visibility only
-                    </p>
                     <p className="text-xs text-gray-500 leading-snug">
-                      These options only affect this list. They don’t change your property or compliance status.
+                      Snooze, dismiss, or mark reviewed—this list only. Your requirements and jobs are unchanged.
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       {(task.visibility_actions || []).map((va) => {
@@ -800,7 +824,13 @@ export default function ClientTasksPage() {
           requirement_code: act.requirement_code,
           work_order_id: woId,
         });
-        toast.success('Compliance job created.');
+        toast.success(
+          'Compliance job created. Assign and schedule next—this starts the on-site path so the requirement can be satisfied.',
+        );
+        const pid = act.property_id || task?.property_id;
+        if (pid && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: pid } }));
+        }
         if (woId) navigate(resolveClientPortalPath(`/operations/jobs/${encodeURIComponent(woId)}`, '/operations/jobs'));
         else navigate(resolveClientPortalPath('/operations/work-orders', '/operations/work-orders'));
         load();
@@ -831,7 +861,9 @@ export default function ClientTasksPage() {
         await clientAPI.todayItemMarkReviewed(tid);
         // TODAY_TASK_COMPLETED = inbox mark-reviewed only, not domain/workflow completion.
         emitTodayAnalytics('TODAY_TASK_COMPLETED', todayTaskAnalyticsProps(task));
-        toast.success('Marked reviewed in inbox');
+        toast.success(
+          'Marked reviewed in Today. The line clears here—complete the linked record to refresh compliance.',
+        );
         load();
       } catch (err) {
         toast.error(err?.response?.data?.detail || 'Could not update inbox');
@@ -846,7 +878,9 @@ export default function ClientTasksPage() {
       try {
         await clientAPI.todayItemSnooze(tid, days);
         emitTodayAnalytics('TODAY_TASK_SNOOZED', { ...todayTaskAnalyticsProps(task), days });
-        toast.success(`Snoozed ${days} day${days !== 1 ? 's' : ''}`);
+        toast.success(
+          `Snoozed ${days} day${days !== 1 ? 's' : ''}. This item stays out of the urgent list until then so you can focus elsewhere.`,
+        );
         load();
       } catch (err) {
         toast.error(err?.response?.data?.detail || 'Could not snooze');
@@ -897,7 +931,7 @@ export default function ClientTasksPage() {
     try {
       await clientAPI.todayItemRestore(tid);
       emitTodayAnalytics('today_task_restored', { task_id: tid, source_type: taskOrItem.source_type });
-      toast.success('Restored to inbox');
+      toast.success('Restored to inbox. This task can appear again in your priority list.');
       load();
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Could not restore');
@@ -925,7 +959,9 @@ export default function ClientTasksPage() {
     try {
       await clientAPI.todayItemDismiss(tid, reason);
       emitTodayAnalytics('TODAY_TASK_DISMISSED', todayTaskAnalyticsProps(task));
-      toast.success('Task dismissed — obligation unchanged; action audited.');
+      toast.success(
+        'Dismissed from Today with audit reason. Underlying requirements and jobs are unchanged—only inbox visibility moved.',
+      );
       load();
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Could not dismiss task');
@@ -952,14 +988,22 @@ export default function ClientTasksPage() {
       });
       if (kind === 'issue') {
         await clientAPI.createIssueFromRiskSignal(signalId, {});
-        toast.success('Maintenance issue logged from risk signal');
+        toast.success(
+          'Maintenance issue logged from the flagged signal. Open Issues to triage—this creates a trackable maintenance record.',
+        );
         navigate('/operations/issues');
       } else {
         await clientAPI.createWorkOrderFromRiskSignal(signalId, {});
-        toast.success('Maintenance job started from risk signal');
+        toast.success(
+          'Maintenance job started from the flagged signal. Open Jobs to schedule—execution updates this property’s queue.',
+        );
         navigate('/operations/work-orders');
       }
       load();
+      const pid = taskForAnalytics?.property_id;
+      if (pid && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: pid } }));
+      }
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Action failed');
     } finally {
@@ -983,9 +1027,10 @@ export default function ClientTasksPage() {
           <h1 className="text-2xl md:text-3xl font-bold">Today</h1>
         </div>
         <p className="text-gray-600 text-sm md:text-base">
-          Your priority list for the portfolio: each card opens the related requirement, job, approval, or issue.
+          Your portfolio priority list: each card opens the linked workspace (requirements, jobs, approvals, issues).
           Primary actions move work forward; snooze and dismiss only change what appears here.
         </p>
+        <p className="text-sm text-gray-600 mt-2">{TODAY_PAGE_CONFIDENCE_LINE}</p>
         <p className="text-xs text-gray-500 mt-2 leading-relaxed">
           <Link
             to="/help?article=command-centre-tasks-inbox"
@@ -995,7 +1040,7 @@ export default function ClientTasksPage() {
           </Link>
           <span className="text-gray-400">
             {' '}
-            — satisfying compliance always requires evidence, verification, or the right workflow outcome — not “Mark reviewed”.
+            — compliance needs real evidence and outcomes—not “Mark reviewed” alone.
           </span>
         </p>
       </div>
@@ -1058,7 +1103,7 @@ export default function ClientTasksPage() {
             )}
             {(summary.habit.tasks_acknowledged_last_7_days ?? 0) > 0 && (
               <span className="block mt-1 text-teal-800">
-                This week you reviewed, dismissed, or legacy-marked-done{' '}
+                This week you cleared{' '}
                 <strong>{summary.habit.tasks_acknowledged_last_7_days}</strong> inbox item
                 {summary.habit.tasks_acknowledged_last_7_days !== 1 ? 's' : ''} (visibility only).
               </span>
@@ -1070,6 +1115,9 @@ export default function ClientTasksPage() {
       <Card className="mb-6 border-gray-200">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Summary</CardTitle>
+          <p className="text-xs text-gray-500 font-normal mt-1 leading-snug">
+            Section counts show volume in each stage before you open a block.
+          </p>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4 text-sm">
           <div>
@@ -1100,13 +1148,13 @@ export default function ClientTasksPage() {
               <p>Compliance score updated: {formatWhen(freshness.score_updated_at)}</p>
             )}
             {freshness?.risk_signals_updated_at && (
-              <p>Risk signals updated: {formatWhen(freshness.risk_signals_updated_at)}</p>
+              <p>Flagged issues updated: {formatWhen(freshness.risk_signals_updated_at)}</p>
             )}
             {freshness?.last_automation_score_recalc_at && (
               <p>Last automated score recalc: {formatWhen(freshness.last_automation_score_recalc_at)}</p>
             )}
             {freshness?.last_automation_risk_refresh_at && (
-              <p>Last automated risk refresh: {formatWhen(freshness.last_automation_risk_refresh_at)}</p>
+              <p>Last automated issue refresh: {formatWhen(freshness.last_automation_risk_refresh_at)}</p>
             )}
             {freshness?.tasks_refreshed_at && <p>Tasks refreshed: {formatWhen(freshness.tasks_refreshed_at)}</p>}
           </div>
@@ -1167,7 +1215,7 @@ export default function ClientTasksPage() {
           <DialogHeader>
             <DialogTitle>Dismiss task from your inbox</DialogTitle>
             <DialogDescription className="text-left text-gray-600">
-              This hides the card from your open lists. It does <strong>not</strong> satisfy a requirement, close a work order, or
+              This hides the card from your open lists. It does <strong>not</strong> satisfy a requirement, close a job, or
               change compliance scores. Your reason is stored for audit and support.
             </DialogDescription>
           </DialogHeader>
@@ -1193,10 +1241,10 @@ export default function ClientTasksPage() {
         <>
           {topPriorityTasks.length > 0 && (
             <div className="mb-8" data-testid="today-top-priority">
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">Top priority — act now</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Top priorities</h2>
               <p className="text-sm text-gray-500 mb-3">
-                Up to three items from your urgent list, ordered the same way as what to push on first in your command
-                centre — overdue compliance, missing evidence, then open issues.
+                Up to three urgent items, same order as &quot;Where to focus first&quot; on Command center—overdue requirements,
+                missing documents, then open issues.
               </p>
               <div className="space-y-3">
                 {topPriorityTasks.map((t) => (
@@ -1237,8 +1285,8 @@ export default function ClientTasksPage() {
             enableTriage
             emptyHint={
               topPriorityTasks.length > 0
-                ? 'No other urgent items — everything urgent is in Top priority above.'
-                : 'Nothing in the urgent queue. Good standing, or try another filter.'
+                ? 'No other urgent items — everything urgent is in Top priorities above.'
+                : 'Nothing in the urgent queue. Try another filter if this looks wrong.'
             }
           />
           <SectionBlock
@@ -1273,7 +1321,7 @@ export default function ClientTasksPage() {
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage
-            emptyHint="No in-progress items here — pending approvals and open issues appear in this section."
+            emptyHint="No in-progress items—approvals and issues surface here when active."
           />
           {snoozed.length > 0 && (
             <div className="mb-8">
@@ -1295,9 +1343,9 @@ export default function ClientTasksPage() {
           )}
           {hidden.length > 0 && (
             <div className="mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Hidden (dismissed, reviewed, or legacy Done)</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Hidden (dismissed, reviewed, legacy Done)</h2>
               <p className="text-sm text-gray-500 mb-3">
-                You removed these from open lists only. Underlying obligations, scores, and jobs are unchanged unless you completed
+                You removed these from open lists only. Underlying requirements, scores, and jobs are unchanged unless you completed
                 them elsewhere — restore anytime.
               </p>
               <div className="space-y-3">

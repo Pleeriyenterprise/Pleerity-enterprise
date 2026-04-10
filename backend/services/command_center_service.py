@@ -16,10 +16,12 @@ _LEVEL_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 
 
 def _slim_task(t: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = t.get("metadata") if isinstance(t.get("metadata"), dict) else {}
     return {
         "id": t.get("id"),
         "task_id": t.get("id"),
         "title": t.get("title"),
+        "description": (t.get("description") or "").strip() or None,
         "section": t.get("section"),
         "source_type": t.get("source_type"),
         "source_id": t.get("source_id"),
@@ -32,8 +34,14 @@ def _slim_task(t: Dict[str, Any]) -> Dict[str, Any]:
         "priority_level": t.get("urgency_level"),
         "urgency_level": t.get("urgency_level"),
         "due_date": t.get("due_date"),
-        "timing_label": (t.get("metadata") or {}).get("timing_label"),
+        "overdue_days": t.get("overdue_days"),
+        "impact_score": t.get("impact_score"),
+        "impact_label": t.get("impact_label"),
+        "filter_tags": t.get("filter_tags"),
+        "metadata": metadata,
+        "timing_label": metadata.get("timing_label"),
         "action_type": t.get("primary_action_type"),
+        "primary_action_type": t.get("primary_action_type"),
         "primary_action_label": t.get("primary_action_label"),
         "primary_cta": {
             "label": t.get("primary_action_label"),

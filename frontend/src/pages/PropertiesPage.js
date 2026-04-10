@@ -65,7 +65,7 @@ const PropertiesPage = () => {
       case 'RED':
         return { icon: AlertTriangle, text: 'Overdue', className: 'bg-red-100 text-red-700 border border-red-200' };
       default:
-        return { icon: Clock, text: 'Missing evidence', className: 'bg-gray-100 text-gray-700 border border-gray-200' };
+        return { icon: Clock, text: 'Missing documents', className: 'bg-gray-100 text-gray-700 border border-gray-200' };
     }
   };
 
@@ -213,7 +213,7 @@ const PropertiesPage = () => {
         </div>
 
         <p className="text-sm text-gray-500 mb-4" data-testid="properties-status-legend">
-          Valid = all requirements compliant; Attention needed = expiring soon or missing evidence; Overdue = at least one overdue requirement.
+          Valid = all requirements compliant; Attention needed = expiring soon or missing documents; Overdue = at least one overdue requirement.
         </p>
 
         {/* Search Bar */}

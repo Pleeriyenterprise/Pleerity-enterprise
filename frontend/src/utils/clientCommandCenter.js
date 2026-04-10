@@ -2,7 +2,13 @@
  * Client Command Center — pure helpers for verdict copy, job attention ranking, and stuck signals.
  * Keeps UI pages from accumulating a second business-rules layer; aligns with API field names.
  */
-import { titleFromSnake } from '../domain/presentDomain';
+import { operationalExceptionLabel, inboxTitleForDisplay } from '../domain/presentDomain';
+import { compareTopPriority, normalizeTaskForTopPriorityRanking } from './clientTopPriorityRanking';
+import {
+  clientInboxJobCtaLabel,
+  normalizeClientJobCtaLabelFromApi,
+  CLIENT_INBOX_JOB_FALLBACK_CTA,
+} from './jobWorkflowUi';
 
 const TERMINAL_WORK_ORDER_STATUSES = new Set(['COMPLETED', 'VERIFIED', 'CLOSED', 'CANCELLED']);
 
@@ -117,7 +123,7 @@ export function attentionBadgeForJob(wo) {
   if (hasTruthyIso(wo.sla_breach_risk_at)) return { label: 'SLA at risk', className: 'bg-amber-100 text-amber-900' };
   if (isOperationalHold(wo)) {
     const ex = String(wo.operational_exception || '').trim();
-    const human = ex ? titleFromSnake(ex.toLowerCase()) : '';
+    const human = ex ? operationalExceptionLabel(ex) : '';
     return { label: human ? `On hold (${human})` : 'On hold', className: 'bg-amber-100 text-amber-900' };
   }
   if (isAwaitingProof(wo)) return { label: 'Awaiting proof', className: 'bg-violet-100 text-violet-900' };
@@ -188,7 +194,7 @@ export function buildCommandCenterVerdict({
       );
     } else if (blockedJobCount > 0) {
       sublines.push(
-        blockedJobCount === 1 ? 'A job is blocked or on hold.' : `${blockedJobCount} jobs are blocked or on hold.`
+        blockedJobCount === 1 ? 'A job is on hold.' : `${blockedJobCount} jobs are on hold.`
       );
     }
     return { line, subline: sublines[0] || null, tone: 'critical' };
@@ -200,7 +206,7 @@ export function buildCommandCenterVerdict({
         ? 'A job is past its SLA deadline—follow up now.'
         : `${breachedJobCount} jobs are past their SLA deadline.`;
     if (blockedJobCount > 0) {
-      sublines.push(`${blockedJobCount} job${blockedJobCount === 1 ? '' : 's'} also on hold or blocked.`);
+      sublines.push(`${blockedJobCount} job${blockedJobCount === 1 ? '' : 's'} also on hold.`);
     }
     return { line, subline: sublines[0] || null, tone: 'critical' };
   }
@@ -208,8 +214,8 @@ export function buildCommandCenterVerdict({
   if (blockedJobCount > 0) {
     const line =
       blockedJobCount === 1
-        ? 'A job is blocked or on hold and needs follow-up.'
-        : `${blockedJobCount} jobs are blocked or on hold.`;
+        ? 'A job is on hold—needs follow-up.'
+        : `${blockedJobCount} jobs are on hold.`;
     if (awaitingProofCount > 0) {
       sublines.push(
         awaitingProofCount === 1
@@ -260,7 +266,7 @@ export function buildCommandCenterVerdict({
 
   if (predictiveEnabled && riskCount > 0) {
     return {
-      line: riskCount === 1 ? '1 active risk signal needs review.' : `${riskCount} active risk signals need review.`,
+      line: riskCount === 1 ? '1 open issue needs review.' : `${riskCount} open issues need review.`,
       subline: null,
       tone: 'watch',
     };
@@ -317,4 +323,318 @@ export function isCommandCenterCalmSnapshot({
     (summary?.requirements_overdue == null || Number(summary.requirements_overdue) === 0) &&
     propertiesAtRisk === 0
   );
+}
+
+/** Generic job open verbs from API → softer inbox language before we infer a concrete step. */
+const COMMAND_CENTER_GENERIC_JOB_KEYS = new Set(['view job', 'open job']);
+
+const COMMAND_CENTER_CTA_LABEL_MAP = {
+  'view job': CLIENT_INBOX_JOB_FALLBACK_CTA,
+  'open job': CLIENT_INBOX_JOB_FALLBACK_CTA,
+  'review risk signal': 'Review flagged issue',
+  'view risk signal': 'Review flagged issue',
+};
+
+/**
+ * Command Center row primary CTA (existing task fields only).
+ *
+ * Resolution order:
+ * 1. If primary label is a mapped generic job key (view/open job) and task is work_order: `clientInboxJobCtaLabel` else `CLIENT_INBOX_JOB_FALLBACK_CTA`.
+ * 2. Else other map entries (e.g. risk signal phrasing).
+ * 3. Else non-empty primary label: for work orders, `normalizeClientJobCtaLabelFromApi`; else as-is.
+ * 4. Else by metadata / source_type (upload, requirement, work_order → clientInboxJobCtaLabel || fallback, risk, issue, approval).
+ * 5. Else `Continue in Today`.
+ */
+export function sanitizeCommandCenterCtaLabel(primaryLabel, task) {
+  const candidate = String(primaryLabel || task?.primary_action_label || task?.primary_cta?.label || '').trim();
+  const key = candidate.toLowerCase();
+  const stLower = String(task?.source_type || '').toLowerCase();
+  const mapped = COMMAND_CENTER_CTA_LABEL_MAP[key];
+  if (mapped) {
+    if (COMMAND_CENTER_GENERIC_JOB_KEYS.has(key) && stLower === 'work_order') {
+      return clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA;
+    }
+    return mapped;
+  }
+  if (candidate) {
+    if (stLower === 'work_order') return normalizeClientJobCtaLabelFromApi(candidate);
+    return candidate;
+  }
+
+  const meta = task?.metadata && typeof task.metadata === 'object' ? task.metadata : {};
+  const at = String(meta.action_type || '');
+  const st = String(task?.source_type || '');
+  const pat = String(task?.primary_action_type || task?.action_type || '');
+
+  if (at === 'missing_document' || pat === 'upload_evidence') return 'Upload document';
+  if (at === 'overdue_compliance' || at === 'certificate_expiring_soon') return 'Review requirement';
+  if (st === 'work_order' || /work_order/i.test(at)) {
+    return clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA;
+  }
+  if (st === 'risk_signal' || at === 'risk_signal') return 'Review flagged issue';
+  if (st === 'issue') return 'Review issue';
+  if (st === 'approval') return 'Review approval';
+  if (st === 'requirement') return 'Review requirement';
+  return 'Continue in Today';
+}
+
+/**
+ * Specific, urgency-driven line for Command Center property rows (uses API fields only).
+ */
+export function commandCenterWhyThisMattersLine(task) {
+  const meta = task?.metadata && typeof task.metadata === 'object' ? task.metadata : {};
+  const name = inboxTitleForDisplay(task);
+  const label = name && name !== 'Task' ? name : 'Requirement';
+  const at = String(meta.action_type || '');
+  const st = String(task?.source_type || '');
+  const od = Number(task.overdue_days ?? meta.overdue_days ?? 0);
+  const impact = String(task?.impact_label || '').trim().toLowerCase();
+
+  const impactClause = impact && !impact.includes('review') ? ` (${impact})` : '';
+
+  if (at === 'overdue_compliance' && od > 0) {
+    return `${label} — overdue by ${od} day${od === 1 ? '' : 's'}${impactClause || ' (compliance risk)'}`;
+  }
+  if (at === 'certificate_expiring_soon') {
+    return `${label} — due soon${impactClause}`;
+  }
+  if (at === 'missing_document') {
+    return `${label} — document not uploaded${impactClause || ' (blocks evidence)'}`;
+  }
+  if (at === 'work_order_sla_breached') {
+    const jobName = label !== 'Requirement' ? label : 'Job';
+    return `${jobName} — SLA deadline passed${impactClause}`;
+  }
+  if (at === 'work_order_near_sla_breach') {
+    const jobName = label !== 'Requirement' ? label : 'Job';
+    return `${jobName} — SLA at risk${impactClause}`;
+  }
+  if (at === 'risk_signal' || st === 'risk_signal') {
+    return `${label} — flagged issue needs review${impactClause}`;
+  }
+  if (at === 'open_operational_issue' || st === 'issue') {
+    return `${label} — issue needs review${impactClause}`;
+  }
+  if (at === 'open_work_order' || st === 'work_order') {
+    const jobName = label !== 'Requirement' ? label : 'Job';
+    const hay = `${String(task?.title || '')} ${String(task?.description || '')}`.toLowerCase();
+    const visitCue = /visit|schedule|booking|booked|proposed/.test(hay);
+    const contractorCue = /contractor|assigned|accept/.test(hay);
+    let stateLine = 'Work in progress';
+    if (visitCue) stateLine = 'Visit scheduled — awaiting completion';
+    else if (contractorCue) stateLine = 'Waiting on contractor';
+    return `${jobName} — ${stateLine}${impactClause}`;
+  }
+  if (at === 'pending_invoice_approval' || st === 'approval') {
+    return `${label} — invoice needs your approval${impactClause}`;
+  }
+
+  const timing = String(meta.timing_label || task?.timing_label || '').trim();
+  if (timing && label !== 'Requirement') return `${label} — ${timing.charAt(0).toLowerCase() + timing.slice(1)}`;
+  if (timing) return timing;
+  if (label && label !== 'Requirement') return `${label} — continue in Today for the next step`;
+  return 'Continue in Today for the next step';
+}
+
+/**
+ * One representative task per property, ranked like Today’s top-priority ordering.
+ * @param {unknown[]} urgentActions
+ * @param {number} [limit]
+ */
+export function buildPropertyPriorityRepresentatives(urgentActions, limit = 8) {
+  if (!Array.isArray(urgentActions)) return [];
+  const byProp = new Map();
+  for (const raw of urgentActions) {
+    const task = normalizeTaskForTopPriorityRanking(raw);
+    const pid = task.property_id;
+    if (!pid) continue;
+    const prev = byProp.get(pid);
+    if (!prev || compareTopPriority(task, prev) < 0) byProp.set(pid, task);
+  }
+  const reps = [...byProp.values()];
+  reps.sort(compareTopPriority);
+  return reps.slice(0, limit);
+}
+
+function countUrgentByMeta(urgentActions, predicate) {
+  if (!Array.isArray(urgentActions)) return 0;
+  let n = 0;
+  for (const raw of urgentActions) {
+    const meta = raw?.metadata && typeof raw.metadata === 'object' ? raw.metadata : {};
+    if (predicate(raw, meta)) n += 1;
+  }
+  return n;
+}
+
+/**
+ * Portfolio pressure metrics (single source for verdict + UI highlight on improvement).
+ */
+export function computePortfolioDriverMetrics({
+  summary,
+  portfolioSummary,
+  urgentActions,
+  breachedJobCount,
+  blockedJobCount,
+  awaitingProofJobCount = 0,
+}) {
+  const overdueSummary = summary?.requirements_overdue != null ? Number(summary.requirements_overdue) : 0;
+  const overdueKpi = portfolioSummary?.kpis?.overdue != null ? Number(portfolioSummary.kpis.overdue) : 0;
+  const overdueFromTasks = countUrgentByMeta(urgentActions || [], (_, meta) => meta.action_type === 'overdue_compliance');
+  const overdueDisplay = Math.max(overdueSummary, overdueKpi, overdueFromTasks);
+
+  const missingKpi = portfolioSummary?.kpis?.missing != null ? Number(portfolioSummary.kpis.missing) : 0;
+  const missingFromTasks = countUrgentByMeta(urgentActions || [], (_, meta) => meta.action_type === 'missing_document');
+  const missingDisplay = Math.max(missingKpi, missingFromTasks);
+
+  const jobPressure =
+    (Number(breachedJobCount) || 0) + (Number(blockedJobCount) || 0) + (Number(awaitingProofJobCount) || 0);
+
+  return { overdueDisplay, missingDisplay, jobPressure };
+}
+
+/**
+ * Portfolio-level synthesis: status, drivers, best next move (existing API fields only).
+ */
+export function buildPortfolioVerdictBlock({
+  summary,
+  portfolioSummary,
+  urgentCount,
+  urgentActions,
+  riskCount,
+  predictiveEnabled,
+  breachedJobCount,
+  blockedJobCount,
+  awaitingProofJobCount = 0,
+}) {
+  const { overdueDisplay, missingDisplay, jobPressure } = computePortfolioDriverMetrics({
+    summary,
+    portfolioSummary,
+    urgentActions,
+    breachedJobCount,
+    blockedJobCount,
+    awaitingProofJobCount,
+  });
+
+  const riskFromTasks = countUrgentByMeta(
+    urgentActions,
+    (t, meta) => meta.action_type === 'risk_signal' || t?.source_type === 'risk_signal'
+  );
+  const riskDisplay = predictiveEnabled ? Math.max(riskCount || 0, riskFromTasks) : riskFromTasks;
+
+  const drivers = [];
+  if (overdueDisplay > 0) {
+    drivers.push({
+      key: 'overdue',
+      label:
+        overdueDisplay === 1
+          ? '1 overdue requirement — resolve it first'
+          : `${overdueDisplay} overdue requirements — resolve these first`,
+    });
+  }
+  if (missingDisplay > 0) {
+    drivers.push({
+      key: 'missing',
+      label:
+        missingDisplay === 1
+          ? '1 missing document — upload to reduce risk'
+          : `${missingDisplay} missing documents — upload to reduce risk`,
+    });
+  }
+  if (jobPressure > 0) {
+    drivers.push({
+      key: 'job_pressure',
+      label:
+        jobPressure === 1
+          ? '1 job blocking progress — unblock to restore momentum'
+          : `${jobPressure} jobs blocking progress — unblock to restore momentum`,
+    });
+  }
+  if (riskDisplay > 0) {
+    drivers.push({
+      key: 'risk',
+      label:
+        riskDisplay === 1
+          ? '1 open issue — review and resolve'
+          : `${riskDisplay} open issues — review and resolve`,
+    });
+  }
+
+  const color = String(summary?.color || '').toLowerCase();
+  let statusLabel = 'On track';
+  let statusTone = 'calm';
+  if (breachedJobCount > 0 || color === 'red') {
+    statusLabel = 'Critical attention';
+    statusTone = 'critical';
+  } else if (urgentCount > 0 || jobPressure > 0 || drivers.length > 0 || color === 'amber') {
+    statusLabel = 'Attention needed';
+    statusTone = 'watch';
+  }
+
+  /** Dominant bucket: highest count wins; ties break overdue → missing → jobs (compliance-first). */
+  const buckets = [
+    { key: 'overdue', n: overdueDisplay },
+    { key: 'missing', n: missingDisplay },
+    { key: 'jobs', n: jobPressure },
+  ];
+  const maxN = Math.max(overdueDisplay, missingDisplay, jobPressure, 0);
+
+  let bestNextMove = '';
+  let nextHintPath = '/today';
+  let nextHintLabel = 'Continue in Today';
+
+  if (maxN > 0) {
+    const winner = buckets.find((b) => b.n === maxN);
+    if (winner.key === 'overdue') {
+      nextHintPath = '/requirements';
+      nextHintLabel = 'Continue in Requirements';
+      bestNextMove = 'Start with overdue requirements — resolve these first.';
+    } else if (winner.key === 'missing') {
+      nextHintPath = '/documents';
+      nextHintLabel = 'Continue in Documents';
+      bestNextMove = 'Upload missing documents to reduce risk.';
+    } else {
+      nextHintPath = '/operations/work-orders';
+      nextHintLabel = 'Continue in Jobs';
+      bestNextMove = 'Resolve blocked jobs to restore progress.';
+    }
+  } else if (predictiveEnabled && (riskCount || 0) > 0) {
+    const rc = riskCount || 0;
+    nextHintPath = '/operations/risk-signals';
+    nextHintLabel = 'Review flagged issues';
+    bestNextMove =
+      rc === 1
+        ? 'One flagged issue needs a decision — review it now.'
+        : `${rc} flagged issues need decisions — review them now.`;
+  } else if (urgentCount > 0) {
+    nextHintPath = '/today';
+    nextHintLabel = 'Continue in Today';
+    bestNextMove =
+      urgentCount === 1
+        ? 'Your top urgent item is not fully reflected in the counts above — continue in Today and resolve it first.'
+        : `${urgentCount} urgent items need attention — continue in Today and work from the top down.`;
+  } else {
+    nextHintPath = '/today';
+    nextHintLabel = 'Continue in Today';
+    bestNextMove =
+      'Portfolio snapshot looks clear — continue in Today for the full queue and the next concrete step.';
+  }
+
+  const driverSummaryFallback =
+    drivers.length > 0
+      ? ''
+      : maxN > 0
+        ? 'Follow “What to do next” for the strongest portfolio signal.'
+        : urgentCount > 0
+          ? 'Urgent work lives in Today — use the button below and start at the top.'
+          : 'Light portfolio pressure right now — continue in Today when you are ready for the next step.';
+
+  return {
+    statusLabel,
+    statusTone,
+    drivers,
+    bestNextMove,
+    nextHintPath,
+    nextHintLabel,
+    driverSummaryFallback,
+  };
 }

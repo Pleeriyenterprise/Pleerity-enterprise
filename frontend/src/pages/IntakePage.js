@@ -240,7 +240,8 @@ const IntakePage = () => {
         const count = data.property_count != null ? Math.max(1, parseInt(data.property_count, 10) || 1) : null;
         setLeadPropertyCountHint(count > 1 ? count : null);
       } catch (err) {
-        if (!cancelled) toast.error(err.response?.data?.detail || 'Invalid or expired link. Request a new report from the risk check.');
+        if (!cancelled)
+          toast.error(err.response?.data?.detail || 'This link is no longer valid—start again from the risk check.');
       }
     })();
     return () => { cancelled = true; };

@@ -34,6 +34,7 @@ import EmptyState from '../components/EmptyState';
 import { requirementLabel } from '../domain/presentDomain';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { PortalLoadingPanel } from '../components/client/ClientPortalPatterns';
+import { REQUIREMENTS_PAGE_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -46,6 +47,8 @@ const RequirementsPage = () => {
   const navigate = useNavigate();
   const { hasFeature } = useEntitlements();
   const [searchParams] = useSearchParams();
+  const highlightParam = searchParams.get('highlight');
+  const [flashRequirementId, setFlashRequirementId] = useState(null);
   const [requirements, setRequirements] = useState([]);
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +78,21 @@ const RequirementsPage = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (!highlightParam || loading) return undefined;
+    const scrollT = window.setTimeout(() => {
+      document
+        .querySelector(`[data-testid="requirement-row-${CSS.escape(highlightParam)}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+    setFlashRequirementId(highlightParam);
+    const clearT = window.setTimeout(() => setFlashRequirementId(null), 2200);
+    return () => {
+      window.clearTimeout(scrollT);
+      window.clearTimeout(clearT);
+    };
+  }, [highlightParam, loading, requirements.length]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -152,7 +170,12 @@ const RequirementsPage = () => {
         compliance_generated_from: 'requirement',
       });
       const woId = res.data?.work_order?.work_order_id;
-      toast.success('Compliance job created. Next: open the job and assign a contractor, then request a visit.');
+      toast.success(
+        'Compliance job created. Open it to assign a contractor and request a visit—execution time feeds this requirement’s record.',
+      );
+      if (req.property_id && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: req.property_id } }));
+      }
       if (woId) navigate(`/operations/jobs/${woId}`);
       else navigate('/operations/work-orders');
     } catch (error) {
@@ -185,19 +208,25 @@ const RequirementsPage = () => {
       return;
     }
     setNotApplicableSaving(true);
+    const propIdForOutcome = notApplicableModal.requirement?.property_id;
     try {
       await clientAPI.markRequirementNotApplicableById(notApplicableModal.requirement.requirement_id, {
         reason: text,
         reason_code: notApplicableCode || undefined,
         confirm_close_active_job: notApplicableCloseActiveJob,
       });
-      toast.success('Marked as not applicable.');
+      toast.success(
+        'Recorded as not applicable with audit reason. This requirement stops counting as overdue for that property.',
+      );
       setNotApplicableModal(null);
       setNotApplicableReason('');
       setNotApplicableCode('other');
       setNotApplicableCloseActiveJob(false);
       setNotApplicableActiveJobId(null);
       fetchData();
+      if (propIdForOutcome && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: propIdForOutcome } }));
+      }
     } catch (error) {
       const st = error.response?.status;
       const det = error.response?.data?.detail;
@@ -229,9 +258,17 @@ const RequirementsPage = () => {
         `/properties/${requirement.property_id}/requirements/${requirement.requirement_id}`,
         payload
       );
-      toast.success('Requirement updated.');
+      toast.success(
+        'Dates and applicability saved. Compliance scoring and overdue views refresh on the next recalculation for this property.',
+        { description: 'Requirement row will reflect the change after recalculation.' },
+      );
+      setFlashRequirementId(requirement.requirement_id);
+      window.setTimeout(() => setFlashRequirementId(null), 2200);
       setEditModal(null);
       fetchData();
+      if (requirement.property_id && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: requirement.property_id } }));
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to update requirement');
     } finally {
@@ -288,10 +325,29 @@ const RequirementsPage = () => {
     const daysUntil = getDaysUntilDue(req.due_date);
     const docCount = documentCountByRequirementId[req.requirement_id] || 0;
     const hasDocs = docCount > 0;
-    const docsPath = resolveDocumentsPath(req.property_id, { requirement_id: req.requirement_id });
-    const uploadPath = resolveDocumentsPath(req.property_id, { requirement_id: req.requirement_id, focus: 'upload' });
+    const reqCode = String(req.requirement_code || req.requirement_type || '').trim();
+    const docQuery = { requirement_id: req.requirement_id, ...(reqCode ? { requirement_code: reqCode } : {}) };
+    const docsPath = resolveDocumentsPath(req.property_id, docQuery);
+    const uploadPath = resolveDocumentsPath(req.property_id, { ...docQuery, focus: 'upload' });
+    const requirementPreActionLine = (() => {
+      const st = String(req.status || '').toUpperCase();
+      if (st === 'OVERDUE') return 'This requirement is overdue and affects compliance status for this property.';
+      if (st === 'PENDING_VERIFICATION' || st === 'AWAITING_VERIFICATION')
+        return 'Document received—confirming dates moves this requirement toward verified compliance.';
+      if (st === 'PENDING' || st === 'MISSING')
+        return 'This document is required to keep this property compliant.';
+      if (st === 'EXPIRING_SOON') return 'Renewing before expiry keeps this property inside compliance windows.';
+      if (st === 'COMPLIANT') return 'Keeping this row current preserves a clear audit trail for this property.';
+      return 'Actions here update how this property appears in portfolio compliance views.';
+    })();
     return (
-      <div key={req.requirement_id} className="p-4 hover:bg-gray-50 transition-colors" data-testid={`requirement-row-${req.requirement_id}`}>
+      <div
+        key={req.requirement_id}
+        className={`p-4 hover:bg-gray-50 transition-colors ${
+          flashRequirementId === req.requirement_id ? 'ring-2 ring-electric-teal/70 bg-teal-50/40 rounded-lg' : ''
+        }`}
+        data-testid={`requirement-row-${req.requirement_id}`}
+      >
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div className="flex items-start gap-4 flex-1 min-w-0">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${statusConfig.color === 'green' ? 'bg-green-100' : statusConfig.color === 'amber' ? 'bg-amber-100' : statusConfig.color === 'red' ? 'bg-red-100' : statusConfig.color === 'blue' ? 'bg-blue-100' : 'bg-gray-100'}`}>
@@ -303,7 +359,7 @@ const RequirementsPage = () => {
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusConfig.className}`}>{statusConfig.text}</span>
                 {req.evidence_badge_label && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200" data-testid={`evidence-badge-${req.requirement_id}`}>
-                    Evidence: {req.evidence_badge_label}
+                    Document: {req.evidence_badge_label}
                   </span>
                 )}
                 {docCount > 0 && (
@@ -329,6 +385,7 @@ const RequirementsPage = () => {
             </div>
           </div>
           <div className="flex flex-col gap-3 w-full lg:w-auto lg:max-w-xs shrink-0 border-t border-gray-100 pt-4 lg:border-t-0 lg:pt-0">
+            <p className="text-xs text-gray-600 leading-snug">{requirementPreActionLine}</p>
             {daysUntil !== null && (
               <div className={`flex lg:flex-col items-center lg:items-end justify-between lg:justify-start gap-2 ${daysUntil < 0 ? 'text-red-600' : daysUntil <= 14 ? 'text-amber-600' : daysUntil <= 30 ? 'text-yellow-600' : 'text-gray-600'}`}>
                 <p className="text-lg font-bold tabular-nums">{daysUntil < 0 ? Math.abs(daysUntil) : daysUntil}</p>
@@ -375,7 +432,12 @@ const RequirementsPage = () => {
                 size="sm"
                 className="text-xs min-h-10 h-auto py-2"
                 onClick={() =>
-                  navigate(resolveDocumentsPath(req.property_id, { requirement_id: req.requirement_id, focus: 'upload' }))
+                  navigate(
+                    resolveDocumentsPath(req.property_id, {
+                      ...docQuery,
+                      focus: 'upload',
+                    }),
+                  )
                 }
                 data-testid={`compliance-upload-certificate-${req.requirement_id}`}
               >
@@ -396,7 +458,7 @@ const RequirementsPage = () => {
                 ) : (
                   <ClipboardCheck className="w-3 h-3 mr-1 shrink-0" />
                 )}
-                Create compliance work order
+                Create compliance job
               </Button>
               <Button
                 type="button"
@@ -443,9 +505,10 @@ const RequirementsPage = () => {
 
   const getPageDescription = () => {
     if (statusFilter === 'DUE_SOON') return 'Tracked items expiring soon that need attention';
-    if (statusFilter === 'OVERDUE_OR_MISSING') return 'Overdue or missing tracked items that need attention';
+    if (statusFilter === 'OVERDUE_OR_MISSING')
+      return 'Overdue or missing items—upload on Documents to clear gaps; Command Center and Today reflect the result.';
     if (windowDays) return `Tracked items with deadlines within the next ${windowDays} days`;
-    return 'Manage tracked items across your properties. These may apply depending on your situation.';
+    return 'Manage obligations here; documents and dates feed your compliance score and your Today inbox.';
   };
 
   // Stats
@@ -479,6 +542,7 @@ const RequirementsPage = () => {
             <div className="min-w-0">
               <h2 className="text-xl sm:text-2xl font-bold text-midnight-blue">{getPageTitle()}</h2>
               <p className="text-gray-500 mt-1 text-sm sm:text-base">{getPageDescription()}</p>
+              <p className="text-gray-600 mt-2 text-sm sm:text-base">{REQUIREMENTS_PAGE_CONFIDENCE_LINE}</p>
             </div>
             <div className="text-left sm:text-right shrink-0 rounded-xl border border-gray-200 bg-white px-4 py-3">
               <p className="text-xs text-gray-500 uppercase tracking-wide">Showing</p>
@@ -708,7 +772,7 @@ const RequirementsPage = () => {
                     onChange={(e) => setNotApplicableReason(e.target.value)}
                     rows={4}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                    placeholder="Explain why this obligation does not apply to this property."
+                    placeholder="Explain why this requirement does not apply to this property."
                     data-testid="not-applicable-reason"
                   />
                 </div>

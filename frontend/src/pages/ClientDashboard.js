@@ -52,7 +52,6 @@ import {
   jurisdictionSourceLabel,
 } from '../utils/jurisdictionComplianceCopy';
 import { portfolioJurisdictionBannerState } from '../utils/jurisdictionUiPolicy';
-
 const KPI_NO_DATA = 'No data yet';
 
 function navigateToPropertyDashboard(navigate, propertyId, hash = '') {
@@ -805,7 +804,7 @@ const ClientDashboard = () => {
     const level = (overdue > 0 || missingPct > 30) ? 'Low' : (missingPct > 10 || expiringSoon > 5) ? 'Moderate' : 'High';
     const drivers = [];
     if (overdue > 0) drivers.push(`${overdue} overdue`);
-    if (missing > 0) drivers.push(`${missingPct.toFixed(0)}% missing evidence`);
+    if (missing > 0) drivers.push(`${missingPct.toFixed(0)}% missing documents`);
     drivers.push(`${confirmedPct.toFixed(0)}% confirmed`);
     return { level, drivers, overdue, missingPct, confirmedPct };
   }, [complianceScore?.stats, portfolioSummary?.kpis, actionableMissingCount]);
@@ -1247,7 +1246,7 @@ const ClientDashboard = () => {
         {/* Welcome – executive overview */}
         <div className="mb-6 sm:mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-2">Command centre</h2>
-          <p className="text-gray-600 text-sm sm:text-base">Welcome, {data?.client?.full_name}. Evidence-based compliance and operations snapshot.</p>
+          <p className="text-gray-600 text-sm sm:text-base">Welcome, {data?.client?.full_name}. Document-backed compliance and operations snapshot.</p>
           <p className="text-xs text-gray-500 mt-2">Not legal advice.</p>
         </div>
 
@@ -1500,7 +1499,7 @@ const ClientDashboard = () => {
               )}
               {dashboardFreshness.risk_signals_updated_at && (
                 <li>
-                  Risk signals updated: {new Date(dashboardFreshness.risk_signals_updated_at).toLocaleString()}
+                  Flagged issues updated: {new Date(dashboardFreshness.risk_signals_updated_at).toLocaleString()}
                   {isTimestampStale(dashboardFreshness.risk_signals_updated_at, FRESH_RISK_STALE_HOURS) && (
                     <span className="ml-2 text-amber-700" title="Risk data may be stale.">
                       May be outdated
@@ -1570,7 +1569,7 @@ const ClientDashboard = () => {
                     {protectionSnapshot.risk?.predictive_enabled &&
                       protectionSnapshot.risk?.active_risk_signals_count != null && (
                         <li>
-                          Active risk signals: {protectionSnapshot.risk.active_risk_signals_count}
+                          Active flagged issues: {protectionSnapshot.risk.active_risk_signals_count}
                           {Number(protectionSnapshot.risk.high_or_critical_active_count || 0) > 0
                             ? ` (${protectionSnapshot.risk.high_or_critical_active_count} high or critical)`
                             : ''}
@@ -1579,7 +1578,7 @@ const ClientDashboard = () => {
                   </ul>
                   {commandCenterScopePropertyId && (
                     <p className="text-xs text-electric-teal">
-                      Issues and risk counts are scoped to the selected property; compliance totals are portfolio-wide.
+                      Maintenance issues and flagged-issue counts are scoped to the selected property; compliance totals are portfolio-wide.
                     </p>
                   )}
                 </>
@@ -1601,7 +1600,7 @@ const ClientDashboard = () => {
                       + Number(tasksDigest.summary?.in_progress_count ?? 0))
                     : 'Open'}
                 </p>
-                <p className="text-xs text-electric-teal mt-1">Open Today →</p>
+                <p className="text-xs text-electric-teal mt-1">Continue in Today →</p>
               </CardContent>
             </Card>
             <Card className="hidden sm:block cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/compliance-score')}>
@@ -1625,11 +1624,11 @@ const ClientDashboard = () => {
             {hasFeature('maintenance_workflows') && (
               <Card
                 className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
-                title="Work orders where the agreed response time has passed (current list, up to 500 loaded)."
+                title="Jobs where the agreed response time has passed (current list, up to 500 loaded)."
                 onClick={() => navigate('/operations/work-orders?sla_state=breached')}
               >
                 <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Work orders · {slaStateLabel('breached')}</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Jobs · {slaStateLabel('breached')}</p>
                   <p className="text-xl font-bold text-midnight-blue">{slaBreachedCount}</p>
                   <p className="text-xs text-gray-500 mt-1">{slaStateLabel('near_breach')}: {slaNearBreachCount}</p>
                 </CardContent>
@@ -1638,7 +1637,7 @@ const ClientDashboard = () => {
             {hasFeature('predictive_maintenance') && (
               <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/operations/risk-signals')}>
                 <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Risk signals</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Flagged issues</p>
                   <p className="text-xl font-bold text-midnight-blue">{riskSignalsCount}</p>
                 </CardContent>
               </Card>
@@ -1682,7 +1681,7 @@ const ClientDashboard = () => {
                 )}
               </div>
               <Button variant="outline" size="sm" className="shrink-0 w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0" onClick={() => navigate('/today')}>
-                Open Today
+                Continue in Today
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1780,7 +1779,7 @@ const ClientDashboard = () => {
                 </ul>
               ) : (
                 <p className="text-sm text-gray-600">
-                  No qualifying changes in audit logs, score snapshots, work orders, or uploads for this window.
+                  No qualifying changes in audit logs, score snapshots, jobs, or uploads for this window.
                 </p>
               )}
             </CardContent>
@@ -1845,7 +1844,7 @@ const ClientDashboard = () => {
                 )}
         </div>
               <Button variant="outline" size="sm" className="shrink-0 w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0" onClick={() => navigate('/today')}>
-                Open Today
+                Continue in Today
               </Button>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -1880,7 +1879,7 @@ const ClientDashboard = () => {
               )}
               {hasFeature('predictive_maintenance') && (commandCenter.upcoming_risks?.length ?? 0) > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Active risk signals</p>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Active flagged issues</p>
                   <ul className="space-y-2 text-sm">
                     {commandCenter.upcoming_risks.slice(0, 4).map((r) => (
                       <li key={r.signal_id || r.description} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
@@ -1893,14 +1892,14 @@ const ClientDashboard = () => {
                             navigate(target);
                           }}
                         >
-                          {r.description || r.risk_type_label_client || riskTypeLabelClient(r.risk_type) || 'Risk signal'}
+                          {r.description || r.risk_type_label_client || riskTypeLabelClient(r.risk_type) || 'Issue'}
                         </button>
                         <span className="text-xs text-gray-500 shrink-0">{formatRiskLabel(r.risk_level)}</span>
                       </li>
                     ))}
                   </ul>
                   <Button variant="link" className="h-auto p-0 mt-1 text-electric-teal" onClick={() => navigate('/operations/risk-signals')}>
-                    View all risk signals
+                    View all flagged issues
                   </Button>
                 </div>
               )}
@@ -2265,10 +2264,10 @@ const ClientDashboard = () => {
                   <ul className="space-y-1 text-gray-600">
                     {complianceScore?.bucket_breakdown ? (
                       <>
-                        <li>• <strong>Legal core (60%):</strong> weighted legal obligations by applicability and validity</li>
-                        <li>• <strong>Documentation (20%):</strong> verified evidence completeness for applicable obligations</li>
-                        <li>• <strong>Operational (10%):</strong> unresolved issues/work orders reduce confidence</li>
-                        <li>• <strong>Recency (10%):</strong> unresolved risk signals and expiring obligations reduce confidence</li>
+                        <li>• <strong>Legal core (60%):</strong> weighted legal requirements by applicability and validity</li>
+                        <li>• <strong>Documentation (20%):</strong> verified document completeness for applicable requirements</li>
+                        <li>• <strong>Operational (10%):</strong> unresolved maintenance issues or open jobs reduce confidence</li>
+                        <li>• <strong>Recency (10%):</strong> open flagged issues and expiring requirements reduce confidence</li>
                       </>
                     ) : (
                       <>
@@ -2456,7 +2455,7 @@ const ClientDashboard = () => {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Wrench className="w-4 h-4 text-electric-teal" />
-                    Work orders
+                    Jobs
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -2467,7 +2466,7 @@ const ClientDashboard = () => {
                     <span className="font-medium text-green-700">Completed: {workOrderFunnel.completed}</span>
                   </div>
                   <Button variant="outline" size="sm" className="mt-3 text-electric-teal border-electric-teal" onClick={() => navigate('/operations/work-orders')}>
-                    View all work orders
+                    View all jobs
                   </Button>
                 </CardContent>
               </Card>
@@ -2477,14 +2476,14 @@ const ClientDashboard = () => {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-electric-teal" />
-                    Risk signals
+                    Flagged issues
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl font-bold text-midnight-blue">{riskSignalsCount}</p>
-                  <p className="text-sm text-gray-500 mt-1">Risk signals across your properties</p>
+                  <p className="text-sm text-gray-500 mt-1">Potential issues flagged across your properties</p>
                   <Button variant="outline" size="sm" className="mt-3 text-electric-teal border-electric-teal" onClick={() => navigate('/operations/risk-signals')}>
-                    View risk signals
+                    View flagged issues
                   </Button>
                 </CardContent>
               </Card>
@@ -2530,17 +2529,17 @@ const ClientDashboard = () => {
               <ul className="space-y-2">
                 {(openIssuesCount ?? 0) > 0 && hasFeature('maintenance_workflows') && (
                   <li className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-3 border-b border-amber-200 last:border-0">
-                    <span className="text-sm text-gray-800 min-w-0 break-words">{openIssuesCount} open issue{openIssuesCount !== 1 ? 's' : ''}</span>
+                    <span className="text-sm text-gray-800 min-w-0 break-words">{openIssuesCount} open maintenance issue{openIssuesCount !== 1 ? 's' : ''}</span>
                     <Button size="sm" className="w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0 bg-electric-teal hover:bg-electric-teal/90 shrink-0" onClick={() => navigate('/operations/issues')}>
-                      View issues
+                      View maintenance issues
                     </Button>
                   </li>
                 )}
                 {riskSignalsCount > 0 && hasFeature('predictive_maintenance') && (
                   <li className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-3 border-b border-amber-200 last:border-0">
-                    <span className="text-sm text-gray-800 min-w-0 break-words">{riskSignalsCount} risk signal{riskSignalsCount !== 1 ? 's' : ''} flagged</span>
+                    <span className="text-sm text-gray-800 min-w-0 break-words">{riskSignalsCount} flagged issue{riskSignalsCount !== 1 ? 's' : ''}</span>
                     <Button size="sm" className="w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0 bg-electric-teal hover:bg-electric-teal/90 shrink-0" onClick={() => navigate('/operations/risk-signals')}>
-                      View risk signals
+                      View flagged issues
                     </Button>
                   </li>
                 )}
@@ -2565,16 +2564,16 @@ const ClientDashboard = () => {
           </button>
           {showComplianceFramework && (
             <div className="px-4 pb-4 pt-0 text-sm text-gray-600 border-t border-gray-100">
-              <p className="mb-2">Evidence status is used to derive requirement-level points:</p>
+              <p className="mb-2">Document status is used to derive requirement-level points:</p>
               <ul className="list-disc pl-5 space-y-1 mb-3">
-                <li>Valid evidence: 100</li>
+                <li>Valid document: 100</li>
                 <li>Expiring soon: 70</li>
-                <li>Missing evidence: 30</li>
+                <li>Missing document: 30</li>
                 <li>Overdue: 0</li>
               </ul>
               <p className="mb-2">Property score is the average of requirement scores for that property. Portfolio score is the average across all properties weighted by requirement count.</p>
-              <p className="mb-2">Risk levels (evidence-based, not legal advice): 80–100 = Low risk; 60–79 = Medium risk; 40–59 = High risk; 0–39 = Critical risk.</p>
-              <p className="text-gray-500 italic">This is an evidence-based status summary. It is not legal advice and does not constitute legal certification.</p>
+              <p className="mb-2">Risk levels (document-backed, not legal advice): 80–100 = Low risk; 60–79 = Medium risk; 40–59 = High risk; 0–39 = Critical risk.</p>
+              <p className="text-gray-500 italic">This is a document-backed status summary. It is not legal advice and does not constitute legal certification.</p>
             </div>
           )}
         </div>
@@ -2613,7 +2612,7 @@ const ClientDashboard = () => {
                     <th className="p-3">Risk level</th>
                     <th className="p-3">Overdue</th>
                     <th className="p-3">Expiring soon</th>
-                    <th className="p-3">Missing evidence</th>
+                    <th className="p-3">Missing documents</th>
                     {hasFeature('maintenance_workflows') && <th className="p-3">Open jobs</th>}
                     <th className="p-3">View</th>
                   </tr>
@@ -2649,7 +2648,7 @@ const ClientDashboard = () => {
           </div>
         )}
 
-        {/* 4 KPI cards: Score+Risk, Overdue, Expiring soon, Missing evidence */}
+        {/* 4 KPI cards: Score+Risk, Overdue, Expiring soon, Missing documents */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card 
             className="enterprise-card cursor-pointer hover:shadow-lg transition-shadow hover:border-electric-teal group"
@@ -2725,7 +2724,7 @@ const ClientDashboard = () => {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Missing evidence</p>
+                  <p className="text-sm text-gray-600 mb-1">Missing documents</p>
                   <p className="text-3xl font-bold text-gray-700">
                     {actionableMissingCount}
                   </p>

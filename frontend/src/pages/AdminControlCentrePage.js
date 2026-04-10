@@ -146,7 +146,7 @@ export default function AdminControlCentrePage() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               <ScoreCard title="Automation health" value={sys.scores?.automation_health} hint="100 = best; from job failures, SLA, heartbeat, incidents." />
-              <ScoreCard title="Security risk" value={sys.scores?.security_risk} hint="0 = best; higher = more risk signals." invert />
+              <ScoreCard title="Security risk" value={sys.scores?.security_risk} hint="0 = best; higher = more flagged issues." invert />
               <ScoreCard
                 title="Revenue health"
                 value={sys.scores?.revenue_health}

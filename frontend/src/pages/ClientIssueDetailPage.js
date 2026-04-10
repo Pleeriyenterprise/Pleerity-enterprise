@@ -181,7 +181,7 @@ function ClientIssueDetailPageInner() {
               ))}
             </ul>
           )}
-          <p className="text-xs text-gray-400 mt-4">Read-only history from this issue, linked work orders, and audits.</p>
+          <p className="text-xs text-gray-400 mt-4">Read-only history from this issue, linked jobs, and audits.</p>
         </CardContent>
       </Card>
 

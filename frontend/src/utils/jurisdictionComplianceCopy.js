@@ -43,7 +43,7 @@ export function jurisdictionAccountDefaultNoticeBody(effectiveLabel) {
   return (
     `This property is using your account default jurisdiction${where} because no region is set on the property record yet. ` +
     'Choose the correct region in “Jurisdiction on this property” below and save — you can complete this on this page. ' +
-    'After you save, scoring and obligations will use that property-level jurisdiction.'
+    'After you save, scoring and requirements will use that property-level jurisdiction.'
   );
 }
 
@@ -64,7 +64,7 @@ export const JURISDICTION_ONBOARDING_GATE_LEAD =
   'Where no valid default exists, the product may use a system default (England & Wales–style rules).';
 
 export const JURISDICTION_ONBOARDING_GATE_CONSEQUENCE =
-  'Your portfolio score, obligation lists, due dates, and risk signals for those properties may not reflect the correct region. That is an accuracy risk — not a legal ruling — but it can mis-prioritise work and mis-state standing if the wrong profile is applied.';
+  'Your portfolio score, requirement lists, due dates, and flagged issues for those properties may not reflect the correct region. That is an accuracy risk — not a legal ruling — but it can mis-prioritise work and mis-state standing if the wrong profile is applied.';
 
 export const JURISDICTION_ONBOARDING_GATE_CTA_HINT =
   'Prefer setting each property now; only use acknowledgement if you intentionally accept that risk for the moment.';
@@ -82,7 +82,7 @@ export const JURISDICTION_PORTFOLIO_REMINDER_COMPACT =
   'Reminder: some properties still have no jurisdiction on record — scores and rules may not match each property until you set them.';
 
 export const JURISDICTION_IMPACT_INTRO =
-  'This determines the legal compliance rules applied to your properties in Compliance Vault Pro — how obligations are grouped, weighted in your score, and surfaced in dashboards and risk signals.';
+  'This determines the legal compliance rules applied to your properties in Compliance Vault Pro — how requirements are grouped, weighted in your score, and surfaced in dashboards and flagged issues.';
 
 export const JURISDICTION_SCOPE_GLOBAL =
   'Your default applies to every property that does not have its own jurisdiction set on the property record. New properties start with this default until you change it for that property.';

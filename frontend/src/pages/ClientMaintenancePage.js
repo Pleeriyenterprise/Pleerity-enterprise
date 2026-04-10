@@ -24,6 +24,7 @@ import { issueSeverityLabel, workOrderStatusLabel } from '../domain/presentDomai
 import { assetIdParts } from '../utils/assetDisplay';
 import { normalizeRouteId, resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import { JOBS_PAGE_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 import { workOrderKindBadgeClassName, workOrderKindClientLabel } from '../utils/jobWorkflowUi';
 import { cn } from '../lib/utils';
 
@@ -190,6 +191,21 @@ function ClientMaintenancePageInner() {
   useEffect(() => { setInsightsLoading(true); loadInsights(); }, [loadInsights]);
 
   useEffect(() => {
+    const onOutcome = () => {
+      loadWorkOrders();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadWorkOrders();
+    };
+    window.addEventListener('compliance-outcome', onOutcome);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('compliance-outcome', onOutcome);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [loadWorkOrders]);
+
+  useEffect(() => {
     const propertyId = searchParams.get('property_id');
     const description = searchParams.get('description');
     if (propertyId || description) {
@@ -302,7 +318,9 @@ function ClientMaintenancePageInner() {
       severity: createForm.severity || undefined,
     })
       .then(() => {
-        toast.success(`${PORTAL_COPY.job} created`);
+        toast.success(
+          `${PORTAL_COPY.job} created on the list. Open it to assign and progress work—this property’s queue updates immediately.`,
+        );
         setCreateOpen(false);
         setCreateForm({ property_id: '', description: '', category: 'general', severity: 'medium' });
         loadWorkOrders();
@@ -366,9 +384,10 @@ function ClientMaintenancePageInner() {
           </Button>
         </div>
       </div>
-      <p className="text-gray-600 mb-6 text-sm sm:text-base break-words">
+      <p className="text-gray-600 mb-2 text-sm sm:text-base break-words">
         {PORTAL_COPY.jobsListDescription} Track status, request contractors where confirmation is required, and monitor SLA deadlines.
       </p>
+      <p className="text-gray-600 mb-6 text-sm sm:text-base break-words">{JOBS_PAGE_CONFIDENCE_LINE}</p>
 
       {/* Summary KPI row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-3 mb-6">
@@ -441,9 +460,12 @@ function ClientMaintenancePageInner() {
 
       {/* Filters */}
       <Card className="mb-6">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Filters</CardTitle>
-        </CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Filters</CardTitle>
+            <p className="text-xs text-gray-500 font-normal mt-1 leading-snug">
+              Narrow the list to the jobs you intend to act on first—status and SLA filters match how risk shows in Command Center.
+            </p>
+          </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-end gap-3">
             <div className="w-full sm:w-auto min-w-0 flex-1 sm:flex-initial">
@@ -510,6 +532,9 @@ function ClientMaintenancePageInner() {
               <AlertTriangle className="w-4 h-4 text-amber-600" />
               SLA risk
             </CardTitle>
+            <p className="text-xs text-gray-600 font-normal mt-1 leading-snug">
+              These jobs have SLA pressure—opening them cuts portfolio exposure.
+            </p>
           </CardHeader>
           <CardContent>
             <div className="md:hidden space-y-3">
@@ -570,6 +595,9 @@ function ClientMaintenancePageInner() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base">{PORTAL_COPY.jobs}</CardTitle>
+          <p className="text-xs text-gray-500 font-normal mt-1 leading-snug">
+            Row status reflects the live job record—updates here flow to compliance proof and SLA views.
+          </p>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -786,7 +814,9 @@ function ClientMaintenancePageInner() {
                     description: invoiceForm.description?.trim() || undefined,
                     submitted_amount: invoiceForm.submitted_amount ? parseFloat(invoiceForm.submitted_amount) : undefined,
                   });
-                  toast.success('Invoice created. You can review it in Operations → Approvals.');
+                  toast.success(
+                    'Invoice drafted. It is queued in Approvals—paying it records spend against this job and contractor.',
+                  );
                   setInvoiceModalOpen(null);
                   setInvoiceForm({ reference: '', description: '', submitted_amount: '' });
                   navigate('/operations/approvals');
@@ -845,7 +875,10 @@ function ClientMaintenancePageInner() {
       {createOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Report an issue</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Report an issue</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Logging here creates a maintenance job so the property’s repair record and SLA timers can start.
+            </p>
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Property *</label>

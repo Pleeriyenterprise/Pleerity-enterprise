@@ -1253,14 +1253,14 @@ export default function AdminAnalyticsDashboard() {
                     <Clock className="h-5 w-5 text-blue-600" />
                     SLA Performance
                   </CardTitle>
-                  <CardDescription>Source: work orders with SLA target timestamps</CardDescription>
+                  <CardDescription>Source: jobs with SLA target timestamps</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <DataQualityStrip dataQuality={slaDq} />
                   {sla?.has_sla_data === false ? (
                     <div className="text-center mb-4">
                       <p className="text-4xl font-bold text-gray-500">N/A</p>
-                      <p className="text-sm text-gray-500">No SLA-tagged work orders in this period</p>
+                      <p className="text-sm text-gray-500">No SLA-tagged jobs in this period</p>
                     </div>
                   ) : (
                     <div className="text-center mb-4">

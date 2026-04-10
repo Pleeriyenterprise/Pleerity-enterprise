@@ -200,12 +200,13 @@ export function getNextStepMessage(wo, invoiceByWo) {
   if (invSt === 'paid') return 'Payment has been recorded. Thank you.';
 
   if (invSt === 'rejected') {
-    return 'Your invoice was rejected. Check your email or contact the client, then submit a revised invoice if they allow it.';
+    return 'Invoice rejected—check your email for the reason. Submit a revised invoice when the client allows it.';
   }
-  if (invSt === 'needs_info') return 'The client needs more information on your invoice. Respond via their request, then resubmit if applicable.';
+  if (invSt === 'needs_info')
+    return 'More detail requested on your invoice—reply through the client thread, then resubmit if needed.';
 
   if (invSt === 'approved') {
-    return 'Invoice approved — payment is arranged with the client. Follow up with them if you have not received funds.';
+    return 'Invoice approved—payment sits with the client. Follow up if funds are delayed.';
   }
 
   if (invSt === 'pending') {
@@ -220,7 +221,7 @@ export function getNextStepMessage(wo, invoiceByWo) {
     const docHint =
       (wo?.work_order_kind || '').toUpperCase() === 'COMPLIANCE' && wo?.expected_output_document_type
         ? ` Upload the ${wo.expected_output_document_type} when work is finished.`
-        : ' Upload evidence (photos or certificates) when work is finished.';
+        : ' Upload evidence (photos, certificates) when work is finished.';
     return `Complete the work on site, then mark the job complete.${docHint}`;
   }
 
@@ -228,7 +229,7 @@ export function getNextStepMessage(wo, invoiceByWo) {
     try {
       const d = new Date(wo.scheduled_at);
       const when = d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-      return `Attend the visit on ${when}. Mark in progress when you arrive, or request a change if you cannot attend.`;
+      return `Attend the visit on ${when}. Mark in progress on arrival; request a change if you cannot attend.`;
     } catch {
       return 'Attend the scheduled visit. Mark in progress when you arrive.';
     }
@@ -237,17 +238,17 @@ export function getNextStepMessage(wo, invoiceByWo) {
   if ((wo?.schedule_status || '').toLowerCase() === 'proposed') {
     const sb = (wo?.scheduled_by || '').toLowerCase();
     if (sb === 'client' || sb === 'admin') {
-      return 'Confirm the proposed visit time, or propose a different time.';
+      return 'Confirm the proposed visit time—propose a different time if needed.';
     }
     return 'Waiting for the client to confirm your proposed visit time.';
   }
 
   if (st === 'OPEN' || st === 'ASSIGNED') {
-    return 'Accept the assignment to unlock scheduling and evidence upload, or decline if you cannot take the job.';
+    return 'Accept to unlock scheduling and uploads. Decline if you cannot take the job.';
   }
 
   if (st === 'SCHEDULED') {
-    return 'Propose a visit date and time, or confirm one the client has proposed.';
+    return 'Use visit actions to set a time—confirm the client’s slot if they already proposed one.';
   }
 
   return 'Review job details and use the actions on the right to move this job forward.';
@@ -257,7 +258,7 @@ export function getEvidenceGuidance(wo) {
   if ((wo?.work_order_kind || '').toUpperCase() === 'COMPLIANCE' && wo?.expected_output_document_type) {
     return `Your client expects evidence that matches: ${wo.expected_output_document_type}. Upload clear, legible files — they may be used for compliance records.`;
   }
-  return 'Upload photos, certificates, or PDFs that show the work completed. Files are visible to your client for review.';
+  return 'Upload photos, certificates, PDFs that show completed work. Your client reviews what you attach.';
 }
 
 /**

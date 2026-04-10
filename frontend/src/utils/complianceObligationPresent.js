@@ -29,7 +29,7 @@ function legalContextForCode(codeNorm) {
     riskOfNonCompliance = 'Failure to comply can result in enforcement and liability in the event of fire.';
   } else {
     legalContext =
-      'This requirement is part of your compliance framework. Keeping evidence up to date helps maintain your score and reduces risk.';
+      'This requirement is part of your compliance framework. Keeping documents up to date helps maintain your score and reduces risk.';
   }
   return { legalContext, riskOfNonCompliance };
 }
@@ -54,9 +54,9 @@ export function registryFallbackComplianceExplanation(req) {
   } else if (['OVERDUE', 'EXPIRED'].includes(status)) {
     why_it_matters = `${legalContext} ${riskOfNonCompliance} This item is overdue or expired.`;
   } else if (status === 'EXPIRING_SOON') {
-    why_it_matters = `${legalContext} ${riskOfNonCompliance} This item is expiring soon; renew and upload evidence before the due date.`;
+    why_it_matters = `${legalContext} ${riskOfNonCompliance} This item is expiring soon; renew and upload a document before the due date.`;
   } else if (status === 'PENDING' || status === 'MISSING' || status === 'MISSING_EVIDENCE') {
-    why_it_matters = `${legalContext} Evidence or documentation is missing. ${riskOfNonCompliance}`;
+    why_it_matters = `${legalContext} A required document is missing. ${riskOfNonCompliance}`;
   } else {
     why_it_matters = `${legalContext} ${riskOfNonCompliance}`;
   }
@@ -65,21 +65,21 @@ export function registryFallbackComplianceExplanation(req) {
 
   let recommended_action_text;
   if (status === 'PENDING' && hasDoc) {
-    recommended_action_text = 'Open the Documents tab and confirm details for this obligation, or wait if the file is still being processed.';
+    recommended_action_text = 'Open the Documents tab and confirm details for this requirement, or wait if the file is still being processed.';
   } else if (['OVERDUE', 'EXPIRED'].includes(status)) {
-    recommended_action_text = 'Upload renewed evidence and update dates, or mark as not applicable if this obligation does not apply.';
+    recommended_action_text = 'Upload a renewed document and update dates, or mark as not applicable if this requirement does not apply.';
   } else if (status === 'EXPIRING_SOON') {
     if (codeNorm.includes('gas')) {
       recommended_action_text = 'Schedule a Gas Safe inspection and upload the new certificate when complete.';
     } else if (codeNorm.includes('eicr') || codeNorm === 'electrical_safety') {
       recommended_action_text = 'Arrange an EICR inspection and upload the report when complete.';
     } else {
-      recommended_action_text = 'Schedule the required inspection or renewal and upload evidence when complete.';
+      recommended_action_text = 'Schedule the required inspection or renewal and upload the document when complete.';
     }
   } else if (status === 'PENDING' || status === 'MISSING' || status === 'MISSING_EVIDENCE') {
-    recommended_action_text = 'Upload the required document or evidence for this obligation.';
+    recommended_action_text = 'Upload the required document for this requirement.';
   } else {
-    recommended_action_text = 'Review this obligation on the Documents tab and confirm or update evidence as needed.';
+    recommended_action_text = 'Review this requirement on the Documents tab and confirm or update documents as needed.';
   }
 
   return {
@@ -101,16 +101,16 @@ export function complianceWhatChangedLine(req) {
   const est = req?.date_source === 'SYSTEM_ESTIMATED';
 
   if (isRequirementMissingDocument(req)) {
-    return 'There is no linked document on file for this obligation yet.';
+    return 'There is no linked document on file for this requirement yet.';
   }
   if (s === 'PENDING' && hasDoc) {
     return 'A document is linked; it still needs to be confirmed on the Documents tab (or processing may be in progress).';
   }
   if (['OVERDUE', 'EXPIRED'].includes(s)) {
     if (due) {
-      return `${est ? 'Estimated ' : ''}Due date has passed (${String(due).slice(0, 10)}). Renew and upload evidence.`;
+      return `${est ? 'Estimated ' : ''}Due date has passed (${String(due).slice(0, 10)}). Renew and upload a document.`;
     }
-    return 'This obligation is past its due date. Renew and upload evidence.';
+    return 'This requirement is past its due date. Renew and upload a document.';
   }
   if (s === 'EXPIRING_SOON') {
     if (days != null && days >= 0) {
@@ -119,13 +119,13 @@ export function complianceWhatChangedLine(req) {
     if (due) {
       return `${est ? 'Estimated ' : ''}Due ${String(due).slice(0, 10)}. Renew before it expires.`;
     }
-    return 'This obligation is due soon. Plan renewal before the deadline.';
+    return 'This requirement is due soon. Plan renewal before the deadline.';
   }
   if (['COMPLIANT', 'VALID'].includes(s) && hasDoc) {
-    return 'Evidence is on file and this obligation is currently in a valid state.';
+    return 'A document is on file and this requirement is currently valid.';
   }
   if (['NOT_APPLICABLE', 'NOT_REQUIRED', 'WAIVED'].includes(s)) {
-    return 'This obligation is marked as not applicable or waived for this property.';
+    return 'This requirement is marked as not applicable or waived for this property.';
   }
   return 'Review the current status and due date in the table above.';
 }
@@ -136,7 +136,7 @@ export function complianceObligationStatusLabel(r) {
   if (['NOT_APPLICABLE', 'NOT_REQUIRED', 'WAIVED'].includes(s)) return 'Not applicable';
   if (['OVERDUE', 'EXPIRED'].includes(s)) return 'Overdue';
   if (s === 'EXPIRING_SOON') return 'Expiring';
-  if (isRequirementMissingDocument(r)) return 'Missing evidence';
+  if (isRequirementMissingDocument(r)) return 'No document uploaded';
   return 'Valid';
 }
 
@@ -183,23 +183,23 @@ export function compliancePriorityRecommendedNext(requirements, urgentOrdered, r
   const first = urgentOrdered[0];
   if (first) {
     const act = complianceObligationPrimaryAction(first);
-    const title = rowTitle(first) || 'this obligation';
-    if (act.verb === 'upload') return `Next: ${act.label} for ${title}.`;
-    if (act.verb === 'renew') return `Next: Renew evidence for ${title}.`;
-    return `Next: Review ${title} on the Documents tab.`;
+    const title = rowTitle(first) || 'this requirement';
+    if (act.verb === 'upload') return `${act.label} for ${title}.`;
+    if (act.verb === 'renew') return `Renew documents for ${title}.`;
+    return `Review ${title} on the Documents tab.`;
   }
   const { missing, expiring, overdue } = summarizeRequirementCounts(requirements);
   if (missing > 0) {
-    return `Next: Upload evidence for ${missing} obligation${missing === 1 ? '' : 's'} with missing documents.`;
+    return `Upload documents for ${missing} requirement${missing === 1 ? '' : 's'} with nothing on file.`;
   }
   if (overdue > 0) {
-    return `Next: Address ${overdue} overdue obligation${overdue === 1 ? '' : 's'}.`;
+    return `Address ${overdue} overdue requirement${overdue === 1 ? '' : 's'}.`;
   }
   if (expiring > 0) {
-    return `Next: Plan renewal for ${expiring} obligation${expiring === 1 ? '' : 's'} due soon.`;
+    return `Plan renewal for ${expiring} requirement${expiring === 1 ? '' : 's'} due soon.`;
   }
   if (requirements.length > 0) {
-    return 'Next: Periodically review obligations and keep evidence up to date on the Documents tab.';
+    return 'Review requirements and keep documents up to date on the Documents tab.';
   }
-  return 'Next: Complete property setup so applicable obligations appear here.';
+  return 'Complete property setup so applicable requirements appear here.';
 }

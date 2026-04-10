@@ -6,7 +6,7 @@ import { LayoutDashboard, Settings, Users, BarChart3, RefreshCw, Zap, Shield, Tr
 import { toast } from 'sonner';
 
 const MODULE_LINKS = [
-  { id: 'maintenance', label: 'Maintenance', icon: Settings, href: '/admin/ops/maintenance' },
+  { id: 'maintenance', label: 'Jobs', icon: Settings, href: '/admin/ops/maintenance' },
   { id: 'contractors', label: 'Contractors', icon: Users, href: '/admin/ops/contractors' },
   { id: 'identities', label: 'Identity lifecycle', icon: Shield, href: '/admin/ops/identities' },
   { id: 'risk', label: 'Risk & Insights', icon: BarChart3, href: '/admin/ops/risk' },

@@ -56,3 +56,20 @@
     transform: rotate(360deg);
   }
 }
+
+/* Command center: brief, subtle highlight when pressure metrics improve (counts drop) */
+@keyframes cc-metric-improved-fade {
+  0% {
+    background-color: rgba(0, 184, 169, 0);
+  }
+  30% {
+    background-color: rgba(0, 184, 169, 0.1);
+  }
+  100% {
+    background-color: rgba(0, 184, 169, 0);
+  }
+}
+
+.command-center-metric-improved {
+  animation: cc-metric-improved-fade 1.65s ease-out forwards;
+}

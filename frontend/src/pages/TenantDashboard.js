@@ -210,7 +210,9 @@ const TenantDashboard = () => {
         message: requestForm.message
       });
       
-      toast.success('Certificate request submitted!');
+      toast.success('Request sent to your landlord', {
+        description: 'They will see it in Today and can resolve it by uploading documents.',
+      });
       setShowRequestModal(false);
       setRequestForm({ certificate_type: '', message: '' });
     } catch (err) {
@@ -337,6 +339,9 @@ const TenantDashboard = () => {
               <p className="text-gray-600 mt-1">
                 We monitor key safety checks like gas, electrical, and fire systems.
                 If anything needs attention, you&apos;ll see it below.
+              </p>
+              <p className="text-sm text-gray-600 mt-3 leading-snug">
+                Tenant requests appear in Today and can be resolved by uploading documents.
               </p>
               <p className="text-sm text-gray-500 mt-2">
                 Last updated: {new Date(data?.last_updated).toLocaleString()}
@@ -693,6 +698,10 @@ const TenantDashboard = () => {
               </button>
             </div>
             <form onSubmit={handleRequestCertificate} className="p-4 space-y-4">
+              <p className="text-sm text-gray-600 leading-snug -mt-1">
+                This request appears in your landlord&apos;s Today inbox. They can clear it by uploading the certificate or
+                related document.
+              </p>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
                 <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
@@ -807,11 +816,11 @@ const TenantDashboard = () => {
                       onChange={() => setReportType('work_order')}
                       className="text-amber-600"
                     />
-                    <span className="text-sm">Work order</span>
+                    <span className="text-sm">Job</span>
                   </label>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {reportType === 'issue' ? 'Creates an issue for your landlord to triage and assign.' : 'Creates a work order directly.'}
+                  {reportType === 'issue' ? 'Creates an issue for your landlord to triage and assign.' : 'Creates a job directly.'}
                 </p>
               </div>
               {reportType === 'issue' && (
@@ -887,8 +896,8 @@ const TenantDashboard = () => {
               </div>
               <p className="text-xs text-gray-500 text-center">
                 {reportType === 'issue'
-                  ? 'Your landlord will see this in Operations → Issues and can triage and create a work order.'
-                  : 'A work order will be created. Your landlord can assign a contractor and track the repair.'}
+                  ? 'Your landlord will see this in Operations → Issues and can triage and create a job.'
+                  : 'A job will be created. Your landlord can assign a contractor and track the repair.'}
               </p>
             </form>
           </div>

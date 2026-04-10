@@ -111,7 +111,7 @@ export default function JurisdictionSettingsPage() {
       toast.success('Compliance defaults saved', {
         description:
           n != null && n > 0
-            ? `Scores and risk signals are refreshing for ${n} propert${n === 1 ? 'y' : 'ies'}. This may take a minute.`
+            ? `Scores and flagged issues are refreshing for ${n} propert${n === 1 ? 'y' : 'ies'}. This may take a minute.`
             : 'Your jurisdiction profile is updated. Scores will use these rules on the next calculation.',
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -206,7 +206,7 @@ export default function JurisdictionSettingsPage() {
             {recalcHint != null && recalcHint > 0 ? (
               <p className="text-green-800/90">
                 Background refresh started for <strong>{recalcHint}</strong> propert{recalcHint === 1 ? 'y' : 'ies'} (scores and
-                related risk signals).
+                related flagged issues).
               </p>
             ) : null}
           </AlertDescription>
@@ -282,9 +282,9 @@ export default function JurisdictionSettingsPage() {
           <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
             <p className="text-sm font-semibold text-midnight-blue mb-2">How this affects your account</p>
             <p className="text-xs text-gray-600 mb-3">
-              Examples of obligation areas tracked in your score for the{' '}
+              Examples of requirement areas tracked in your score for the{' '}
               <strong>{profileKey === 'SCOTLAND' ? 'Scotland' : 'England & Wales'}</strong> profile (wording simplified; your
-              actual requirements still depend on property attributes and evidence):
+              actual requirements still depend on property attributes and documents):
             </p>
             <ul className="list-disc pl-5 text-sm text-gray-800 space-y-1">
               {examples.map((line) => (

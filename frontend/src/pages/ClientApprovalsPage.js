@@ -303,7 +303,7 @@ function ClientApprovalsPageInner() {
             <ClipboardCheck className="w-7 h-7 shrink-0" />
             Approvals
           </h1>
-          <p className="text-gray-600 mt-1">Review invoices and cost submissions linked to work orders. Compare to benchmarks and approve, reject, or request more information.</p>
+          <p className="text-gray-600 mt-1">Review invoices and cost submissions linked to jobs. Compare to benchmarks and approve, reject, or request more information.</p>
           <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/80 p-3 text-sm text-sky-900 max-w-2xl">
             <p className="font-medium mb-1">Payment responsibility</p>
             <p>Contractors are independent service providers engaged by you. You are responsible for paying the contractor. Pleerity does not process contractor payments.</p>
@@ -346,7 +346,7 @@ function ClientApprovalsPageInner() {
             <div className="flex items-center gap-2 w-full md:flex-1 md:min-w-[200px]">
               <Search className="w-4 h-4 text-gray-400 shrink-0" />
               <Input
-                placeholder="Search ref, contractor, property, work order…"
+                placeholder="Search ref, contractor, property, job…"
                 value={filters.q}
                 onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
                 className="w-full md:max-w-sm min-h-11"
@@ -395,7 +395,7 @@ function ClientApprovalsPageInner() {
               </SelectContent>
             </Select>
             <Input
-              placeholder="Work order ID"
+              placeholder="Job ID"
               value={filters.workOrderId}
               onChange={(e) => setFilters((f) => ({ ...f, workOrderId: e.target.value }))}
               className="w-full md:w-[140px] min-h-11"
@@ -424,7 +424,7 @@ function ClientApprovalsPageInner() {
           <CardHeader>
             <CardTitle className="text-base">Review Exceptions</CardTitle>
             <CardDescription className="text-sm text-amber-800">
-              Items that need attention: above benchmark, missing work order link, missing contractor, or missing attachment.
+              Items that need attention: above benchmark, missing job link, missing contractor, or missing attachment.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -463,7 +463,7 @@ function ClientApprovalsPageInner() {
               <div className="flex justify-center gap-3 mt-4">
                 <Button variant="outline" size="sm" onClick={() => navigate('/operations/work-orders')}>
                   <Wrench className="w-4 h-4 mr-2" />
-                  View Work Orders
+                  View jobs
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => navigate('/operations/contractors')}>
                   <Briefcase className="w-4 h-4 mr-2" />
@@ -516,7 +516,7 @@ function ClientApprovalsPageInner() {
                     <TableRow>
                       <TableHead>Ref</TableHead>
                       <TableHead>Property</TableHead>
-                      <TableHead>Work Order</TableHead>
+                      <TableHead>Job</TableHead>
                       <TableHead>Contractor</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead>Benchmark</TableHead>
@@ -593,7 +593,7 @@ function ClientApprovalsPageInner() {
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">Linked context</h4>
                 <ul className="text-sm space-y-1">
                   <li><strong>Property:</strong> {detail.property_label ?? '—'}</li>
-                  <li><strong>Work order:</strong> {detail.work_order_label || detail.work_order_id || '—'}</li>
+                  <li><strong>Job:</strong> {detail.work_order_label || detail.work_order_id || '—'}</li>
                 </ul>
               </div>
               <div>

@@ -9,6 +9,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { AlertCircle, Plus, Loader2, FileText, X, Wrench, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { reinforcementToastOptions } from '../utils/confidenceUxCopy';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { issueStatusLabel, issueSeverityLabel } from '../domain/presentDomain';
 import { PortalFilterStack, portalDrawerPanelClass } from '../components/client/ClientPortalPatterns';
@@ -144,7 +145,7 @@ function ClientIssuesPageInner() {
         severity: createForm.severity || undefined,
       })
       .then(() => {
-        toast.success('Work order created.');
+        toast.success('Job created.');
         setCreateOpen(false);
         setCreateForm({ property_id: '', description: '', category: 'general', severity: 'medium' });
         loadIssues();
@@ -168,7 +169,8 @@ function ClientIssuesPageInner() {
       })
       .then((res) => {
         const outcomeMsg = res.data?.outcome?.message;
-        toast.success(outcomeMsg || 'Issue created and triaged.');
+        const base = outcomeMsg || 'Issue created and triaged.';
+        toast.success(base, reinforcementToastOptions(res.data?.outcome));
         if (res.data?.outcome && typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: res.data.outcome }));
         }
@@ -186,12 +188,12 @@ function ClientIssuesPageInner() {
     setCreatingWoFromIssue(issueId);
     clientAPI.createWorkOrderFromIssue(issueId)
       .then(() => {
-        toast.success('Work order created from issue.');
+        toast.success('Job created from issue.');
         loadIssues();
         setIssueDetailDrawer(null);
         setIssueDetailData(null);
       })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Failed to create work order'))
+      .catch((err) => toast.error(err?.response?.data?.detail || 'Failed to create job'))
       .finally(() => setCreatingWoFromIssue(null));
   };
 
@@ -212,7 +214,7 @@ function ClientIssuesPageInner() {
             <p className="font-medium text-amber-900">{error}</p>
             <p className="text-sm text-amber-800 mt-2">Contact your administrator to enable maintenance workflows.</p>
             <Button variant="outline" className="mt-4" onClick={() => navigate('/operations/work-orders')}>
-              View Work Orders
+              View jobs
             </Button>
           </CardContent>
         </Card>
@@ -229,7 +231,7 @@ function ClientIssuesPageInner() {
         </h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto lg:shrink-0">
           <Button variant="outline" className="w-full sm:w-auto min-h-11 justify-center" onClick={() => navigate('/operations/work-orders')}>
-            View work orders
+            View jobs
           </Button>
           <Button variant="outline" className="w-full sm:w-auto min-h-11 justify-center" onClick={() => setCreateIssueOpen(true)}>
             <FileText className="w-4 h-4 mr-2 shrink-0" />
@@ -527,7 +529,7 @@ function ClientIssuesPageInner() {
                     {issueDetailData.status !== 'ready_for_work_order' && issueDetailData.status !== 'closed' && (
                       <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => handleCreateWoFromIssue(issueDetailData.issue_id)} disabled={creatingWoFromIssue === issueDetailData.issue_id}>
                         {creatingWoFromIssue === issueDetailData.issue_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4 mr-1" />}
-                        Create work order
+                        Create job
                       </Button>
                     )}
                     <Button size="sm" variant="outline" onClick={() => { navigate(resolvePropertyPath(issueDetailData.property_id)); setIssueDetailDrawer(null); }}>
@@ -548,7 +550,7 @@ function ClientIssuesPageInner() {
       {createOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setCreateOpen(false)}>
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Report issue (create work order)</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Report issue (create job)</h2>
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Property *</label>
@@ -564,7 +566,7 @@ function ClientIssuesPageInner() {
                 <textarea value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} className="border border-gray-300 rounded-md px-3 py-2 w-full" rows={3} placeholder="Describe the issue..." required />
               </div>
               <div className="flex gap-2 pt-2">
-                <Button type="submit" disabled={createSaving} className="bg-electric-teal hover:bg-electric-teal/90">{createSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create work order'}</Button>
+                <Button type="submit" disabled={createSaving} className="bg-electric-teal hover:bg-electric-teal/90">{createSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create job'}</Button>
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
               </div>
             </form>

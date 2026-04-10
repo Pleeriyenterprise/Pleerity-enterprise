@@ -36,6 +36,17 @@ import { buildEntityRoute, recordClientPortalInteraction, resolveClientPortalPat
 import { resolveTaskCta } from '../utils/ctaRegistry';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
+import { complianceRequirementStatusLabel } from '../domain/presentDomain';
+
+function scoreDriverStatusLabel(raw) {
+  const s = String(raw || '').trim().toUpperCase();
+  if (s === 'OVERDUE') return 'Overdue';
+  if (s === 'EXPIRING_SOON') return 'Expiring soon';
+  if (s === 'MISSING_EVIDENCE') return 'No document uploaded';
+  if (s === 'NEEDS_CONFIRMATION') return 'Awaiting verification';
+  const lbl = complianceRequirementStatusLabel(s);
+  return lbl && lbl !== '—' ? lbl : 'Needs attention';
+}
 
 const ComplianceScorePage = () => {
   const { hasFeature } = useEntitlements();
@@ -343,7 +354,7 @@ const ComplianceScorePage = () => {
                           </span>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-xs">
-                          Completeness is the percentage of applicable tracked items with verified evidence and dates confirmed.
+                          Completeness is the percentage of applicable tracked items with verified documents and dates confirmed.
                         </TooltipContent>
                       </Tooltip>
                     ) : (
@@ -464,9 +475,9 @@ const ComplianceScorePage = () => {
                         <span className="text-sm font-medium text-teal-700">Documents</span>
                         <span className="text-lg font-bold text-teal-700">{scoreData?.weights?.documents ?? '15%'}</span>
                       </div>
-                      <p className="text-xs text-teal-600 mb-1">What it measures: percentage of tracked items with verified evidence.</p>
+                      <p className="text-xs text-teal-600 mb-1">What it measures: percentage of tracked items with verified documents.</p>
                       <p className="text-sm font-semibold text-teal-800">Your result: {scoreData?.components?.documents?.score ?? scoreData?.breakdown?.document_score?.toFixed?.(0) ?? 0}%</p>
-                      <p className="text-xs text-teal-700 mt-1">Why: {scoreData?.components?.documents?.evidence_coverage_percent ?? scoreData?.stats?.verified_coverage_percent ?? 0}/{scoreData?.stats?.total_requirements ?? 0} items have evidence</p>
+                      <p className="text-xs text-teal-700 mt-1">Why: {scoreData?.components?.documents?.evidence_coverage_percent ?? scoreData?.stats?.verified_coverage_percent ?? 0}/{scoreData?.stats?.total_requirements ?? 0} items have documents</p>
                     </div>
                     <div className="p-4 bg-red-50 rounded-lg border border-red-100">
                       <div className="flex items-center justify-between mb-2">
@@ -566,7 +577,7 @@ const ComplianceScorePage = () => {
             ) : (
               <>
                 {scoreData.drivers.some(d => !d.property_id || !d.requirement_id) && (
-                  <p className="text-sm text-gray-600 mb-3">Some drivers may be hidden until evidence is uploaded or dates are confirmed.</p>
+                  <p className="text-sm text-gray-600 mb-3">Some drivers may be hidden until a document is uploaded or dates are confirmed.</p>
                 )}
                 {/* Desktop: table */}
                 <div className="hidden md:block overflow-x-auto -mx-4 sm:mx-0">
@@ -595,7 +606,7 @@ const ComplianceScorePage = () => {
                                 d.status === 'NEEDS_CONFIRMATION' ? 'bg-amber-100 text-amber-700' :
                                 'bg-gray-100 text-gray-700'
                               }`}>
-                                {d.status === 'OVERDUE' ? 'Overdue' : d.status === 'EXPIRING_SOON' ? 'Expiring' : d.status === 'MISSING_EVIDENCE' ? 'Missing evidence' : d.status === 'NEEDS_CONFIRMATION' ? 'Needs confirmation' : d.status}
+                                {scoreDriverStatusLabel(d.status)}
                               </span>
                             </td>
                             <td className="py-3 pr-2">
@@ -676,7 +687,7 @@ const ComplianceScorePage = () => {
                           d.status === 'NEEDS_CONFIRMATION' ? 'bg-amber-100 text-amber-700' :
                           'bg-gray-100 text-gray-700'
                         }`}>
-                          {d.status === 'OVERDUE' ? 'Overdue' : d.status === 'EXPIRING_SOON' ? 'Expiring' : d.status === 'MISSING_EVIDENCE' ? 'Missing evidence' : d.status === 'NEEDS_CONFIRMATION' ? 'Needs confirmation' : d.status}
+                          {scoreDriverStatusLabel(d.status)}
                         </span>
                         {' · '}
                         {d.date_used ? new Date(d.date_used).toLocaleDateString() : '—'} · {d.evidence_uploaded ? 'Uploaded' : 'Not uploaded'}
@@ -907,7 +918,7 @@ const ComplianceScorePage = () => {
               <dl className="space-y-3 text-sm text-gray-700">
                 <div>
                   <dt className="font-medium text-gray-900">Valid</dt>
-                  <dd>Tracked item is current and within date; evidence verified where required.</dd>
+                  <dd>Tracked item is current and within date; documents verified where required.</dd>
                 </div>
                 <div>
                   <dt className="font-medium text-gray-900">Expiring Soon</dt>

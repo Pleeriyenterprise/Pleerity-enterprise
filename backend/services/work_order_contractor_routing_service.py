@@ -508,7 +508,7 @@ async def request_admin_for_routing(
             "work_order_contractor_routing",
             work_order_id,
             f"Client escalated contractor routing for WO {work_order_id}",
-            detail_url_path=f"/admin/ops/maintenance/work-orders/{work_order_id}",
+            detail_url_path=f"/admin/ops/maintenance/jobs/{work_order_id}",
         )
     except Exception as e:
         logger.warning("Admin notify escalation failed: %s", e)
@@ -693,7 +693,7 @@ async def run_contractor_confirmation_timeout_sweep() -> Dict[str, Any]:
                     "work_order_contractor_routing_timeout",
                     wid,
                     f"Work order {wid}: client did not confirm contractor in time",
-                    detail_url_path=f"/admin/ops/maintenance/work-orders/{wid}",
+                    detail_url_path=f"/admin/ops/maintenance/jobs/{wid}",
                 )
             except Exception as e:
                 logger.warning("Admin notify timeout failed: %s", e)

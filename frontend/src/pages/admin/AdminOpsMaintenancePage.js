@@ -65,7 +65,7 @@ export default function AdminOpsMaintenancePage() {
       .catch(() => {
         setWorkOrders([]);
         setTotal(0);
-        toast.error('Failed to load work orders');
+        toast.error('Failed to load jobs');
       })
       .finally(() => setLoading(false));
   }, [clientIdFilter, statusFilter]);
@@ -111,7 +111,7 @@ export default function AdminOpsMaintenancePage() {
       severity: createForm.severity || undefined,
     })
       .then(() => {
-        toast.success('Work order created');
+        toast.success('Job created');
         setCreateOpen(false);
         setCreateForm({ client_id: '', property_id: '', description: '', category: 'general', severity: 'medium' });
         loadWorkOrders();
@@ -148,7 +148,7 @@ export default function AdminOpsMaintenancePage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Wrench className="w-7 h-7" />
-            Maintenance (Work Orders)
+            Jobs
           </h1>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={loadWorkOrders} disabled={loading}>
@@ -157,12 +157,12 @@ export default function AdminOpsMaintenancePage() {
             </Button>
             <Button onClick={() => setCreateOpen(true)} className="bg-electric-teal hover:bg-electric-teal/90">
               <Plus className="w-4 h-4 mr-2" />
-              Create work order
+              Create job
             </Button>
           </div>
         </div>
         <p className="text-gray-600 mb-6">
-          View and manage work orders. Assign contractors from the <Link to="/admin/ops/contractors" className="text-electric-teal hover:underline">Contractors</Link> list.
+          View and manage jobs. Assign contractors from the <Link to="/admin/ops/contractors" className="text-electric-teal hover:underline">Contractors</Link> list.
         </p>
 
         <div className="flex flex-wrap gap-4 mb-6">
@@ -200,7 +200,7 @@ export default function AdminOpsMaintenancePage() {
           </div>
         ) : workOrders.length === 0 ? (
           <div className="bg-gray-50 rounded-lg border border-gray-200 p-8 text-center text-gray-600">
-            No work orders found. Create one or have tenants/clients report issues (when maintenance is enabled).
+            No jobs in this view. With maintenance on, create from here; tenant reports still arrive via Issues.
           </div>
         ) : (
           <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -220,7 +220,7 @@ export default function AdminOpsMaintenancePage() {
                 {workOrders.map((wo) => (
                   <tr key={wo.work_order_id}>
                     <td className="px-4 py-2 text-sm">
-                      <Link to={`/admin/ops/maintenance/work-orders/${wo.work_order_id}`} className="text-electric-teal hover:underline font-mono text-xs">{wo.work_order_id?.slice(0, 8)}…</Link>
+                      <Link to={`/admin/ops/maintenance/jobs/${wo.work_order_id}`} className="text-electric-teal hover:underline font-mono text-xs">{wo.work_order_id?.slice(0, 8)}…</Link>
                       <br />
                       <span className="text-gray-700">{wo.property_id}</span>
                     </td>
@@ -262,7 +262,7 @@ export default function AdminOpsMaintenancePage() {
                     </td>
                     <td className="px-4 py-2 text-sm text-gray-500">{formatDate(wo.created_at)}</td>
                     <td className="px-4 py-2 text-right text-sm">
-                      <Link to={`/admin/ops/maintenance/work-orders/${wo.work_order_id}`} className="text-electric-teal hover:underline text-xs">View</Link>
+                      <Link to={`/admin/ops/maintenance/jobs/${wo.work_order_id}`} className="text-electric-teal hover:underline text-xs">View</Link>
                     </td>
                   </tr>
                 ))}
@@ -276,7 +276,7 @@ export default function AdminOpsMaintenancePage() {
       {createOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Create work order</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Create job</h2>
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Client *</label>

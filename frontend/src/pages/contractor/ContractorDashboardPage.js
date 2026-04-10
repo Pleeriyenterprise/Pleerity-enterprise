@@ -182,10 +182,10 @@ export default function ContractorDashboardPage() {
           err?.response?.data?.detail ||
           (typeof err?.response?.data?.detail === 'object' ? err.response.data.detail?.message : null) ||
           err?.message ||
-          'Could not load work orders.';
+          'Could not load jobs.';
         setWorkOrders([]);
         setTotal(0);
-        setWorkOrdersError(typeof msg === 'string' ? msg : 'Could not load work orders.');
+        setWorkOrdersError(typeof msg === 'string' ? msg : 'Could not load jobs.');
         contractorDebugLog('work_orders_failed', { status: err?.response?.status, msg });
       });
   }, [api]);
@@ -659,7 +659,7 @@ export default function ContractorDashboardPage() {
           setDetailId(null);
           await refreshListAndDetail();
         } else if (aid === 'decline_assignment') {
-          if (!window.confirm('Decline this assignment? The work order will be unassigned.')) return;
+          if (!window.confirm('Decline this assignment? The job will be unassigned.')) return;
           logActionTaken();
           setActionLoading(wid);
           await api.declineAssignment(wid);
@@ -743,7 +743,7 @@ export default function ContractorDashboardPage() {
           const notes = window.prompt('Optional note for your client (e.g. why access was not possible)') ?? '';
           setActionLoading(wid);
           await api.markNoAccess(wid, { notes: notes.trim() || undefined });
-          toast.success('No access recorded. Your client can reschedule or clear the hold.');
+          toast.success('No-access recorded. Your client can clear the hold from their portal.');
           await refreshListAndDetail();
         } else if (aid === 'cancel_scheduled_visit') {
           if (!window.confirm('Cancel this scheduled visit? The booking will be cleared.')) return;
@@ -994,7 +994,9 @@ export default function ContractorDashboardPage() {
                 <AlertCircle className="h-4 w-4 text-amber-700" />
                 <AlertDescription className="text-amber-950">
                   <span className="font-medium">Your account is awaiting approval.</span>
-                  <span className="block mt-1 text-sm">You will be able to use the full portal once your client or administrator activates your profile.</span>
+                  <span className="block mt-1 text-sm">
+                    The full portal unlocks after your client company activates this profile.
+                  </span>
                 </AlertDescription>
               </Alert>
             ) : null}
@@ -1048,7 +1050,7 @@ export default function ContractorDashboardPage() {
                 <PoundSterling className="w-4 h-4 text-electric-teal" />
                 Primary metrics
               </h2>
-              <p className="text-xs text-gray-500 mb-4">Tap a tile to jump to the matching list or section.</p>
+              <p className="text-xs text-gray-500 mb-4">Tap a tile to open its list.</p>
               <div className="grid lg:grid-cols-3 gap-6">
                   <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">A. Jobs</h3>
@@ -1191,7 +1193,7 @@ export default function ContractorDashboardPage() {
               <Alert variant="destructive" className="mb-4" data-testid="contractor-work-orders-error">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <span className="font-medium">Work orders</span>
+                  <span className="font-medium">Jobs</span>
                   <span className="block mt-1">{workOrdersError}</span>
                 </AlertDescription>
               </Alert>
@@ -1285,7 +1287,7 @@ export default function ContractorDashboardPage() {
                                   )}
                                 </Button>
                               ) : (
-                                <p className="text-xs text-gray-500 md:text-right">No primary action — open job for details.</p>
+                                <p className="text-xs text-gray-500 md:text-right">No primary action—open the job for details.</p>
                               )}
                               <Button
                                 type="button"
@@ -1322,7 +1324,7 @@ export default function ContractorDashboardPage() {
                     const proofLine = wo.completion_proof_required
                       ? wo.completion_proof_satisfied
                         ? 'Completion proof on file'
-                        : 'Proof still required — open the job to upload'
+                        : 'Proof required—open the job to upload'
                       : 'Proof not required for this job type';
                     return (
                       <Card key={wo.work_order_id} className="border-l-4 border-l-violet-500 shadow-sm">
@@ -1355,12 +1357,11 @@ export default function ContractorDashboardPage() {
             <section ref={waitingSectionRef} className="mb-10 scroll-mt-24" aria-label="Waiting on others">
               <h2 className="text-lg font-bold text-midnight-blue mb-2">Waiting on others</h2>
               <p className="text-xs text-gray-500 mb-4">
-                Invoice review, client confirmation, payment processing, or holds — nothing for you to push until the client or system
-                moves forward.
+                Client-side queue—invoices, visit confirmations, holds. Nothing to execute here until the client record advances.
               </p>
               {waitingJobs.length === 0 ? (
                 <p className="text-sm text-gray-600 border border-dashed border-gray-200 rounded-lg px-4 py-6 bg-white text-center">
-                  Nothing in this queue. When a client is reviewing an invoice or confirming a visit, it will show here.
+                  Nothing in this queue—jobs appear here when a client decision is still outstanding.
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -1434,7 +1435,7 @@ export default function ContractorDashboardPage() {
             <Card>
                   <CardContent className="py-6 text-center text-gray-600">
                     <p className="font-medium text-midnight-blue">No invoices submitted yet</p>
-                    <p className="text-sm mt-2 text-gray-500">After you complete a job, you can submit an invoice from the work order details.</p>
+                    <p className="text-sm mt-2 text-gray-500">After you complete a job, you can submit an invoice from the job details.</p>
                   </CardContent>
                 </Card>
               ) : invoices.length > 0 ? (
@@ -1747,11 +1748,13 @@ export default function ContractorDashboardPage() {
                       {detail.completion_proof_required ? (
                         <p className="text-xs font-medium text-amber-900 bg-amber-50 border border-amber-100 rounded px-2 py-1.5 mb-2">
                           {detail.completion_proof_satisfied
-                            ? 'Completion proof on file — you can complete the job when ready.'
+                            ? 'Completion proof on file—finish the job when ready.'
                             : 'Upload completion proof before completing this job'}
                         </p>
                       ) : null}
-                      <p className="text-xs text-gray-500 mb-2">PDF, images, or Word — max 20MB. Accept the assignment first if the upload is disabled.</p>
+                      <p className="text-xs text-gray-500 mb-2">
+                        PDF, images, Word—max 20MB. Accept the assignment if uploads are disabled.
+                      </p>
                       {(detail.evidence_keys || []).length > 0 && (
                         <ul className="text-sm text-gray-700 mb-2 space-y-2 max-h-40 overflow-y-auto">
                           {(detail.evidence_keys || []).map((k) => {
@@ -1833,14 +1836,14 @@ export default function ContractorDashboardPage() {
                           ))}
                       </div>
                       ) : (
-                        <p className="text-sm text-gray-500 mb-2">No extra job actions right now — use Next action if shown.</p>
+                        <p className="text-sm text-gray-500 mb-2">No extra job actions—use Next action when shown.</p>
                       )}
                       {['CANCELLED'].includes((detail.status || '').toUpperCase()) ? (
                         <p className="text-sm text-gray-600">This job is cancelled — no further actions.</p>
                       ) : null}
                       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 mt-3">
                         <div>
-                          <dt className="text-gray-400">Work order ID</dt>
+                          <dt className="text-gray-400">Job ID</dt>
                           <dd className="font-mono break-all">{detail.work_order_id}</dd>
                         </div>
                         <div>
@@ -2021,7 +2024,7 @@ export default function ContractorDashboardPage() {
                     : 'Submit invoice'}
               </h3>
               <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-4">
-                Pleerity coordinates work orders and invoice approval. Payment responsibility lies with the client. Pleerity does
+                Pleerity coordinates jobs and invoice approval. Payment responsibility lies with the client. Pleerity does
                 not process contractor payments. Follow up with the client for payment.
               </p>
               {invoiceModal.workOrder ? (

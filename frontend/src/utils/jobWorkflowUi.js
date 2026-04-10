@@ -2,6 +2,7 @@
  * Shared job lifecycle presentation for client / admin surfaces.
  * Canonical status rules mirror backend `derive_canonical_job_status` (compliance_workflow_service).
  */
+import { operationalExceptionLabel } from '../domain/presentDomain';
 
 const KIND_MAINTENANCE = 'MAINTENANCE';
 const KIND_COMPLIANCE = 'COMPLIANCE';
@@ -72,12 +73,12 @@ const CANONICAL_LABELS = {
   OPEN: 'Waiting for a contractor',
   ASSIGNED: 'Contractor assigned — booking next',
   BOOKING_REQUESTED: 'Visit time proposed — confirmation pending',
-  BOOKED: 'Visit booked — work not yet marked complete',
+  BOOKED: 'Visit booked — awaiting completion',
   SCHEDULED: 'Visit scheduled',
   IN_PROGRESS: 'Work in progress',
   AWAITING_PARTS: 'Awaiting parts',
-  COMPLETED: 'Work marked complete — review proof and close out',
-  VERIFIED: 'Verified — final close-out may remain',
+  COMPLETED: 'Work complete — review proof',
+  VERIFIED: 'Verified — close-out may remain',
   CLOSED: 'Job closed',
   CANCELLED: 'Job cancelled',
   NO_ACCESS: 'On hold: no access',
@@ -92,14 +93,15 @@ const CANONICAL_LABELS = {
  */
 export function clientCurrentUpdateSummary(job) {
   const canonical = String(job?.job_status || '').trim() || deriveCanonicalJobStatus(job);
-  const headline = CANONICAL_LABELS[canonical] || canonical.replace(/_/g, ' ');
+  const headline = CANONICAL_LABELS[canonical] || 'Needs attention';
   const ss = String(job?.schedule_status || '').toLowerCase();
   const when = job?.scheduled_at ? formatShortWhen(job.scheduled_at) : null;
   const lines = [];
   if (when && ss === 'confirmed') lines.push(`Confirmed visit: ${when}.`);
   else if (when && ss === 'proposed') lines.push(`Proposed visit: ${when} — confirm when agreed.`);
   if (job?.operational_exception && canonical !== 'NO_ACCESS' && canonical !== 'RESCHEDULE_REQUIRED') {
-    lines.push(`Operational note: ${String(job.operational_exception).replace(/_/g, ' ')}.`);
+    const hold = operationalExceptionLabel(job.operational_exception);
+    lines.push(hold ? `Operational note: ${hold}.` : 'Operational note: On hold.');
   }
   return { headline, lines, canonical };
 }
@@ -226,7 +228,7 @@ const MANAGE_JOB_CTA_PHRASE_BY_ACTION_ID = {
   assign_contractor: 'assign a contractor',
   approve_quote: 'approve the quote',
   reject_quote: 'respond to the quote',
-  link_document: 'link certificate or evidence',
+  link_document: 'link a document',
   attach_completion_proof: 'upload completion proof',
   verify: 'verify the work',
   complete: 'mark work complete',
@@ -265,6 +267,98 @@ export function maintenanceWorkOrderPreviewDecision(wo) {
     return { nextStep: 'Assign a contractor', cta: 'Manage job to assign a contractor' };
   }
   return { nextStep: 'Review progress on the full job page', cta: 'Manage job' };
+}
+
+/**
+ * When inbox/command surfaces cannot infer a concrete next step, use this (softer than “Manage job”).
+ * Import from callers — do not hard-code the string in multiple files.
+ */
+export const CLIENT_INBOX_JOB_FALLBACK_CTA = 'Review job';
+
+/**
+ * Normalise API `next_actions[].label` strings to client-facing wording (visits, contractors).
+ * Conservative whole-word swaps only; extend here rather than scattering ad-hoc replaces.
+ */
+export function normalizeClientJobCtaLabelFromApi(raw) {
+  let s = String(raw || '').trim();
+  if (!s) return s;
+  if (/^assign$/i.test(s)) return 'Assign contractor';
+  if (/^assign\s+now$/i.test(s)) return 'Assign contractor';
+  s = s.replace(/\bbookings\b/gi, 'visits');
+  s = s.replace(/\bbooking\b/gi, 'visit');
+  return s;
+}
+
+/**
+ * Resolve the best job CTA label for inbox / Command Center / Today (no new APIs).
+ *
+ * Resolution order (keep stable; tests and copy depend on it):
+ * 1. If `task.next_actions` exists: pick `prioritizedClientJobNextAction(task)` (same priority as job detail page).
+ * 2. If that action has a non-empty `label`: return `normalizeClientJobCtaLabelFromApi(label)`.
+ * 3. Else if that action has a known `id`: return `INBOX_JOB_PRIMARY_LABEL_BY_ACTION_ID[id]`.
+ * 4. Else heuristics on `metadata` / task fields: contractor booking state, invoice/quote cues, proposed schedule, title/description.
+ * 5. Else return null → caller uses `CLIENT_INBOX_JOB_FALLBACK_CTA` (“Review job”).
+ *
+ * @param {Record<string, unknown>|null|undefined} task
+ * @returns {string|null}
+ */
+const INBOX_JOB_PRIMARY_LABEL_BY_ACTION_ID = {
+  clear_operational_exception: 'Clear hold',
+  resume_after_parts: 'Resume after parts',
+  propose_schedule: 'Propose visit time',
+  request_booking: 'Request visit',
+  reschedule_booking: 'Reschedule visit',
+  confirm_visit: 'Confirm visit',
+  assign_contractor: 'Assign contractor',
+  approve_quote: 'Approve quote',
+  reject_quote: 'Respond to quote',
+  link_document: 'Link document',
+  attach_completion_proof: 'Upload completion proof',
+  verify: 'Verify work',
+  complete: 'Mark work complete',
+  start: 'Start work',
+  awaiting_parts: 'Mark parts needed',
+  close_job: 'Close job',
+  set_operational_exception: 'Put job on hold',
+  cancel_booking: 'Cancel visit',
+  mark_no_access: 'Record no access',
+  mark_reschedule_required: 'Request reschedule',
+  cancel: 'Cancel job',
+};
+
+export function clientInboxJobCtaLabel(task) {
+  if (!task || typeof task !== 'object') return null;
+  const st = String(task.source_type || '').toLowerCase();
+  if (st !== 'work_order') return null;
+
+  const na = (task.next_actions || []).filter((a) => a?.id && a.id !== 'none');
+  if (na.length) {
+    const a = prioritizedClientJobNextAction(task);
+    if (a) {
+      const lbl = String(a.label || '').trim();
+      if (lbl) return normalizeClientJobCtaLabelFromApi(lbl);
+      const id = String(a.id || '');
+      if (INBOX_JOB_PRIMARY_LABEL_BY_ACTION_ID[id]) return INBOX_JOB_PRIMARY_LABEL_BY_ACTION_ID[id];
+    }
+  }
+
+  const meta = task.metadata && typeof task.metadata === 'object' ? task.metadata : {};
+  const booking = String(meta.compliance_booking_status || task.compliance_booking_status || '').toUpperCase();
+  const at = String(meta.action_type || '');
+  const hay = `${String(task.title || '')} ${String(task.description || '')}`.toLowerCase();
+
+  if (booking === 'AWAITING_CONTRACTOR_RESPONSE' || /\bunassigned\b|\bassign a contractor\b|\bcontractor needed\b/.test(hay)) {
+    return 'Assign contractor';
+  }
+  if (at === 'pending_invoice_approval' || (/\bquote\b/.test(hay) && /\bapprove\b|\breview\b/.test(hay))) {
+    return 'Review quote';
+  }
+  const sched = String(meta.schedule_status || task.schedule_status || '').toLowerCase();
+  if (/\bconfirm\b.*\bvisit\b|\bproposed visit\b/.test(hay) || sched === 'proposed') {
+    return 'Confirm visit';
+  }
+
+  return null;
 }
 
 /** Client-facing label: compliance-led vs repair/maintenance (aligned with `ClientJobDetailPage`). */

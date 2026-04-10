@@ -165,7 +165,7 @@ const ReportsPage = () => {
     const ps = (evidencePeriodStart || '').trim();
     const pe = (evidencePeriodEnd || '').trim();
     if ((ps && !pe) || (!ps && pe)) {
-      toast.error('Choose both start and end dates, or leave both empty for a full snapshot.');
+      toast.error('Invalid period—enter both dates, otherwise clear both.');
       return;
     }
     if (ps && pe && ps > pe) {
@@ -205,7 +205,7 @@ const ReportsPage = () => {
               /* continue polling */
             }
           }
-          toast.info('Still building — refresh the list or try again in a moment.');
+          toast.info('Still building—refresh shortly.');
         })();
       }
     } catch (err) {
@@ -423,7 +423,9 @@ const ReportsPage = () => {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
         
-        toast.success('Report downloaded successfully');
+        toast.success('Report ready', {
+          description: 'Snapshot of your current compliance position.',
+        });
       } else {
         // Get JSON data and generate PDF client-side
         const response = await api.get(`${endpoint}?${params.toString()}`);
@@ -432,7 +434,9 @@ const ReportsPage = () => {
         const doc = generatePDF(reportData, reportId);
         doc.save(`report_${reportId}_${new Date().toISOString().split('T')[0]}.pdf`);
         
-        toast.success('PDF report generated successfully');
+        toast.success('Report ready', {
+          description: 'Snapshot of your current compliance position.',
+        });
       }
     } catch (error) {
       if (error.isPlanGateDenied && error.upgradeDetail) {
@@ -623,6 +627,9 @@ const ReportsPage = () => {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <p className="text-sm text-gray-600 mb-6 leading-relaxed" data-testid="reports-operating-helper">
+          Use reports to review and share compliance status.
+        </p>
         {upgradeRequiredDetail && (
           <div className="mb-6" data-testid="reports-upgrade-required">
             <UpgradeRequired upgradeDetail={upgradeRequiredDetail} showBackToDashboard />
@@ -821,7 +828,7 @@ const ReportsPage = () => {
                 Compliance evidence pack (ZIP)
               </CardTitle>
               <p className="text-sm text-gray-500 mt-1">
-                Download a ZIP containing CSV exports of properties, requirements, document metadata, compliance score history, and work orders, plus a JSON manifest. For regulators, lenders, or your own archive. Limited to five exports per 24 hours. Optionally restrict rows to a UTC date range (properties CSV always lists your full portfolio for context).
+                Download a ZIP containing CSV exports of properties, requirements, document metadata, compliance score history, and jobs, plus a JSON manifest. For regulators, lenders, or your own archive. Limited to five exports per 24 hours. Optionally restrict rows to a UTC date range (properties CSV always lists your full portfolio for context).
               </p>
             </CardHeader>
             <CardContent className="space-y-4">

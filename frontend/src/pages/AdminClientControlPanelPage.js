@@ -565,7 +565,7 @@ const AdminClientControlPanelPage = () => {
 
             <SectionCard title="Operations">
               <Row label="Issues" value={ops.issues} />
-              <Row label="Work orders" value={ops.work_orders} />
+              <Row label="Jobs" value={ops.work_orders} />
               <Row label="Contractors" value={ops.contractors} />
               <div className="pt-2 text-xs text-gray-500">
                 <Link className="text-electric-teal hover:underline" to="/admin/ops">Open Operations Dashboard</Link>

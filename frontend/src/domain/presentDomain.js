@@ -31,7 +31,7 @@ export function titleFromSnake(s) {
 
 export function requirementLabel(code, audience = 'client') {
   const key = normalizeRequirementCode(code);
-  if (!key) return 'Compliance item';
+  if (!key) return 'Requirement';
   const req = (data.requirement_codes || {})[key];
   if (req && typeof req === 'object') {
     return String(req.display_label || req.short_label || key).trim();
@@ -43,7 +43,7 @@ export function requirementActionPhrase(code) {
   const key = normalizeRequirementCode(code);
   const req = key ? (data.requirement_codes || {})[key] : null;
   if (req && req.action_label) return String(req.action_label);
-  return `Complete this obligation: ${requirementLabel(code)}`;
+  return `Complete this requirement: ${requirementLabel(code)}`;
 }
 
 /** Subline under “Awaiting verification” chips (who acts next + automation). */
@@ -53,7 +53,7 @@ export function documentVerificationAwaitingSubline() {
 }
 
 /**
- * Short upload CTA when the obligation type is known (Compliance / Documents / Operating).
+ * Short upload CTA when the requirement type is known (Compliance / Documents / Operating).
  * Only "Upload document" when the requirement type cannot be resolved.
  */
 export function requirementDocumentUploadLabel(code) {
@@ -84,16 +84,37 @@ export function requirementDocumentUploadLabel(code) {
   return 'Upload document';
 }
 
+/** Extra maintenance issue statuses when not in domain_labels.json */
+const ISSUE_STATUS_FALLBACK = {
+  pending: 'Pending',
+  snoozed: 'Snoozed',
+  deferred: 'Deferred',
+  escalated: 'Escalated',
+};
+
 export function issueStatusLabel(status, audience = 'client') {
   const s = String(status || '').trim().toLowerCase();
   if (!s) return 'Open';
   const block = (data.issue_statuses || {})[s];
   if (block && typeof block === 'object') {
     const k = audienceKey(audience);
-    return String(block[k] || block.client_label || s);
+    const lab = block[k] || block.client_label;
+    if (lab) return String(lab);
   }
-  return titleFromSnake(s);
+  if (ISSUE_STATUS_FALLBACK[s]) return ISSUE_STATUS_FALLBACK[s];
+  return 'Open';
 }
+
+/** Extra job statuses when not in domain_labels.json */
+const WORK_ORDER_STATUS_FALLBACK = {
+  PENDING: 'Pending',
+  ON_HOLD: 'On hold',
+  HOLD: 'On hold',
+  PAUSED: 'Paused',
+  AWAITING_QUOTE: 'Awaiting quote',
+  AWAITING_APPROVAL: 'Awaiting approval',
+  BLOCKED: 'Blocked',
+};
 
 export function workOrderStatusLabel(status, audience = 'client') {
   const s = String(status || '').trim().toUpperCase();
@@ -101,9 +122,11 @@ export function workOrderStatusLabel(status, audience = 'client') {
   const block = (data.work_order_statuses || {})[s];
   if (block && typeof block === 'object') {
     const k = audienceKey(audience);
-    return String(block[k] || block.client_label || s);
+    const lab = block[k] || block.client_label;
+    if (lab) return String(lab);
   }
-  return titleFromSnake(s.toLowerCase());
+  if (WORK_ORDER_STATUS_FALLBACK[s]) return WORK_ORDER_STATUS_FALLBACK[s];
+  return 'Open';
 }
 
 export function slaStateLabel(state, audience = 'client') {
@@ -111,14 +134,15 @@ export function slaStateLabel(state, audience = 'client') {
   const block = (data.sla_presentations || {})[s];
   if (block && typeof block === 'object') {
     const k = audienceKey(audience);
-    return String(block[k] || block.client_label || s);
+    const lab = block[k] || block.client_label;
+    if (lab) return String(lab);
   }
-  return titleFromSnake(s);
+  return '—';
 }
 
 export function riskTypeLabelClient(riskType) {
   const rt = String(riskType || '').trim();
-  if (!rt) return 'Risk requires review';
+  if (!rt) return 'Issue needs review';
   const block = (data.risk_types || {})[rt];
   if (block && block.client_label) return String(block.client_label);
   if (/^[A-Z0-9_]+$/.test(rt.replace(/\s/g, ''))) return titleFromSnake(rt.toLowerCase());
@@ -127,7 +151,7 @@ export function riskTypeLabelClient(riskType) {
 
 export function riskTypeLabelAdmin(riskType) {
   const rt = String(riskType || '').trim();
-  if (!rt) return 'Risk signal';
+  if (!rt) return 'Flagged issue';
   const block = (data.risk_types || {})[rt];
   if (block && block.admin_label) return String(block.admin_label);
   return rt;
@@ -139,7 +163,7 @@ export function recommendedActionClient(riskType, storedAction) {
   if (block && block.recommended_action_client) return String(block.recommended_action_client);
   const rawA = String(storedAction || '').trim();
   if (rawA) return rawA.endsWith('.') ? rawA : `${rawA}.`;
-  return 'Review this signal and choose the next best step.';
+  return 'Review the issue.';
 }
 
 /** Portfolio-level traffic-light status (property row), not per-requirement status. */
@@ -149,9 +173,10 @@ export function propertyComplianceRagLabel(status, audience = 'client') {
   const block = (data.property_compliance_rag || {})[s];
   if (block && typeof block === 'object') {
     const k = audienceKey(audience);
-    return String(block[k] || block.client_label || titleFromSnake(s.toLowerCase()));
+    const lab = block[k] || block.client_label;
+    if (lab) return String(lab);
   }
-  return titleFromSnake(s.toLowerCase());
+  return 'Not assessed';
 }
 
 export function propertyTypeLabel(raw, audience = 'client') {
@@ -166,15 +191,24 @@ export function propertyTypeLabel(raw, audience = 'client') {
   return titleFromSnake(key || String(raw).trim().toLowerCase());
 }
 
+const COMPLIANCE_REQUIREMENT_STATUS_FALLBACK = {
+  MISSING_EVIDENCE: 'No document uploaded',
+  PENDING_VERIFICATION: 'Awaiting verification',
+  INVALID: 'Invalid',
+  UNKNOWN: '—',
+};
+
 export function complianceRequirementStatusLabel(status, audience = 'client') {
   const s = String(status || '').trim().toUpperCase();
   if (!s) return '—';
   const block = (data.compliance_requirement_statuses || {})[s];
   if (block && typeof block === 'object') {
     const k = audienceKey(audience);
-    return String(block[k] || block.client_label || titleFromSnake(s.toLowerCase()));
+    const lab = block[k] || block.client_label;
+    if (lab) return String(lab);
   }
-  return titleFromSnake(s.toLowerCase());
+  if (COMPLIANCE_REQUIREMENT_STATUS_FALLBACK[s]) return COMPLIANCE_REQUIREMENT_STATUS_FALLBACK[s];
+  return 'Needs attention';
 }
 
 export function documentTypeLabel(raw) {
@@ -194,9 +228,10 @@ export function suggestedActionLabel(code, audience = 'client') {
   const block = (data.suggested_action_codes || {})[c];
   if (block && typeof block === 'object') {
     const k = audienceKey(audience);
-    return String(block[k] || block.client_label || titleFromSnake(c));
+    const lab = block[k] || block.client_label;
+    if (lab) return String(lab);
   }
-  return titleFromSnake(c);
+  return 'Next action';
 }
 
 /** Inbox / dashboard urgency (not the same as portfolio “risk level” wording). */
@@ -210,7 +245,7 @@ export function urgencyLevelLabel(level) {
   };
   if (map[v]) return map[v];
   if (!v) return 'Medium';
-  return titleFromSnake(v);
+  return 'Medium';
 }
 
 /** Risk signal row severity (critical / high / medium / low). */
@@ -224,7 +259,101 @@ export function issueSeverityLabel(severity) {
   const v = String(severity || '').trim().toLowerCase();
   if (!v) return '—';
   const map = { low: 'Low', medium: 'Medium', high: 'High', urgent: 'Urgent', critical: 'Critical' };
-  return map[v] || titleFromSnake(v);
+  return map[v] || 'Medium';
+}
+
+/**
+ * Predictive / portfolio “issue” row lifecycle (not the maintenance issues queue).
+ * Avoids raw API tokens in UI.
+ */
+export function predictiveIssueStatusLabel(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  const map = {
+    active: 'Active',
+    acknowledged: 'Acknowledged',
+    resolved: 'Resolved',
+    dismissed: 'Dismissed',
+    suppressed: 'Suppressed',
+    expired: 'Expired',
+    open: 'Open',
+    closed: 'Closed',
+  };
+  if (map[s]) return map[s];
+  return 'Updated';
+}
+
+/** Job operational hold codes shown on badges and command centre. */
+export function operationalExceptionLabel(raw) {
+  const u = String(raw || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '_');
+  const map = {
+    NO_ACCESS: 'No access',
+    RESCHEDULE_REQUIRED: 'Reschedule required',
+    AWAITING_PARTS: 'Awaiting parts',
+    AWAITING_CLIENT: 'Awaiting client',
+    AWAITING_CONTRACTOR: 'Awaiting contractor',
+    WEATHER: 'Weather hold',
+    PAYMENT_HOLD: 'Payment hold',
+    CLIENT_HOLD: 'Client hold',
+  };
+  if (map[u]) return map[u];
+  if (!u) return '';
+  return 'On hold';
+}
+
+/** Today / inbox card source line (distinct from maintenance issues). */
+export function inboxSourceTypeLabel(sourceType) {
+  const st = String(sourceType || '').trim().toLowerCase();
+  const map = {
+    requirement: 'Requirement',
+    risk_signal: 'Potential issue',
+    work_order: 'Job',
+    approval: 'Approval',
+    issue: 'Maintenance issue',
+    priority_action: 'Suggested action',
+    compliance: 'Compliance',
+    document: 'Document',
+    maintenance: 'Maintenance',
+  };
+  if (map[st]) return map[st];
+  return 'Item';
+}
+
+/** Today timeline / snack labels for user actions on tasks (not domain enums). */
+export function inboxTimelineActionLabel(act) {
+  const a = String(act || '').trim().toLowerCase();
+  const map = {
+    snooze: 'Snoozed',
+    dismiss: 'Dismissed task',
+    done: 'Marked done (legacy)',
+    reviewed: 'Marked reviewed',
+    restore: 'Restored',
+    hide: 'Hidden',
+    unhide: 'Unhidden',
+  };
+  if (map[a]) return map[a];
+  if (!a) return '—';
+  return 'Updated';
+}
+
+/**
+ * Document list row status badge (API document record), separate from requirement matrix chips.
+ */
+export function documentListStatusLabel(status) {
+  const key = String(status || '').trim().toUpperCase();
+  const map = {
+    PENDING: 'Awaiting verification',
+    UPLOADED: 'Uploaded',
+    VERIFIED: 'Confirmed',
+    REJECTED: 'Rejected',
+    EXPIRED: 'Expired',
+    PROCESSING: 'Processing',
+    FAILED: 'Failed',
+  };
+  if (map[key]) return map[key];
+  return 'Awaiting verification';
 }
 
 const INBOX_TITLE_UUID_RE =
@@ -270,11 +399,11 @@ export function inboxTitleForDisplay(task) {
   const code = meta.requirement_type || meta.requirement_code || meta.code;
   if (code && typeof code === 'string') {
     const lbl = requirementLabel(code);
-    if (lbl && lbl !== 'Compliance item') return lbl;
+    if (lbl && lbl !== 'Requirement') return lbl;
   }
   if (/^[a-z][a-z0-9_]*$/i.test(raw) && raw.includes('_')) {
     const lbl = requirementLabel(raw);
-    if (lbl !== 'Compliance item') return lbl;
+    if (lbl !== 'Requirement') return lbl;
   }
   return raw;
 }

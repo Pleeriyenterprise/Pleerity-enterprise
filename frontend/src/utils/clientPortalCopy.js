@@ -15,8 +15,9 @@ export const PORTAL_COPY = {
   maintenanceIssue: 'Maintenance issue',
   /** Plural label — use this instead of `{singular}s` in JSX to avoid parse/TDZ edge cases. */
   maintenanceIssues: 'Maintenance issues',
-  riskSignal: 'Risk signal',
-  riskSignalsActiveHeading: 'Risk signals (active)',
+  /** Predictive / rule-based flags — not the maintenance issues queue. */
+  riskSignal: 'Flagged issue',
+  riskSignalsActiveHeading: 'Flagged issues (active)',
   uploadDocument: 'Upload document',
   viewDocuments: 'View documents',
   startRenewal: 'Start renewal',

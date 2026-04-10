@@ -64,6 +64,7 @@ import {
   issueStatusLabel,
   requirementDocumentUploadLabel,
   workOrderStatusLabel,
+  predictiveIssueStatusLabel,
 } from '../domain/presentDomain';
 import {
   isRequirementMissingDocument,
@@ -500,7 +501,7 @@ export default function PropertyDetailPage() {
     try {
       await clientAPI.patchProperty(propertyId, { jurisdiction: (jurisdictionDraft ?? '').trim() || '' });
       toast.success('Jurisdiction saved', {
-        description: 'Compliance score and obligations were recalculated for this property.',
+        description: 'Compliance score and requirements were recalculated for this property.',
       });
       setJurisdictionEditing(false);
       await fetchData();
@@ -787,7 +788,7 @@ export default function PropertyDetailPage() {
       ...(createWoForm.inspection_required ? { inspection_required: true } : {}),
     })
       .then(() => {
-        toast.success('Work order created');
+        toast.success('Job created');
         setCreateWoOpen(false);
         setCreateWoForm({ description: '', category: 'general', severity: 'medium', inspection_required: false });
         loadWorkOrders();
@@ -823,7 +824,7 @@ export default function PropertyDetailPage() {
   const handleCreateWoFromIssue = (issueId) => {
     clientAPI.createWorkOrderFromIssue(issueId)
       .then(() => {
-        toast.success('Work order created from issue');
+        toast.success('Job created from issue');
         loadWorkOrders();
         loadMaintenanceIssues();
         setIssueDetailDrawer(null);
@@ -966,7 +967,7 @@ export default function PropertyDetailPage() {
     if (s === 'REJECTED') return 'Rejected';
     if (s === 'EXPIRED') return 'Expired';
     const hasExtraction = doc?.extraction_id || (doc?.ai_extraction?.status === 'completed' && doc?.ai_extraction?.data);
-    if (hasExtraction && s !== 'VERIFIED') return 'Pending Confirmation';
+    if (hasExtraction && s !== 'VERIFIED') return 'Awaiting verification';
     if (s === 'UPLOADED') return 'Extracted';
     if (!doc?.requirement_id) return 'Unlinked';
     return 'Uploaded';
@@ -1297,7 +1298,7 @@ export default function PropertyDetailPage() {
                     className="text-electric-teal h-9 px-2 -ml-2"
                     onClick={() => setActiveTab(TAB_COMPLIANCE)}
                   >
-                    {PORTAL_COPY.viewDetails} (obligations)
+                    {PORTAL_COPY.viewDetails} (requirements)
                   </Button>
                   <Button
                     type="button"
@@ -1378,7 +1379,7 @@ export default function PropertyDetailPage() {
           { id: TAB_EVIDENCE, label: 'Documents', icon: FileText, feature: null },
           { id: TAB_CONTRACTORS, label: 'Contractors', icon: Users, feature: 'contractor_network' },
           { id: TAB_TIMELINE, label: 'Timeline', icon: Calendar, feature: null },
-          { id: TAB_RISK_SIGNALS, label: 'Risk Signals', icon: AlertCircle, feature: 'predictive_maintenance' },
+          { id: TAB_RISK_SIGNALS, label: 'Flagged issues', icon: AlertCircle, feature: 'predictive_maintenance' },
           { id: TAB_ASSETS, label: 'Assets', icon: Package, feature: 'maintenance_workflows' },
         ].map(({ id, label, icon: Icon, feature }) => {
           const enabled = id === TAB_ASSETS
@@ -1449,7 +1450,7 @@ export default function PropertyDetailPage() {
           <Card className="border border-electric-teal/25 bg-electric-teal/[0.06]">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-midnight-blue">Compliance priority for this property</CardTitle>
-              <CardDescription>Counts follow the obligations table below — one list, same definitions.</CardDescription>
+              <CardDescription>Counts follow the requirements table below — one list, same definitions.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               {(() => {
@@ -1459,7 +1460,7 @@ export default function PropertyDetailPage() {
                   <>
                     <div className="flex flex-wrap gap-x-6 gap-y-2 text-midnight-blue">
                       <span>
-                        <strong className="tabular-nums">{sum.missingDocuments}</strong> missing evidence
+                        <strong className="tabular-nums">{sum.missingDocuments}</strong> missing documents
                       </span>
                       <span>
                         <strong className="tabular-nums">{sum.expiringSoon}</strong> expiring
@@ -1476,7 +1477,7 @@ export default function PropertyDetailPage() {
                     </p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button type="button" variant={complianceStatusFilter === '' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === '' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('')}>
-                        All obligations ({sum.totalApplicable})
+                        All requirements ({sum.totalApplicable})
                       </Button>
                       <Button type="button" variant={complianceStatusFilter === 'VALID' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === 'VALID' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('VALID')}>
                         Valid ({sum.valid})
@@ -1488,7 +1489,7 @@ export default function PropertyDetailPage() {
                         Overdue ({sum.overdue})
                       </Button>
                       <Button type="button" variant={complianceStatusFilter === 'MISSING' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === 'MISSING' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('MISSING')}>
-                        Missing evidence ({sum.missingDocuments})
+                        Missing documents ({sum.missingDocuments})
                       </Button>
                     </div>
                   </>
@@ -1552,7 +1553,7 @@ export default function PropertyDetailPage() {
                 Score summary
               </CardTitle>
               <CardDescription>
-                How your property score is built — details for each obligation are in the table below, not duplicated here.
+                How your property score is built — details for each requirement are in the table below, not duplicated here.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1563,7 +1564,7 @@ export default function PropertyDetailPage() {
                 </div>
               ) : !complianceExplainability ? (
                 <p className="text-sm text-gray-700">
-                  Score breakdown will appear here when available. Use the priority counts and obligations table to see what needs attention; upload or renew evidence on the{' '}
+                  Score breakdown will appear here when available. Use the priority counts and requirements table to see what needs attention; upload or renew documents on the{' '}
                   <button type="button" className="text-electric-teal font-medium underline-offset-2 hover:underline" onClick={() => setActiveTab(TAB_EVIDENCE)}>
                     Documents
                   </button>{' '}
@@ -1629,21 +1630,21 @@ export default function PropertyDetailPage() {
           </Card>
 
           <p className="text-xs text-gray-600">
-            Obligations below are the source of truth. Use the{' '}
+            Requirements below are the source of truth. Use the{' '}
             <button type="button" className="text-electric-teal font-medium underline-offset-2 hover:underline" onClick={() => setActiveTab(TAB_EVIDENCE)}>
               Documents
             </button>{' '}
-            tab to upload, renew, or confirm evidence for each requirement.
+            tab to upload, renew, or confirm documents for each requirement.
           </p>
 
           <div className="flex flex-wrap items-center gap-2">
             <label className="text-sm text-gray-600 sr-only" htmlFor="compliance-obligation-search">
-              Search obligations
+              Search requirements
             </label>
             <input
               id="compliance-obligation-search"
               type="search"
-              placeholder="Search by obligation name or code…"
+              placeholder="Search by requirement name or code…"
               value={complianceSearchQuery}
               onChange={(e) => setComplianceSearchQuery(e.target.value)}
               className="max-w-md min-w-[200px] flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
@@ -1659,8 +1660,8 @@ export default function PropertyDetailPage() {
           {requirements.length === 0 ? (
             <Card className="border border-gray-200">
               <CardContent className="py-12 text-center text-gray-600 space-y-3">
-                <p className="font-medium text-midnight-blue">No obligations are listed for this property yet.</p>
-                <p className="text-sm max-w-md mx-auto">When your portfolio is configured, required obligations appear here. Refresh after updating property or jurisdiction settings.</p>
+                <p className="font-medium text-midnight-blue">No requirements are listed for this property yet.</p>
+                <p className="text-sm max-w-md mx-auto">When your portfolio is configured, requirements appear here. Refresh after updating property or jurisdiction settings.</p>
                 <Button variant="outline" onClick={handleRefresh}>
                   Refresh property data
                 </Button>
@@ -1669,11 +1670,11 @@ export default function PropertyDetailPage() {
           ) : getFilteredRequirements().length === 0 ? (
             <Card className="border border-gray-200">
               <CardContent className="py-8 text-center text-gray-600 space-y-3">
-                <p className="font-medium text-midnight-blue">No obligations match what you are viewing.</p>
-                <p className="text-sm">Try clearing search or showing all obligations again.</p>
+                <p className="font-medium text-midnight-blue">No requirements match what you are viewing.</p>
+                <p className="text-sm">Try clearing search or showing all requirements again.</p>
                 <div className="flex flex-wrap gap-2 justify-center">
                   <Button type="button" variant="outline" size="sm" onClick={() => { setComplianceSearchQuery(''); setComplianceStatusFilter(''); }}>
-                    Show all obligations
+                    Show all requirements
                   </Button>
                   {complianceSearchQuery.trim() ? (
                     <Button type="button" variant="ghost" size="sm" onClick={() => setComplianceSearchQuery('')}>
@@ -1702,7 +1703,7 @@ export default function PropertyDetailPage() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Needs attention now</CardTitle>
                     <CardDescription>
-                      The same obligations as in the table below — filtered to overdue, expiring within 30 days, missing evidence, or awaiting confirmation.
+                      The same requirements as in the table below — filtered to overdue, expiring within 30 days, no document on file, or awaiting confirmation.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
@@ -1800,7 +1801,7 @@ export default function PropertyDetailPage() {
           {getFilteredRequirements().length > 0 && (
             <>
               <div className="hidden md:block rounded-xl border border-gray-200 bg-white overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 font-medium text-midnight-blue">Obligations</div>
+                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 font-medium text-midnight-blue">Requirements</div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -1888,7 +1889,7 @@ export default function PropertyDetailPage() {
                               <tr className="bg-gray-50 border-b border-gray-200">
                                 <td colSpan={7} className="p-4">
                                   <div className="text-sm space-y-3 max-w-3xl">
-                                    <p><span className="font-semibold text-midnight-blue">Obligation:</span> {rowTitle(r)}</p>
+                                    <p><span className="font-semibold text-midnight-blue">Requirement:</span> {rowTitle(r)}</p>
                                     <div>
                                       <p className="font-semibold text-midnight-blue">Why this matters</p>
                                       <p className="text-gray-700 mt-1">{explainPayload.why_it_matters}</p>
@@ -1979,7 +1980,7 @@ export default function PropertyDetailPage() {
       {activeTab === TAB_MAINTENANCE && !hasFeature('maintenance_workflows') && (
         <UpgradePrompt
           featureName={getFeatureDisplayInfo('maintenance_workflows').featureName}
-          featureDescription="Create and manage issues, repair work orders, and compliance-led jobs for this property."
+          featureDescription="Create and manage issues, repair jobs, and compliance-led jobs for this property."
           requiredPlan={getFeatureDisplayInfo('maintenance_workflows').requiredPlan}
           requiredPlanName={getFeatureDisplayInfo('maintenance_workflows').requiredPlanName}
           variant="card"
@@ -1991,7 +1992,7 @@ export default function PropertyDetailPage() {
             <div>
               <h2 className="text-lg font-semibold text-midnight-blue">Jobs & issues</h2>
               <p className="text-sm text-gray-600 mt-1 max-w-2xl">
-                Operational queue for this property: triaged issues, repairs, and jobs raised from compliance (for obligation status and evidence, use the Compliance tab).
+                Operational queue for this property: triaged issues, repairs, and jobs raised from compliance (for requirement status and documents, use the Compliance tab).
               </p>
             </div>
             <div className="flex gap-2">
@@ -2082,7 +2083,7 @@ export default function PropertyDetailPage() {
                             <td className="p-2 text-right">
                               <Button size="sm" variant="ghost" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
                               {iss.status !== 'ready_for_work_order' && iss.status !== 'closed' && (
-                                <Button size="sm" variant="outline" className="ml-1" onClick={() => handleCreateWoFromIssue(iss.issue_id)}>Create WO</Button>
+                                <Button size="sm" variant="outline" className="ml-1" onClick={() => handleCreateWoFromIssue(iss.issue_id)}>Create job</Button>
                               )}
                             </td>
                           </tr>
@@ -2099,7 +2100,7 @@ export default function PropertyDetailPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{PORTAL_COPY.workOrders}</CardTitle>
-              <CardDescription>Compliance-led jobs (inspections, renewals) and repair work orders are listed separately.</CardDescription>
+              <CardDescription>Compliance-led jobs (inspections, renewals) and repair jobs are listed separately.</CardDescription>
               <PortalFilterStack className="mt-2">
                 <select value={maintenanceWoFilter.status} onChange={(e) => setMaintenanceWoFilter((f) => ({ ...f, status: e.target.value }))} className="border border-gray-200 rounded-md px-2 py-2 text-sm min-h-11 w-full md:w-auto">
                   <option value="">All statuses</option><option value="OPEN">Open</option><option value="ASSIGNED">Assigned</option><option value="IN_PROGRESS">In progress</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option>
@@ -2114,7 +2115,7 @@ export default function PropertyDetailPage() {
                 <div className="py-8 text-center text-gray-500">
                   <p className="font-medium">No jobs on this property yet.</p>
                   <div className="flex flex-wrap gap-2 justify-center mt-3">
-                    <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>Create work order</Button>
+                    <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>Create job</Button>
                     {hasFeature('contractor_network') && <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_CONTRACTORS)}>Contractors</Button>}
                   </div>
                 </div>
@@ -2122,7 +2123,7 @@ export default function PropertyDetailPage() {
                 <div className="space-y-8">
                   <section aria-labelledby="property-compliance-jobs-heading">
                     <h3 id="property-compliance-jobs-heading" className="text-sm font-semibold text-midnight-blue">Compliance jobs</h3>
-                    <p className="text-xs text-gray-500 mt-0.5 mb-3">Inspections and certificate-led work. Obligation status lives under Compliance.</p>
+                    <p className="text-xs text-gray-500 mt-0.5 mb-3">Inspections and certificate-led work. Requirement status lives under Compliance.</p>
                     {complianceWorkOrdersFiltered.length === 0 ? (
                       <p className="text-sm text-gray-500 py-2">No compliance jobs match these filters.</p>
                     ) : (
@@ -2135,7 +2136,7 @@ export default function PropertyDetailPage() {
                                 <span className={cn('shrink-0 inline-flex px-1.5 py-0.5 rounded text-xs font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>
                               </div>
                               <p className="text-xs text-gray-600 mt-1">
-                                {wo.status || '—'} · {wo.severity || '—'}
+                                {workOrderStatusLabel(wo.status)} · {wo.severity || '—'}
                                 {wo.sla_complete_by ? ` · SLA ${formatDate(wo.sla_complete_by)}` : ''}
                               </p>
                               <p className="text-xs text-gray-500 mt-1">
@@ -2161,10 +2162,10 @@ export default function PropertyDetailPage() {
                                   <td className="p-2 whitespace-nowrap">
                                     <span className={cn('inline-flex px-1.5 py-0.5 rounded text-xs font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>
                                   </td>
-                                  <td className="p-2 text-gray-600">{wo.issue_id ? <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>Issue</button> : '—'}</td>
+                                  <td className="p-2 text-gray-600">{wo.issue_id ? <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>View issue</button> : '—'}</td>
                                   <td className="p-2 text-gray-600">{assetLabel(wo.asset_id)}</td>
                                   <td className="p-2"><span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700">{wo.severity || '—'}</span></td>
-                                  <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${wo.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : wo.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800'}`}>{wo.status || '—'}</span></td>
+                                  <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${wo.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : wo.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800'}`}>{workOrderStatusLabel(wo.status)}</span></td>
                                   <td className="p-2 text-gray-600">{wo.sla_complete_by ? formatDate(wo.sla_complete_by) : '—'}</td>
                                   <td className="p-2 text-gray-600">{wo.updated_at ? formatRelativeTime(wo.updated_at) : '—'}</td>
                                   <td className="p-2 text-right"><Button size="sm" variant="ghost" onClick={() => setWoDetailDrawer(wo.work_order_id)}>Preview</Button></td>
@@ -2178,9 +2179,9 @@ export default function PropertyDetailPage() {
                   </section>
                   <section aria-labelledby="property-repair-jobs-heading">
                     <h3 id="property-repair-jobs-heading" className="text-sm font-semibold text-midnight-blue">Repairs & maintenance</h3>
-                    <p className="text-xs text-gray-500 mt-0.5 mb-3">Reactive and planned repair work orders.</p>
+                    <p className="text-xs text-gray-500 mt-0.5 mb-3">Reactive and planned repair jobs.</p>
                     {repairWorkOrdersFiltered.length === 0 ? (
-                      <p className="text-sm text-gray-500 py-2">No repair work orders match these filters.</p>
+                      <p className="text-sm text-gray-500 py-2">No repair jobs match these filters.</p>
                     ) : (
                       <>
                         <div className="md:hidden space-y-3">
@@ -2191,7 +2192,7 @@ export default function PropertyDetailPage() {
                                 <span className={cn('shrink-0 inline-flex px-1.5 py-0.5 rounded text-xs font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>
                               </div>
                               <p className="text-xs text-gray-600 mt-1">
-                                {wo.status || '—'} · {wo.severity || '—'}
+                                {workOrderStatusLabel(wo.status)} · {wo.severity || '—'}
                                 {wo.sla_complete_by ? ` · SLA ${formatDate(wo.sla_complete_by)}` : ''}
                               </p>
                               <p className="text-xs text-gray-500 mt-1">
@@ -2217,10 +2218,10 @@ export default function PropertyDetailPage() {
                                   <td className="p-2 whitespace-nowrap">
                                     <span className={cn('inline-flex px-1.5 py-0.5 rounded text-xs font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>
                                   </td>
-                                  <td className="p-2 text-gray-600">{wo.issue_id ? <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>Issue</button> : '—'}</td>
+                                  <td className="p-2 text-gray-600">{wo.issue_id ? <button type="button" className="text-electric-teal hover:underline" onClick={() => setIssueDetailDrawer(wo.issue_id)}>View issue</button> : '—'}</td>
                                   <td className="p-2 text-gray-600">{assetLabel(wo.asset_id)}</td>
                                   <td className="p-2"><span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700">{wo.severity || '—'}</span></td>
-                                  <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${wo.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : wo.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800'}`}>{wo.status || '—'}</span></td>
+                                  <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${wo.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : wo.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800'}`}>{workOrderStatusLabel(wo.status)}</span></td>
                                   <td className="p-2 text-gray-600">{wo.sla_complete_by ? formatDate(wo.sla_complete_by) : '—'}</td>
                                   <td className="p-2 text-gray-600">{wo.updated_at ? formatRelativeTime(wo.updated_at) : '—'}</td>
                                   <td className="p-2 text-right"><Button size="sm" variant="ghost" onClick={() => setWoDetailDrawer(wo.work_order_id)}>Preview</Button></td>
@@ -2263,8 +2264,8 @@ export default function PropertyDetailPage() {
           {hasFeature('predictive_maintenance') && (
             <Card className="border-gray-200">
               <CardContent className="py-3 flex items-center justify-between gap-4">
-                <span className="text-sm text-gray-600">Recurring issues and repair history feed into risk signals.</span>
-                <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_RISK_SIGNALS)}>View risk signals</Button>
+                <span className="text-sm text-gray-600">Recurring issues and repair history feed into open issues.</span>
+                <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_RISK_SIGNALS)}>View issues</Button>
               </CardContent>
             </Card>
           )}
@@ -2272,7 +2273,7 @@ export default function PropertyDetailPage() {
           {createWoOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setCreateWoOpen(false)}>
               <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[min(90dvh,90vh)] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Add work order</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Add job</h2>
                 <form onSubmit={handleCreateWorkOrder} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
@@ -2363,7 +2364,7 @@ export default function PropertyDetailPage() {
                   )}
                   <div className="flex flex-wrap gap-2 pt-2">
                     {issueDetailData.status !== 'ready_for_work_order' && issueDetailData.status !== 'closed' && (
-                      <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => handleCreateWoFromIssue(issueDetailData.issue_id)}>Create work order</Button>
+                      <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => handleCreateWoFromIssue(issueDetailData.issue_id)}>Create job</Button>
                     )}
                     <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_ASSETS); setIssueDetailDrawer(null); }}>View assets</Button>
                     <Button size="sm" variant="outline" onClick={() => setIssueDetailDrawer(null)}>Close</Button>
@@ -2504,9 +2505,8 @@ export default function PropertyDetailPage() {
                       <p className="text-xs text-gray-600 mb-3">Cost estimate: £{basis.cost_estimate_min} – £{basis.cost_estimate_max}</p>
                     ) : null}
                     <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-3 mb-4">
-                      <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Next step</p>
                       <p className="text-sm font-medium text-midnight-blue mt-1.5 leading-snug">{nextStep}</p>
-                      <p className="text-xs text-gray-500 mt-2">Manage this job on the full job page to continue.</p>
+                      <p className="text-xs text-gray-500 mt-2">Continue on the full job page.</p>
                     </div>
                     <div className="flex flex-col gap-2">
                       <Button
@@ -2555,7 +2555,7 @@ export default function PropertyDetailPage() {
           </div>
           <p className="text-sm text-gray-500">
             <Link to="/help?article=uploading-evidence" className="text-electric-teal hover:underline">Uploading documents</Link>
-            {' · Obligation status: '}
+            {' · Requirement status: '}
             <button
               type="button"
               className="text-electric-teal hover:underline p-0 border-0 bg-transparent text-sm font-inherit cursor-pointer"
@@ -2596,7 +2596,7 @@ export default function PropertyDetailPage() {
                     <strong className="text-midnight-blue">Linked:</strong> {evidenceData.summary?.linked ?? 0}
                   </span>
                   <span>
-                    <strong className="text-midnight-blue">Pending confirmation:</strong> {evidenceData.summary?.pendingConfirmation ?? 0}
+                    <strong className="text-midnight-blue">Awaiting verification:</strong> {evidenceData.summary?.pendingConfirmation ?? 0}
                   </span>
                   {(evidenceData.summary?.missingCriticalEvidence ?? 0) > 0 ? (
                     <button
@@ -2627,7 +2627,7 @@ export default function PropertyDetailPage() {
                 <Card className="border-amber-200 bg-amber-50/50">
                   <CardContent className="py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <span className="text-sm text-amber-800">
-                      Some obligations still need documents. Uploads are opened for this property; pick the obligation when you upload.
+                      Some requirements still need documents. Uploads are opened for this property; pick the requirement when you upload.
                     </span>
                     <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
                       <Button
@@ -2656,7 +2656,7 @@ export default function PropertyDetailPage() {
 
               {requirementsMissingDocuments.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-1">Obligations still needing documents</h3>
+                  <h3 className="text-sm font-medium text-gray-700 mb-1">Requirements still needing documents</h3>
                   <p className="text-xs text-gray-500 mb-3">
                     Same filter and order as Compliance → Missing documents (critical items first).
                   </p>
@@ -2691,7 +2691,7 @@ export default function PropertyDetailPage() {
                     <CardContent className="py-6 px-4 sm:px-6 text-center text-sm text-gray-600 space-y-4">
                       {requirementsMissingDocuments.length > 0 ? (
                         <>
-                          <p>No files uploaded for this property yet. Use the list above to upload for a specific obligation, or add a file without picking one.</p>
+                          <p>No files uploaded for this property yet. Use the list above to upload for a specific requirement, or add a file without picking one.</p>
                           <Button
                             type="button"
                             className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11"
@@ -2702,7 +2702,7 @@ export default function PropertyDetailPage() {
                         </>
                       ) : requirements.length === 0 ? (
                         <>
-                          <p>No compliance obligations are configured for this property yet.</p>
+                          <p>No compliance requirements are configured for this property yet.</p>
                           <Button type="button" variant="outline" onClick={() => setActiveTab(TAB_COMPLIANCE)}>
                             Open Compliance
                           </Button>
@@ -2795,7 +2795,7 @@ export default function PropertyDetailPage() {
                 return (
                   <Card className="border-amber-200 bg-amber-50/30">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-base">Pending confirmation</CardTitle>
+                      <CardTitle className="text-base">Awaiting verification</CardTitle>
                       <p className="text-sm text-gray-600 font-normal">Documents with extracted details not yet confirmed. Confirm to update requirement status and score.</p>
                     </CardHeader>
                     <CardContent className="space-y-2">
@@ -2944,7 +2944,7 @@ export default function PropertyDetailPage() {
                   <Users className="w-10 h-10 mx-auto text-gray-400 mb-2" />
                   <p className="font-medium text-midnight-blue">No contractor assignments on this property yet</p>
                   <p className="text-sm text-gray-600 mt-1 max-w-md mx-auto">
-                    When you assign someone to a job, they will appear here. Open Jobs to assign from a work order, or browse your network in Operations.
+                    When you assign someone to a job, they will appear here. Open Jobs to assign a contractor, or browse your network in Operations.
                   </p>
                 </div>
               )}
@@ -3089,7 +3089,7 @@ export default function PropertyDetailPage() {
                             className="mt-2 text-electric-teal hover:text-electric-teal/90 -ml-2"
                             onClick={() => setActiveTab(actionTab)}
                           >
-                            View {actionTab === TAB_EVIDENCE ? 'Documents' : actionTab === TAB_COMPLIANCE ? 'Compliance' : actionTab === TAB_MAINTENANCE ? 'Jobs & issues' : 'Risk Signals'}
+                            View {actionTab === TAB_EVIDENCE ? 'Documents' : actionTab === TAB_COMPLIANCE ? 'Compliance' : actionTab === TAB_MAINTENANCE ? 'Jobs & issues' : 'Flagged issues'}
                           </Button>
                         )}
                       </div>
@@ -3114,7 +3114,7 @@ export default function PropertyDetailPage() {
       {activeTab === TAB_RISK_SIGNALS && !hasFeature('predictive_maintenance') && (
         <UpgradePrompt
           featureName={getFeatureDisplayInfo('predictive_maintenance').featureName}
-          featureDescription="View risk signals and recommendations for this property."
+          featureDescription="View flagged issues and recommendations for this property."
           requiredPlan={getFeatureDisplayInfo('predictive_maintenance').requiredPlan}
           requiredPlanName={getFeatureDisplayInfo('predictive_maintenance').requiredPlanName}
           variant="card"
@@ -3122,11 +3122,11 @@ export default function PropertyDetailPage() {
       )}
       {activeTab === TAB_RISK_SIGNALS && hasFeature('predictive_maintenance') && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-midnight-blue">Risk signals</h2>
+          <h2 className="text-lg font-semibold text-midnight-blue">Flagged issues</h2>
           {riskSignalsLoading ? (
             <div className="flex items-center gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
           ) : !(riskSignalsData?.signals?.length) ? (
-            <Card className="border border-gray-200"><CardContent className="py-8 text-center text-gray-500">No risk signals for this property. Use Recalculate to generate from property data, or add assets and work orders.</CardContent></Card>
+            <Card className="border border-gray-200"><CardContent className="py-8 text-center text-gray-500">No flagged issues for this property. Use Recalculate to refresh from property data, or add assets and jobs.</CardContent></Card>
           ) : (
             <>
               {riskSignalsData?.summary && (
@@ -3164,7 +3164,7 @@ export default function PropertyDetailPage() {
                     if (hasMaint) {
                       try {
                         await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
-                        toast.success('Work order created');
+                        toast.success('Job created');
                         loadRiskSignals();
                         setActiveTab(TAB_MAINTENANCE);
                       } catch (e) {
@@ -3207,7 +3207,7 @@ export default function PropertyDetailPage() {
                   } else if (primaryKind === 'work_order') {
                     primary = (
                       <Button size="sm" className={cn(primaryBtnClass, 'inline-flex items-center justify-center')} onClick={onCreateWo}>
-                        <Wrench className="w-4 h-4 mr-1 shrink-0" /> Create work order
+                        <Wrench className="w-4 h-4 mr-1 shrink-0" /> Create job
                       </Button>
                     );
                   } else if (primaryKind === 'issue') {
@@ -3231,7 +3231,7 @@ export default function PropertyDetailPage() {
                   } else if (primaryKind === 'upgrade_wo') {
                     primary = (
                       <Button size="sm" className={primaryBtnClass} onClick={onCreateWo}>
-                        Create work order
+                        Create job
                       </Button>
                     );
                   }
@@ -3268,7 +3268,7 @@ export default function PropertyDetailPage() {
                   if (primaryKind !== 'work_order' && actions.includes('create_work_order')) {
                     secondaries.push(
                       <Button key="wo" size="sm" variant="outline" className="h-8 text-xs" onClick={onCreateWo}>
-                        Work order
+                        Create job
                       </Button>,
                     );
                   }
@@ -3289,7 +3289,7 @@ export default function PropertyDetailPage() {
                           }
                         }}
                       >
-                        Issue
+                        Create issue
                       </Button>,
                     );
                   }
@@ -3307,7 +3307,9 @@ export default function PropertyDetailPage() {
                           </ul>
                         )}
                         <span className={`inline-block mt-2 text-xs px-1.5 py-0.5 rounded ${['high', 'critical'].includes((s.risk_level || '').toLowerCase()) ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>{humanSeverity(s.risk_level)}</span>
-                        {s.status && s.status !== 'active' && <span className="ml-2 text-xs text-gray-500">{s.status}</span>}
+                        {s.status && s.status !== 'active' && (
+                          <span className="ml-2 text-xs text-gray-500">{predictiveIssueStatusLabel(s.status)}</span>
+                        )}
                       </div>
                       <div className="flex flex-col gap-2 shrink-0 w-full lg:w-auto lg:max-w-xs">
                         {primary}
@@ -3338,7 +3340,7 @@ export default function PropertyDetailPage() {
       {activeTab === TAB_ASSETS && !hasFeature('maintenance_workflows') && !hasFeature('predictive_maintenance') && (
         <UpgradePrompt
           featureName="Maintenance or Predictive"
-          featureDescription="Track property assets (e.g. boiler, electrical) and link to maintenance and risk signals."
+          featureDescription="Track property assets (e.g. boiler, electrical) and link to maintenance and issues."
           requiredPlan="PLAN_2_PORTFOLIO"
           requiredPlanName="Portfolio"
           variant="card"
@@ -3409,7 +3411,7 @@ export default function PropertyDetailPage() {
                     </div>
                   )}
                   <div className="p-3 rounded-lg border border-gray-200 bg-white">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">Recent work orders</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Recent jobs</p>
                     <p className="text-lg font-semibold text-midnight-blue">{assetsSummary.recent_work_orders ?? 0}</p>
                   </div>
                   <div className="p-3 rounded-lg border border-gray-200 bg-white">
@@ -3529,8 +3531,8 @@ export default function PropertyDetailPage() {
                   ) : <p className="text-sm text-gray-500">No events yet.</p>}
                   {hasFeature('predictive_maintenance') && (
                     <>
-                      <h4 className="font-medium mt-4 mb-2">Risk signals</h4>
-                      <p className="text-sm text-gray-500">View risk signals in the Risk Signals tab.</p>
+                      <h4 className="font-medium mt-4 mb-2">Flagged issues</h4>
+                      <p className="text-sm text-gray-500">View flagged issues on the Flagged issues tab.</p>
                     </>
                   )}
                   <div className="mt-4 flex gap-2">
@@ -3613,9 +3615,9 @@ export default function PropertyDetailPage() {
               </button>
             </div>
             <p className="text-sm text-gray-600 mb-4">
-              Select the regulatory obligation this inspection satisfies. A compliance job (not a repair ticket) will be created and linked to this risk signal.
+              Select the requirement this inspection satisfies. A compliance job (not a repair job) will be created and linked to this issue.
             </p>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Obligation on this property</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Requirement on this property</label>
             <select
               value={bookInspectionReqPick}
               onChange={(e) => setBookInspectionReqPick(e.target.value)}
@@ -3702,7 +3704,7 @@ export default function PropertyDetailPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full m-4 p-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-midnight-blue mb-2">Mark as not applicable</h3>
             <p className="text-sm text-gray-600 mb-3">
-              &ldquo;{notApplicableModal.title}&rdquo; will be excluded from this property&apos;s score and obligations list. You can change this later from the Compliance tab.
+              &ldquo;{notApplicableModal.title}&rdquo; will be excluded from this property&apos;s score and requirements list. You can change this later from the Compliance tab.
             </p>
             <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
             <select

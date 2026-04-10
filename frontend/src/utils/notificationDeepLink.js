@@ -25,7 +25,7 @@ export function resolveNotificationTarget(notification, isAdmin) {
     }
     if (type === 'work_order' && id) {
       return {
-        href: `/admin/ops/maintenance/work-orders/${encodeURIComponent(id)}`,
+        href: `/admin/ops/maintenance/jobs/${encodeURIComponent(id)}`,
         external: false,
       };
     }

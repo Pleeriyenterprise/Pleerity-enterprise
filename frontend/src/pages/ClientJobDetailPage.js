@@ -19,6 +19,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { clientAPI, parseApiError, contractorEvidenceFilenameFromKey, isContractorFileEvidenceKey, openBlobApiResponse } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import { jobLifecycleSuccessMessage, JOB_DETAIL_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 import { resolveClientPortalPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -47,6 +48,7 @@ import {
   MessageSquareText,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { operationalExceptionLabel } from '../domain/presentDomain';
 import {
   clientCurrentUpdateSummary,
   clientHeroOversightAction,
@@ -368,7 +370,18 @@ function ClientJobDetailInner() {
       const data = await fn();
       if (data && typeof data === 'object' && (data.job_id || data.work_order_id)) setJob(data);
       else await load();
-      toast.success(typeof successToast === 'string' ? successToast : 'Updated');
+      const msg = typeof successToast === 'string' ? successToast : jobLifecycleSuccessMessage(key);
+      toast.success(msg);
+      const prop =
+        data && typeof data === 'object' && data.property_id
+          ? data.property_id
+          : job?.property_id;
+      if (prop && typeof window !== 'undefined') {
+        const milestoneKeys = new Set(['complete', 'verify', 'close_job']);
+        const detail = { property_id: prop };
+        if (milestoneKeys.has(String(key))) detail.job_execution_milestone = true;
+        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail }));
+      }
     } catch (err) {
       toast.error(parseApiError(err, 'Action failed'));
     } finally {
@@ -448,7 +461,6 @@ function ClientJobDetailInner() {
           setAssignModalOpen(false);
           return r.data;
         }),
-      { successToast: 'Contractor assigned.' }
     );
   };
 
@@ -480,11 +492,11 @@ function ClientJobDetailInner() {
       return;
     }
     if (!newContractor.phone.trim() && !newContractor.email.trim()) {
-      toast.error('Provide a phone number or email');
+      toast.error('Add at least one contact method.');
       return;
     }
     if (softDuplicateMatches.length > 0 && !allowCreateDespiteDuplicates) {
-      toast.error('Choose an existing match or confirm creating a new contractor.');
+      toast.error('Select a listed contractor—Create new if none match.');
       return;
     }
     runAction(
@@ -600,14 +612,15 @@ function ClientJobDetailInner() {
               {job.jurisdiction}
             </Badge>
           ) : null}
-          <Badge>{job.job_status || job.status || '—'}</Badge>
+          <Badge>{currentUpdate.headline}</Badge>
           {job.operational_exception ? (
-            <Badge variant="secondary">Hold: {String(job.operational_exception).replace(/_/g, ' ')}</Badge>
+            <Badge variant="secondary">Hold: {operationalExceptionLabel(job.operational_exception)}</Badge>
           ) : null}
         </div>
         <div>
           <p className="text-xs font-mono text-gray-500">{job.work_order_id}</p>
           <h1 className="text-lg font-semibold text-midnight-blue leading-snug">{job.description || 'Job'}</h1>
+          <p className="text-sm text-gray-600 mt-2 max-w-prose">{JOB_DETAIL_CONFIDENCE_LINE}</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
           {job.property_id ? (
@@ -985,7 +998,7 @@ function ClientJobDetailInner() {
 
       <SectionCard title="Proof / outcome" icon={FileText}>
         {!isCompliance ? (
-          <p className="text-xs text-gray-600">Link vault documents as completion evidence after the visit or repair.</p>
+          <p className="text-xs text-gray-600">Link vault documents when the visit or repair is complete.</p>
         ) : (
           <p className="text-xs text-gray-600">Attach the compliance certificate from your vault before verification.</p>
         )}
@@ -1019,7 +1032,7 @@ function ClientJobDetailInner() {
           </div>
         ) : null}
         <ul className="space-y-1 text-xs font-mono break-all">
-          {(job.evidence_keys || []).length === 0 ? <li className="text-gray-500">No evidence keys yet.</li> : null}
+          {(job.evidence_keys || []).length === 0 ? <li className="text-gray-500">No linked documents yet.</li> : null}
           {(job.evidence_keys || []).map((k) => (
             <li key={k} className="flex flex-wrap items-center gap-2">
               <span>{k.startsWith('document:') ? `Document ${k.replace('document:', '')}` : k}</span>
@@ -1179,7 +1192,9 @@ function ClientJobDetailInner() {
                   await load();
                 }
                 setDecisionNote('');
-                toast.success('Decision saved');
+                toast.success(
+                  'Decision note saved. It appears on the job timeline so coordinators see why the job moved.',
+                );
               } catch (err) {
                 toast.error(parseApiError(err, 'Could not save note'));
               } finally {
@@ -1241,7 +1256,9 @@ function ClientJobDetailInner() {
                   else await load();
                   setQuoteRejectOpen(false);
                   setQuoteRejectReason('');
-                  toast.success('Quote rejected — the contractor can submit a revised price.');
+                  toast.success(
+                    'Quote rejected—recorded on the job. The contractor can submit a revised price without blocking the property’s queue.',
+                  );
                 } catch (err) {
                   toast.error(parseApiError(err, 'Could not reject quote'));
                 } finally {

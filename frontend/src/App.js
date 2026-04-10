@@ -241,6 +241,13 @@ function ClientRouteTelemetry() {
   return null;
 }
 
+/** Legacy admin URL; canonical path is /admin/ops/maintenance/jobs/:workOrderId */
+function AdminLegacyWorkOrderDetailRedirect() {
+  const { workOrderId } = useParams();
+  const id = workOrderId ? encodeURIComponent(workOrderId) : '';
+  return <Navigate to={id ? `/admin/ops/maintenance/jobs/${id}` : '/admin/ops/maintenance'} replace />;
+}
+
 function App() {
   return (
     <HelmetProvider>
@@ -668,7 +675,8 @@ function App() {
             <Route path="/admin/ops" element={<ProtectedRoute requireAdmin><AdminOpsOverviewPage /></ProtectedRoute>} />
             <Route path="/admin/ops/compliance" element={<ProtectedRoute requireAdmin><AdminOpsCompliancePage /></ProtectedRoute>} />
             <Route path="/admin/ops/maintenance" element={<ProtectedRoute requireAdmin><AdminOpsMaintenancePage /></ProtectedRoute>} />
-            <Route path="/admin/ops/maintenance/work-orders/:workOrderId" element={<ProtectedRoute requireAdmin><AdminWorkOrderDetailPage /></ProtectedRoute>} />
+            <Route path="/admin/ops/maintenance/jobs/:workOrderId" element={<ProtectedRoute requireAdmin><AdminWorkOrderDetailPage /></ProtectedRoute>} />
+            <Route path="/admin/ops/maintenance/work-orders/:workOrderId" element={<ProtectedRoute requireAdmin><AdminLegacyWorkOrderDetailRedirect /></ProtectedRoute>} />
             <Route path="/admin/ops/contractors" element={<ProtectedRoute requireAdmin><AdminOpsContractorsPage /></ProtectedRoute>} />
             <Route path="/admin/ops/identities" element={<ProtectedRoute requireAdmin><AdminIdentityLifecyclePage /></ProtectedRoute>} />
             <Route path="/admin/ops/risk" element={<ProtectedRoute requireAdmin><AdminRiskDashboardPage /></ProtectedRoute>} />

@@ -2,7 +2,7 @@
  * Client Command Center — single screen: synthesized verdict, compliance, priority snapshot,
  * portfolio summary, and jobs ranked by operational importance (existing APIs only).
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { clientAPI, parseApiError } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,18 +14,21 @@ import ErrorBanner from '../components/ErrorBanner';
 import { AlertCircle, Gauge, Sparkles, Building2, Wrench, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { recordClientPortalInteraction, resolveClientPortalPath } from '../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../utils/ctaRegistry';
+import { requirementLabel, workOrderStatusLabel } from '../domain/presentDomain';
 import {
-  inboxTitleForDisplay,
-  requirementLabel,
-  urgencyLevelLabel,
-  workOrderStatusLabel,
-} from '../domain/presentDomain';
-import { workOrderKindClientLabel } from '../utils/jobWorkflowUi';
+  workOrderKindClientLabel,
+  clientInboxJobCtaLabel,
+  CLIENT_INBOX_JOB_FALLBACK_CTA,
+} from '../utils/jobWorkflowUi';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import {
   aggregateJobSignals,
   attentionBadgeForJob,
   buildCommandCenterVerdict,
+  buildPortfolioVerdictBlock,
+  buildPropertyPriorityRepresentatives,
+  commandCenterWhyThisMattersLine,
+  computePortfolioDriverMetrics,
   countPropertiesAtRisk,
   hasTruthyIso,
   isActiveWorkOrder,
@@ -34,7 +37,9 @@ import {
   isCommandCenterCalmSnapshot,
   isOperationalHold,
   rankWorkOrdersByAttention,
+  sanitizeCommandCenterCtaLabel,
 } from '../utils/clientCommandCenter';
+import { COMMAND_CENTER_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 
 const KPI_NO_DATA = 'No data yet';
 
@@ -116,8 +121,45 @@ export default function ClientCommandCenterPage() {
     };
   }, [isClientUser, hasFeature]);
 
+  const reloadBundle = useCallback(() => {
+    if (!isClientUser) return;
+    const maintenanceEnabled = hasFeature('maintenance_workflows');
+    const tasks = [
+      clientAPI.getCommandCenter({}).then((r) => r.data),
+      clientAPI.getComplianceSummary().then((r) => r.data),
+    ];
+    if (maintenanceEnabled) {
+      tasks.push(clientAPI.getMaintenanceWorkOrders({ skip: 0, limit: 200 }).then((r) => r.data));
+    }
+    Promise.all(tasks.map((p) => p.then((data) => ({ ok: true, data })).catch(() => ({ ok: false })))).then((results) => {
+      const [ccRes, psRes, woRes] = maintenanceEnabled ? results : [...results, { ok: false }];
+      if (ccRes.ok && ccRes.data) setBundle(ccRes.data);
+      if (psRes.ok && psRes.data) setPortfolioSummary(psRes.data);
+      if (maintenanceEnabled && woRes?.ok && woRes.data) setWorkOrdersRaw(woRes.data);
+    });
+  }, [isClientUser, hasFeature]);
+
+  useEffect(() => {
+    if (!isClientUser) return undefined;
+    const onOutcome = () => {
+      reloadBundle();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') reloadBundle();
+    };
+    window.addEventListener('compliance-outcome', onOutcome);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('compliance-outcome', onOutcome);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [isClientUser, reloadBundle]);
+
   const urgentCount = bundle?.urgent_actions?.length ?? 0;
-  const urgentTop = useMemo(() => (bundle?.urgent_actions || []).slice(0, 5), [bundle?.urgent_actions]);
+  const propertyPriorityReps = useMemo(
+    () => buildPropertyPriorityRepresentatives(bundle?.urgent_actions || [], 8),
+    [bundle?.urgent_actions]
+  );
   const riskCount = bundle?.upcoming_risks?.length ?? 0;
   const summary = bundle?.compliance_status_summary;
 
@@ -179,6 +221,89 @@ export default function ClientCommandCenterPage() {
     ]
   );
 
+  const portfolioVerdict = useMemo(() => {
+    const actions = bundle?.urgent_actions || [];
+    return buildPortfolioVerdictBlock({
+      summary,
+      portfolioSummary,
+      urgentCount: actions.length,
+      urgentActions: actions,
+      riskCount,
+      predictiveEnabled,
+      breachedJobCount,
+      blockedJobCount,
+      awaitingProofJobCount: awaitingProofJobCount,
+    });
+  }, [
+    bundle?.urgent_actions,
+    summary,
+    portfolioSummary,
+    riskCount,
+    predictiveEnabled,
+    breachedJobCount,
+    blockedJobCount,
+    awaitingProofJobCount,
+  ]);
+
+  const pressureMetrics = useMemo(
+    () =>
+      computePortfolioDriverMetrics({
+        summary,
+        portfolioSummary,
+        urgentActions: bundle?.urgent_actions || [],
+        breachedJobCount,
+        blockedJobCount,
+        awaitingProofJobCount,
+      }),
+    [
+      summary,
+      portfolioSummary,
+      bundle?.urgent_actions,
+      breachedJobCount,
+      blockedJobCount,
+      awaitingProofJobCount,
+    ]
+  );
+
+  const prevPressureRef = useRef(null);
+  const [improvedFlash, setImprovedFlash] = useState({
+    overdue: false,
+    missing: false,
+    jobs: false,
+  });
+
+  useEffect(() => {
+    if (loading) return;
+    const prev = prevPressureRef.current;
+    const cur = pressureMetrics;
+    if (prev) {
+      const next = { overdue: false, missing: false, jobs: false };
+      let any = false;
+      if (cur.overdueDisplay < prev.overdueDisplay) {
+        next.overdue = true;
+        any = true;
+      }
+      if (cur.missingDisplay < prev.missingDisplay) {
+        next.missing = true;
+        any = true;
+      }
+      if (cur.jobPressure < prev.jobPressure) {
+        next.jobs = true;
+        any = true;
+      }
+      if (any) {
+        setImprovedFlash(next);
+        const t = window.setTimeout(
+          () => setImprovedFlash({ overdue: false, missing: false, jobs: false }),
+          1700
+        );
+        prevPressureRef.current = cur;
+        return () => window.clearTimeout(t);
+      }
+    }
+    prevPressureRef.current = cur;
+  }, [loading, pressureMetrics]);
+
   const maintenanceEnabled = hasFeature('maintenance_workflows');
 
   const allClearEmpty = isCommandCenterAllClearEmpty({
@@ -213,6 +338,33 @@ export default function ClientCommandCenterPage() {
     }
   };
 
+  /**
+   * At most one contextual hub link per property row (secondary, alongside property link).
+   * Job row: `clientInboxJobCtaLabel(t) || CLIENT_INBOX_JOB_FALLBACK_CTA` (same order as `sanitizeCommandCenterCtaLabel`).
+   */
+  const contextualHubLink = (t) => {
+    const st = String(t?.source_type || '');
+    const meta = t?.metadata && typeof t.metadata === 'object' ? t.metadata : {};
+    const wid = t?.work_order_id || meta.related_work_order_id;
+    const issueId = st === 'issue' ? t?.source_id : null;
+    if (st === 'work_order' && wid) {
+      return {
+        to: `/operations/jobs/${encodeURIComponent(wid)}`,
+        label: clientInboxJobCtaLabel(t) || CLIENT_INBOX_JOB_FALLBACK_CTA,
+      };
+    }
+    if (st === 'work_order') return { to: '/operations/work-orders', label: 'Continue in Jobs' };
+    if (st === 'requirement') return { to: '/requirements', label: 'Continue in Requirements' };
+    if (st === 'risk_signal') return { to: '/operations/risk-signals', label: 'Review flagged issues' };
+    if (st === 'issue' && issueId) {
+      return { to: `/operations/issues/${encodeURIComponent(issueId)}`, label: 'Continue in Issues' };
+    }
+    if (st === 'issue') return { to: '/operations/issues', label: 'Continue in Issues' };
+    if (st === 'approval') return { to: '/operations/approvals', label: 'Continue in Approvals' };
+    if (st === 'tenant_request') return { to: '/documents', label: 'Continue in Documents' };
+    return null;
+  };
+
   if (!isClientUser) {
     return (
       <div className={portalPageRoot} data-testid="command-center-forbidden">
@@ -245,29 +397,89 @@ export default function ClientCommandCenterPage() {
             Command center
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            One place for your verdict, compliance posture, and what to push on first—not your full task inbox.
+            Portfolio synthesis and prioritisation—execution stays in Today, Jobs, Requirements, and Documents. Use the
+            status block below to pick your next step.
           </p>
+          <p className="text-sm text-gray-600 mt-2">{COMMAND_CENTER_CONFIDENCE_LINE}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/today">Open Today inbox</Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/dashboard">Dashboard</Link>
-          </Button>
+        <div className="shrink-0 flex flex-col gap-2 items-start sm:items-end">
+          <Link
+            to="/today"
+            className="text-sm font-medium text-electric-teal hover:underline inline-flex items-center gap-1"
+            data-testid="command-center-link-today"
+          >
+            Continue in Today
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </Link>
+          <Link
+            to="/reports"
+            className="text-sm font-medium text-electric-teal hover:underline inline-flex items-center gap-1"
+            data-testid="command-center-link-reports"
+          >
+            Get compliance report
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </Link>
+          <Link
+            to="/dashboard"
+            className="text-sm font-medium text-electric-teal hover:underline inline-flex items-center gap-1"
+            data-testid="command-center-link-dashboard"
+          >
+            Dashboard
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </Link>
         </div>
       </div>
 
       <ErrorBanner message={error} />
 
-      {/* Verdict banner */}
+      {/* Portfolio verdict + synthesis */}
       <div
-        className={`mb-6 rounded-xl border px-4 py-4 sm:px-5 sm:py-5 ${verdictBannerClasses(verdict.tone)}`}
+        className={`mb-6 rounded-xl border px-4 py-4 sm:px-5 sm:py-5 ${verdictBannerClasses(portfolioVerdict.statusTone)}`}
         data-testid="command-center-verdict"
         role="status"
       >
-        <p className="text-lg font-semibold leading-snug">{verdict.line}</p>
-        {verdict.subline ? <p className="text-sm mt-2 opacity-90">{verdict.subline}</p> : null}
+        <div data-testid="command-center-portfolio-verdict">
+          <p className="text-xs font-semibold uppercase tracking-wide opacity-80">Portfolio status</p>
+          <p className="text-lg font-semibold leading-snug mt-1">{portfolioVerdict.statusLabel}</p>
+          {portfolioVerdict.drivers.length > 0 ? (
+            <div className="mt-3">
+              <p className="text-xs font-semibold uppercase tracking-wide opacity-80">What needs attention</p>
+              <ul className="mt-2 list-disc list-inside text-sm space-y-1 opacity-95">
+                {portfolioVerdict.drivers.map((d) => {
+                  const flashDriver =
+                    (d.key === 'overdue' && improvedFlash.overdue) ||
+                    (d.key === 'missing' && improvedFlash.missing) ||
+                    (d.key === 'job_pressure' && improvedFlash.jobs);
+                  return (
+                    <li
+                      key={d.key}
+                      className={
+                        flashDriver
+                          ? 'rounded px-1 -mx-1 -my-0.5 py-0.5 command-center-metric-improved'
+                          : undefined
+                      }
+                    >
+                      {d.label}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : portfolioVerdict.driverSummaryFallback ? (
+            <p className="text-sm mt-3 opacity-90">{portfolioVerdict.driverSummaryFallback}</p>
+          ) : null}
+          <div className="mt-4 pt-3 border-t border-black/5">
+            <p className="text-xs font-semibold uppercase tracking-wide opacity-80">What to do next</p>
+            <p className="text-sm mt-1 font-medium">{portfolioVerdict.bestNextMove}</p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Button size="sm" className="bg-midnight-blue hover:bg-midnight-blue/90" asChild>
+                <Link to={portfolioVerdict.nextHintPath}>{portfolioVerdict.nextHintLabel}</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+        <p className="text-sm mt-4 pt-3 border-t border-black/5 opacity-90">{verdict.line}</p>
+        {verdict.subline ? <p className="text-sm mt-2 opacity-85">{verdict.subline}</p> : null}
       </div>
 
       {allClearEmpty && !error && (
@@ -280,8 +492,8 @@ export default function ClientCommandCenterPage() {
             <div>
               <p className="font-semibold text-green-950 text-lg">Nothing needs your immediate attention.</p>
               <p className="text-sm text-green-900/90 mt-1">
-                No urgent actions, no major risks in this snapshot, and no active jobs. Check Today from time to time
-                for new items.
+                No urgent actions, no major risks in this snapshot, and no active jobs. Continue in Today when you are ready
+                for the next inbox item.
               </p>
             </div>
           </CardContent>
@@ -291,7 +503,7 @@ export default function ClientCommandCenterPage() {
       {/* 1. Status summary */}
       <Card className="mb-6 border border-gray-200 shadow-sm" data-testid="command-center-status">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Compliance &amp; risk posture</CardTitle>
+          <CardTitle className="text-base">Compliance &amp; issues</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {summary && summary.score != null ? (
@@ -305,7 +517,17 @@ export default function ClientCommandCenterPage() {
               </p>
               {summary.message ? <p className="text-sm mt-2 opacity-95">{summary.message}</p> : null}
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs opacity-90">
-                {summary.requirements_overdue != null && <span>Overdue: {summary.requirements_overdue}</span>}
+                {summary.requirements_overdue != null && (
+                  <span
+                    className={
+                      improvedFlash.overdue
+                        ? 'inline-block rounded-sm px-1 -mx-0.5 command-center-metric-improved'
+                        : undefined
+                    }
+                  >
+                    Overdue: {summary.requirements_overdue}
+                  </span>
+                )}
                 {summary.requirements_expiring_soon != null && (
                   <span>Expiring soon: {summary.requirements_expiring_soon}</span>
                 )}
@@ -322,68 +544,96 @@ export default function ClientCommandCenterPage() {
             </span>
             {predictiveEnabled && riskCount > 0 && (
               <Button variant="link" className="h-auto p-0 text-electric-teal" asChild>
-                <Link to="/operations/risk-signals">Review issues</Link>
+                <Link to="/operations/risk-signals">Review flagged issues</Link>
               </Button>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* 2. Priority snapshot (distinct from Today) */}
+      {/* 2. Property-first priorities (synthesis — execution stays in Today) */}
       <Card className="mb-6 border border-gray-200 shadow-sm" data-testid="command-center-urgent">
         <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-teal-600" />
-              What to push on first
+              Where to focus first
             </CardTitle>
             <p className="text-xs text-gray-500 mt-1 font-normal">
-              Top of your priority queue (same items as Today, shown here as a snapshot only).
+              Highest-impact property per row; the button routes to the right workspace (not a second inbox).
             </p>
           </div>
-          <Button variant="outline" size="sm" className="shrink-0" asChild>
-            <Link to="/today">Full Today inbox</Link>
-          </Button>
         </CardHeader>
         <CardContent>
-          {urgentTop.length > 0 ? (
-            <ul className="space-y-3 text-sm">
-              {urgentTop.map((t, idx) => (
-                <li
-                  key={t.id || t.task_id || t.title}
-                  className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0"
-                >
-                  <div className="flex gap-2 min-w-0">
-                    <span className="text-xs font-semibold text-gray-400 w-5 shrink-0 pt-0.5">{idx + 1}.</span>
-                    <div className="min-w-0">
-                      <button
-                        type="button"
-                        className="text-left text-midnight-blue hover:underline font-medium break-words"
-                        onClick={() => onUrgentClick(t)}
-                      >
-                        {inboxTitleForDisplay(t)}
-                      </button>
-                      {(t.urgency_level || t.priority_level) && (
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          Priority: {urgencyLevelLabel(t.urgency_level || t.priority_level)}
-                        </p>
-                      )}
+          {propertyPriorityReps.length > 0 ? (
+            <ul className="space-y-4 text-sm" data-testid="command-center-property-priorities">
+              {propertyPriorityReps.map((t, idx) => {
+                const propName =
+                  (t.property_id && propertyLabelById.get(t.property_id)) ||
+                  String(t.property_label || '').trim() ||
+                  'Property';
+                const whyMatters = commandCenterWhyThisMattersLine(t);
+                const cta = sanitizeCommandCenterCtaLabel(t.primary_action_label, t);
+                const hub = contextualHubLink(t);
+                return (
+                  <li
+                    key={t.property_id || t.id || idx}
+                    className="border-b border-gray-100 pb-4 last:border-0 last:pb-0"
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                      <div className="flex gap-2 min-w-0 flex-1">
+                        <span className="text-xs font-semibold text-gray-400 w-5 shrink-0 pt-0.5">{idx + 1}.</span>
+                        <div className="min-w-0 space-y-1">
+                          <p className="font-semibold text-midnight-blue break-words">{propName}</p>
+                          <p className="text-sm text-gray-800 break-words">{whyMatters}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2 shrink-0 sm:items-end pl-7 sm:pl-0 w-full sm:w-auto">
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full sm:w-auto bg-midnight-blue hover:bg-midnight-blue/90"
+                          onClick={() => onUrgentClick(t)}
+                        >
+                          {cta}
+                        </Button>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs justify-end">
+                          {t.property_id ? (
+                            <Link
+                              className="text-electric-teal font-medium hover:underline"
+                              to={`/properties/${encodeURIComponent(t.property_id)}`}
+                            >
+                              Continue to property
+                            </Link>
+                          ) : null}
+                          {hub ? (
+                            <Link className="text-electric-teal font-medium hover:underline" to={hub.to}>
+                              {hub.label}
+                            </Link>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-xs text-gray-500 shrink-0 sm:text-right sm:max-w-[36%] break-words pl-7 sm:pl-0">
-                    {[t.property_label, t.timing_label].filter(Boolean).join(' · ')}
-                  </span>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
+          ) : urgentCount > 0 ? (
+            <p className="text-sm text-gray-600">
+              Items in your queue are not tied to a property in this snapshot.{' '}
+              <Link className="text-electric-teal font-medium hover:underline" to="/today">
+                Continue in Today
+              </Link>{' '}
+              and resolve them in order.
+            </p>
           ) : calmSnapshot ? (
             <p className="text-sm text-gray-700">
-              <span className="font-medium text-green-800">No urgent actions right now.</span> Your Today inbox may
-              still have scheduled or lower-urgency items—open it when you want the full list.
+              <span className="font-medium text-green-800">No property-level priorities in this snapshot.</span> Continue
+              in Today for scheduled or lower-priority inbox work.
             </p>
           ) : (
             <p className="text-sm text-gray-600">
-              No urgent items in this snapshot. Use Today for snooze, dismiss, and the complete inbox.
+              No property-level priorities in this snapshot — continue in Today for the full task list, snooze, and dismiss.
             </p>
           )}
         </CardContent>
@@ -424,11 +674,31 @@ export default function ClientCommandCenterPage() {
               {portfolioSummary.kpis && (
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-700">
                   {portfolioSummary.kpis.compliant != null && <span>Compliant: {portfolioSummary.kpis.compliant}</span>}
-                  {portfolioSummary.kpis.overdue != null && <span>Overdue: {portfolioSummary.kpis.overdue}</span>}
+                  {portfolioSummary.kpis.overdue != null && (
+                    <span
+                      className={
+                        improvedFlash.overdue
+                          ? 'inline-block rounded-sm px-1 -mx-0.5 command-center-metric-improved'
+                          : undefined
+                      }
+                    >
+                      Overdue: {portfolioSummary.kpis.overdue}
+                    </span>
+                  )}
                   {portfolioSummary.kpis.expiring_30 != null && (
                     <span>Expiring (30d): {portfolioSummary.kpis.expiring_30}</span>
                   )}
-                  {portfolioSummary.kpis.missing != null && <span>Missing: {portfolioSummary.kpis.missing}</span>}
+                  {portfolioSummary.kpis.missing != null && (
+                    <span
+                      className={
+                        improvedFlash.missing
+                          ? 'inline-block rounded-sm px-1 -mx-0.5 command-center-metric-improved'
+                          : undefined
+                      }
+                    >
+                      Missing: {portfolioSummary.kpis.missing}
+                    </span>
+                  )}
                 </div>
               )}
               {portfolioSummary.updated_at && (
@@ -438,7 +708,7 @@ export default function ClientCommandCenterPage() {
               )}
               <Button variant="link" className="h-auto p-0 text-electric-teal" asChild>
                 <Link to="/requirements">
-                  Requirements <ChevronRight className="inline h-4 w-4" aria-hidden />
+                  Review requirements <ChevronRight className="inline h-4 w-4" aria-hidden />
                 </Link>
               </Button>
             </>
@@ -457,14 +727,9 @@ export default function ClientCommandCenterPage() {
               Jobs that need attention
             </CardTitle>
             <p className="text-xs text-gray-500 mt-1 font-normal">
-              Ranked by SLA risk, holds, proof, and contractor waits—then due dates.
+              Ranked by operational attention, then due dates.
             </p>
           </div>
-          {maintenanceEnabled && (
-            <Button variant="outline" size="sm" className="shrink-0" asChild>
-              <Link to="/operations/work-orders">All jobs</Link>
-            </Button>
-          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {!maintenanceEnabled && (
@@ -481,7 +746,11 @@ export default function ClientCommandCenterPage() {
                 jobSignals.onHoldOrParts > 0 ||
                 jobSignals.pendingContractor > 0) && (
                 <div
-                  className="flex flex-wrap gap-2 text-xs sm:text-sm"
+                  className={
+                    improvedFlash.jobs
+                      ? 'command-center-metric-improved flex flex-wrap gap-2 text-xs sm:text-sm rounded-lg px-1 py-1 -mx-1 -my-1'
+                      : 'flex flex-wrap gap-2 text-xs sm:text-sm'
+                  }
                   data-testid="command-center-job-signals"
                 >
                   {jobSignals.awaitingProof > 0 && (
@@ -491,7 +760,7 @@ export default function ClientCommandCenterPage() {
                   )}
                   {jobSignals.onHoldOrParts > 0 && (
                     <span className="inline-flex items-center rounded-full bg-slate-200 text-slate-900 px-2.5 py-1 font-medium">
-                      {jobSignals.onHoldOrParts} on hold / awaiting parts
+                      {jobSignals.onHoldOrParts} operationally paused
                     </span>
                   )}
                   {jobSignals.pendingContractor > 0 && (
@@ -504,12 +773,14 @@ export default function ClientCommandCenterPage() {
 
               {rankedJobs.length === 0 && calmSnapshot && (
                 <p className="text-sm text-gray-700">
-                  <span className="font-medium text-green-800">All active jobs are under control</span>—none in this
-                  snapshot. Open Jobs if you need the full execution list.
+                  <span className="font-medium text-green-800">All active jobs are under control</span> in this
+                  snapshot. Open the Jobs list from the portfolio “What to do next” step when you need the full queue.
                 </p>
               )}
               {rankedJobs.length === 0 && !calmSnapshot && (
-                <p className="text-sm text-gray-600">No active jobs. Open Jobs for completed history and filters.</p>
+                <p className="text-sm text-gray-600">
+                  No active jobs in this snapshot—the Jobs list still has completed history and filters.
+                </p>
               )}
               {rankedJobs.length > 0 && (
                 <ul className="space-y-3 text-sm">
@@ -526,19 +797,11 @@ export default function ClientCommandCenterPage() {
                     return (
                       <li
                         key={wo.work_order_id}
-                        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                        className="flex flex-col gap-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              className="text-left font-medium text-midnight-blue hover:underline break-words"
-                              onClick={() =>
-                                navigate(`/operations/jobs/${encodeURIComponent(wo.work_order_id)}`)
-                              }
-                            >
-                              {jobTitle}
-                            </button>
+                            <p className="text-sm font-medium text-midnight-blue break-words">{jobTitle}</p>
                             {badge && (
                               <span
                                 className={`inline-flex text-xs font-medium px-2 py-0.5 rounded ${badge.className}`}
@@ -554,14 +817,16 @@ export default function ClientCommandCenterPage() {
                             {propLbl ? ` · ${propLbl}` : ''}
                           </p>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="shrink-0 w-full sm:w-auto"
-                          onClick={() => navigate(`/operations/jobs/${encodeURIComponent(wo.work_order_id)}`)}
-                        >
-                          Manage job
-                        </Button>
+                        <div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full sm:w-auto"
+                            onClick={() => navigate(`/operations/jobs/${encodeURIComponent(wo.work_order_id)}`)}
+                          >
+                            View job
+                          </Button>
+                        </div>
                       </li>
                     );
                   })}

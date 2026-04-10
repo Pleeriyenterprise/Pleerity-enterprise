@@ -161,8 +161,8 @@ function ClientRiskSignalsPageInner() {
         if (err?.response?.status === 403) {
           setError(err?.response?.data?.detail || 'Predictive maintenance is not enabled for your account.');
         } else {
-          setError('Failed to load risk signals.');
-          toast.error(err?.response?.data?.detail || 'Failed to load risk signals');
+          setError('Failed to load flagged issues.');
+          toast.error(err?.response?.data?.detail || 'Failed to load flagged issues');
         }
         setData(null);
       })
@@ -221,12 +221,12 @@ function ClientRiskSignalsPageInner() {
       .then(([sig, view]) => {
         setDrawerSignal(sig);
         setDrawerSuggestedView(sig ? view : null);
-        if (!sig) toast.error('Failed to load signal details');
+        if (!sig) toast.error('Failed to load flagged issue details');
       })
       .catch(() => {
         setDrawerSignal(null);
         setDrawerSuggestedView(null);
-        toast.error('Failed to load signal details');
+        toast.error('Failed to load flagged issue details');
       })
       .finally(() => setDrawerLoading(false));
   }, [drawerSignalId]);
@@ -259,7 +259,7 @@ function ClientRiskSignalsPageInner() {
   const handleAcknowledge = async (signalId) => {
     try {
       await clientAPI.updateRiskSignalStatus(signalId, 'acknowledged');
-      toast.success('Signal acknowledged');
+      toast.success('Flagged issue acknowledged');
       refreshAfterStatusChange();
     } catch (e) {
       toast.error(e?.response?.data?.detail || 'Failed to acknowledge');
@@ -276,11 +276,11 @@ function ClientRiskSignalsPageInner() {
     setDismissSaving(true);
     try {
       await clientAPI.dismissRiskSignal(dismissTargetId, dismissReason);
-      toast.success('Risk signal dismissed');
+      toast.success('Flagged issue dismissed');
       setDismissTargetId(null);
       refreshAfterStatusChange();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Could not dismiss signal');
+      toast.error(e?.response?.data?.detail || 'Could not dismiss flagged issue');
     } finally {
       setDismissSaving(false);
     }
@@ -301,7 +301,7 @@ function ClientRiskSignalsPageInner() {
       setArrangeRequirements(Array.isArray(rows) ? rows : []);
     } catch {
       setArrangeRequirements([]);
-      toast.error('Could not load obligations for this property.');
+      toast.error('Could not load requirements for this property.');
     } finally {
       setArrangeLoading(false);
     }
@@ -309,7 +309,7 @@ function ClientRiskSignalsPageInner() {
 
   const confirmArrangeInspection = async () => {
     if (!drawerSignalId || !arrangeReqPick) {
-      toast.error('Select an obligation to continue.');
+      toast.error('Select a requirement to continue.');
       return;
     }
     const picked = arrangeRequirements.find((r) => (r.requirement_id || r.id) === arrangeReqPick);
@@ -326,7 +326,7 @@ function ClientRiskSignalsPageInner() {
         compliance_purpose: 'inspection',
       });
       const wid = res.data?.work_order?.work_order_id;
-      toast.success('Compliance inspection job created. Request a contractor from the work order.');
+      toast.success('Compliance inspection job created. Open the job to request a contractor.');
       setArrangeOpen(false);
       setDrawerSignalId(null);
       load();
@@ -349,7 +349,7 @@ function ClientRiskSignalsPageInner() {
       <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full min-w-0 client-portal-prose">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 mb-4">
           <TrendingUp className="w-7 h-7 shrink-0" />
-          Risk Signals
+          Flagged issues
         </h1>
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-6 flex items-start gap-3">
@@ -384,10 +384,10 @@ function ClientRiskSignalsPageInner() {
     <div className="p-4 sm:p-6 max-w-[1400px] mx-auto w-full min-w-0 client-portal-prose">
       <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 mb-2">
         <TrendingUp className="w-7 h-7 shrink-0" />
-        Risk signals
+        Flagged issues
       </h1>
       <p className="text-gray-600 mb-6 text-sm sm:text-base break-words">
-        Informational signals from your portfolio — not work tickets until you start a maintenance or compliance job.
+        Potential issues flagged automatically from your property data — start a maintenance or compliance job when you are ready to act.
       </p>
 
       {(() => {
@@ -401,7 +401,7 @@ function ClientRiskSignalsPageInner() {
               <CardTitle className="text-base">At-a-glance summary</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-gray-700 space-y-1">
-              <p>{signals.length} active risk signals across {grouped.length} properties.</p>
+              <p>{signals.length} active flagged issues across {grouped.length} properties.</p>
               <p>{urgent} urgent, {medium} needs attention, and {Math.max(signals.length - urgent - medium, 0)} monitor.</p>
               <p>Most affected properties: {top || 'None currently flagged'}.</p>
             </CardContent>
@@ -586,7 +586,7 @@ function ClientRiskSignalsPageInner() {
                       variant="outline"
                       onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
                     >
-                      <Wrench className="w-4 h-4 mr-1 shrink-0" /> Work order
+                      <Wrench className="w-4 h-4 mr-1 shrink-0" /> Create job
                     </Button>
                   </div>
                 </li>
@@ -599,7 +599,7 @@ function ClientRiskSignalsPageInner() {
       {/* Table */}
       <Card>
         <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:space-y-0 pb-2">
-          <CardTitle>Active issues</CardTitle>
+          <CardTitle>Active flagged issues</CardTitle>
           {summary.lastRecalculatedAt && (
             <span className="text-xs text-muted-foreground break-words">
               Last recalculated: {new Date(summary.lastRecalculatedAt).toLocaleString()}
@@ -616,7 +616,7 @@ function ClientRiskSignalsPageInner() {
             <div className="py-12 text-center">
               {hasFilters ? (
                 <>
-                  <p className="text-gray-600 font-medium">No risk signals match your current filters.</p>
+                  <p className="text-gray-600 font-medium">No flagged issues match your current filters.</p>
                   <p className="text-sm text-gray-500 mt-1">Try clearing filters or adjusting the date range.</p>
                   <Button variant="outline" size="sm" className="mt-4" onClick={() => setFilters({ risk_level: '', risk_type: '', property_id: '', trend: '', status: '', q: '', from: '', to: '' })}>
                     Clear filters
@@ -625,9 +625,9 @@ function ClientRiskSignalsPageInner() {
               ) : (
                 <>
                   <Package className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-600 font-medium">No active risk signals</p>
+                  <p className="text-gray-600 font-medium">No active flagged issues</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Signals are generated from property data (assets, work orders, compliance). Run Recalculate from a property’s Risk Signals tab or wait for the nightly job.
+                    Flagged issues are generated from property data (assets, jobs, compliance). Run Recalculate from a property’s Flagged issues tab or wait for the nightly job.
                   </p>
                   <div className="flex gap-2 justify-center mt-4">
                     <Button variant="outline" size="sm" onClick={() => navigate('/properties')}>
@@ -689,9 +689,7 @@ function ClientRiskSignalsPageInner() {
                         <span className="font-medium text-gray-800">Why flagged:</span> {s.reasons[0]}
                       </p>
                     )}
-                    <p className="text-sm text-gray-700 break-words line-clamp-4">
-                      <span className="font-medium text-gray-800">Next step:</span> {humanAction(s.recommended_action, s)}
-                    </p>
+                    <p className="text-sm text-gray-700 break-words line-clamp-4">{humanAction(s.recommended_action, s)}</p>
                     <p className="text-xs text-muted-foreground">
                       Updated {s.updated_at ? new Date(s.updated_at).toLocaleString() : '—'}
                     </p>
@@ -704,7 +702,7 @@ function ClientRiskSignalsPageInner() {
                         variant="outline"
                         onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
                       >
-                        <Wrench className="w-4 h-4 mr-2 shrink-0" /> Start maintenance job
+                        <Wrench className="w-4 h-4 mr-2 shrink-0" /> Create job
                       </Button>
                       {s.status === 'active' && (
                         <div className="grid grid-cols-2 gap-2">
@@ -712,7 +710,7 @@ function ClientRiskSignalsPageInner() {
                             <CheckCircle className="w-4 h-4 mr-1 shrink-0" /> Acknowledge
                           </Button>
                           <Button variant="outline" className="min-h-11 text-xs" onClick={() => openDismissDialog(s.signal_id)}>
-                            <XCircle className="w-4 h-4 mr-1 shrink-0" /> Dismiss signal
+                            <XCircle className="w-4 h-4 mr-1 shrink-0" /> Dismiss flagged issue
                           </Button>
                         </div>
                       )}
@@ -724,7 +722,7 @@ function ClientRiskSignalsPageInner() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Issue</TableHead>
+                      <TableHead>Flagged issue</TableHead>
                       <TableHead>Property</TableHead>
                       <TableHead>Asset</TableHead>
                       <TableHead>Priority</TableHead>
@@ -805,7 +803,7 @@ function ClientRiskSignalsPageInner() {
       <Sheet open={!!drawerSignalId} onOpenChange={(open) => !open && setDrawerSignalId(null)}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Risk signal details</SheetTitle>
+            <SheetTitle>Flagged issue details</SheetTitle>
           </SheetHeader>
           {drawerLoading ? (
             <div className="flex gap-2 text-gray-500 py-8">
@@ -1006,19 +1004,19 @@ function ClientRiskSignalsPageInner() {
                               setActionFromSignal('work_order');
                               try {
                                 const res = await clientAPI.createWorkOrderFromRiskSignal(drawerSignalId, {});
-                                toast.success('Work order created. You can view it in Operations → Work orders.');
+                                toast.success('Job created. View it in Operations → Jobs.');
                                 if (res?.data?.work_order_id) navigate(buildSafeQueryPath('/operations/work-orders', { highlight: res.data.work_order_id }));
                                 setDrawerSignalId(null);
                                 load();
                               } catch (e) {
-                                toast.error(e?.response?.data?.detail || 'Failed to create work order');
+                                toast.error(e?.response?.data?.detail || 'Failed to create job');
                               } finally {
                                 setActionFromSignal(null);
                               }
                             }}
                           >
                             {actionFromSignal === 'work_order' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Wrench className="w-4 h-4 mr-1" />}
-                            Create maintenance job
+                            Create job
                           </Button>
                         )}
                         {actions.includes('schedule_inspection') && hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
@@ -1078,13 +1076,13 @@ function ClientRiskSignalsPageInner() {
                     variant="outline"
                     onClick={() => openCreateWorkOrder(drawerSignal.property_id, drawerSignal.recommended_action)}
                   >
-                    <Wrench className="w-4 h-4 mr-1" /> Create maintenance job (manual)
+                    <Wrench className="w-4 h-4 mr-1" /> Create job (manual)
                   </Button>
                 </div>
               </div>
             </div>
           ) : (
-            <p className="text-gray-500 py-4">Could not load signal details.</p>
+            <p className="text-gray-500 py-4">Could not load flagged issue details.</p>
           )}
           <SheetFooter className="pt-4 border-t">
             {drawerSignal?.status === 'active' && (
@@ -1093,7 +1091,7 @@ function ClientRiskSignalsPageInner() {
                   <CheckCircle className="w-4 h-4 mr-2" /> Acknowledge
                 </Button>
                 <Button variant="default" onClick={() => openDismissDialog(drawerSignalId)}>
-                  <XCircle className="w-4 h-4 mr-2" /> Dismiss signal
+                  <XCircle className="w-4 h-4 mr-2" /> Dismiss flagged issue
                 </Button>
               </>
             )}
@@ -1104,7 +1102,7 @@ function ClientRiskSignalsPageInner() {
       <Dialog open={Boolean(dismissTargetId)} onOpenChange={(o) => !o && setDismissTargetId(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Dismiss risk signal</DialogTitle>
+            <DialogTitle>Dismiss flagged issue</DialogTitle>
             <DialogDescription>
               Dismiss only after you have handled the situation or decided no action is needed. If linked maintenance or
               compliance work is already complete, you can dismiss without choosing a reason.
@@ -1138,17 +1136,17 @@ function ClientRiskSignalsPageInner() {
           <DialogHeader>
             <DialogTitle>Create compliance job</DialogTitle>
             <DialogDescription>
-              Select the obligation this job will satisfy. This only creates the job — open it afterward to assign a contractor
+              Select the requirement this job will satisfy. This only creates the job — open it afterward to assign a contractor
               and complete booking, visit, and proof.
             </DialogDescription>
           </DialogHeader>
           {arrangeLoading ? (
             <p className="text-sm text-gray-500 flex items-center gap-2 py-4">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading obligations…
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading requirements…
             </p>
           ) : (
             <div className="space-y-2 py-2">
-              <label className="text-sm font-medium text-gray-700">Obligation on this property</label>
+              <label className="text-sm font-medium text-gray-700">Requirement on this property</label>
               <select
                 value={arrangeReqPick}
                 onChange={(e) => setArrangeReqPick(e.target.value)}

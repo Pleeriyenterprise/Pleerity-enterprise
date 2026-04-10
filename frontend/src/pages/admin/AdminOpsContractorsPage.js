@@ -333,7 +333,7 @@ export default function AdminOpsContractorsPage() {
     if (t) return t;
     const d = (job.description || '').trim();
     if (d) return d.length > 90 ? `${d.slice(0, 90)}…` : d;
-    return 'Work order';
+    return 'Job';
   };
 
   const assignedJobPropertyLabel = (job) => {
@@ -1243,7 +1243,7 @@ export default function AdminOpsContractorsPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Work order</th>
+                      <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Job</th>
                       <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Status</th>
                       <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Property</th>
                       <th className="px-3 py-2 text-left text-sm font-medium text-gray-700">Client</th>

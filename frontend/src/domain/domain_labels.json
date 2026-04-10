@@ -170,7 +170,7 @@
     "investigating": { "client_label": "Investigating", "admin_label": "Investigating" },
     "ready_for_work_order": {
       "client_label": "Ready for contractor assignment",
-      "admin_label": "Ready for work order"
+      "admin_label": "Ready for job"
     },
     "in_progress": { "client_label": "In progress", "admin_label": "In progress" },
     "resolved": { "client_label": "Resolved", "admin_label": "Resolved" },
@@ -231,9 +231,9 @@
     "OVERDUE": { "client_label": "Overdue", "admin_label": "Overdue" },
     "EXPIRED": { "client_label": "Expired", "admin_label": "Expired" },
     "EXPIRING_SOON": { "client_label": "Expiring", "admin_label": "Expiring soon" },
-    "PENDING": { "client_label": "Pending", "admin_label": "Pending" },
-    "MISSING": { "client_label": "Missing evidence", "admin_label": "Missing" },
-    "MISSING_EVIDENCE": { "client_label": "Missing evidence", "admin_label": "Missing evidence" },
+    "PENDING": { "client_label": "Awaiting verification", "admin_label": "Pending" },
+    "MISSING": { "client_label": "No document uploaded", "admin_label": "Missing" },
+    "MISSING_EVIDENCE": { "client_label": "No document uploaded", "admin_label": "Missing evidence" },
     "COMPLIANT": { "client_label": "Compliant", "admin_label": "Compliant" },
     "VALID": { "client_label": "Valid", "admin_label": "Valid" },
     "NOT_APPLICABLE": { "client_label": "Not applicable", "admin_label": "Not applicable" },
@@ -241,15 +241,15 @@
     "WAIVED": { "client_label": "Waived", "admin_label": "Waived" }
   },
   "today_inbox_action_titles": {
-    "risk_signal": "Review this risk and choose your next step",
-    "work_order": "Keep this job moving forward",
-    "issue": "Take action on this maintenance issue",
+    "risk_signal": "Issue — needs review",
+    "work_order": "Job — needs attention",
+    "issue": "Maintenance issue — needs attention",
     "approval": "Review or approve this invoice",
     "tenant_message": "Reply to your tenant’s portal message"
   },
   "suggested_action_codes": {
     "create_issue": { "client_label": "Log an issue", "admin_label": "Create issue" },
-    "create_work_order": { "client_label": "Book a work order", "admin_label": "Create work order" },
+    "create_work_order": { "client_label": "Book a job", "admin_label": "Create work order" },
     "schedule_inspection": { "client_label": "Schedule an inspection", "admin_label": "Schedule inspection" },
     "send_contractor_reminder": { "client_label": "Nudge contractor", "admin_label": "Send contractor reminder" },
     "reassign_contractor": { "client_label": "Change contractor", "admin_label": "Reassign contractor" }
