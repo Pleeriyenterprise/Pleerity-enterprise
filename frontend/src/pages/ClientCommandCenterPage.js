@@ -38,6 +38,7 @@ import {
   isOperationalHold,
   rankWorkOrdersByAttention,
   sanitizeCommandCenterCtaLabel,
+  buildCommandCenterPropertyRowHubLink,
 } from '../utils/clientCommandCenter';
 import { COMMAND_CENTER_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 
@@ -338,33 +339,6 @@ export default function ClientCommandCenterPage() {
     }
   };
 
-  /**
-   * At most one contextual hub link per property row (secondary, alongside property link).
-   * Job row: `clientInboxJobCtaLabel(t) || CLIENT_INBOX_JOB_FALLBACK_CTA` (same order as `sanitizeCommandCenterCtaLabel`).
-   */
-  const contextualHubLink = (t) => {
-    const st = String(t?.source_type || '');
-    const meta = t?.metadata && typeof t.metadata === 'object' ? t.metadata : {};
-    const wid = t?.work_order_id || meta.related_work_order_id;
-    const issueId = st === 'issue' ? t?.source_id : null;
-    if (st === 'work_order' && wid) {
-      return {
-        to: `/operations/jobs/${encodeURIComponent(wid)}`,
-        label: clientInboxJobCtaLabel(t) || CLIENT_INBOX_JOB_FALLBACK_CTA,
-      };
-    }
-    if (st === 'work_order') return { to: '/operations/work-orders', label: 'Continue in Jobs' };
-    if (st === 'requirement') return { to: '/requirements', label: 'Continue in Requirements' };
-    if (st === 'risk_signal') return { to: '/operations/risk-signals', label: 'Review flagged issues' };
-    if (st === 'issue' && issueId) {
-      return { to: `/operations/issues/${encodeURIComponent(issueId)}`, label: 'Continue in Issues' };
-    }
-    if (st === 'issue') return { to: '/operations/issues', label: 'Continue in Issues' };
-    if (st === 'approval') return { to: '/operations/approvals', label: 'Continue in Approvals' };
-    if (st === 'tenant_request') return { to: '/documents', label: 'Continue in Documents' };
-    return null;
-  };
-
   if (!isClientUser) {
     return (
       <div className={portalPageRoot} data-testid="command-center-forbidden">
@@ -405,28 +379,23 @@ export default function ClientCommandCenterPage() {
         <div className="shrink-0 flex flex-col gap-2 items-start sm:items-end">
           <Link
             to="/today"
-            className="text-sm font-medium text-electric-teal hover:underline inline-flex items-center gap-1"
+            className="text-sm font-semibold text-electric-teal hover:underline inline-flex items-center gap-1"
             data-testid="command-center-link-today"
           >
-            Continue in Today
+            Open Today inbox
             <ChevronRight className="h-4 w-4" aria-hidden />
           </Link>
-          <Link
-            to="/reports"
-            className="text-sm font-medium text-electric-teal hover:underline inline-flex items-center gap-1"
-            data-testid="command-center-link-reports"
-          >
-            Get compliance report
-            <ChevronRight className="h-4 w-4" aria-hidden />
-          </Link>
-          <Link
-            to="/dashboard"
-            className="text-sm font-medium text-electric-teal hover:underline inline-flex items-center gap-1"
-            data-testid="command-center-link-dashboard"
-          >
-            Dashboard
-            <ChevronRight className="h-4 w-4" aria-hidden />
-          </Link>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 justify-start sm:justify-end text-xs text-gray-500">
+            <Link to="/reports" className="hover:text-midnight-blue hover:underline" data-testid="command-center-link-reports">
+              Compliance report
+            </Link>
+            <span className="text-gray-300" aria-hidden>
+              ·
+            </span>
+            <Link to="/dashboard" className="hover:text-midnight-blue hover:underline" data-testid="command-center-link-dashboard">
+              Dashboard
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -471,10 +440,18 @@ export default function ClientCommandCenterPage() {
           <div className="mt-4 pt-3 border-t border-black/5">
             <p className="text-xs font-semibold uppercase tracking-wide opacity-80">What to do next</p>
             <p className="text-sm mt-1 font-medium">{portfolioVerdict.bestNextMove}</p>
-            <div className="flex flex-wrap gap-2 mt-3">
-              <Button size="sm" className="bg-midnight-blue hover:bg-midnight-blue/90" asChild>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center mt-3">
+              <Button size="sm" className="bg-midnight-blue hover:bg-midnight-blue/90 w-full sm:w-auto" asChild>
                 <Link to={portfolioVerdict.nextHintPath}>{portfolioVerdict.nextHintLabel}</Link>
               </Button>
+              {portfolioVerdict.verdictSecondaryNav ? (
+                <Link
+                  to={portfolioVerdict.verdictSecondaryNav.path}
+                  className="text-xs text-gray-600 hover:text-midnight-blue hover:underline sm:ml-1"
+                >
+                  {portfolioVerdict.verdictSecondaryNav.label}
+                </Link>
+              ) : null}
             </div>
           </div>
         </div>
@@ -560,7 +537,7 @@ export default function ClientCommandCenterPage() {
               Where to focus first
             </CardTitle>
             <p className="text-xs text-gray-500 mt-1 font-normal">
-              Highest-impact property per row; the button routes to the right workspace (not a second inbox).
+              One primary action per property; links below are for context only (property hub or a different workspace).
             </p>
           </div>
         </CardHeader>
@@ -574,7 +551,11 @@ export default function ClientCommandCenterPage() {
                   'Property';
                 const whyMatters = commandCenterWhyThisMattersLine(t);
                 const cta = sanitizeCommandCenterCtaLabel(t.primary_action_label, t);
-                const hub = contextualHubLink(t);
+                const primaryResolved = resolveClientPortalPath(
+                  resolveTaskCta(t, 'primary').route || '/today',
+                  '/today',
+                );
+                const hub = buildCommandCenterPropertyRowHubLink(t, primaryResolved);
                 return (
                   <li
                     key={t.property_id || t.id || idx}
@@ -597,17 +578,17 @@ export default function ClientCommandCenterPage() {
                         >
                           {cta}
                         </Button>
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs justify-end">
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs justify-end text-gray-500">
                           {t.property_id ? (
                             <Link
-                              className="text-electric-teal font-medium hover:underline"
+                              className="font-medium hover:text-midnight-blue hover:underline"
                               to={`/properties/${encodeURIComponent(t.property_id)}`}
                             >
-                              Continue to property
+                              Open property
                             </Link>
                           ) : null}
                           {hub ? (
-                            <Link className="text-electric-teal font-medium hover:underline" to={hub.to}>
+                            <Link className="font-medium hover:text-midnight-blue hover:underline" to={hub.to}>
                               {hub.label}
                             </Link>
                           ) : null}
@@ -719,19 +700,22 @@ export default function ClientCommandCenterPage() {
       </Card>
 
       {/* 4. Jobs — prioritized + stuck signals */}
-      <Card className="mb-6 border border-gray-200 shadow-sm" data-testid="command-center-jobs">
+      <Card
+        className="mb-6 border border-dashed border-gray-200 bg-slate-50/50 shadow-none text-gray-800"
+        data-testid="command-center-jobs"
+      >
         <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
           <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Wrench className="h-4 w-4 text-teal-600" />
+            <CardTitle className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <Wrench className="h-4 w-4 text-gray-500" />
               Jobs that need attention
             </CardTitle>
             <p className="text-xs text-gray-500 mt-1 font-normal">
-              Ranked by operational attention, then due dates.
+              Secondary to the property list above — same jobs, ranked by operational pressure.
             </p>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-0">
           {!maintenanceEnabled && (
             <p className="text-sm text-gray-600">
               Job tracking is not enabled for your plan. Upgrade to see maintenance workflows.
@@ -821,10 +805,11 @@ export default function ClientCommandCenterPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="w-full sm:w-auto"
+                            className="w-full sm:w-auto text-xs h-8 border-gray-300 text-gray-700"
                             onClick={() => navigate(`/operations/jobs/${encodeURIComponent(wo.work_order_id)}`)}
                           >
-                            View job
+                            {clientInboxJobCtaLabel({ ...wo, source_type: 'work_order' }) ||
+                              CLIENT_INBOX_JOB_FALLBACK_CTA}
                           </Button>
                         </div>
                       </li>

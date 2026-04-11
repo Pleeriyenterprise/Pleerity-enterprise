@@ -2,7 +2,7 @@
  * Client Command Center — pure helpers for verdict copy, job attention ranking, and stuck signals.
  * Keeps UI pages from accumulating a second business-rules layer; aligns with API field names.
  */
-import { operationalExceptionLabel, inboxTitleForDisplay } from '../domain/presentDomain';
+import { operationalExceptionLabel, inboxTitleForDisplay, requirementLabel } from '../domain/presentDomain';
 import { compareTopPriority, normalizeTaskForTopPriorityRanking } from './clientTopPriorityRanking';
 import {
   clientInboxJobCtaLabel,
@@ -331,8 +331,9 @@ const COMMAND_CENTER_GENERIC_JOB_KEYS = new Set(['view job', 'open job']);
 const COMMAND_CENTER_CTA_LABEL_MAP = {
   'view job': CLIENT_INBOX_JOB_FALLBACK_CTA,
   'open job': CLIENT_INBOX_JOB_FALLBACK_CTA,
-  'review risk signal': 'Review flagged issue',
-  'view risk signal': 'Review flagged issue',
+  'review risk signal': 'Review issue',
+  'view risk signal': 'Review issue',
+  'review flagged issue': 'Review issue',
 };
 
 /**
@@ -371,11 +372,27 @@ export function sanitizeCommandCenterCtaLabel(primaryLabel, task) {
   if (st === 'work_order' || /work_order/i.test(at)) {
     return clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA;
   }
-  if (st === 'risk_signal' || at === 'risk_signal') return 'Review flagged issue';
+  if (st === 'risk_signal' || at === 'risk_signal') return 'Review issue';
   if (st === 'issue') return 'Review issue';
   if (st === 'approval') return 'Review approval';
   if (st === 'requirement') return 'Review requirement';
   return 'Continue in Today';
+}
+
+function requirementSpecificName(task, meta) {
+  const code =
+    meta.requirement_type ||
+    meta.requirement_code ||
+    meta.code ||
+    task?.requirement_code ||
+    task?.requirement_type;
+  if (code && typeof code === 'string') {
+    const lbl = requirementLabel(code);
+    if (lbl && lbl !== 'Requirement') return lbl;
+  }
+  const fromInbox = inboxTitleForDisplay(task);
+  if (fromInbox && fromInbox !== 'Task') return fromInbox;
+  return 'Requirement';
 }
 
 /**
@@ -383,57 +400,122 @@ export function sanitizeCommandCenterCtaLabel(primaryLabel, task) {
  */
 export function commandCenterWhyThisMattersLine(task) {
   const meta = task?.metadata && typeof task.metadata === 'object' ? task.metadata : {};
-  const name = inboxTitleForDisplay(task);
-  const label = name && name !== 'Task' ? name : 'Requirement';
+  const label = requirementSpecificName(task, meta);
   const at = String(meta.action_type || '');
   const st = String(task?.source_type || '');
   const od = Number(task.overdue_days ?? meta.overdue_days ?? 0);
   const impact = String(task?.impact_label || '').trim().toLowerCase();
+  const riskLevel = String(meta.risk_level || task?.risk_level || '').toLowerCase();
+  const riskCue =
+    riskLevel && ['high', 'critical', 'severe'].includes(riskLevel) ? ' — elevated portfolio risk' : '';
 
   const impactClause = impact && !impact.includes('review') ? ` (${impact})` : '';
 
   if (at === 'overdue_compliance' && od > 0) {
-    return `${label} — overdue by ${od} day${od === 1 ? '' : 's'}${impactClause || ' (compliance risk)'}`;
+    return `${label} overdue by ${od} day${od === 1 ? '' : 's'} — action needed now${impactClause || ''}`;
+  }
+  if (at === 'overdue_compliance') {
+    return `${label} is overdue — action needed now${impactClause || ''}`;
   }
   if (at === 'certificate_expiring_soon') {
-    return `${label} — due soon${impactClause}`;
+    return `${label} due soon — review before it becomes overdue${impactClause || ''}`;
   }
   if (at === 'missing_document') {
-    return `${label} — document not uploaded${impactClause || ' (blocks evidence)'}`;
+    return `${label} — evidence missing; upload a document to clear this gap${impactClause || ''}`;
   }
   if (at === 'work_order_sla_breached') {
     const jobName = label !== 'Requirement' ? label : 'Job';
-    return `${jobName} — SLA deadline passed${impactClause}`;
+    return `${jobName} — SLA deadline passed; follow up now${impactClause || ''}`;
   }
   if (at === 'work_order_near_sla_breach') {
     const jobName = label !== 'Requirement' ? label : 'Job';
-    return `${jobName} — SLA at risk${impactClause}`;
+    return `${jobName} — SLA at risk; act before it breaches${impactClause || ''}`;
   }
   if (at === 'risk_signal' || st === 'risk_signal') {
-    return `${label} — flagged issue needs review${impactClause}`;
+    const sev =
+      riskLevel && ['high', 'critical', 'medium', 'low'].includes(riskLevel)
+        ? `${riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}-priority signal`
+        : 'Flagged signal';
+    return `${label} — ${sev}; review to clear or dismiss${riskCue || impactClause || ''}`;
   }
   if (at === 'open_operational_issue' || st === 'issue') {
-    return `${label} — issue needs review${impactClause}`;
+    const sev = String(task?.severity || meta.severity || '').toLowerCase();
+    const sevBit =
+      sev && ['high', 'urgent', 'critical'].includes(sev) ? ` (${sev} severity)` : '';
+    return `${label} — open issue needs triage${sevBit}${impactClause || ''}`;
   }
   if (at === 'open_work_order' || st === 'work_order') {
-    const jobName = label !== 'Requirement' ? label : 'Job';
+    const jobName = label !== 'Requirement' ? label : 'Maintenance job';
     const hay = `${String(task?.title || '')} ${String(task?.description || '')}`.toLowerCase();
     const visitCue = /visit|schedule|booking|booked|proposed/.test(hay);
     const contractorCue = /contractor|assigned|accept/.test(hay);
-    let stateLine = 'Work in progress';
-    if (visitCue) stateLine = 'Visit scheduled — awaiting completion';
-    else if (contractorCue) stateLine = 'Waiting on contractor';
-    return `${jobName} — ${stateLine}${impactClause}`;
+    let stateLine = 'in progress — check next step on the job';
+    if (visitCue) stateLine = 'visit scheduled — complete or reschedule on the job';
+    else if (contractorCue) stateLine = 'waiting on contractor — progress may be blocked';
+    return `${jobName} — ${stateLine}${impactClause || ''}`;
   }
   if (at === 'pending_invoice_approval' || st === 'approval') {
-    return `${label} — invoice needs your approval${impactClause}`;
+    return `${label} — invoice needs your approval${impactClause || ''}`;
   }
 
   const timing = String(meta.timing_label || task?.timing_label || '').trim();
   if (timing && label !== 'Requirement') return `${label} — ${timing.charAt(0).toLowerCase() + timing.slice(1)}`;
   if (timing) return timing;
-  if (label && label !== 'Requirement') return `${label} — continue in Today for the next step`;
-  return 'Continue in Today for the next step';
+  if (label && label !== 'Requirement') return `${label} — open in Today for the exact next step`;
+  return 'Open Today for the next step on this item';
+}
+
+/** Normalised app path for duplicate detection (no query/hash, no trailing slash). */
+export function normalizeCommandCenterPath(raw) {
+  if (raw == null || raw === '') return '';
+  return String(raw).trim().split(/[?#]/)[0].replace(/\/$/, '') || '';
+}
+
+/**
+ * Secondary hub link for a property priority row — null when it duplicates the primary navigation target.
+ */
+export function buildCommandCenterPropertyRowHubLink(task, primaryResolvedPath) {
+  const st = String(task?.source_type || '');
+  const meta = task?.metadata && typeof task.metadata === 'object' ? task.metadata : {};
+  const wid = task?.work_order_id || meta.related_work_order_id;
+  const primary = normalizeCommandCenterPath(primaryResolvedPath);
+
+  if (st === 'work_order' && wid) {
+    const jobPath = normalizeCommandCenterPath(`/operations/jobs/${encodeURIComponent(wid)}`);
+    if (primary === jobPath) return null;
+    return { to: `/operations/jobs/${encodeURIComponent(wid)}`, label: 'Open job page' };
+  }
+  if (st === 'work_order') {
+    const jobsRoot = normalizeCommandCenterPath('/operations/work-orders');
+    if (primary === jobsRoot) return null;
+    return { to: '/operations/work-orders', label: 'View all jobs' };
+  }
+  if (st === 'requirement') {
+    const reqRoot = normalizeCommandCenterPath('/requirements');
+    if (primary === reqRoot || primary.startsWith(`${reqRoot}/`)) return null;
+    return { to: '/requirements', label: 'View requirements' };
+  }
+  if (st === 'risk_signal') {
+    const riskRoot = normalizeCommandCenterPath('/operations/risk-signals');
+    if (primary === riskRoot || primary.startsWith(`${riskRoot}/`)) return null;
+    return { to: '/operations/risk-signals', label: 'Review flagged issues' };
+  }
+  if (st === 'issue') {
+    const issuesRoot = normalizeCommandCenterPath('/operations/issues');
+    if (primary === issuesRoot) return null;
+    return { to: '/operations/issues', label: 'View issues' };
+  }
+  if (st === 'approval') {
+    const apRoot = normalizeCommandCenterPath('/operations/approvals');
+    if (primary === apRoot || primary.startsWith(apRoot)) return null;
+    return { to: '/operations/approvals', label: 'View approvals' };
+  }
+  if (st === 'tenant_request') {
+    const docRoot = normalizeCommandCenterPath('/documents');
+    if (primary === docRoot || primary.startsWith(`${docRoot}/`)) return null;
+    return { to: '/documents', label: 'Open Documents' };
+  }
+  return null;
 }
 
 /**
@@ -580,22 +662,31 @@ export function buildPortfolioVerdictBlock({
 
   let bestNextMove = '';
   let nextHintPath = '/today';
-  let nextHintLabel = 'Continue in Today';
+  let nextHintLabel = 'Open Today inbox';
+  /** Optional low-emphasis second route (different destination from primary CTA). */
+  let verdictSecondaryNav = null;
 
   if (maxN > 0) {
     const winner = buckets.find((b) => b.n === maxN);
     if (winner.key === 'overdue') {
       nextHintPath = '/requirements';
-      nextHintLabel = 'Continue in Requirements';
-      bestNextMove = 'Start with overdue requirements — resolve these first.';
+      nextHintLabel = 'Review requirements';
+      bestNextMove = 'Overdue requirements are the strongest compliance signal — work them down first.';
+      if (missingDisplay > 0) {
+        verdictSecondaryNav = { path: '/documents', label: 'Upload missing documents' };
+      }
     } else if (winner.key === 'missing') {
       nextHintPath = '/documents';
-      nextHintLabel = 'Continue in Documents';
-      bestNextMove = 'Upload missing documents to reduce risk.';
+      nextHintLabel = 'Upload missing documents';
+      bestNextMove = 'Missing evidence is driving score risk — upload documents with correct dates.';
+      if (overdueDisplay > 0) {
+        verdictSecondaryNav = { path: '/requirements', label: 'Review overdue requirements' };
+      }
     } else {
       nextHintPath = '/operations/work-orders';
-      nextHintLabel = 'Continue in Jobs';
-      bestNextMove = 'Resolve blocked jobs to restore progress.';
+      nextHintLabel = 'Resolve blocked jobs';
+      bestNextMove = 'Jobs are waiting on proof, contractors, or holds — unblock the queue.';
+      verdictSecondaryNav = { path: '/today', label: 'Open Today inbox' };
     }
   } else if (predictiveEnabled && (riskCount || 0) > 0) {
     const rc = riskCount || 0;
@@ -605,18 +696,19 @@ export function buildPortfolioVerdictBlock({
       rc === 1
         ? 'One flagged issue needs a decision — review it now.'
         : `${rc} flagged issues need decisions — review them now.`;
+    verdictSecondaryNav = { path: '/today', label: 'Open Today inbox' };
   } else if (urgentCount > 0) {
     nextHintPath = '/today';
-    nextHintLabel = 'Continue in Today';
+    nextHintLabel = 'Open Today inbox';
     bestNextMove =
       urgentCount === 1
-        ? 'Your top urgent item is not fully reflected in the counts above — continue in Today and resolve it first.'
-        : `${urgentCount} urgent items need attention — continue in Today and work from the top down.`;
+        ? 'Your top urgent item is not fully reflected in the counts above — open Today and resolve it first.'
+        : `${urgentCount} urgent items need attention — open Today and work from the top down.`;
   } else {
     nextHintPath = '/today';
-    nextHintLabel = 'Continue in Today';
+    nextHintLabel = 'Open Today inbox';
     bestNextMove =
-      'Portfolio snapshot looks clear — continue in Today for the full queue and the next concrete step.';
+      'Portfolio snapshot looks clear — open Today when you want the full queue and the next step.';
   }
 
   const driverSummaryFallback =
@@ -635,6 +727,7 @@ export function buildPortfolioVerdictBlock({
     bestNextMove,
     nextHintPath,
     nextHintLabel,
+    verdictSecondaryNav,
     driverSummaryFallback,
   };
 }
