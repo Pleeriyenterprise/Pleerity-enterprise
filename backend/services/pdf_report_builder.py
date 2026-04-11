@@ -23,6 +23,27 @@ from presentation.jurisdiction_reporting import (
 PDF_FOOTER_DISCLAIMER = "This report does not constitute legal advice."
 
 
+def _portfolio_has_v2_bucket_breakdown(bucket_breakdown: Any) -> bool:
+    """True when compliance-score payload includes full v2 bucket breakdown (mirrors client portal)."""
+    if not isinstance(bucket_breakdown, dict):
+        return False
+    keys = (
+        "legal_core",
+        "documentation_completeness",
+        "operational_responsiveness",
+        "recency_maintenance_confidence",
+    )
+    for k in keys:
+        b = bucket_breakdown.get(k)
+        if not isinstance(b, dict) or b.get("percent") is None:
+            return False
+        try:
+            float(b["percent"])
+        except (TypeError, ValueError):
+            return False
+    return True
+
+
 def _hex_to_rgb(hex_color: str) -> tuple:
     hex_color = (hex_color or "#0B1D3A").lstrip("#")
     return tuple(int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))
@@ -405,23 +426,43 @@ def build_score_explanation_report(
     ))
     elements.append(Spacer(1, 24))
 
-    # —— 4. Weighting model ——
-    elements.append(Paragraph("Weighting model", styles["heading"]))
-    weights = score_payload.get("weights") or {}
-    breakdown = score_payload.get("breakdown") or {}
-    components = score_payload.get("components") or {}
-    weight_rows = [["Component", "Weight", "Your score (%)"]]
-    comp_map = {"status": "status", "expiry": "timeline", "documents": "documents", "overdue_penalty": "urgency"}
-    break_map = {"status": "status_score", "expiry": "expiry_score", "documents": "document_score", "overdue_penalty": "overdue_penalty_score"}
-    for key, label in [("status", "Status"), ("expiry", "Timeline"), ("documents", "Documents"), ("overdue_penalty", "Urgency impact")]:
-        w = weights.get(key, "—")
-        comp = components.get(comp_map[key])
-        sc = comp.get("score") if isinstance(comp, dict) else breakdown.get(break_map[key])
-        weight_rows.append([label, str(w), str(round(sc)) if sc is not None else "—"])
-    if len(weight_rows) > 1:
-        wt = Table(weight_rows, colWidths=[180, 80, 100])
+    # —— 4. Score components (v2 buckets only; omit legacy fixed weight table) ——
+    elements.append(Paragraph("Score components", styles["heading"]))
+    bb = score_payload.get("bucket_breakdown") or {}
+    if _portfolio_has_v2_bucket_breakdown(bb):
+        elements.append(
+            Paragraph(
+                "Figures are credit earned within each bucket (0–100%), averaged across properties that have a current stored "
+                "breakdown. Approximate emphasis between buckets is described in the portal; exact points depend on your records.",
+                styles["small"],
+            )
+        )
+        elements.append(Spacer(1, 8))
+        weight_rows = [["Component", "Credit in bucket (%)"]]
+        bucket_rows = [
+            ("legal_core", "Legal core"),
+            ("documentation_completeness", "Verified documentation"),
+            ("operational_responsiveness", "Operational responsiveness"),
+            ("recency_maintenance_confidence", "Recency & maintenance confidence"),
+        ]
+        for key, label in bucket_rows:
+            pct = bb.get(key, {}).get("percent")
+            try:
+                pct_str = f"{round(float(pct))}%" if pct is not None else "—"
+            except (TypeError, ValueError):
+                pct_str = "—"
+            weight_rows.append([label, pct_str])
+        wt = Table(weight_rows, colWidths=[260, 120])
         wt.setStyle(table_style)
         elements.append(wt)
+    else:
+        elements.append(
+            Paragraph(
+                "A per-bucket breakdown is not included in this PDF until each property has a current stored breakdown on the "
+                "current model. The headline score and drivers above still reflect the live calculator.",
+                styles["body"],
+            )
+        )
     elements.append(Spacer(1, 24))
 
     # —— 5. Top drivers ——

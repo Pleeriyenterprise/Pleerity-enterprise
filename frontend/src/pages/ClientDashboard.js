@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert';
 import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
-import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard, ClipboardCheck, Upload, History, Building2, Wrench, ListTodo, Gauge } from 'lucide-react';
+import { AlertCircle, Home, FileText, Shield, LogOut, CheckCircle, XCircle, Clock, MessageSquare, Bell, BellOff, Settings, User, Calendar, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Zap, BarChart3, Users, Webhook, ChevronDown, ChevronUp, Info, ExternalLink, Minus, CreditCard, ClipboardCheck, Upload, History, Building2, Wrench, ListTodo, Gauge, Target } from 'lucide-react';
 import api, { API_URL, parseApiError } from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
@@ -53,6 +53,7 @@ import {
   jurisdictionSourceLabel,
 } from '../utils/jurisdictionComplianceCopy';
 import { portfolioJurisdictionBannerState } from '../utils/jurisdictionUiPolicy';
+import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
 const KPI_NO_DATA = 'No data yet';
 
 /** Compact (i) hint for dashboard KPIs — must sit under TooltipProvider. */
@@ -133,6 +134,26 @@ function getPropertyDisplayLabel(p) {
   return p.property_id || '';
 }
 
+/** Max rows for dashboard “Focus” strip (distinct from full Portfolio summary table). */
+const DASHBOARD_FOCUS_PROPERTY_LIMIT = 6;
+
+/** Single-line summary of open compliance gaps (different lens than separate columns in Portfolio summary). */
+function buildDashboardComplianceGapsLine(p, openJobsMap, showOpenJobs) {
+  const overdue = Number(p.overdue_count ?? 0);
+  const exp = Number(p.expiring_30_count ?? p.expiring_soon_count ?? 0);
+  const missing = Number(p.missing_count ?? 0);
+  const parts = [];
+  if (overdue > 0) parts.push(`${overdue} overdue`);
+  if (exp > 0) parts.push(`${exp} expiring soon`);
+  if (missing > 0) parts.push(`${missing} missing documents`);
+  if (showOpenJobs) {
+    const jobs = Number(openJobsMap?.[p.property_id] ?? 0);
+    if (jobs > 0) parts.push(`${jobs} open jobs`);
+  }
+  if (parts.length === 0) return 'No open gaps in this snapshot';
+  return parts.join(' · ');
+}
+
 /** One-line label for dashboard tasks digest activity feed (matches inbox actions). */
 function formatTaskDigestActivityLine(row) {
   if (!row) return '';
@@ -164,7 +185,6 @@ const ClientDashboard = () => {
   const [portfolioSummary, setPortfolioSummary] = useState(null);
   const [requirementsList, setRequirementsList] = useState([]);
   const [showComplianceFramework, setShowComplianceFramework] = useState(false);
-  const [propertiesSort, setPropertiesSort] = useState({ key: 'score', dir: 'asc' });
   // Explicit UI states instead of blank screen (Goal C)
   const [restrictReason, setRestrictReason] = useState(null); // 'plan' | 'not_provisioned' | 'provisioning_incomplete' | null
   const [redirectPath, setRedirectPath] = useState(null); // from 403 X-Redirect header
@@ -879,6 +899,27 @@ const ClientDashboard = () => {
     });
     return map;
   }, [workOrdersList]);
+
+  /** Subset for “Focus” card: lowest scores first — full grid stays in Portfolio summary. */
+  const dashboardFocusProperties = useMemo(() => {
+    const props = portfolioSummary?.properties;
+    if (!props?.length) return [];
+    return [...props]
+      .sort((a, b) => {
+        const sa = Number(a.property_score ?? a.score);
+        const sb = Number(b.property_score ?? b.score);
+        const na = Number.isFinite(sa) ? sa : 101;
+        const nb = Number.isFinite(sb) ? sb : 101;
+        if (na !== nb) return na - nb;
+        const oa = Number(a.overdue_count ?? 0);
+        const ob = Number(b.overdue_count ?? 0);
+        if (oa !== ob) return ob - oa;
+        const ma = Number(a.missing_count ?? 0);
+        const mb = Number(b.missing_count ?? 0);
+        return mb - ma;
+      })
+      .slice(0, DASHBOARD_FOCUS_PROPERTY_LIMIT);
+  }, [portfolioSummary?.properties]);
 
   const dashboardFreshness = useMemo(() => {
     if (commandCenter && typeof commandCenter === 'object' && commandCenter.freshness) return commandCenter.freshness;
@@ -2296,8 +2337,9 @@ const ClientDashboard = () => {
                     <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide flex items-center">
                       Compliance score
                       <DashboardKpiHint label="Compliance score">
-                        Weighted blend of requirement status, documents, operational items, and recency — from the same engine as the rest
-                        of the portal. Excludes legal advice. Updates when you upload, confirm dates, or resolve linked work.
+                        Built from the same scoring engine as Compliance score: weighted requirements, verified evidence, operational
+                        items, and recency — not a separate manual model. Excludes legal advice. Updates when you upload, confirm dates, or
+                        resolve linked work.
                       </DashboardKpiHint>
                     </h3>
                     <ExternalLink className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -2347,40 +2389,37 @@ const ClientDashboard = () => {
 
               {/* Score breakdown and explanation – single trend is shown in Score Trend (90 days) card */}
               <div className="mt-4 pt-4 border-t border-white/50 space-y-2">
-                {complianceScore?.bucket_breakdown ? (
+                {portfolioHasV2BucketBreakdown(complianceScore?.bucket_breakdown) ? (
                   <>
+                    <p className="text-xs text-gray-500 mb-1">Score components (credit within each bucket, 0–100%)</p>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Legal core (60%)</span>
-                      <span className="font-medium">{Number(complianceScore?.bucket_breakdown?.legal_core?.percent || 0).toFixed(0)}%</span>
-                  </div>
+                      <span className="text-gray-600">Legal core</span>
+                      <span className="font-medium">{Number(complianceScore.bucket_breakdown.legal_core.percent).toFixed(0)}%</span>
+                    </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Documentation (20%)</span>
-                      <span className="font-medium">{Number(complianceScore?.bucket_breakdown?.documentation_completeness?.percent || 0).toFixed(0)}%</span>
-                  </div>
+                      <span className="text-gray-600">Verified documentation</span>
+                      <span className="font-medium">
+                        {Number(complianceScore.bucket_breakdown.documentation_completeness.percent).toFixed(0)}%
+                      </span>
+                    </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Operational (10%)</span>
-                      <span className="font-medium">{Number(complianceScore?.bucket_breakdown?.operational_responsiveness?.percent || 0).toFixed(0)}%</span>
-                </div>
+                      <span className="text-gray-600">Operational responsiveness</span>
+                      <span className="font-medium">
+                        {Number(complianceScore.bucket_breakdown.operational_responsiveness.percent).toFixed(0)}%
+                      </span>
+                    </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Recency confidence (10%)</span>
-                      <span className="font-medium">{Number(complianceScore?.bucket_breakdown?.recency_maintenance_confidence?.percent || 0).toFixed(0)}%</span>
+                      <span className="text-gray-600">Recency &amp; maintenance confidence</span>
+                      <span className="font-medium">
+                        {Number(complianceScore.bucket_breakdown.recency_maintenance_confidence.percent).toFixed(0)}%
+                      </span>
                     </div>
                   </>
                 ) : (
-                  <>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600">Status (40%)</span>
-                      <span className="font-medium">{complianceScore?.breakdown?.status_score?.toFixed(0)}%</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600">Timeline (30%)</span>
-                      <span className="font-medium">{complianceScore?.breakdown?.expiry_score?.toFixed(0)}%</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600">Documents (15%)</span>
-                      <span className="font-medium">{complianceScore?.breakdown?.document_score?.toFixed(0)}%</span>
-                </div>
-                  </>
+                  <p className="text-xs text-gray-600">
+                    Per-bucket component scores appear here after each property has a current stored breakdown. Your headline score and
+                    drivers already use the current model.
+                  </p>
                 )}
                 {(complianceScore?.earned_points != null && complianceScore?.applicable_points != null) && (
                   <div className="flex justify-between text-xs pt-1 border-t border-gray-200">
@@ -2409,21 +2448,33 @@ const ClientDashboard = () => {
               {/* Inline Explanation */}
               {showScoreExplanation && (
                 <div className="mt-3 pt-3 border-t border-white/50 text-xs space-y-2" onClick={(e) => e.stopPropagation()}>
-                  <p className="font-medium text-gray-700">Score Components:</p>
+                  <p className="font-medium text-gray-700">Score components</p>
                   <ul className="space-y-1 text-gray-600">
-                    {complianceScore?.bucket_breakdown ? (
+                    {portfolioHasV2BucketBreakdown(complianceScore?.bucket_breakdown) ? (
                       <>
-                        <li>• <strong>Legal core (60%):</strong> weighted legal requirements by applicability and validity</li>
-                        <li>• <strong>Documentation (20%):</strong> verified document completeness for applicable requirements</li>
-                        <li>• <strong>Operational (10%):</strong> unresolved maintenance issues or open jobs reduce confidence</li>
-                        <li>• <strong>Recency (10%):</strong> open flagged issues and expiring requirements reduce confidence</li>
+                        <li>
+                          • <strong>Legal core:</strong> weighted by requirement type and jurisdiction; credit from evidence validity,
+                          expiry, and coverage — not fixed per-status point numbers.
+                        </li>
+                        <li>
+                          • <strong>Verified documentation:</strong> applicable obligations with <strong>verified</strong> evidence only.
+                        </li>
+                        <li>
+                          • <strong>Operational responsiveness:</strong> open maintenance issues and overdue jobs reduce this bucket.
+                        </li>
+                        <li>
+                          • <strong>Recency / maintenance confidence:</strong> open predictive issues and expiring-soon items reduce this
+                          bucket.
+                        </li>
                       </>
                     ) : (
                       <>
-                        <li>• <strong>Status (40%):</strong> {complianceScore?.stats?.compliant || 0}/{complianceScore?.stats?.total_requirements || 0} requirements valid</li>
-                        <li>• <strong>Timeline (30%):</strong> {complianceScore?.stats?.expiring_soon || 0} items due within 30 days</li>
-                        <li>• <strong>Documents (15%):</strong> {complianceScore?.stats?.document_coverage_percent?.toFixed(0) || 0}% requirement coverage</li>
-                        <li>• <strong>Overdue Penalty (15%):</strong> {complianceScore?.stats?.overdue || 0} overdue items</li>
+                        <li>
+                          • The headline score uses the current engine. Bucket-level lines above fill in once each property has a stored
+                          breakdown. Counts today: {complianceScore?.stats?.compliant || 0}/
+                          {complianceScore?.stats?.total_requirements || 0} valid, {complianceScore?.stats?.expiring_soon || 0} expiring
+                          soon, {complianceScore?.stats?.overdue || 0} overdue.
+                        </li>
                       </>
                     )}
                   </ul>
@@ -2729,17 +2780,47 @@ const ClientDashboard = () => {
             {showComplianceFramework ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
           {showComplianceFramework && (
-            <div className="px-4 pb-4 pt-0 text-sm text-gray-600 border-t border-gray-100">
-              <p className="mb-2">Document status is used to derive requirement-level points:</p>
-              <ul className="list-disc pl-5 space-y-1 mb-3">
-                <li>Valid document: 100</li>
-                <li>Expiring soon: 70</li>
-                <li>Missing document: 30</li>
-                <li>Overdue: 0</li>
+            <div className="px-4 pb-4 pt-0 text-sm text-gray-600 border-t border-gray-100 space-y-3">
+              <p className="text-gray-800">
+                Scores are based on <strong>document validity</strong>, <strong>expiry</strong>, <strong>evidence coverage</strong>, and{' '}
+                <strong>risk-style weighting</strong> across requirements — not on a single fixed points table. Each applicable
+                requirement contributes according to its weight; those contributions combine into the property score. The engine runs on
+                our servers; exact fractions depend on requirement status, which document is chosen as evidence, verification, and
+                jurisdiction rules (including different &quot;expiring soon&quot; windows per requirement where configured).
+              </p>
+              <p className="font-medium text-midnight-blue">Property score (0–100)</p>
+              <p>Each property score combines four buckets (current model):</p>
+              <ul className="list-disc pl-5 space-y-1.5">
+                <li>
+                  <strong>Legal core (~60%)</strong> — Applicable legal obligations for the property&apos;s jurisdiction, each with its
+                  own weight (e.g. gas safety and electrical checks typically count more than lower-weight items). Credit is a{' '}
+                  <em>fraction</em> of that weight from validity, missing evidence, expiry, and related signals — not a universal
+                  &quot;100 / 70 / 30 / 0&quot; schedule. System-estimated dates can slightly reduce credit versus confirmed evidence.
+                </li>
+                <li>
+                  <strong>Documentation completeness (~20%)</strong> — Share of applicable obligations that have{' '}
+                  <strong>verified</strong> evidence, not merely an upload.
+                </li>
+                <li>
+                  <strong>Operational responsiveness (~10%)</strong> — Open maintenance issues and overdue maintenance jobs reduce this
+                  portion.
+                </li>
+                <li>
+                  <strong>Recency / maintenance confidence (~10%)</strong> — Open predictive issues and items in an expiring-soon state
+                  reduce this portion.
+                </li>
               </ul>
-              <p className="mb-2">Property score is the average of requirement scores for that property. Portfolio score is the average across all properties weighted by requirement count.</p>
-              <p className="mb-2">Risk levels (document-backed, not legal advice): 80–100 = Low risk; 60–79 = Medium risk; 40–59 = High risk; 0–39 = Critical risk.</p>
-              <p className="text-gray-500 italic">This is a document-backed status summary. It is not legal advice and does not constitute legal certification.</p>
+              <p className="font-medium text-midnight-blue">Portfolio score</p>
+              <p>
+                The portfolio figure is the <strong>simple average</strong> of stored property scores (each already 0–100). It is not a
+                separate weighted re-aggregation by requirement count at portfolio level.
+              </p>
+              <p className="font-medium text-midnight-blue">Risk labels (document-backed, not legal advice)</p>
+              <p>Band colours and grades follow the same bands you see elsewhere: 80–100 low; 60–79 moderate; 40–59 high; 0–39 critical.</p>
+              <p className="text-gray-500 italic">
+                This is a document-backed operational summary. It is not legal advice and does not constitute legal certification. For
+                detail on your account, open Compliance score.
+              </p>
             </div>
           )}
         </div>
@@ -2932,109 +3013,152 @@ const ClientDashboard = () => {
           </Card>
         </div>
 
-        {/* Properties: sortable table */}
+        {/* Focus strip: prioritised subset — not a second copy of Portfolio summary */}
         <div className="grid lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2">
-            <Card className="enterprise-card h-full">
+            <Card className="enterprise-card h-full" data-testid="dashboard-focus-properties-card">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-midnight-blue">Your Properties</CardTitle>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/properties/import')}
-                    data-testid="bulk-import-btn"
-                  >
-                    <FileText className="w-4 h-4 mr-1" />
-                    Bulk Import
-                  </Button>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <CardTitle className="text-midnight-blue flex items-center gap-2">
+                      <Target className="w-5 h-5 text-electric-teal shrink-0" />
+                      Focus: highest-risk properties
+                    </CardTitle>
+                    <p className="text-sm text-gray-600 mt-2 font-normal leading-snug">
+                      Lowest scores first, with compliance gaps on one line so you can see where to act. The{' '}
+                      <span className="font-medium text-midnight-blue">Portfolio summary</span> table above is the full grid with
+                      separate columns.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => navigate('/properties')} data-testid="view-all-properties-btn">
+                      All properties
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/properties/import')}
+                      data-testid="bulk-import-btn"
+                    >
+                      <FileText className="w-4 h-4 mr-1" />
+                      Bulk Import
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                {(() => {
-                  const tableSource = (portfolioSummary?.properties?.length > 0
-                    ? portfolioSummary.properties.map((p) => ({
-                        property_id: p.property_id,
-                        name: p.name || p.property_id,
-                        address_line_1: p.name || p.property_id,
-                        city: '',
-                        postcode: '',
-                        score: p.property_score ?? p.score ?? 0,
-                        risk_level: p.risk_level,
-                        overdue_count: p.overdue_count ?? 0,
-                        expiring_30_count: p.expiring_30_count ?? p.expiring_soon_count ?? 0,
-                      }))
-                    : (data?.properties || []).map((p) => ({
-                        ...p,
-                        name: p.nickname || p.address_line_1 || p.property_id,
-                        score: null,
-                        risk_level: null,
-                        overdue_count: null,
-                        expiring_30_count: null,
-                      }))
-                  );
-                  if (tableSource.length === 0) {
-                    return (
-                      <EmptyState
-                        icon={FileText}
-                        title="No properties found"
-                        description="Add properties to track compliance."
-                        actionLabel="Import Properties from CSV"
-                        onAction={() => navigate('/properties/import')}
-                        actionTestId="import-first-property-btn"
-                        className="py-6"
-                      />
-                    );
-                  }
-                  const sortKey = propertiesSort.key;
-                  const dir = propertiesSort.dir === 'asc' ? 1 : -1;
-                  const sorted = [...tableSource].sort((a, b) => {
-                    const av = a[sortKey] ?? (sortKey === 'name' ? a.address_line_1 : 0);
-                    const bv = b[sortKey] ?? (sortKey === 'name' ? b.address_line_1 : 0);
-                    if (typeof av === 'string' && typeof bv === 'string') return dir * (av.localeCompare(bv));
-                    return dir * ((Number(av) ?? 0) - (Number(bv) ?? 0));
-                  });
-                  const toggleSort = (key) => {
-                    setPropertiesSort((s) => ({ key, dir: s.key === key && s.dir === 'asc' ? 'desc' : 'asc' }));
-                  };
-                  return (
-                    <div className="overflow-x-auto">
+                {portfolioSummary?.properties?.length > 0 ? (
+                  <>
+                    <div className="md:hidden space-y-3">
+                      {dashboardFocusProperties.map((p) => {
+                        const score = p.property_score ?? p.score;
+                        const gaps = buildDashboardComplianceGapsLine(p, openJobsByProperty, hasFeature('maintenance_workflows'));
+                        return (
+                          <button
+                            key={p.property_id}
+                            type="button"
+                            className="w-full text-left rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:border-electric-teal/40 transition-colors min-h-[44px]"
+                            onClick={() => navigateToPropertyDashboard(navigate, p.property_id)}
+                            data-testid={`dashboard-focus-property-row-${p.property_id}`}
+                          >
+                            <p className="font-semibold text-midnight-blue break-words">
+                              {getPropertyDisplayLabel(p) || p.name || p.property_id}
+                            </p>
+                            <p className="text-sm text-gray-800 mt-1">
+                              <span className="font-semibold">{score != null ? `${score}/100` : KPI_NO_DATA}</span>
+                              {p.risk_level ? (
+                                <span className="text-gray-600"> · {formatRiskLabel(p.risk_level)}</span>
+                              ) : null}
+                            </p>
+                            <p className="text-xs text-gray-600 mt-2">{gaps}</p>
+                            <span className="mt-2 inline-block text-sm text-electric-teal font-medium">View property →</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="hidden md:block overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-gray-200 text-left text-gray-600">
-                            <th className="p-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('name')}>
-                              Property {propertiesSort.key === 'name' && (propertiesSort.dir === 'asc' ? '↑' : '↓')}
-                            </th>
-                            <th className="p-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('score')}>
-                              Score {propertiesSort.key === 'score' && (propertiesSort.dir === 'asc' ? '↑' : '↓')}
-                            </th>
-                            <th className="p-3 cursor-pointer hover:bg-gray-50">Risk</th>
-                            <th className="p-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('overdue_count')}>
-                              Overdue {propertiesSort.key === 'overdue_count' && (propertiesSort.dir === 'asc' ? '↑' : '↓')}
-                            </th>
-                            <th className="p-3 cursor-pointer hover:bg-gray-50">Expiring soon</th>
+                            <th className="p-3">Property</th>
+                            <th className="p-3">Score &amp; risk</th>
+                            <th className="p-3 min-w-[12rem]">Where to focus</th>
+                            <th className="p-3">View</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {sorted.map((p) => (
-                            <tr
-                              key={p.property_id}
-                              className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                              onClick={() => navigateToPropertyDashboard(navigate, p.property_id)}
-                              data-testid="property-row"
-                            >
-                              <td className="p-3 font-medium text-midnight-blue">{p.name || p.address_line_1}</td>
-                              <td className="p-3">{p.score != null ? `${p.score}/100` : KPI_NO_DATA}</td>
-                              <td className="p-3">{p.risk_level ? formatRiskLabel(p.risk_level) : KPI_NO_DATA}</td>
-                              <td className="p-3">{p.overdue_count != null ? p.overdue_count : KPI_NO_DATA}</td>
-                              <td className="p-3">{p.expiring_30_count != null ? p.expiring_30_count : KPI_NO_DATA}</td>
-                            </tr>
-                          ))}
+                          {dashboardFocusProperties.map((p) => {
+                            const score = p.property_score ?? p.score;
+                            const gaps = buildDashboardComplianceGapsLine(p, openJobsByProperty, hasFeature('maintenance_workflows'));
+                            return (
+                              <tr
+                                key={p.property_id}
+                                className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                                onClick={() => navigateToPropertyDashboard(navigate, p.property_id)}
+                                data-testid={`dashboard-focus-property-row-${p.property_id}`}
+                              >
+                                <td className="p-3 font-medium text-midnight-blue max-w-[14rem] break-words">
+                                  {getPropertyDisplayLabel(p) || p.name || p.property_id}
+                                </td>
+                                <td className="p-3 whitespace-nowrap">
+                                  <div className="font-semibold text-midnight-blue">
+                                    {score != null ? `${score}/100` : KPI_NO_DATA}
+                                  </div>
+                                  <div className="text-xs text-gray-600">
+                                    {p.risk_level ? formatRiskLabel(p.risk_level) : KPI_NO_DATA}
+                                  </div>
+                                </td>
+                                <td className="p-3 text-gray-700">{gaps}</td>
+                                <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-electric-teal hover:bg-teal-50"
+                                    onClick={() => navigateToPropertyDashboard(navigate, p.property_id)}
+                                  >
+                                    View
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
+                    </div>
+                  </>
+                ) : (data?.properties || []).length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-600">
+                      Per-property scores will appear in <strong className="text-midnight-blue">Portfolio summary</strong> when
+                      compliance data is available. Open a property below or manage the full list.
+                    </p>
+                    <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg">
+                      {(data.properties || []).map((p) => (
+                        <li key={p.property_id}>
+                          <button
+                            type="button"
+                            className="w-full text-left px-4 py-3 text-sm font-medium text-midnight-blue hover:bg-gray-50 flex items-center justify-between gap-2"
+                            onClick={() => navigateToPropertyDashboard(navigate, p.property_id)}
+                            data-testid={`dashboard-property-quicklink-${p.property_id}`}
+                          >
+                            <span className="break-words">{p.nickname || p.address_line_1 || p.property_id}</span>
+                            <span className="text-electric-teal shrink-0 text-xs font-semibold">Open →</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  );
-                })()}
+                ) : (
+                  <EmptyState
+                    icon={FileText}
+                    title="No properties found"
+                    description="Add properties to track compliance."
+                    actionLabel="Import Properties from CSV"
+                    onAction={() => navigate('/properties/import')}
+                    actionTestId="import-first-property-btn"
+                    className="py-6"
+                  />
+                )}
               </CardContent>
             </Card>
           </div>

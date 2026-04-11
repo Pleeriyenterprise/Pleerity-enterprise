@@ -37,6 +37,7 @@ import { resolveTaskCta } from '../utils/ctaRegistry';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 import { complianceRequirementStatusLabel } from '../domain/presentDomain';
+import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
 
 function scoreDriverStatusLabel(raw) {
   const s = String(raw || '').trim().toUpperCase();
@@ -187,22 +188,21 @@ const ComplianceScorePage = () => {
     }
   };
 
-  const getPropertyScoreContribution = (propertyId) => {
-    const propertyReqs = requirements.filter(r => r.property_id === propertyId);
-    if (propertyReqs.length === 0) return { score: 100, count: 0, breakdown: {} };
-    
-    const compliant = propertyReqs.filter(r => r.status === 'COMPLIANT').length;
-    const expiring = propertyReqs.filter(r => r.status === 'EXPIRING_SOON').length;
-    const overdue = propertyReqs.filter(r => r.status === 'OVERDUE').length;
-    const pending = propertyReqs.filter(r => r.status === 'PENDING').length;
-    
-    const score = Math.round(((compliant * 100) + (pending * 70) + (expiring * 40)) / propertyReqs.length);
-    
-    return {
-      score,
-      count: propertyReqs.length,
-      breakdown: { compliant, expiring, overdue, pending }
-    };
+  const getPropertyRequirementCounts = (propertyId) => {
+    const propertyReqs = requirements.filter((r) => r.property_id === propertyId);
+    const compliant = propertyReqs.filter((r) => r.status === 'COMPLIANT').length;
+    const expiring = propertyReqs.filter((r) => r.status === 'EXPIRING_SOON').length;
+    const overdue = propertyReqs.filter((r) => r.status === 'OVERDUE' || r.status === 'EXPIRED').length;
+    return { compliant, expiring, overdue };
+  };
+
+  const resolvePropertyRowScore = (row) => {
+    if (row?.score != null && row.score !== '') return Number(row.score);
+    const pid = row?.property_id;
+    if (pid == null) return null;
+    const prop = properties.find((p) => p.property_id === pid);
+    if (prop?.compliance_score != null && prop.compliance_score !== '') return Number(prop.compliance_score);
+    return null;
   };
 
   if (loading) {
@@ -338,12 +338,12 @@ const ComplianceScorePage = () => {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-xs font-medium">
-                          Portfolio Score (Weighted)
+                          Portfolio score
                           <HelpCircle className="w-3.5 h-3.5" />
                         </span>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
-                        Portfolio score is a weighted summary across properties using applicable tracked items per property.
+                        Overall score is the simple average of each property&apos;s stored compliance score (each already 0–100).
                       </TooltipContent>
                     </Tooltip>
                     {scoreData?.data_completeness_percent != null ? (
@@ -448,48 +448,67 @@ const ComplianceScorePage = () => {
                     <strong>Multiple properties:</strong> Your overall score is the average of each property&apos;s score. Each property has its own score from its requirements and documents; the number shown is the average across all {scoreData.properties_count} properties.
                   </p>
                 )}
-                {/* Weighting Model - standardised card template */}
-                <div>
-                  <h4 className="font-semibold text-midnight-blue mb-3">Score Weighting Model</h4>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-blue-700">Status</span>
-                        <span className="text-lg font-bold text-blue-700">{scoreData?.weights?.status ?? '35%'}</span>
+                <p className="text-sm text-gray-700">
+                  Each applicable tracked item carries a weight (by requirement type and jurisdiction). Those weighted contributions roll up
+                  into your property score; the headline number is built from the same engine as the rest of the portal — not from a
+                  hand-tuned percentage split shown here.
+                </p>
+                {portfolioHasV2BucketBreakdown(scoreData?.bucket_breakdown) ? (
+                  <div>
+                    <h4 className="font-semibold text-midnight-blue mb-3">Score components</h4>
+                    <p className="text-xs text-gray-600 mb-3">
+                      Values are how much credit you are earning within each bucket (0–100%), averaged across properties that have a
+                      current breakdown — not the model&apos;s bucket emphasis (that is described under Advanced details).
+                    </p>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-blue-700">Legal core</span>
+                          <span className="text-lg font-bold text-blue-700">
+                            {Number(scoreData.bucket_breakdown.legal_core.percent).toFixed(0)}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-blue-600">Weighted legal obligations: validity, coverage, and expiry signals.</p>
                       </div>
-                      <p className="text-xs text-blue-600 mb-1">What it measures: weighted status of tracked items (valid, expiring, overdue).</p>
-                      <p className="text-sm font-semibold text-blue-800">Your result: {scoreData?.components?.status?.score ?? scoreData?.breakdown?.status_score?.toFixed?.(0) ?? 0}%</p>
-                      <p className="text-xs text-blue-700 mt-1">Why: {scoreData?.components?.status?.valid ?? scoreData?.stats?.compliant ?? 0} valid • {scoreData?.components?.status?.expiring ?? scoreData?.stats?.expiring_soon ?? 0} expiring • {scoreData?.components?.status?.overdue ?? scoreData?.stats?.overdue ?? 0} overdue</p>
-                    </div>
-                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-purple-700">Timeline</span>
-                        <span className="text-lg font-bold text-purple-700">{scoreData?.weights?.expiry ?? '25%'}</span>
+                      <div className="p-4 bg-teal-50 rounded-lg border border-teal-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-teal-700">Verified documentation</span>
+                          <span className="text-lg font-bold text-teal-700">
+                            {Number(scoreData.bucket_breakdown.documentation_completeness.percent).toFixed(0)}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-teal-600">Share of applicable items with verified evidence.</p>
                       </div>
-                      <p className="text-xs text-purple-600 mb-1">What it measures: days until next critical expiry.</p>
-                      <p className="text-sm font-semibold text-purple-800">Your result: {scoreData?.components?.timeline?.score ?? scoreData?.breakdown?.expiry_score?.toFixed?.(0) ?? 0}%</p>
-                      <p className="text-xs text-purple-700 mt-1">Why: {scoreData?.components?.timeline?.due_0_30 ?? 0} due in 30 days • {scoreData?.components?.timeline?.overdue ?? scoreData?.stats?.overdue ?? 0} overdue</p>
-                    </div>
-                    <div className="p-4 bg-teal-50 rounded-lg border border-teal-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-teal-700">Documents</span>
-                        <span className="text-lg font-bold text-teal-700">{scoreData?.weights?.documents ?? '15%'}</span>
+                      <div className="p-4 bg-amber-50 rounded-lg border border-amber-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-amber-800">Operational responsiveness</span>
+                          <span className="text-lg font-bold text-amber-800">
+                            {Number(scoreData.bucket_breakdown.operational_responsiveness.percent).toFixed(0)}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-amber-800/90">Open issues and overdue maintenance work reduce this bucket.</p>
                       </div>
-                      <p className="text-xs text-teal-600 mb-1">What it measures: percentage of tracked items with verified documents.</p>
-                      <p className="text-sm font-semibold text-teal-800">Your result: {scoreData?.components?.documents?.score ?? scoreData?.breakdown?.document_score?.toFixed?.(0) ?? 0}%</p>
-                      <p className="text-xs text-teal-700 mt-1">Why: {scoreData?.components?.documents?.evidence_coverage_percent ?? scoreData?.stats?.verified_coverage_percent ?? 0}/{scoreData?.stats?.total_requirements ?? 0} items have documents</p>
-                    </div>
-                    <div className="p-4 bg-red-50 rounded-lg border border-red-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-red-700">Urgency Impact</span>
-                        <span className="text-lg font-bold text-red-700">{scoreData?.weights?.overdue_penalty ?? '15%'}</span>
+                      <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-purple-700">Recency &amp; maintenance confidence</span>
+                          <span className="text-lg font-bold text-purple-700">
+                            {Number(scoreData.bucket_breakdown.recency_maintenance_confidence.percent).toFixed(0)}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-purple-600">Predictive and expiring-soon pressure on maintenance confidence.</p>
                       </div>
-                      <p className="text-xs text-red-600 mb-1">What it measures: penalty for overdue items.</p>
-                      <p className="text-sm font-semibold text-red-800">Your result: {scoreData?.components?.urgency?.score ?? scoreData?.breakdown?.overdue_penalty_score?.toFixed?.(0) ?? 0}%</p>
-                      <p className="text-xs text-red-700 mt-1">Why: {scoreData?.components?.urgency?.overdue ?? scoreData?.stats?.overdue ?? 0} overdue items increase urgency impact</p>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h4 className="font-semibold text-midnight-blue mb-2">Score components</h4>
+                    <p className="text-sm text-gray-700">
+                      A per-bucket breakdown (legal core, verified documentation, operational responsiveness, recency) will appear here
+                      after each property has been scored on the current model. Your headline score and drivers still reflect the current
+                      engine.
+                    </p>
+                  </div>
+                )}
 
                 {/* Advanced details accordion */}
                 <div className="border-t pt-4">
@@ -503,10 +522,20 @@ const ComplianceScorePage = () => {
                   </button>
                   {showAdvancedDetails && (
                     <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-700 space-y-2">
-                      <p>Status: COMPLIANT (100pts), PENDING (70pts), EXPIRING_SOON (40pts), OVERDUE (0pts).</p>
-                      <p>Timeline: 90+ days (100pts), 60+ (90pts), 30+ (75pts), 14+ (50pts), 7+ (30pts), past due (0–15pts).</p>
-                      <p>Documents: Only verified uploads count toward coverage.</p>
-                      <p>Urgency: Each overdue item reduces the penalty component score.</p>
+                      <p>
+                        Property scores use weighted requirements, evidence validity, and expiry — not a single public points table. Credit
+                        per obligation is a fraction of that requirement&apos;s weight (varies by jurisdiction and type). Document-based
+                        paths can use different status fractions than requirement-row paths; there is no fixed &quot;100 / 70 / 30 / 0&quot;
+                        schedule for every case.
+                      </p>
+                      <p>
+                        Current engine groups credit into four buckets with approximate emphasis: roughly <strong>60%</strong> legal core,{' '}
+                        <strong>20%</strong> verified documentation, <strong>10%</strong> operational responsiveness, <strong>10%</strong>{' '}
+                        recency / maintenance confidence. Exact points depend on your data; the split is a design guide, not a rigid
+                        formula you can reconstruct from counts alone.
+                      </p>
+                      <p>Verified evidence counts toward the documentation bucket; uploads alone may not.</p>
+                      <p>Portfolio score: average of property scores shown for your account.</p>
                       {(scoreData?.score_model_version || scoreData?.model_updated_at) && (
                         <p className="pt-2 border-t border-gray-200 font-medium">
                           Model: CVP Score v{scoreData.score_model_version ?? '—'}. Model updated: {scoreData.model_updated_at ?? '—'}
@@ -523,7 +552,7 @@ const ComplianceScorePage = () => {
                     <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                       <CheckCircle className="w-5 h-5 text-green-600" />
                       <div>
-                        <p className="font-medium">Status Component</p>
+                        <p className="font-medium">Valid tracked items</p>
                         <p className="text-gray-600">
                           {scoreData?.stats?.compliant || 0}/{scoreData?.stats?.total_requirements || 0} tracked items currently valid
                         </p>
@@ -807,20 +836,25 @@ const ComplianceScorePage = () => {
               <p className="text-gray-500 text-center py-8">No properties to display</p>
             ) : (
               <div className="space-y-4">
-                {(scoreData?.property_breakdown?.length ? scoreData.property_breakdown : properties.map(p => ({
-                  property_id: p.property_id,
-                  name: p.nickname || p.address_line_1,
-                  postcode: p.postcode,
-                  score: getPropertyScoreContribution(p.property_id).score,
-                  valid: getPropertyScoreContribution(p.property_id).breakdown.compliant,
-                  expiring: getPropertyScoreContribution(p.property_id).breakdown.expiring,
-                  overdue: getPropertyScoreContribution(p.property_id).breakdown.overdue,
-                }))).map((row, rowIdx) => {
-                  const score = row.score ?? getPropertyScoreContribution(row.property_id).score;
-                  const valid = row.valid ?? getPropertyScoreContribution(row.property_id).breakdown.compliant;
-                  const expiring = row.expiring ?? getPropertyScoreContribution(row.property_id).breakdown.expiring;
-                  const overdue = row.overdue ?? getPropertyScoreContribution(row.property_id).breakdown.overdue;
-                  const propertyColor = score >= 80 ? 'green' : score >= 40 ? 'amber' : 'red';
+                {(scoreData?.property_breakdown?.length ? scoreData.property_breakdown : properties.map((p) => {
+                  const c = getPropertyRequirementCounts(p.property_id);
+                  return {
+                    property_id: p.property_id,
+                    name: p.nickname || p.address_line_1,
+                    postcode: p.postcode,
+                    score: p.compliance_score,
+                    valid: c.compliant,
+                    expiring: c.expiring,
+                    overdue: c.overdue,
+                  };
+                })).map((row, rowIdx) => {
+                  const counts = getPropertyRequirementCounts(row.property_id);
+                  const score = resolvePropertyRowScore(row);
+                  const valid = row.valid ?? counts.compliant;
+                  const expiring = row.expiring ?? counts.expiring;
+                  const overdue = row.overdue ?? counts.overdue;
+                  const propertyColor =
+                    score == null ? 'gray' : score >= 80 ? 'green' : score >= 40 ? 'amber' : 'red';
                   const rowPropertyId = row.property_id != null && String(row.property_id).trim() !== '' && String(row.property_id) !== 'undefined'
                     ? String(row.property_id).trim()
                     : null;
@@ -833,11 +867,13 @@ const ComplianceScorePage = () => {
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
                           propertyColor === 'green' ? 'bg-green-100' :
-                          propertyColor === 'amber' ? 'bg-amber-100' : 'bg-red-100'
+                          propertyColor === 'amber' ? 'bg-amber-100' :
+                          propertyColor === 'red' ? 'bg-red-100' : 'bg-gray-100'
                         }`}>
                           <Building2 className={`w-6 h-6 ${
                             propertyColor === 'green' ? 'text-green-600' :
-                            propertyColor === 'amber' ? 'text-amber-600' : 'text-red-600'
+                            propertyColor === 'amber' ? 'text-amber-600' :
+                            propertyColor === 'red' ? 'text-red-600' : 'text-gray-500'
                           }`} />
                         </div>
                         <div>
@@ -865,9 +901,10 @@ const ComplianceScorePage = () => {
                         </div>
                         <div className={`text-2xl font-bold ${
                           propertyColor === 'green' ? 'text-green-600' :
-                          propertyColor === 'amber' ? 'text-amber-600' : 'text-red-600'
+                          propertyColor === 'amber' ? 'text-amber-600' :
+                          propertyColor === 'red' ? 'text-red-600' : 'text-gray-500'
                         }`}>
-                          {score}
+                          {score != null ? score : '—'}
                         </div>
                         <div className="flex items-center gap-2">
                           <button
