@@ -101,7 +101,7 @@ export function todayTaskSourceAttributionLine(task) {
   if (meta.created_by_tenant === true || meta.tenant_initiated === true) return 'Requested by tenant';
   if (st === 'approval') return null;
   if (st === 'requirement' || st === 'work_order' || st === 'risk_signal' || st === 'issue') {
-    return 'Automatically flagged';
+    return 'Flagged for review';
   }
   return null;
 }
@@ -134,7 +134,7 @@ export function todayTaskConfidenceLine(task) {
     return 'This job is blocking progress on this property until the next step is completed.';
   }
   if (at === 'risk_signal' || st === 'risk_signal') {
-    return 'Reviewing decides whether to log maintenance work that protects this property.';
+    return 'Decide what to do next.';
   }
   if (at === 'open_operational_issue' || st === 'issue') {
     return 'This issue has not been reviewed yet and may affect maintenance priority.';

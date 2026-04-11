@@ -40,16 +40,13 @@ export function UrgencyRow({ urgencyLevel, timingLabel, className = '' }) {
 /** Today inbox band: overdue | due_soon | on_track (from API). Falls back to legacy urgency_level. */
 export function TodayUrgencyRow({ urgency, urgencyLevel, timingLabel, className = '' }) {
   const u = String(urgency || '').toLowerCase();
-  // on_track stays in the API for analytics/sorting but stays visually quiet — action-first, not status-heavy.
+  // on_track is kept in the API for sorting only — no “On track” badge (adds no decision value on Today).
   if (u === 'on_track') {
-    return (
+    return timingLabel ? (
       <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-        <span className="text-[11px] font-normal text-gray-500" data-today-urgency="on_track">
-          On track
-        </span>
         <DueTimingChip timingLabel={timingLabel} />
       </div>
-    );
+    ) : null;
   }
   if (u === 'overdue' || u === 'due_soon') {
     const cfg = {

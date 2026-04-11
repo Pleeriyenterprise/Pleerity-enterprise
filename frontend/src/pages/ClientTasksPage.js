@@ -69,6 +69,11 @@ import {
   todayTaskSourceAttributionLine,
   shouldShowTodayTaskConfidence,
 } from '../utils/confidenceUxCopy';
+import {
+  shapeTodayBusinessActions,
+  businessActionNavigatePath,
+  stripTechnicalParenTail,
+} from '../utils/todayWorkflowPolicy';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All' },
@@ -113,8 +118,9 @@ const TODAY_GENERIC_JOB_KEYS = new Set(['view job', 'open job']);
 const TODAY_CTA_LABEL_MAP = {
   'view job': CLIENT_INBOX_JOB_FALLBACK_CTA,
   'open job': CLIENT_INBOX_JOB_FALLBACK_CTA,
-  'review risk signal': 'Review flagged issue',
-  'view risk signal': 'Review flagged issue',
+  'review risk signal': 'Review issue',
+  'view risk signal': 'Review issue',
+  'review flagged issue': 'Review issue',
 };
 
 /**
@@ -138,7 +144,7 @@ function sanitizeTodayCtaLabel(primaryLabel, task) {
     if (String(task?.source_type || '').toLowerCase() === 'work_order') {
       return clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA;
     }
-    return 'Continue in Today';
+    return 'Review task';
   }
   return candidate;
 }
@@ -148,6 +154,36 @@ function sanitizeBusinessActionLabel(label) {
   const key = s.toLowerCase();
   if (TODAY_CTA_LABEL_MAP[key]) return TODAY_CTA_LABEL_MAP[key];
   return s;
+}
+
+/** Drop secondary business_actions that navigate to the same place as the primary button. */
+function dedupeActionsByPrimaryPath(ordered) {
+  if (!Array.isArray(ordered) || ordered.length <= 1) return ordered || [];
+  const primary = ordered[0];
+  const pp = businessActionNavigatePath(primary);
+  const rest = [];
+  for (let i = 1; i < ordered.length; i += 1) {
+    const a = ordered[i];
+    const ap = businessActionNavigatePath(a);
+    if (pp && ap && pp === ap) continue;
+    rest.push(a);
+  }
+  return [primary, ...rest];
+}
+
+function labelForTodayBusinessAction(act, task, workflow) {
+  if (!act) return sanitizeTodayCtaLabel(task?.primary_action_label, task);
+  if (String(act.id) === 'create_maintenance_job' && workflow === 'maintenance') {
+    return 'Log maintenance issue';
+  }
+  if (String(act.id) === 'view_job') {
+    return clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA;
+  }
+  if (workflow === 'unclear' && String(act.id) === 'open_primary') {
+    const fb = sanitizeTodayCtaLabel(task?.primary_action_label, task);
+    if (fb && fb !== 'Review task') return fb;
+  }
+  return sanitizeBusinessActionLabel(act.label);
 }
 
 function propertyOptionLabel(p) {
@@ -255,7 +291,6 @@ function TaskCard({
   onPrimaryNavigate,
   onRunBusinessAction,
   onVisibilityTap,
-  onTaskTitleClick,
   overrideBusy,
   complianceBookingBusyId,
   showComplianceBooking,
@@ -267,63 +302,91 @@ function TaskCard({
   const meta = task.metadata || {};
   const sid = meta.related_risk_signal_id;
   const busy = overrideBusy === task.id;
-  const ce = meta.compliance_execution_booking;
   const bookingBusy = complianceBookingBusyId === task.id;
-  const businessActions = task.business_actions || [];
-  const hasComplianceCreateAction = businessActions.some((a) => a.id === 'create_compliance_work_order');
-  const displayTitle = todayDecisionLayerTitle(task);
+  const shaped = shapeTodayBusinessActions(task, task.business_actions, showComplianceBooking);
+  const workflow = shaped.workflow;
+  const ordered = dedupeActionsByPrimaryPath(shaped.ordered);
+  const primaryAct = ordered[0];
+  const maxSecondarySlots = workflow === 'issue_risk' && showRiskInline && sid ? 1 : 2;
+  const secondaryActs = ordered.slice(1, 1 + maxSecondarySlots);
+  const riskStartInline =
+    workflow === 'issue_risk' && showRiskInline && sid && secondaryActs.length < maxSecondarySlots;
+  const riskStartInMoreOnly =
+    workflow === 'issue_risk' && showRiskInline && sid && secondaryActs.length >= maxSecondarySlots;
+  let displayTitle = todayDecisionLayerTitle(task);
+  if (String(task?.source_type || '').toLowerCase() === 'work_order') {
+    displayTitle = stripTechnicalParenTail(displayTitle);
+  }
+  const titleNorm = String(displayTitle || '').replace(/\s+/g, ' ').trim();
+  const descRaw = String(task.description || '').trim();
+  const descNorm = descRaw.replace(/\s+/g, ' ').trim();
+  const showDescription = Boolean(descRaw && descNorm && descNorm !== titleNorm);
   const confidenceLine = shouldShowTodayTaskConfidence(task) ? todayTaskConfidenceLine(task) : null;
   const hasLongContext = Boolean(task.why_matters || task.recommended_action);
   const hasVisibilityActions = enableTriage && (task.visibility_actions || []).length > 0;
+  const hasMoreOptionsBlock =
+    hasVisibilityActions || (workflow === 'issue_risk' && showRiskInline && sid);
   const sourceAttributionLine = todayTaskSourceAttributionLine(task);
   const primaryCtaResolved = resolveTaskCta(task, 'primary');
   const primaryWorkspacePath = resolveClientPortalPath(primaryCtaResolved.route, '/today');
-  /** Secondary link: job detail path → same resolution as primary (specific step || Review job); else hub “Continue in …”. */
   const jobDetailPath = /^\/operations\/jobs\/[^/]+/.test(String(primaryWorkspacePath || '').split('?')[0]);
   const continueWorkspaceLabel = jobDetailPath
     ? clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA
     : continueWorkspaceCtaLabel(primaryWorkspacePath);
+  const primaryBtnPath = primaryAct ? businessActionNavigatePath(primaryAct) : '';
+  const primaryLabelForCompare = primaryAct
+    ? labelForTodayBusinessAction(primaryAct, task, workflow)
+    : sanitizeTodayCtaLabel(task.primary_action_label, task);
+  const continueDuplicatesPrimary =
+    Boolean(continueWorkspaceLabel) &&
+    String(continueWorkspaceLabel).trim().toLowerCase() === String(primaryLabelForCompare).trim().toLowerCase();
+  const continueDuplicatesRoute =
+    Boolean(primaryBtnPath) &&
+    Boolean(continueWorkspaceLabel) &&
+    primaryBtnPath === primaryWorkspacePath &&
+    primaryBtnPath !== '';
   const secondaryWorkspacePath =
     task.secondary_action_url && isSafeClientPortalPath(task.secondary_action_url)
       ? resolveClientPortalPath(task.secondary_action_url, '')
       : null;
   const secondaryMatchesPrimaryWorkspace =
     secondaryWorkspacePath != null && secondaryWorkspacePath === primaryWorkspacePath;
+  const ghostLabel = task.secondary_action_label
+    ? sanitizeBusinessActionLabel(task.secondary_action_label)
+    : '';
+  const ghostDuplicatesPrimary =
+    ghostLabel && String(ghostLabel).trim().toLowerCase() === String(primaryLabelForCompare).trim().toLowerCase();
+  const ghostDuplicatesRoute =
+    secondaryWorkspacePath != null &&
+    (secondaryWorkspacePath === primaryWorkspacePath ||
+      (primaryBtnPath && secondaryWorkspacePath === primaryBtnPath));
+  const showGhostSecondary =
+    Boolean(task.secondary_action_url && task.secondary_action_label) &&
+    !ghostDuplicatesPrimary &&
+    !ghostDuplicatesRoute;
   const showContinueWorkspace =
     Boolean(continueWorkspaceLabel) &&
     primaryWorkspacePath !== '/today' &&
     !primaryWorkspacePath.startsWith('/dashboard') &&
-    !secondaryMatchesPrimaryWorkspace;
+    !secondaryMatchesPrimaryWorkspace &&
+    !continueDuplicatesPrimary &&
+    !continueDuplicatesRoute;
   return (
     <Card className="border border-gray-200 shadow-sm overflow-hidden">
       <CardContent className="p-4 client-portal-prose">
-        <div className="flex flex-col gap-4 min-w-0">
-          <div className="min-w-0 space-y-2">
+        <div className="flex flex-col gap-3 min-w-0">
+          <div className="min-w-0 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="text-xs font-normal shrink-0">
                 {todayTaskCategoryBadge(task)}
               </Badge>
               <TodayUrgencyRow urgency={task.urgency} urgencyLevel={task.urgency_level} timingLabel={meta.timing_label} />
             </div>
-            <h3
-              className={`font-semibold text-midnight-blue text-base leading-snug break-words${onTaskTitleClick ? ' cursor-pointer hover:underline decoration-midnight-blue/30' : ''}`}
-              role={onTaskTitleClick ? 'button' : undefined}
-              tabIndex={onTaskTitleClick ? 0 : undefined}
-              onClick={() => onTaskTitleClick?.(task)}
-              onKeyDown={(e) => {
-                if (!onTaskTitleClick) return;
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onTaskTitleClick(task);
-                }
-              }}
-            >
-              {displayTitle}
-            </h3>
+            <h3 className="font-semibold text-midnight-blue text-base leading-snug break-words">{displayTitle}</h3>
             {task.property_label && (
               <p className="text-sm text-gray-600 break-words">{task.property_label}</p>
             )}
-            {task.description && (
+            {showDescription && (
               <p className="text-sm text-gray-700 line-clamp-3 break-words">{task.description}</p>
             )}
             {hasLongContext && (
@@ -355,35 +418,26 @@ function TaskCard({
             )}
           </div>
 
-          <div className="flex flex-col gap-3 pt-2 border-t border-gray-100 min-w-0">
+          <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 min-w-0">
             {confidenceLine ? (
-              <p className="text-xs text-gray-600 leading-snug -mt-1">{confidenceLine}</p>
+              <p className="text-xs text-gray-600 leading-snug -mt-0.5">{confidenceLine}</p>
             ) : null}
             {sourceAttributionLine ? (
-              <p className="text-[11px] font-medium text-midnight-blue/70 uppercase tracking-wide">{sourceAttributionLine}</p>
+              <p className="text-[11px] font-medium text-midnight-blue/70 tracking-wide">{sourceAttributionLine}</p>
             ) : null}
-            {businessActions.length > 0 ? (
-              <div className="flex flex-col gap-2">
-                {businessActions.map((act) => {
-                  const isPrimary = act.primary === true || act.id === 'open_primary';
-                  return (
-                    <Button
-                      key={act.id}
-                      type="button"
-                      variant={isPrimary ? 'default' : 'outline'}
-                      className={`w-full min-h-11 h-11 text-sm justify-center ${
-                        isPrimary
-                          ? 'bg-midnight-blue hover:bg-midnight-blue/90 shadow-md ring-2 ring-electric-teal/40 ring-offset-2 ring-offset-white'
-                          : 'border-midnight-blue/25 text-midnight-blue/90'
-                      }`}
-                      disabled={bookingBusy}
-                      onClick={() => onRunBusinessAction(act, task)}
-                    >
-                      {sanitizeBusinessActionLabel(act.label)}
-                    </Button>
-                  );
-                })}
-              </div>
+            {primaryAct ? (
+              <Button
+                type="button"
+                className="w-full min-h-12 h-12 text-sm font-semibold justify-center bg-midnight-blue hover:bg-midnight-blue/90 shadow-md ring-2 ring-electric-teal/40 ring-offset-2 ring-offset-white"
+                disabled={bookingBusy}
+                onClick={() => onRunBusinessAction(primaryAct, task)}
+              >
+                {bookingBusy && primaryAct.id === 'create_compliance_work_order' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  labelForTodayBusinessAction(primaryAct, task, workflow)
+                )}
+              </Button>
             ) : (
               <Button
                 className="w-full min-h-12 h-12 text-sm font-semibold justify-center bg-midnight-blue hover:bg-midnight-blue/90 shadow-md ring-2 ring-electric-teal/40 ring-offset-2 ring-offset-white"
@@ -393,6 +447,33 @@ function TaskCard({
                 {sanitizeTodayCtaLabel(task.primary_action_label, task)}
               </Button>
             )}
+            {secondaryActs.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {secondaryActs.map((act) => (
+                  <Button
+                    key={act.id}
+                    type="button"
+                    variant="outline"
+                    className="w-full min-h-11 h-11 text-sm justify-center border-midnight-blue/25 text-midnight-blue/90"
+                    disabled={bookingBusy}
+                    onClick={() => onRunBusinessAction(act, task)}
+                  >
+                    {labelForTodayBusinessAction(act, task, workflow)}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+            {riskStartInline ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full min-h-11 h-11 text-sm justify-center border-midnight-blue/25 text-midnight-blue/90"
+                disabled={riskLoading === `wo:${sid}`}
+                onClick={() => onRiskAction('work_order', sid, task)}
+              >
+                {riskLoading === `wo:${sid}` ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Start maintenance job'}
+              </Button>
+            ) : null}
             {showContinueWorkspace ? (
               <button
                 type="button"
@@ -402,67 +483,17 @@ function TaskCard({
                 {continueWorkspaceLabel}
               </button>
             ) : null}
-            {showComplianceBooking && ce?.eligible && !hasComplianceCreateAction && ce.linked_property_requirement_id && (
-              <div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full min-h-11 h-11 text-sm justify-center border-electric-teal text-electric-teal hover:bg-teal-50"
-                  disabled={busy || bookingBusy}
-                  onClick={() =>
-                    onRunBusinessAction(
-                      {
-                        id: 'create_compliance_work_order',
-                        requirement_id: ce.linked_property_requirement_id,
-                        property_id: ce.property_id,
-                        requirement_code: ce.requirement_code,
-                        compliance_purpose: ce.compliance_purpose || 'inspection',
-                        compliance_generated_from: ce.compliance_generated_from || 'requirement',
-                      },
-                      task
-                    )
-                  }
-                >
-                  {bookingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create compliance job'}
-                </Button>
-                <p className="text-xs text-gray-500 mt-1.5 leading-snug">
-                  Creates the job only. Open the job to assign a contractor and finish booking, work, and proof.
-                </p>
-              </div>
-            )}
-            {showRiskInline && task.primary_action_type === 'risk_follow_up' && sid && (
-              <div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    className="min-h-11 h-11 w-full justify-center text-xs sm:text-sm"
-                    disabled={riskLoading === `issue:${sid}`}
-                    onClick={() => onRiskAction('issue', sid, task)}
-                  >
-                    {riskLoading === `issue:${sid}` ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Log maintenance issue'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="min-h-11 h-11 w-full justify-center text-xs sm:text-sm"
-                    disabled={riskLoading === `wo:${sid}`}
-                    onClick={() => onRiskAction('work_order', sid, task)}
-                  >
-                    {riskLoading === `wo:${sid}` ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Start maintenance job'}
-                  </Button>
-                </div>
-              </div>
-            )}
-            {task.secondary_action_url && task.secondary_action_label && (
+            {showGhostSecondary ? (
               <Button
                 variant="ghost"
                 className="w-full min-h-11 h-11 justify-center text-sm text-gray-600 hover:text-midnight-blue hover:bg-gray-50"
                 onClick={() => onPrimaryNavigate(task, 'secondary')}
               >
-                <span className="text-electric-teal">{sanitizeBusinessActionLabel(task.secondary_action_label)}</span>
+                <span className="text-electric-teal">{ghostLabel}</span>
                 <ExternalLink className="w-3.5 h-3.5 ml-1 shrink-0 text-electric-teal" />
               </Button>
-            )}
-            {hasVisibilityActions && (
+            ) : null}
+            {hasMoreOptionsBlock && (
               <div className="pt-1">
                 <button
                   type="button"
@@ -474,45 +505,81 @@ function TaskCard({
                 </button>
                 {visibilityOpen && (
                   <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/50 p-3 space-y-2 mt-1">
-                    <p className="text-xs text-gray-500 leading-snug">
-                      Snooze, dismiss, or mark reviewed—this list only. Your requirements and jobs are unchanged.
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(task.visibility_actions || []).map((va) => {
-                        if (va.id === 'dismiss') {
-                          return (
-                            <Button
-                              key={va.id}
-                              type="button"
-                              variant="outline"
-                              className="h-11 text-xs justify-center col-span-2 sm:col-span-1"
-                              disabled={busy}
-                              title="Requires a reason; logged and audited"
-                              onClick={() => onOpenDismissModal(task)}
-                            >
-                              <EyeOff className="w-3.5 h-3.5 mr-1 shrink-0" />
-                              {va.label}
-                            </Button>
-                          );
-                        }
-                        const isSnooze = va.id === 'snooze_1' || va.id === 'snooze_7';
-                        const days = va.snooze_days || (va.id === 'snooze_7' ? 7 : 1);
-                        return (
+                    {workflow === 'issue_risk' && showRiskInline && sid ? (
+                      <div className="flex flex-col gap-2 pb-1 border-b border-gray-200/80">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-11 text-xs justify-center w-full"
+                          disabled={riskLoading === `issue:${sid}`}
+                          onClick={() => onRiskAction('issue', sid, task)}
+                        >
+                          {riskLoading === `issue:${sid}` ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            'Log maintenance issue'
+                          )}
+                        </Button>
+                        {riskStartInMoreOnly ? (
                           <Button
-                            key={va.id}
                             type="button"
                             variant="outline"
-                            className="h-11 text-xs justify-center"
-                            disabled={busy}
-                            onClick={() => onVisibilityTap(va, task, isSnooze ? days : undefined)}
+                            className="h-11 text-xs justify-center w-full"
+                            disabled={riskLoading === `wo:${sid}`}
+                            onClick={() => onRiskAction('work_order', sid, task)}
                           >
-                            {isSnooze ? <Bell className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
-                            {va.id === 'mark_reviewed' ? <CheckCircle className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
-                            {va.label}
+                            {riskLoading === `wo:${sid}` ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              'Start maintenance job'
+                            )}
                           </Button>
-                        );
-                      })}
-                    </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {hasVisibilityActions ? (
+                      <>
+                        <p className="text-xs text-gray-500 leading-snug">
+                          Snooze, dismiss, or mark reviewed—this list only. Your requirements and jobs are unchanged.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(task.visibility_actions || []).map((va) => {
+                            if (va.id === 'dismiss') {
+                              return (
+                                <Button
+                                  key={va.id}
+                                  type="button"
+                                  variant="outline"
+                                  className="h-11 text-xs justify-center col-span-2 sm:col-span-1"
+                                  disabled={busy}
+                                  title="Requires a reason; logged and audited"
+                                  onClick={() => onOpenDismissModal(task)}
+                                >
+                                  <EyeOff className="w-3.5 h-3.5 mr-1 shrink-0" />
+                                  {va.label}
+                                </Button>
+                              );
+                            }
+                            const isSnooze = va.id === 'snooze_1' || va.id === 'snooze_7';
+                            const days = va.snooze_days || (va.id === 'snooze_7' ? 7 : 1);
+                            return (
+                              <Button
+                                key={va.id}
+                                type="button"
+                                variant="outline"
+                                className="h-11 text-xs justify-center"
+                                disabled={busy}
+                                onClick={() => onVisibilityTap(va, task, isSnooze ? days : undefined)}
+                              >
+                                {isSnooze ? <Bell className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
+                                {va.id === 'mark_reviewed' ? <CheckCircle className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
+                                {va.label}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -589,13 +656,17 @@ function SectionBlock({
   onPrimaryNavigate,
   onRunBusinessAction,
   onVisibilityTap,
-  onTaskTitleClick,
   overrideBusy,
   complianceBookingBusyId,
   showComplianceBooking,
   emptyHint,
   enableTriage,
+  defaultCollapsed = false,
+  urgentShowMoreLimit = null,
 }) {
+  const [expanded, setExpanded] = useState(!defaultCollapsed);
+  const [showAllUrgent, setShowAllUrgent] = useState(false);
+
   if (!tasks?.length) {
     return (
       <div className="mb-8">
@@ -604,29 +675,66 @@ function SectionBlock({
       </div>
     );
   }
+
+  const capped =
+    urgentShowMoreLimit != null && !showAllUrgent ? tasks.slice(0, urgentShowMoreLimit) : tasks;
+  const hasMoreUrgent =
+    urgentShowMoreLimit != null && tasks.length > urgentShowMoreLimit && !showAllUrgent;
+
+  const header = (
+    <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+      <h2 className="text-lg font-semibold text-gray-900">
+        {title}{' '}
+        <span className="text-sm font-normal text-gray-500">({tasks.length})</span>
+      </h2>
+      {defaultCollapsed ? (
+        <button
+          type="button"
+          className="text-sm font-medium text-electric-teal hover:underline min-h-10 sm:min-h-0"
+          onClick={() => setExpanded((e) => !e)}
+          aria-expanded={expanded}
+        >
+          {expanded ? 'Hide' : 'Show'}
+        </button>
+      ) : null}
+    </div>
+  );
+
   return (
     <div className="mb-8">
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">{title}</h2>
-      <div className="space-y-3">
-        {tasks.map((t) => (
-          <TaskCard
-            key={t.id}
-            task={t}
-            onRiskAction={onRiskAction}
-            riskLoading={riskLoading}
-            showRiskInline={showRiskInline}
-            onOpenDismissModal={onOpenDismissModal}
-            onPrimaryNavigate={onPrimaryNavigate}
-            onRunBusinessAction={onRunBusinessAction}
-            onVisibilityTap={onVisibilityTap}
-            onTaskTitleClick={onTaskTitleClick}
-            overrideBusy={overrideBusy}
-            complianceBookingBusyId={complianceBookingBusyId}
-            showComplianceBooking={showComplianceBooking}
-            enableTriage={enableTriage}
-          />
-        ))}
-      </div>
+      {header}
+      {(!defaultCollapsed || expanded) && (
+        <>
+          <div className="space-y-3">
+            {capped.map((t) => (
+              <TaskCard
+                key={t.id}
+                task={t}
+                onRiskAction={onRiskAction}
+                riskLoading={riskLoading}
+                showRiskInline={showRiskInline}
+                onOpenDismissModal={onOpenDismissModal}
+                onPrimaryNavigate={onPrimaryNavigate}
+                onRunBusinessAction={onRunBusinessAction}
+                onVisibilityTap={onVisibilityTap}
+                overrideBusy={overrideBusy}
+                complianceBookingBusyId={complianceBookingBusyId}
+                showComplianceBooking={showComplianceBooking}
+                enableTriage={enableTriage}
+              />
+            ))}
+          </div>
+          {hasMoreUrgent ? (
+            <button
+              type="button"
+              className="mt-3 text-sm font-medium text-electric-teal hover:underline min-h-11 w-full text-left sm:w-auto"
+              onClick={() => setShowAllUrgent(true)}
+            >
+              Show more ({tasks.length - urgentShowMoreLimit} more)
+            </button>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
@@ -795,13 +903,6 @@ export default function ClientTasksPage() {
   const showRiskInline = hasFeature('predictive_maintenance') && hasFeature('maintenance_workflows');
   const showComplianceBooking =
     hasFeature('compliance_engine') && hasFeature('maintenance_workflows');
-
-  const onTaskTitleClick = useCallback(
-    (task) => {
-      emitTodayAnalytics('TODAY_TASK_CLICKED', todayTaskAnalyticsProps(task));
-    },
-    [emitTodayAnalytics]
-  );
 
   const runBusinessAction = async (act, task) => {
     if (act?.id && task) {
@@ -1258,7 +1359,6 @@ export default function ClientTasksPage() {
                     onPrimaryNavigate={onPrimaryNavigate}
                     onRunBusinessAction={runBusinessAction}
                     onVisibilityTap={runVisibilityTap}
-                    onTaskTitleClick={onTaskTitleClick}
                     overrideBusy={overrideBusyId}
                     complianceBookingBusyId={complianceBookingBusyId}
                     showComplianceBooking={showComplianceBooking}
@@ -1278,11 +1378,11 @@ export default function ClientTasksPage() {
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={runBusinessAction}
             onVisibilityTap={runVisibilityTap}
-            onTaskTitleClick={onTaskTitleClick}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage
+            urgentShowMoreLimit={5}
             emptyHint={
               topPriorityTasks.length > 0
                 ? 'No other urgent items — everything urgent is in Top priorities above.'
@@ -1299,11 +1399,11 @@ export default function ClientTasksPage() {
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={runBusinessAction}
             onVisibilityTap={runVisibilityTap}
-            onTaskTitleClick={onTaskTitleClick}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage
+            defaultCollapsed
             emptyHint="No upcoming items in this view."
           />
           <SectionBlock
@@ -1316,11 +1416,11 @@ export default function ClientTasksPage() {
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={runBusinessAction}
             onVisibilityTap={runVisibilityTap}
-            onTaskTitleClick={onTaskTitleClick}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage
+            defaultCollapsed
             emptyHint="No in-progress items—approvals and issues surface here when active."
           />
           {snoozed.length > 0 && (
@@ -1370,7 +1470,6 @@ export default function ClientTasksPage() {
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={runBusinessAction}
             onVisibilityTap={runVisibilityTap}
-            onTaskTitleClick={onTaskTitleClick}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
