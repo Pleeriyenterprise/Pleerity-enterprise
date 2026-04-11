@@ -133,6 +133,43 @@ export function attentionBadgeForJob(wo) {
   return null;
 }
 
+/**
+ * Short headline for Command Center job rows (work order fields only; matches priority-list tone).
+ */
+export function commandCenterJobRowHeadline(wo) {
+  const rt = wo?.requirement_type || wo?.compliance_requirement_type;
+  const reqName = rt ? requirementLabel(rt) : null;
+  const d = String(wo?.description || wo?.title || '').trim();
+  const badge = attentionBadgeForJob(wo);
+  const badgeLbl = badge?.label || '';
+
+  if (reqName) {
+    if (hasTruthyIso(wo?.sla_breached_at) || badgeLbl === 'SLA overdue') {
+      return `${reqName} — job needs attention (SLA overdue)`;
+    }
+    if (badgeLbl === 'SLA at risk') {
+      return `${reqName} — job needs attention (SLA at risk)`;
+    }
+    if (badgeLbl === 'Due soon' || /expir|renew|due soon|certificate expiry/i.test(d)) {
+      return `${reqName} due soon — job needs attention`;
+    }
+    if (isOperationalHold(wo) || badgeLbl === 'On hold' || /awaiting parts/i.test(badgeLbl)) {
+      return `${reqName} — job on hold, needs attention`;
+    }
+    if (isPendingContractorAction(wo) || badgeLbl === 'With contractor') {
+      return `${reqName} — job with contractor, check status`;
+    }
+    if (isAwaitingProof(wo) || badgeLbl === 'Awaiting proof') {
+      return `${reqName} — job needs completion proof`;
+    }
+    return `${reqName} — job needs attention`;
+  }
+
+  if (d.length > 72) return `${d.slice(0, 69)}…`;
+  if (d) return d;
+  return 'Job needs attention';
+}
+
 export function countPropertiesAtRisk(portfolioSummary) {
   const props = portfolioSummary?.properties;
   if (!Array.isArray(props)) return 0;
@@ -184,17 +221,17 @@ export function buildCommandCenterVerdict({
   if (urgentCount > 0) {
     const line =
       urgentCount === 1
-        ? '1 priority needs your attention today.'
-        : `${urgentCount} priorities need your attention today.`;
+        ? '1 priority needs attention — start with the top item above.'
+        : `${urgentCount} priorities need attention — start with the top items above.`;
     if (breachedJobCount > 0) {
       sublines.push(
         breachedJobCount === 1
-          ? 'One job is past its SLA deadline.'
-          : `${breachedJobCount} jobs are past their SLA deadline.`
+          ? 'One job has missed its SLA — follow up now.'
+          : `${breachedJobCount} jobs have missed their SLA — follow up now.`
       );
     } else if (blockedJobCount > 0) {
       sublines.push(
-        blockedJobCount === 1 ? 'A job is on hold.' : `${blockedJobCount} jobs are on hold.`
+        blockedJobCount === 1 ? 'One job is on hold.' : `${blockedJobCount} jobs are on hold.`
       );
     }
     return { line, subline: sublines[0] || null, tone: 'critical' };
@@ -203,8 +240,8 @@ export function buildCommandCenterVerdict({
   if (breachedJobCount > 0) {
     const line =
       breachedJobCount === 1
-        ? 'A job is past its SLA deadline—follow up now.'
-        : `${breachedJobCount} jobs are past their SLA deadline.`;
+        ? 'A job has missed its SLA — follow up now.'
+        : `${breachedJobCount} jobs have missed their SLA — follow up now.`;
     if (blockedJobCount > 0) {
       sublines.push(`${blockedJobCount} job${blockedJobCount === 1 ? '' : 's'} also on hold.`);
     }
@@ -214,13 +251,13 @@ export function buildCommandCenterVerdict({
   if (blockedJobCount > 0) {
     const line =
       blockedJobCount === 1
-        ? 'A job is on hold—needs follow-up.'
-        : `${blockedJobCount} jobs are on hold.`;
+        ? 'A job is on hold — needs your follow-up.'
+        : `${blockedJobCount} jobs are on hold — need follow-up.`;
     if (awaitingProofCount > 0) {
       sublines.push(
         awaitingProofCount === 1
-          ? 'One job is still awaiting proof of completion.'
-          : `${awaitingProofCount} jobs are awaiting proof of completion.`
+          ? 'One job still needs completion proof.'
+          : `${awaitingProofCount} jobs still need completion proof.`
       );
     }
     return { line, subline: sublines[0] || null, tone: 'watch' };
@@ -230,8 +267,8 @@ export function buildCommandCenterVerdict({
     return {
       line:
         awaitingProofCount === 1
-          ? 'A job is awaiting proof of completion.'
-          : `${awaitingProofCount} jobs are awaiting proof of completion.`,
+          ? 'A job needs completion proof.'
+          : `${awaitingProofCount} jobs need completion proof.`,
       subline: null,
       tone: 'watch',
     };
@@ -242,8 +279,8 @@ export function buildCommandCenterVerdict({
     return {
       line:
         overdueReq === 1
-          ? '1 compliance requirement is overdue.'
-          : `${overdueReq} compliance requirements are overdue.`,
+          ? '1 requirement is overdue — act now.'
+          : `${overdueReq} requirements are overdue — act now.`,
       subline: null,
       tone: 'critical',
     };
@@ -251,14 +288,14 @@ export function buildCommandCenterVerdict({
 
   if (propertiesAtRisk === 1) {
     return {
-      line: '1 property is at compliance risk.',
+      line: '1 property is at risk on compliance.',
       subline: null,
       tone: 'watch',
     };
   }
   if (propertiesAtRisk > 1) {
     return {
-      line: `${propertiesAtRisk} properties need compliance attention.`,
+      line: `${propertiesAtRisk} properties need compliance work.`,
       subline: null,
       tone: 'watch',
     };
@@ -266,7 +303,7 @@ export function buildCommandCenterVerdict({
 
   if (predictiveEnabled && riskCount > 0) {
     return {
-      line: riskCount === 1 ? '1 open issue needs review.' : `${riskCount} open issues need review.`,
+      line: riskCount === 1 ? '1 open issue needs your review.' : `${riskCount} open issues need your review.`,
       subline: null,
       tone: 'watch',
     };
@@ -275,7 +312,7 @@ export function buildCommandCenterVerdict({
   const color = String(summary?.color || '').toLowerCase();
   if (color === 'amber' || color === 'red') {
     return {
-      line: summary?.message?.trim() || 'Review compliance status—there is room to improve.',
+      line: summary?.message?.trim() || 'Compliance has gaps — review and improve.',
       subline: null,
       tone: color === 'red' ? 'critical' : 'watch',
     };
@@ -406,63 +443,64 @@ export function commandCenterWhyThisMattersLine(task) {
   const od = Number(task.overdue_days ?? meta.overdue_days ?? 0);
   const impact = String(task?.impact_label || '').trim().toLowerCase();
   const riskLevel = String(meta.risk_level || task?.risk_level || '').toLowerCase();
-  const riskCue =
-    riskLevel && ['high', 'critical', 'severe'].includes(riskLevel) ? ' — elevated portfolio risk' : '';
 
   const impactClause = impact && !impact.includes('review') ? ` (${impact})` : '';
 
   if (at === 'overdue_compliance' && od > 0) {
-    return `${label} overdue by ${od} day${od === 1 ? '' : 's'} — action needed now${impactClause || ''}`;
+    return `${label} overdue by ${od} day${od === 1 ? '' : 's'} — immediate action required${impactClause || ''}`;
   }
   if (at === 'overdue_compliance') {
-    return `${label} is overdue — action needed now${impactClause || ''}`;
+    return `${label} overdue — immediate action required${impactClause || ''}`;
   }
   if (at === 'certificate_expiring_soon') {
     return `${label} due soon — review before it becomes overdue${impactClause || ''}`;
   }
   if (at === 'missing_document') {
-    return `${label} — evidence missing; upload a document to clear this gap${impactClause || ''}`;
+    return `${label} — document missing; upload to lift your score${impactClause || ''}`;
   }
   if (at === 'work_order_sla_breached') {
-    const jobName = label !== 'Requirement' ? label : 'Job';
-    return `${jobName} — SLA deadline passed; follow up now${impactClause || ''}`;
+    return `Job needs attention — SLA deadline passed${impactClause || ''}`;
   }
   if (at === 'work_order_near_sla_breach') {
-    const jobName = label !== 'Requirement' ? label : 'Job';
-    return `${jobName} — SLA at risk; act before it breaches${impactClause || ''}`;
+    return `Job needs attention — act before SLA slips${impactClause || ''}`;
   }
   if (at === 'risk_signal' || st === 'risk_signal') {
-    const sev =
-      riskLevel && ['high', 'critical', 'medium', 'low'].includes(riskLevel)
-        ? `${riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}-priority signal`
-        : 'Flagged signal';
-    return `${label} — ${sev}; review to clear or dismiss${riskCue || impactClause || ''}`;
+    const hi = riskLevel && ['high', 'critical', 'severe'].includes(riskLevel);
+    const prefix = label && label !== 'Requirement' ? `${label}: ` : '';
+    if (hi) {
+      return `${prefix}Issue flagged — review now to resolve or dismiss${impactClause || ''}`;
+    }
+    return `${prefix}Issue flagged — review to resolve or dismiss${impactClause || ''}`;
   }
   if (at === 'open_operational_issue' || st === 'issue') {
     const sev = String(task?.severity || meta.severity || '').toLowerCase();
-    const sevBit =
-      sev && ['high', 'urgent', 'critical'].includes(sev) ? ` (${sev} severity)` : '';
-    return `${label} — open issue needs triage${sevBit}${impactClause || ''}`;
+    const urgent = sev && ['high', 'urgent', 'critical'].includes(sev);
+    if (label && label !== 'Requirement') {
+      return urgent
+        ? `${label} — urgent issue, investigate and resolve${impactClause || ''}`
+        : `${label} — open issue, investigate and resolve${impactClause || ''}`;
+    }
+    return urgent
+      ? `Open issue — investigate and resolve urgently${impactClause || ''}`
+      : `Open issue — investigate and resolve${impactClause || ''}`;
   }
   if (at === 'open_work_order' || st === 'work_order') {
-    const jobName = label !== 'Requirement' ? label : 'Maintenance job';
     const hay = `${String(task?.title || '')} ${String(task?.description || '')}`.toLowerCase();
     const visitCue = /visit|schedule|booking|booked|proposed/.test(hay);
     const contractorCue = /contractor|assigned|accept/.test(hay);
-    let stateLine = 'in progress — check next step on the job';
-    if (visitCue) stateLine = 'visit scheduled — complete or reschedule on the job';
-    else if (contractorCue) stateLine = 'waiting on contractor — progress may be blocked';
-    return `${jobName} — ${stateLine}${impactClause || ''}`;
+    if (visitCue) return `Job needs attention — visit in play; finish or reschedule${impactClause || ''}`;
+    if (contractorCue) return `Job needs attention — waiting on contractor${impactClause || ''}`;
+    return `Job needs attention — progress is blocked${impactClause || ''}`;
   }
   if (at === 'pending_invoice_approval' || st === 'approval') {
-    return `${label} — invoice needs your approval${impactClause || ''}`;
+    return `${label} — approve or query this invoice${impactClause || ''}`;
   }
 
   const timing = String(meta.timing_label || task?.timing_label || '').trim();
   if (timing && label !== 'Requirement') return `${label} — ${timing.charAt(0).toLowerCase() + timing.slice(1)}`;
   if (timing) return timing;
-  if (label && label !== 'Requirement') return `${label} — open in Today for the exact next step`;
-  return 'Open Today for the next step on this item';
+  if (label && label !== 'Requirement') return `${label} — action needed, review to continue`;
+  return 'Action needed — review to continue';
 }
 
 /** Normalised app path for duplicate detection (no query/hash, no trailing slash). */
@@ -496,9 +534,8 @@ export function buildCommandCenterPropertyRowHubLink(task, primaryResolvedPath) 
     return { to: '/requirements', label: 'View requirements' };
   }
   if (st === 'risk_signal') {
-    const riskRoot = normalizeCommandCenterPath('/operations/risk-signals');
-    if (primary === riskRoot || primary.startsWith(`${riskRoot}/`)) return null;
-    return { to: '/operations/risk-signals', label: 'Review flagged issues' };
+    // Row primary is already “Review issue”; portfolio link duplicated intent — keep “Open property” only.
+    return null;
   }
   if (st === 'issue') {
     const issuesRoot = normalizeCommandCenterPath('/operations/issues');
@@ -609,8 +646,8 @@ export function buildPortfolioVerdictBlock({
       key: 'overdue',
       label:
         overdueDisplay === 1
-          ? '1 overdue requirement — resolve it first'
-          : `${overdueDisplay} overdue requirements — resolve these first`,
+          ? '1 overdue requirement'
+          : `${overdueDisplay} overdue requirements`,
     });
   }
   if (missingDisplay > 0) {
@@ -618,8 +655,8 @@ export function buildPortfolioVerdictBlock({
       key: 'missing',
       label:
         missingDisplay === 1
-          ? '1 missing document — upload to reduce risk'
-          : `${missingDisplay} missing documents — upload to reduce risk`,
+          ? '1 missing document hurting your score'
+          : `${missingDisplay} missing documents hurting your score`,
     });
   }
   if (jobPressure > 0) {
@@ -627,8 +664,8 @@ export function buildPortfolioVerdictBlock({
       key: 'job_pressure',
       label:
         jobPressure === 1
-          ? '1 job blocking progress — unblock to restore momentum'
-          : `${jobPressure} jobs blocking progress — unblock to restore momentum`,
+          ? '1 job stuck or waiting on you'
+          : `${jobPressure} jobs stuck or waiting on you`,
     });
   }
   if (riskDisplay > 0) {
@@ -636,8 +673,8 @@ export function buildPortfolioVerdictBlock({
       key: 'risk',
       label:
         riskDisplay === 1
-          ? '1 open issue — review and resolve'
-          : `${riskDisplay} open issues — review and resolve`,
+          ? '1 open issue to close out'
+          : `${riskDisplay} open issues to close out`,
     });
   }
 
@@ -671,21 +708,21 @@ export function buildPortfolioVerdictBlock({
     if (winner.key === 'overdue') {
       nextHintPath = '/requirements';
       nextHintLabel = 'Review requirements';
-      bestNextMove = 'Overdue requirements are the strongest compliance signal — work them down first.';
+      bestNextMove = 'Overdue items drag your score — clear them in Requirements first.';
       if (missingDisplay > 0) {
         verdictSecondaryNav = { path: '/documents', label: 'Upload missing documents' };
       }
     } else if (winner.key === 'missing') {
       nextHintPath = '/documents';
       nextHintLabel = 'Upload missing documents';
-      bestNextMove = 'Missing evidence is driving score risk — upload documents with correct dates.';
+      bestNextMove = 'Missing documents are lowering your compliance score — upload to fix this.';
       if (overdueDisplay > 0) {
         verdictSecondaryNav = { path: '/requirements', label: 'Review overdue requirements' };
       }
     } else {
       nextHintPath = '/operations/work-orders';
       nextHintLabel = 'Resolve blocked jobs';
-      bestNextMove = 'Jobs are waiting on proof, contractors, or holds — unblock the queue.';
+      bestNextMove = 'Jobs need proof, a contractor step, or a hold cleared — open Jobs and unblock them.';
       verdictSecondaryNav = { path: '/today', label: 'Open Today inbox' };
     }
   } else if (predictiveEnabled && (riskCount || 0) > 0) {
@@ -694,31 +731,30 @@ export function buildPortfolioVerdictBlock({
     nextHintLabel = 'Review flagged issues';
     bestNextMove =
       rc === 1
-        ? 'One flagged issue needs a decision — review it now.'
-        : `${rc} flagged issues need decisions — review them now.`;
+        ? 'One issue is flagged for your portfolio — decide it in Flagged issues.'
+        : `${rc} issues are flagged — work through them in Flagged issues.`;
     verdictSecondaryNav = { path: '/today', label: 'Open Today inbox' };
   } else if (urgentCount > 0) {
     nextHintPath = '/today';
     nextHintLabel = 'Open Today inbox';
     bestNextMove =
       urgentCount === 1
-        ? 'Your top urgent item is not fully reflected in the counts above — open Today and resolve it first.'
-        : `${urgentCount} urgent items need attention — open Today and work from the top down.`;
+        ? 'Your next urgent step is in Today — open the inbox and start at the top.'
+        : `${urgentCount} urgent steps are queued in Today — start at the top.`;
   } else {
     nextHintPath = '/today';
     nextHintLabel = 'Open Today inbox';
-    bestNextMove =
-      'Portfolio snapshot looks clear — open Today when you want the full queue and the next step.';
+    bestNextMove = 'Nothing critical in this snapshot — use Today when you are ready for the next task.';
   }
 
   const driverSummaryFallback =
     drivers.length > 0
       ? ''
       : maxN > 0
-        ? 'Follow “What to do next” for the strongest portfolio signal.'
+        ? 'Use “What to do next” below — it matches your biggest pressure.'
         : urgentCount > 0
-          ? 'Urgent work lives in Today — use the button below and start at the top.'
-          : 'Light portfolio pressure right now — continue in Today when you are ready for the next step.';
+          ? 'Today holds your urgent queue — open it from the button below.'
+          : 'Low pressure right now — check Today when you want the full list.';
 
   return {
     statusLabel,

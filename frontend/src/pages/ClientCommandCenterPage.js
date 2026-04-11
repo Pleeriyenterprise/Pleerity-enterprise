@@ -14,7 +14,7 @@ import ErrorBanner from '../components/ErrorBanner';
 import { AlertCircle, Gauge, Sparkles, Building2, Wrench, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { recordClientPortalInteraction, resolveClientPortalPath } from '../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../utils/ctaRegistry';
-import { requirementLabel, workOrderStatusLabel } from '../domain/presentDomain';
+import { workOrderStatusLabel } from '../domain/presentDomain';
 import {
   workOrderKindClientLabel,
   clientInboxJobCtaLabel,
@@ -39,6 +39,7 @@ import {
   rankWorkOrdersByAttention,
   sanitizeCommandCenterCtaLabel,
   buildCommandCenterPropertyRowHubLink,
+  commandCenterJobRowHeadline,
 } from '../utils/clientCommandCenter';
 import { COMMAND_CENTER_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 
@@ -537,7 +538,7 @@ export default function ClientCommandCenterPage() {
               Where to focus first
             </CardTitle>
             <p className="text-xs text-gray-500 mt-1 font-normal">
-              One primary action per property; links below are for context only (property hub or a different workspace).
+              One primary action per property; Open property and the extra link are for context only.
             </p>
           </div>
         </CardHeader>
@@ -699,7 +700,7 @@ export default function ClientCommandCenterPage() {
         </CardContent>
       </Card>
 
-      {/* 4. Jobs — prioritized + stuck signals */}
+      {/* 4. Jobs — ranked attention list */}
       <Card
         className="mb-6 border border-dashed border-gray-200 bg-slate-50/50 shadow-none text-gray-800"
         data-testid="command-center-jobs"
@@ -711,7 +712,7 @@ export default function ClientCommandCenterPage() {
               Jobs that need attention
             </CardTitle>
             <p className="text-xs text-gray-500 mt-1 font-normal">
-              Secondary to the property list above — same jobs, ranked by operational pressure.
+              Below the property list — same jobs, short headlines, ranked by urgency.
             </p>
           </div>
         </CardHeader>
@@ -757,26 +758,20 @@ export default function ClientCommandCenterPage() {
 
               {rankedJobs.length === 0 && calmSnapshot && (
                 <p className="text-sm text-gray-700">
-                  <span className="font-medium text-green-800">All active jobs are under control</span> in this
-                  snapshot. Open the Jobs list from the portfolio “What to do next” step when you need the full queue.
+                  <span className="font-medium text-green-800">All active jobs look under control</span> in this
+                  snapshot. Use “What to do next” or Jobs when you need the full queue.
                 </p>
               )}
               {rankedJobs.length === 0 && !calmSnapshot && (
                 <p className="text-sm text-gray-600">
-                  No active jobs in this snapshot—the Jobs list still has completed history and filters.
+                  No active jobs here — open Jobs for history and filters.
                 </p>
               )}
               {rankedJobs.length > 0 && (
                 <ul className="space-y-3 text-sm">
                   {rankedJobs.map((wo) => {
                     const badge = attentionBadgeForJob(wo);
-                    const jobTitle = (() => {
-                      const d = String(wo.description || wo.title || '').trim();
-                      if (d) return d;
-                      const rt = wo.requirement_type || wo.compliance_requirement_type;
-                      if (rt) return requirementLabel(rt);
-                      return 'Job';
-                    })();
+                    const jobTitle = commandCenterJobRowHeadline(wo);
                     const propLbl = wo.property_id ? propertyLabelById.get(wo.property_id) : null;
                     return (
                       <li
