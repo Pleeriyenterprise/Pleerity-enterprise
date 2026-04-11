@@ -1158,7 +1158,7 @@ async def download_client_evidence_pack_file(request: Request, job_id: str):
 
 
 class ClientTaskOverrideBody(BaseModel):
-    """Inbox triage: snooze | dismiss (reason required) | reviewed | done (legacy) | restore. Does not satisfy compliance."""
+    """Today inbox visibility: snooze | dismiss (reason) | reviewed | done (legacy) | restore. Does not satisfy requirements or close jobs."""
 
     task_id: str
     action: str
@@ -1249,7 +1249,7 @@ async def get_client_task_activity(
     request: Request,
     limit: int = Query(30, ge=1, le=100),
 ):
-    """Recent Command Centre inbox actions (snooze, dismiss, done, restore) for this client."""
+    """Recent Today inbox visibility actions (snooze, dismiss, reviewed, done, restore)—not domain completion."""
     user = await client_route_guard(request)
     from services.client_task_state_service import list_recent_activity
 

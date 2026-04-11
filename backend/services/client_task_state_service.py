@@ -141,7 +141,11 @@ async def apply_task_action(
             client_id=client_id,
             resource_type="client_task",
             resource_id=task_id,
-            metadata={"task_id": task_id, "task_scope_user_id": scope},
+            metadata={
+                "task_id": task_id,
+                "task_scope_user_id": scope,
+                "inbox_action_summary": "Today inbox visibility: item restored to Today lists (does not change underlying work)",
+            },
         )
         return {"ok": True, "task_id": task_id, "state": None}
 
@@ -202,6 +206,10 @@ async def apply_task_action(
                 "snooze_days": days,
                 "snoozed_until": until.isoformat(),
                 "business_outcome": business_outcome or "task_snoozed",
+                "inbox_action_summary": (
+                    f"Today inbox visibility: hidden from Today until {until.isoformat()} "
+                    f"({days} day(s)); requirements, jobs, issues, and documents unchanged"
+                ),
             },
         )
         return {"ok": True, "task_id": task_id, "state": OVERRIDE_SNOOZE, "snoozed_until": until.isoformat()}
@@ -216,7 +224,8 @@ async def apply_task_action(
                 )
             else:
                 raise ValueError(
-                    "Dismiss requires a reason (at least 3 characters). This is logged; it does not satisfy compliance."
+                    "Hide from Today requires a reason (at least 3 characters), stored for audit. "
+                    "This does not upload documents, satisfy requirements, close jobs, or resolve issues."
                 )
 
     # dismiss | done | reviewed
@@ -280,6 +289,19 @@ async def apply_task_action(
     }
     if action == ACTION_DISMISS:
         audit_meta["dismiss_reason"] = (dismiss_reason or "").strip()[:2000]
+    if action == ACTION_DISMISS:
+        audit_meta["inbox_action_summary"] = (
+            "Today inbox visibility: hidden from Today with audited reason—"
+            "does not upload documents, satisfy requirements, close jobs, resolve issues, or approve invoices"
+        )
+    elif action == ACTION_REVIEWED:
+        audit_meta["inbox_action_summary"] = (
+            "Today inbox visibility: marked reviewed in Today only—underlying requirement/job/issue/document unchanged"
+        )
+    else:
+        audit_meta["inbox_action_summary"] = (
+            "Today inbox visibility: legacy done flag in inbox—underlying records unchanged unless completed elsewhere"
+        )
     await create_audit_log(
         action=audit_action,
         actor_id=portal_user_id,
@@ -425,6 +447,26 @@ async def list_hidden_inbox_items(
     return out
 
 
+def _format_activity_action_label(action: str, extra: Optional[Dict[str, Any]] = None) -> str:
+    """Human-readable Today inbox visibility label (not domain completion)."""
+    a = (action or "").strip().lower()
+    ex = extra or {}
+    if a == ACTION_SNOOZE:
+        until = ex.get("snoozed_until")
+        if until:
+            return f"Today item snoozed (hidden until {until})"
+        return "Today item snoozed"
+    if a == ACTION_DISMISS:
+        return "Today item hidden from Today (dismissed)"
+    if a == ACTION_REVIEWED:
+        return "Today item marked reviewed in Today only"
+    if a == ACTION_DONE:
+        return "Today item marked done in inbox (legacy visibility)"
+    if a == ACTION_RESTORE:
+        return "Today item restored to Today"
+    return f"Today inbox: {a or 'activity'}"
+
+
 async def list_recent_activity(
     client_id: str,
     limit: int = 25,
@@ -446,6 +488,7 @@ async def list_recent_activity(
         ca = r.get("created_at")
         if hasattr(ca, "isoformat"):
             r["created_at"] = ca.isoformat()
+        r["action_label"] = _format_activity_action_label(r.get("action"), r.get("extra"))
     return rows
 
 
@@ -468,11 +511,11 @@ def merge_user_acknowledgements_into_recent(
         extra = row.get("extra") or {}
         title_from_log = extra.get("title")
         if act == ACTION_DISMISS:
-            label = title_from_log or "Dismissed task (inbox only)"
+            label = title_from_log or "Hidden from Today (dismissed)"
         elif act == ACTION_REVIEWED:
-            label = title_from_log or "Marked reviewed (inbox only)"
+            label = title_from_log or "Marked reviewed in Today only"
         else:
-            label = title_from_log or "Marked done in inbox (legacy)"
+            label = title_from_log or "Marked done in Today inbox (legacy)"
         synthetic.append({
             "id": f"user_ack:{tid}:{ca_s}",
             "source_type": "inbox_acknowledgement",
@@ -482,7 +525,7 @@ def merge_user_acknowledgements_into_recent(
             "action_context_type": "inbox_triage",
             "primary_recommended_action": "Restore or read help",
             "title": label,
-            "description": "You hid this from your open task lists. It does not change work orders, approvals, or compliance records. Restore from Tasks → Hidden or Snoozed, or read how inbox actions work in Help.",
+            "description": "This was a Today visibility action only—it does not upload documents, satisfy requirements, close jobs, resolve issues, or change compliance scores. Restore from Today → Snoozed or Hidden, or open Help for how inbox visibility works.",
             "property_id": None,
             "property_label": None,
             "urgency_level": "low",
@@ -493,8 +536,8 @@ def merge_user_acknowledgements_into_recent(
             "status": "completed",
             "section": "recently_completed",
             "primary_action_type": "restore_hint",
-            "primary_action_label": "How inbox actions work",
-            "primary_action_url": "/help?article=command-centre-tasks-inbox",
+            "primary_action_label": "How Today inbox visibility works",
+            "primary_action_url": "/help?article=how-inbox-visibility-works-today",
             "inline_action_supported": False,
             "metadata": {"user_action": act, "task_id": tid, "business_outcome": (extra.get("business_outcome") or "inbox_triage")},
             "freshness_timestamp": ca_s,

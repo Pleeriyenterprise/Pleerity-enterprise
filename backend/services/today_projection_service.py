@@ -70,11 +70,37 @@ def _parse_dt(value: Any) -> Optional[datetime]:
 def build_visibility_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Inbox-only actions; delegated to POST /api/today/items/{id}/…"""
     tid = task.get("id") or ""
+    _snooze_detail = (
+        "Hides this card from Today until the snooze ends. Does not change due dates, requirements, jobs, issues, or documents."
+    )
     return [
-        {"id": "snooze_1", "label": "Snooze 1 day", "task_id": tid, "snooze_days": 1},
-        {"id": "snooze_7", "label": "Snooze 7 days", "task_id": tid, "snooze_days": 7},
-        {"id": "mark_reviewed", "label": "Mark reviewed", "task_id": tid},
-        {"id": "dismiss", "label": "Dismiss from inbox", "task_id": tid, "requires_reason": True},
+        {
+            "id": "snooze_1",
+            "label": "Hide from Today — 1 day",
+            "detail": _snooze_detail,
+            "task_id": tid,
+            "snooze_days": 1,
+        },
+        {
+            "id": "snooze_7",
+            "label": "Hide from Today — 7 days",
+            "detail": _snooze_detail,
+            "task_id": tid,
+            "snooze_days": 7,
+        },
+        {
+            "id": "mark_reviewed",
+            "label": "Mark reviewed in Today",
+            "detail": "Records that you saw this card in Today only. Does not upload documents, satisfy requirements, close jobs, or resolve issues.",
+            "task_id": tid,
+        },
+        {
+            "id": "dismiss",
+            "label": "Hide from Today",
+            "detail": "Hides this card until you restore it (reason required, audited). Does not complete work on the underlying requirement, job, issue, or document.",
+            "task_id": tid,
+            "requires_reason": True,
+        },
     ]
 
 

@@ -162,6 +162,58 @@ apiClient.interceptors.response.use(
       error.isPlanGateDenied = true;
       error.upgradeDetail = typeof detail === 'object' ? detail : { message, feature: data.feature ?? data.feature_key, upgrade_required: true };
     }
+    // Plan-restricted job/workflow creation (string 403s without upgrade_required JSON)
+    const method = (error.config?.method || 'get').toLowerCase();
+    if (status === 403 && method === 'post') {
+      const rp = normalizedApiUrlPath(error.config || {});
+      const detailStr =
+        typeof detail === 'string'
+          ? detail
+          : detail && typeof detail.message === 'string'
+            ? detail.message
+            : '';
+
+      const complianceJobPath =
+        /^requirements\/[^/]+\/jobs$/.test(rp) ||
+        rp === 'client/compliance-execution/work-orders/book' ||
+        /^client\/maintenance\/risk-signals\/[^/]+\/(arrange-compliance-inspection|schedule-inspection)$/.test(rp);
+
+      if (complianceJobPath) {
+        const complianceBlocked =
+          error.isPlanGateDenied === true ||
+          /compliance jobs require\b/i.test(detailStr) ||
+          (rp === 'client/compliance-execution/work-orders/book' &&
+            /compliance engine is not enabled|work order workflows are not enabled/i.test(detailStr)) ||
+          (/^client\/maintenance\/risk-signals\//.test(rp) &&
+            /maintenance workflows are not enabled|predictive maintenance is not enabled/i.test(detailStr));
+        if (complianceBlocked) {
+          error.planRestrictedActionKind = 'compliance_job';
+          if (/predictive maintenance is not enabled/i.test(detailStr)) {
+            error.planRestrictedBillingFeatureKey = 'predictive_maintenance';
+          }
+        }
+      }
+
+      const maintenanceJobPath =
+        rp === 'client/maintenance/work-orders' ||
+        /^client\/maintenance\/issues\/[^/]+\/create-work-order$/.test(rp) ||
+        /^client\/maintenance\/risk-signals\/[^/]+\/create-work-order$/.test(rp);
+
+      if (maintenanceJobPath) {
+        const maintenanceBlocked =
+          error.isPlanGateDenied === true ||
+          /maintenance workflows are not enabled/i.test(detailStr) ||
+          /predictive maintenance is not enabled/i.test(detailStr);
+        if (maintenanceBlocked) {
+          error.planRestrictedActionKind = 'maintenance_job';
+          if (/predictive maintenance is not enabled/i.test(detailStr) && !error.isPlanGateDenied) {
+            error.planRestrictedBillingFeatureKey = 'predictive_maintenance';
+          } else if (!error.isPlanGateDenied) {
+            error.planRestrictedBillingFeatureKey = 'maintenance_workflows';
+          }
+        }
+      }
+    }
     // On 401: only redirect if this was NOT a login request (wrong credentials on login page should show error, not redirect)
     const requestUrl = error.config?.url || '';
     const isLoginRequest =

@@ -54,10 +54,11 @@ def _format_digest_inbox_activity_lines(activity_feed, limit: int = 5):
     """Short lines for monthly digest from real client_task_activity_log rows (newest first in feed)."""
     out = []
     act_labels = {
-        "snooze": "Snoozed",
-        "dismiss": "Dismissed",
-        "done": "Marked done",
-        "restore": "Restored",
+        "snooze": "Today item snoozed",
+        "dismiss": "Today item hidden from Today",
+        "done": "Today inbox marked done (legacy)",
+        "reviewed": "Today item marked reviewed in Today only",
+        "restore": "Today item restored to Today",
     }
     for row in (activity_feed or [])[:limit]:
         act = (row.get("action") or "").strip().lower()
@@ -65,10 +66,13 @@ def _format_digest_inbox_activity_lines(activity_feed, limit: int = 5):
         title = (extra.get("title") or "").strip()
         tid = (row.get("task_id") or "").strip()
         label = title or tid
-        if not label:
-            continue
-        verb = act_labels.get(act, act.replace("_", " ").title() if act else "Activity")
-        out.append(f"{verb}: {label}")
+        verb = (row.get("action_label") or "").strip()
+        if not verb:
+            verb = act_labels.get(act, act.replace("_", " ").title() if act else "Today inbox activity")
+        if label:
+            out.append(f"{verb}: {label}")
+        else:
+            out.append(verb)
     return out
 
 

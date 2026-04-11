@@ -325,11 +325,11 @@ export function inboxSourceTypeLabel(sourceType) {
 export function inboxTimelineActionLabel(act) {
   const a = String(act || '').trim().toLowerCase();
   const map = {
-    snooze: 'Snoozed',
-    dismiss: 'Dismissed task',
-    done: 'Marked done (legacy)',
-    reviewed: 'Marked reviewed',
-    restore: 'Restored',
+    snooze: 'Today item snoozed',
+    dismiss: 'Today item hidden from Today',
+    done: 'Today inbox marked done (legacy)',
+    reviewed: 'Today item marked reviewed in Today only',
+    restore: 'Today item restored to Today',
     hide: 'Hidden',
     unhide: 'Unhidden',
   };

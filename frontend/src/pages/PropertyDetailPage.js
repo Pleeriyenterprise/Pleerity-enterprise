@@ -102,6 +102,7 @@ import {
 } from '../utils/jurisdictionComplianceCopy';
 import { propertyPageJurisdictionBanners } from '../utils/jurisdictionUiPolicy';
 import PropertyOperatingHub from '../components/property/PropertyOperatingHub';
+import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -283,6 +284,7 @@ export default function PropertyDetailPage() {
   const [bookInspectionSignalId, setBookInspectionSignalId] = useState(null);
   const [bookInspectionReqPick, setBookInspectionReqPick] = useState('');
   const [bookInspectionSaving, setBookInspectionSaving] = useState(false);
+  const [planJobGate, setPlanJobGate] = useState(null);
   const [jurisdictionDraft, setJurisdictionDraft] = useState('');
   const [jurisdictionSaving, setJurisdictionSaving] = useState(false);
   /** True while user chose "Change jurisdiction" on an already property_explicit record; false when not explicit or after save/cancel. */
@@ -440,11 +442,19 @@ export default function PropertyDetailPage() {
       loadRiskSignals();
       if (wid) navigate(buildSafeQueryPath('/operations/work-orders', { work_order_id: wid }));
     } catch (e) {
+      if (
+        openPlanRestrictedJobGate(e, setPlanJobGate, {
+          propertyId,
+          requirementId: bookInspectionReqPick,
+        })
+      ) {
+        return;
+      }
       toast.error(e?.response?.data?.detail || 'Could not book inspection');
     } finally {
       setBookInspectionSaving(false);
     }
-  }, [bookInspectionSignalId, bookInspectionReqPick, requirements, navigate, loadRiskSignals]);
+  }, [bookInspectionSignalId, bookInspectionReqPick, requirements, navigate, loadRiskSignals, propertyId]);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -793,7 +803,10 @@ export default function PropertyDetailPage() {
         setCreateWoForm({ description: '', category: 'general', severity: 'medium', inspection_required: false });
         loadWorkOrders();
       })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Create failed'))
+      .catch((err) => {
+        if (openPlanRestrictedJobGate(err, setPlanJobGate, { propertyId })) return;
+        toast.error(err?.response?.data?.detail || 'Create failed');
+      })
       .finally(() => setCreateWoSaving(false));
   };
 
@@ -822,14 +835,18 @@ export default function PropertyDetailPage() {
   };
 
   const handleCreateWoFromIssue = (issueId) => {
-    clientAPI.createWorkOrderFromIssue(issueId)
+    clientAPI
+      .createWorkOrderFromIssue(issueId)
       .then(() => {
         toast.success('Job created from issue');
         loadWorkOrders();
         loadMaintenanceIssues();
         setIssueDetailDrawer(null);
       })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Failed'));
+      .catch((err) => {
+        if (openPlanRestrictedJobGate(err, setPlanJobGate, { propertyId })) return;
+        toast.error(err?.response?.data?.detail || 'Failed');
+      });
   };
 
   const maintenanceSummary = useMemo(() => {
@@ -1440,6 +1457,7 @@ export default function PropertyDetailPage() {
             setCreateWoOpen(true);
             setCreateWoForm((f) => ({ ...f, description }));
           }}
+          onPlanRestrictedJobError={(err, ctx) => openPlanRestrictedJobGate(err, setPlanJobGate, ctx)}
         />
       )}
 
@@ -3168,6 +3186,7 @@ export default function PropertyDetailPage() {
                         loadRiskSignals();
                         setActiveTab(TAB_MAINTENANCE);
                       } catch (e) {
+                        if (openPlanRestrictedJobGate(e, setPlanJobGate, { propertyId })) return;
                         toast.error(e?.response?.data?.detail || 'Failed');
                       }
                     } else {
@@ -3698,6 +3717,8 @@ export default function PropertyDetailPage() {
           </div>
         </div>
       )}
+
+      <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
 
       {notApplicableModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !notApplicableSubmitting && setNotApplicableModal(null)}>

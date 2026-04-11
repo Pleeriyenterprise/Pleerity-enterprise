@@ -12,8 +12,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
-import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
-import { cn } from '../lib/utils';
+import { PortalFilterStack, PortalLoadingPanel } from '../components/client/ClientPortalPatterns';
+import { getHelpArticleFallback } from '../content/helpArticleFallbacks';
 
 export default function HelpPage() {
   const navigate = useNavigate();
@@ -61,6 +61,7 @@ export default function HelpPage() {
 
   const fetchArticle = useCallback(async (slug) => {
     if (!slug) return;
+    setArticle(null);
     setArticleLoading(true);
     try {
       const res = await client.get(`/client/help/articles/${slug}`);
@@ -135,6 +136,9 @@ export default function HelpPage() {
     }
   };
 
+  const fallbackArticle = slugFromUrl ? getHelpArticleFallback(slugFromUrl) : null;
+  const resolvedArticle = articleLoading ? null : article || fallbackArticle;
+
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold text-midnight-blue mb-2 flex items-center gap-2">
@@ -143,25 +147,27 @@ export default function HelpPage() {
       </h1>
       <p className="text-gray-600 mb-6">Guides and support for Compliance Vault Pro.</p>
 
-      {article ? (
+      {slugFromUrl ? (
         <div className="space-y-4">
           <Button variant="ghost" size="sm" onClick={backToList} className="gap-1">
             <ArrowLeft className="h-4 w-4" /> Back to articles
           </Button>
           {articleLoading ? (
             <PortalLoadingPanel message="Loading article…" />
-          ) : (
+          ) : resolvedArticle ? (
             <Card>
               <CardContent className="pt-6">
-                <div className="text-sm text-gray-500 mb-2">
-                  {article.version && `Version ${article.version}`}
-                  {article.updated_at && ` · Updated ${new Date(article.updated_at).toLocaleDateString()}`}
-                </div>
-                <h2 className="text-xl font-semibold text-midnight-blue mb-4">{article.title}</h2>
+                {article && (article.version || article.updated_at) ? (
+                  <div className="text-sm text-gray-500 mb-2">
+                    {article.version && `Version ${article.version}`}
+                    {article.updated_at && ` · Updated ${new Date(article.updated_at).toLocaleDateString()}`}
+                  </div>
+                ) : null}
+                <h2 className="text-xl font-semibold text-midnight-blue mb-4">{resolvedArticle.title}</h2>
                 <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-                  {article.content}
+                  {resolvedArticle.content}
                 </div>
-                {article.related_articles?.length > 0 && (
+                {article?.related_articles?.length > 0 && (
                   <div className="mt-8 pt-6 border-t">
                     <h3 className="text-sm font-medium text-gray-500 mb-2">Related articles</h3>
                     <ul className="space-y-1">
@@ -179,6 +185,19 @@ export default function HelpPage() {
                     </ul>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-8 space-y-4">
+                <p className="text-midnight-blue font-medium">This help article could not be loaded.</p>
+                <p className="text-sm text-gray-600">
+                  It may not be published on your environment yet. Open the full Help Centre and use search for &quot;Today&quot; or
+                  &quot;inbox&quot;.
+                </p>
+                <Button type="button" className="bg-electric-teal hover:bg-teal-600" onClick={() => navigate('/help')}>
+                  Browse all articles
+                </Button>
               </CardContent>
             </Card>
           )}

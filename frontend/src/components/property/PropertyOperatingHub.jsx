@@ -88,6 +88,7 @@ export default function PropertyOperatingHub({
   openBookInspectionFromRisk,
   onOpenNotApplicable,
   onCreateWoFromRiskDescription,
+  onPlanRestrictedJobError,
 }) {
   const navigate = useNavigate();
   const {
@@ -204,6 +205,7 @@ export default function PropertyOperatingHub({
                               loadRiskSignals();
                               loadWorkOrders();
                             } catch (e) {
+                              if (onPlanRestrictedJobError?.(e, { propertyId })) return;
                               toast.error(e?.response?.data?.detail || 'Failed');
                             }
                           } else {

@@ -3,7 +3,7 @@
  * Primary content: Issues queue. Work orders accessible via link. Gated by maintenance_workflows.
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -14,9 +14,11 @@ import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { issueStatusLabel, issueSeverityLabel } from '../domain/presentDomain';
 import { PortalFilterStack, portalDrawerPanelClass } from '../components/client/ClientPortalPatterns';
 import { resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
+import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 
 function ClientIssuesPageInner() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [issues, setIssues] = useState([]);
   const [issuesTotal, setIssuesTotal] = useState(0);
   const [issuesLoading, setIssuesLoading] = useState(true);
@@ -39,6 +41,7 @@ function ClientIssuesPageInner() {
   const [issueDetailData, setIssueDetailData] = useState(null);
   const [issueDetailLoading, setIssueDetailLoading] = useState(false);
   const [creatingWoFromIssue, setCreatingWoFromIssue] = useState(null);
+  const [planJobGate, setPlanJobGate] = useState(null);
 
   const loadIssues = useCallback(() => {
     setIssuesLoading(true);
@@ -79,6 +82,23 @@ function ClientIssuesPageInner() {
     loadProperties();
   }, [loadProperties]);
   useEffect(() => { loadIssues(); }, [loadIssues]);
+
+  useEffect(() => {
+    const open = searchParams.get('open_log_issue');
+    const pid = searchParams.get('property_id');
+    if (open !== '1' || !pid) return;
+    setCreateIssueOpen(true);
+    setCreateForm((f) => ({ ...f, property_id: pid }));
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev);
+        n.delete('open_log_issue');
+        n.delete('property_id');
+        return n;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!issueDetailDrawer) { setIssueDetailData(null); return; }
@@ -150,7 +170,10 @@ function ClientIssuesPageInner() {
         setCreateForm({ property_id: '', description: '', category: 'general', severity: 'medium' });
         loadIssues();
       })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Failed to report issue'))
+      .catch((err) => {
+        if (openPlanRestrictedJobGate(err, setPlanJobGate, { propertyId: createForm.property_id })) return;
+        toast.error(err?.response?.data?.detail || 'Failed to report issue');
+      })
       .finally(() => setCreateSaving(false));
   };
 
@@ -186,14 +209,19 @@ function ClientIssuesPageInner() {
 
   const handleCreateWoFromIssue = (issueId) => {
     setCreatingWoFromIssue(issueId);
-    clientAPI.createWorkOrderFromIssue(issueId)
+    const iss = issues.find((i) => i.issue_id === issueId);
+    clientAPI
+      .createWorkOrderFromIssue(issueId)
       .then(() => {
         toast.success('Job created from issue.');
         loadIssues();
         setIssueDetailDrawer(null);
         setIssueDetailData(null);
       })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Failed to create job'))
+      .catch((err) => {
+        if (openPlanRestrictedJobGate(err, setPlanJobGate, { propertyId: iss?.property_id })) return;
+        toast.error(err?.response?.data?.detail || 'Failed to create job');
+      })
       .finally(() => setCreatingWoFromIssue(null));
   };
 
@@ -608,6 +636,8 @@ function ClientIssuesPageInner() {
           </div>
         </div>
       )}
+
+      <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
     </div>
   );
 }

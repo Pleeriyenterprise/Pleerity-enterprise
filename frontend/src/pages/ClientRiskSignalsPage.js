@@ -70,6 +70,7 @@ import {
   groupSignalsByProperty,
 } from '../utils/riskPresentation';
 import { assetIdParts } from '../utils/assetDisplay';
+import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 
 const RISK_LEVELS = [
   { value: '', label: 'All levels' },
@@ -121,6 +122,7 @@ function ClientRiskSignalsPageInner() {
   const [arrangeRequirements, setArrangeRequirements] = useState([]);
   const [arrangeReqPick, setArrangeReqPick] = useState('');
   const [arrangeLoading, setArrangeLoading] = useState(false);
+  const [planJobGate, setPlanJobGate] = useState(null);
   const [filters, setFilters] = useState({
     risk_level: '',
     risk_type: '',
@@ -332,6 +334,13 @@ function ClientRiskSignalsPageInner() {
       load();
       if (wid) navigate(buildSafeQueryPath('/operations/work-orders', { work_order_id: wid }));
     } catch (e) {
+      if (
+        openPlanRestrictedJobGate(e, setPlanJobGate, {
+          propertyId: arrangePropertyId || drawerSignal?.property_id,
+        })
+      ) {
+        return;
+      }
       toast.error(e?.response?.data?.detail || 'Could not arrange inspection');
     } finally {
       setActionFromSignal(null);
@@ -1009,6 +1018,13 @@ function ClientRiskSignalsPageInner() {
                                 setDrawerSignalId(null);
                                 load();
                               } catch (e) {
+                                if (
+                                  openPlanRestrictedJobGate(e, setPlanJobGate, {
+                                    propertyId: drawerSignal?.property_id,
+                                  })
+                                ) {
+                                  return;
+                                }
                                 toast.error(e?.response?.data?.detail || 'Failed to create job');
                               } finally {
                                 setActionFromSignal(null);
@@ -1175,6 +1191,8 @@ function ClientRiskSignalsPageInner() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
     </div>
   );
 }

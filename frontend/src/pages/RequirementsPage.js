@@ -34,6 +34,7 @@ import EmptyState from '../components/EmptyState';
 import { requirementLabel } from '../domain/presentDomain';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { PortalLoadingPanel } from '../components/client/ClientPortalPatterns';
+import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import { REQUIREMENTS_PAGE_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 
 const NOT_REQUIRED_REASONS = [
@@ -70,6 +71,7 @@ const RequirementsPage = () => {
   const [viewRequirementModal, setViewRequirementModal] = useState(null);
   const [viewRequirementLoading, setViewRequirementLoading] = useState(false);
   const [viewRequirementData, setViewRequirementData] = useState(null);
+  const [planJobGate, setPlanJobGate] = useState(null);
 
   // Get filter from URL params
   const statusFilter = searchParams.get('status') || 'all';
@@ -179,6 +181,14 @@ const RequirementsPage = () => {
       if (woId) navigate(`/operations/jobs/${woId}`);
       else navigate('/operations/work-orders');
     } catch (error) {
+      if (
+        openPlanRestrictedJobGate(error, setPlanJobGate, {
+          propertyId: req.property_id,
+          requirementId: req.requirement_id,
+        })
+      ) {
+        return;
+      }
       const d = error.response?.data?.detail;
       toast.error(typeof d === 'string' ? d : d?.message || 'Could not create compliance job');
     } finally {
@@ -925,6 +935,8 @@ const RequirementsPage = () => {
             </div>
           </div>
         )}
+
+      <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
     </div>
   );
 };

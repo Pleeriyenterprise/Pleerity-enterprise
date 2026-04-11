@@ -24,6 +24,7 @@ import { issueSeverityLabel, workOrderStatusLabel } from '../domain/presentDomai
 import { assetIdParts } from '../utils/assetDisplay';
 import { normalizeRouteId, resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import { JOBS_PAGE_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 import { workOrderKindBadgeClassName, workOrderKindClientLabel } from '../utils/jobWorkflowUi';
 import { cn } from '../lib/utils';
@@ -325,7 +326,10 @@ function ClientMaintenancePageInner() {
         setCreateForm({ property_id: '', description: '', category: 'general', severity: 'medium' });
         loadWorkOrders();
       })
-      .catch((err) => toast.error(parseApiError(err, 'Create failed')))
+      .catch((err) => {
+        if (openPlanRestrictedJobGate(err, setPlanJobGate, { propertyId: createForm.property_id })) return;
+        toast.error(parseApiError(err, 'Create failed'));
+      })
       .finally(() => setCreateSaving(false));
   };
 
@@ -915,6 +919,8 @@ function ClientMaintenancePageInner() {
           </div>
         </div>
       )}
+
+      <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
     </div>
   );
 }

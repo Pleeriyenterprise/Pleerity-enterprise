@@ -9,7 +9,7 @@
  *   etc.). These drive real domain workflows, not inbox presentation alone.
  *
  * - Visibility actions: `visibility_actions` → POST /api/today/items/{id}/snooze | mark-reviewed | dismiss.
- *   Snooze/reviewed/dismiss only touch task overrides; they do not change compliance outcome on requirements.
+ *   These are Today visibility only (overrides); they do not upload documents, satisfy requirements, close jobs, or resolve issues.
  *
  * Analytics: `TODAY_TASK_COMPLETED` = inbox visibility only (mark reviewed), not underlying object resolved.
  * Workflow attempts: `TODAY_PRIMARY_ACTION_TRIGGERED` (see backend `product_analytics_service` module doc).
@@ -21,6 +21,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   inboxTitleForDisplay,
   requirementLabel,
+  requirementDocumentUploadLabel,
   inboxSourceTypeLabel,
   inboxTimelineActionLabel,
 } from '../domain/presentDomain';
@@ -53,7 +54,10 @@ import {
   resolveClientPortalPath,
   continueWorkspaceCtaLabel,
   isSafeClientPortalPath,
+  buildSafeQueryPath,
 } from '../utils/clientPortalNavigation';
+import { HELP_ARTICLE_SLUG_INBOX_VISIBILITY_TODAY } from '../content/helpArticleFallbacks';
+import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import { portfolioJurisdictionBannerState } from '../utils/jurisdictionUiPolicy';
 import { resolveTaskCta } from '../utils/ctaRegistry';
 import {
@@ -74,6 +78,7 @@ import {
   businessActionNavigatePath,
   stripTechnicalParenTail,
 } from '../utils/todayWorkflowPolicy';
+import { todayRequirementWhyItMattersLine } from '../utils/todayRequirementWhyItMatters';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All' },
@@ -173,6 +178,10 @@ function dedupeActionsByPrimaryPath(ordered) {
 
 function labelForTodayBusinessAction(act, task, workflow) {
   if (!act) return sanitizeTodayCtaLabel(task?.primary_action_label, task);
+  if (String(act.id) === 'upload_certificate' && workflow === 'compliance') {
+    const meta = task?.metadata || {};
+    return requirementDocumentUploadLabel(meta.requirement_code || meta.requirement_type);
+  }
   if (String(act.id) === 'create_maintenance_job' && workflow === 'maintenance') {
     return 'Log maintenance issue';
   }
@@ -244,11 +253,11 @@ function todayDecisionLayerTitle(task) {
 
 function actionLabel(act) {
   const m = {
-    snooze: 'Snoozed',
-    dismiss: 'Dismissed task',
-    done: 'Marked done (legacy)',
-    reviewed: 'Marked reviewed',
-    restore: 'Restored',
+    snooze: 'Today item snoozed',
+    dismiss: 'Today item hidden from Today',
+    done: 'Today inbox marked done (legacy)',
+    reviewed: 'Today item marked reviewed in Today only',
+    restore: 'Today item restored to Today',
   };
   if (m[act]) return m[act];
   if (act == null || act === '') return '—';
@@ -305,10 +314,16 @@ function TaskCard({
   const bookingBusy = complianceBookingBusyId === task.id;
   const shaped = shapeTodayBusinessActions(task, task.business_actions, showComplianceBooking);
   const workflow = shaped.workflow;
+  const complianceUi = workflow === 'compliance';
   const ordered = dedupeActionsByPrimaryPath(shaped.ordered);
   const primaryAct = ordered[0];
   const maxSecondarySlots = workflow === 'issue_risk' && showRiskInline && sid ? 1 : 2;
-  const secondaryActs = ordered.slice(1, 1 + maxSecondarySlots);
+  let secondaryActs = ordered.slice(1, 1 + maxSecondarySlots);
+  if (complianceUi) {
+    const viewReq = ordered.find((a) => String(a.id) === 'view_requirement');
+    const pid = primaryAct ? String(primaryAct.id) : '';
+    secondaryActs = viewReq && pid !== 'view_requirement' ? [viewReq] : [];
+  }
   const riskStartInline =
     workflow === 'issue_risk' && showRiskInline && sid && secondaryActs.length < maxSecondarySlots;
   const riskStartInMoreOnly =
@@ -321,12 +336,14 @@ function TaskCard({
   const descRaw = String(task.description || '').trim();
   const descNorm = descRaw.replace(/\s+/g, ' ').trim();
   const showDescription = Boolean(descRaw && descNorm && descNorm !== titleNorm);
-  const confidenceLine = shouldShowTodayTaskConfidence(task) ? todayTaskConfidenceLine(task) : null;
-  const hasLongContext = Boolean(task.why_matters || task.recommended_action);
+  const requirementWhyLine = complianceUi ? todayRequirementWhyItMattersLine(task) : null;
+  const confidenceLine =
+    !complianceUi && shouldShowTodayTaskConfidence(task) ? todayTaskConfidenceLine(task) : null;
+  const hasLongContext = !complianceUi && Boolean(task.why_matters || task.recommended_action);
   const hasVisibilityActions = enableTriage && (task.visibility_actions || []).length > 0;
   const hasMoreOptionsBlock =
     hasVisibilityActions || (workflow === 'issue_risk' && showRiskInline && sid);
-  const sourceAttributionLine = todayTaskSourceAttributionLine(task);
+  const sourceAttributionLine = !complianceUi ? todayTaskSourceAttributionLine(task) : null;
   const primaryCtaResolved = resolveTaskCta(task, 'primary');
   const primaryWorkspacePath = resolveClientPortalPath(primaryCtaResolved.route, '/today');
   const jobDetailPath = /^\/operations\/jobs\/[^/]+/.test(String(primaryWorkspacePath || '').split('?')[0]);
@@ -334,6 +351,14 @@ function TaskCard({
     ? clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA
     : continueWorkspaceCtaLabel(primaryWorkspacePath);
   const primaryBtnPath = primaryAct ? businessActionNavigatePath(primaryAct) : '';
+  const primaryTargetsDocumentsUpload =
+    (primaryAct && String(primaryAct.id) === 'upload_certificate') ||
+    (Boolean(primaryBtnPath) &&
+      String(primaryBtnPath).replace(/^https?:\/\/[^/]+/i, '').split('?')[0] === '/documents');
+  const suppressContinueInDocuments =
+    complianceUi &&
+    String(continueWorkspaceLabel || '').toLowerCase() === 'continue in documents' &&
+    (primaryTargetsDocumentsUpload || String(primaryWorkspacePath).split('?')[0] === '/documents');
   const primaryLabelForCompare = primaryAct
     ? labelForTodayBusinessAction(primaryAct, task, workflow)
     : sanitizeTodayCtaLabel(task.primary_action_label, task);
@@ -360,17 +385,24 @@ function TaskCard({
     secondaryWorkspacePath != null &&
     (secondaryWorkspacePath === primaryWorkspacePath ||
       (primaryBtnPath && secondaryWorkspacePath === primaryBtnPath));
+  const ghostDuplicatesDocumentsUpload =
+    complianceUi &&
+    primaryTargetsDocumentsUpload &&
+    secondaryWorkspacePath != null &&
+    String(secondaryWorkspacePath).split('?')[0] === '/documents';
   const showGhostSecondary =
     Boolean(task.secondary_action_url && task.secondary_action_label) &&
     !ghostDuplicatesPrimary &&
-    !ghostDuplicatesRoute;
+    !ghostDuplicatesRoute &&
+    !ghostDuplicatesDocumentsUpload;
   const showContinueWorkspace =
     Boolean(continueWorkspaceLabel) &&
     primaryWorkspacePath !== '/today' &&
     !primaryWorkspacePath.startsWith('/dashboard') &&
     !secondaryMatchesPrimaryWorkspace &&
     !continueDuplicatesPrimary &&
-    !continueDuplicatesRoute;
+    !continueDuplicatesRoute &&
+    !suppressContinueInDocuments;
   return (
     <Card className="border border-gray-200 shadow-sm overflow-hidden">
       <CardContent className="p-4 client-portal-prose">
@@ -389,6 +421,11 @@ function TaskCard({
             {showDescription && (
               <p className="text-sm text-gray-700 line-clamp-3 break-words">{task.description}</p>
             )}
+            {requirementWhyLine ? (
+              <p className="text-xs text-gray-600 leading-snug">
+                <span className="font-medium text-gray-800">Why it matters:</span> {requirementWhyLine}
+              </p>
+            ) : null}
             {hasLongContext && (
               <button
                 type="button"
@@ -495,6 +532,11 @@ function TaskCard({
             ) : null}
             {hasMoreOptionsBlock && (
               <div className="pt-1">
+                {hasVisibilityActions ? (
+                  <p className="text-xs text-gray-500 leading-snug border-t border-gray-100 pt-2 mb-1">
+                    These options only change what appears on Today. To resolve the work, use the main action on the card.
+                  </p>
+                ) : null}
                 <button
                   type="button"
                   className="text-left text-xs font-medium text-gray-500 hover:text-midnight-blue hover:underline py-2 min-h-[44px] sm:min-h-0 w-full"
@@ -538,36 +580,36 @@ function TaskCard({
                       </div>
                     ) : null}
                     {hasVisibilityActions ? (
-                      <>
-                        <p className="text-xs text-gray-500 leading-snug">
-                          Snooze, dismiss, or mark reviewed—this list only. Your requirements and jobs are unchanged.
-                        </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {(task.visibility_actions || []).map((va) => {
-                            if (va.id === 'dismiss') {
-                              return (
+                      <div className="flex flex-col gap-3">
+                        {(task.visibility_actions || []).map((va) => {
+                          const detail = typeof va.detail === 'string' ? va.detail : '';
+                          if (va.id === 'dismiss') {
+                            return (
+                              <div key={va.id} className="space-y-1">
                                 <Button
-                                  key={va.id}
                                   type="button"
                                   variant="outline"
-                                  className="h-11 text-xs justify-center col-span-2 sm:col-span-1"
+                                  className="h-11 text-xs justify-center w-full"
                                   disabled={busy}
-                                  title="Requires a reason; logged and audited"
                                   onClick={() => onOpenDismissModal(task)}
                                 >
                                   <EyeOff className="w-3.5 h-3.5 mr-1 shrink-0" />
                                   {va.label}
                                 </Button>
-                              );
-                            }
-                            const isSnooze = va.id === 'snooze_1' || va.id === 'snooze_7';
-                            const days = va.snooze_days || (va.id === 'snooze_7' ? 7 : 1);
-                            return (
+                                {detail ? (
+                                  <p className="text-[11px] text-gray-500 leading-snug pl-0.5">{detail}</p>
+                                ) : null}
+                              </div>
+                            );
+                          }
+                          const isSnooze = va.id === 'snooze_1' || va.id === 'snooze_7';
+                          const days = va.snooze_days || (va.id === 'snooze_7' ? 7 : 1);
+                          return (
+                            <div key={va.id} className="space-y-1">
                               <Button
-                                key={va.id}
                                 type="button"
                                 variant="outline"
-                                className="h-11 text-xs justify-center"
+                                className="h-11 text-xs justify-center w-full"
                                 disabled={busy}
                                 onClick={() => onVisibilityTap(va, task, isSnooze ? days : undefined)}
                               >
@@ -575,10 +617,13 @@ function TaskCard({
                                 {va.id === 'mark_reviewed' ? <CheckCircle className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
                                 {va.label}
                               </Button>
-                            );
-                          })}
-                        </div>
-                      </>
+                              {detail ? (
+                                <p className="text-[11px] text-gray-500 leading-snug pl-0.5">{detail}</p>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
                     ) : null}
                   </div>
                 )}
@@ -599,7 +644,11 @@ function TaskCard({
 function HiddenTaskCard({ item, onRestore, busy }) {
   const ov = item.user_override;
   const kind =
-    ov === 'dismiss' ? 'Dismissed task' : ov === 'reviewed' ? 'Marked reviewed' : 'Hidden (legacy Done)';
+    ov === 'dismiss'
+      ? 'Hidden from Today (dismissed)'
+      : ov === 'reviewed'
+        ? 'Marked reviewed in Today only'
+        : 'Hidden from Today (legacy Done)';
   return (
     <Card className="border border-gray-200 bg-gray-50/60 shadow-sm">
       <CardContent className="p-4 flex flex-wrap items-center justify-between gap-2">
@@ -617,7 +666,7 @@ function HiddenTaskCard({ item, onRestore, busy }) {
         </div>
         <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => onRestore(item)}>
           <RotateCcw className="w-3 h-3 mr-1" />
-          Restore
+          Show in Today again
         </Button>
       </CardContent>
     </Card>
@@ -639,7 +688,7 @@ function SnoozedTaskCard({ task, onRestore, busy }) {
         </div>
         <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => onRestore(task)}>
           <RotateCcw className="w-3 h-3 mr-1" />
-          Restore
+          Show in Today again
         </Button>
       </CardContent>
     </Card>
@@ -755,6 +804,7 @@ export default function ClientTasksPage() {
   const [dismissModalTask, setDismissModalTask] = useState(null);
   const [dismissReason, setDismissReason] = useState('');
   const [complianceBookingBusyId, setComplianceBookingBusyId] = useState(null);
+  const [planJobGate, setPlanJobGate] = useState(null);
   /** From GET /client/command-center (same scoping as Dashboard when property_id is set). */
   const [jurisdictionComplianceNotice, setJurisdictionComplianceNotice] = useState(null);
   const [commandCenterFallbackAcknowledged, setCommandCenterFallbackAcknowledged] = useState(null);
@@ -936,7 +986,16 @@ export default function ClientTasksPage() {
         else navigate(resolveClientPortalPath('/operations/work-orders', '/operations/work-orders'));
         load();
       } catch (err) {
-        toast.error(err?.response?.data?.detail || 'Could not create compliance job');
+        if (
+          openPlanRestrictedJobGate(err, setPlanJobGate, {
+            propertyId: act.property_id || task?.property_id,
+            requirementId: act.requirement_id,
+          })
+        ) {
+          return;
+        }
+        const d = err?.response?.data?.detail;
+        toast.error(typeof d === 'string' ? d : d?.message || 'Could not create compliance job');
       } finally {
         setComplianceBookingBusyId(null);
       }
@@ -963,11 +1022,11 @@ export default function ClientTasksPage() {
         // TODAY_TASK_COMPLETED = inbox mark-reviewed only, not domain/workflow completion.
         emitTodayAnalytics('TODAY_TASK_COMPLETED', todayTaskAnalyticsProps(task));
         toast.success(
-          'Marked reviewed in Today. The line clears here—complete the linked record to refresh compliance.',
+          'Marked as reviewed in Today only. Requirements, jobs, issues, and documents are unchanged—use the card’s main action to complete real work.',
         );
         load();
       } catch (err) {
-        toast.error(err?.response?.data?.detail || 'Could not update inbox');
+        toast.error(err?.response?.data?.detail || 'Could not update Today inbox');
       } finally {
         setOverrideBusyId(null);
       }
@@ -980,11 +1039,11 @@ export default function ClientTasksPage() {
         await clientAPI.todayItemSnooze(tid, days);
         emitTodayAnalytics('TODAY_TASK_SNOOZED', { ...todayTaskAnalyticsProps(task), days });
         toast.success(
-          `Snoozed ${days} day${days !== 1 ? 's' : ''}. This item stays out of the urgent list until then so you can focus elsewhere.`,
+          `Hidden from Today for ${days} day${days !== 1 ? 's' : ''}. Due dates and portfolio records are unchanged.`,
         );
         load();
       } catch (err) {
-        toast.error(err?.response?.data?.detail || 'Could not snooze');
+        toast.error(err?.response?.data?.detail || 'Could not snooze this item in Today');
       } finally {
         setOverrideBusyId(null);
       }
@@ -1032,7 +1091,9 @@ export default function ClientTasksPage() {
     try {
       await clientAPI.todayItemRestore(tid);
       emitTodayAnalytics('today_task_restored', { task_id: tid, source_type: taskOrItem.source_type });
-      toast.success('Restored to inbox. This task can appear again in your priority list.');
+      toast.success(
+        'Item restored to Today. This only brings the card back—use the main action if work still needs doing.',
+      );
       load();
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Could not restore');
@@ -1051,7 +1112,7 @@ export default function ClientTasksPage() {
     const tid = task?.id || task?.task_id;
     const reason = dismissReason.trim();
     if (!tid || reason.length < 3) {
-      toast.error('Please enter a reason (at least 3 characters).');
+      toast.error('Please enter a reason for audit (at least 3 characters).');
       return;
     }
     setDismissModalTask(null);
@@ -1061,11 +1122,11 @@ export default function ClientTasksPage() {
       await clientAPI.todayItemDismiss(tid, reason);
       emitTodayAnalytics('TODAY_TASK_DISMISSED', todayTaskAnalyticsProps(task));
       toast.success(
-        'Dismissed from Today with audit reason. Underlying requirements and jobs are unchanged—only inbox visibility moved.',
+        'Hidden from Today (reason saved for audit). Requirements, jobs, issues, documents, and approvals are unchanged.',
       );
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Could not dismiss task');
+      toast.error(err?.response?.data?.detail || 'Could not hide this item from Today');
     } finally {
       setOverrideBusyId(null);
     }
@@ -1106,6 +1167,12 @@ export default function ClientTasksPage() {
         window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: pid } }));
       }
     } catch (err) {
+      if (
+        kind !== 'issue' &&
+        openPlanRestrictedJobGate(err, setPlanJobGate, { propertyId: taskForAnalytics?.property_id })
+      ) {
+        return;
+      }
       toast.error(err?.response?.data?.detail || 'Action failed');
     } finally {
       setRiskLoading(null);
@@ -1129,19 +1196,19 @@ export default function ClientTasksPage() {
         </div>
         <p className="text-gray-600 text-sm md:text-base">
           Your portfolio priority list: each card opens the linked workspace (requirements, jobs, approvals, issues).
-          Primary actions move work forward; snooze and dismiss only change what appears here.
+          Primary actions move real work forward; options under More only change what appears on Today.
         </p>
         <p className="text-sm text-gray-600 mt-2">{TODAY_PAGE_CONFIDENCE_LINE}</p>
         <p className="text-xs text-gray-500 mt-2 leading-relaxed">
           <Link
-            to="/help?article=command-centre-tasks-inbox"
+            to={buildSafeQueryPath('/help', { article: HELP_ARTICLE_SLUG_INBOX_VISIBILITY_TODAY })}
             className="text-electric-teal hover:underline font-medium"
           >
             How inbox visibility works
           </Link>
           <span className="text-gray-400">
             {' '}
-            — compliance needs real evidence and outcomes—not “Mark reviewed” alone.
+            — evidence and outcomes live in requirements, documents, jobs, and issues—not in Today visibility alone.
           </span>
         </p>
       </div>
@@ -1233,7 +1300,7 @@ export default function ClientTasksPage() {
             <span className="text-gray-500">In progress</span>
             <p className="text-xl font-semibold text-midnight-blue">{summary?.in_progress_count ?? 0}</p>
           </div>
-          <div title="Tasks you snoozed; they return after the snooze date">
+          <div title="Cards hidden from Today for a set time; due dates and records do not change">
             <span className="text-gray-500">Snoozed</span>
             <p className="text-xl font-semibold text-midnight-blue">{summary?.snoozed_count ?? 0}</p>
           </div>
@@ -1314,29 +1381,46 @@ export default function ClientTasksPage() {
       <Dialog open={Boolean(dismissModalTask)} onOpenChange={(open) => !open && setDismissModalTask(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Dismiss task from your inbox</DialogTitle>
-            <DialogDescription className="text-left text-gray-600">
-              This hides the card from your open lists. It does <strong>not</strong> satisfy a requirement, close a job, or
-              change compliance scores. Your reason is stored for audit and support.
+            <DialogTitle>Hide from Today</DialogTitle>
+            <DialogDescription className="sr-only">
+              Visibility only: hides the card from Today until restored. Does not complete requirements, jobs, issues, or
+              documents.
             </DialogDescription>
           </DialogHeader>
+          <div className="text-left text-gray-600 text-sm space-y-2">
+            <p>
+              This removes the card from your open Today lists until you <strong>Show in Today again</strong> from Snoozed
+              or Hidden. It is a visibility action only.
+            </p>
+            <p className="font-medium text-midnight-blue">It does not:</p>
+            <ul className="list-disc pl-5 space-y-0.5 text-gray-600">
+              <li>upload a document or satisfy a requirement</li>
+              <li>close or progress a job</li>
+              <li>resolve an issue</li>
+              <li>approve an invoice</li>
+              <li>change compliance scores or obligations</li>
+            </ul>
+            <p>Your reason is stored for audit and support (minimum 3 characters).</p>
+          </div>
           <textarea
             className="w-full min-h-[100px] border border-gray-200 rounded-lg p-3 text-sm"
-            placeholder="Reason (required, min. 3 characters)"
+            placeholder="Reason for audit log (required, min. 3 characters)"
             value={dismissReason}
             onChange={(e) => setDismissReason(e.target.value)}
-            aria-label="Dismiss reason"
+            aria-label="Reason for hiding from Today"
           />
           <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={() => setDismissModalTask(null)}>
               Cancel
             </Button>
             <Button type="button" className="bg-midnight-blue hover:bg-midnight-blue/90" onClick={confirmDismissTask}>
-              Dismiss task
+              Hide from Today
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
 
       {!loading && !error && (
         <>
@@ -1427,7 +1511,8 @@ export default function ClientTasksPage() {
             <div className="mb-8">
               <h2 className="text-lg font-semibold text-gray-900 mb-3">Snoozed</h2>
               <p className="text-sm text-gray-500 mb-3">
-                These stay out of your open lists until the date shown. Restore anytime to bring them back.
+                Hidden from Today until the date shown—portfolio records and due dates are unchanged. Use Show in Today again when
+                you want the card back.
               </p>
               <div className="space-y-3">
                 {snoozed.map((t) => (
@@ -1443,10 +1528,10 @@ export default function ClientTasksPage() {
           )}
           {hidden.length > 0 && (
             <div className="mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Hidden (dismissed, reviewed, legacy Done)</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Hidden from Today (dismissed, reviewed, legacy Done)</h2>
               <p className="text-sm text-gray-500 mb-3">
-                You removed these from open lists only. Underlying requirements, scores, and jobs are unchanged unless you completed
-                them elsewhere — restore anytime.
+                Visibility only: these cards are off your open Today lists. Requirements, jobs, issues, documents, and scores are
+                unchanged unless you completed work elsewhere—use Show in Today again to bring a card back.
               </p>
               <div className="space-y-3">
                 {hidden.map((h) => (
@@ -1494,7 +1579,9 @@ export default function ClientTasksPage() {
                   <ul className="text-sm text-gray-700 space-y-2 border-t border-gray-100 pt-3">
                     {payload.activity_feed.map((row) => (
                       <li key={row.event_id || `${row.task_id}-${row.created_at}`} className="flex flex-wrap gap-x-2 gap-y-0.5">
-                        <span className="font-medium text-midnight-blue">{actionLabel(row.action)}</span>
+                        <span className="font-medium text-midnight-blue">
+                          {row.action_label || actionLabel(row.action)}
+                        </span>
                         {row.task_title ? (
                           <span className="text-gray-600 text-xs truncate max-w-[16rem]" title={row.task_id || undefined}>
                             {row.task_title}

@@ -11,6 +11,7 @@ import { AlertCircle, Loader2, Wrench, ArrowLeft, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
+import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 
 function ClientIssueDetailPageInner() {
   const { issueId } = useParams();
@@ -23,6 +24,7 @@ function ClientIssueDetailPageInner() {
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [closeNote, setCloseNote] = useState('');
   const [closing, setClosing] = useState(false);
+  const [planJobGate, setPlanJobGate] = useState(null);
 
   useEffect(() => {
     if (!issueId) return;
@@ -61,7 +63,10 @@ function ClientIssueDetailPageInner() {
         if (woId) navigate(buildSafeQueryPath('/operations/work-orders', { work_order_id: woId }));
         else navigate('/operations/issues');
       })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Failed to create maintenance job'))
+      .catch((err) => {
+        if (openPlanRestrictedJobGate(err, setPlanJobGate, { propertyId: issue?.property_id })) return;
+        toast.error(err?.response?.data?.detail || 'Failed to create maintenance job');
+      })
       .finally(() => setCreating(false));
   };
 
@@ -241,6 +246,8 @@ function ClientIssueDetailPageInner() {
           </Card>
         </div>
       )}
+
+      <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
     </div>
   );
 }

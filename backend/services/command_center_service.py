@@ -49,9 +49,9 @@ def _slim_task(t: Dict[str, Any]) -> Dict[str, Any]:
             "action_type": t.get("primary_action_type"),
         },
         "secondary_actions": [
-            {"action_type": "snooze", "label": "Snooze"},
-            {"action_type": "dismiss", "label": "Dismiss"},
-            {"action_type": "reviewed", "label": "Mark reviewed"},
+            {"action_type": "snooze", "label": "Hide from Today (snooze)"},
+            {"action_type": "dismiss", "label": "Hide from Today"},
+            {"action_type": "reviewed", "label": "Mark reviewed in Today"},
         ],
         "audit_metadata": {
             "task_id": t.get("id"),
