@@ -38,6 +38,7 @@ import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 import { complianceRequirementStatusLabel } from '../domain/presentDomain';
 import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
+import { getTrackedRequirementsForProperty } from '../utils/portalRequirementAttention';
 
 function scoreDriverStatusLabel(raw) {
   const s = String(raw || '').trim().toUpperCase();
@@ -189,7 +190,7 @@ const ComplianceScorePage = () => {
   };
 
   const getPropertyRequirementCounts = (propertyId) => {
-    const propertyReqs = requirements.filter((r) => r.property_id === propertyId);
+    const propertyReqs = getTrackedRequirementsForProperty(propertyId, requirements);
     const compliant = propertyReqs.filter((r) => r.status === 'COMPLIANT').length;
     const expiring = propertyReqs.filter((r) => r.status === 'EXPIRING_SOON').length;
     const overdue = propertyReqs.filter((r) => r.status === 'OVERDUE' || r.status === 'EXPIRED').length;

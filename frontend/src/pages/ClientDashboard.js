@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -53,6 +53,10 @@ import {
   jurisdictionSourceLabel,
 } from '../utils/jurisdictionComplianceCopy';
 import { portfolioJurisdictionBannerState } from '../utils/jurisdictionUiPolicy';
+import {
+  alignTodayPayloadTaskSections,
+  requirementMapFromList,
+} from '../utils/portalRequirementAttention';
 import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
 const KPI_NO_DATA = 'No data yet';
 
@@ -208,6 +212,8 @@ const ClientDashboard = () => {
   const [maintenanceSpendMonth, setMaintenanceSpendMonth] = useState(null);
   /** undefined = not loaded yet; null = load failed (hide digest card); object = digest payload */
   const [tasksDigest, setTasksDigest] = useState(undefined);
+  /** GET /client/today/items body — bucket counts align with Today page after tracked-requirement filter. */
+  const [todayInboxPayload, setTodayInboxPayload] = useState(undefined);
   /** Composed bundle: urgent rows, risks, compliance (same fetch backs tasks digest summary + activity) */
   const [commandCenter, setCommandCenter] = useState(undefined);
   /** Read-only protection / continuity snapshot (aligned with billing cancel context). */
@@ -228,6 +234,52 @@ const ClientDashboard = () => {
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
+
+  const commandCenterScopePropertyId =
+    scoreTrendView === 'property' && selectedTrendPropertyId ? selectedTrendPropertyId : null;
+  const commandCenterScopeLabel = useMemo(() => {
+    if (!commandCenterScopePropertyId) return null;
+    const p = portfolioSummary?.properties?.find((x) => x.property_id === commandCenterScopePropertyId);
+    return p ? getPropertyDisplayLabel(p) : commandCenterScopePropertyId;
+  }, [commandCenterScopePropertyId, portfolioSummary?.properties]);
+
+  const fetchTodayInbox = useCallback(
+    ({ reset } = {}) => {
+      if (!isClientUser) return;
+      const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
+      if (reset) setTodayInboxPayload(undefined);
+      clientAPI
+        .getTodayItems(params)
+        .then((r) => setTodayInboxPayload(r.data ?? null))
+        .catch(() => setTodayInboxPayload(null));
+    },
+    [isClientUser, commandCenterScopePropertyId],
+  );
+
+  const [portalRequirementsForInbox, setPortalRequirementsForInbox] = useState([]);
+
+  const loadPortalRequirements = useCallback(() => {
+    if (!isClientUser) return;
+    clientAPI
+      .getRequirements()
+      .then((r) => setPortalRequirementsForInbox(Array.isArray(r.data?.requirements) ? r.data.requirements : []))
+      .catch(() => setPortalRequirementsForInbox([]));
+  }, [isClientUser]);
+
+  useEffect(() => {
+    loadPortalRequirements();
+  }, [loadPortalRequirements]);
+
+  useEffect(() => {
+    if (!isClientUser) return undefined;
+    const onOutcome = () => {
+      loadPortalRequirements();
+      fetchTodayInbox({ reset: false });
+    };
+    window.addEventListener('compliance-outcome', onOutcome);
+    return () => window.removeEventListener('compliance-outcome', onOutcome);
+  }, [isClientUser, loadPortalRequirements, fetchTodayInbox]);
+
   const contractorNetworkEnabled = hasFeature('contractor_network');
 
   const showJurisdictionOnboardingGate = useMemo(
@@ -366,23 +418,32 @@ const ClientDashboard = () => {
       .catch(() => setSystemBanners([]));
   }, [isClientUser]);
 
-  // When score trend is in "Property" mode, scope command center + tasks digest to that property (API filter).
-  const commandCenterScopePropertyId =
-    scoreTrendView === 'property' && selectedTrendPropertyId ? selectedTrendPropertyId : null;
-  const commandCenterScopeLabel = useMemo(() => {
-    if (!commandCenterScopePropertyId) return null;
-    const p = portfolioSummary?.properties?.find((x) => x.property_id === commandCenterScopePropertyId);
-    return p ? getPropertyDisplayLabel(p) : commandCenterScopePropertyId;
-  }, [commandCenterScopePropertyId, portfolioSummary?.properties]);
+  const dashboardInboxRequirementById = useMemo(
+    () => requirementMapFromList(portalRequirementsForInbox),
+    [portalRequirementsForInbox],
+  );
+
+  const dashboardAlignedInboxSections = useMemo(
+    () => alignTodayPayloadTaskSections(todayInboxPayload, dashboardInboxRequirementById),
+    [todayInboxPayload, dashboardInboxRequirementById],
+  );
+
+  const todayInboxSum = useMemo(() => {
+    if (todayInboxPayload === undefined || todayInboxPayload === null) return null;
+    const s = dashboardAlignedInboxSections;
+    return s.urgent.length + s.upcoming.length + s.in_progress.length;
+  }, [todayInboxPayload, dashboardAlignedInboxSections]);
 
   // Command center bundle: digest summary + activity + urgent rows + risks + compliance (one round-trip)
   useEffect(() => {
     if (!isClientUser) {
       setTasksDigest(undefined);
       setCommandCenter(undefined);
+      setTodayInboxPayload(undefined);
       return;
     }
     const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
+    fetchTodayInbox({ reset: true });
     clientAPI
       .getCommandCenter(params)
       .then((res) => {
@@ -398,7 +459,7 @@ const ClientDashboard = () => {
         setTasksDigest(null);
         setCommandCenter(null);
       });
-  }, [isClientUser, commandCenterScopePropertyId]);
+  }, [isClientUser, commandCenterScopePropertyId, fetchTodayInbox]);
 
   useEffect(() => {
     if (!isClientUser) {
@@ -458,6 +519,7 @@ const ClientDashboard = () => {
           .catch(() => {});
       }
       const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
+      fetchTodayInbox({ reset: false });
       clientAPI
         .getCommandCenter(params)
         .then((res) => {
@@ -474,7 +536,7 @@ const ClientDashboard = () => {
     window.addEventListener('compliance-outcome', onOutcome);
     return () => window.removeEventListener('compliance-outcome', onOutcome);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClientUser, hasFeature, commandCenterScopePropertyId]);
+  }, [isClientUser, hasFeature, commandCenterScopePropertyId, fetchTodayInbox]);
 
   const handleAckActivitySince = () => {
     setActivitySinceAckBusy(true);
@@ -505,6 +567,7 @@ const ClientDashboard = () => {
         clientAPI.getOnboardingChecklist().then((r) => setOnboardingChecklist(r.data)).catch(() => {});
         clientAPI.getValueInsights().then((r) => setValueInsights(r.data)).catch(() => setValueInsights(null));
         const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
+        fetchTodayInbox({ reset: false });
         clientAPI
           .getCommandCenter(params)
           .then((res) => {
@@ -533,7 +596,7 @@ const ClientDashboard = () => {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClientUser, commandCenterScopePropertyId]);
+  }, [isClientUser, commandCenterScopePropertyId, fetchTodayInbox]);
 
   const fetchDashboard = async () => {
     try {
@@ -927,12 +990,6 @@ const ClientDashboard = () => {
     return {};
   }, [commandCenter, tasksDigest]);
 
-  const todayInboxSum =
-    tasksDigest && typeof tasksDigest === 'object'
-      ? Number(tasksDigest.summary?.urgent_count ?? 0) +
-        Number(tasksDigest.summary?.upcoming_count ?? 0) +
-        Number(tasksDigest.summary?.in_progress_count ?? 0)
-      : null;
 
   if (loading) {
     return (
@@ -1710,16 +1767,22 @@ const ClientDashboard = () => {
                 <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center">
                   Today (inbox)
                   <DashboardKpiHint label="Today inbox total">
-                    Sum of urgent, upcoming, and in-progress items from the same inbox snapshot as Command Center. Snoozed and hidden
-                    items are excluded. If loading fails, open Today for live counts.
+                    Sum of urgent, upcoming, and in-progress items from the same Today inbox as the Today page, after the same
+                    tracked-requirement filter. Snoozed and hidden are separate buckets below. If this fails to load, open Today for
+                    live counts.
                   </DashboardKpiHint>
                 </p>
-                {tasksDigest === undefined ? (
+                {tasksDigest === undefined || todayInboxPayload === undefined ? (
                   <p className="text-xl font-bold text-midnight-blue mt-1">…</p>
                 ) : tasksDigest === null ? (
                   <>
                     <p className="text-xl font-bold text-gray-500 mt-1">{KPI_NO_DATA}</p>
                     <p className="text-xs text-gray-500 mt-1">Could not load inbox summary.</p>
+                  </>
+                ) : todayInboxPayload === null ? (
+                  <>
+                    <p className="text-xl font-bold text-gray-500 mt-1">{KPI_NO_DATA}</p>
+                    <p className="text-xs text-gray-500 mt-1">Could not load Today buckets.</p>
                   </>
                 ) : (
                   <>
@@ -1803,11 +1866,15 @@ const ClientDashboard = () => {
 
         {!setupView && tasksDigest && typeof tasksDigest === 'object' && (() => {
           const cc = commandCenter && typeof commandCenter === 'object' ? commandCenter : null;
-          const urgentN = tasksDigest.summary?.urgent_count ?? 0;
-          const upN = tasksDigest.summary?.upcoming_count ?? 0;
-          const ipN = tasksDigest.summary?.in_progress_count ?? 0;
-          const queueN = cc?.urgent_actions?.length ?? 0;
+          const inboxReady = todayInboxPayload !== undefined && todayInboxPayload !== null;
+          const urgentN = inboxReady ? dashboardAlignedInboxSections.urgent.length : null;
+          const upN = inboxReady ? dashboardAlignedInboxSections.upcoming.length : null;
+          const ipN = inboxReady ? dashboardAlignedInboxSections.in_progress.length : null;
+          const snoozedN = inboxReady ? dashboardAlignedInboxSections.snoozed.length : null;
+          const hiddenN = inboxReady ? dashboardAlignedInboxSections.hidden.length : null;
+          const queueN = inboxReady ? dashboardAlignedInboxSections.urgent.length : 0;
           const riskN = hasFeature('predictive_maintenance') ? (cc?.upcoming_risks?.length ?? 0) : 0;
+          const n = (v) => (v === null ? '…' : v);
           return (
           <Card
             className="mb-6 border border-gray-200 shadow-sm"
@@ -1855,9 +1922,11 @@ const ClientDashboard = () => {
               <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-sm text-gray-800 space-y-2">
                 <p>
                   <span className="font-semibold text-midnight-blue">Inbox buckets: </span>
-                  Urgent {urgentN} · Upcoming {upN} · In progress {ipN} · Snoozed {tasksDigest.summary?.snoozed_count ?? 0} · Hidden{' '}
-                  {tasksDigest.summary?.hidden_count ?? 0}
+                  Urgent {n(urgentN)} · Upcoming {n(upN)} · In progress {n(ipN)} · Snoozed {n(snoozedN)} · Hidden {n(hiddenN)}
                 </p>
+                {todayInboxPayload === null ? (
+                  <p className="text-xs text-amber-800">Today inbox could not be loaded — open Today for bucket counts.</p>
+                ) : null}
                 {cc ? (
                   <p>
                     <span className="font-semibold text-midnight-blue">In this snapshot: </span>
@@ -1895,28 +1964,28 @@ const ClientDashboard = () => {
               {dashboardInboxExpanded && (
                 <div className="space-y-4 pt-1 border-t border-gray-100">
                   <p className="sm:hidden text-sm text-gray-700 font-medium pt-3">
-                    Urgent {urgentN} · Upcoming {upN} · In progress {ipN}
+                    Urgent {n(urgentN)} · Upcoming {n(upN)} · In progress {n(ipN)}
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-sm">
                     <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
                       <p className="text-xs text-gray-500 uppercase tracking-wide">Urgent</p>
-                      <p className="text-lg font-semibold text-midnight-blue">{urgentN}</p>
+                      <p className="text-lg font-semibold text-midnight-blue">{n(urgentN)}</p>
                     </div>
                     <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
                       <p className="text-xs text-gray-500 uppercase tracking-wide">Upcoming</p>
-                      <p className="text-lg font-semibold text-midnight-blue">{upN}</p>
+                      <p className="text-lg font-semibold text-midnight-blue">{n(upN)}</p>
                     </div>
                     <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
                       <p className="text-xs text-gray-500 uppercase tracking-wide">In progress</p>
-                      <p className="text-lg font-semibold text-midnight-blue">{ipN}</p>
+                      <p className="text-lg font-semibold text-midnight-blue">{n(ipN)}</p>
                     </div>
                     <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
                       <p className="text-xs text-gray-500 uppercase tracking-wide">Snoozed</p>
-                      <p className="text-lg font-semibold text-midnight-blue">{tasksDigest.summary?.snoozed_count ?? 0}</p>
+                      <p className="text-lg font-semibold text-midnight-blue">{n(snoozedN)}</p>
                     </div>
                     <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
                       <p className="text-xs text-gray-500 uppercase tracking-wide">Hidden</p>
-                      <p className="text-lg font-semibold text-midnight-blue">{tasksDigest.summary?.hidden_count ?? 0}</p>
+                      <p className="text-lg font-semibold text-midnight-blue">{n(hiddenN)}</p>
                     </div>
                     <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
                       <p className="text-xs text-gray-500 uppercase tracking-wide">Acknowledged (7d)</p>
@@ -1943,11 +2012,11 @@ const ClientDashboard = () => {
                       </ul>
                     </div>
                   )}
-                  {cc && (cc.urgent_actions?.length ?? 0) > 0 && (
+                  {inboxReady && dashboardAlignedInboxSections.urgent.length > 0 && (
                     <div className="rounded-xl border border-red-100 bg-red-50/40 p-3 sm:p-4" data-testid="command-center-snapshot-card">
-                      <p className="text-xs font-semibold text-red-900 uppercase tracking-wide mb-2">Urgent &amp; in progress (read-only)</p>
+                      <p className="text-xs font-semibold text-red-900 uppercase tracking-wide mb-2">Urgent queue (preview)</p>
                       <ul className="space-y-2 text-sm">
-                        {cc.urgent_actions.slice(0, 6).map((t) => (
+                        {dashboardAlignedInboxSections.urgent.slice(0, 6).map((t) => (
                           <li key={t.id || t.title} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
                             <button
                               type="button"
@@ -2021,7 +2090,8 @@ const ClientDashboard = () => {
                     </div>
                   )}
                   {cc &&
-                    (cc.urgent_actions?.length ?? 0) === 0 &&
+                    inboxReady &&
+                    dashboardAlignedInboxSections.urgent.length === 0 &&
                     (!hasFeature('predictive_maintenance') || (cc.upcoming_risks?.length ?? 0) === 0) &&
                     !(cc.compliance_status_summary && cc.compliance_status_summary.score != null) && (
                       <p className="text-sm text-gray-500">No priority rows in this snapshot — open Command Center or Today for the full inbox.</p>

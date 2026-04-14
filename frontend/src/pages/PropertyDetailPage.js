@@ -73,6 +73,12 @@ import {
   sortRequirementsAttentionOrder,
 } from '../utils/propertyDocumentsMatrix';
 import {
+  filterInboxTasksForTrackedRequirements,
+  getTrackedRequirementsForProperty,
+  requirementMapFromList,
+} from '../utils/portalRequirementAttention';
+import { resolveRiskSignalPrimaryKey } from '../utils/primaryActionResolver';
+import {
   registryFallbackComplianceExplanation,
   complianceWhatChangedLine,
   complianceObligationStatusLabel,
@@ -224,7 +230,6 @@ export default function PropertyDetailPage() {
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [riskSignalsData, setRiskSignalsData] = useState(null);
   const [riskSignalsLoading, setRiskSignalsLoading] = useState(false);
-  const [riskSignalsRecalculating, setRiskSignalsRecalculating] = useState(false);
   const [createWoOpen, setCreateWoOpen] = useState(false);
   const [createWoForm, setCreateWoForm] = useState({
     description: '',
@@ -274,7 +279,7 @@ export default function PropertyDetailPage() {
   const [complianceExpandExplainByKey, setComplianceExpandExplainByKey] = useState({});
   const [complianceExplainability, setComplianceExplainability] = useState(null);
   const [complianceExplainabilityLoading, setComplianceExplainabilityLoading] = useState(false);
-  const [priorityActions, setPriorityActions] = useState({ actions: [], total: 0 });
+  const [priorityUrgentRaw, setPriorityUrgentRaw] = useState([]);
   const [urgentExplainOpenId, setUrgentExplainOpenId] = useState(null);
   const [urgentExplainByReqId, setUrgentExplainByReqId] = useState({});
   const [operatingFeedItems, setOperatingFeedItems] = useState([]);
@@ -436,7 +441,7 @@ export default function PropertyDetailPage() {
         compliance_purpose: 'inspection',
       });
       const wid = res.data?.work_order?.work_order_id;
-      toast.success('Compliance inspection job created. Open Operations → Jobs to request a contractor.');
+      toast.success('Inspection job started. Open Operations → Jobs to assign a contractor next.');
       setBookInspectionOpen(false);
       setBookInspectionSignalId(null);
       loadRiskSignals();
@@ -461,10 +466,16 @@ export default function PropertyDetailPage() {
     clientAPI.getCommandCenter({ property_id: propertyId })
       .then((res) => {
         const urgent = Array.isArray(res.data?.urgent_actions) ? res.data.urgent_actions : [];
-        setPriorityActions({ actions: urgent, total: urgent.length });
+        setPriorityUrgentRaw(urgent);
       })
-      .catch(() => setPriorityActions({ actions: [], total: 0 }));
+      .catch(() => setPriorityUrgentRaw([]));
   }, [propertyId]);
+
+  const priorityActions = useMemo(() => {
+    const map = requirementMapFromList(requirements);
+    const aligned = filterInboxTasksForTrackedRequirements(priorityUrgentRaw, map);
+    return { actions: aligned, total: aligned.length };
+  }, [priorityUrgentRaw, requirements]);
 
   const loadAssets = useCallback(() => {
     if (!propertyId || (!hasFeature('maintenance_workflows') && !hasFeature('predictive_maintenance'))) return;
@@ -1054,15 +1065,17 @@ export default function PropertyDetailPage() {
   };
 
   const hubPrioritizedRequirements = useMemo(() => {
-    const filtered = requirements.filter((r) =>
+    const scoped = getTrackedRequirementsForProperty(propertyId, requirements);
+    const filtered = scoped.filter((r) =>
       ['OVERDUE', 'EXPIRED', 'EXPIRING_SOON', 'MISSING', 'PENDING'].includes((r.status || '').toUpperCase()),
     );
     return sortRequirementsAttentionOrder(filtered, rowExpiry).slice(0, 8);
-  }, [requirements]);
+  }, [propertyId, requirements]);
 
   /** Same urgent rules as before, sorted like the obligations matrix (single source: `requirements`). */
   const urgentRequirementsOrdered = useMemo(() => {
-    const filtered = requirements.filter((r) => {
+    const scoped = getTrackedRequirementsForProperty(propertyId, requirements);
+    const filtered = scoped.filter((r) => {
       const s = (r.status || '').toUpperCase();
       const awaitingVerification = s === 'PENDING' && !!r.evidence_doc_id;
       return (
@@ -1074,10 +1087,13 @@ export default function PropertyDetailPage() {
       );
     });
     return sortRequirementsAttentionOrder(filtered, (r) => r.expiry_date || r.due_date);
-  }, [requirements]);
+  }, [propertyId, requirements]);
 
   /** Same filter and order as Compliance → Missing documents (PENDING / MISSING, criticality first). */
-  const requirementsMissingDocuments = useMemo(() => listRequirementsMissingDocumentsSorted(requirements), [requirements]);
+  const requirementsMissingDocuments = useMemo(
+    () => listRequirementsMissingDocumentsSorted(getTrackedRequirementsForProperty(propertyId, requirements)),
+    [propertyId, requirements],
+  );
 
   const hubActiveWorkOrders = useMemo(() => {
     const terminal = ['COMPLETED', 'CANCELLED', 'CLOSED', 'VERIFIED'];
@@ -2101,7 +2117,7 @@ export default function PropertyDetailPage() {
                             <td className="p-2 text-right">
                               <Button size="sm" variant="ghost" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
                               {iss.status !== 'ready_for_work_order' && iss.status !== 'closed' && (
-                                <Button size="sm" variant="outline" className="ml-1" onClick={() => handleCreateWoFromIssue(iss.issue_id)}>Create job</Button>
+                                <Button size="sm" variant="outline" className="ml-1" onClick={() => handleCreateWoFromIssue(iss.issue_id)}>Fix issue</Button>
                               )}
                             </td>
                           </tr>
@@ -2133,7 +2149,7 @@ export default function PropertyDetailPage() {
                 <div className="py-8 text-center text-gray-500">
                   <p className="font-medium">No jobs on this property yet.</p>
                   <div className="flex flex-wrap gap-2 justify-center mt-3">
-                    <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>Create job</Button>
+                    <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>Fix issue</Button>
                     {hasFeature('contractor_network') && <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_CONTRACTORS)}>Contractors</Button>}
                   </div>
                 </div>
@@ -2382,7 +2398,7 @@ export default function PropertyDetailPage() {
                   )}
                   <div className="flex flex-wrap gap-2 pt-2">
                     {issueDetailData.status !== 'ready_for_work_order' && issueDetailData.status !== 'closed' && (
-                      <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => handleCreateWoFromIssue(issueDetailData.issue_id)}>Create job</Button>
+                      <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => handleCreateWoFromIssue(issueDetailData.issue_id)}>Fix issue</Button>
                     )}
                     <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_ASSETS); setIssueDetailDrawer(null); }}>View assets</Button>
                     <Button size="sm" variant="outline" onClick={() => setIssueDetailDrawer(null)}>Close</Button>
@@ -3144,7 +3160,11 @@ export default function PropertyDetailPage() {
           {riskSignalsLoading ? (
             <div className="flex items-center gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
           ) : !(riskSignalsData?.signals?.length) ? (
-            <Card className="border border-gray-200"><CardContent className="py-8 text-center text-gray-500">No flagged issues for this property. Use Recalculate to refresh from property data, or add assets and jobs.</CardContent></Card>
+            <Card className="border border-gray-200">
+              <CardContent className="py-8 text-center text-gray-500">
+                No flagged issues for this property. They update when property data changes or on the scheduled refresh.
+              </CardContent>
+            </Card>
           ) : (
             <>
               {riskSignalsData?.summary && (
@@ -3155,34 +3175,17 @@ export default function PropertyDetailPage() {
                   <div className="p-3 rounded-lg border border-gray-200 bg-gray-50"><p className="text-xs text-gray-500 uppercase">Last updated</p><p className="text-sm text-gray-600">{riskSignalsData.summary.lastRecalculatedAt ? new Date(riskSignalsData.summary.lastRecalculatedAt).toLocaleString() : '—'}</p></div>
                 </div>
               )}
-              <div className="flex justify-end mb-2">
-                <Button size="sm" variant="outline" className="border-electric-teal text-electric-teal" disabled={riskSignalsRecalculating} onClick={async () => { setRiskSignalsRecalculating(true); try { await clientAPI.recalculatePropertyRiskSignals(propertyId); toast.success('Recalculated'); loadRiskSignals(); } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } finally { setRiskSignalsRecalculating(false); }}}>
-                  {riskSignalsRecalculating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} Recalculate
-                </Button>
-              </div>
               <ul className="space-y-3">
                 {riskSignalsData.signals.map((s) => {
-                  const actions = Array.isArray(s.suggested_actions) ? s.suggested_actions : ['create_issue', 'create_work_order'];
                   const hasMaint = hasFeature('maintenance_workflows');
                   const hasComp = hasFeature('compliance_engine');
-                  const wantInspection = actions.includes('schedule_inspection') && hasMaint;
-                  const primaryKind = wantInspection && hasComp
-                    ? 'compliance_job'
-                    : wantInspection && !hasComp
-                      ? 'log_inspection'
-                      : actions.includes('create_work_order') && hasMaint
-                        ? 'work_order'
-                        : actions.includes('create_issue')
-                          ? 'issue'
-                          : actions.includes('create_work_order') && !hasMaint
-                            ? 'upgrade_wo'
-                            : null;
+                  const { key: primaryKey, label: primaryLabel } = resolveRiskSignalPrimaryKey(s, hasMaint, hasComp);
 
                   const onCreateWo = async () => {
                     if (hasMaint) {
                       try {
                         await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
-                        toast.success('Job created');
+                        toast.success('Job started');
                         loadRiskSignals();
                         setActiveTab(TAB_MAINTENANCE);
                       } catch (e) {
@@ -3198,118 +3201,49 @@ export default function PropertyDetailPage() {
 
                   const primaryBtnClass = 'w-full lg:w-auto min-h-9 bg-electric-teal hover:bg-electric-teal/90 text-white';
 
-                  let primary = null;
-                  if (primaryKind === 'compliance_job') {
-                    primary = (
-                      <Button size="sm" className={primaryBtnClass} onClick={() => openBookInspectionFromRisk(s.signal_id)}>
-                        Create compliance job
-                      </Button>
-                    );
-                  } else if (primaryKind === 'log_inspection') {
-                    primary = (
-                      <Button
-                        size="sm"
-                        className={primaryBtnClass}
-                        onClick={async () => {
-                          try {
-                            await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {});
-                            toast.success('Inspection issue logged');
-                            loadRiskSignals();
-                          } catch (e) {
-                            toast.error(e?.response?.data?.detail || 'Failed');
-                          }
-                        }}
-                      >
-                        Log inspection issue
-                      </Button>
-                    );
-                  } else if (primaryKind === 'work_order') {
-                    primary = (
-                      <Button size="sm" className={cn(primaryBtnClass, 'inline-flex items-center justify-center')} onClick={onCreateWo}>
-                        <Wrench className="w-4 h-4 mr-1 shrink-0" /> Create job
-                      </Button>
-                    );
-                  } else if (primaryKind === 'issue') {
-                    primary = (
-                      <Button
-                        size="sm"
-                        className={primaryBtnClass}
-                        onClick={async () => {
-                          try {
-                            await clientAPI.createIssueFromRiskSignal(s.signal_id, {});
-                            toast.success('Issue created');
-                            loadRiskSignals();
-                          } catch (e) {
-                            toast.error(e?.response?.data?.detail || 'Failed');
-                          }
-                        }}
-                      >
-                        Create issue
-                      </Button>
-                    );
-                  } else if (primaryKind === 'upgrade_wo') {
-                    primary = (
-                      <Button size="sm" className={primaryBtnClass} onClick={onCreateWo}>
-                        Create job
-                      </Button>
-                    );
-                  }
+                  const runPrimary = async () => {
+                    if (primaryKey === 'compliance_inspection') {
+                      openBookInspectionFromRisk(s.signal_id);
+                      return;
+                    }
+                    if (primaryKey === 'log_inspection_issue') {
+                      try {
+                        await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {});
+                        toast.success('Logged for follow-up');
+                        loadRiskSignals();
+                      } catch (e) {
+                        toast.error(e?.response?.data?.detail || 'Failed');
+                      }
+                      return;
+                    }
+                    if (primaryKey === 'maintenance_job') {
+                      await onCreateWo();
+                      return;
+                    }
+                    if (primaryKey === 'maintenance_issue') {
+                      try {
+                        await clientAPI.createIssueFromRiskSignal(s.signal_id, {});
+                        toast.success('Logged for follow-up');
+                        loadRiskSignals();
+                      } catch (e) {
+                        toast.error(e?.response?.data?.detail || 'Failed');
+                      }
+                      return;
+                    }
+                    setActiveTab(TAB_RISK_SIGNALS);
+                  };
 
-                  const secondaries = [];
-                  if (primaryKind !== 'compliance_job' && wantInspection && hasComp) {
-                    secondaries.push(
-                      <Button key="cj" size="sm" variant="outline" className="h-8 text-xs" onClick={() => openBookInspectionFromRisk(s.signal_id)}>
-                        Compliance job
-                      </Button>,
-                    );
-                  }
-                  if (primaryKind !== 'log_inspection' && wantInspection && !hasComp) {
-                    secondaries.push(
-                      <Button
-                        key="li"
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs"
-                        onClick={async () => {
-                          try {
-                            await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {});
-                            toast.success('Inspection issue logged');
-                            loadRiskSignals();
-                          } catch (e) {
-                            toast.error(e?.response?.data?.detail || 'Failed');
-                          }
-                        }}
-                      >
-                        Log inspection issue
-                      </Button>,
-                    );
-                  }
-                  if (primaryKind !== 'work_order' && actions.includes('create_work_order')) {
-                    secondaries.push(
-                      <Button key="wo" size="sm" variant="outline" className="h-8 text-xs" onClick={onCreateWo}>
-                        Create job
-                      </Button>,
-                    );
-                  }
-                  if (primaryKind !== 'issue' && actions.includes('create_issue')) {
-                    secondaries.push(
-                      <Button
-                        key="iss"
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs"
-                        onClick={async () => {
-                          try {
-                            await clientAPI.createIssueFromRiskSignal(s.signal_id, {});
-                            toast.success('Issue created');
-                            loadRiskSignals();
-                          } catch (e) {
-                            toast.error(e?.response?.data?.detail || 'Failed');
-                          }
-                        }}
-                      >
-                        Create issue
-                      </Button>,
+                  let primary = (
+                    <Button size="sm" className={cn(primaryBtnClass, primaryKey === 'maintenance_job' ? 'inline-flex items-center justify-center' : '')} onClick={runPrimary}>
+                      {primaryKey === 'maintenance_job' ? <Wrench className="w-4 h-4 mr-1 shrink-0" /> : null}
+                      {primaryLabel}
+                    </Button>
+                  );
+                  if (primaryKey === 'review') {
+                    primary = (
+                      <Button size="sm" variant="outline" className="w-full lg:w-auto min-h-9 border-electric-teal text-electric-teal" onClick={runPrimary}>
+                        {primaryLabel}
+                      </Button>
                     );
                   }
 
@@ -3332,17 +3266,20 @@ export default function PropertyDetailPage() {
                       </div>
                       <div className="flex flex-col gap-2 shrink-0 w-full lg:w-auto lg:max-w-xs">
                         {primary}
-                        {secondaries.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">{secondaries}</div>
-                        )}
                         {s.status === 'active' && (
-                          <div className="flex flex-wrap gap-1 pt-1 border-t border-gray-200/80">
-                            <Button size="sm" variant="ghost" className="text-gray-600 h-8 text-xs px-2" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'acknowledged'); loadRiskSignals(); } catch (_) {} }}>
-                              Acknowledge
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-gray-600 h-8 text-xs px-2" onClick={async () => { try { await clientAPI.updateRiskSignalStatus(s.signal_id, 'resolved'); loadRiskSignals(); } catch (_) {} }}>
-                              Resolve
-                            </Button>
+                          <div className="pt-1 border-t border-gray-200/80">
+                            <button
+                              type="button"
+                              className="text-xs text-gray-500 hover:text-midnight-blue underline"
+                              onClick={async () => {
+                                try {
+                                  await clientAPI.updateRiskSignalStatus(s.signal_id, 'acknowledged');
+                                  loadRiskSignals();
+                                } catch (_) {}
+                              }}
+                            >
+                              Acknowledge (informational)
+                            </button>
                           </div>
                         )}
                       </div>
@@ -3628,13 +3565,13 @@ export default function PropertyDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !bookInspectionSaving && setBookInspectionOpen(false)}>
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full m-4 p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-2 mb-3">
-              <h3 className="font-semibold text-midnight-blue text-lg">Create compliance job</h3>
+              <h3 className="font-semibold text-midnight-blue text-lg">Fix compliance issue</h3>
               <button type="button" onClick={() => !bookInspectionSaving && setBookInspectionOpen(false)} className="p-1 rounded hover:bg-gray-100" aria-label="Close">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <p className="text-sm text-gray-600 mb-4">
-              Select the requirement this inspection satisfies. A compliance job (not a repair job) will be created and linked to this issue.
+              Select the requirement this inspection satisfies. You will continue in Jobs to assign a contractor and complete the visit.
             </p>
             <label className="block text-sm font-medium text-gray-700 mb-1">Requirement on this property</label>
             <select
@@ -3644,7 +3581,7 @@ export default function PropertyDetailPage() {
               disabled={bookInspectionSaving}
             >
               <option value="">— Select —</option>
-              {requirements.map((r) => {
+              {getTrackedRequirementsForProperty(propertyId, requirements).map((r) => {
                 const rid = r.requirement_id || r.id;
                 if (!rid) return null;
                 return (
@@ -3657,7 +3594,7 @@ export default function PropertyDetailPage() {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setBookInspectionOpen(false)} disabled={bookInspectionSaving}>Cancel</Button>
               <Button onClick={confirmBookInspectionFromRisk} disabled={bookInspectionSaving || !bookInspectionReqPick}>
-                {bookInspectionSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create job'}
+                {bookInspectionSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Fix compliance issue'}
               </Button>
             </div>
           </div>

@@ -10,108 +10,19 @@ from auth import generate_secure_token, hash_token
 from datetime import datetime, timedelta, timezone
 import os
 import logging
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Set
 
 from services.compliance_rules_registry import (
-    apply_location_rules_enabled,
-    iter_core_rules,
     portfolio_jurisdiction_label,
     rule_applies_to_db_row,
     scoring_jurisdiction_for_property,
 )
+from services.compliance_requirement_engine import resolve_engine_payload_from_code
+from services.requirement_materialization_service import materialize_requirements_for_property
 
 logger = logging.getLogger(__name__)
 
-# Enhanced fallback compliance requirement rules with property attribute conditions
-FALLBACK_REQUIREMENT_RULES = [
-    {
-        "type": "gas_safety", 
-        "description": "Gas Safety Certificate", 
-        "frequency_days": 365,
-        "condition": "has_gas_supply"  # Only if property has gas
-    },
-    {
-        "type": "eicr", 
-        "description": "Electrical Installation Condition Report", 
-        "frequency_days": 1825,  # 5 years default
-        "frequency_by_age": {  # Dynamic frequency based on building age
-            "old": 1095,  # 3 years for buildings > 50 years
-            "standard": 1825  # 5 years standard
-        }
-    },
-    {
-        "type": "epc", 
-        "description": "Energy Performance Certificate", 
-        "frequency_days": 3650
-    },
-    {
-        "type": "fire_alarm", 
-        "description": "Fire Alarm Inspection", 
-        "frequency_days": 365
-    },
-    {
-        "type": "legionella", 
-        "description": "Legionella Risk Assessment", 
-        "frequency_days": 730
-    }
-]
-
-# HMO-specific requirements
-HMO_REQUIREMENTS = [
-    {
-        "type": "hmo_license",
-        "description": "HMO License",
-        "frequency_days": 1825,  # 5 years
-        "condition": "hmo_license_required"
-    },
-    {
-        "type": "fire_risk_assessment",
-        "description": "Fire Risk Assessment",
-        "frequency_days": 365
-    },
-    {
-        "type": "emergency_lighting",
-        "description": "Emergency Lighting Test",
-        "frequency_days": 365
-    },
-    {
-        "type": "fire_extinguisher",
-        "description": "Fire Extinguisher Service",
-        "frequency_days": 365
-    }
-]
-
-# Communal area requirements
-COMMUNAL_REQUIREMENTS = [
-    {
-        "type": "communal_cleaning",
-        "description": "Communal Area Cleaning Schedule",
-        "frequency_days": 30
-    },
-    {
-        "type": "communal_fire_doors",
-        "description": "Fire Door Inspection",
-        "frequency_days": 365
-    }
-]
-
-# Location-specific requirements (by local authority)
-LOCATION_RULES = {
-    "LONDON": [
-        {
-            "type": "selective_license",
-            "description": "Selective Licensing (London)",
-            "frequency_days": 1825
-        }
-    ],
-    "MANCHESTER": [
-        {
-            "type": "selective_license",
-            "description": "Selective Licensing (Manchester)",
-            "frequency_days": 1825
-        }
-    ]
-}
+REQUIREMENT_GENERATION_SOURCE_DB_RULE = "requirement_rules"
 
 class ProvisioningService:
     async def provision_client_portal_core(
@@ -314,9 +225,18 @@ class ProvisioningService:
     
     async def _generate_requirements(self, client_id: str, property_id: str):
         """Generate deterministic requirements for a property based on its attributes.
-        
-        Uses rules from the database if available, otherwise falls back to enhanced
-        rules that consider property type, HMO status, building age, and location.
+
+        Dual path (audit):
+        - **Registry (primary):** ``materialize_requirements_for_property`` persists the full plan from
+          ``build_requirement_plan_for_property`` (core cadence from ``iter_core_rules`` + catalog-driven
+          keys + HMO / communal / selective-licensing expansion). ``requirement_generation_source`` =
+          ``catalog_registry``.
+        - **Mongo rules (supplemental):** Active ``requirement_rules`` documents are applied only for
+          ``rule_type`` values whose lowercase slug is **not** already in the registry plan's
+          ``requirement_type`` set for this property (avoids duplicate rows when both exist).
+          Those rows use ``requirement_generation_source`` = ``requirement_rules``.
+        - If ``requirement_rules`` is empty (typical), the DB-rule arm is a no-op and everything is
+          registry-backed. Custom admin-defined rule types remain DB-only until added to the code registry.
         """
         db = database.get_db()
         
@@ -332,41 +252,29 @@ class ProvisioningService:
         
         property_type = (property_doc.get("property_type") or "residential").upper()
         is_hmo = property_doc.get("is_hmo", False)
-        hmo_license_required = property_doc.get("hmo_license_required", False)
-        has_gas_supply = property_doc.get("has_gas_supply", True)
-        building_age_years = property_doc.get("building_age_years")
-        has_communal_areas = property_doc.get("has_communal_areas", False)
-        local_authority = (property_doc.get("local_authority") or "").upper()
 
         client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
         portfolio_label = portfolio_jurisdiction_label(property_doc, client_doc)
         scoring_jurisdiction = scoring_jurisdiction_for_property(property_doc, client_doc)
         
-        # Try to get rules from database first
+        mat = await materialize_requirements_for_property(
+            client_id, property_id, reconcile_obsolete=True
+        )
+        planned_lower: Set[str] = {str(t).lower() for t in (mat.get("planned_types") or [])}
+
         db_rules = await db.requirement_rules.find(
             {"is_active": True},
             {"_id": 0}
         ).to_list(100)
-        
         if db_rules:
-            # Use database rules with property type + jurisdiction filtering
             await self._apply_db_rules(
-                db_rules, client_id, property_id, property_type, property_doc, client_doc
-            )
-        else:
-            # Jurisdiction-aware fallback + HMO / communal / location extras
-            await self._apply_dynamic_rules(
+                db_rules,
                 client_id,
                 property_id,
                 property_type,
-                is_hmo,
-                hmo_license_required,
-                has_gas_supply,
-                building_age_years,
-                has_communal_areas,
-                local_authority,
-                portfolio_label,
-                scoring_jurisdiction,
+                property_doc,
+                client_doc,
+                planned_registry_types=planned_lower,
             )
         
         await create_audit_log(
@@ -377,9 +285,9 @@ class ProvisioningService:
             metadata={
                 "property_type": property_type,
                 "is_hmo": is_hmo,
-                "has_gas_supply": has_gas_supply,
-                "building_age_years": building_age_years,
-                "local_authority": local_authority,
+                "has_gas_supply": property_doc.get("has_gas_supply"),
+                "building_age_years": property_doc.get("building_age_years"),
+                "local_authority": (property_doc.get("local_authority") or ""),
                 "portfolio_jurisdiction": portfolio_label,
                 "scoring_jurisdiction": scoring_jurisdiction,
             }
@@ -393,6 +301,8 @@ class ProvisioningService:
         property_type: str,
         property_doc: Dict[str, Any],
         client_doc: Optional[Dict[str, Any]],
+        *,
+        planned_registry_types: Optional[Set[str]] = None,
     ):
         """Apply database rules to generate requirements."""
         portfolio = portfolio_jurisdiction_label(property_doc, client_doc)
@@ -405,6 +315,10 @@ class ProvisioningService:
             if not rule_applies_to_db_row(rule, portfolio, sj):
                 continue
 
+            rc = (rule.get("rule_type") or "").strip().lower()
+            if planned_registry_types and rc in planned_registry_types:
+                continue
+            eng = resolve_engine_payload_from_code(rc) if rc else {}
             await self._create_requirement_if_not_exists(
                 client_id,
                 property_id,
@@ -413,88 +327,11 @@ class ProvisioningService:
                 rule["frequency_days"],
                 warning_days=rule.get("warning_days", 30),
                 jurisdiction_label=portfolio,
-                requirement_code=(rule.get("rule_type") or "").strip().lower(),
+                requirement_code=rc,
+                compliance_requirement_class=eng.get("compliance_requirement_class"),
+                is_tracked=eng.get("is_tracked"),
+                client_surface_visible=eng.get("client_surface_visible"),
             )
-    
-    async def _apply_dynamic_rules(
-        self,
-        client_id: str,
-        property_id: str,
-        property_type: str,
-        is_hmo: bool,
-        hmo_license_required: bool,
-        has_gas_supply: bool,
-        building_age_years: Optional[int],
-        has_communal_areas: bool,
-        local_authority: str,
-        portfolio_label: str,
-        scoring_jurisdiction: str,
-    ):
-        """Apply enhanced dynamic rules based on property attributes and jurisdiction."""
-        # 1. Core registry (gas, EICR, EPC, fire, legionella) — jurisdiction-specific cadence
-        for spec in iter_core_rules(scoring_jurisdiction):
-            if spec.condition == "has_gas_supply" and not has_gas_supply:
-                logger.info("Skipping %s - no gas supply", spec.storage_type)
-                continue
-            frequency_days = spec.frequency_days
-            if spec.storage_type == "eicr" and building_age_years and spec.frequency_by_age:
-                if building_age_years > 50:
-                    frequency_days = spec.frequency_by_age.get("old", frequency_days)
-                    logger.info("Using shorter EICR frequency (%s days) for old building", frequency_days)
-            await self._create_requirement_if_not_exists(
-                client_id,
-                property_id,
-                spec.storage_type,
-                spec.description,
-                frequency_days,
-                warning_days=spec.warning_days,
-                jurisdiction_label=portfolio_label,
-                requirement_code=spec.storage_type,
-            )
-        
-        # 2. Apply HMO-specific requirements
-        if is_hmo or property_type == "HMO":
-            logger.info("Applying HMO requirements for property %s", property_id)
-            for rule in HMO_REQUIREMENTS:
-                if rule.get("condition") == "hmo_license_required" and not hmo_license_required:
-                    continue
-                await self._create_requirement_if_not_exists(
-                    client_id,
-                    property_id,
-                    rule["type"],
-                    rule["description"],
-                    rule["frequency_days"],
-                    jurisdiction_label=portfolio_label,
-                    requirement_code=rule["type"],
-                )
-        
-        # 3. Apply communal area requirements
-        if has_communal_areas:
-            logger.info("Applying communal area requirements for property %s", property_id)
-            for rule in COMMUNAL_REQUIREMENTS:
-                await self._create_requirement_if_not_exists(
-                    client_id,
-                    property_id,
-                    rule["type"],
-                    rule["description"],
-                    rule["frequency_days"],
-                    jurisdiction_label=portfolio_label,
-                    requirement_code=rule["type"],
-                )
-        
-        # 4. Location-specific (England & Wales portfolio contexts only)
-        if apply_location_rules_enabled(scoring_jurisdiction) and local_authority and local_authority in LOCATION_RULES:
-            logger.info("Applying %s location-specific requirements", local_authority)
-            for rule in LOCATION_RULES[local_authority]:
-                await self._create_requirement_if_not_exists(
-                    client_id,
-                    property_id,
-                    rule["type"],
-                    rule["description"],
-                    rule["frequency_days"],
-                    jurisdiction_label=portfolio_label,
-                    requirement_code=rule["type"],
-                )
     
     async def _create_requirement_if_not_exists(
         self,
@@ -507,6 +344,11 @@ class ProvisioningService:
         *,
         jurisdiction_label: Optional[str] = None,
         requirement_code: Optional[str] = None,
+        compliance_requirement_class: Optional[str] = None,
+        is_tracked: Optional[bool] = None,
+        client_surface_visible: Optional[bool] = None,
+        requires_document: Optional[bool] = None,
+        requires_job: Optional[bool] = None,
     ):
         """Create a requirement if it doesn't already exist (idempotent)."""
         db = database.get_db()
@@ -517,6 +359,17 @@ class ProvisioningService:
             "requirement_type": requirement_type
         })
         
+        cls_eff = (compliance_requirement_class or "").strip().upper() or None
+        rd = requires_document
+        rj = requires_job
+        if rd is None and cls_eff == "DOCUMENT":
+            rd = True
+        if rj is None and cls_eff == "JOB":
+            rj = True
+        csv = client_surface_visible
+        if csv is None and cls_eff:
+            csv = cls_eff != "SYSTEM"
+
         if existing:
             patch: Dict[str, Any] = {}
             if jurisdiction_label and not existing.get("jurisdiction"):
@@ -524,6 +377,18 @@ class ProvisioningService:
             rc = (requirement_code or requirement_type or "").strip().lower()
             if rc and not existing.get("requirement_code"):
                 patch["requirement_code"] = rc
+            if compliance_requirement_class and not existing.get("compliance_requirement_class"):
+                patch["compliance_requirement_class"] = compliance_requirement_class
+            if is_tracked is not None and existing.get("is_tracked") is None:
+                patch["is_tracked"] = is_tracked
+            if existing.get("client_surface_visible") is None and csv is not None:
+                patch["client_surface_visible"] = csv
+            if existing.get("requires_document") is None and rd is not None:
+                patch["requires_document"] = rd
+            if existing.get("requires_job") is None and rj is not None:
+                patch["requires_job"] = rj
+            if not existing.get("requirement_generation_source"):
+                patch["requirement_generation_source"] = REQUIREMENT_GENERATION_SOURCE_DB_RULE
             if patch:
                 patch["updated_at"] = datetime.now(timezone.utc).isoformat()
                 await db.requirements.update_one(
@@ -542,7 +407,13 @@ class ProvisioningService:
             description=description,
             frequency_days=frequency_days,
             due_date=datetime.now(timezone.utc) + timedelta(days=warning_days),
-            status=RequirementStatus.PENDING
+            status=RequirementStatus.PENDING,
+            compliance_requirement_class=compliance_requirement_class,
+            is_tracked=is_tracked if is_tracked is not None else True,
+            client_surface_visible=csv if csv is not None else True,
+            requires_document=rd,
+            requires_job=rj,
+            requirement_generation_source=REQUIREMENT_GENERATION_SOURCE_DB_RULE,
         )
         
         doc = requirement.model_dump()

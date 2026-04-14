@@ -23,6 +23,11 @@ router = APIRouter(prefix="/api/client", tags=["client"], dependencies=[Depends(
 NOT_REQUIRED_REASONS = ["no_gas_supply", "exempt", "not_applicable", "other"]
 
 
+def _client_surface_visible_requirement_row(row: Dict[str, Any]) -> bool:
+    """False only when explicitly hidden (system / reconciled internal rows)."""
+    return row.get("client_surface_visible") is not False
+
+
 def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> str:
     """Compute property-level compliance status from requirements (same logic as jobs.check_compliance_status_changes).
     OVERDUE/EXPIRED → RED; EXPIRING_SOON or PENDING (missing evidence) → AMBER; else GREEN.
@@ -494,16 +499,17 @@ async def get_dashboard(request: Request):
             {"client_id": user["client_id"]},
             {"_id": 0}
         ).to_list(1000)
-        
-        # Calculate compliance summary
-        total_requirements = len(requirements)
-        compliant = sum(1 for r in requirements if r["status"] == "COMPLIANT")
-        overdue = sum(1 for r in requirements if r["status"] == "OVERDUE")
-        expiring = sum(1 for r in requirements if r["status"] == "EXPIRING_SOON")
-        
+        visible_reqs = [r for r in requirements if _client_surface_visible_requirement_row(r)]
+
+        # Calculate compliance summary (portal-visible rows only; aligns with Requirements list)
+        total_requirements = len(visible_reqs)
+        compliant = sum(1 for r in visible_reqs if r["status"] == "COMPLIANT")
+        overdue = sum(1 for r in visible_reqs if r["status"] == "OVERDUE")
+        expiring = sum(1 for r in visible_reqs if r["status"] == "EXPIRING_SOON")
+
         # Group requirements by property so Properties page status matches Compliance Score
         reqs_by_property = {}
-        for r in requirements:
+        for r in visible_reqs:
             pid = r.get("property_id")
             if pid:
                 reqs_by_property.setdefault(pid, []).append(r)
@@ -1605,6 +1611,7 @@ async def get_property_requirements(request: Request, property_id: str):
         from services.requirement_truth import enrich_requirements_for_client
 
         enriched, presentation = await enrich_requirements_for_client(db, user["client_id"], requirements)
+        enriched = [r for r in enriched if r.get("client_surface_visible", True)]
         return {"requirements": enriched, "presentation": presentation}
     
     except HTTPException:
@@ -1768,6 +1775,7 @@ async def get_all_requirements(request: Request):
         from services.requirement_truth import enrich_requirements_for_client
 
         enriched, presentation = await enrich_requirements_for_client(db, user["client_id"], requirements)
+        enriched = [r for r in enriched if r.get("client_surface_visible", True)]
         return {"requirements": enriched, "presentation": presentation}
     
     except Exception as e:

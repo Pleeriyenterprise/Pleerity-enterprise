@@ -858,6 +858,17 @@ class Requirement(BaseModel):
     date_source: Optional[str] = None  # SYSTEM_ESTIMATED | USER_PROVIDED | VERIFIED_DOCUMENT
     evidence_state: Optional[str] = None  # MISSING | UPLOADED_UNVERIFIED | VERIFIED
     confidence_state: Optional[str] = None  # ESTIMATED | PARTIALLY_CONFIRMED | VERIFIED
+    # Compliance registry (generation + attention flows): DOCUMENT | JOB | OBLIGATION | SYSTEM
+    compliance_requirement_class: Optional[str] = None
+    # False = excluded from Today / Command Center / dashboard attention (OBLIGATION, SYSTEM)
+    is_tracked: Optional[bool] = True
+    # Portal list visibility (SYSTEM rows False — still in DB for scoring/engine)
+    client_surface_visible: Optional[bool] = True
+    # Materialisation provenance and flags (Mongo-first contract for client APIs)
+    requirement_generation_source: Optional[str] = None  # e.g. catalog_registry
+    requires_document: Optional[bool] = None
+    requires_job: Optional[bool] = None
+    registry_metadata: Optional[Dict[str, Any]] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
 

@@ -3,7 +3,7 @@
  * Uses GET /client/maintenance/risk-signals (filters, summary, highPriority), GET by signal_id for drawer.
  * Gated by predictive_maintenance.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { buildSafeQueryPath, normalizeRouteId, resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
@@ -37,13 +37,10 @@ import {
   TrendingUp,
   Loader2,
   AlertCircle,
-  ClipboardCheck,
-  Wrench,
   Search,
   Building2,
   Package,
   Eye,
-  CheckCircle,
   XCircle,
   ChevronDown,
   ChevronUp,
@@ -71,6 +68,8 @@ import {
 } from '../utils/riskPresentation';
 import { assetIdParts } from '../utils/assetDisplay';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
+import { resolveRiskSignalPrimaryKey } from '../utils/primaryActionResolver';
+import { getTrackedRequirementsForProperty } from '../utils/portalRequirementAttention';
 
 const RISK_LEVELS = [
   { value: '', label: 'All levels' },
@@ -114,10 +113,13 @@ function ClientRiskSignalsPageInner() {
   /** Read-only GET .../suggested-actions (primary + codes + alternatives); loaded with drawer */
   const [drawerSuggestedView, setDrawerSuggestedView] = useState(null);
   const [actionFromSignal, setActionFromSignal] = useState(null); // 'issue' | 'work_order' | 'schedule_inspection' | 'log_inspection_issue'
+  const [drawerPrimaryBusy, setDrawerPrimaryBusy] = useState(false);
   const [dismissTargetId, setDismissTargetId] = useState(null);
   const [dismissReason, setDismissReason] = useState('no_action_required');
   const [dismissSaving, setDismissSaving] = useState(false);
   const [arrangeOpen, setArrangeOpen] = useState(false);
+  /** When opening arrange from a list row, React state for drawer id may not flush before confirm — use ref. */
+  const signalIdForArrangeRef = useRef(null);
   const [arrangePropertyId, setArrangePropertyId] = useState('');
   const [arrangeRequirements, setArrangeRequirements] = useState([]);
   const [arrangeReqPick, setArrangeReqPick] = useState('');
@@ -300,7 +302,8 @@ function ClientRiskSignalsPageInner() {
     try {
       const res = await clientAPI.getPropertyRequirements(propertyId);
       const rows = res.data?.requirements || [];
-      setArrangeRequirements(Array.isArray(rows) ? rows : []);
+      const list = Array.isArray(rows) ? rows : [];
+      setArrangeRequirements(getTrackedRequirementsForProperty(propertyId, list));
     } catch {
       setArrangeRequirements([]);
       toast.error('Could not load requirements for this property.');
@@ -310,7 +313,8 @@ function ClientRiskSignalsPageInner() {
   };
 
   const confirmArrangeInspection = async () => {
-    if (!drawerSignalId || !arrangeReqPick) {
+    const effectiveSignalId = signalIdForArrangeRef.current || drawerSignalId;
+    if (!effectiveSignalId || !arrangeReqPick) {
       toast.error('Select a requirement to continue.');
       return;
     }
@@ -322,7 +326,7 @@ function ClientRiskSignalsPageInner() {
     }
     setActionFromSignal('schedule_inspection');
     try {
-      const res = await clientAPI.arrangeComplianceInspectionFromRiskSignal(drawerSignalId, {
+      const res = await clientAPI.arrangeComplianceInspectionFromRiskSignal(effectiveSignalId, {
         requirement_code: String(reqCode),
         linked_property_requirement_id: arrangeReqPick,
         compliance_purpose: 'inspection',
@@ -330,6 +334,7 @@ function ClientRiskSignalsPageInner() {
       const wid = res.data?.work_order?.work_order_id;
       toast.success('Compliance inspection job created. Open the job to request a contractor.');
       setArrangeOpen(false);
+      signalIdForArrangeRef.current = null;
       setDrawerSignalId(null);
       load();
       if (wid) navigate(buildSafeQueryPath('/operations/work-orders', { work_order_id: wid }));
@@ -345,6 +350,59 @@ function ClientRiskSignalsPageInner() {
     } finally {
       setActionFromSignal(null);
     }
+  };
+
+  const runRiskSignalPrimaryAction = async (s) => {
+    if (!s?.signal_id) return;
+    const hasMaint = hasFeature('maintenance_workflows');
+    const hasComp = hasFeature('compliance_engine');
+    const { key } = resolveRiskSignalPrimaryKey(s, hasMaint, hasComp);
+    if (key === 'compliance_inspection') {
+      signalIdForArrangeRef.current = s.signal_id;
+      setDrawerSignalId(s.signal_id);
+      await openArrangeInspection(s.property_id);
+      return;
+    }
+    if (key === 'log_inspection_issue') {
+      try {
+        await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {});
+        toast.success('Logged for follow-up');
+        refreshAfterStatusChange();
+      } catch (e) {
+        toast.error(e?.response?.data?.detail || 'Failed');
+      }
+      return;
+    }
+    if (key === 'maintenance_job') {
+      if (hasMaint) {
+        try {
+          await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
+          toast.success('Job started');
+          setDrawerSignalId(null);
+          load();
+        } catch (e) {
+          if (openPlanRestrictedJobGate(e, setPlanJobGate, { propertyId: s.property_id })) return;
+          toast.error(e?.response?.data?.detail || 'Failed');
+        }
+      } else {
+        setDrawerSignalId(null);
+        openCreateWorkOrder(s.property_id, s.recommended_action);
+      }
+      return;
+    }
+    if (key === 'maintenance_issue') {
+      try {
+        const res = await clientAPI.createIssueFromRiskSignal(s.signal_id, {});
+        toast.success('Logged for follow-up');
+        setDrawerSignalId(null);
+        if (res?.data?.issue_id) navigate(resolveIssueDetailPath(res.data.issue_id));
+        load();
+      } catch (e) {
+        toast.error(e?.response?.data?.detail || 'Failed');
+      }
+      return;
+    }
+    setDrawerSignalId(s.signal_id);
   };
 
   const riskTypesFromSignals = (signals) => {
@@ -396,7 +454,7 @@ function ClientRiskSignalsPageInner() {
         Flagged issues
       </h1>
       <p className="text-gray-600 mb-6 text-sm sm:text-base break-words">
-        Potential issues flagged automatically from your property data — start a maintenance or compliance job when you are ready to act.
+        Potential issues flagged automatically from your property data — each item suggests a single next step when you are ready to act.
       </p>
 
       {(() => {
@@ -587,15 +645,17 @@ function ClientRiskSignalsPageInner() {
                     )}
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
-                    <Button className="w-full sm:w-auto min-h-11 justify-center" variant="outline" onClick={() => setDrawerSignalId(s.signal_id)}>
-                      <Eye className="w-4 h-4 mr-1 shrink-0" /> View
-                    </Button>
                     <Button
-                      className="w-full sm:w-auto min-h-11 justify-center"
-                      variant="outline"
-                      onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
+                      className="w-full sm:w-auto min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90 text-white"
+                      onClick={() => runRiskSignalPrimaryAction(s)}
                     >
-                      <Wrench className="w-4 h-4 mr-1 shrink-0" /> Create job
+                      {
+                        resolveRiskSignalPrimaryKey(s, hasFeature('maintenance_workflows'), hasFeature('compliance_engine'))
+                          .label
+                      }
+                    </Button>
+                    <Button className="w-full sm:w-auto min-h-11 justify-center" variant="outline" onClick={() => setDrawerSignalId(s.signal_id)}>
+                      <Eye className="w-4 h-4 mr-1 shrink-0" /> View details
                     </Button>
                   </div>
                 </li>
@@ -636,7 +696,7 @@ function ClientRiskSignalsPageInner() {
                   <Package className="w-12 h-12 mx-auto text-gray-400 mb-3" />
                   <p className="text-gray-600 font-medium">No active flagged issues</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Flagged issues are generated from property data (assets, jobs, compliance). Run Recalculate from a property’s Flagged issues tab or wait for the nightly job.
+                    Flagged issues are generated from property data (assets, jobs, compliance). They refresh when data changes or on the scheduled update.
                   </p>
                   <div className="flex gap-2 justify-center mt-4">
                     <Button variant="outline" size="sm" onClick={() => navigate('/properties')}>
@@ -703,23 +763,26 @@ function ClientRiskSignalsPageInner() {
                       Updated {s.updated_at ? new Date(s.updated_at).toLocaleString() : '—'}
                     </p>
                     <div className="flex flex-col gap-2 pt-2 border-t border-gray-100">
-                      <Button className="w-full min-h-11 justify-center" variant="default" onClick={() => setDrawerSignalId(s.signal_id)}>
+                      <Button className="w-full min-h-11 justify-center" variant="default" onClick={() => runRiskSignalPrimaryAction(s)}>
+                        {
+                          resolveRiskSignalPrimaryKey(s, hasFeature('maintenance_workflows'), hasFeature('compliance_engine'))
+                            .label
+                        }
+                      </Button>
+                      <Button className="w-full min-h-11 justify-center" variant="outline" onClick={() => setDrawerSignalId(s.signal_id)}>
                         <Eye className="w-4 h-4 mr-2 shrink-0" /> View details
                       </Button>
-                      <Button
-                        className="w-full min-h-11 justify-center"
-                        variant="outline"
-                        onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
-                      >
-                        <Wrench className="w-4 h-4 mr-2 shrink-0" /> Create job
-                      </Button>
                       {s.status === 'active' && (
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button variant="outline" className="min-h-11 text-xs" onClick={() => handleAcknowledge(s.signal_id)}>
-                            <CheckCircle className="w-4 h-4 mr-1 shrink-0" /> Acknowledge
-                          </Button>
-                          <Button variant="outline" className="min-h-11 text-xs" onClick={() => openDismissDialog(s.signal_id)}>
-                            <XCircle className="w-4 h-4 mr-1 shrink-0" /> Dismiss flagged issue
+                        <div className="flex flex-col gap-2">
+                          <button
+                            type="button"
+                            className="text-xs text-gray-500 hover:text-midnight-blue text-left underline"
+                            onClick={() => handleAcknowledge(s.signal_id)}
+                          >
+                            Acknowledge
+                          </button>
+                          <Button variant="outline" className="min-h-11 text-xs w-full" onClick={() => openDismissDialog(s.signal_id)}>
+                            <XCircle className="w-4 h-4 mr-1 shrink-0" /> Dismiss
                           </Button>
                         </div>
                       )}
@@ -774,22 +837,22 @@ function ClientRiskSignalsPageInner() {
                           {s.updated_at ? new Date(s.updated_at).toLocaleString() : '—'}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex flex-wrap gap-1 justify-end">
-                            <Button size="sm" variant="ghost" onClick={() => setDrawerSignalId(s.signal_id)}>
-                              <Eye className="w-4 h-4 mr-1" /> View
+                          <div className="flex flex-col items-end gap-1">
+                            <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90 text-white" onClick={() => runRiskSignalPrimaryAction(s)}>
+                              {resolveRiskSignalPrimaryKey(s, hasFeature('maintenance_workflows'), hasFeature('compliance_engine')).label}
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openCreateWorkOrder(s.property_id, s.recommended_action)}
-                            >
-                              <Wrench className="w-4 h-4 mr-1" /> Start job
+                            <Button size="sm" variant="ghost" onClick={() => setDrawerSignalId(s.signal_id)}>
+                              <Eye className="w-4 h-4 mr-1" /> View details
                             </Button>
                             {s.status === 'active' && (
                               <>
-                                <Button size="sm" variant="ghost" className="text-gray-600" onClick={() => handleAcknowledge(s.signal_id)}>
-                                  <CheckCircle className="w-4 h-4 mr-1" /> Acknowledge
-                                </Button>
+                                <button
+                                  type="button"
+                                  className="text-xs text-gray-500 hover:text-midnight-blue underline"
+                                  onClick={() => handleAcknowledge(s.signal_id)}
+                                >
+                                  Acknowledge
+                                </button>
                                 <Button size="sm" variant="ghost" className="text-gray-600" onClick={() => openDismissDialog(s.signal_id)}>
                                   <XCircle className="w-4 h-4 mr-1" /> Dismiss
                                 </Button>
@@ -969,107 +1032,36 @@ function ClientRiskSignalsPageInner() {
                 )}
               </div>
               <div className="pt-4 border-t space-y-2">
-                <p className="text-xs text-muted-foreground uppercase">Suggested actions</p>
+                <p className="text-xs text-muted-foreground uppercase">Next step</p>
                 <div className="flex flex-wrap gap-2">
                   {(() => {
-                    const actions =
-                      Array.isArray(drawerSuggestedView?.suggested_action_codes) && drawerSuggestedView.suggested_action_codes.length > 0
-                        ? drawerSuggestedView.suggested_action_codes
-                        : Array.isArray(drawerSignal.suggested_actions)
-                          ? drawerSignal.suggested_actions
-                          : ['create_issue', 'create_work_order'];
+                    const hasMaint = hasFeature('maintenance_workflows');
+                    const hasComp = hasFeature('compliance_engine');
+                    const { key: drawerPrimaryKey, label: drawerPrimaryLabel } = resolveRiskSignalPrimaryKey(drawerSignal, hasMaint, hasComp);
+                    if (drawerPrimaryKey === 'review') {
+                      return (
+                        <p className="text-sm text-gray-600">
+                          Review the details above. Dismiss when no action is needed, or use related links below.
+                        </p>
+                      );
+                    }
                     return (
-                      <>
-                        {actions.includes('create_issue') && (
-                          <Button
-                            size="sm"
-                            variant="default"
-                            disabled={!!actionFromSignal}
-                            onClick={async () => {
-                              setActionFromSignal('issue');
-                              try {
-                                const res = await clientAPI.createIssueFromRiskSignal(drawerSignalId, {});
-                                toast.success('Issue created. You can view it in Operations → Issues.');
-                                if (res?.data?.issue_id) navigate(resolveIssueDetailPath(res.data.issue_id));
-                                setDrawerSignalId(null);
-                                load();
-                              } catch (e) {
-                                toast.error(e?.response?.data?.detail || 'Failed to create issue');
-                              } finally {
-                                setActionFromSignal(null);
-                              }
-                            }}
-                          >
-                            {actionFromSignal === 'issue' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ClipboardCheck className="w-4 h-4 mr-1" />}
-                            Create issue
-                          </Button>
-                        )}
-                        {actions.includes('create_work_order') && (
-                          <Button
-                            size="sm"
-                            variant="default"
-                            disabled={!!actionFromSignal}
-                            onClick={async () => {
-                              setActionFromSignal('work_order');
-                              try {
-                                const res = await clientAPI.createWorkOrderFromRiskSignal(drawerSignalId, {});
-                                toast.success('Job created. View it in Operations → Jobs.');
-                                if (res?.data?.work_order_id) navigate(buildSafeQueryPath('/operations/work-orders', { highlight: res.data.work_order_id }));
-                                setDrawerSignalId(null);
-                                load();
-                              } catch (e) {
-                                if (
-                                  openPlanRestrictedJobGate(e, setPlanJobGate, {
-                                    propertyId: drawerSignal?.property_id,
-                                  })
-                                ) {
-                                  return;
-                                }
-                                toast.error(e?.response?.data?.detail || 'Failed to create job');
-                              } finally {
-                                setActionFromSignal(null);
-                              }
-                            }}
-                          >
-                            {actionFromSignal === 'work_order' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Wrench className="w-4 h-4 mr-1" />}
-                            Create job
-                          </Button>
-                        )}
-                        {actions.includes('schedule_inspection') && hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
-                          <Button
-                            size="sm"
-                            variant="default"
-                            disabled={!!actionFromSignal || !drawerSignal?.property_id}
-                            onClick={() => openArrangeInspection(drawerSignal.property_id)}
-                          >
-                            <ClipboardCheck className="w-4 h-4 mr-1" />
-                            Create compliance job
-                          </Button>
-                        )}
-                        {actions.includes('schedule_inspection') && hasFeature('maintenance_workflows') && !hasFeature('compliance_engine') && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={!!actionFromSignal}
-                            onClick={async () => {
-                              setActionFromSignal('log_inspection_issue');
-                              try {
-                                await clientAPI.logInspectionIssueFromRiskSignal(drawerSignalId, {});
-                                toast.success('Inspection issue logged (maintenance).');
-                                setDrawerSignalId(null);
-                                load();
-                              } catch (e) {
-                                toast.error(e?.response?.data?.detail || 'Failed to log inspection issue');
-                              } finally {
-                                setActionFromSignal(null);
-                              }
-                            }}
-                          >
-                            {actionFromSignal === 'log_inspection_issue' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ClipboardCheck className="w-4 h-4 mr-1" />}
-                            Log inspection issue
-                          </Button>
-                        )}
-                      </>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={!!actionFromSignal || drawerPrimaryBusy}
+                        onClick={async () => {
+                          setDrawerPrimaryBusy(true);
+                          try {
+                            await runRiskSignalPrimaryAction(drawerSignal);
+                          } finally {
+                            setDrawerPrimaryBusy(false);
+                          }
+                        }}
+                      >
+                        {drawerPrimaryBusy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                        {drawerPrimaryLabel}
+                      </Button>
                     );
                   })()}
                 </div>
@@ -1087,28 +1079,25 @@ function ClientRiskSignalsPageInner() {
                       <Package className="w-4 h-4 mr-1" /> View assets
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openCreateWorkOrder(drawerSignal.property_id, drawerSignal.recommended_action)}
-                  >
-                    <Wrench className="w-4 h-4 mr-1" /> Create job (manual)
-                  </Button>
                 </div>
               </div>
             </div>
           ) : (
             <p className="text-gray-500 py-4">Could not load flagged issue details.</p>
           )}
-          <SheetFooter className="pt-4 border-t">
+          <SheetFooter className="pt-4 border-t flex flex-row flex-wrap items-center justify-between gap-3">
             {drawerSignal?.status === 'active' && (
               <>
-                <Button variant="outline" onClick={() => handleAcknowledge(drawerSignalId)}>
-                  <CheckCircle className="w-4 h-4 mr-2" /> Acknowledge
-                </Button>
                 <Button variant="default" onClick={() => openDismissDialog(drawerSignalId)}>
-                  <XCircle className="w-4 h-4 mr-2" /> Dismiss flagged issue
+                  <XCircle className="w-4 h-4 mr-2" /> Dismiss
                 </Button>
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                  onClick={() => handleAcknowledge(drawerSignalId)}
+                >
+                  Acknowledge
+                </button>
               </>
             )}
           </SheetFooter>
@@ -1150,10 +1139,10 @@ function ClientRiskSignalsPageInner() {
       <Dialog open={arrangeOpen} onOpenChange={(o) => !o && setArrangeOpen(false)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Create compliance job</DialogTitle>
+            <DialogTitle>Fix compliance issue</DialogTitle>
             <DialogDescription>
-              Select the requirement this job will satisfy. This only creates the job — open it afterward to assign a contractor
-              and complete booking, visit, and proof.
+              Choose the requirement this inspection addresses. You will open the job next to assign a contractor and complete
+              booking, visit, and proof.
             </DialogDescription>
           </DialogHeader>
           {arrangeLoading ? (
@@ -1186,7 +1175,7 @@ function ClientRiskSignalsPageInner() {
               Cancel
             </Button>
             <Button type="button" onClick={confirmArrangeInspection} disabled={!!actionFromSignal || arrangeLoading}>
-              {actionFromSignal === 'schedule_inspection' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create job'}
+              {actionFromSignal === 'schedule_inspection' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Continue'}
             </Button>
           </DialogFooter>
         </DialogContent>

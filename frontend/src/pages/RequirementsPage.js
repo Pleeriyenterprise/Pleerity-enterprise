@@ -13,10 +13,8 @@ import {
   RefreshCw,
   FileText,
   ChevronRight,
-  Pencil,
   AlertCircle,
   Loader2,
-  ClipboardCheck,
   Eye,
   Ban,
 } from 'lucide-react';
@@ -36,6 +34,8 @@ import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { PortalLoadingPanel } from '../components/client/ClientPortalPatterns';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import { REQUIREMENTS_PAGE_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
+import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
+import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -61,7 +61,6 @@ const RequirementsPage = () => {
   const [editForm, setEditForm] = useState({ confirmed_expiry_date: '', applicability: '', not_required_reason: '' });
   const [documentCountByRequirementId, setDocumentCountByRequirementId] = useState({});
   const [requirementsPresentation, setRequirementsPresentation] = useState(null);
-  const [complianceActionKey, setComplianceActionKey] = useState(null);
   const [notApplicableModal, setNotApplicableModal] = useState(null);
   const [notApplicableReason, setNotApplicableReason] = useState('');
   const [notApplicableCode, setNotApplicableCode] = useState('other');
@@ -164,38 +163,6 @@ const RequirementsPage = () => {
     setEditModal({ requirement: req, property: getPropertyById(req.property_id) });
   };
 
-  const createComplianceWorkOrderFromRequirement = async (req) => {
-    setComplianceActionKey(req.requirement_id);
-    try {
-      const res = await clientAPI.createRequirementComplianceJob(req.requirement_id, {
-        compliance_purpose: 'inspection',
-        compliance_generated_from: 'requirement',
-      });
-      const woId = res.data?.work_order?.work_order_id;
-      toast.success(
-        'Compliance job created. Open it to assign a contractor and request a visit—execution time feeds this requirement’s record.',
-      );
-      if (req.property_id && typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: req.property_id } }));
-      }
-      if (woId) navigate(`/operations/jobs/${woId}`);
-      else navigate('/operations/work-orders');
-    } catch (error) {
-      if (
-        openPlanRestrictedJobGate(error, setPlanJobGate, {
-          propertyId: req.property_id,
-          requirementId: req.requirement_id,
-        })
-      ) {
-        return;
-      }
-      const d = error.response?.data?.detail;
-      toast.error(typeof d === 'string' ? d : d?.message || 'Could not create compliance job');
-    } finally {
-      setComplianceActionKey(null);
-    }
-  };
-
   const openViewRequirementModal = (req) => {
     setViewRequirementModal({ requirement: req });
     setViewRequirementData(null);
@@ -286,8 +253,13 @@ const RequirementsPage = () => {
     }
   };
 
+  const attentionScopedOnly =
+    statusFilter === 'DUE_SOON' || statusFilter === 'OVERDUE_OR_MISSING' || Boolean(windowDays);
+
   // Apply filters
   const filteredRequirements = requirements.filter(req => {
+    if (req.client_surface_visible === false) return false;
+    if (attentionScopedOnly && !isRequirementIncludedInAttentionViews(req)) return false;
     // Search filter
     const property = getPropertyById(req.property_id);
     const reqLabel = requirementLabel(req.requirement_type || req.requirement_code || '');
@@ -339,7 +311,25 @@ const RequirementsPage = () => {
     const docQuery = { requirement_id: req.requirement_id, ...(reqCode ? { requirement_code: reqCode } : {}) };
     const docsPath = resolveDocumentsPath(req.property_id, docQuery);
     const uploadPath = resolveDocumentsPath(req.property_id, { ...docQuery, focus: 'upload' });
+    const reqClass = String(req.compliance_requirement_class || req.requirement_class || '').toUpperCase();
+    const informational =
+      reqClass === 'OBLIGATION' ||
+      reqClass === 'SYSTEM' ||
+      req.engine_informational === true ||
+      String(req.engine_client_visibility || req.client_visibility || '').toLowerCase() === 'informational';
+    const fulfillment =
+      reqClass === 'JOB'
+        ? 'job'
+        : reqClass === 'DOCUMENT'
+          ? 'document'
+          : String(req.engine_fulfillment_mode || req.fulfillment_mode || 'document').toLowerCase();
+    const needsDocEvidence = req.engine_requires_document_evidence !== false;
+    const mayBookJob = req.engine_creates_compliance_job === true || reqClass === 'JOB';
+
     const requirementPreActionLine = (() => {
+      if (informational) {
+        return 'This is a tenancy or legal obligation to keep on record; it does not create an urgent task in Today.';
+      }
       const st = String(req.status || '').toUpperCase();
       if (st === 'OVERDUE') return 'This requirement is overdue and affects compliance status for this property.';
       if (st === 'PENDING_VERIFICATION' || st === 'AWAITING_VERIFICATION')
@@ -402,79 +392,55 @@ const RequirementsPage = () => {
                 <p className="text-xs">{daysUntil < 0 ? 'days overdue' : 'days left'}</p>
               </div>
             )}
-            {hasDocs ? (
-              <Button
-                className="w-full min-h-11 justify-center bg-midnight-blue hover:bg-midnight-blue/90"
-                onClick={() => navigate(docsPath)}
-                data-testid={`view-documents-${req.requirement_id}`}
-              >
-                {PORTAL_COPY.viewDocuments}
-                <ChevronRight className="w-4 h-4 ml-1 shrink-0" />
-              </Button>
-            ) : (
-              <Button
-                className="w-full min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90 text-midnight-blue font-semibold"
-                onClick={() => navigate(uploadPath)}
-                data-testid={`upload-document-${req.requirement_id}`}
-              >
-                {PORTAL_COPY.uploadDocument}
-              </Button>
-            )}
-            <div className="flex flex-col sm:flex-row lg:flex-col gap-2">
-              {hasDocs && (
-                <Button variant="outline" size="sm" className="w-full min-h-10 justify-center" onClick={() => navigate(uploadPath)}>
-                  Add document
+            {(() => {
+              const needsDoc = isRequirementMissingDocument(req);
+              const fixPath = !hasDocs || needsDoc ? uploadPath : docsPath;
+              let primaryLabel = PORTAL_COPY.fixComplianceIssue;
+              let onPrimary = () => navigate(fixPath);
+              if (informational || fulfillment === 'obligation') {
+                primaryLabel = 'Review obligation';
+                onPrimary = () => openViewRequirementModal(req);
+              } else if (fulfillment === 'job' && mayBookJob) {
+                primaryLabel = 'Book inspection';
+                const hash = reqCode ? `#req=${encodeURIComponent(reqCode)}` : '';
+                onPrimary = () => navigate(`/properties/${req.property_id}${hash}`);
+              } else if (fulfillment === 'document' && needsDocEvidence) {
+                onPrimary = () => navigate(fixPath);
+              } else {
+                primaryLabel = 'View details';
+                onPrimary = () => openViewRequirementModal(req);
+              }
+              return (
+                <Button
+                  className="w-full min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90 text-midnight-blue font-semibold"
+                  onClick={onPrimary}
+                  data-testid={`fix-compliance-${req.requirement_id}`}
+                >
+                  {primaryLabel}
+                  <ChevronRight className="w-4 h-4 ml-1 shrink-0" />
                 </Button>
-              )}
-              <Button variant="ghost" size="sm" className="w-full min-h-10 justify-center text-gray-500 hover:text-midnight-blue" onClick={() => openEditModal(req)} data-testid={`edit-requirement-${req.requirement_id}`}>
-                <Pencil className="w-4 h-4 mr-1 shrink-0" /> Edit dates and applicability
-              </Button>
-            </div>
-          </div>
-        </div>
-        {hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
-          <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3">
-            <p className="text-xs text-gray-500">Compliance actions</p>
-            <div className="flex flex-wrap gap-2">
-              <Button
+              );
+            })()}
+            <div className="flex flex-col gap-2">
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="text-xs min-h-10 h-auto py-2"
-                onClick={() =>
-                  navigate(
-                    resolveDocumentsPath(req.property_id, {
-                      ...docQuery,
-                      focus: 'upload',
-                    }),
-                  )
-                }
-                data-testid={`compliance-upload-certificate-${req.requirement_id}`}
+                className="text-sm text-electric-teal hover:underline text-left min-h-10"
+                onClick={() => openViewRequirementModal(req)}
+                data-testid={`compliance-view-requirement-${req.requirement_id}`}
               >
-                <FileText className="w-3 h-3 mr-1 shrink-0" />
-                Upload certificate
-              </Button>
-              <Button
+                View details
+              </button>
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="text-xs min-h-10 h-auto py-2"
-                disabled={complianceActionKey !== null}
-                onClick={() => createComplianceWorkOrderFromRequirement(req)}
-                data-testid={`compliance-create-job-${req.requirement_id}`}
+                className="text-xs text-gray-500 hover:text-midnight-blue text-left underline"
+                onClick={() => openEditModal(req)}
+                data-testid={`edit-requirement-${req.requirement_id}`}
               >
-                {complianceActionKey === req.requirement_id ? (
-                  <Loader2 className="w-3 h-3 animate-spin mr-1 shrink-0" />
-                ) : (
-                  <ClipboardCheck className="w-3 h-3 mr-1 shrink-0" />
-                )}
-                Create compliance job
-              </Button>
-              <Button
+                Edit dates and applicability
+              </button>
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="text-xs min-h-10 h-auto py-2"
+                className="text-xs text-gray-500 hover:text-midnight-blue text-left underline"
                 onClick={() => {
                   setNotApplicableReason('');
                   setNotApplicableCode('other');
@@ -484,23 +450,11 @@ const RequirementsPage = () => {
                 }}
                 data-testid={`compliance-not-applicable-${req.requirement_id}`}
               >
-                <Ban className="w-3 h-3 mr-1 shrink-0" />
                 Mark as not applicable
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="text-xs min-h-10 h-auto py-2"
-                onClick={() => openViewRequirementModal(req)}
-                data-testid={`compliance-view-requirement-${req.requirement_id}`}
-              >
-                <Eye className="w-3 h-3 mr-1 shrink-0" />
-                View requirement
-              </Button>
+              </button>
             </div>
           </div>
-        )}
+        </div>
       </div>
     );
   };
@@ -522,12 +476,16 @@ const RequirementsPage = () => {
   };
 
   // Stats
+  const statsBase = requirements.filter(
+    (r) => r.client_surface_visible !== false && isRequirementIncludedInAttentionViews(r)
+  );
+  const trackedAttentionCount = statsBase.length;
   const stats = {
-    total: requirements.length,
-    compliant: requirements.filter(r => r.status === 'COMPLIANT').length,
-    expiringSoon: requirements.filter(r => r.status === 'EXPIRING_SOON').length,
-    overdue: requirements.filter(r => r.status === 'OVERDUE').length,
-    pending: requirements.filter(r => r.status === 'PENDING').length
+    total: trackedAttentionCount,
+    compliant: statsBase.filter((r) => r.status === 'COMPLIANT').length,
+    expiringSoon: statsBase.filter((r) => r.status === 'EXPIRING_SOON').length,
+    overdue: statsBase.filter((r) => r.status === 'OVERDUE').length,
+    pending: statsBase.filter((r) => r.status === 'PENDING').length,
   };
 
   if (loading) {
@@ -557,7 +515,9 @@ const RequirementsPage = () => {
             <div className="text-left sm:text-right shrink-0 rounded-xl border border-gray-200 bg-white px-4 py-3">
               <p className="text-xs text-gray-500 uppercase tracking-wide">Showing</p>
               <p className="text-2xl font-bold text-midnight-blue tabular-nums">{filteredRequirements.length}</p>
-              <p className="text-sm text-gray-500">{PORTAL_COPY.trackedItems}</p>
+              <p className="text-sm text-gray-500">
+                {attentionScopedOnly ? PORTAL_COPY.trackedItems : `All ${PORTAL_COPY.requirements.toLowerCase()}`}
+              </p>
             </div>
           </div>
         </div>
@@ -742,7 +702,7 @@ const RequirementsPage = () => {
         {/* Footer count */}
         {filteredRequirements.length > 0 && (
           <div className="mt-4 text-center text-sm text-gray-500">
-            Showing {filteredRequirements.length} of {requirements.length} tracked items
+            Showing {filteredRequirements.length} of {trackedAttentionCount} tracked items
           </div>
         )}
 

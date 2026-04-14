@@ -14,6 +14,7 @@ from presentation.label_service import (
     sla_state_label,
     work_order_status_label,
 )
+from services.compliance_requirement_engine import requirement_row_in_client_priority_stream
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +127,9 @@ async def fetch_client_priority_actions(client_id: str, property_id_filter: Opti
         q_req["property_id"] = property_id_filter
     reqs = await db.requirements.find(q_req).limit(limit).to_list(limit)
     for r in reqs:
+        ok, _eng = requirement_row_in_client_priority_stream(r, kind="overdue")
+        if not ok:
+            continue
         prop_id = r.get("property_id")
         code_raw = r.get("code") or r.get("requirement_type") or ""
         disp = requirement_label(code_raw) if code_raw else "Compliance item"
@@ -149,6 +153,9 @@ async def fetch_client_priority_actions(client_id: str, property_id_filter: Opti
         q_exp["property_id"] = property_id_filter
     exp_reqs = await db.requirements.find(q_exp).limit(limit).to_list(limit)
     for r in exp_reqs:
+        ok, _eng = requirement_row_in_client_priority_stream(r, kind="expiring")
+        if not ok:
+            continue
         prop_id = r.get("property_id")
         code_raw = r.get("code") or r.get("requirement_type") or ""
         disp = requirement_label(code_raw) if code_raw else "Certificate"
@@ -173,6 +180,9 @@ async def fetch_client_priority_actions(client_id: str, property_id_filter: Opti
     miss_reqs = await db.requirements.find(q_miss).limit(limit).to_list(limit)
     for r in miss_reqs:
         if r.get("evidence_doc_id"):
+            continue
+        ok, _eng = requirement_row_in_client_priority_stream(r, kind="missing")
+        if not ok:
             continue
         prop_id = r.get("property_id")
         code_raw = r.get("code") or r.get("requirement_type") or ""

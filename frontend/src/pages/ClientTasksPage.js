@@ -5,7 +5,7 @@
  * Today model (keep aligned with docs/CLIENT_PORTAL_WORKFLOW_MATRIX.md and today_projection_service.py):
  *
  * - Business actions: server-provided `business_actions` (upload certificate → navigate to documents vault
- *   with focus=upload; create compliance job → POST requirement job then navigate; view requirement/issue/job;
+ *   with focus=upload; compliance inspection job → POST requirement job then navigate; view requirement/issue/job;
  *   etc.). These drive real domain workflows, not inbox presentation alone.
  *
  * - Visibility actions: `visibility_actions` → POST /api/today/items/{id}/snooze | mark-reviewed | dismiss.
@@ -21,7 +21,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   inboxTitleForDisplay,
   requirementLabel,
-  requirementDocumentUploadLabel,
   inboxSourceTypeLabel,
   inboxTimelineActionLabel,
 } from '../domain/presentDomain';
@@ -79,6 +78,7 @@ import {
   stripTechnicalParenTail,
 } from '../utils/todayWorkflowPolicy';
 import { todayRequirementWhyItMattersLine } from '../utils/todayRequirementWhyItMatters';
+import { alignTodayPayloadTaskSections, requirementMapFromList } from '../utils/portalRequirementAttention';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All' },
@@ -126,6 +126,10 @@ const TODAY_CTA_LABEL_MAP = {
   'review risk signal': 'Review issue',
   'view risk signal': 'Review issue',
   'review flagged issue': 'Review issue',
+  'create job': 'Fix issue',
+  'create compliance job': 'Fix compliance issue',
+  'create issue': 'Fix issue',
+  'upload certificate': 'Fix compliance issue',
 };
 
 /**
@@ -179,11 +183,13 @@ function dedupeActionsByPrimaryPath(ordered) {
 function labelForTodayBusinessAction(act, task, workflow) {
   if (!act) return sanitizeTodayCtaLabel(task?.primary_action_label, task);
   if (String(act.id) === 'upload_certificate' && workflow === 'compliance') {
-    const meta = task?.metadata || {};
-    return requirementDocumentUploadLabel(meta.requirement_code || meta.requirement_type);
+    return 'Fix compliance issue';
+  }
+  if (String(act.id) === 'create_compliance_work_order' && workflow === 'compliance') {
+    return 'Fix compliance issue';
   }
   if (String(act.id) === 'create_maintenance_job' && workflow === 'maintenance') {
-    return 'Log maintenance issue';
+    return 'Fix issue';
   }
   if (String(act.id) === 'view_job') {
     return clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA;
@@ -805,6 +811,8 @@ export default function ClientTasksPage() {
   const [dismissReason, setDismissReason] = useState('');
   const [complianceBookingBusyId, setComplianceBookingBusyId] = useState(null);
   const [planJobGate, setPlanJobGate] = useState(null);
+  /** Same GET /client/requirements list as Requirements / Operating — aligns inbox with tracked rows. */
+  const [portalRequirementsForInbox, setPortalRequirementsForInbox] = useState([]);
   /** From GET /client/command-center (same scoping as Dashboard when property_id is set). */
   const [jurisdictionComplianceNotice, setJurisdictionComplianceNotice] = useState(null);
   const [commandCenterFallbackAcknowledged, setCommandCenterFallbackAcknowledged] = useState(null);
@@ -850,9 +858,15 @@ export default function ClientTasksPage() {
       .catch(() => {
         /* Do not surface errors; Today does not depend on command-center. */
       });
-    clientAPI
-      .getTodayItems(params)
-      .then((res) => setPayload(res.data))
+    Promise.all([
+      clientAPI.getTodayItems(params),
+      clientAPI.getRequirements().catch(() => ({ data: { requirements: [] } })),
+    ])
+      .then(([todayRes, reqRes]) => {
+        setPayload(todayRes.data);
+        const reqs = reqRes?.data?.requirements;
+        setPortalRequirementsForInbox(Array.isArray(reqs) ? reqs : []);
+      })
       .catch((err) => {
         setError(err?.response?.data?.detail || 'Failed to load tasks');
         setPayload(null);
@@ -904,7 +918,16 @@ export default function ClientTasksPage() {
 
   const applyFilter = (list) => (list || []).filter(filterTask);
 
-  const sections = payload?.tasks || {};
+  const inboxRequirementById = useMemo(
+    () => requirementMapFromList(portalRequirementsForInbox),
+    [portalRequirementsForInbox],
+  );
+
+  const sections = useMemo(
+    () => alignTodayPayloadTaskSections(payload, inboxRequirementById),
+    [payload, inboxRequirementById],
+  );
+
   const urgent = applyFilter(sections.urgent);
 
   const topPriorityTasks = useMemo(() => {
@@ -976,7 +999,7 @@ export default function ClientTasksPage() {
           work_order_id: woId,
         });
         toast.success(
-          'Compliance job created. Assign and schedule next—this starts the on-site path so the requirement can be satisfied.',
+          'Inspection job started. Open it next to assign a contractor and complete booking, visit, and proof.',
         );
         const pid = act.property_id || task?.property_id;
         if (pid && typeof window !== 'undefined') {
@@ -995,7 +1018,7 @@ export default function ClientTasksPage() {
           return;
         }
         const d = err?.response?.data?.detail;
-        toast.error(typeof d === 'string' ? d : d?.message || 'Could not create compliance job');
+        toast.error(typeof d === 'string' ? d : d?.message || 'Could not start compliance fix');
       } finally {
         setComplianceBookingBusyId(null);
       }
@@ -1290,19 +1313,19 @@ export default function ClientTasksPage() {
         <CardContent className="flex flex-wrap gap-4 text-sm">
           <div>
             <span className="text-gray-500">Urgent</span>
-            <p className="text-xl font-semibold text-midnight-blue">{summary?.urgent_count ?? 0}</p>
+            <p className="text-xl font-semibold text-midnight-blue">{sections.urgent.length}</p>
           </div>
           <div>
             <span className="text-gray-500">Upcoming</span>
-            <p className="text-xl font-semibold text-midnight-blue">{summary?.upcoming_count ?? 0}</p>
+            <p className="text-xl font-semibold text-midnight-blue">{sections.upcoming.length}</p>
           </div>
           <div>
             <span className="text-gray-500">In progress</span>
-            <p className="text-xl font-semibold text-midnight-blue">{summary?.in_progress_count ?? 0}</p>
+            <p className="text-xl font-semibold text-midnight-blue">{sections.in_progress.length}</p>
           </div>
           <div title="Cards hidden from Today for a set time; due dates and records do not change">
             <span className="text-gray-500">Snoozed</span>
-            <p className="text-xl font-semibold text-midnight-blue">{summary?.snoozed_count ?? 0}</p>
+            <p className="text-xl font-semibold text-midnight-blue">{sections.snoozed.length}</p>
           </div>
           {spendDisplay && (
             <div className="min-w-[10rem]" title={spendDisplay.hint}>

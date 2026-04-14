@@ -83,7 +83,7 @@ function ClientContractorsPageInner() {
     if (activeTab === 'my') {
       return (
         <>
-          No contractors in your list yet. To add someone new, open a maintenance or compliance job and use{' '}
+          No contractors in your list yet. To add someone new, open a job under Operations (maintenance or compliance) and use{' '}
           <span className="font-medium">Add contractor & assign</span> in the assignment section (
           <Link to="/operations/work-orders" className="text-electric-teal hover:underline">
             Operations → Jobs

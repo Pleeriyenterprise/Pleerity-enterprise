@@ -52,15 +52,16 @@ const ALLOWED_BY_WORKFLOW = {
 };
 
 const ORDER_BY_WORKFLOW = {
-  compliance: ['create_compliance_work_order', 'upload_certificate', 'view_requirement', 'open_primary'],
+  /** Upload-first so document gaps beat synthetic “create job” when both are eligible. */
+  compliance: ['upload_certificate', 'create_compliance_work_order', 'view_requirement', 'open_primary'],
   compliance_job: ['view_job', 'open_primary'],
   maintenance_job: ['view_job', 'open_primary'],
   maintenance: ['create_maintenance_job', 'view_issue', 'open_primary'],
   issue_risk: ['review_risk_signal', 'open_primary'],
   approval: ['view_approval', 'open_primary'],
   unclear: [
-    'create_compliance_work_order',
     'upload_certificate',
+    'create_compliance_work_order',
     'view_requirement',
     'review_risk_signal',
     'view_approval',
@@ -96,7 +97,7 @@ export function mergeComplianceCreateIfEligible(task, workflow, ordered, showCom
   if (ordered.some((a) => String(a.id) === 'create_compliance_work_order')) return ordered;
   const synth = {
     id: 'create_compliance_work_order',
-    label: 'Create compliance job',
+    label: 'Fix compliance issue',
     requirement_id: ce.linked_property_requirement_id,
     property_id: ce.property_id || task.property_id,
     requirement_code: ce.requirement_code,

@@ -22,10 +22,10 @@ import { getFeatureDisplayInfo } from '../UpgradePrompt';
 export const PLAN_RESTRICTED_TITLE = "This action isn't available on your current plan";
 
 const COMPLIANCE_BODY =
-  'Creating compliance jobs requires a higher plan. You can still upload documents or manage requirements.';
+  'Starting compliance inspection work from a requirement requires a higher plan. You can still upload documents or manage requirements.';
 
 const MAINTENANCE_BODY =
-  'Creating maintenance jobs requires a higher plan. You can still log issues or track property activity.';
+  'Starting maintenance jobs from the platform requires a higher plan. You can still log issues or track property activity.';
 
 const TOAST_PREFIX = 'cvp_plan_gate_toast_';
 
@@ -62,8 +62,8 @@ export function openPlanRestrictedJobGate(error, setGate, context = {}) {
   notifyPlanRestrictedActionOnce(
     kind === 'compliance_job' ? 'compliance_job' : 'maintenance_job',
     kind === 'compliance_job'
-      ? 'Upgrade required to create compliance jobs'
-      : 'Upgrade required to create maintenance jobs',
+      ? 'Upgrade required to start compliance inspection jobs'
+      : 'Upgrade required to start maintenance jobs',
   );
   return true;
 }

@@ -10,6 +10,7 @@ import { getEvidenceStatus } from '../../utils/evidenceStatus';
 import { humanRiskType, humanSeverity, humanAction } from '../../utils/riskPresentation';
 import { buildEntityRoute, resolveClientPortalPath, resolveDocumentsPath } from '../../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../../utils/ctaRegistry';
+import { resolveRiskSignalPrimaryKey } from '../../utils/primaryActionResolver';
 import { PORTAL_COPY } from '../../utils/clientPortalCopy';
 import { cn } from '../../lib/utils';
 import { humanizeOperatingFeedItems } from '../../utils/propertyOperatingActivityCopy';
@@ -163,7 +164,7 @@ export default function PropertyOperatingHub({
             <CardContent className="py-6 text-sm text-gray-600">
               <p className="font-medium text-midnight-blue">Nothing urgent from the command center for this property.</p>
               <p className="mt-2 text-xs text-gray-500">
-                If requirements are overdue or jobs are open, they are listed below. You can still add documents or create a job from the header.
+                If requirements are overdue or jobs are open, they are listed below. You can still add documents or start work from the property header.
               </p>
             </CardContent>
           </Card>
@@ -178,7 +179,55 @@ export default function PropertyOperatingHub({
           </h2>
           <ul className="space-y-3">
             {(riskSignalsData.signals || []).filter((s) => (s.status || 'active') === 'active').slice(0, 2).map((s) => {
-              const sigActions = Array.isArray(s.suggested_actions) ? s.suggested_actions : ['create_issue', 'create_work_order'];
+              const hasMaint = hasFeature('maintenance_workflows');
+              const hasComp = hasFeature('compliance_engine');
+              const { key: primaryKey, label: primaryLabel } = resolveRiskSignalPrimaryKey(s, hasMaint, hasComp);
+              const onCreateWo = async () => {
+                if (hasMaint) {
+                  try {
+                    await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
+                    toast.success('Job started');
+                    loadRiskSignals();
+                    loadWorkOrders();
+                  } catch (e) {
+                    if (onPlanRestrictedJobError?.(e, { propertyId })) return;
+                    toast.error(e?.response?.data?.detail || 'Failed');
+                  }
+                } else {
+                  onCreateWoFromRiskDescription(s.recommended_action);
+                }
+              };
+              const runPrimary = async () => {
+                if (primaryKey === 'compliance_inspection') {
+                  openBookInspectionFromRisk(s.signal_id);
+                  return;
+                }
+                if (primaryKey === 'log_inspection_issue') {
+                  try {
+                    await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {});
+                    toast.success('Logged for follow-up');
+                    loadRiskSignals();
+                  } catch (e) {
+                    toast.error(e?.response?.data?.detail || 'Failed');
+                  }
+                  return;
+                }
+                if (primaryKey === 'maintenance_job') {
+                  await onCreateWo();
+                  return;
+                }
+                if (primaryKey === 'maintenance_issue') {
+                  try {
+                    await clientAPI.createIssueFromRiskSignal(s.signal_id, {});
+                    toast.success('Logged for follow-up');
+                    loadRiskSignals();
+                  } catch (e) {
+                    toast.error(e?.response?.data?.detail || 'Failed');
+                  }
+                  return;
+                }
+                onSelectTab(TAB_RISK_SIGNALS);
+              };
               return (
                 <li key={s.signal_id} className="rounded-xl border border-amber-200/80 bg-amber-50/40 p-4 min-w-0">
                   <p className="font-medium text-midnight-blue">{humanRiskType(s)}</p>
@@ -193,77 +242,33 @@ export default function PropertyOperatingHub({
                     {humanSeverity(s.risk_level)}
                   </span>
                   <div className="flex flex-col gap-2 mt-3">
-                    {sigActions.includes('create_work_order') && (
-                      <Button
-                        type="button"
-                        className={cn(portalPrimaryButtonClass, 'w-full justify-center bg-electric-teal hover:bg-electric-teal/90')}
-                        onClick={async () => {
-                          if (hasFeature('maintenance_workflows')) {
-                            try {
-                              await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
-                              toast.success('Job created');
-                              loadRiskSignals();
-                              loadWorkOrders();
-                            } catch (e) {
-                              if (onPlanRestrictedJobError?.(e, { propertyId })) return;
-                              toast.error(e?.response?.data?.detail || 'Failed');
-                            }
-                          } else {
-                            onCreateWoFromRiskDescription(s.recommended_action);
-                          }
-                        }}
-                      >
-                        <Wrench className="w-4 h-4 mr-2 shrink-0" />
-                        {PORTAL_COPY.addWorkOrder}
-                      </Button>
-                    )}
-                    {sigActions.includes('schedule_inspection') && hasFeature('compliance_engine') && hasFeature('maintenance_workflows') && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className={cn(portalSecondaryButtonClass, 'w-full justify-center')}
-                        onClick={() => openBookInspectionFromRisk(s.signal_id)}
-                      >
-                        Create compliance job
-                      </Button>
-                    )}
-                    {sigActions.includes('schedule_inspection') && hasFeature('maintenance_workflows') && !hasFeature('compliance_engine') && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className={cn(portalSecondaryButtonClass, 'w-full justify-center')}
-                        onClick={async () => {
-                          try {
-                            await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {});
-                            toast.success('Inspection issue logged');
-                            loadRiskSignals();
-                          } catch (e) {
-                            toast.error(e?.response?.data?.detail || 'Failed');
-                          }
-                        }}
-                      >
-                        Log inspection issue
-                      </Button>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" variant="ghost" size="sm" className="min-h-10 text-gray-600" onClick={() => onSelectTab(TAB_RISK_SIGNALS)}>
-                        {PORTAL_COPY.viewDetails}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="min-h-10 text-gray-600"
-                        onClick={async () => {
-                          try {
-                            await clientAPI.updateRiskSignalStatus(s.signal_id, 'acknowledged');
-                            loadRiskSignals();
-                          } catch (_) {}
-                        }}
-                      >
-                        Acknowledge
-                      </Button>
-                    </div>
+                    <Button
+                      type="button"
+                      className={cn(
+                        portalPrimaryButtonClass,
+                        'w-full justify-center bg-electric-teal hover:bg-electric-teal/90',
+                        primaryKey === 'maintenance_job' ? 'inline-flex items-center justify-center' : '',
+                      )}
+                      onClick={runPrimary}
+                    >
+                      {primaryKey === 'maintenance_job' ? <Wrench className="w-4 h-4 mr-2 shrink-0" /> : null}
+                      {primaryLabel}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" className="min-h-10 text-gray-600 w-full justify-center" onClick={() => onSelectTab(TAB_RISK_SIGNALS)}>
+                      {PORTAL_COPY.viewDetails}
+                    </Button>
+                    <button
+                      type="button"
+                      className="text-xs text-gray-500 hover:text-midnight-blue text-left underline"
+                      onClick={async () => {
+                        try {
+                          await clientAPI.updateRiskSignalStatus(s.signal_id, 'acknowledged');
+                          loadRiskSignals();
+                        } catch (_) {}
+                      }}
+                    >
+                      Acknowledge
+                    </button>
                   </div>
                 </li>
               );
@@ -327,14 +332,7 @@ export default function PropertyOperatingHub({
               const due = rowExpiry(r);
               const est = r.date_source === 'SYSTEM_ESTIMATED';
               const needsDocument = isRequirementMissingDocument(r);
-              const primaryLabel =
-                needsDocument
-                  ? requirementDocumentUploadLabel(r.requirement_code || r.requirement_type)
-                  : linked && ['OVERDUE', 'EXPIRED', 'EXPIRING_SOON'].includes(st)
-                    ? 'Replace document'
-                    : linked
-                      ? PORTAL_COPY.viewDocuments
-                      : PORTAL_COPY.viewDetails;
+              const primaryLabel = PORTAL_COPY.fixComplianceIssue;
               const reqHref = buildEntityRoute({ requirement_id: rowReqId(r), property_id: propertyId, mode: 'requirement' }, '');
               return (
                 <li key={rowReqId(r) || r.requirement_code} className="rounded-xl border border-gray-200 bg-white p-4 min-w-0 shadow-sm">
@@ -375,7 +373,7 @@ export default function PropertyOperatingHub({
                     </Button>
                     {reqHref ? (
                       <Link to={reqHref} className={cn(portalSecondaryButtonClass, 'inline-flex w-full sm:w-auto justify-center no-underline items-center')}>
-                        Review requirement details
+                        View details
                       </Link>
                     ) : null}
                     {needsDocument && (r.requirement_code || r.requirement_type) ? (

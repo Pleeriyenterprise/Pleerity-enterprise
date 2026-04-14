@@ -43,13 +43,25 @@ _SHARED_LEGAL_CORE_WEIGHTS = {
     "FIRE_DETECTION": {"weight": 10.0, "risk_level_if_failed": "HIGH"},
     "LEGIONELLA": {"weight": 10.0, "risk_level_if_failed": "MEDIUM"},
 }
+# Condition-scoped extensions (see _applies_if): HMO fire evidence, Wales occupation contract, Scotland landlord registration.
+_EXTENDED_LEGAL_CORE_WEIGHTS = {
+    "HMO_FIRE_RISK": {"weight": 8.0, "risk_level_if_failed": "HIGH"},
+    "OCCUPATION_CONTRACT": {"weight": 3.0, "risk_level_if_failed": "LOW"},
+}
+_SCOTLAND_ONLY_WEIGHTS = {
+    "LANDLORD_REGISTRATION": {"weight": 8.0, "risk_level_if_failed": "MEDIUM"},
+}
 JURISDICTION_PROFILES: Dict[str, Dict[str, Any]] = {
     "ENGLAND_WALES": {
-        "requirements": dict(_SHARED_LEGAL_CORE_WEIGHTS),
+        "requirements": {**dict(_SHARED_LEGAL_CORE_WEIGHTS), **dict(_EXTENDED_LEGAL_CORE_WEIGHTS)},
         "expiring_soon_days": _JURISDICTION_DEFAULT_DAYS,
     },
     "SCOTLAND": {
-        "requirements": dict(_SHARED_LEGAL_CORE_WEIGHTS),
+        "requirements": {
+            **dict(_SHARED_LEGAL_CORE_WEIGHTS),
+            **dict(_EXTENDED_LEGAL_CORE_WEIGHTS),
+            **dict(_SCOTLAND_ONLY_WEIGHTS),
+        },
         "expiring_soon_days": _JURISDICTION_DEFAULT_DAYS,
     },
 }
@@ -68,6 +80,11 @@ REQ_ALIASES = {
     "FIRE_DOORS": "FIRE_DETECTION",
     "EMERGENCY_LIGHTING": "FIRE_DETECTION",
     "LEGIONELLA_RISK": "LEGIONELLA",
+    "HMO_FIRE_RISK_EVIDENCE": "HMO_FIRE_RISK",
+    "HMO_FIRE_RISK": "HMO_FIRE_RISK",
+    "SCOTLAND_LANDLORD_REGISTRATION": "LANDLORD_REGISTRATION",
+    "LANDLORD_REGISTRATION_SCOTLAND": "LANDLORD_REGISTRATION",
+    "WALES_OCCUPATION_CONTRACT": "OCCUPATION_CONTRACT",
 }
 
 REQ_TO_DOC_TYPE = {
@@ -76,6 +93,9 @@ REQ_TO_DOC_TYPE = {
     "EPC": "epc",
     "FIRE_DETECTION": "fire_safety",
     "LEGIONELLA": "legionella",
+    "HMO_FIRE_RISK": "fire_safety",
+    "LANDLORD_REGISTRATION": "licence",
+    "OCCUPATION_CONTRACT": "tenancy_agreement",
 }
 
 
@@ -139,6 +159,11 @@ def _status_fraction_from_requirement(
 ) -> Tuple[float, str, Optional[str], Optional[str], List[str]]:
     if not req:
         return _status_fraction_from_doc(code, docs, as_of, expiring_soon_days, expects_expiry=expects_expiry)
+    app = (req.get("applicability") or "").strip().upper()
+    if app == "NOT_REQUIRED":
+        due = _parse_due(req.get("due_date") or req.get("expiry_date"))
+        verified_at = req.get("verified_at")
+        return 1.0, "NOT_APPLICABLE", due.isoformat() if due else None, str(verified_at) if verified_at else None, []
     req_status = (req.get("status") or "").upper()
     due = _parse_due(req.get("due_date") or req.get("expiry_date"))
     verified_at = req.get("verified_at")
@@ -162,11 +187,45 @@ def _status_fraction_from_requirement(
     return _status_fraction_from_doc(code, docs, as_of, expiring_soon_days, expects_expiry=expects_expiry)
 
 
-def _applies_if(code: str, property_doc: Dict[str, Any]) -> bool:
+def _is_commercial_property(property_doc: Dict[str, Any]) -> bool:
+    pt = (property_doc.get("property_type") or "").strip().upper()
+    return pt == "COMMERCIAL"
+
+
+def _str_truthy(val: Any) -> bool:
+    if val is None:
+        return False
+    if isinstance(val, bool):
+        return val
+    s = str(val).strip()
+    if not s or s.upper() in ("NO", "FALSE", "0"):
+        return False
+    return s.upper() in ("YES", "TRUE", "1") or bool(s)
+
+
+def _applies_if(code: str, property_doc: Dict[str, Any], client_doc: Optional[Dict[str, Any]] = None) -> bool:
     if code == "GAS_SAFETY":
         gas_decl = str(property_doc.get("cert_gas_safety") or "").upper() == "YES"
         has_gas = bool(property_doc.get("has_gas_supply") or property_doc.get("has_gas"))
         return gas_decl or has_gas
+    if code == "LANDLORD_REGISTRATION":
+        from services.compliance_rules_registry import resolve_portfolio_jurisdiction
+
+        if _is_commercial_property(property_doc):
+            return False
+        r = resolve_portfolio_jurisdiction(property_doc, client_doc)
+        return r.effective_label == "Scotland"
+    if code == "OCCUPATION_CONTRACT":
+        from services.compliance_rules_registry import resolve_portfolio_jurisdiction
+
+        if _is_commercial_property(property_doc):
+            return False
+        if not _str_truthy(property_doc.get("tenancy_active")):
+            return False
+        r = resolve_portfolio_jurisdiction(property_doc, client_doc)
+        return r.effective_label == "Wales"
+    if code == "HMO_FIRE_RISK":
+        return bool(property_doc.get("is_hmo"))
     return True
 
 
@@ -203,7 +262,7 @@ def compute_property_score_v2(
     breakdown: List[Dict[str, Any]] = []
 
     for code, cfg in profile["requirements"].items():
-        applies = _applies_if(code, property_doc)
+        applies = _applies_if(code, property_doc, client_doc)
         if not applies:
             breakdown.append({
                 "requirement_code": code,

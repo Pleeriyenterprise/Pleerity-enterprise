@@ -875,13 +875,13 @@ function ClientMaintenancePageInner() {
         </div>
       )}
 
-      {/* Create job (report issue) modal */}
+      {/* Report issue → maintenance job modal */}
       {createOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Report an issue</h2>
             <p className="text-sm text-gray-600 mb-4">
-              Logging here creates a maintenance job so the property’s repair record and SLA timers can start.
+              Logging here starts a job so the property’s repair record and SLA timers can run in the platform.
             </p>
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>

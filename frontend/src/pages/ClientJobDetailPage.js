@@ -1455,7 +1455,7 @@ function ClientJobDetailInner() {
                 <div>
                   <p className="text-xs font-medium text-gray-700 mb-1">Service regions (UK)</p>
                   <p className="text-[11px] text-gray-500 mb-2">
-                    For compliance jobs, regions default to this job&apos;s jurisdiction; adjust if the contractor covers more
+                    For compliance work, regions default to this job&apos;s jurisdiction; adjust if the contractor covers more
                     than one.
                   </p>
                   <div className="flex flex-wrap gap-2">

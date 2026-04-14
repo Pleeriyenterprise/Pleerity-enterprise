@@ -11,6 +11,7 @@ from presentation.label_service import (
     compliance_requirement_status_label,
     requirement_label,
 )
+from services.compliance_requirement_engine import resolve_engine_payload_from_requirement_row
 
 # --- Canonical enum values (stored on requirement documents and returned in APIs) ---
 
@@ -203,6 +204,9 @@ def enrich_requirement_dict(
         out["show_estimated_date_copy"] = False
     else:
         out["show_estimated_date_copy"] = date_source == DATE_SOURCE_SYSTEM_ESTIMATED
+
+    eng = resolve_engine_payload_from_requirement_row(out)
+    out.update(eng)
 
     return out
 

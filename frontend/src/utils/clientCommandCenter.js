@@ -371,6 +371,9 @@ const COMMAND_CENTER_CTA_LABEL_MAP = {
   'review risk signal': 'Review issue',
   'view risk signal': 'Review issue',
   'review flagged issue': 'Review issue',
+  'create job': 'Fix issue',
+  'create compliance job': 'Fix compliance issue',
+  'create issue': 'Fix issue',
 };
 
 /**
@@ -404,15 +407,15 @@ export function sanitizeCommandCenterCtaLabel(primaryLabel, task) {
   const st = String(task?.source_type || '');
   const pat = String(task?.primary_action_type || task?.action_type || '');
 
-  if (at === 'missing_document' || pat === 'upload_evidence') return 'Upload document';
-  if (at === 'overdue_compliance' || at === 'certificate_expiring_soon') return 'Review requirement';
+  if (at === 'missing_document' || pat === 'upload_evidence') return 'Fix compliance issue';
+  if (at === 'overdue_compliance' || at === 'certificate_expiring_soon') return 'Fix compliance issue';
   if (st === 'work_order' || /work_order/i.test(at)) {
     return clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA;
   }
   if (st === 'risk_signal' || at === 'risk_signal') return 'Review issue';
   if (st === 'issue') return 'Review issue';
   if (st === 'approval') return 'Review approval';
-  if (st === 'requirement') return 'Review requirement';
+  if (st === 'requirement') return 'Fix compliance issue';
   return 'Continue in Today';
 }
 

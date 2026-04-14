@@ -118,15 +118,22 @@ def build_business_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]
 
     if source_type == "requirement" and source_entity_id:
         rid = str(source_entity_id)
-        out.append(
-            {
-                "id": "upload_certificate",
-                "label": "Upload certificate",
-                "navigate": _documents_upload_path(prop_id, rid),
-            }
-        )
+        eng = meta.get("compliance_engine") or {}
+        fulfillment = (eng.get("fulfillment_mode") or eng.get("engine_fulfillment_mode") or "document").strip().lower()
+        req_docs = bool(eng.get("requires_document_evidence", eng.get("engine_requires_document_evidence", True)))
+        create_job = bool(eng.get("creates_compliance_job", eng.get("engine_creates_compliance_job", True)))
+        informational = bool(eng.get("engine_informational"))
+
+        if fulfillment == "document" and req_docs:
+            out.append(
+                {
+                    "id": "upload_certificate",
+                    "label": "Upload certificate",
+                    "navigate": _documents_upload_path(prop_id, rid),
+                }
+            )
         ce = meta.get("compliance_execution_booking") or {}
-        if ce.get("eligible"):
+        if ce.get("eligible") and create_job:
             out.append(
                 {
                     "id": "create_compliance_work_order",
@@ -138,10 +145,11 @@ def build_business_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]
                     "compliance_generated_from": ce.get("compliance_generated_from") or "requirement",
                 }
             )
+        view_label = "Review obligation" if (fulfillment == "obligation" or informational) else "View requirement"
         out.append(
             {
                 "id": "view_requirement",
-                "label": "View requirement",
+                "label": view_label,
                 "navigate": f"/requirements?view_requirement={rid}",
             }
         )

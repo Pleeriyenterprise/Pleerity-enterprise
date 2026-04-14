@@ -8,6 +8,7 @@ Unit tests for Requirement Catalog applicability.
 import pytest
 from services.requirement_catalog import (
     get_applicable_requirements,
+    explain_catalog_keys_for_property,
     GAS_SAFETY_CERT,
     EICR_CERT,
     EPC_CERT,
@@ -15,6 +16,9 @@ from services.requirement_catalog import (
     TENANCY_AGREEMENT,
     HOW_TO_RENT,
     DEPOSIT_PRESCRIBED_INFO,
+    HMO_FIRE_RISK_EVIDENCE,
+    SCOTLAND_LANDLORD_REGISTRATION,
+    WALES_OCCUPATION_CONTRACT,
     REQUIREMENT_KEY_TO_DOCUMENT_TYPE,
 )
 
@@ -121,3 +125,63 @@ class TestPropertyTypeCommercial:
         assert TENANCY_AGREEMENT in applicable
         assert HOW_TO_RENT in applicable
         assert DEPOSIT_PRESCRIBED_INFO in applicable
+
+
+class TestHmoFireExpansion:
+    def test_hmo_adds_hmo_fire_risk_evidence(self):
+        prop = {"is_hmo": True}
+        applicable = get_applicable_requirements(prop)
+        assert HMO_FIRE_RISK_EVIDENCE in applicable
+        assert PROPERTY_LICENCE in applicable
+
+    def test_non_hmo_no_hmo_fire_risk_evidence(self):
+        prop = {"is_hmo": False, "licence_required": "NO"}
+        applicable = get_applicable_requirements(prop)
+        assert HMO_FIRE_RISK_EVIDENCE not in applicable
+
+
+class TestJurisdictionSpecificCatalog:
+    def test_scotland_landlord_registration_residential(self):
+        prop = {"jurisdiction": "Scotland", "property_type": "flat"}
+        applicable = get_applicable_requirements(prop, client_doc=None)
+        assert SCOTLAND_LANDLORD_REGISTRATION in applicable
+
+    def test_scotland_skipped_for_commercial(self):
+        prop = {"jurisdiction": "Scotland", "property_type": "commercial"}
+        applicable = get_applicable_requirements(prop)
+        assert SCOTLAND_LANDLORD_REGISTRATION not in applicable
+
+    def test_wales_occupation_contract_with_tenancy(self):
+        prop = {"jurisdiction": "Wales", "property_type": "house", "tenancy_active": True}
+        applicable = get_applicable_requirements(prop)
+        assert WALES_OCCUPATION_CONTRACT in applicable
+
+    def test_wales_no_contract_without_tenancy(self):
+        prop = {"jurisdiction": "Wales", "property_type": "house", "tenancy_active": False}
+        applicable = get_applicable_requirements(prop)
+        assert WALES_OCCUPATION_CONTRACT not in applicable
+
+
+class TestEvidenceMappingExtended:
+    def test_jurisdiction_keys_mapped(self):
+        assert REQUIREMENT_KEY_TO_DOCUMENT_TYPE[HMO_FIRE_RISK_EVIDENCE] == "fire_safety"
+        assert REQUIREMENT_KEY_TO_DOCUMENT_TYPE[SCOTLAND_LANDLORD_REGISTRATION] == "licence"
+        assert REQUIREMENT_KEY_TO_DOCUMENT_TYPE[WALES_OCCUPATION_CONTRACT] == "tenancy_agreement"
+
+
+class TestExplainCatalogKeys:
+    """explain_catalog_keys_for_property mirrors get_applicable_requirements inclusion flags."""
+
+    def test_wales_no_tenancy_wales_contract_excluded_with_reason(self):
+        prop = {"jurisdiction": "Wales", "property_type": "house", "tenancy_active": False}
+        expl = explain_catalog_keys_for_property(prop, {})
+        wales = next(x for x in expl if x["catalog_key"] == WALES_OCCUPATION_CONTRACT)
+        assert wales["included"] is False
+        assert "tenancy" in wales["reason"].lower()
+
+    def test_explain_included_flags_match_applicable_set(self):
+        prop = {"jurisdiction": "England", "property_type": "house", "cert_gas_safety": "YES", "is_hmo": True}
+        applicable = set(get_applicable_requirements(prop, {}))
+        expl = explain_catalog_keys_for_property(prop, {})
+        for row in expl:
+            assert row["included"] == (row["catalog_key"] in applicable)

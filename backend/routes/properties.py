@@ -279,6 +279,18 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
     from services.provisioning_status_hook import update_provisioning_status_for_property
     await update_provisioning_status_for_property(user["client_id"], property_id)
 
+    if jurisdiction_changed or applicability_changed:
+        try:
+            from services.requirement_materialization_service import materialize_requirements_for_property
+
+            await materialize_requirements_for_property(user["client_id"], property_id, reconcile_obsolete=True)
+        except Exception as mat_err:
+            logger.exception(
+                "patch_property: requirement materialisation failed property_id=%s: %s",
+                property_id,
+                mat_err,
+            )
+
     if jurisdiction_changed:
         from services.compliance_scoring_service import recalculate_and_persist
         from services.compliance_recalc_queue import (
@@ -869,6 +881,8 @@ async def get_upcoming_deadlines(request: Request, days: int = 30):
         
         upcoming = []
         for req in requirements:
+            if req.get("client_surface_visible") is False:
+                continue
             if not is_included_for_calendar(req):
                 continue
             due_date = get_effective_expiry_date(req)
@@ -924,4 +938,33 @@ async def get_property_requirements_api(request: Request, property_id: str):
     from services.requirement_truth import enrich_requirements_for_client
 
     enriched, presentation = await enrich_requirements_for_client(db, user["client_id"], requirements)
+    enriched = [r for r in enriched if r.get("client_surface_visible", True)]
     return {"requirements": enriched, "presentation": presentation}
+
+
+@router.post("/{property_id}/requirements/sync")
+async def sync_property_requirements_from_registry(request: Request, property_id: str):
+    """Re-run catalog registry materialisation for this property (idempotent upsert + obsolete reconcile)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": user["client_id"]},
+        {"_id": 0, "property_id": 1},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    from services.requirement_materialization_service import materialize_requirements_for_property
+    from services.provisioning import provisioning_service
+    from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROPERTY_UPDATED, ACTOR_CLIENT
+
+    result = await materialize_requirements_for_property(user["client_id"], property_id, reconcile_obsolete=True)
+    await provisioning_service._update_property_compliance(property_id)
+    await enqueue_compliance_recalc(
+        property_id=property_id,
+        client_id=user["client_id"],
+        trigger_reason=TRIGGER_PROPERTY_UPDATED,
+        actor_type=ACTOR_CLIENT,
+        actor_id=user.get("portal_user_id"),
+        correlation_id=f"REQUIREMENTS_SYNC:{property_id}",
+    )
+    return {"message": "Requirements synchronized", **(result or {})}

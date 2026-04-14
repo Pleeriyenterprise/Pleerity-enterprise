@@ -42,6 +42,10 @@ import {
   commandCenterJobRowHeadline,
 } from '../utils/clientCommandCenter';
 import { COMMAND_CENTER_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
+import {
+  filterInboxTasksForTrackedRequirements,
+  requirementMapFromList,
+} from '../utils/portalRequirementAttention';
 
 const KPI_NO_DATA = 'No data yet';
 
@@ -75,6 +79,19 @@ export default function ClientCommandCenterPage() {
   const [bundle, setBundle] = useState(null);
   const [portfolioSummary, setPortfolioSummary] = useState(null);
   const [workOrdersRaw, setWorkOrdersRaw] = useState(null);
+  const [portalRequirementsForInbox, setPortalRequirementsForInbox] = useState([]);
+
+  const loadPortalRequirements = useCallback(() => {
+    if (!isClientUser) return;
+    clientAPI
+      .getRequirements()
+      .then((r) => setPortalRequirementsForInbox(Array.isArray(r.data?.requirements) ? r.data.requirements : []))
+      .catch(() => setPortalRequirementsForInbox([]));
+  }, [isClientUser]);
+
+  useEffect(() => {
+    loadPortalRequirements();
+  }, [loadPortalRequirements]);
 
   useEffect(() => {
     if (!isClientUser) {
@@ -145,9 +162,13 @@ export default function ClientCommandCenterPage() {
     if (!isClientUser) return undefined;
     const onOutcome = () => {
       reloadBundle();
+      loadPortalRequirements();
     };
     const onVisible = () => {
-      if (document.visibilityState === 'visible') reloadBundle();
+      if (document.visibilityState === 'visible') {
+        reloadBundle();
+        loadPortalRequirements();
+      }
     };
     window.addEventListener('compliance-outcome', onOutcome);
     document.addEventListener('visibilitychange', onVisible);
@@ -155,12 +176,22 @@ export default function ClientCommandCenterPage() {
       window.removeEventListener('compliance-outcome', onOutcome);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [isClientUser, reloadBundle]);
+  }, [isClientUser, reloadBundle, loadPortalRequirements]);
 
-  const urgentCount = bundle?.urgent_actions?.length ?? 0;
+  const inboxRequirementById = useMemo(
+    () => requirementMapFromList(portalRequirementsForInbox),
+    [portalRequirementsForInbox],
+  );
+
+  const alignedUrgentActions = useMemo(
+    () => filterInboxTasksForTrackedRequirements(bundle?.urgent_actions || [], inboxRequirementById),
+    [bundle?.urgent_actions, inboxRequirementById],
+  );
+
+  const urgentCount = alignedUrgentActions.length;
   const propertyPriorityReps = useMemo(
-    () => buildPropertyPriorityRepresentatives(bundle?.urgent_actions || [], 8),
-    [bundle?.urgent_actions]
+    () => buildPropertyPriorityRepresentatives(alignedUrgentActions, 8),
+    [alignedUrgentActions],
   );
   const riskCount = bundle?.upcoming_risks?.length ?? 0;
   const summary = bundle?.compliance_status_summary;
@@ -224,7 +255,7 @@ export default function ClientCommandCenterPage() {
   );
 
   const portfolioVerdict = useMemo(() => {
-    const actions = bundle?.urgent_actions || [];
+    const actions = alignedUrgentActions;
     return buildPortfolioVerdictBlock({
       summary,
       portfolioSummary,
@@ -237,7 +268,7 @@ export default function ClientCommandCenterPage() {
       awaitingProofJobCount: awaitingProofJobCount,
     });
   }, [
-    bundle?.urgent_actions,
+    alignedUrgentActions,
     summary,
     portfolioSummary,
     riskCount,
@@ -252,7 +283,7 @@ export default function ClientCommandCenterPage() {
       computePortfolioDriverMetrics({
         summary,
         portfolioSummary,
-        urgentActions: bundle?.urgent_actions || [],
+        urgentActions: alignedUrgentActions,
         breachedJobCount,
         blockedJobCount,
         awaitingProofJobCount,
@@ -260,7 +291,7 @@ export default function ClientCommandCenterPage() {
     [
       summary,
       portfolioSummary,
-      bundle?.urgent_actions,
+      alignedUrgentActions,
       breachedJobCount,
       blockedJobCount,
       awaitingProofJobCount,

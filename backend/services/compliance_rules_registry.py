@@ -336,6 +336,45 @@ def _build_registry() -> Dict[str, Dict[str, ComplianceRuleSpec]]:
             sla_risk_days_before_complete=3,
             sla_risk_hours_before_respond=4,
         ),
+        "HMO_FIRE_RISK": ComplianceRuleSpec(
+            canonical_code="HMO_FIRE_RISK",
+            storage_type="hmo_fire_risk",
+            description="HMO fire safety evidence / fire risk assessment",
+            frequency_days=365,
+            warning_days=30,
+            expects_expiry=True,
+            allowed_document_types=("fire_safety", "fire_risk_assessment", "fire_alarm", "smoke_alarm"),
+            sla_complete_days=14,
+            sla_respond_hours=24,
+            sla_risk_days_before_complete=3,
+            sla_risk_hours_before_respond=4,
+        ),
+        "OCCUPATION_CONTRACT": ComplianceRuleSpec(
+            canonical_code="OCCUPATION_CONTRACT",
+            storage_type="occupation_contract",
+            description="Occupation contract / tenancy documentation (Wales)",
+            frequency_days=365,
+            warning_days=30,
+            expects_expiry=True,
+            allowed_document_types=("tenancy_agreement", "occupation_contract", "contract"),
+            sla_complete_days=21,
+            sla_respond_hours=48,
+            sla_risk_days_before_complete=3,
+            sla_risk_hours_before_respond=6,
+        ),
+        "LANDLORD_REGISTRATION": ComplianceRuleSpec(
+            canonical_code="LANDLORD_REGISTRATION",
+            storage_type="landlord_registration",
+            description="Landlord registration (Scotland)",
+            frequency_days=1095,
+            warning_days=45,
+            expects_expiry=True,
+            allowed_document_types=("licence", "landlord_registration", "registration_certificate"),
+            sla_complete_days=14,
+            sla_respond_hours=48,
+            sla_risk_days_before_complete=3,
+            sla_risk_hours_before_respond=6,
+        ),
     }
     # SCOTLAND: shared cadence baseline; document evidence rules may diverge (e.g. extra accepted types).
     scotland = dict(base_ew)
@@ -366,6 +405,9 @@ def _build_registry() -> Dict[str, Dict[str, ComplianceRuleSpec]]:
         sla_risk_days_before_complete=4,
         sla_risk_hours_before_respond=4,
     )
+    # Shared extended rules (HMO fire, Wales contract) use same cadence hints as EW unless forked later.
+    scotland["HMO_FIRE_RISK"] = base_ew["HMO_FIRE_RISK"]
+    scotland["OCCUPATION_CONTRACT"] = base_ew["OCCUPATION_CONTRACT"]
     return {"ENGLAND_WALES": base_ew, "SCOTLAND": scotland}
 
 
@@ -384,6 +426,9 @@ REQ_TO_DOC_TYPE: Dict[str, str] = {
     "EPC": "epc",
     "FIRE_DETECTION": "fire_safety",
     "LEGIONELLA": "legionella",
+    "HMO_FIRE_RISK": "fire_safety",
+    "LANDLORD_REGISTRATION": "licence",
+    "OCCUPATION_CONTRACT": "tenancy_agreement",
 }
 
 
@@ -468,7 +513,14 @@ def expects_expiry_for_requirement(scoring_jurisdiction: str, canonical_code: st
     spec = get_rule(scoring_jurisdiction, canonical_code)
     if spec:
         return spec.expects_expiry
-    return canonical_code in ("GAS_SAFETY", "EICR", "EPC")
+    return canonical_code in (
+        "GAS_SAFETY",
+        "EICR",
+        "EPC",
+        "HMO_FIRE_RISK",
+        "LANDLORD_REGISTRATION",
+        "OCCUPATION_CONTRACT",
+    )
 
 
 def rule_applies_to_db_row(rule: Dict[str, Any], portfolio_label: str, scoring_jurisdiction: str) -> bool:

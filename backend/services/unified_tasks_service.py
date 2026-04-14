@@ -33,6 +33,7 @@ from services.requirement_code_registry import (
     is_bookable_compliance_requirement,
     normalize_requirement_code_strict,
 )
+from services.compliance_requirement_engine import resolve_engine_payload_from_code
 
 logger = logging.getLogger(__name__)
 
@@ -143,15 +144,24 @@ def _secondary_nav_label(source_type: str) -> str:
     }.get(source_type, "View details")
 
 
-def _primary_action_fields(a: Dict[str, Any], source_type: str) -> Tuple[str, str, str, bool]:
+def _primary_action_fields(
+    a: Dict[str, Any],
+    source_type: str,
+    *,
+    compliance_engine: Optional[Dict[str, Any]] = None,
+) -> Tuple[str, str, str, bool]:
     """primary_action_type, label, url, inline_supported"""
     url = (a.get("recommended_url") or "").strip() or "/dashboard"
     label = (a.get("recommended_action_label") or "View").strip()
     at = a.get("action_type") or ""
     inline = False
     if at in (ACTION_MISSING_DOCUMENT, ACTION_OVERDUE_COMPLIANCE, ACTION_CERT_EXPIRING_SOON):
-        primary_type = "upload_evidence"
-        inline = False
+        if compliance_engine and not compliance_engine.get("requires_document_evidence", True):
+            primary_type = "view_requirement"
+            inline = False
+        else:
+            primary_type = "upload_evidence"
+            inline = False
     elif at == ACTION_RISK_SIGNAL:
         primary_type = "risk_follow_up"
         inline = True
@@ -213,6 +223,8 @@ def _compliance_execution_booking_meta(action_type: str, a: Dict[str, Any]) -> O
         purpose = "certification"
     else:
         purpose = "inspection"
+    eng = resolve_engine_payload_from_code(str(code_raw or "").strip())
+    eligible = bool(eligible and eng.get("creates_compliance_job"))
     return {
         "eligible": eligible,
         "property_id": prop_id,
@@ -253,7 +265,12 @@ def _action_to_task(
     severity = (a.get("severity") or "medium").lower()
     urgency = _urgency_level(action_type, severity, overdue_days)
     section = _section_for_action(action_type, severity, overdue_days)
-    pri_type, pri_label, pri_url, inline_ok = _primary_action_fields(a, source_type)
+    req_engine: Optional[Dict[str, Any]] = None
+    if source_type == "requirement":
+        req_engine = resolve_engine_payload_from_code(str(a.get("requirement_code") or "").strip())
+    pri_type, pri_label, pri_url, inline_ok = _primary_action_fields(
+        a, source_type, compliance_engine=req_engine
+    )
     freshness = a.get("source_updated_at")
 
     task_metadata: Dict[str, Any] = {
@@ -266,6 +283,8 @@ def _action_to_task(
         "related_work_order_id": a.get("related_work_order_id"),
         "related_issue_id": a.get("related_issue_id"),
     }
+    if req_engine is not None:
+        task_metadata["compliance_engine"] = req_engine
     ce_book = _compliance_execution_booking_meta(action_type, a)
     if ce_book:
         task_metadata["compliance_execution_booking"] = ce_book

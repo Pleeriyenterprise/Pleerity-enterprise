@@ -2,7 +2,12 @@ from fastapi import APIRouter, HTTPException, Request, Depends, status, Query, B
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict, Any
 from database import database
-from middleware import admin_route_guard, require_owner, require_owner_or_admin, require_support_or_above
+from middleware import (
+    admin_route_guard,
+    require_owner,
+    require_owner_or_admin,
+    require_support_or_above,
+)
 from middleware.step_up_auth import require_recent_step_up
 from models import (
     AuditAction,
@@ -35,7 +40,11 @@ from services.portal_user_lifecycle_service import (
     permanent_delete_preflight,
 )
 from services.client_lifecycle_service import default_active_client_match, derive_client_lifecycle_status
-from services.compliance_rules_registry import jurisdiction_attribution_for_property
+from services.compliance_rules_registry import (
+    jurisdiction_attribution_for_property,
+    portfolio_jurisdiction_label,
+    scoring_jurisdiction_for_property,
+)
 from models import ClientLifecycleStatus
 
 logger = logging.getLogger(__name__)
@@ -1447,6 +1456,115 @@ async def get_property_compliance_sla(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load property compliance SLA",
+        )
+
+
+@router.get("/properties/{property_id}/requirements/plan-preview")
+async def get_property_requirements_plan_preview(
+    request: Request,
+    property_id: str,
+    include_mongo_snapshot: bool = Query(
+        True,
+        description="Include current requirements rows + drift vs planned types (staging / debugging).",
+    ),
+    include_explanations: bool = Query(
+        False,
+        description="Include per-row plan explanations and catalog-key inclusion/exclusion reasons.",
+    ),
+):
+    """Read-only: catalog registry plan for this property (no writes).
+
+    Intended for staging validation and support debugging — not for portal clients.
+    RBAC: same as other ``/api/admin`` routes — ``admin_route_guard`` / ``require_admin`` (Owner, Admin,
+    Support, Content, Auditor). Compare ``planned_types`` to Mongo
+    when ``include_mongo_snapshot`` is true; run ``POST /api/properties/{id}/requirements/sync`` as the
+    client to reconcile drift.
+    """
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        prop = await db.properties.find_one({"property_id": property_id}, {"_id": 0})
+        if not prop:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Property not found",
+            )
+        client_id = prop.get("client_id")
+        client_doc = (
+            await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1})
+            if client_id
+            else None
+        ) or {}
+
+        from services.requirement_catalog import explain_catalog_keys_for_property
+        from services.requirement_materialization_service import generate_requirements
+
+        planned_items = generate_requirements(
+            prop,
+            client_doc,
+            include_explanations=include_explanations,
+        )
+        planned_types = sorted({str(p["requirement_type"]) for p in planned_items})
+
+        portfolio = portfolio_jurisdiction_label(prop, client_doc)
+        scoring_j = scoring_jurisdiction_for_property(prop, client_doc)
+
+        out: Dict[str, Any] = {
+            "property_id": property_id,
+            "client_id": client_id,
+            "portfolio_jurisdiction_label": portfolio,
+            "scoring_jurisdiction": scoring_j,
+            "planned_types": planned_types,
+            "planned": planned_items,
+            "plan_builder": "build_requirement_plan_for_property",
+            "preview_serializer": "serialize_registry_plan_items",
+        }
+        if include_explanations:
+            out["catalog_key_explanations"] = explain_catalog_keys_for_property(prop, client_doc)
+
+        if include_mongo_snapshot and client_id:
+            rows = await db.requirements.find(
+                {"property_id": property_id, "client_id": client_id},
+                {
+                    "_id": 0,
+                    "requirement_id": 1,
+                    "requirement_type": 1,
+                    "requirement_code": 1,
+                    "requirement_generation_source": 1,
+                    "client_surface_visible": 1,
+                    "applicability": 1,
+                    "status": 1,
+                    "is_tracked": 1,
+                },
+            ).to_list(500)
+            mongo_types = {str(r.get("requirement_type") or "").lower() for r in rows if r.get("requirement_type")}
+            planned_lower = {t.lower() for t in planned_types}
+            by_source: Dict[str, int] = {}
+            visible_count = 0
+            for r in rows:
+                src = r.get("requirement_generation_source") or "(unset)"
+                by_source[src] = by_source.get(src, 0) + 1
+                if r.get("client_surface_visible") is not False:
+                    visible_count += 1
+            out["mongo_snapshot"] = {
+                "row_count": len(rows),
+                "rows": rows,
+                "requirement_generation_source_counts": by_source,
+                "portal_visible_row_count": visible_count,
+                "types_in_mongo_not_in_plan": sorted(mongo_types - planned_lower),
+                "types_in_plan_not_in_mongo": sorted(planned_lower - mongo_types),
+            }
+        elif include_mongo_snapshot:
+            out["mongo_snapshot"] = {"error": "property_missing_client_id"}
+
+        return out
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Admin requirements plan-preview error property_id=%s: %s", property_id, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to build requirements plan preview",
         )
 
 

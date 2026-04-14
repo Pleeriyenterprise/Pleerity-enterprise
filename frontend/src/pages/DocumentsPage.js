@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { normalizeRequirementCode, documentListStatusLabel } from '../domain/presentDomain';
+import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
 
 const EVIDENCE_DOCUMENT_TYPES = [
   { value: '', label: 'Select type (optional)' },
@@ -697,13 +698,17 @@ const DocumentsPage = () => {
     return null;
   };
 
-  const filteredRequirements = requirements.filter(r => 
-    r.property_id === uploadForm.property_id
-  );
+  const filteredRequirements = useMemo(() => {
+    const pid = uploadForm.property_id;
+    return requirements.filter(
+      (r) => r.property_id === pid && isRequirementIncludedInAttentionViews(r),
+    );
+  }, [requirements, uploadForm.property_id]);
 
   const requirementsNeedingDocuments = useMemo(
     () =>
       requirements.filter((r) => {
+        if (!isRequirementIncludedInAttentionViews(r)) return false;
         const s = String(r.status || '').toUpperCase();
         return s === 'PENDING' || s === 'OVERDUE' || s === 'MISSING' || s === 'MISSING_EVIDENCE';
       }).length,
