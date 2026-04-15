@@ -1,0 +1,330 @@
+{
+  "requirements_action_links": [
+    {
+      "code": "GAS_SAFETY",
+      "action_links": [
+        {
+          "key": "gas_safe_find_engineer",
+          "label": "Find a Gas Safe engineer",
+          "kind": "official",
+          "jurisdictions": ["ENGLAND", "SCOTLAND", "WALES", "NORTHERN_IRELAND"],
+          "url": "https://www.gassaferegister.co.uk/find-an-engineer/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "gas_safe_check_engineer",
+          "label": "Check engineer credentials",
+          "kind": "official",
+          "jurisdictions": ["ENGLAND", "SCOTLAND", "WALES", "NORTHERN_IRELAND"],
+          "url": "https://www.gassaferegister.co.uk/check-an-engineer/",
+          "is_active": true,
+          "priority": 20
+        }
+      ]
+    },
+    {
+      "code": "EICR",
+      "action_links": [
+        {
+          "key": "niceic_find_tradesperson",
+          "label": "Find certified electrician (NICEIC)",
+          "kind": "official",
+          "jurisdictions": ["ENGLAND", "SCOTLAND", "WALES", "NORTHERN_IRELAND"],
+          "url": "https://www.niceic.com/find-a-tradesperson",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "napit_find_tradesperson",
+          "label": "Find certified electrician (NAPIT)",
+          "kind": "official",
+          "jurisdictions": ["ENGLAND", "SCOTLAND", "WALES", "NORTHERN_IRELAND"],
+          "url": "https://search.napit.org.uk/",
+          "is_active": true,
+          "priority": 20
+        }
+      ]
+    },
+    {
+      "code": "ELECTRICAL_SAFETY_NI",
+      "action_links": [
+        {
+          "key": "niceic_find_tradesperson_ni",
+          "label": "Find certified electrician (NICEIC)",
+          "kind": "official",
+          "jurisdictions": ["NORTHERN_IRELAND"],
+          "url": "https://www.niceic.com/find-a-tradesperson",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "napit_find_tradesperson_ni",
+          "label": "Find certified electrician (NAPIT)",
+          "kind": "official",
+          "jurisdictions": ["NORTHERN_IRELAND"],
+          "url": "https://search.napit.org.uk/",
+          "is_active": true,
+          "priority": 20
+        }
+      ]
+    },
+    {
+      "code": "EPC",
+      "action_links": [
+        {
+          "key": "epc_england_wales_register",
+          "label": "Check EPC (England & Wales)",
+          "kind": "official",
+          "jurisdictions": ["ENGLAND", "WALES"],
+          "url": "https://www.gov.uk/find-energy-certificate",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "epc_scotland_register",
+          "label": "Check EPC (Scotland)",
+          "kind": "official",
+          "jurisdictions": ["SCOTLAND"],
+          "url": "https://www.scottishepcregister.org.uk/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "epc_ni_register",
+          "label": "Check EPC (Northern Ireland)",
+          "kind": "official",
+          "jurisdictions": ["NORTHERN_IRELAND"],
+          "url": "https://www.epbni.com/",
+          "is_active": true,
+          "priority": 10
+        }
+      ]
+    },
+    {
+      "code": "FIRE_RISK_ASSESSMENT",
+      "action_links": [
+        {
+          "key": "fire_safety_england_guidance",
+          "label": "Fire safety responsibilities (England)",
+          "kind": "official",
+          "jurisdictions": ["ENGLAND"],
+          "url": "https://www.gov.uk/workplace-fire-safety-your-responsibilities",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "fire_safety_scotland_guidance",
+          "label": "Fire safety guidance (Scotland)",
+          "kind": "official",
+          "jurisdictions": ["SCOTLAND"],
+          "url": "https://www.gov.scot/policies/fire-and-rescue/fire-safety/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "fire_risk_assessor_directory",
+          "label": "Find fire risk assessor",
+          "kind": "directory",
+          "jurisdictions": ["ENGLAND", "SCOTLAND", "WALES", "NORTHERN_IRELAND"],
+          "url": "https://www.google.com/search?q=fire+risk+assessment+company+near+me",
+          "is_active": true,
+          "priority": 20
+        }
+      ]
+    },
+    {
+      "code": "HMO_FIRE_RISK",
+      "action_links": [
+        {
+          "key": "fire_safety_england_guidance_hmo",
+          "label": "Fire safety responsibilities (England)",
+          "kind": "official",
+          "jurisdictions": ["ENGLAND"],
+          "url": "https://www.gov.uk/workplace-fire-safety-your-responsibilities",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "fire_safety_scotland_guidance_hmo",
+          "label": "Fire safety guidance (Scotland)",
+          "kind": "official",
+          "jurisdictions": ["SCOTLAND"],
+          "url": "https://www.gov.scot/policies/fire-and-rescue/fire-safety/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "fire_risk_assessor_directory_hmo",
+          "label": "Find fire risk assessor",
+          "kind": "directory",
+          "jurisdictions": ["ENGLAND", "SCOTLAND", "WALES", "NORTHERN_IRELAND"],
+          "url": "https://www.google.com/search?q=HMO+fire+risk+assessment+near+me",
+          "is_active": true,
+          "priority": 20
+        }
+      ]
+    },
+    {
+      "code": "SMOKE_CO_ALARMS",
+      "action_links": [
+        {
+          "key": "alarms_england_guidance",
+          "label": "Alarm requirements (England)",
+          "kind": "official",
+          "jurisdictions": ["ENGLAND"],
+          "url": "https://www.gov.uk/government/publications/smoke-and-carbon-monoxide-alarm-regulations-guidance-for-landlords",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "alarms_scotland_guidance",
+          "label": "Alarm requirements (Scotland)",
+          "kind": "official",
+          "jurisdictions": ["SCOTLAND"],
+          "url": "https://www.gov.scot/publications/fire-and-smoke-alarms-in-scottish-homes/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "alarms_wales_guidance",
+          "label": "Alarm requirements (Wales)",
+          "kind": "official",
+          "jurisdictions": ["WALES"],
+          "url": "https://www.gov.wales/fitness-homes-human-habitation-guidance",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "alarms_ni_guidance",
+          "label": "Alarm requirements (Northern Ireland)",
+          "kind": "official",
+          "jurisdictions": ["NORTHERN_IRELAND"],
+          "url": "https://www.communities-ni.gov.uk/articles/smoke-alarms-and-carbon-monoxide-detectors",
+          "is_active": true,
+          "priority": 10
+        }
+      ]
+    },
+    {
+      "code": "LANDLORD_REGISTRATION",
+      "action_links": [
+        {
+          "key": "landlord_registration_scotland",
+          "label": "Register as landlord (Scotland)",
+          "kind": "official",
+          "jurisdictions": ["SCOTLAND"],
+          "url": "https://www.landlordregistrationscotland.gov.uk/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "landlord_registration_ni",
+          "label": "Register as landlord (Northern Ireland)",
+          "kind": "official",
+          "jurisdictions": ["NORTHERN_IRELAND"],
+          "url": "https://www.nidirect.gov.uk/articles/landlord-registration-scheme",
+          "is_active": true,
+          "priority": 10
+        }
+      ]
+    },
+    {
+      "code": "SCOTLAND_LANDLORD_REGISTRATION",
+      "action_links": [
+        {
+          "key": "scotland_landlord_registration",
+          "label": "Register as landlord (Scotland)",
+          "kind": "official",
+          "jurisdictions": ["SCOTLAND"],
+          "url": "https://www.landlordregistrationscotland.gov.uk/",
+          "is_active": true,
+          "priority": 10
+        }
+      ]
+    },
+    {
+      "code": "LANDLORD_REGISTRATION_NI",
+      "action_links": [
+        {
+          "key": "ni_landlord_registration",
+          "label": "Register as landlord (Northern Ireland)",
+          "kind": "official",
+          "jurisdictions": ["NORTHERN_IRELAND"],
+          "url": "https://www.nidirect.gov.uk/articles/landlord-registration-scheme",
+          "is_active": true,
+          "priority": 10
+        }
+      ]
+    },
+    {
+      "code": "DEPOSIT_PROTECTION",
+      "action_links": [
+        {
+          "key": "deposit_protection_service",
+          "label": "Deposit Protection Service",
+          "kind": "official",
+          "jurisdictions": ["ENGLAND", "WALES"],
+          "url": "https://www.depositprotection.com/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "tenancy_deposit_scheme",
+          "label": "Tenancy Deposit Scheme",
+          "kind": "official",
+          "jurisdictions": ["ENGLAND", "WALES"],
+          "url": "https://www.tenancydepositscheme.com/",
+          "is_active": true,
+          "priority": 20
+        },
+        {
+          "key": "mydeposits",
+          "label": "MyDeposits",
+          "kind": "official",
+          "jurisdictions": ["ENGLAND", "WALES"],
+          "url": "https://www.mydeposits.co.uk/",
+          "is_active": true,
+          "priority": 30
+        },
+        {
+          "key": "scotland_deposit_schemes",
+          "label": "Deposit schemes (Scotland)",
+          "kind": "official",
+          "jurisdictions": ["SCOTLAND"],
+          "url": "https://www.mygov.scot/tenancy-deposits-landlords",
+          "is_active": true,
+          "priority": 10
+        }
+      ]
+    },
+    {
+      "code": "FIT_FOR_HABITATION",
+      "action_links": [
+        {
+          "key": "fit_for_habitation_wales_guidance",
+          "label": "Fitness for habitation guidance (Wales)",
+          "kind": "official",
+          "jurisdictions": ["WALES"],
+          "url": "https://www.gov.wales/fitness-homes-human-habitation-guidance",
+          "is_active": true,
+          "priority": 10
+        }
+      ]
+    },
+    {
+      "code": "WALES_OCCUPATION_CONTRACT",
+      "action_links": [
+        {
+          "key": "wales_renting_homes_guidance",
+          "label": "Occupation contract guidance (Wales)",
+          "kind": "official",
+          "jurisdictions": ["WALES"],
+          "url": "https://www.gov.wales/renting-homes",
+          "is_active": true,
+          "priority": 10
+        }
+      ]
+    }
+  ]
+}

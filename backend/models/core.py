@@ -165,6 +165,9 @@ class AuditAction(str, Enum):
     # Requirements
     REQUIREMENTS_GENERATED = "REQUIREMENTS_GENERATED"
     REQUIREMENTS_EVALUATED = "REQUIREMENTS_EVALUATED"
+    REQUIREMENT_ACTION_LINKS_DRAFT_SAVED = "REQUIREMENT_ACTION_LINKS_DRAFT_SAVED"
+    REQUIREMENT_ACTION_LINKS_PUBLISHED = "REQUIREMENT_ACTION_LINKS_PUBLISHED"
+    REQUIREMENT_ACTION_LINKS_REVERTED = "REQUIREMENT_ACTION_LINKS_REVERTED"
     COMPLIANCE_STATUS_UPDATED = "COMPLIANCE_STATUS_UPDATED"
     COMPLIANCE_SCORE_UPDATED = "COMPLIANCE_SCORE_UPDATED"
     COMPLIANCE_RECALC_FAILED = "COMPLIANCE_RECALC_FAILED"
@@ -860,6 +863,8 @@ class Requirement(BaseModel):
     confidence_state: Optional[str] = None  # ESTIMATED | PARTIALLY_CONFIRMED | VERIFIED
     # Compliance registry (generation + attention flows): DOCUMENT | JOB | OBLIGATION | SYSTEM
     compliance_requirement_class: Optional[str] = None
+    # Client Take Action taxonomy (DOCUMENT | JOB | MAINTENANCE | OBLIGATION); defaults from class when omitted
+    action_type: Optional[str] = None
     # False = excluded from Today / Command Center / dashboard attention (OBLIGATION, SYSTEM)
     is_tracked: Optional[bool] = True
     # Portal list visibility (SYSTEM rows False — still in DB for scoring/engine)

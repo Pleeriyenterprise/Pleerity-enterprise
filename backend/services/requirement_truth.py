@@ -4,6 +4,7 @@ verified-document-backed compliance data. Used for API presentation and scoring 
 """
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -12,6 +13,7 @@ from presentation.label_service import (
     requirement_label,
 )
 from services.compliance_requirement_engine import resolve_engine_payload_from_requirement_row
+from services.requirement_action_resolver import infer_action_type, resolve_take_action_envelope
 
 # --- Canonical enum values (stored on requirement documents and returned in APIs) ---
 
@@ -208,6 +210,15 @@ def enrich_requirement_dict(
     eng = resolve_engine_payload_from_requirement_row(out)
     out.update(eng)
 
+    out["action_type"] = infer_action_type(out)
+    take = resolve_take_action_envelope(
+        out,
+        property_id=out.get("property_id"),
+        property_jurisdiction=out.get("jurisdiction"),
+    ).get("take_action")
+    out["take_action"] = take
+    out["action_links"] = list((take or {}).get("supporting_external_links") or [])
+
     return out
 
 
@@ -235,13 +246,34 @@ async def enrich_requirements_for_client(
     client_id: str,
     requirements: List[Dict[str, Any]],
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    from services.compliance_rules_registry import portfolio_jurisdiction_label
+
     ids = [r["requirement_id"] for r in requirements if r.get("requirement_id")]
     evidence_map = await load_evidence_state_by_requirement_id(db, client_id, ids)
+
+    client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1})
+    prop_ids = list({str(r.get("property_id") or "") for r in requirements if r.get("property_id")})
+    jur_by_prop: Dict[str, str] = {}
+    if prop_ids:
+        cur = db.properties.find(
+            {"client_id": client_id, "property_id": {"$in": prop_ids}},
+            {"_id": 0, "property_id": 1, "jurisdiction": 1},
+        )
+        async for p in cur:
+            pid = p.get("property_id")
+            if pid:
+                jur_by_prop[str(pid)] = portfolio_jurisdiction_label(p, client_doc or {})
+
     enriched = []
     for r in requirements:
         rid = r.get("requirement_id")
         ev = evidence_map.get(rid, EVIDENCE_MISSING)
-        enriched.append(enrich_requirement_dict(r, ev, audience="client"))
+        rc = dict(r)
+        if not (str(rc.get("jurisdiction") or "").strip()):
+            pid = rc.get("property_id")
+            if pid and str(pid) in jur_by_prop:
+                rc["jurisdiction"] = jur_by_prop[str(pid)]
+        enriched.append(enrich_requirement_dict(rc, ev, audience="client"))
     return enriched, build_presentation_meta(enriched)
 
 
@@ -255,8 +287,6 @@ async def enrich_requirements_for_admin(
     """
     if not requirements:
         return []
-
-    from collections import defaultdict
 
     by_client: Dict[str, List[str]] = defaultdict(list)
     seen_pairs: set = set()
@@ -273,6 +303,28 @@ async def enrich_requirements_for_admin(
     for cid, ids in by_client.items():
         evidence_nested[cid] = await load_evidence_state_by_requirement_id(db, cid, ids)
 
+    from services.compliance_rules_registry import portfolio_jurisdiction_label
+
+    by_client_props: Dict[str, Dict[str, str]] = defaultdict(dict)
+    client_docs: Dict[str, Any] = {}
+    for r in requirements:
+        cid = r.get("client_id")
+        pid = r.get("property_id")
+        if cid and pid:
+            by_client_props[str(cid)][str(pid)] = ""
+
+    for cid, pmap in by_client_props.items():
+        client_docs[cid] = await db.clients.find_one({"client_id": cid}, {"_id": 0, "default_jurisdiction": 1})
+        pids = list(pmap.keys())
+        cur = db.properties.find(
+            {"client_id": cid, "property_id": {"$in": pids}},
+            {"_id": 0, "property_id": 1, "jurisdiction": 1},
+        )
+        async for p in cur:
+            pid = p.get("property_id")
+            if pid:
+                by_client_props[cid][str(pid)] = portfolio_jurisdiction_label(p, client_docs.get(cid) or {})
+
     out: List[Dict[str, Any]] = []
     for r in requirements:
         cid = r.get("client_id")
@@ -281,7 +333,12 @@ async def enrich_requirements_for_admin(
             ev = evidence_nested.get(cid, {}).get(rid, EVIDENCE_MISSING)
         else:
             ev = EVIDENCE_MISSING
-        out.append(enrich_requirement_dict(r, ev, audience="admin"))
+        rc = dict(r)
+        if cid and r.get("property_id") and not (str(rc.get("jurisdiction") or "").strip()):
+            jl = by_client_props.get(str(cid), {}).get(str(r.get("property_id")), "")
+            if jl:
+                rc["jurisdiction"] = jl
+        out.append(enrich_requirement_dict(rc, ev, audience="admin"))
     return out
 
 

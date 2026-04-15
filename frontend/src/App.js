@@ -180,6 +180,7 @@ import AdminSecurityDashboardPage from './pages/AdminSecurityDashboardPage';
 import AdminControlCentrePage from './pages/AdminControlCentrePage';
 import AdminOpsOverviewPage from './pages/admin/AdminOpsOverviewPage';
 import AdminOpsCompliancePage from './pages/admin/AdminOpsCompliancePage';
+import AdminOpsActionLinksPage from './pages/admin/AdminOpsActionLinksPage';
 import AdminOpsAuditPage from './pages/admin/AdminOpsAuditPage';
 import AdminOpsFeatureControlsPage from './pages/admin/AdminOpsFeatureControlsPage';
 import AdminOpsRoiDiagnosticsPage from './pages/admin/AdminOpsRoiDiagnosticsPage';
@@ -674,6 +675,7 @@ function App() {
             {/* Operations & Compliance */}
             <Route path="/admin/ops" element={<ProtectedRoute requireAdmin><AdminOpsOverviewPage /></ProtectedRoute>} />
             <Route path="/admin/ops/compliance" element={<ProtectedRoute requireAdmin><AdminOpsCompliancePage /></ProtectedRoute>} />
+            <Route path="/admin/ops/action-links" element={<ProtectedRoute requireAdmin><AdminOpsActionLinksPage /></ProtectedRoute>} />
             <Route path="/admin/ops/maintenance" element={<ProtectedRoute requireAdmin><AdminOpsMaintenancePage /></ProtectedRoute>} />
             <Route path="/admin/ops/maintenance/jobs/:workOrderId" element={<ProtectedRoute requireAdmin><AdminWorkOrderDetailPage /></ProtectedRoute>} />
             <Route path="/admin/ops/maintenance/work-orders/:workOrderId" element={<ProtectedRoute requireAdmin><AdminLegacyWorkOrderDetailRedirect /></ProtectedRoute>} />

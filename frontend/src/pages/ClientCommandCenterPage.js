@@ -364,6 +364,8 @@ export default function ClientCommandCenterPage() {
       const target = resolveClientPortalPath(url, '/today');
       recordClientPortalInteraction('command_center_urgent_task', { task_id: t.id, target });
       navigate(target);
+    } else if (url && /^https?:\/\//i.test(url)) {
+      window.open(url, '_blank', 'noopener,noreferrer');
     } else if (url) {
       window.location.assign(url);
     } else {

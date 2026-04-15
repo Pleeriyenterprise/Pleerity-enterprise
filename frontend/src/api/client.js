@@ -732,6 +732,26 @@ export const adminAPI = {
     }),
   getComplianceClientsSummary: (params = {}) =>
     apiClient.get('/admin/ops/compliance-clients-summary', { params }),
+  /** Requirement external action links — preview / draft / publish / revert (Owner/Admin). */
+  getPropertyRequirementsLite: (propertyId) =>
+    apiClient.get(`/admin/properties/${encodeURIComponent(propertyId)}/requirements-lite`),
+  getRequirementActionLinksPreview: (propertyId, requirementId) =>
+    apiClient.get(
+      `/admin/properties/${encodeURIComponent(propertyId)}/requirements/${encodeURIComponent(requirementId)}/action-links`,
+    ),
+  putRequirementActionLinksDraft: (propertyId, requirementId, body) =>
+    apiClient.put(
+      `/admin/properties/${encodeURIComponent(propertyId)}/requirements/${encodeURIComponent(requirementId)}/action-links/draft`,
+      body,
+    ),
+  publishRequirementActionLinks: (propertyId, requirementId) =>
+    apiClient.post(
+      `/admin/properties/${encodeURIComponent(propertyId)}/requirements/${encodeURIComponent(requirementId)}/action-links/publish`,
+    ),
+  revertRequirementActionLinks: (propertyId, requirementId) =>
+    apiClient.post(
+      `/admin/properties/${encodeURIComponent(propertyId)}/requirements/${encodeURIComponent(requirementId)}/action-links/revert`,
+    ),
   getEmailDelivery: (params = {}) =>
     apiClient.get('/admin/email-delivery', { params: { limit: 50, skip: 0, since_hours: 72, ...params } }),
   resendPasswordSetup: (clientId, config = {}) =>

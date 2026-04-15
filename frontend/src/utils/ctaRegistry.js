@@ -1,4 +1,5 @@
 import { buildEntityRoute, resolveClientPortalPath } from './clientPortalNavigation';
+import { resolveInboxTaskTakeActionRoute } from './requirementTakeActionResolver';
 
 /**
  * Central CTA registry for client-portal task actions.
@@ -44,17 +45,20 @@ export function resolveTaskCta(task, which = 'primary') {
     (task?.source_type === 'work_order' ? task?.source_id : null) ||
     task?.metadata?.related_work_order_id;
 
-  const strictRoute = entry
-    ? buildEntityRoute(
-        {
-          requirement_id: requirementId,
-          property_id: propertyId,
-          work_order_id: workOrderId,
-          mode: entry.routeMode,
-        },
-        ''
-      )
-    : '';
+  const takeRoute = resolveInboxTaskTakeActionRoute(task, which === 'secondary' ? 'secondary' : 'primary');
+  const strictRoute = takeRoute
+    ? takeRoute
+    : entry
+      ? buildEntityRoute(
+          {
+            requirement_id: requirementId,
+            property_id: propertyId,
+            work_order_id: workOrderId,
+            mode: entry.routeMode,
+          },
+          ''
+        )
+      : '';
 
   const fallbackRaw =
     which === 'secondary' ? task?.secondary_action_url || task?.primary_action_url : task?.primary_action_url;

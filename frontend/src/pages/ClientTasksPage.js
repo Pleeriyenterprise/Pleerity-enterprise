@@ -137,6 +137,8 @@ const TODAY_CTA_LABEL_MAP = {
  * Order: (1) generic job keys → clientInboxJobCtaLabel || CLIENT_INBOX_JOB_FALLBACK_CTA; (2) other map; (3) empty + work_order → same; (4) empty → Continue in Today; (5) raw candidate.
  */
 function sanitizeTodayCtaLabel(primaryLabel, task) {
+  const metaTake = task?.metadata?.take_action;
+  if (metaTake?.primary?.label) return String(metaTake.primary.label).trim();
   const fromBiz = (task?.business_actions || []).find((a) => a.primary === true || a.id === 'open_primary');
   const candidate = String(primaryLabel || fromBiz?.label || '').trim();
   const key = candidate.toLowerCase();
@@ -535,6 +537,24 @@ function TaskCard({
                 <span className="text-electric-teal">{ghostLabel}</span>
                 <ExternalLink className="w-3.5 h-3.5 ml-1 shrink-0 text-electric-teal" />
               </Button>
+            ) : null}
+            {complianceUi &&
+            Array.isArray(meta.take_action?.supporting_external_links) &&
+            meta.take_action.supporting_external_links.length > 0 ? (
+              <div className="flex flex-col gap-1 pt-1 border-t border-gray-100">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">External resources</p>
+                {meta.take_action.supporting_external_links.map((lnk) => (
+                  <button
+                    key={lnk.key || lnk.url}
+                    type="button"
+                    className="text-left text-xs text-electric-teal hover:underline py-1 min-h-10 break-words w-full inline-flex items-start gap-1"
+                    onClick={() => window.open(String(lnk.url || ''), '_blank', 'noopener,noreferrer')}
+                  >
+                    <span className="text-left">{lnk.label}</span>
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0 mt-0.5 opacity-80" aria-hidden />
+                  </button>
+                ))}
+              </div>
             ) : null}
             {hasMoreOptionsBlock && (
               <div className="pt-1">

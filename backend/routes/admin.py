@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, Depends, status, Query, Body
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
 from database import database
 from middleware import (
@@ -48,6 +48,13 @@ from services.compliance_rules_registry import (
 from models import ClientLifecycleStatus
 
 logger = logging.getLogger(__name__)
+
+
+def _portal_user_role_for_audit(user: Dict[str, Any]) -> Optional[UserRole]:
+    try:
+        return UserRole(str(user.get("role") or ""))
+    except ValueError:
+        return None
 
 
 def _portal_lifecycle_http(exc: ValueError) -> HTTPException:
@@ -1566,6 +1573,279 @@ async def get_property_requirements_plan_preview(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to build requirements plan preview",
         )
+
+
+class _ActionLinksDraftBody(BaseModel):
+    links: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+@router.get("/properties/{property_id}/requirements/{requirement_id}/action-links")
+async def admin_get_requirement_action_links_preview(
+    property_id: str,
+    requirement_id: str,
+    user: dict = Depends(require_owner_or_admin),
+):
+    """Effective links preview: registry defaults, overrides, jurisdiction, final client-facing links."""
+    _ = user
+    db = database.get_db()
+    prop = await db.properties.find_one({"property_id": property_id}, {"_id": 0})
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    req = await db.requirements.find_one(
+        {"requirement_id": requirement_id, "property_id": property_id},
+        {"_id": 0},
+    )
+    if not req:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found for this property")
+    cid = prop.get("client_id")
+    client_doc = (
+        await db.clients.find_one({"client_id": cid}, {"_id": 0, "default_jurisdiction": 1}) if cid else None
+    ) or {}
+    from services.requirement_action_links_admin_service import build_action_links_admin_preview
+
+    return build_action_links_admin_preview(requirement_row=req, property_doc=prop, client_doc=client_doc)
+
+
+@router.get("/properties/{property_id}/requirements-lite")
+async def admin_list_property_requirements_lite(property_id: str, user: dict = Depends(require_owner_or_admin)):
+    """Minimal requirement rows for admin action-links tooling (dropdown)."""
+    _ = user
+    db = database.get_db()
+    prop = await db.properties.find_one({"property_id": property_id}, {"_id": 0, "client_id": 1})
+    if not prop or not prop.get("client_id"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    rows = await db.requirements.find(
+        {"property_id": property_id, "client_id": prop["client_id"]},
+        {"_id": 0, "requirement_id": 1, "requirement_code": 1, "requirement_type": 1, "status": 1},
+    ).to_list(500)
+    return {"property_id": property_id, "client_id": prop["client_id"], "items": rows}
+
+
+@router.put("/properties/{property_id}/requirements/{requirement_id}/action-links/draft")
+async def admin_put_requirement_action_links_draft(
+    request: Request,
+    property_id: str,
+    requirement_id: str,
+    body: _ActionLinksDraftBody,
+    user: dict = Depends(require_owner_or_admin),
+):
+    db = database.get_db()
+    prop = await db.properties.find_one({"property_id": property_id}, {"_id": 0})
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    req = await db.requirements.find_one(
+        {"requirement_id": requirement_id, "property_id": property_id},
+        {"_id": 0},
+    )
+    if not req:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found for this property")
+
+    from services.requirement_action_links_admin_service import (
+        append_action_links_audit,
+        merge_registry_metadata_for_links,
+        normalize_admin_action_link_item,
+        validate_action_links_override,
+    )
+
+    normalized: List[Dict[str, Any]] = []
+    for raw in body.links:
+        item, err = normalize_admin_action_link_item(raw if isinstance(raw, dict) else {}, generate_key_if_missing=True)
+        if err:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err)
+        normalized.append(item)
+
+    errs = validate_action_links_override(normalized)
+    if errs:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"errors": errs})
+
+    prev_meta = req.get("registry_metadata") if isinstance(req.get("registry_metadata"), dict) else {}
+    prev_snap = {
+        "action_links": prev_meta.get("action_links"),
+        "action_links_draft": prev_meta.get("action_links_draft"),
+    }
+    new_meta = merge_registry_metadata_for_links(
+        dict(prev_meta),
+        action_links_draft=normalized if normalized else None,
+        unset_draft=not normalized,
+    )
+    new_meta = append_action_links_audit(
+        new_meta,
+        actor_user_id=str(user.get("portal_user_id") or user.get("user_id") or ""),
+        actor_email=str(user.get("email") or ""),
+        action="save_draft",
+        previous=prev_snap,
+        new={"action_links": prev_meta.get("action_links"), "action_links_draft": normalized if normalized else None},
+    )
+
+    await db.requirements.update_one(
+        {"requirement_id": requirement_id, "property_id": property_id},
+        {"$set": {"registry_metadata": new_meta}},
+    )
+
+    from utils.audit import create_audit_log
+    from models import AuditAction
+
+    actor_role = _portal_user_role_for_audit(user)
+    ip_address = request.client.host if request.client else None
+    await create_audit_log(
+        action=AuditAction.REQUIREMENT_ACTION_LINKS_DRAFT_SAVED,
+        actor_role=actor_role,
+        actor_id=str(user.get("portal_user_id") or user.get("user_id") or ""),
+        client_id=req.get("client_id"),
+        resource_type="requirement",
+        resource_id=requirement_id,
+        before_state=prev_snap,
+        after_state={"action_links_draft": normalized if normalized else None},
+        metadata={"property_id": property_id},
+        ip_address=ip_address,
+    )
+
+    return {"ok": True, "action_links_draft": normalized if normalized else None}
+
+
+@router.post("/properties/{property_id}/requirements/{requirement_id}/action-links/publish")
+async def admin_post_requirement_action_links_publish(
+    request: Request,
+    property_id: str,
+    requirement_id: str,
+    user: dict = Depends(require_owner_or_admin),
+):
+    db = database.get_db()
+    req = await db.requirements.find_one(
+        {"requirement_id": requirement_id, "property_id": property_id},
+        {"_id": 0},
+    )
+    if not req:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found for this property")
+    prev_meta = req.get("registry_metadata") if isinstance(req.get("registry_metadata"), dict) else {}
+    draft = prev_meta.get("action_links_draft")
+    if not isinstance(draft, list) or not draft:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No draft to publish. Save a draft first.",
+        )
+
+    from services.requirement_action_links_admin_service import (
+        append_action_links_audit,
+        merge_registry_metadata_for_links,
+        normalize_admin_action_link_item,
+        validate_action_links_override,
+    )
+
+    normalized: List[Dict[str, Any]] = []
+    for raw in draft:
+        item, err = normalize_admin_action_link_item(raw if isinstance(raw, dict) else {}, generate_key_if_missing=True)
+        if err:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err)
+        normalized.append(item)
+    errs = validate_action_links_override(normalized)
+    if errs:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"errors": errs})
+
+    prev_snap = {
+        "action_links": prev_meta.get("action_links"),
+        "action_links_draft": prev_meta.get("action_links_draft"),
+    }
+    new_meta = merge_registry_metadata_for_links(
+        dict(prev_meta),
+        action_links=list(normalized),
+        action_links_draft=list(normalized),
+    )
+    new_meta = append_action_links_audit(
+        new_meta,
+        actor_user_id=str(user.get("portal_user_id") or user.get("user_id") or ""),
+        actor_email=str(user.get("email") or ""),
+        action="publish",
+        previous=prev_snap,
+        new={"action_links": normalized, "action_links_draft": normalized},
+    )
+
+    await db.requirements.update_one(
+        {"requirement_id": requirement_id, "property_id": property_id},
+        {"$set": {"registry_metadata": new_meta}},
+    )
+
+    from utils.audit import create_audit_log
+    from models import AuditAction
+
+    actor_role = _portal_user_role_for_audit(user)
+    ip_address = request.client.host if request.client else None
+    await create_audit_log(
+        action=AuditAction.REQUIREMENT_ACTION_LINKS_PUBLISHED,
+        actor_role=actor_role,
+        actor_id=str(user.get("portal_user_id") or user.get("user_id") or ""),
+        client_id=req.get("client_id"),
+        resource_type="requirement",
+        resource_id=requirement_id,
+        before_state={"action_links": prev_meta.get("action_links")},
+        after_state={"action_links": normalized},
+        metadata={"property_id": property_id},
+        ip_address=ip_address,
+    )
+
+    return {"ok": True, "action_links": normalized}
+
+
+@router.post("/properties/{property_id}/requirements/{requirement_id}/action-links/revert")
+async def admin_post_requirement_action_links_revert(
+    request: Request,
+    property_id: str,
+    requirement_id: str,
+    user: dict = Depends(require_owner_or_admin),
+):
+    db = database.get_db()
+    req = await db.requirements.find_one(
+        {"requirement_id": requirement_id, "property_id": property_id},
+        {"_id": 0},
+    )
+    if not req:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found for this property")
+    prev_meta = req.get("registry_metadata") if isinstance(req.get("registry_metadata"), dict) else {}
+    prev_snap = {
+        "action_links": prev_meta.get("action_links"),
+        "action_links_draft": prev_meta.get("action_links_draft"),
+    }
+
+    from services.requirement_action_links_admin_service import append_action_links_audit, merge_registry_metadata_for_links
+
+    new_meta = merge_registry_metadata_for_links(
+        dict(prev_meta),
+        unset_published=True,
+        unset_draft=True,
+    )
+    new_meta = append_action_links_audit(
+        new_meta,
+        actor_user_id=str(user.get("portal_user_id") or user.get("user_id") or ""),
+        actor_email=str(user.get("email") or ""),
+        action="revert",
+        previous=prev_snap,
+        new={"action_links": None, "action_links_draft": None},
+    )
+
+    await db.requirements.update_one(
+        {"requirement_id": requirement_id, "property_id": property_id},
+        {"$set": {"registry_metadata": new_meta}},
+    )
+
+    from utils.audit import create_audit_log
+    from models import AuditAction
+
+    actor_role = _portal_user_role_for_audit(user)
+    ip_address = request.client.host if request.client else None
+    await create_audit_log(
+        action=AuditAction.REQUIREMENT_ACTION_LINKS_REVERTED,
+        actor_role=actor_role,
+        actor_id=str(user.get("portal_user_id") or user.get("user_id") or ""),
+        client_id=req.get("client_id"),
+        resource_type="requirement",
+        resource_id=requirement_id,
+        before_state=prev_snap,
+        after_state={"action_links": None, "action_links_draft": None},
+        metadata={"property_id": property_id},
+        ip_address=ip_address,
+    )
+
+    return {"ok": True}
 
 
 @router.get("/provisioning/{client_id}")

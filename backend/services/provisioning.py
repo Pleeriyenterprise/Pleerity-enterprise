@@ -13,10 +13,11 @@ import logging
 from typing import List, Dict, Optional, Any, Set
 
 from services.compliance_rules_registry import (
+    governed_requirement_rule_covers_property,
     portfolio_jurisdiction_label,
-    rule_applies_to_db_row,
     scoring_jurisdiction_for_property,
 )
+from services.requirement_action_resolver import infer_action_type
 from services.compliance_requirement_engine import resolve_engine_payload_from_code
 from services.requirement_materialization_service import materialize_requirements_for_property
 
@@ -306,19 +307,28 @@ class ProvisioningService:
     ):
         """Apply database rules to generate requirements."""
         portfolio = portfolio_jurisdiction_label(property_doc, client_doc)
-        sj = scoring_jurisdiction_for_property(property_doc, client_doc)
 
         for rule in rules:
-            applicable_to = rule.get("applicable_to", "ALL")
-            if applicable_to != "ALL" and applicable_to != property_type:
-                continue
-            if not rule_applies_to_db_row(rule, portfolio, sj):
+            if not governed_requirement_rule_covers_property(
+                rule, property_type, property_doc, client_doc
+            ):
                 continue
 
             rc = (rule.get("rule_type") or "").strip().lower()
             if planned_registry_types and rc in planned_registry_types:
                 continue
             eng = resolve_engine_payload_from_code(rc) if rc else {}
+            cls_override = (rule.get("compliance_requirement_class") or "").strip().upper() or None
+            cls_eff = cls_override or eng.get("compliance_requirement_class")
+            csv = rule.get("client_surface_visible")
+            if csv is None:
+                csv = eng.get("client_surface_visible")
+            meta = None
+            if rule.get("governed_version_id"):
+                meta = {"governed_version_id": rule.get("governed_version_id")}
+            tracked = None
+            if cls_eff:
+                tracked = cls_eff in ("DOCUMENT", "JOB")
             await self._create_requirement_if_not_exists(
                 client_id,
                 property_id,
@@ -328,9 +338,11 @@ class ProvisioningService:
                 warning_days=rule.get("warning_days", 30),
                 jurisdiction_label=portfolio,
                 requirement_code=rc,
-                compliance_requirement_class=eng.get("compliance_requirement_class"),
-                is_tracked=eng.get("is_tracked"),
-                client_surface_visible=eng.get("client_surface_visible"),
+                compliance_requirement_class=cls_eff,
+                is_tracked=tracked,
+                client_surface_visible=csv,
+                registry_metadata=meta,
+                governed_sync=bool(rule.get("governed")),
             )
     
     async def _create_requirement_if_not_exists(
@@ -349,6 +361,8 @@ class ProvisioningService:
         client_surface_visible: Optional[bool] = None,
         requires_document: Optional[bool] = None,
         requires_job: Optional[bool] = None,
+        registry_metadata: Optional[Dict[str, Any]] = None,
+        governed_sync: bool = False,
     ):
         """Create a requirement if it doesn't already exist (idempotent)."""
         db = database.get_db()
@@ -369,27 +383,75 @@ class ProvisioningService:
         csv = client_surface_visible
         if csv is None and cls_eff:
             csv = cls_eff != "SYSTEM"
+        if is_tracked is None and cls_eff:
+            is_tracked = cls_eff in ("DOCUMENT", "JOB")
 
         if existing:
             patch: Dict[str, Any] = {}
-            if jurisdiction_label and not existing.get("jurisdiction"):
-                patch["jurisdiction"] = jurisdiction_label
-            rc = (requirement_code or requirement_type or "").strip().lower()
-            if rc and not existing.get("requirement_code"):
-                patch["requirement_code"] = rc
-            if compliance_requirement_class and not existing.get("compliance_requirement_class"):
-                patch["compliance_requirement_class"] = compliance_requirement_class
-            if is_tracked is not None and existing.get("is_tracked") is None:
-                patch["is_tracked"] = is_tracked
-            if existing.get("client_surface_visible") is None and csv is not None:
-                patch["client_surface_visible"] = csv
-            if existing.get("requires_document") is None and rd is not None:
-                patch["requires_document"] = rd
-            if existing.get("requires_job") is None and rj is not None:
-                patch["requires_job"] = rj
+            meta_in = registry_metadata if isinstance(registry_metadata, dict) else {}
+            prev_meta = existing.get("registry_metadata") or {}
+            governed_reconciled = bool(prev_meta.get("governed_reconciled"))
+
+            if governed_sync and governed_reconciled:
+                patch["applicability"] = "REQUIRED"
+                patch["status"] = RequirementStatus.PENDING.value
+                patch["not_required_reason"] = None
+                patch["is_tracked"] = is_tracked if is_tracked is not None else cls_eff in ("DOCUMENT", "JOB")
+                patch["client_surface_visible"] = csv if csv is not None else existing.get("client_surface_visible")
+                patch["requires_document"] = rd if rd is not None else existing.get("requires_document")
+                patch["requires_job"] = rj if rj is not None else existing.get("requires_job")
+                patch["description"] = description
+                patch["frequency_days"] = frequency_days
+                patch["warning_days"] = warning_days
+                if compliance_requirement_class:
+                    patch["compliance_requirement_class"] = compliance_requirement_class
+                merged = {**prev_meta, **meta_in}
+                merged.pop("governed_reconciled", None)
+                merged.pop("governed_reconciled_at", None)
+                patch["registry_metadata"] = merged
+            elif governed_sync:
+                if jurisdiction_label:
+                    patch["jurisdiction"] = jurisdiction_label
+                rc = (requirement_code or requirement_type or "").strip().lower()
+                if rc:
+                    patch["requirement_code"] = rc
+                if compliance_requirement_class:
+                    patch["compliance_requirement_class"] = compliance_requirement_class
+                if is_tracked is not None:
+                    patch["is_tracked"] = is_tracked
+                if csv is not None:
+                    patch["client_surface_visible"] = csv
+                if rd is not None:
+                    patch["requires_document"] = rd
+                if rj is not None:
+                    patch["requires_job"] = rj
+                patch["description"] = description
+                patch["frequency_days"] = frequency_days
+                patch["warning_days"] = warning_days
+                patch["registry_metadata"] = {**prev_meta, **meta_in}
+            else:
+                if jurisdiction_label and not existing.get("jurisdiction"):
+                    patch["jurisdiction"] = jurisdiction_label
+                rc = (requirement_code or requirement_type or "").strip().lower()
+                if rc and not existing.get("requirement_code"):
+                    patch["requirement_code"] = rc
+                if compliance_requirement_class and not existing.get("compliance_requirement_class"):
+                    patch["compliance_requirement_class"] = compliance_requirement_class
+                if is_tracked is not None and existing.get("is_tracked") is None:
+                    patch["is_tracked"] = is_tracked
+                if existing.get("client_surface_visible") is None and csv is not None:
+                    patch["client_surface_visible"] = csv
+                if existing.get("requires_document") is None and rd is not None:
+                    patch["requires_document"] = rd
+                if existing.get("requires_job") is None and rj is not None:
+                    patch["requires_job"] = rj
+                if meta_in:
+                    merged = {**prev_meta, **meta_in}
+                    patch["registry_metadata"] = merged
             if not existing.get("requirement_generation_source"):
                 patch["requirement_generation_source"] = REQUIREMENT_GENERATION_SOURCE_DB_RULE
             if patch:
+                patch["action_type"] = infer_action_type({**existing, **patch})
                 patch["updated_at"] = datetime.now(timezone.utc).isoformat()
                 await db.requirements.update_one(
                     {"requirement_id": existing["requirement_id"]},
@@ -414,6 +476,7 @@ class ProvisioningService:
             requires_document=rd,
             requires_job=rj,
             requirement_generation_source=REQUIREMENT_GENERATION_SOURCE_DB_RULE,
+            registry_metadata=registry_metadata,
         )
         
         doc = requirement.model_dump()
@@ -423,6 +486,10 @@ class ProvisioningService:
         doc["date_source"] = "SYSTEM_ESTIMATED"
         doc["evidence_state"] = "MISSING"
         doc["confidence_state"] = "ESTIMATED"
+        if registry_metadata:
+            doc["registry_metadata"] = registry_metadata
+
+        doc["action_type"] = infer_action_type(doc)
 
         await db.requirements.insert_one(doc)
     

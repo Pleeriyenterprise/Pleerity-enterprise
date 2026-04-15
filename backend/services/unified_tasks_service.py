@@ -34,6 +34,7 @@ from services.requirement_code_registry import (
     normalize_requirement_code_strict,
 )
 from services.compliance_requirement_engine import resolve_engine_payload_from_code
+from services.requirement_action_resolver import resolve_take_action_for_priority_action, resolve_take_action_envelope
 
 logger = logging.getLogger(__name__)
 
@@ -149,12 +150,28 @@ def _primary_action_fields(
     source_type: str,
     *,
     compliance_engine: Optional[Dict[str, Any]] = None,
-) -> Tuple[str, str, str, bool]:
-    """primary_action_type, label, url, inline_supported"""
+) -> Tuple[str, str, str, bool, Optional[str], Optional[str]]:
+    """
+    primary_action_type, label, url, inline_supported, secondary_label, secondary_url
+    Requirement-backed compliance actions use requirement_action_resolver (single primary CTA contract).
+    """
     url = (a.get("recommended_url") or "").strip() or "/dashboard"
     label = (a.get("recommended_action_label") or "View").strip()
     at = a.get("action_type") or ""
     inline = False
+    sec_label: Optional[str] = None
+    sec_url: Optional[str] = None
+
+    if at in (ACTION_MISSING_DOCUMENT, ACTION_OVERDUE_COMPLIANCE, ACTION_CERT_EXPIRING_SOON) and source_type == "requirement":
+        resolved = resolve_take_action_for_priority_action(a, compliance_engine=compliance_engine)
+        return (
+            str(resolved.get("primary_action_type") or "upload_evidence"),
+            str(resolved.get("primary_action_label") or label),
+            str(resolved.get("primary_action_url") or url),
+            False,
+            resolved.get("secondary_action_label"),
+            resolved.get("secondary_action_url"),
+        )
     if at in (ACTION_MISSING_DOCUMENT, ACTION_OVERDUE_COMPLIANCE, ACTION_CERT_EXPIRING_SOON):
         if compliance_engine and not compliance_engine.get("requires_document_evidence", True):
             primary_type = "view_requirement"
@@ -176,7 +193,7 @@ def _primary_action_fields(
         inline = False
     else:
         primary_type = source_type
-    return primary_type, label, url, inline
+    return primary_type, label, url, inline, sec_label, sec_url
 
 
 def _section_for_action(
@@ -260,6 +277,7 @@ def _action_to_task(
     source_id = _stable_source_id(a, source_type)
     task_id = f"{source_type}:{source_id}"
     prop_id = a.get("related_property_id")
+    related_rid = (a.get("related_requirement_id") or "").strip() or None
     prop_label = property_labels.get(prop_id or "", "") if prop_id else ""
     due_at, overdue_days = _due_and_overdue(a.get("due_at"), now)
     severity = (a.get("severity") or "medium").lower()
@@ -268,9 +286,20 @@ def _action_to_task(
     req_engine: Optional[Dict[str, Any]] = None
     if source_type == "requirement":
         req_engine = resolve_engine_payload_from_code(str(a.get("requirement_code") or "").strip())
-    pri_type, pri_label, pri_url, inline_ok = _primary_action_fields(
+    pri_type, pri_label, pri_url, inline_ok, sec_l, sec_u = _primary_action_fields(
         a, source_type, compliance_engine=req_engine
     )
+    is_req_stream = source_type == "requirement" and action_type in (
+        ACTION_MISSING_DOCUMENT,
+        ACTION_OVERDUE_COMPLIANCE,
+        ACTION_CERT_EXPIRING_SOON,
+    )
+    if is_req_stream:
+        secondary_label, secondary_url = sec_l, sec_u
+    elif sec_l and sec_u:
+        secondary_label, secondary_url = sec_l, sec_u
+    else:
+        secondary_label, secondary_url = _secondary_nav_label(source_type), pri_url
     freshness = a.get("source_updated_at")
 
     task_metadata: Dict[str, Any] = {
@@ -291,6 +320,26 @@ def _action_to_task(
     if action_type == ACTION_PENDING_APPROVAL:
         task_metadata["domain"] = "billing"
         task_metadata["billing_milestone_type"] = "pending_invoice_approval"
+
+    if is_req_stream and prop_id and related_rid:
+        eng = req_engine or {}
+        syn: Dict[str, Any] = {
+            "requirement_id": related_rid,
+            "property_id": prop_id,
+            "requirement_code": a.get("requirement_code"),
+            "requirement_type": a.get("requirement_code"),
+            "jurisdiction": a.get("jurisdiction"),
+        }
+        for k, v in eng.items():
+            if v is not None:
+                syn[k] = v
+        env_take = resolve_take_action_envelope(
+            syn,
+            property_id=prop_id,
+            property_jurisdiction=a.get("jurisdiction"),
+        )
+        task_metadata["take_action"] = env_take.get("take_action")
+        task_metadata["requirement_action_type"] = env_take.get("action_type")
 
     timing_label = None
     if overdue_days and overdue_days > 0:
@@ -329,8 +378,8 @@ def _action_to_task(
         "primary_action_label": pri_label,
         "primary_action_url": pri_url,
         "inline_action_supported": inline_ok,
-        "secondary_action_label": _secondary_nav_label(source_type),
-        "secondary_action_url": pri_url,
+        "secondary_action_label": secondary_label,
+        "secondary_action_url": secondary_url,
         "metadata": task_metadata,
         "why_matters": a.get("why_matters"),
         "recommended_action": a.get("recommended_action_detail") or a.get("description"),

@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Optional, Set, Tuple
 
@@ -523,6 +524,75 @@ def expects_expiry_for_requirement(scoring_jurisdiction: str, canonical_code: st
     )
 
 
+def _parse_iso8601_utc(value: Optional[str]) -> Optional[datetime]:
+    """Parse ISO-8601 timestamps from Mongo / APIs; returns timezone-aware UTC or None."""
+    if not value or not isinstance(value, str):
+        return None
+    t = value.strip()
+    if not t:
+        return None
+    if t.endswith("Z"):
+        t = t[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(t)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+def governed_requirement_rule_effective_for_runtime(
+    rule: Dict[str, Any],
+    *,
+    now: Optional[datetime] = None,
+) -> bool:
+    """
+    For ``requirement_rules`` rows with ``governed: true``, enforce soft-disable, deprecation,
+    and optional ``governed_effective_from`` / ``governed_effective_to`` window (UTC).
+    Non-governed rows are treated as always effective (caller should not rely on this for them).
+    """
+    if not rule.get("governed"):
+        return True
+    if not rule.get("is_active", True):
+        return False
+    if rule.get("governed_deprecated") or rule.get("deprecated"):
+        return False
+    now_utc = now or datetime.now(timezone.utc)
+    eff_from = _parse_iso8601_utc(rule.get("governed_effective_from"))
+    eff_to = _parse_iso8601_utc(rule.get("governed_effective_to"))
+    if eff_from and now_utc < eff_from:
+        return False
+    if eff_to and now_utc > eff_to:
+        return False
+    return True
+
+
+def governed_requirement_rule_covers_property(
+    rule: Dict[str, Any],
+    property_type: str,
+    property_doc: Dict[str, Any],
+    client_doc: Optional[Dict[str, Any]],
+    *,
+    now: Optional[datetime] = None,
+) -> bool:
+    """
+    Whether a ``requirement_rules`` row should generate or maintain an active requirement row
+    for this property: property type, governed lifecycle window, jurisdiction + applicability.
+    """
+    if rule.get("governed") and not governed_requirement_rule_effective_for_runtime(rule, now=now):
+        return False
+    applicable_to = rule.get("applicable_to", "ALL")
+    pt = (property_type or (property_doc.get("property_type") or "")).strip().upper()
+    if applicable_to != "ALL" and applicable_to != pt:
+        return False
+    portfolio = portfolio_jurisdiction_label(property_doc, client_doc)
+    sj = scoring_jurisdiction_for_property(property_doc, client_doc)
+    if not db_requirement_rule_applies_to_property(rule, property_doc, portfolio, sj):
+        return False
+    return True
+
+
 def rule_applies_to_db_row(rule: Dict[str, Any], portfolio_label: str, scoring_jurisdiction: str) -> bool:
     """Optional jurisdictions[] on Mongo requirement_rules: portfolio labels; omit = all regions."""
     jurs = rule.get("jurisdictions")
@@ -539,6 +609,26 @@ def rule_applies_to_db_row(rule: Dict[str, Any], portfolio_label: str, scoring_j
     if scoring_jurisdiction in labels:
         return True
     return False
+
+
+def db_requirement_rule_applies_to_property(
+    rule: Dict[str, Any],
+    property_doc: Dict[str, Any],
+    portfolio_label: str,
+    scoring_jurisdiction: str,
+) -> bool:
+    """
+    Jurisdiction scoping on the rule row plus optional governed applicability predicates
+    (fixed keys only — see compliance_governed_rules_service.property_matches_governed_applicability).
+    """
+    if not rule_applies_to_db_row(rule, portfolio_label, scoring_jurisdiction):
+        return False
+    ga = rule.get("governed_applicability")
+    if ga:
+        from services.compliance_governed_rules_service import property_matches_governed_applicability
+
+        return property_matches_governed_applicability(property_doc, ga)
+    return True
 
 
 def _normalize_doc_type_token(raw: Optional[str]) -> str:

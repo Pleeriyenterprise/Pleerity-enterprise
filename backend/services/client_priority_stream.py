@@ -88,6 +88,7 @@ def _action(
     recommended_action_detail: Optional[str] = None,
     recommended_url: str = "",
     recommended_action_label: str = "View",
+    portfolio_jurisdiction: Optional[str] = None,
 ) -> Dict[str, Any]:
     out: Dict[str, Any] = {
         "action_type": action_type,
@@ -115,6 +116,8 @@ def _action(
         out["why_matters"] = why_matters
     if recommended_action_detail:
         out["recommended_action_detail"] = recommended_action_detail
+    if portfolio_jurisdiction:
+        out["jurisdiction"] = portfolio_jurisdiction
     return out
 
 
@@ -146,6 +149,7 @@ async def fetch_client_priority_actions(client_id: str, property_id_filter: Opti
             recommended_action_detail="Upload valid evidence or renew the certificate, then confirm dates.",
             recommended_url=(f"/properties/{prop_id}{hash_frag}" if prop_id else "/compliance-score"),
             recommended_action_label="Review compliance",
+            portfolio_jurisdiction=r.get("jurisdiction"),
         ))
 
     q_exp = {"client_id": client_id, "status": "EXPIRING_SOON"}
@@ -172,6 +176,7 @@ async def fetch_client_priority_actions(client_id: str, property_id_filter: Opti
             recommended_action_detail="Renew or schedule renewal and upload evidence with confirmed expiry dates.",
             recommended_url=(f"/properties/{prop_id}{hash_frag}" if prop_id else "/compliance-score"),
             recommended_action_label="Review compliance",
+            portfolio_jurisdiction=r.get("jurisdiction"),
         ))
 
     q_miss = {"client_id": client_id, "status": {"$in": ["PENDING", "MISSING"]}}
@@ -200,6 +205,7 @@ async def fetch_client_priority_actions(client_id: str, property_id_filter: Opti
             recommended_action_detail="Upload the certificate or statutory document and confirm extracted dates.",
             recommended_url=(f"/properties/{prop_id}{hash_frag}" if prop_id else "/documents"),
             recommended_action_label="Upload document",
+            portfolio_jurisdiction=r.get("jurisdiction"),
         ))
 
     try:

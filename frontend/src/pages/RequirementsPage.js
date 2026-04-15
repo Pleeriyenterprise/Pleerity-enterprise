@@ -17,9 +17,9 @@ import {
   Loader2,
   Eye,
   Ban,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { buildSafeQueryPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
 import { getEvidenceStatus } from '../utils/evidenceStatus';
 import {
   Accordion,
@@ -35,6 +35,7 @@ import { PortalLoadingPanel } from '../components/client/ClientPortalPatterns';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import { REQUIREMENTS_PAGE_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
+import { resolveRequirementAction } from '../utils/requirementTakeActionResolver';
 import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
 
 const NOT_REQUIRED_REASONS = [
@@ -302,29 +303,18 @@ const RequirementsPage = () => {
 
   const renderRequirementRow = (req) => {
     const property = getPropertyById(req.property_id);
+    const takeActionResolved = resolveRequirementAction(req, property);
     const statusConfig = getStatusConfig(req);
     const StatusIcon = statusConfig.icon;
     const daysUntil = getDaysUntilDue(req.due_date);
     const docCount = documentCountByRequirementId[req.requirement_id] || 0;
     const hasDocs = docCount > 0;
-    const reqCode = String(req.requirement_code || req.requirement_type || '').trim();
-    const docQuery = { requirement_id: req.requirement_id, ...(reqCode ? { requirement_code: reqCode } : {}) };
-    const docsPath = resolveDocumentsPath(req.property_id, docQuery);
-    const uploadPath = resolveDocumentsPath(req.property_id, { ...docQuery, focus: 'upload' });
     const reqClass = String(req.compliance_requirement_class || req.requirement_class || '').toUpperCase();
     const informational =
       reqClass === 'OBLIGATION' ||
       reqClass === 'SYSTEM' ||
       req.engine_informational === true ||
       String(req.engine_client_visibility || req.client_visibility || '').toLowerCase() === 'informational';
-    const fulfillment =
-      reqClass === 'JOB'
-        ? 'job'
-        : reqClass === 'DOCUMENT'
-          ? 'document'
-          : String(req.engine_fulfillment_mode || req.fulfillment_mode || 'document').toLowerCase();
-    const needsDocEvidence = req.engine_requires_document_evidence !== false;
-    const mayBookJob = req.engine_creates_compliance_job === true || reqClass === 'JOB';
 
     const requirementPreActionLine = (() => {
       if (informational) {
@@ -393,42 +383,80 @@ const RequirementsPage = () => {
               </div>
             )}
             {(() => {
-              const needsDoc = isRequirementMissingDocument(req);
-              const fixPath = !hasDocs || needsDoc ? uploadPath : docsPath;
-              let primaryLabel = PORTAL_COPY.fixComplianceIssue;
-              let onPrimary = () => navigate(fixPath);
-              if (informational || fulfillment === 'obligation') {
-                primaryLabel = 'Review obligation';
-                onPrimary = () => openViewRequirementModal(req);
-              } else if (fulfillment === 'job' && mayBookJob) {
-                primaryLabel = 'Book inspection';
-                const hash = reqCode ? `#req=${encodeURIComponent(reqCode)}` : '';
-                onPrimary = () => navigate(`/properties/${req.property_id}${hash}`);
-              } else if (fulfillment === 'document' && needsDocEvidence) {
-                onPrimary = () => navigate(fixPath);
-              } else {
-                primaryLabel = 'View details';
-                onPrimary = () => openViewRequirementModal(req);
-              }
+              const ta = takeActionResolved;
+              const onPrimary = () => {
+                if (!ta.primary_route) {
+                  openViewRequirementModal(req);
+                  return;
+                }
+                if (ta.primary_action_handler === 'external') {
+                  window.open(ta.primary_route, '_blank', 'noopener,noreferrer');
+                  return;
+                }
+                navigate(ta.primary_route);
+              };
               return (
                 <Button
                   className="w-full min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90 text-midnight-blue font-semibold"
                   onClick={onPrimary}
                   data-testid={`fix-compliance-${req.requirement_id}`}
                 >
-                  {primaryLabel}
+                  {ta.primary_action_label}
                   <ChevronRight className="w-4 h-4 ml-1 shrink-0" />
                 </Button>
               );
             })()}
             <div className="flex flex-col gap-2">
+              {(() => {
+                const ta = takeActionResolved;
+                if (ta.secondary_action?.route) {
+                  const sec = ta.secondary_action;
+                  return (
+                    <button
+                      type="button"
+                      className="text-sm text-electric-teal hover:underline text-left min-h-10"
+                      onClick={() => {
+                        if (sec.external) window.open(sec.route, '_blank', 'noopener,noreferrer');
+                        else navigate(sec.route);
+                      }}
+                      data-testid={`requirement-secondary-${req.requirement_id}`}
+                    >
+                      {sec.label}
+                    </button>
+                  );
+                }
+                return null;
+              })()}
+              {(() => {
+                const links = Array.isArray(takeActionResolved.supporting_external_links)
+                  ? takeActionResolved.supporting_external_links
+                  : [];
+                if (!links.length) return null;
+                return (
+                  <div className="flex flex-col gap-1 pt-1 border-t border-gray-100">
+                    <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">External resources</p>
+                    {links.map((lnk) => (
+                      <button
+                        key={lnk.key || lnk.url}
+                        type="button"
+                        className="text-xs text-electric-teal hover:underline text-left min-h-10 inline-flex items-start gap-1"
+                        onClick={() => window.open(String(lnk.url || ''), '_blank', 'noopener,noreferrer')}
+                        data-testid={`requirement-external-link-${req.requirement_id}-${lnk.key || 'link'}`}
+                      >
+                        <span className="break-words text-left">{lnk.label}</span>
+                        <ExternalLink className="w-3.5 h-3.5 shrink-0 mt-0.5 opacity-80" aria-hidden />
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
               <button
                 type="button"
-                className="text-sm text-electric-teal hover:underline text-left min-h-10"
+                className="text-sm text-gray-600 hover:underline text-left min-h-10"
                 onClick={() => openViewRequirementModal(req)}
                 data-testid={`compliance-view-requirement-${req.requirement_id}`}
               >
-                View details
+                Requirement details
               </button>
               <button
                 type="button"

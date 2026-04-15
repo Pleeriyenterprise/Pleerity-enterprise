@@ -148,7 +148,11 @@ export default function PropertyOperatingHub({
                           className={cn(portalPrimaryButtonClass, 'inline-flex w-full sm:w-auto justify-center no-underline shrink-0')}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {action.primary_action_label || PORTAL_COPY.viewDetails}
+                          {(action.metadata?.take_action?.primary?.label
+                            ? String(action.metadata.take_action.primary.label)
+                            : null) ||
+                            action.primary_action_label ||
+                            PORTAL_COPY.viewDetails}
                         </Link>
                       ) : (
                         <span className="text-xs text-gray-500">No route — open Compliance or Jobs & issues.</span>

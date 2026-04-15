@@ -18,6 +18,7 @@ from services.compliance_requirement_registry import (
     RequirementPlanItem,
     build_requirement_plan_for_property,
 )
+from services.requirement_action_resolver import infer_action_type
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,7 @@ async def materialize_requirements_for_property(
             "registry_metadata": meta,
             "updated_at": now.isoformat(),
         }
+        patch["action_type"] = infer_action_type({**(existing or {}), **patch})
         if existing:
             rid = existing.get("requirement_id")
             if not rid:
@@ -133,6 +135,7 @@ async def materialize_requirements_for_property(
             doc["date_source"] = "SYSTEM_ESTIMATED"
             doc["evidence_state"] = "MISSING"
             doc["confidence_state"] = "ESTIMATED"
+            doc["action_type"] = infer_action_type(doc)
             await db.requirements.insert_one(doc)
         upserted += 1
 

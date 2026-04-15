@@ -3,6 +3,7 @@
  * and fallbacks aligned with backend services/explanation_engine.explain_compliance_alert.
  */
 import { normalizeRequirementCode, requirementLabel, requirementDocumentUploadLabel } from '../domain/presentDomain';
+import { resolveRequirementAction } from './requirementTakeActionResolver';
 import { isRequirementMissingDocument } from './propertyDocumentsMatrix';
 
 function legalContextForCode(codeNorm) {
@@ -140,26 +141,13 @@ export function complianceObligationStatusLabel(r) {
   return 'Valid';
 }
 
-/** Standardised primary action: Upload | Renew | Review (+ requirement-specific upload label). */
+/** Standardised primary action — delegates to unified Take Action resolver (single CTA contract). */
 export function complianceObligationPrimaryAction(r) {
-  const s = String(r?.status || '').toUpperCase();
-  const code = r?.requirement_code || r?.requirement_type;
-  if (isRequirementMissingDocument(r)) {
-    return { verb: 'upload', label: requirementDocumentUploadLabel(code) };
-  }
-  if ((s === 'PENDING' && r?.evidence_doc_id) || s === 'PENDING_VERIFICATION') {
-    return { verb: 'review', label: 'Review' };
-  }
-  if (['OVERDUE', 'EXPIRED', 'EXPIRING_SOON'].includes(s) && r?.evidence_doc_id) {
-    return { verb: 'renew', label: 'Renew' };
-  }
-  if (['OVERDUE', 'EXPIRED', 'EXPIRING_SOON'].includes(s) && !r?.evidence_doc_id) {
-    return { verb: 'upload', label: requirementDocumentUploadLabel(code) };
-  }
-  if (r?.evidence_doc_id) {
-    return { verb: 'review', label: 'Review' };
-  }
-  return { verb: 'upload', label: requirementDocumentUploadLabel(code) };
+  const ta = resolveRequirementAction(r, {});
+  let verb = 'upload';
+  if (ta.actionType === 'JOB') verb = 'book';
+  else if (ta.actionType === 'OBLIGATION') verb = 'review';
+  return { verb, label: ta.primary_action_label };
 }
 
 function summarizeRequirementCounts(reqs) {

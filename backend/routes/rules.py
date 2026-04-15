@@ -283,6 +283,12 @@ async def update_rule(request: Request, rule_id: str):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Rule not found"
             )
+
+        if existing.get("governed"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Governed rules are updated via the compliance governed-rules API and publish workflow; direct edits are not allowed.",
+            )
         
         # Build update
         update_fields = {}
@@ -354,6 +360,12 @@ async def delete_rule(request: Request, rule_id: str):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Rule not found"
+            )
+
+        if existing.get("governed"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Governed rules cannot be disabled from this endpoint; publish a version with is_active false or deprecated true in the governed-rules API.",
             )
         
         # Soft delete

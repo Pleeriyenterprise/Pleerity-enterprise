@@ -387,6 +387,13 @@ const COMMAND_CENTER_CTA_LABEL_MAP = {
  * 5. Else `Continue in Today`.
  */
 export function sanitizeCommandCenterCtaLabel(primaryLabel, task) {
+  const meta0 = task?.metadata && typeof task.metadata === 'object' ? task.metadata : {};
+  const takePrimary =
+    meta0.take_action && typeof meta0.take_action === 'object' && meta0.take_action.primary?.label
+      ? String(meta0.take_action.primary.label).trim()
+      : '';
+  if (takePrimary) return takePrimary;
+
   const candidate = String(primaryLabel || task?.primary_action_label || task?.primary_cta?.label || '').trim();
   const key = candidate.toLowerCase();
   const stLower = String(task?.source_type || '').toLowerCase();

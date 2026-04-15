@@ -397,7 +397,7 @@ async def list_contractors(
         if st == STATUS_PENDING_REVIEW:
             q["status"] = {"$in": [STATUS_PENDING_REVIEW, LC_PENDING_APPROVAL]}
         else:
-            q["status"] = status
+        q["status"] = status
     cursor = db.contractors.find(q).sort("name", 1).skip(skip).limit(limit)
     items = await cursor.to_list(limit)
     total = await db.contractors.count_documents(q)
