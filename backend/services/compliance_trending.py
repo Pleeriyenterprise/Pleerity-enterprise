@@ -22,6 +22,9 @@ async def capture_daily_snapshot(client_id: str) -> Dict[str, Any]:
     Should be called by scheduler once per day per client.
     Stores the snapshot in compliance_score_history collection.
     
+    Uses a single upsert on (client_id, date_key) so concurrent callers (e.g. dashboard
+    + trend after password setup) cannot race duplicate-key on the unique index.
+    
     Returns:
         dict with snapshot_id and captured score
     """
@@ -33,56 +36,42 @@ async def capture_daily_snapshot(client_id: str) -> Dict[str, Any]:
         
         now = datetime.now(timezone.utc)
         date_key = now.strftime("%Y-%m-%d")
-        
-        # Check if snapshot already exists for today
-        existing = await db.compliance_score_history.find_one({
-            "client_id": client_id,
-            "date_key": date_key
-        })
-        
-        if existing:
-            # Update existing snapshot (allows re-run if needed)
-            await db.compliance_score_history.update_one(
-                {"_id": existing["_id"]},
-                {"$set": {
+        snapshot_id = f"snap-{uuid.uuid4().hex[:12]}"
+
+        res = await db.compliance_score_history.update_one(
+            {"client_id": client_id, "date_key": date_key},
+            {
+                "$set": {
                     "score": score_data.get("score", 0),
                     "grade": score_data.get("grade", "?"),
                     "color": score_data.get("color", "gray"),
                     "breakdown": score_data.get("breakdown", {}),
                     "stats": score_data.get("stats", {}),
-                    "updated_at": now.isoformat()
-                }}
-            )
-            return {
-                "snapshot_id": existing.get("snapshot_id"),
-                "action": "updated",
-                "score": score_data.get("score", 0)
-            }
-        
-        # Create new snapshot
-        snapshot_id = f"snap-{uuid.uuid4().hex[:12]}"
-        
-        snapshot = {
-            "snapshot_id": snapshot_id,
-            "client_id": client_id,
-            "date_key": date_key,
-            "timestamp": now.isoformat(),
-            "score": score_data.get("score", 0),
-            "grade": score_data.get("grade", "?"),
-            "color": score_data.get("color", "gray"),
-            "breakdown": score_data.get("breakdown", {}),
-            "stats": score_data.get("stats", {}),
-            "created_at": now.isoformat()
-        }
-        
-        await db.compliance_score_history.insert_one(snapshot)
-        
-        logger.info(f"Captured compliance snapshot for client {client_id}: score={score_data.get('score')}")
-        
+                    "updated_at": now.isoformat(),
+                    "timestamp": now.isoformat(),
+                },
+                "$setOnInsert": {
+                    "snapshot_id": snapshot_id,
+                    "client_id": client_id,
+                    "date_key": date_key,
+                    "created_at": now.isoformat(),
+                },
+            },
+            upsert=True,
+        )
+        action = "created" if res.upserted_id is not None else "updated"
+        doc = await db.compliance_score_history.find_one(
+            {"client_id": client_id, "date_key": date_key},
+            {"_id": 0, "snapshot_id": 1},
+        )
+        sid = (doc or {}).get("snapshot_id") or snapshot_id
+
+        logger.info("Captured compliance snapshot for client %s: score=%s (%s)", client_id, score_data.get("score"), action)
+
         return {
-            "snapshot_id": snapshot_id,
-            "action": "created",
-            "score": score_data.get("score", 0)
+            "snapshot_id": sid,
+            "action": action,
+            "score": score_data.get("score", 0),
         }
     
     except Exception as e:
