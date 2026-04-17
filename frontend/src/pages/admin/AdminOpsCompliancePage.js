@@ -53,10 +53,12 @@ export default function AdminOpsCompliancePage() {
   return (
     <UnifiedAdminLayout>
       <div className="p-6 max-w-6xl">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Ops — Compliance snapshot</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Client requirement status</h1>
         <p className="text-gray-600 text-sm mb-6 max-w-3xl">
-          Requirement-level counts per client (overdue and expiring soon). Clients appear if they have at least one requirement
-          document in the database. When you filter to one client, portfolio score is calculated on demand.
+          Requirement-level counts per client (overdue and expiring soon). This is a <strong>coverage / workload</strong> view — not the same as{' '}
+          <Link to="/admin/ops/risk" className="text-electric-teal hover:underline">Risk &amp; Insights</Link> (signals) or{' '}
+          <Link to="/admin/ops/audit" className="text-electric-teal hover:underline">Portfolio compliance audit</Link> (audit trail).
+          Clients appear if they have at least one requirement document in the database. When you filter to one client, portfolio score is calculated on demand.
         </p>
         <div className="flex flex-wrap items-end gap-3 mb-6">
           <div>

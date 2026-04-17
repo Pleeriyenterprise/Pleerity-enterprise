@@ -69,10 +69,12 @@ export default function AdminOpsAuditPage() {
   return (
     <UnifiedAdminLayout>
       <div className="p-6 max-w-6xl">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Ops — Audit events</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Portfolio compliance audit</h1>
         <p className="text-gray-600 text-sm mb-4 max-w-3xl">
-          Filterable view of <code className="text-xs bg-gray-100 px-1 rounded">audit_logs</code>. Use the main admin dashboard
-          for CSV export and advanced views. Client audit log (client portal) is separate.
+          Immutable <strong>audit trail</strong> for portfolio actions (filter by client, action, date). Not a substitute for{' '}
+          <Link to="/admin/ops/compliance" className="text-electric-teal hover:underline">client requirement status</Link> (coverage counts) or{' '}
+          <Link to="/admin/ops/risk" className="text-electric-teal hover:underline">Risk &amp; Insights</Link> (live signals). Use{' '}
+          <strong>System → System Audit Logs</strong> on the admin dashboard for export and framework views. Client audit (portal) is separate.
         </p>
         <div className="flex flex-wrap gap-4 mb-6 text-sm">
           <Link to="/admin/ops" className="text-electric-teal hover:underline">

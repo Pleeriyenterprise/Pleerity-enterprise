@@ -62,33 +62,54 @@ const navSections = [
     icon: LayoutDashboard,
     items: [
       { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
-      { href: '/admin/compliance/registry', label: 'Requirement Registry (drafts)', icon: ListChecks },
-      { href: '/admin/compliance/registry/preview', label: 'Registry preview & simulation', icon: GitCompare },
-      { href: '/admin/compliance/registry/publish-queue', label: 'Registry publish queue', icon: Rocket },
-      { href: '/admin/control-centre', label: 'Control Centre', icon: Gauge },
       { href: '/admin/analytics', label: 'Analytics', icon: BarChart3, ownerOrAdminOnly: true },
       { href: '/admin/analytics/executive', label: 'Executive Overview', icon: TrendingUp, ownerOrAdminOnly: true },
-      { href: '/admin/analytics/generation-health', label: 'Generation health', icon: Activity, ownerOrAdminOnly: true },
       { href: '/admin/reporting', label: 'Reporting', icon: FileText },
+      { href: '/admin/system-health', label: 'System Health', icon: Activity },
     ],
   },
   {
-    id: 'customers',
-    label: 'Customers',
+    id: 'compliance',
+    label: 'Compliance Engine',
+    icon: Shield,
+    items: [
+      { href: '/admin/compliance/registry', label: 'Requirement Registry', icon: ListChecks },
+      { href: '/admin/compliance/registry/preview', label: 'Registry Preview & Simulation', icon: GitCompare },
+      { href: '/admin/compliance/registry/publish-queue', label: 'Registry Publish Queue', icon: Rocket },
+      { href: '/admin/ops/action-links', label: 'Action Links', icon: Link2 },
+    ],
+  },
+  {
+    id: 'operations',
+    label: 'Operations',
+    icon: ClipboardCheck,
+    items: [
+      { href: '/admin/ops', label: 'Overview', icon: LayoutDashboard },
+      { href: '/admin/ops/maintenance', label: 'Jobs', icon: Settings },
+      { href: '/admin/ops/contractors', label: 'Contractors', icon: Users },
+      { href: '/admin/ops/risk', label: 'Risk & Insights', icon: BarChart3 },
+      { href: '/admin/extraction-queue', label: 'Extraction Review', icon: FileText },
+      { href: '/admin/communications', label: 'Communications', icon: Megaphone },
+      { href: '/admin/ops/audit', label: 'Portfolio Compliance Audit', icon: History },
+    ],
+  },
+  {
+    id: 'crm',
+    label: 'CRM',
     icon: Users,
     items: [
+      { href: '/admin/dashboard', label: 'Clients', icon: Users, tabTarget: 'clients' },
       { href: '/admin/leads', label: 'Lead Management', icon: Target, badge: 'leads' },
       { href: '/admin/risk-leads', label: 'Risk Check Leads', icon: Activity },
       { href: '/admin/talent-pool', label: 'Talent Pool', icon: Briefcase },
       { href: '/admin/partnership-enquiries', label: 'Partnership Enquiries', icon: Handshake },
       { href: '/admin/inbox/enquiries', label: 'Contact Enquiries', icon: Mail },
-      { href: '/admin/dashboard', label: 'Clients', icon: Users, tabTarget: 'clients' },
       { href: '/admin/orders', label: 'Orders Pipeline', icon: ClipboardCheck },
     ],
   },
   {
     id: 'products',
-    label: 'Products & Services',
+    label: 'Products & Billing',
     icon: Package,
     items: [
       { href: '/admin/services', label: 'Service Catalogue', icon: Package },
@@ -98,38 +119,8 @@ const navSections = [
     ],
   },
   {
-    id: 'ops',
-    label: 'Operations & Compliance',
-    icon: ClipboardCheck,
-    ownerOrAdminOnly: true,
-    items: [
-      { href: '/admin/ops', label: 'Overview', icon: LayoutDashboard },
-      { href: '/admin/ops/maintenance', label: 'Jobs', icon: Settings },
-      { href: '/admin/ops/contractors', label: 'Contractors', icon: Users },
-      { href: '/admin/ops/risk', label: 'Risk & Insights', icon: BarChart3 },
-      { href: '/admin/ops/action-links', label: 'Action links', icon: Link2 },
-      { href: '/admin/compliance/registry', label: 'Requirement Registry (drafts)', icon: ListChecks },
-      { href: '/admin/compliance/registry/preview', label: 'Registry preview & simulation', icon: GitCompare },
-      { href: '/admin/compliance/registry/publish-queue', label: 'Registry publish queue', icon: Rocket },
-      { href: '/admin/ops/feature-controls', label: 'Feature Controls', icon: Zap },
-      { href: '/admin/communications', label: 'Communications', icon: Megaphone },
-    ],
-  },
-  {
-    id: 'clearform',
-    label: 'ClearForm',
-    icon: FileSignature,
-    items: [
-      { href: '/admin/clearform/users', label: 'ClearForm Users', icon: Users },
-      { href: '/admin/clearform/documents', label: 'Document Management', icon: FileText },
-      { href: '/admin/clearform/organizations', label: 'Organizations', icon: Package },
-      { href: '/admin/clearform/document-types', label: 'Document Types', icon: PenTool },
-      { href: '/admin/clearform/audit', label: 'Audit Logs', icon: History },
-    ],
-  },
-  {
     id: 'content',
-    label: 'Content Management',
+    label: 'Content & Experience',
     icon: FileText,
     items: [
       { href: '/admin/site-builder', label: 'Site Builder', icon: PenTool },
@@ -152,25 +143,25 @@ const navSections = [
     ],
   },
   {
-    id: 'settings',
-    label: 'Settings & System',
+    id: 'system',
+    label: 'System',
     icon: Settings,
     items: [
       { href: '/admin/team', label: 'Team Permissions', icon: Shield },
       { href: '/admin/prompts', label: 'Prompt Manager', icon: Sparkles },
       { href: '/admin/enablement', label: 'Enablement Engine', icon: Zap },
       { href: '/admin/privacy/consent', label: 'Privacy & Consent', icon: Cookie },
+      { href: '/admin/ops/feature-controls', label: 'Feature Controls', icon: Zap },
+      { href: '/admin/control-centre', label: 'Platform status', icon: Gauge, ownerOrAdminOnly: true },
       { href: '/admin/dashboard', label: 'Automation Rules', icon: Settings, tabTarget: 'rules' },
       { href: '/admin/dashboard', label: 'Email Templates', icon: Mail, tabTarget: 'templates' },
-      { href: '/admin/dashboard', label: 'Email delivery', icon: Mail, tabTarget: 'emailDelivery' },
-      { href: '/admin/notification-health', label: 'Notification Health', icon: Activity },
-      { href: '/admin/system-health', label: 'System Health', icon: Activity },
+      { href: '/admin/dashboard', label: 'Email Delivery', icon: Mail, tabTarget: 'emailDelivery' },
       { href: '/admin/automation', label: 'Automation Control Centre', icon: Zap },
       { href: '/admin/incidents', label: 'Incidents', icon: AlertTriangle, badge: 'incidents' },
       { href: '/admin/security', label: 'Security Monitoring', icon: Shield },
-      { href: '/admin/dashboard', label: 'Audit Logs', icon: History, tabTarget: 'audit' },
-      { href: '/admin/notifications/inbox', label: 'Notification inbox', icon: Inbox },
-      { href: '/admin/notifications/preferences', label: 'Notification preferences', icon: Bell },
+      { href: '/admin/dashboard', label: 'System Audit Logs', icon: History, tabTarget: 'audit' },
+      { href: '/admin/notifications/inbox', label: 'Notification Inbox', icon: Inbox },
+      { href: '/admin/notifications/preferences', label: 'Notification Preferences', icon: Bell },
     ],
   },
 ];
@@ -178,8 +169,8 @@ const navSections = [
 // Section IDs that each staff role can see (OWNER/ADMIN see all)
 const SECTIONS_FOR_SUPPORT = ['dashboard', 'support'];
 const SECTIONS_FOR_CONTENT = ['dashboard', 'content'];
-// Auditor: read-only; dashboard, Operations & Compliance (view-only), and Audit Logs (settings)
-const SECTIONS_FOR_AUDITOR = ['dashboard', 'ops', 'settings'];
+// Auditor: read-only; dashboard, compliance + operations (view-only), and system audit (system section)
+const SECTIONS_FOR_AUDITOR = ['dashboard', 'compliance', 'operations', 'system'];
 
 // Sidebar content component - defined outside to avoid re-creation
 const SidebarContent = ({ 
@@ -331,7 +322,7 @@ const UnifiedAdminLayout = ({ children }) => {
   const { logout, user, isSupport, isContent, isAuditor, isAdmin, isOwner } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [expandedSections, setExpandedSections] = useState(['dashboard', 'customers']);
+  const [expandedSections, setExpandedSections] = useState(['dashboard', 'compliance', 'crm']);
   const [badges, setBadges] = useState({ leads: 0, postal: 0, incidents: 0 });
   const [openP0P1Count, setOpenP0P1Count] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
@@ -351,9 +342,9 @@ const UnifiedAdminLayout = ({ children }) => {
     return sections.map((sec) => ({
       ...sec,
       items: (sec.items || []).filter((item) => {
-        if (isAuditorRole && sec.id === 'settings') return item.tabTarget === 'audit';
-        // Auditor can see all ops items (read-only; write actions 403 on backend)
-        if (isAuditorRole && sec.id === 'ops') return true;
+        if (isAuditorRole && sec.id === 'system') return item.tabTarget === 'audit';
+        // Auditor can see compliance engine + operations items (read-only; write actions 403 on backend)
+        if (isAuditorRole && (sec.id === 'operations' || sec.id === 'compliance')) return true;
         return isOwnerOrAdmin || !item.ownerOrAdminOnly;
       }),
     }));

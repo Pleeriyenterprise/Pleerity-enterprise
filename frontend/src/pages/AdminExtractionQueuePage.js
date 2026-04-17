@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { toast } from 'sonner';
 import api from '../api/client';
+import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 
 const AdminExtractionQueuePage = () => {
   const [items, setItems] = useState([]);
@@ -57,7 +58,8 @@ const AdminExtractionQueuePage = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <UnifiedAdminLayout>
+    <div className="max-w-7xl mx-auto">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -153,6 +155,7 @@ const AdminExtractionQueuePage = () => {
         </CardContent>
       </Card>
     </div>
+    </UnifiedAdminLayout>
   );
 };
 

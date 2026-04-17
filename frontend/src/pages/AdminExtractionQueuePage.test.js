@@ -14,6 +14,11 @@ jest.mock('../api/client', () => ({
   },
 }));
 
+jest.mock('../components/admin/UnifiedAdminLayout', () => ({
+  __esModule: true,
+  default: ({ children }) => <div data-testid="admin-layout-stub">{children}</div>,
+}));
+
 jest.mock('sonner', () => ({
   toast: { success: jest.fn(), error: jest.fn(), info: jest.fn() },
 }));

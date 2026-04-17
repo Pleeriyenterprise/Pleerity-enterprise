@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminAPI } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
-import { LayoutDashboard, Settings, Users, BarChart3, RefreshCw, Zap, Shield, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Settings, Users, BarChart3, RefreshCw, Shield, TrendingUp, ClipboardCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 const MODULE_LINKS = [
@@ -10,6 +10,13 @@ const MODULE_LINKS = [
   { id: 'contractors', label: 'Contractors', icon: Users, href: '/admin/ops/contractors' },
   { id: 'identities', label: 'Identity lifecycle', icon: Shield, href: '/admin/ops/identities' },
   { id: 'risk', label: 'Risk & Insights', icon: BarChart3, href: '/admin/ops/risk' },
+  {
+    id: 'compliance-snapshot',
+    label: 'Client requirement status',
+    icon: ClipboardCheck,
+    href: '/admin/ops/compliance',
+    description: 'Per-client requirement counts (overdue / expiring). Distinct from risk signals and audit trails.',
+  },
 ];
 
 export default function AdminOpsOverviewPage() {
@@ -83,23 +90,21 @@ export default function AdminOpsOverviewPage() {
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-3">Sections</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {MODULE_LINKS.map(({ id, label, icon: Icon, href }) => (
+                {MODULE_LINKS.map(({ id, label, icon: Icon, href, description }) => (
                   <Link
                     key={id}
                     to={href}
-                    className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm transition-colors"
+                    className="flex flex-col gap-1 p-4 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm transition-colors"
                   >
-                    <Icon className="w-8 h-8 text-electric-teal" />
-                    <span className="font-medium text-gray-900">{label}</span>
+                    <div className="flex items-center gap-3">
+                      <Icon className="w-8 h-8 text-electric-teal shrink-0" />
+                      <span className="font-medium text-gray-900">{label}</span>
+                    </div>
+                    {description ? (
+                      <p className="text-xs text-gray-500 pl-11 leading-snug">{description}</p>
+                    ) : null}
                   </Link>
                 ))}
-                <Link
-                  to="/admin/ops/feature-controls"
-                  className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm transition-colors"
-                >
-                  <Zap className="w-8 h-8 text-electric-teal" />
-                  <span className="font-medium text-gray-900">Feature Controls</span>
-                </Link>
                 <Link
                   to="/admin/ops/roi-diagnostics"
                   className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-sm transition-colors"

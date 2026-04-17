@@ -2261,7 +2261,7 @@ const AuditLogs = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-midnight-blue">Audit Logs ({totalLogs})</h2>
+        <h2 className="text-xl font-semibold text-midnight-blue">System Audit Logs ({totalLogs})</h2>
         <button
           onClick={fetchLogs}
           className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
@@ -5108,7 +5108,7 @@ const AdminDashboard = () => {
     { id: 'rules', label: 'Rules', icon: BookOpen },
     { id: 'templates', label: 'Templates', icon: Mail },
     { id: 'emailDelivery', label: 'Email delivery', icon: Mail },
-    { id: 'audit', label: 'Audit Logs', icon: FileText },
+    { id: 'audit', label: 'System Audit Logs', icon: FileText },
   ];
 
   const renderContent = () => {

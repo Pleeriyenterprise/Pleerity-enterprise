@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
+import { useAuth } from '../contexts/AuthContext';
 import { Activity, AlertTriangle, CheckCircle, RefreshCw, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminSystemHealthPage() {
+  const { isOwner, isAdmin } = useAuth();
+  const showPrivilegedHealthDiagnostics = Boolean(isOwner?.() || isAdmin?.());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -250,7 +253,28 @@ export default function AdminSystemHealthPage() {
               </div>
             )}
 
-            <p className="text-sm text-gray-500">
+            {showPrivilegedHealthDiagnostics ? (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                <p className="font-medium text-gray-900 mb-1">Deep-dive diagnostics</p>
+                <p className="text-gray-600 mb-2">
+                  Owner and administrator roles only — same visibility as the former Analytics sidebar entries.
+                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <Link to="/admin/analytics/generation-health" className="text-indigo-600 hover:underline">
+                    Generation health →
+                  </Link>
+                  <Link to="/admin/notification-health" className="text-indigo-600 hover:underline">
+                    Notification health →
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">
+                Generation and notification diagnostics are available to platform owners and administrators (same policy as Analytics).
+              </p>
+            )}
+
+            <p className="text-sm text-gray-500 mt-4">
               <Link to="/admin/incidents" className="text-indigo-600 hover:underline">Incidents</Link>
               {' · '}
               <Link to="/admin/automation" className="text-indigo-600 hover:underline">Automation Control Centre</Link>

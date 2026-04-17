@@ -114,10 +114,10 @@ export default function AdminControlCentrePage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <Gauge className="w-8 h-8 text-indigo-600" />
-              Pleerity Control Centre
+              Platform status
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              Snapshot polling (~{Math.round(CONTROL_CENTRE_POLL_MS / 1000)}s) plus manual refresh. Revenue metrics and revenue health score are visible only to{' '}
+              Cross-cutting snapshot: health, automation, security, engagement, and revenue signals. Polling ~{Math.round(CONTROL_CENTRE_POLL_MS / 1000)}s plus manual refresh. Revenue metrics and revenue health score are visible only to{' '}
               <span className="font-medium">Owner</span> (ROLE_OWNER). Overall status does not penalize non-owners for hidden revenue data.
             </p>
             {data?.generated_at ? (
