@@ -40,6 +40,23 @@ function legalContextForCode(codeNorm) {
  * Safe to call for any requirement row from the property matrix.
  */
 export function registryFallbackComplianceExplanation(req) {
+  const apiShort = String(req?.why_it_matters_short || req?.why_it_matters || '').trim();
+  const apiLong = String(req?.why_it_matters_long || '').trim();
+  if (apiShort || apiLong) {
+    const title =
+      (req?.title && String(req.title).trim()) ||
+      (req?.requirement_code ? requirementLabel(req.requirement_code || req.requirement_type) : '') ||
+      'Requirement';
+    const chosen = apiLong || apiShort;
+    return {
+      explanation_text: `${title}: ${chosen}`,
+      why_it_matters: chosen,
+      why_it_matters_short: apiShort || null,
+      why_it_matters_long: apiLong || null,
+      recommended_action_text: null,
+    };
+  }
+
   const codeNorm = normalizeRequirementCode(req?.requirement_code || req?.requirement_type || '');
   const status = String(req?.status || '').trim().toUpperCase();
   const title =
@@ -86,6 +103,8 @@ export function registryFallbackComplianceExplanation(req) {
   return {
     explanation_text,
     why_it_matters,
+    why_it_matters_short: why_it_matters,
+    why_it_matters_long: null,
     recommended_action_text,
   };
 }

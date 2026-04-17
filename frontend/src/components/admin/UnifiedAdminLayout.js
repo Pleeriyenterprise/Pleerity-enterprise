@@ -43,6 +43,9 @@ import {
   Gauge,
   Megaphone,
   Link2,
+  ListChecks,
+  GitCompare,
+  Rocket,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { BRAND_LOGO_URL } from '../../config/branding';
@@ -59,6 +62,9 @@ const navSections = [
     icon: LayoutDashboard,
     items: [
       { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
+      { href: '/admin/compliance/registry', label: 'Requirement Registry (drafts)', icon: ListChecks },
+      { href: '/admin/compliance/registry/preview', label: 'Registry preview & simulation', icon: GitCompare },
+      { href: '/admin/compliance/registry/publish-queue', label: 'Registry publish queue', icon: Rocket },
       { href: '/admin/control-centre', label: 'Control Centre', icon: Gauge },
       { href: '/admin/analytics', label: 'Analytics', icon: BarChart3, ownerOrAdminOnly: true },
       { href: '/admin/analytics/executive', label: 'Executive Overview', icon: TrendingUp, ownerOrAdminOnly: true },
@@ -102,6 +108,9 @@ const navSections = [
       { href: '/admin/ops/contractors', label: 'Contractors', icon: Users },
       { href: '/admin/ops/risk', label: 'Risk & Insights', icon: BarChart3 },
       { href: '/admin/ops/action-links', label: 'Action links', icon: Link2 },
+      { href: '/admin/compliance/registry', label: 'Requirement Registry (drafts)', icon: ListChecks },
+      { href: '/admin/compliance/registry/preview', label: 'Registry preview & simulation', icon: GitCompare },
+      { href: '/admin/compliance/registry/publish-queue', label: 'Registry publish queue', icon: Rocket },
       { href: '/admin/ops/feature-controls', label: 'Feature Controls', icon: Zap },
       { href: '/admin/communications', label: 'Communications', icon: Megaphone },
     ],

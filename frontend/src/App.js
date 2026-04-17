@@ -180,6 +180,10 @@ import AdminSecurityDashboardPage from './pages/AdminSecurityDashboardPage';
 import AdminControlCentrePage from './pages/AdminControlCentrePage';
 import AdminOpsOverviewPage from './pages/admin/AdminOpsOverviewPage';
 import AdminOpsCompliancePage from './pages/admin/AdminOpsCompliancePage';
+import AdminComplianceRegistryListPage from './pages/admin/AdminComplianceRegistryListPage';
+import AdminComplianceRegistryEditorPage from './pages/admin/AdminComplianceRegistryEditorPage';
+import AdminComplianceRegistryPreviewPage from './pages/admin/AdminComplianceRegistryPreviewPage';
+import AdminComplianceRegistryPublishQueuePage from './pages/admin/AdminComplianceRegistryPublishQueuePage';
 import AdminOpsActionLinksPage from './pages/admin/AdminOpsActionLinksPage';
 import AdminOpsAuditPage from './pages/admin/AdminOpsAuditPage';
 import AdminOpsFeatureControlsPage from './pages/admin/AdminOpsFeatureControlsPage';
@@ -675,6 +679,22 @@ function App() {
             {/* Operations & Compliance */}
             <Route path="/admin/ops" element={<ProtectedRoute requireAdmin><AdminOpsOverviewPage /></ProtectedRoute>} />
             <Route path="/admin/ops/compliance" element={<ProtectedRoute requireAdmin><AdminOpsCompliancePage /></ProtectedRoute>} />
+            <Route
+              path="/admin/compliance/registry/preview"
+              element={<ProtectedRoute requireAdmin><AdminComplianceRegistryPreviewPage /></ProtectedRoute>}
+            />
+            <Route
+              path="/admin/compliance/registry/publish-queue"
+              element={<ProtectedRoute requireAdmin><AdminComplianceRegistryPublishQueuePage /></ProtectedRoute>}
+            />
+            <Route
+              path="/admin/compliance/registry/:entryId"
+              element={<ProtectedRoute requireAdmin><AdminComplianceRegistryEditorPage /></ProtectedRoute>}
+            />
+            <Route
+              path="/admin/compliance/registry"
+              element={<ProtectedRoute requireAdmin><AdminComplianceRegistryListPage /></ProtectedRoute>}
+            />
             <Route path="/admin/ops/action-links" element={<ProtectedRoute requireAdmin><AdminOpsActionLinksPage /></ProtectedRoute>} />
             <Route path="/admin/ops/maintenance" element={<ProtectedRoute requireAdmin><AdminOpsMaintenancePage /></ProtectedRoute>} />
             <Route path="/admin/ops/maintenance/jobs/:workOrderId" element={<ProtectedRoute requireAdmin><AdminWorkOrderDetailPage /></ProtectedRoute>} />

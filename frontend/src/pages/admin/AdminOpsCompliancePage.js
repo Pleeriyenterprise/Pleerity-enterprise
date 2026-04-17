@@ -86,6 +86,9 @@ export default function AdminOpsCompliancePage() {
           <Link to="/admin/ops/action-links" className="text-sm text-electric-teal hover:underline self-center">
             Action links overrides
           </Link>
+          <Link to="/admin/compliance/registry" className="text-sm text-electric-teal hover:underline self-center">
+            Requirement Registry
+          </Link>
         </div>
         {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
         {loading ? (

@@ -752,6 +752,46 @@ export const adminAPI = {
     apiClient.post(
       `/admin/properties/${encodeURIComponent(propertyId)}/requirements/${encodeURIComponent(requirementId)}/action-links/revert`,
     ),
+  /** Compliance requirement registry (Mongo drafts; engine compare only). */
+  listComplianceRegistryDrafts: (params = {}) => apiClient.get('/admin/compliance/registry/drafts', { params }),
+  getComplianceRegistryDraft: (entryId) =>
+    apiClient.get(`/admin/compliance/registry/drafts/${encodeURIComponent(entryId)}`),
+  createComplianceRegistryDraft: (body) => apiClient.post('/admin/compliance/registry/drafts', body),
+  patchComplianceRegistryDraft: (entryId, body) =>
+    apiClient.patch(`/admin/compliance/registry/drafts/${encodeURIComponent(entryId)}`, body),
+  getComplianceRegistryDraftCompare: (entryId) =>
+    apiClient.get(`/admin/compliance/registry/drafts/${encodeURIComponent(entryId)}/compare`),
+  importComplianceRegistryBaselineBundle: (body = {}) =>
+    apiClient.post('/admin/compliance/registry/import-baseline-bundle', body),
+  getComplianceRegistryBaselineBundleMeta: () => apiClient.get('/admin/compliance/registry/baseline-bundle-meta'),
+  /** Same planner as production + read-only draft overlay merge (no writes). */
+  getComplianceRegistryPreviewSimulation: (params) =>
+    apiClient.get('/admin/compliance/registry/preview-simulation', { params }),
+  listComplianceRegistryPublishQueue: () => apiClient.get('/admin/compliance/registry/publish-queue'),
+  createComplianceRegistryPublishQueue: (body) => apiClient.post('/admin/compliance/registry/publish-queue', body),
+  getComplianceRegistryPublishQueue: (queueId) =>
+    apiClient.get(`/admin/compliance/registry/publish-queue/${encodeURIComponent(queueId)}`),
+  submitComplianceRegistryPublishQueue: (queueId) =>
+    apiClient.post(`/admin/compliance/registry/publish-queue/${encodeURIComponent(queueId)}/submit`),
+  approveComplianceRegistryPublishQueue: (queueId) =>
+    apiClient.post(`/admin/compliance/registry/publish-queue/${encodeURIComponent(queueId)}/approve`),
+  rejectComplianceRegistryPublishQueue: (queueId, body) =>
+    apiClient.post(`/admin/compliance/registry/publish-queue/${encodeURIComponent(queueId)}/reject`, body),
+  publishComplianceRegistryPublishQueue: (queueId) =>
+    apiClient.post(`/admin/compliance/registry/publish-queue/${encodeURIComponent(queueId)}/publish`),
+  getComplianceRegistryPublishedActive: () => apiClient.get('/admin/compliance/registry/published/active'),
+  listComplianceRegistryPublishedHistory: (params = {}) =>
+    apiClient.get('/admin/compliance/registry/published/history', { params }),
+  getComplianceRegistryPublishedHistoryVersion: (publishedLineVersion, params = {}) =>
+    apiClient.get(
+      `/admin/compliance/registry/published/history/${encodeURIComponent(String(publishedLineVersion))}`,
+      { params },
+    ),
+  revertComplianceRegistryPublishedToVersion: (publishedLineVersion) =>
+    apiClient.post(`/admin/compliance/registry/published/revert-to/${encodeURIComponent(String(publishedLineVersion))}`),
+  /** Per-property: re-materialise requirements from catalog + active published registry (Owner/Admin/Support). */
+  syncPropertyRequirementsFromRegistry: (propertyId) =>
+    apiClient.post(`/admin/properties/${encodeURIComponent(propertyId)}/requirements/sync-from-registry`),
   getEmailDelivery: (params = {}) =>
     apiClient.get('/admin/email-delivery', { params: { limit: 50, skip: 0, since_hours: 72, ...params } }),
   resendPasswordSetup: (clientId, config = {}) =>

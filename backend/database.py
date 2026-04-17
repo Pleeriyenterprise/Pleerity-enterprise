@@ -592,6 +592,51 @@ class Database:
             # Help Assistant feedback (doc-grounded assistant)
             await self.db.assistant_feedback.create_index([("user_id", 1), ("created_at", -1)])
             await self.db.assistant_feedback.create_index("scope")
+            # Admin compliance requirement registry drafts (Mongo only; planner unchanged)
+            try:
+                await self.db.compliance_requirement_registry_drafts.create_index("entry_id", unique=True)
+            except Exception:
+                pass
+            try:
+                await self.db.compliance_requirement_registry_drafts.create_index(
+                    [("canonical_code", 1), ("scope_key", 1)],
+                    unique=True,
+                    name="idx_compliance_registry_code_scope",
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.compliance_requirement_registry_drafts.create_index([("updated_at", -1)])
+            except Exception:
+                pass
+            # Registry publish queue + active published snapshot (planner overlay source)
+            try:
+                await self.db.compliance_registry_publish_queue.create_index("queue_id", unique=True)
+            except Exception:
+                pass
+            try:
+                await self.db.compliance_registry_publish_queue.create_index([("status", 1), ("updated_at", -1)])
+            except Exception:
+                pass
+            try:
+                await self.db.compliance_requirement_registry_published.create_index(
+                    "singleton_key", unique=True, name="idx_compliance_registry_published_singleton"
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.compliance_requirement_registry_published_history.create_index(
+                    "published_line_version", unique=True, name="idx_registry_published_history_line_version"
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.compliance_requirement_registry_published_history.create_index(
+                    [("recorded_at", -1)],
+                    name="idx_registry_published_history_recorded_at",
+                )
+            except Exception:
+                pass
             await self._seed_requirements_catalog()
             logger.info("MongoDB indexes created/verified")
         except Exception as e:

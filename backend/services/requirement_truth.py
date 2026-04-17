@@ -14,6 +14,11 @@ from presentation.label_service import (
 )
 from services.compliance_requirement_engine import resolve_engine_payload_from_requirement_row
 from services.requirement_action_resolver import infer_action_type, resolve_take_action_envelope
+from services.compliance_registry_publish_service import fetch_active_published_registry_entries
+from services.compliance_requirement_registry import (
+    resolve_effective_why_it_matters,
+    resolve_published_entry_for_requirement,
+)
 
 # --- Canonical enum values (stored on requirement documents and returned in APIs) ---
 
@@ -181,6 +186,7 @@ def enrich_requirement_dict(
     live_evidence_state: str,
     *,
     audience: str = "client",
+    published_registry_entries: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Mutates a shallow copy: adds presentation + truth fields. Keeps all original keys.
@@ -200,6 +206,26 @@ def enrich_requirement_dict(
     out["date_explanation_helper"] = helper
 
     out["evidence_badge_label"] = evidence_badge_label(evidence_state)
+
+    published_entry = resolve_published_entry_for_requirement(
+        published_registry_entries=published_registry_entries,
+        requirement_type=str(out.get("requirement_type") or out.get("requirement_code") or ""),
+        portfolio_label=str(out.get("jurisdiction") or ""),
+    )
+    witm = resolve_effective_why_it_matters(entry=published_entry, portfolio_label=str(out.get("jurisdiction") or ""))
+    out["why_it_matters_short"] = witm.get("why_it_matters_short")
+    out["why_it_matters_long"] = witm.get("why_it_matters_long")
+    if isinstance(published_entry, dict):
+        meta = out.get("registry_metadata") if isinstance(out.get("registry_metadata"), dict) else {}
+        if isinstance(published_entry.get("action_links"), list):
+            meta["action_links_published"] = [dict(x) for x in published_entry.get("action_links") if isinstance(x, dict)]
+        if isinstance(published_entry.get("why_it_matters_by_jurisdiction"), dict):
+            meta["why_it_matters_by_jurisdiction_published"] = published_entry.get("why_it_matters_by_jurisdiction")
+        if witm.get("why_it_matters_short"):
+            meta["why_it_matters_short_published"] = witm.get("why_it_matters_short")
+        if witm.get("why_it_matters_long"):
+            meta["why_it_matters_long_published"] = witm.get("why_it_matters_long")
+        out["registry_metadata"] = meta
 
     app = _status_upper(out.get("applicability"))
     if app == "NOT_REQUIRED" or status_raw == "NOT_REQUIRED":
@@ -250,6 +276,7 @@ async def enrich_requirements_for_client(
 
     ids = [r["requirement_id"] for r in requirements if r.get("requirement_id")]
     evidence_map = await load_evidence_state_by_requirement_id(db, client_id, ids)
+    published_entries = await fetch_active_published_registry_entries(db)
 
     client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1})
     prop_ids = list({str(r.get("property_id") or "") for r in requirements if r.get("property_id")})
@@ -273,7 +300,14 @@ async def enrich_requirements_for_client(
             pid = rc.get("property_id")
             if pid and str(pid) in jur_by_prop:
                 rc["jurisdiction"] = jur_by_prop[str(pid)]
-        enriched.append(enrich_requirement_dict(rc, ev, audience="client"))
+        enriched.append(
+            enrich_requirement_dict(
+                rc,
+                ev,
+                audience="client",
+                published_registry_entries=published_entries,
+            )
+        )
     return enriched, build_presentation_meta(enriched)
 
 
@@ -290,6 +324,7 @@ async def enrich_requirements_for_admin(
 
     by_client: Dict[str, List[str]] = defaultdict(list)
     seen_pairs: set = set()
+    published_entries = await fetch_active_published_registry_entries(db)
     for r in requirements:
         cid = r.get("client_id")
         rid = r.get("requirement_id")
@@ -338,7 +373,14 @@ async def enrich_requirements_for_admin(
             jl = by_client_props.get(str(cid), {}).get(str(r.get("property_id")), "")
             if jl:
                 rc["jurisdiction"] = jl
-        out.append(enrich_requirement_dict(rc, ev, audience="admin"))
+        out.append(
+            enrich_requirement_dict(
+                rc,
+                ev,
+                audience="admin",
+                published_registry_entries=published_entries,
+            )
+        )
     return out
 
 

@@ -18,6 +18,7 @@ from services.compliance_requirement_registry import (
     RequirementPlanItem,
     build_requirement_plan_for_property,
 )
+from services.compliance_registry_publish_service import fetch_active_published_registry_entries
 from services.requirement_action_resolver import infer_action_type
 
 logger = logging.getLogger(__name__)
@@ -35,10 +36,32 @@ def _requires_job_for_class(cls: str) -> bool:
     return str(cls or "").upper() == "JOB"
 
 
-def _registry_metadata(item) -> Dict[str, Any]:
-    if not item.catalog_keys:
-        return {"catalog_keys": []}
-    return {"catalog_keys": list(item.catalog_keys)}
+def _effective_client_surface_visible(item: RequirementPlanItem) -> bool:
+    if item.client_surface_visible_override is None:
+        return _client_surface_visible_for_class(item.compliance_requirement_class)
+    return bool(item.client_surface_visible_override)
+
+
+def _registry_metadata(item: RequirementPlanItem, existing_meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    meta: Dict[str, Any] = dict(existing_meta) if isinstance(existing_meta, dict) else {}
+    meta["catalog_keys"] = list(item.catalog_keys or ())
+    if item.action_links:
+        meta["action_links_published"] = [dict(x) for x in item.action_links if isinstance(x, dict)]
+    else:
+        meta.pop("action_links_published", None)
+    if item.why_it_matters_short:
+        meta["why_it_matters_short_published"] = item.why_it_matters_short
+    else:
+        meta.pop("why_it_matters_short_published", None)
+    if item.why_it_matters_long:
+        meta["why_it_matters_long_published"] = item.why_it_matters_long
+    else:
+        meta.pop("why_it_matters_long_published", None)
+    if item.why_it_matters_by_jurisdiction:
+        meta["why_it_matters_by_jurisdiction_published"] = item.why_it_matters_by_jurisdiction
+    else:
+        meta.pop("why_it_matters_by_jurisdiction_published", None)
+    return meta
 
 
 async def materialize_requirements_for_property(
@@ -51,10 +74,10 @@ async def materialize_requirements_for_property(
     Load the latest property + client docs, build the registry plan, upsert all rows,
     optionally mark registry-sourced rows not in the plan as NOT_REQUIRED (scoring-neutral).
 
-    Plan rows come **only** from ``build_requirement_plan_for_property(property_doc, client_doc)`` — the
-    same function used by ``generate_requirements`` / plan-preview serialization. Preview cannot drift
-    from what would be written on the next materialise for the same documents (aside from Mongo
-    reconcile / user NOT_REQUIRED rows).
+    Plan rows come from ``build_requirement_plan_for_property`` (same as ``generate_requirements`` /
+    admin plan-preview), optionally merged with the **active published** registry snapshot when one
+    exists. Preview cannot drift from what would be written on the next materialise for the same
+    documents (aside from Mongo reconcile / user NOT_REQUIRED rows).
     """
     db = database.get_db()
     property_doc = await db.properties.find_one(
@@ -66,7 +89,10 @@ async def materialize_requirements_for_property(
         return {"ok": False, "reason": "property_not_found"}
 
     client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
-    plan = build_requirement_plan_for_property(property_doc, client_doc)
+    published = await fetch_active_published_registry_entries(db)
+    plan = build_requirement_plan_for_property(
+        property_doc, client_doc, published_registry_entries=published
+    )
     planned_types: Set[str] = {p.requirement_type for p in plan}
     now = datetime.now(timezone.utc)
     upserted = 0
@@ -80,8 +106,8 @@ async def materialize_requirements_for_property(
             },
             {"_id": 0},
         )
-        csv = _client_surface_visible_for_class(item.compliance_requirement_class)
-        meta = _registry_metadata(item)
+        csv = _effective_client_surface_visible(item)
+        meta = _registry_metadata(item, (existing or {}).get("registry_metadata"))
         patch: Dict[str, Any] = {
             "jurisdiction": item.portfolio_jurisdiction_label,
             "description": item.description,
@@ -218,8 +244,17 @@ def serialize_registry_plan_items(
             "jurisdiction": i.portfolio_jurisdiction_label,
             "compliance_requirement_class": i.compliance_requirement_class,
             "is_tracked": i.is_tracked,
+            "client_surface_visible": _effective_client_surface_visible(i),
             "catalog_keys": list(i.catalog_keys),
         }
+        if i.action_links:
+            row["action_links"] = [dict(x) for x in i.action_links if isinstance(x, dict)]
+        if i.why_it_matters_short:
+            row["why_it_matters_short"] = i.why_it_matters_short
+        if i.why_it_matters_long:
+            row["why_it_matters_long"] = i.why_it_matters_long
+        if i.why_it_matters_by_jurisdiction:
+            row["why_it_matters_by_jurisdiction"] = i.why_it_matters_by_jurisdiction
         if include_explanations and property_doc is not None:
             row["explanation"] = explain_registry_plan_row(
                 i, property_doc, client_doc, scoring_jurisdiction=sj
@@ -233,13 +268,18 @@ def generate_requirements(
     client_doc: Optional[Dict[str, Any]],
     *,
     include_explanations: bool = False,
+    published_registry_entries: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Pure plan preview (no I/O): same ``(property_doc, client_doc) -> plan`` as
-    ``materialize_requirements_for_property`` before persistence. Output is
-    ``serialize_registry_plan_items(build_requirement_plan_for_property(...))`` only.
+    Pure plan preview (no DB reads by default): same ``(property_doc, client_doc) -> plan`` shape as
+    ``materialize_requirements_for_property`` when ``published_registry_entries`` matches what the
+    caller loaded from Mongo (typically the active published snapshot).
     """
-    items = build_requirement_plan_for_property(property_doc, client_doc)
+    items = build_requirement_plan_for_property(
+        property_doc,
+        client_doc,
+        published_registry_entries=published_registry_entries,
+    )
     return serialize_registry_plan_items(
         items,
         include_explanations=include_explanations,

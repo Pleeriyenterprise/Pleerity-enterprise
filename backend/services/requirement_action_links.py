@@ -2,7 +2,10 @@
 Jurisdiction-filtered external action links for compliance requirements.
 
 Source of truth: presentation/requirements_action_links.json (registry catalog).
-Optional override: requirement.registry_metadata.action_links — same item shape; filtered the same way.
+Resolver precedence (highest to lowest):
+1) requirement.registry_metadata.action_links_manual_override (or legacy action_links)
+2) requirement.registry_metadata.action_links_published (materialised from active published registry snapshot)
+3) presentation/requirements_action_links.json fallback by requirement code + region.
 
 Future: Mongo requirements_catalog or admin collection can supply action_links without changing item schema.
 """
@@ -209,7 +212,11 @@ def _override_links_from_row(row: Optional[Dict[str, Any]]) -> Optional[List[Dic
     meta = row.get("registry_metadata")
     if not isinstance(meta, dict):
         return None
-    raw = meta.get("action_links")
+    raw = meta.get("action_links_manual_override")
+    if not isinstance(raw, list) or not raw:
+        raw = meta.get("action_links")
+    if not isinstance(raw, list) or not raw:
+        raw = meta.get("action_links_published")
     if not isinstance(raw, list) or not raw:
         return None
     return [x for x in raw if isinstance(x, dict)]

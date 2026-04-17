@@ -1,7 +1,8 @@
 """
 Admin-only: preview, validate, and mutate requirement.registry_metadata action_links overrides.
 
-Published resolver source: registry_metadata.action_links
+Manual override source (resolver precedence top): registry_metadata.action_links_manual_override
+Legacy compatibility key: registry_metadata.action_links
 Draft: registry_metadata.action_links_draft
 Audit: registry_metadata.action_links_audit (newest last; capped)
 """
@@ -161,7 +162,9 @@ def append_action_links_audit(
 def _published_override_list(meta: Optional[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
     if not meta or not isinstance(meta, dict):
         return None
-    raw = meta.get("action_links")
+    raw = meta.get("action_links_manual_override")
+    if not isinstance(raw, list) or not raw:
+        raw = meta.get("action_links")
     if not isinstance(raw, list) or not raw:
         return None
     return [dict(x) for x in raw if isinstance(x, dict)]
@@ -230,8 +233,10 @@ def merge_registry_metadata_for_links(
 ) -> Dict[str, Any]:
     base = dict(existing_meta) if isinstance(existing_meta, dict) else {}
     if unset_published:
+        base.pop("action_links_manual_override", None)
         base.pop("action_links", None)
     elif action_links is not None:
+        base["action_links_manual_override"] = action_links
         base["action_links"] = action_links
     if unset_draft:
         base.pop("action_links_draft", None)

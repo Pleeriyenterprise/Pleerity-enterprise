@@ -11,7 +11,7 @@ defaults match legacy provisioning constants.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from services.compliance_rules_registry import (
     apply_location_rules_enabled,
@@ -76,6 +76,11 @@ class RequirementPlanItem:
     compliance_requirement_class: str
     is_tracked: bool
     catalog_keys: Tuple[str, ...] = field(default_factory=tuple)
+    client_surface_visible_override: Optional[bool] = None
+    action_links: Tuple[Dict[str, Any], ...] = field(default_factory=tuple)
+    why_it_matters_short: Optional[str] = None
+    why_it_matters_long: Optional[str] = None
+    why_it_matters_by_jurisdiction: Optional[Dict[str, Any]] = None
 
 
 def _norm_pt(property_doc: Dict) -> str:
@@ -95,6 +100,100 @@ def _boolish(val, default: bool = False) -> bool:
     return bool(s)
 
 
+def apply_published_registry_entries_to_plan(
+    items: List["RequirementPlanItem"],
+    portfolio_label: str,
+    entries: Optional[Dict[str, Any]],
+) -> List["RequirementPlanItem"]:
+    """
+    Merge active published registry entries onto planner output (same shapes as Mongo drafts).
+
+    ``entries`` maps ``CANONICAL|SCOPE`` (or similar stable keys) to draft-shaped dicts with at least
+    ``canonical_code``, ``scope_key``, ``identity``, ``classification``, ``frequency``, ``jurisdiction``.
+    """
+    if not entries or not isinstance(entries, dict):
+        return items
+    from services.compliance_registry_admin_service import (
+        draft_applies_to_portfolio_label,
+        draft_overlay_specificity,
+        merge_draft_overlay_onto_plan_row,
+        plan_types_for_draft_canonical,
+    )
+
+    best: Dict[str, Tuple[int, Dict[str, Any]]] = {}
+    for _key, entry in entries.items():
+        if not isinstance(entry, dict):
+            continue
+        cc = str(entry.get("canonical_code") or "").strip().upper()
+        if not cc or not draft_applies_to_portfolio_label(entry, portfolio_label):
+            continue
+        spec = draft_overlay_specificity(entry)
+        for rt in plan_types_for_draft_canonical(cc):
+            prev = best.get(rt)
+            if prev is None or spec > prev[0]:
+                best[rt] = (spec, entry)
+
+    merged: List[RequirementPlanItem] = []
+    for item in items:
+        rt = (item.requirement_type or "").strip().lower()
+        match = best.get(rt)
+        if not match:
+            merged.append(item)
+            continue
+        entry = match[1]
+        prod_row = {
+            "description": item.description,
+            "frequency_days": item.frequency_days,
+            "warning_days": item.warning_days,
+            "compliance_requirement_class": item.compliance_requirement_class,
+            "client_surface_visible": item.client_surface_visible_override,
+            "action_links": list(item.action_links),
+            "why_it_matters_short": item.why_it_matters_short,
+            "why_it_matters_long": item.why_it_matters_long,
+            "why_it_matters_by_jurisdiction": item.why_it_matters_by_jurisdiction,
+        }
+        m = merge_draft_overlay_onto_plan_row(prod_row, entry)
+        cls = str(m.get("compliance_requirement_class") or item.compliance_requirement_class).strip().upper()
+        if cls not in (REQUIREMENT_CLASS_DOCUMENT, REQUIREMENT_CLASS_JOB, REQUIREMENT_CLASS_OBLIGATION, REQUIREMENT_CLASS_SYSTEM):
+            cls = item.compliance_requirement_class
+        tracked = cls in (REQUIREMENT_CLASS_DOCUMENT, REQUIREMENT_CLASS_JOB)
+        merged.append(
+            RequirementPlanItem(
+                requirement_type=item.requirement_type,
+                requirement_code=item.requirement_code,
+                description=str(m.get("description", item.description)),
+                frequency_days=int(m.get("frequency_days", item.frequency_days)),
+                warning_days=int(m.get("warning_days", item.warning_days)),
+                portfolio_jurisdiction_label=item.portfolio_jurisdiction_label,
+                compliance_requirement_class=cls,
+                is_tracked=tracked,
+                catalog_keys=item.catalog_keys,
+                client_surface_visible_override=(
+                    bool(m.get("client_surface_visible")) if m.get("client_surface_visible") is not None else None
+                ),
+                action_links=tuple(
+                    dict(x) for x in (m.get("action_links") or []) if isinstance(x, dict)
+                ),
+                why_it_matters_short=(
+                    str(m.get("why_it_matters_short") or "").strip()
+                    if str(m.get("why_it_matters_short") or "").strip()
+                    else None
+                ),
+                why_it_matters_long=(
+                    str(m.get("why_it_matters_long") or "").strip()
+                    if str(m.get("why_it_matters_long") or "").strip()
+                    else None
+                ),
+                why_it_matters_by_jurisdiction=(
+                    m.get("why_it_matters_by_jurisdiction")
+                    if isinstance(m.get("why_it_matters_by_jurisdiction"), dict)
+                    else None
+                ),
+            )
+        )
+    return merged
+
+
 def _freq_from_rule(scoring_jurisdiction: str, canonical_code: str, default_days: int, default_warn: int) -> tuple:
     spec = get_rule(scoring_jurisdiction, canonical_code)
     if spec:
@@ -102,12 +201,85 @@ def _freq_from_rule(scoring_jurisdiction: str, canonical_code: str, default_days
     return default_days, default_warn
 
 
+def _portfolio_region_key(portfolio_label: Optional[str]) -> str:
+    s = (portfolio_label or "").strip().lower()
+    if "scotland" in s:
+        return "SCOTLAND"
+    if "northern ireland" in s or "northern_ireland" in s:
+        return "NORTHERN_IRELAND"
+    if "wales" in s and "england" not in s:
+        return "WALES"
+    return "ENGLAND"
+
+
+def resolve_published_entry_for_requirement(
+    *,
+    published_registry_entries: Optional[Dict[str, Any]],
+    requirement_type: str,
+    portfolio_label: str,
+) -> Optional[Dict[str, Any]]:
+    """Pick the best matching published entry for one requirement_type + jurisdiction label."""
+    if not isinstance(published_registry_entries, dict) or not published_registry_entries:
+        return None
+    from services.compliance_registry_admin_service import (
+        draft_applies_to_portfolio_label,
+        draft_overlay_specificity,
+        plan_types_for_draft_canonical,
+    )
+
+    rt = (requirement_type or "").strip().lower()
+    best: Optional[Tuple[int, Dict[str, Any]]] = None
+    for entry in published_registry_entries.values():
+        if not isinstance(entry, dict):
+            continue
+        cc = str(entry.get("canonical_code") or "").strip().upper()
+        if not cc:
+            continue
+        if rt not in plan_types_for_draft_canonical(cc):
+            continue
+        if not draft_applies_to_portfolio_label(entry, portfolio_label):
+            continue
+        spec = draft_overlay_specificity(entry)
+        if best is None or spec > best[0]:
+            best = (spec, entry)
+    return best[1] if best else None
+
+
+def resolve_effective_why_it_matters(
+    *,
+    entry: Optional[Dict[str, Any]],
+    portfolio_label: str,
+) -> Dict[str, Optional[str]]:
+    """Resolve short/long why-it-matters from entry using jurisdiction override then defaults."""
+    if not isinstance(entry, dict):
+        return {"why_it_matters_short": None, "why_it_matters_long": None}
+    short = str(entry.get("why_it_matters_short") or entry.get("why_it_matters") or "").strip() or None
+    long_text = str(entry.get("why_it_matters_long") or "").strip() or None
+    by_j = entry.get("why_it_matters_by_jurisdiction")
+    if isinstance(by_j, dict):
+        reg = _portfolio_region_key(portfolio_label)
+        ov = by_j.get(reg)
+        if isinstance(ov, dict):
+            ov_short = str(ov.get("short") or "").strip()
+            ov_long = str(ov.get("long") or "").strip()
+            if ov_short:
+                short = ov_short
+            if ov_long:
+                long_text = ov_long
+    return {"why_it_matters_short": short, "why_it_matters_long": long_text}
+
+
 def build_requirement_plan_for_property(
     property_doc: Dict,
     client_doc: Optional[Dict],
+    *,
+    published_registry_entries: Optional[Dict[str, Any]] = None,
 ) -> List[RequirementPlanItem]:
     """
     Deterministic ordered plan for one property. Caller must not mix properties.
+
+    Optional ``published_registry_entries`` merges the active published registry snapshot onto plan
+    rows (same overlay semantics as admin draft preview); it does not add net-new requirement types.
     """
     portfolio = portfolio_jurisdiction_label(property_doc, client_doc)
     sj = scoring_jurisdiction_for_property(property_doc, client_doc)
@@ -296,5 +468,8 @@ def build_requirement_plan_for_property(
     if apply_location_rules_enabled(sj) and local_authority in _LOCATION_SELECTIVE:
         rtype, desc, days = _LOCATION_SELECTIVE[local_authority]
         add(rtype, rtype, desc, days, 45, REQUIREMENT_CLASS_DOCUMENT, catalog_keys=(PROPERTY_LICENCE,))
+
+    if published_registry_entries:
+        out = apply_published_registry_entries_to_plan(out, portfolio, published_registry_entries)
 
     return out

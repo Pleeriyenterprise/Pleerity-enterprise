@@ -1,0 +1,188 @@
+{
+  "import_bundle_version": "2026-04-09-workbook-baseline-v1",
+  "source": "structured_internal_workbook_plus_engine_codes",
+  "disclaimer": "Structured baseline for the admin Compliance Requirement Registry. This is not infallible legal authority. Northern Ireland private-rented detail, local authority forks, and workbook-only rows without a matching engine code were not invented — they are flagged for review. The live planner/materialiser still reads the in-code compliance_rules_registry only.",
+  "mapping_summary": "Each bundle entry maps one workbook-aligned row to engine canonical_code plus scope_key for jurisdiction separation. Shared UK-wide codes (GAS_SAFETY, EICR, EPC, FIRE_DETECTION, LEGIONELLA) use scope_key DEFAULT with explicit display_jurisdictions. Wales occupation contract uses OCCUPATION_CONTRACT + scope WALES. Scotland landlord registration uses LANDLORD_REGISTRATION + scope SCOTLAND. HMO fire risk remains a single engine code with display limited to England/Wales/Scotland and NI applicability explicitly marked needs_review (workbook did not confirm NI HMO alignment). PDFs referenced externally (e.g. jurisdiction_matrix.pdf) were not parsed in-repo; no fields were inferred from them.",
+  "unmapped_workbook_rows": [
+    "Workbook rows that referenced non-engine catalogue items (e.g. deposit protection, How to Rent, PAT) are not duplicated here until a canonical_code exists in compliance_rules_registry — add in a later bundle revision."
+  ],
+  "detected_conflicts": [],
+  "suspected_cross_jurisdiction_mixing": [
+    "Engine buckets: Northern Ireland portfolio label normalises to ENGLAND_WALES scoring bucket — draft notes call this out for GAS_SAFETY / EICR / EPC; confirm product/legal before treating NI as identical cadence to England."
+  ],
+  "entries": [
+    {
+      "canonical_code": "GAS_SAFETY",
+      "scope_key": "DEFAULT",
+      "import_row_ref": "workbook:gas_safety:shared:v1",
+      "needs_review_fields": ["jurisdiction.ni_treatment_vs_ew_bucket"],
+      "draft_overlay": {
+        "identity": { "category": "SAFETY" },
+        "jurisdiction": {
+          "display_jurisdictions": ["England", "Wales", "Scotland", "Northern Ireland"],
+          "scoring_jurisdiction_note": "NI uses ENGLAND_WALES engine bucket in code; Scotland uses SCOTLAND bucket. Frequencies match today but SLA differs for Scotland in engine."
+        },
+        "conditions": {
+          "logic": "ALL",
+          "rules": [{ "field": "has_gas_supply", "op": "true" }]
+        },
+        "classification": {
+          "requirement_type": "DOCUMENT",
+          "requires_document": true,
+          "requires_job": false,
+          "client_surface_visible": true
+        },
+        "frequency": { "needs_review": [] },
+        "governance": {
+          "legal_source_summary": "Engine-backed cadence; workbook gas safety row aligned to GAS_SAFETY.",
+          "internal_notes": "Scotland/EW fork is frequency-compatible today; compare view surfaces bucket-level SLA deltas."
+        }
+      }
+    },
+    {
+      "canonical_code": "EICR",
+      "scope_key": "DEFAULT",
+      "import_row_ref": "workbook:eicr:shared:v1",
+      "needs_review_fields": ["conditions.installation_age_bands", "jurisdiction.ni_enforcement_detail"],
+      "draft_overlay": {
+        "identity": { "category": "ELECTRICAL" },
+        "jurisdiction": { "display_jurisdictions": ["England", "Wales", "Scotland", "Northern Ireland"] },
+        "classification": {
+          "requirement_type": "DOCUMENT",
+          "requires_document": true,
+          "requires_job": false,
+          "client_surface_visible": true
+        },
+        "conditions": { "logic": "ALL", "rules": [] },
+        "governance": {
+          "legal_source_summary": "Engine frequency_by_age present for EW; Scotland registry entry currently mirrors EW baseline in code — confirm statutory intervals separately if workbook differs."
+        }
+      }
+    },
+    {
+      "canonical_code": "EPC",
+      "scope_key": "DEFAULT",
+      "import_row_ref": "workbook:epc:shared:v1",
+      "needs_review_fields": ["jurisdiction.scotland_rental_epc_rules", "jurisdiction.wales_epc_consultation_delta"],
+      "draft_overlay": {
+        "identity": { "category": "ENERGY" },
+        "jurisdiction": { "display_jurisdictions": ["England", "Wales", "Scotland", "Northern Ireland"] },
+        "classification": {
+          "requirement_type": "DOCUMENT",
+          "requires_document": true,
+          "requires_job": false,
+          "client_surface_visible": true
+        },
+        "governance": {
+          "legal_source_summary": "Mapped to EPC; rental vs sale nuances not encoded in this draft."
+        }
+      }
+    },
+    {
+      "canonical_code": "FIRE_DETECTION",
+      "scope_key": "DEFAULT",
+      "import_row_ref": "workbook:fire_smoke_co:shared:v1",
+      "needs_review_fields": ["action_behaviour.furnished_only", "jurisdiction.scotland_tolerable_standard_overlap"],
+      "draft_overlay": {
+        "identity": { "category": "FIRE" },
+        "jurisdiction": { "display_jurisdictions": ["England", "Wales", "Scotland", "Northern Ireland"] },
+        "classification": {
+          "requirement_type": "DOCUMENT",
+          "requires_document": true,
+          "requires_job": false,
+          "client_surface_visible": true
+        },
+        "governance": {
+          "legal_source_summary": "Consolidated smoke/CO/fire detection workbook row → FIRE_DETECTION engine code; furnishing-based conditions not specified in workbook → needs_review."
+        }
+      }
+    },
+    {
+      "canonical_code": "LEGIONELLA",
+      "scope_key": "DEFAULT",
+      "import_row_ref": "workbook:legionella:shared:v1",
+      "needs_review_fields": ["jurisdiction.scotland_evidence_taxonomy"],
+      "draft_overlay": {
+        "identity": { "category": "HEALTH" },
+        "jurisdiction": { "display_jurisdictions": ["England", "Wales", "Scotland", "Northern Ireland"] },
+        "classification": {
+          "requirement_type": "JOB",
+          "requires_document": true,
+          "requires_job": true,
+          "client_surface_visible": true
+        },
+        "governance": {
+          "legal_source_summary": "Engine marks LEGIONELLA as assessment cadence; Scotland accepted document types differ in engine — draft defers detail to engine compare."
+        }
+      }
+    },
+    {
+      "canonical_code": "HMO_FIRE_RISK",
+      "scope_key": "DEFAULT",
+      "import_row_ref": "workbook:hmo_fire_pack:ew_s_ni_uncertain:v1",
+      "needs_review_fields": ["jurisdiction.northern_ireland_applicability", "conditions.hmo_gate"],
+      "draft_overlay": {
+        "identity": { "category": "FIRE" },
+        "jurisdiction": { "display_jurisdictions": ["England", "Wales", "Scotland"] },
+        "classification": {
+          "requirement_type": "DOCUMENT",
+          "requires_document": true,
+          "requires_job": false,
+          "client_surface_visible": true
+        },
+        "conditions": { "logic": "ALL", "rules": [] },
+        "governance": {
+          "legal_source_summary": "HMO-linked fire evidence; NI not listed — do not assume NI HMO parity without workbook/legal confirmation."
+        }
+      }
+    },
+    {
+      "canonical_code": "OCCUPATION_CONTRACT",
+      "scope_key": "WALES",
+      "import_row_ref": "workbook:wales:occupation_contract:v1",
+      "draft_overlay": {
+        "identity": {
+          "name": "Occupation contract (Wales)",
+          "category": "TENANCY"
+        },
+        "jurisdiction": {
+          "display_jurisdictions": ["Wales"],
+          "scoring_jurisdiction_note": "Wales-only; do not merge with England AST obligations in this draft row."
+        },
+        "classification": {
+          "requirement_type": "DOCUMENT",
+          "requires_document": true,
+          "requires_job": false,
+          "client_surface_visible": true
+        },
+        "governance": {
+          "legal_source_summary": "Engine OCCUPATION_CONTRACT description references Wales; workbook row scoped to Wales only."
+        }
+      }
+    },
+    {
+      "canonical_code": "LANDLORD_REGISTRATION",
+      "scope_key": "SCOTLAND",
+      "import_row_ref": "workbook:scotland:landlord_registration:v1",
+      "draft_overlay": {
+        "identity": {
+          "name": "Landlord registration (Scotland)",
+          "category": "REGULATORY"
+        },
+        "jurisdiction": {
+          "display_jurisdictions": ["Scotland"],
+          "scoring_jurisdiction_note": "Scotland-only; not merged with England landlord licensing (different regimes)."
+        },
+        "classification": {
+          "requirement_type": "DOCUMENT",
+          "requires_document": true,
+          "requires_job": false,
+          "client_surface_visible": true
+        },
+        "governance": {
+          "legal_source_summary": "Mapped to LANDLORD_REGISTRATION; England/Wales landlord licensing not represented as this code."
+        }
+      }
+    }
+  ]
+}

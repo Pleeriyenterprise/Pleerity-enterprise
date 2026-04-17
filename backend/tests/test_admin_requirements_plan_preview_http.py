@@ -43,6 +43,11 @@ async def test_plan_preview_returns_planned_types_and_mongo_snapshot():
     with (
         patch("routes.admin.admin_route_guard", new_callable=AsyncMock),
         patch("routes.admin.database.get_db", return_value=db),
+        patch(
+            "services.compliance_registry_publish_service.fetch_active_published_registry_entries",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
     ):
         out = await get_property_requirements_plan_preview(
             request,
@@ -55,6 +60,7 @@ async def test_plan_preview_returns_planned_types_and_mongo_snapshot():
     assert out["client_id"] == "c-prev-1"
     assert "gas_safety" in out["planned_types"]
     assert out.get("plan_builder") == "build_requirement_plan_for_property"
+    assert out.get("published_registry") == {"active": False, "entry_count": 0}
     assert "catalog_key_explanations" in out
     assert any("explanation" in p for p in out["planned"])
     assert out["portfolio_jurisdiction_label"]

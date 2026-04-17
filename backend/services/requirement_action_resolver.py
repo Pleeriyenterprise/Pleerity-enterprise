@@ -58,6 +58,26 @@ def _supporting_external_links(
     return [format_client_external_link(x) for x in raw]
 
 
+def _registry_why_it_matters(requirement: Dict[str, Any]) -> Dict[str, Optional[str]]:
+    meta = requirement.get("registry_metadata") if isinstance(requirement.get("registry_metadata"), dict) else {}
+    short = str(
+        requirement.get("why_it_matters_short")
+        or meta.get("why_it_matters_short_published")
+        or requirement.get("why_it_matters")
+        or ""
+    ).strip()
+    long_text = str(
+        requirement.get("why_it_matters_long")
+        or meta.get("why_it_matters_long_published")
+        or ""
+    ).strip()
+    return {
+        "why_it_matters_short": short or None,
+        "why_it_matters_long": long_text or None,
+        "why_it_matters": short or long_text or None,
+    }
+
+
 def job_primary_label(requirement: Dict[str, Any]) -> str:
     code = _norm_code(requirement)
     if "eicr" in code or code == "electrical_safety":
@@ -120,8 +140,10 @@ def resolve_take_action_envelope(
     if informational:
         route = f"/properties/{pid}#compliance" if pid else "/requirements"
         supporting = _supporting_external_links(requirement, property_jurisdiction=property_jurisdiction)
+        why_fields = _registry_why_it_matters(requirement)
         return {
             "action_type": ACTION_OBLIGATION,
+            **why_fields,
             "take_action": {
                 "primary": {
                     "label": "View guidance",
@@ -136,8 +158,10 @@ def resolve_take_action_envelope(
 
     if action_type == ACTION_MAINTENANCE:
         route = f"/operations/issues/new?property_id={pid}" if pid else "/operations/issues"
+        why_fields = _registry_why_it_matters(requirement)
         return {
             "action_type": ACTION_MAINTENANCE,
+            **why_fields,
             "take_action": {
                 "primary": {"label": "Log issue", "route": route, "kind": "navigate", "handler": "navigate"},
                 "secondary": None,
@@ -161,8 +185,10 @@ def resolve_take_action_envelope(
                 "external": False,
             }
         supporting = _supporting_external_links(requirement, property_jurisdiction=property_jurisdiction)
+        why_fields = _registry_why_it_matters(requirement)
         return {
             "action_type": ACTION_JOB,
+            **why_fields,
             "take_action": {
                 "primary": {
                     "label": job_primary_label(requirement),
@@ -177,8 +203,10 @@ def resolve_take_action_envelope(
 
     doc_route = f"/documents?property_id={pid}&requirement_id={rid}" if (pid and rid) else (f"/documents?property_id={pid}" if pid else "/documents")
     supporting = _supporting_external_links(requirement, property_jurisdiction=property_jurisdiction)
+    why_fields = _registry_why_it_matters(requirement)
     return {
         "action_type": ACTION_DOCUMENT,
+        **why_fields,
         "take_action": {
             "primary": {
                 "label": "Upload document",
@@ -242,6 +270,8 @@ def resolve_take_action_for_priority_action(
         "primary_action_type": primary_type,
         "primary_action_label": pri.get("label") or "View",
         "primary_action_url": pri.get("route") or "/dashboard",
+        "why_it_matters_short": env.get("why_it_matters_short"),
+        "why_it_matters_long": env.get("why_it_matters_long"),
     }
     if sec and sec.get("route"):
         out["secondary_action_label"] = sec.get("label")

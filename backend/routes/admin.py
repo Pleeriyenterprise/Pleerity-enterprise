@@ -1484,8 +1484,9 @@ async def get_property_requirements_plan_preview(
     Intended for staging validation and support debugging — not for portal clients.
     RBAC: same as other ``/api/admin`` routes — ``admin_route_guard`` / ``require_admin`` (Owner, Admin,
     Support, Content, Auditor). Compare ``planned_types`` to Mongo
-    when ``include_mongo_snapshot`` is true; run ``POST /api/properties/{id}/requirements/sync`` as the
-    client to reconcile drift.
+    when ``include_mongo_snapshot`` is true; after registry publish/revert use
+    ``POST /api/admin/properties/{id}/requirements/sync-from-registry`` (staff) or the client
+    ``POST /api/properties/{id}/requirements/sync`` to reconcile drift.
     """
     await admin_route_guard(request)
     db = database.get_db()
@@ -1504,12 +1505,15 @@ async def get_property_requirements_plan_preview(
         ) or {}
 
         from services.requirement_catalog import explain_catalog_keys_for_property
+        from services.compliance_registry_publish_service import fetch_active_published_registry_entries
         from services.requirement_materialization_service import generate_requirements
 
+        published = await fetch_active_published_registry_entries(db)
         planned_items = generate_requirements(
             prop,
             client_doc,
             include_explanations=include_explanations,
+            published_registry_entries=published,
         )
         planned_types = sorted({str(p["requirement_type"]) for p in planned_items})
 
@@ -1525,6 +1529,10 @@ async def get_property_requirements_plan_preview(
             "planned": planned_items,
             "plan_builder": "build_requirement_plan_for_property",
             "preview_serializer": "serialize_registry_plan_items",
+            "published_registry": {
+                "active": bool(published),
+                "entry_count": len(published) if isinstance(published, dict) else 0,
+            },
         }
         if include_explanations:
             out["catalog_key_explanations"] = explain_catalog_keys_for_property(prop, client_doc)
@@ -1573,6 +1581,76 @@ async def get_property_requirements_plan_preview(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to build requirements plan preview",
         )
+
+
+@router.post("/properties/{property_id}/requirements/sync-from-registry")
+async def admin_post_property_requirements_sync_from_registry(
+    request: Request,
+    property_id: str,
+    user: dict = Depends(require_support_or_above),
+):
+    """
+    Re-run catalog + published-registry materialisation for one property (any client).
+
+    Use after **publish** or **revert** so Mongo ``requirements`` rows match the active snapshot; does not
+    fan out to other properties. Same core work as ``POST /api/properties/{id}/requirements/sync`` for
+    the owning client, but callable from the admin console without client portal context.
+    """
+    db = database.get_db()
+    prop = await db.properties.find_one(
+        {"property_id": property_id},
+        {"_id": 0, "client_id": 1, "property_id": 1},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    client_id = prop.get("client_id")
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Property has no client_id",
+        )
+
+    from services.compliance_recalc_queue import (
+        ACTOR_ADMIN,
+        TRIGGER_ADMIN_MANUAL_JOB,
+        enqueue_compliance_recalc,
+    )
+    from services.provisioning import provisioning_service
+    from services.requirement_materialization_service import materialize_requirements_for_property
+
+    result = await materialize_requirements_for_property(client_id, property_id, reconcile_obsolete=True)
+    if not (result or {}).get("ok", True) and (result or {}).get("reason") == "property_not_found":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+
+    await provisioning_service._update_property_compliance(property_id)
+    corr = f"{TRIGGER_ADMIN_MANUAL_JOB}:REGISTRY_SYNC:{property_id}:{uuid.uuid4().hex[:12]}"
+    await enqueue_compliance_recalc(
+        property_id=property_id,
+        client_id=client_id,
+        trigger_reason=TRIGGER_ADMIN_MANUAL_JOB,
+        actor_type=ACTOR_ADMIN,
+        actor_id=str(user.get("portal_user_id") or user.get("user_id") or ""),
+        correlation_id=corr,
+    )
+
+    ip_address = request.client.host if request.client else None
+    await create_audit_log(
+        action=AuditAction.COMPLIANCE_REGISTRY_ADMIN_PROPERTY_REQUIREMENTS_SYNCED,
+        actor_role=_portal_user_role_for_audit(user),
+        actor_id=str(user.get("portal_user_id") or user.get("user_id") or ""),
+        client_id=client_id,
+        resource_type="property",
+        resource_id=property_id,
+        metadata={"planned_types_count": len((result or {}).get("planned_types") or [])},
+        ip_address=ip_address,
+    )
+
+    return {
+        "ok": True,
+        "property_id": property_id,
+        "client_id": client_id,
+        **(result or {}),
+    }
 
 
 class _ActionLinksDraftBody(BaseModel):
