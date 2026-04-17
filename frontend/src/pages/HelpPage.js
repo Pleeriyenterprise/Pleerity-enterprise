@@ -14,6 +14,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 import { PortalFilterStack, PortalLoadingPanel } from '../components/client/ClientPortalPatterns';
 import { getHelpArticleFallback } from '../content/helpArticleFallbacks';
+import HelpArticleMarkdown from '../components/help/HelpArticleMarkdown';
 
 export default function HelpPage() {
   const navigate = useNavigate();
@@ -164,8 +165,8 @@ export default function HelpPage() {
                   </div>
                 ) : null}
                 <h2 className="text-xl font-semibold text-midnight-blue mb-4">{resolvedArticle.title}</h2>
-                <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-                  {resolvedArticle.content}
+                <div className="text-sm text-gray-700">
+                  <HelpArticleMarkdown markdown={resolvedArticle.content} />
                 </div>
                 {article?.related_articles?.length > 0 && (
                   <div className="mt-8 pt-6 border-t">

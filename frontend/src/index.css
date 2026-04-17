@@ -81,6 +81,67 @@ code {
         word-break: normal;
         hyphens: manual;
     }
+
+    /* Help Centre / KB: Markdown from react-markdown (no @tailwindcss/typography) */
+    .help-article-markdown {
+        @apply leading-relaxed;
+    }
+    .help-article-markdown > :first-child {
+        @apply mt-0;
+    }
+    .help-article-markdown h1 {
+        @apply text-2xl font-semibold text-midnight-blue mt-8 mb-4;
+    }
+    .help-article-markdown h2 {
+        @apply text-xl font-semibold text-midnight-blue mt-8 mb-3;
+    }
+    .help-article-markdown h3 {
+        @apply text-lg font-semibold text-midnight-blue mt-6 mb-2;
+    }
+    .help-article-markdown h4 {
+        @apply text-base font-semibold text-midnight-blue mt-5 mb-2;
+    }
+    .help-article-markdown p {
+        @apply mb-4;
+    }
+    .help-article-markdown ul {
+        @apply list-disc pl-6 my-4 space-y-2;
+    }
+    .help-article-markdown ol {
+        @apply list-decimal pl-6 my-4 space-y-2;
+    }
+    .help-article-markdown li > ul,
+    .help-article-markdown li > ol {
+        @apply my-2;
+    }
+    .help-article-markdown a {
+        @apply text-electric-teal underline underline-offset-2 hover:opacity-90;
+    }
+    .help-article-markdown strong {
+        @apply font-semibold text-midnight-blue;
+    }
+    .help-article-markdown hr {
+        @apply my-8 border-gray-200;
+    }
+    .help-article-markdown blockquote {
+        @apply border-l-4 border-gray-200 pl-4 my-4 text-gray-600 italic;
+    }
+    .help-article-markdown table {
+        @apply w-full border-collapse text-sm my-6;
+    }
+    .help-article-markdown th,
+    .help-article-markdown td {
+        @apply border border-gray-200 px-3 py-2 align-top;
+    }
+    .help-article-markdown th {
+        @apply bg-gray-50 font-medium text-midnight-blue text-left;
+    }
+    .help-article-markdown pre {
+        @apply bg-gray-100 text-gray-900 rounded-md p-4 overflow-x-auto my-4 text-xs;
+    }
+    .help-article-markdown :not(pre) > code {
+        @apply bg-gray-100 text-gray-900 rounded px-1.5 py-0.5 text-xs font-mono;
+    }
     .tap-target {
         min-height: 2.75rem;
         min-width: 2.75rem;

@@ -6,6 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import client from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
+import HelpArticleMarkdown from '../components/help/HelpArticleMarkdown';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -62,6 +63,7 @@ export default function AdminKnowledgeBasePage() {
   
   // Dialog state
   const [articleDialogOpen, setArticleDialogOpen] = useState(false);
+  const [articleBodyTab, setArticleBodyTab] = useState('edit');
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -148,6 +150,10 @@ export default function AdminKnowledgeBasePage() {
     fetchCategories();
     fetchAnalytics();
   }, [fetchArticles, fetchCategories, fetchAnalytics]);
+
+  useEffect(() => {
+    if (!articleDialogOpen) setArticleBodyTab('edit');
+  }, [articleDialogOpen]);
 
   // Handle article form submit
   const handleArticleSubmit = async () => {
@@ -983,16 +989,49 @@ export default function AdminKnowledgeBasePage() {
             </div>
 
             <div>
-              <Label htmlFor="content">Content * (Markdown supported)</Label>
-              <Textarea
-                id="content"
-                value={articleForm.content}
-                onChange={(e) => setArticleForm({ ...articleForm, content: e.target.value })}
-                placeholder="Full article content with Markdown formatting..."
-                rows={12}
-                className="font-mono text-sm"
-                data-testid="article-content-input"
-              />
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <Label htmlFor="content">Content * (Markdown supported)</Label>
+                <div className="flex rounded-md border border-gray-200 bg-gray-50 p-0.5">
+                  <Button
+                    type="button"
+                    variant={articleBodyTab === 'edit' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="h-8 px-3"
+                    onClick={() => setArticleBodyTab('edit')}
+                    data-testid="article-content-tab-edit"
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={articleBodyTab === 'preview' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="h-8 px-3"
+                    onClick={() => setArticleBodyTab('preview')}
+                    data-testid="article-content-tab-preview"
+                  >
+                    Preview
+                  </Button>
+                </div>
+              </div>
+              {articleBodyTab === 'edit' ? (
+                <Textarea
+                  id="content"
+                  value={articleForm.content}
+                  onChange={(e) => setArticleForm({ ...articleForm, content: e.target.value })}
+                  placeholder="Full article content with Markdown formatting..."
+                  rows={12}
+                  className="font-mono text-sm"
+                  data-testid="article-content-input"
+                />
+              ) : (
+                <div
+                  className="rounded-md border border-gray-200 bg-white p-4 max-h-[min(28rem,50vh)] overflow-y-auto text-sm text-gray-800"
+                  data-testid="article-content-preview"
+                >
+                  <HelpArticleMarkdown markdown={articleForm.content?.trim() ? articleForm.content : '_Nothing to preview yet._'} />
+                </div>
+              )}
             </div>
 
             <div>

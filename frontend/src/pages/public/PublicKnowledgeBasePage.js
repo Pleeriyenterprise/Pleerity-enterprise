@@ -16,6 +16,7 @@ import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent } from '../../components/ui/card';
 import PublicLayout from '../../components/public/PublicLayout';
+import HelpArticleMarkdown from '../../components/help/HelpArticleMarkdown';
 import {
   Book,
   Search,
@@ -451,17 +452,10 @@ function ArticleView({ slug }) {
                     )}
                   </div>
 
-                  {/* Content */}
-                  <div 
-                    className="prose prose-gray max-w-none"
-                    dangerouslySetInnerHTML={{ 
-                      __html: article.content
-                        .replace(/\n/g, '<br />')
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                        .replace(/`(.*?)`/g, '<code>$1</code>')
-                    }}
-                  />
+                  {/* Content: Markdown from API (safe parse, no raw HTML) */}
+                  <div className="text-base text-gray-800">
+                    <HelpArticleMarkdown markdown={article.content} />
+                  </div>
 
                   {/* Feedback */}
                   <div className="mt-12 pt-8 border-t">
