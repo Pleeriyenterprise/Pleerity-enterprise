@@ -104,6 +104,8 @@ def apply_published_registry_entries_to_plan(
     items: List["RequirementPlanItem"],
     portfolio_label: str,
     entries: Optional[Dict[str, Any]],
+    *,
+    property_doc: Optional[Dict[str, Any]] = None,
 ) -> List["RequirementPlanItem"]:
     """
     Merge active published registry entries onto planner output (same shapes as Mongo drafts).
@@ -119,6 +121,7 @@ def apply_published_registry_entries_to_plan(
         merge_draft_overlay_onto_plan_row,
         plan_types_for_draft_canonical,
     )
+    from services.compliance_registry_conditions import property_matches_registry_conditions
 
     best: Dict[str, Tuple[int, Dict[str, Any]]] = {}
     for _key, entry in entries.items():
@@ -126,6 +129,8 @@ def apply_published_registry_entries_to_plan(
             continue
         cc = str(entry.get("canonical_code") or "").strip().upper()
         if not cc or not draft_applies_to_portfolio_label(entry, portfolio_label):
+            continue
+        if not property_matches_registry_conditions(property_doc, entry.get("conditions")):
             continue
         spec = draft_overlay_specificity(entry)
         for rt in plan_types_for_draft_canonical(cc):
@@ -217,6 +222,7 @@ def resolve_published_entry_for_requirement(
     published_registry_entries: Optional[Dict[str, Any]],
     requirement_type: str,
     portfolio_label: str,
+    property_doc: Optional[Dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Pick the best matching published entry for one requirement_type + jurisdiction label."""
     if not isinstance(published_registry_entries, dict) or not published_registry_entries:
@@ -226,6 +232,7 @@ def resolve_published_entry_for_requirement(
         draft_overlay_specificity,
         plan_types_for_draft_canonical,
     )
+    from services.compliance_registry_conditions import property_matches_registry_conditions
 
     rt = (requirement_type or "").strip().lower()
     best: Optional[Tuple[int, Dict[str, Any]]] = None
@@ -238,6 +245,8 @@ def resolve_published_entry_for_requirement(
         if rt not in plan_types_for_draft_canonical(cc):
             continue
         if not draft_applies_to_portfolio_label(entry, portfolio_label):
+            continue
+        if not property_matches_registry_conditions(property_doc, entry.get("conditions")):
             continue
         spec = draft_overlay_specificity(entry)
         if best is None or spec > best[0]:
@@ -470,6 +479,11 @@ def build_requirement_plan_for_property(
         add(rtype, rtype, desc, days, 45, REQUIREMENT_CLASS_DOCUMENT, catalog_keys=(PROPERTY_LICENCE,))
 
     if published_registry_entries:
-        out = apply_published_registry_entries_to_plan(out, portfolio, published_registry_entries)
+        out = apply_published_registry_entries_to_plan(
+            out,
+            portfolio,
+            published_registry_entries,
+            property_doc=property_doc,
+        )
 
     return out

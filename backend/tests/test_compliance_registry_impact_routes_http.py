@@ -156,6 +156,8 @@ def test_get_controlled_field_options_200(client: TestClient):
     body = r.json()
     assert "identity_categories" in body
     assert "action_link_kinds" in body
+    assert "condition_fields" in body
+    assert len(body.get("condition_fields") or []) >= 5
     vals = [x["value"] for x in body.get("action_link_kinds") or []]
     assert set(vals) == {"directory", "official", "partner"}
 

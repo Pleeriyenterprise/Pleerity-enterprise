@@ -87,5 +87,61 @@ def test_scotland_draft_skipped_for_england_property():
             "identity": {"name": "Scot reg"},
         }
     ]
-    matched = matching_drafts_for_plan_row(drafts, "scotland_landlord_registration", "England")
+    matched = matching_drafts_for_plan_row(drafts, "scotland_landlord_registration", "England", prop)
     assert matched == []
+
+
+def test_preview_skips_draft_overlay_when_conditions_fail():
+    prop = {
+        "property_id": "p-gas",
+        "client_id": "c1",
+        "jurisdiction": "England",
+        "property_type": "residential",
+        "has_gas_supply": True,
+    }
+    client = {"default_jurisdiction": "England"}
+    drafts = [
+        {
+            "entry_id": "e-cond",
+            "canonical_code": "GAS_SAFETY",
+            "scope_key": "DEFAULT",
+            "jurisdiction": {"display_jurisdictions": ["England", "Wales", "Scotland", "Northern Ireland"]},
+            "identity": {"name": "Conditional title"},
+            "conditions": {"logic": "ALL", "rules": [{"field": "has_gas_supply", "op": "false"}]},
+            "classification": {"requirement_type": "DOCUMENT", "client_surface_visible": True},
+            "frequency": {"frequency_days": 365, "reminder_lead_days": 30},
+        }
+    ]
+    out = build_registry_preview_simulation(prop, client, drafts, include_explanations=False)
+    gas = next((r for r in out["rows"] if r["requirement_type"] == "gas_safety"), None)
+    assert gas is not None
+    assert gas["registry_preview"]["overlay_count"] == 0
+    assert gas["preview"]["description"] == gas["production"]["description"]
+
+
+def test_preview_applies_draft_overlay_when_conditions_pass():
+    prop = {
+        "property_id": "p-gas2",
+        "client_id": "c1",
+        "jurisdiction": "England",
+        "property_type": "residential",
+        "has_gas_supply": True,
+    }
+    client = {"default_jurisdiction": "England"}
+    drafts = [
+        {
+            "entry_id": "e-cond2",
+            "canonical_code": "GAS_SAFETY",
+            "scope_key": "DEFAULT",
+            "jurisdiction": {"display_jurisdictions": ["England", "Wales", "Scotland", "Northern Ireland"]},
+            "identity": {"name": "Gas when has supply"},
+            "conditions": {"logic": "ALL", "rules": [{"field": "has_gas_supply", "op": "true"}]},
+            "classification": {"requirement_type": "DOCUMENT", "client_surface_visible": True},
+            "frequency": {"frequency_days": 365, "reminder_lead_days": 30},
+        }
+    ]
+    out = build_registry_preview_simulation(prop, client, drafts, include_explanations=False)
+    gas = next((r for r in out["rows"] if r["requirement_type"] == "gas_safety"), None)
+    assert gas is not None
+    assert gas["registry_preview"]["overlay_count"] >= 1
+    assert gas["preview"]["description"] == "Gas when has supply"

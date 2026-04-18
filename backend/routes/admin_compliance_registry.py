@@ -35,6 +35,7 @@ from services.compliance_registry_admin_service import (
     merge_partial_draft,
     validate_registry_draft,
 )
+from services.compliance_registry_conditions import condition_builder_options_payload
 from services.compliance_registry_controlled_vocab import (
     controlled_field_options_payload,
     normalise_registry_draft_for_storage,
@@ -114,7 +115,7 @@ class PublishRejectBody(BaseModel):
 async def registry_controlled_field_options(user: dict = Depends(require_admin)):
     """Canonical enum option sets for the registry editor (aligned with draft validation)."""
     _ = user
-    return controlled_field_options_payload()
+    return {**controlled_field_options_payload(), **condition_builder_options_payload()}
 
 
 @router.get("/drafts")

@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import RegistryActionLinksForm from '../../components/admin/RegistryActionLinksForm';
+import RegistryConditionsBuilder from '../../components/admin/RegistryConditionsBuilder';
+import { REGISTRY_CONDITION_BUILDER_FALLBACK } from '../../data/registryConditionBuilderFallback';
 import { adminAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,6 +13,21 @@ import {
   displayRegionsCoverAllUK,
   formatScopeKeyLabel,
 } from '../../utils/complianceRegistryOperatorUi';
+import { humanSummaryRegistryConditions } from '../../utils/registryConditionsSummary';
+
+function sanitizeConditionsForSave(cond) {
+  if (!cond || typeof cond !== 'object') return { logic: 'ALL', rules: [] };
+  const logic = String(cond.logic || 'ALL').toUpperCase() === 'ANY' ? 'ANY' : 'ALL';
+  const rules = (Array.isArray(cond.rules) ? cond.rules : [])
+    .filter((r) => r && typeof r === 'object' && String(r.field || '').trim() && String(r.op || '').trim())
+    .map((r) => {
+      const field = String(r.field).trim();
+      const op = String(r.op).trim();
+      if (op === 'true' || op === 'false') return { field, op };
+      return { field, op, value: r.value };
+    });
+  return { logic, rules };
+}
 
 function Section({ title, children }) {
   return (
@@ -146,9 +163,26 @@ export default function AdminComplianceRegistryEditorPage() {
   const [whyByJurisdictionText, setWhyByJurisdictionText] = useState('{}');
   const [linkPreviewRegion, setLinkPreviewRegion] = useState('ENGLAND');
   const [showLinksAdvanced, setShowLinksAdvanced] = useState(false);
+  const [showConditionsAdvanced, setShowConditionsAdvanced] = useState(false);
   const [fieldOptions, setFieldOptions] = useState(null);
 
-  const opts = fieldOptions || FALLBACK_CONTROLLED_OPTIONS;
+  const opts = useMemo(() => {
+    const fo = fieldOptions || {};
+    return {
+      ...FALLBACK_CONTROLLED_OPTIONS,
+      ...fo,
+      condition_fields:
+        fo.condition_fields?.length > 0 ? fo.condition_fields : REGISTRY_CONDITION_BUILDER_FALLBACK.condition_fields,
+      condition_logic_options:
+        fo.condition_logic_options?.length > 0
+          ? fo.condition_logic_options
+          : REGISTRY_CONDITION_BUILDER_FALLBACK.condition_logic_options,
+      condition_templates:
+        fo.condition_templates?.length > 0
+          ? fo.condition_templates
+          : REGISTRY_CONDITION_BUILDER_FALLBACK.condition_templates,
+    };
+  }, [fieldOptions]);
 
   const actionLinksValue = useMemo(() => {
     try {
@@ -212,6 +246,10 @@ export default function AdminComplianceRegistryEditorPage() {
     setDraft((prev) => ({ ...prev, governance: { ...prev.governance, [k]: v } }));
   };
 
+  const handleConditionsBuilderChange = (next) => {
+    setDraft((prev) => ({ ...prev, conditions: next }));
+  };
+
   const save = () => {
     if (!canMutate || !draft) return;
     let links;
@@ -223,11 +261,15 @@ export default function AdminComplianceRegistryEditorPage() {
       toast.error('Action links must be valid JSON');
       return;
     }
-    try {
-      conditions = JSON.parse(conditionsText || '{}');
-    } catch {
-      toast.error('Conditions must be valid JSON');
-      return;
+    if (showConditionsAdvanced) {
+      try {
+        conditions = JSON.parse(conditionsText || '{}');
+      } catch {
+        toast.error('Conditions must be valid JSON');
+        return;
+      }
+    } else {
+      conditions = sanitizeConditionsForSave(draft.conditions);
     }
     try {
       whyByJurisdiction = JSON.parse(whyByJurisdictionText || '{}');
@@ -254,7 +296,7 @@ export default function AdminComplianceRegistryEditorPage() {
       .then((res) => {
         const { normalisation_warnings: nw, ...rest } = res.data || {};
         setDraft(rest);
-        setConditionsText(JSON.stringify(rest?.conditions || {}, null, 2));
+        setConditionsText(JSON.stringify(rest?.conditions || { logic: 'ALL', rules: [] }, null, 2));
         setActionLinksJson(JSON.stringify(rest?.action_links || [], null, 2));
         setWhyByJurisdictionText(JSON.stringify(rest?.why_it_matters_by_jurisdiction || {}, null, 2));
         toast.success('Saved');
@@ -487,14 +529,76 @@ export default function AdminComplianceRegistryEditorPage() {
           />
         </Section>
 
-        <Section title="Conditions (JSON)">
-          <Field
-            label="conditions object"
-            value={conditionsText}
-            onChange={setConditionsText}
-            disabled={!canMutate}
-            textarea
-          />
+        <Section title="Conditions (applicability)">
+          {!showConditionsAdvanced ? (
+            <>
+              <RegistryConditionsBuilder
+                value={draft.conditions || { logic: 'ALL', rules: [] }}
+                onChange={handleConditionsBuilderChange}
+                disabled={!canMutate}
+                fieldMeta={opts.condition_fields}
+                logicOptions={opts.condition_logic_options}
+                templates={opts.condition_templates}
+              />
+              <button
+                type="button"
+                className="text-xs text-electric-teal hover:underline mt-2"
+                onClick={() => {
+                  setConditionsText(JSON.stringify(draft.conditions || { logic: 'ALL', rules: [] }, null, 2));
+                  setShowConditionsAdvanced(true);
+                }}
+              >
+                Show raw JSON (advanced)
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-100 rounded p-2 mb-2">
+                Editing raw JSON bypasses the guided field list. Invalid conditions will be rejected on save with the
+                same validation errors as publish.
+              </p>
+              <Field
+                label="conditions object (logic + rules)"
+                value={conditionsText}
+                onChange={setConditionsText}
+                disabled={!canMutate}
+                textarea
+              />
+              <div className="flex flex-wrap gap-2 mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    try {
+                      const parsed = JSON.parse(conditionsText || '{}');
+                      if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                        toast.error('Conditions must be a JSON object');
+                        return;
+                      }
+                      setDraft((prev) => ({ ...prev, conditions: parsed }));
+                      setShowConditionsAdvanced(false);
+                    } catch {
+                      toast.error('Conditions must be valid JSON');
+                    }
+                  }}
+                >
+                  Apply JSON &amp; return to builder
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setConditionsText(JSON.stringify(draft.conditions || { logic: 'ALL', rules: [] }, null, 2));
+                    setShowConditionsAdvanced(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </>
+          )}
         </Section>
 
         <Section title="Frequency">
@@ -628,6 +732,10 @@ export default function AdminComplianceRegistryEditorPage() {
             link JSON — not the Mongo draft. Rows with <span className="font-mono">why_it_matters</span> or action links
             are client-facing copy; changes there should be easy to spot.
           </p>
+          <div className="text-xs text-slate-800 border border-slate-100 rounded-md p-2 mb-2 bg-slate-50/80 whitespace-pre-wrap">
+            <span className="font-medium text-slate-700">Conditions (draft, readable):</span>{' '}
+            {humanSummaryRegistryConditions(draft.conditions)}
+          </div>
           <div className="overflow-x-auto max-h-80 overflow-y-auto border border-gray-100 rounded">
             <table className="w-full text-xs text-left">
               <thead className="bg-gray-50 sticky top-0">
@@ -640,14 +748,17 @@ export default function AdminComplianceRegistryEditorPage() {
               </thead>
               <tbody>
                 {diffRows.map((r) => {
-                  const why = String(r.path || '').includes('why_it_matters') || r.path === 'action_links.length';
+                  const why =
+                    String(r.path || '').includes('why_it_matters') ||
+                    r.path === 'action_links.length' ||
+                    String(r.path || '').includes('conditions (human-readable)');
                   return (
                     <tr
                       key={r.path}
                       className={r.changed ? (why ? 'bg-teal-50/90 ring-1 ring-teal-200' : 'bg-amber-50') : ''}
                     >
                       <td className="p-2 font-mono whitespace-nowrap">{r.path}</td>
-                      <td className="p-2 break-all">
+                      <td className={`p-2 break-all ${why ? 'whitespace-pre-wrap' : ''}`}>
                         {typeof r.draft === 'object' ? JSON.stringify(r.draft) : String(r.draft)}
                       </td>
                       <td className="p-2 break-all">

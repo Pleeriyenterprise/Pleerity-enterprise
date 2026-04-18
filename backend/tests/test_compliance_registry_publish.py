@@ -44,3 +44,31 @@ def test_build_plan_applies_published_overlay_to_gas_safety():
     assert g.description == "Published gas label"
     assert g.why_it_matters_short == "Short explanation"
     assert g.why_it_matters_long == "Long explanation"
+
+
+def test_build_plan_skips_published_overlay_when_registry_conditions_fail():
+    """Published snapshot rows with ``conditions`` must not merge when the property does not match."""
+    prop = {
+        "property_id": "p1",
+        "client_id": "c1",
+        "jurisdiction": "England",
+        "property_type": "residential",
+        "has_gas_supply": True,
+    }
+    client = {"default_jurisdiction": "England"}
+    pub = {
+        "GAS_SAFETY|DEFAULT": {
+            "canonical_code": "GAS_SAFETY",
+            "scope_key": "DEFAULT",
+            "jurisdiction": {"display_jurisdictions": ["England", "Wales", "Scotland", "Northern Ireland"]},
+            "identity": {"name": "Published gas label"},
+            "classification": {"requirement_type": "DOCUMENT"},
+            "frequency": {"frequency_days": 365, "reminder_lead_days": 30},
+            "why_it_matters_short": "Short explanation",
+            "conditions": {"logic": "ALL", "rules": [{"field": "has_gas_supply", "op": "false"}]},
+        }
+    }
+    plan = build_requirement_plan_for_property(prop, client, published_registry_entries=pub)
+    g = next((x for x in plan if x.requirement_type == "gas_safety"), None)
+    assert g is not None
+    assert g.description != "Published gas label"

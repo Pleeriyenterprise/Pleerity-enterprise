@@ -17,6 +17,12 @@ from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 
 from services.compliance_rules_registry import ComplianceRuleSpec, REGISTRY_BY_JURISDICTION, get_rule
 from services.requirement_action_links import _load_registry_by_code
+from services.compliance_registry_conditions import (
+    VALID_REGISTRY_CONDITION_FIELDS,
+    human_summary_registry_conditions,
+    property_matches_registry_conditions,
+    validate_registry_conditions,
+)
 from services.compliance_registry_controlled_vocab import (
     REGISTRY_IDENTITY_CATEGORY_SET,
     REGISTRY_UK_DISPLAY_REGION_SET,
@@ -28,24 +34,8 @@ _CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
 _VALID_REQ_TYPES = frozenset({"DOCUMENT", "JOB", "OBLIGATION", "SYSTEM"})
 _VALID_CRITICALITY = frozenset({"HIGH", "MEDIUM", "LOW"})
 _VALID_ACTION_MODES = frozenset({"upload_document", "arrange_job", "view_guidance", "hidden"})
-_VALID_CONDITION_OPS = frozenset({"==", "!=", "in", "not_in", "true", "false", "gt", "lt"})
-_VALID_CONDITION_FIELDS = frozenset(
-    {
-        "is_hmo",
-        "has_gas_supply",
-        "tenancy_active",
-        "furnished",
-        "deposit_taken",
-        "has_communal_areas",
-        "local_authority",
-        "property_type",
-        "building_age_years",
-        "licence_required",
-        "cert_gas_safety",
-        "cert_licence",
-        "licence_type",
-    }
-)
+# Backward-compatible names for imports of this module.
+_VALID_CONDITION_FIELDS = VALID_REGISTRY_CONDITION_FIELDS
 
 COLLECTION = "compliance_requirement_registry_drafts"
 
@@ -226,24 +216,7 @@ def validate_registry_draft(doc: Dict[str, Any]) -> List[str]:
                 )
 
     cond = doc.get("conditions") if isinstance(doc.get("conditions"), dict) else {}
-    logic = str(cond.get("logic") or "ALL").upper()
-    if logic not in ("ALL", "ANY"):
-        errs.append("conditions.logic must be ALL or ANY")
-    rules = cond.get("rules")
-    if rules is not None:
-        if not isinstance(rules, list):
-            errs.append("conditions.rules must be a list")
-        else:
-            for i, r in enumerate(rules):
-                if not isinstance(r, dict):
-                    errs.append(f"conditions.rules[{i}] must be an object")
-                    continue
-                f = str(r.get("field") or "")
-                if f and f not in _VALID_CONDITION_FIELDS:
-                    errs.append(f"conditions.rules[{i}].field is not an allowed controlled field: {f}")
-                op = str(r.get("op") or "")
-                if op and op not in _VALID_CONDITION_OPS:
-                    errs.append(f"conditions.rules[{i}].op is not allowed: {op}")
+    errs.extend(validate_registry_conditions(cond))
 
     ab = doc.get("action_behaviour") if isinstance(doc.get("action_behaviour"), dict) else {}
     pam = str(ab.get("primary_action_mode") or "upload_document").strip().lower()
@@ -323,6 +296,8 @@ def diff_draft_vs_baseline(draft: Dict[str, Any], baseline: Dict[str, Any]) -> L
     row("why_it_matters_long", draft.get("why_it_matters_long"), None)
     row("why_it_matters_by_jurisdiction", draft.get("why_it_matters_by_jurisdiction"), None)
     row("action_links.length", len(draft.get("action_links") or []), len(baseline.get("action_links_registry") or []))
+    csum = human_summary_registry_conditions(draft.get("conditions") if isinstance(draft.get("conditions"), dict) else {})
+    row("conditions (human-readable)", csum, None)
     if sc and str(draft.get("canonical_code") or "").upper() == "GAS_SAFETY":
         row(
             "engine.gas_safety.frequency_days_by_bucket",
@@ -533,6 +508,7 @@ def matching_drafts_for_plan_row(
     drafts: List[Dict[str, Any]],
     requirement_type: str,
     portfolio_label: str,
+    property_doc: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     rt = (requirement_type or "").strip().lower()
     matched = [
@@ -540,6 +516,7 @@ def matching_drafts_for_plan_row(
         for d in drafts
         if isinstance(d, dict)
         and draft_applies_to_portfolio_label(d, portfolio_label)
+        and property_matches_registry_conditions(property_doc, d.get("conditions"))
         and rt in plan_types_for_draft_canonical(str(d.get("canonical_code") or ""))
     ]
     matched.sort(key=lambda d: (-draft_overlay_specificity(d), str(d.get("entry_id") or "")))
@@ -597,6 +574,7 @@ REGISTRY_PREVIEW_COVERAGE: Dict[str, Any] = {
         "Metadata / copy changes surfaced as description and related display fields on existing rows.",
         "Client visibility (e.g. client_surface_visible) and classification on existing rows.",
         "Jurisdiction-scoped draft matching (display_jurisdictions / scope_key) for overrides on rows that already exist in the plan.",
+        "Property applicability via ``conditions.rules`` (same JSON as drafts) so overlays respect boolean / scalar predicates.",
         "Frequency and warning cadence hints merged onto matching existing requirement types.",
     ],
     "not_yet": [
@@ -654,7 +632,7 @@ def build_registry_preview_simulation(
     preview_rows: List[Dict[str, Any]] = []
     for prod in production:
         rt = str(prod.get("requirement_type") or "")
-        matched = matching_drafts_for_plan_row(drafts, rt, portfolio)
+        matched = matching_drafts_for_plan_row(drafts, rt, portfolio, property_doc)
         preview = dict(prod)
         sources: List[Dict[str, str]] = []
         for d in matched:
