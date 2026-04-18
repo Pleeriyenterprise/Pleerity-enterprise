@@ -111,7 +111,7 @@ export function displayRegionsCoverAllUK(displayRegions) {
 
 /**
  * @param {Record<string, unknown>} row
- * @returns {{ label: string, intent: 'draft'|'review'|'ready'|'stale' }}
+ * @returns {{ label: string, intent: 'draft'|'review'|'ready' }}
  */
 export function registryListRowState(row) {
   const needs = Array.isArray(row?.governance?.needs_review_fields)
@@ -119,6 +119,13 @@ export function registryListRowState(row) {
     : 0;
   if (needs) {
     return { label: 'Needs review', intent: 'review' };
+  }
+  const rv = row?.registry_validation;
+  if (rv && typeof rv === 'object' && 'valid' in rv) {
+    if (rv.valid) {
+      return { label: 'Ready to publish', intent: 'ready' };
+    }
+    return { label: 'Fix validation', intent: 'error' };
   }
   return { label: 'Draft (editable)', intent: 'ready' };
 }
@@ -148,4 +155,40 @@ export function actionLinkAppliesToRegion(link, region) {
   return j
     .map((x) => String(x).trim().toUpperCase())
     .includes(r);
+}
+
+/**
+ * Aligns with backend ``portfolio_label_to_region`` (requirement_action_links).
+ * @param {string|null|undefined} portfolioLabel
+ * @returns {'ENGLAND' | 'WALES' | 'SCOTLAND' | 'NORTHERN_IRELAND'}
+ */
+export function portfolioJurisdictionLabelToRegion(portfolioLabel) {
+  const s = String(portfolioLabel || '')
+    .trim()
+    .toLowerCase();
+  if (s.includes('scotland')) return 'SCOTLAND';
+  if (s.includes('northern ireland') || s.includes('northern_ireland')) return 'NORTHERN_IRELAND';
+  if (s.includes('wales') && !s.includes('england')) return 'WALES';
+  return 'ENGLAND';
+}
+
+/**
+ * Links as admin preview rows present them: active + matching region, sorted by priority.
+ * @param {unknown} links
+ * @param {string} region
+ */
+export function filterAndSortActionLinksForRegion(links, region) {
+  const r = String(region || 'ENGLAND')
+    .toUpperCase()
+    .trim();
+  if (!Array.isArray(links)) return [];
+  return links
+    .filter(
+      (l) =>
+        l &&
+        typeof l === 'object' &&
+        l.is_active !== false &&
+        actionLinkAppliesToRegion(l, r),
+    )
+    .sort((a, b) => (a.priority != null ? Number(a.priority) : 100) - (b.priority != null ? Number(b.priority) : 100));
 }

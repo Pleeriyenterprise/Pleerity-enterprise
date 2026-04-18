@@ -35,7 +35,9 @@ function EditableStatusBadge({ intent, label }) {
   const c =
     intent === 'review'
       ? 'bg-amber-100 text-amber-900 border-amber-200'
-      : 'bg-teal-50 text-teal-900 border-teal-200';
+      : intent === 'error'
+        ? 'bg-red-50 text-red-900 border-red-200'
+        : 'bg-teal-50 text-teal-900 border-teal-200';
   return (
     <span className={`text-[10px] px-2 py-0.5 rounded font-semibold border ${c} whitespace-nowrap`}>{label}</span>
   );
@@ -54,16 +56,19 @@ export default function AdminComplianceRegistryListPage() {
   const [meta, setMeta] = useState(null);
   const [importing, setImporting] = useState(false);
   const [liveKeys, setLiveKeys] = useState(null);
+  const [includeValidation, setIncludeValidation] = useState(false);
 
   const fetchList = useCallback(
     (search) => {
       setLoading(true);
       const qq = (search || '').trim();
+      const lim = includeValidation ? 50 : 200;
       adminAPI
         .listComplianceRegistryDrafts({
           q: qq || undefined,
-          limit: 200,
+          limit: lim,
           needs_review: needsReviewOnly || undefined,
+          include_registry_validation: includeValidation || undefined,
         })
         .then((res) => {
           setItems(res.data?.items || []);
@@ -76,7 +81,7 @@ export default function AdminComplianceRegistryListPage() {
         })
         .finally(() => setLoading(false));
     },
-    [needsReviewOnly],
+    [needsReviewOnly, includeValidation],
   );
 
   useEffect(() => {
@@ -249,6 +254,14 @@ export default function AdminComplianceRegistryListPage() {
             />
             Show review queue only
             <span className="text-xs text-gray-500">({reviewQueueTotal} with flags)</span>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none" title="Runs server validation; loads at most 50 rows">
+            <input
+              type="checkbox"
+              checked={includeValidation}
+              onChange={(e) => setIncludeValidation(e.target.checked)}
+            />
+            Show publish validation &amp; &ldquo;Ready to publish&rdquo; (50 rows)
           </label>
           {canMutate && (
             <>

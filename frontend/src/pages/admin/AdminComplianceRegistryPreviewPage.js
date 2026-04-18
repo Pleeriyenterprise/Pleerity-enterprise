@@ -5,6 +5,7 @@ import { adminAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
+import { filterAndSortActionLinksForRegion, portfolioJurisdictionLabelToRegion } from '../../utils/complianceRegistryOperatorUi';
 
 /** Mirrors ``REGISTRY_PREVIEW_COVERAGE`` in ``compliance_registry_admin_service.py`` (keep in sync). */
 const PREVIEW_COVERAGE_FALLBACK = {
@@ -144,6 +145,8 @@ export default function AdminComplianceRegistryPreviewPage() {
   };
 
   const rowsWithDelta = (data?.rows || []).filter((r) => Object.keys(r.registry_preview?.deltas || {}).length > 0);
+  const portfolioLabel = data?.portfolio_jurisdiction_label;
+  const regionForProperty = data ? portfolioJurisdictionLabelToRegion(portfolioLabel) : 'ENGLAND';
 
   return (
     <UnifiedAdminLayout>
@@ -245,9 +248,104 @@ export default function AdminComplianceRegistryPreviewPage() {
           <div className="space-y-4">
             <div className="text-sm text-gray-700">
               <span className="font-medium">Portfolio label:</span> {data.portfolio_jurisdiction_label} ·{' '}
-              <span className="font-medium">Drafts considered:</span> {data.draft_documents_considered} ·{' '}
+              <span className="font-medium">Resolved region (links):</span> <span className="font-mono">{regionForProperty}</span>{' '}
+              ·<span className="font-medium"> Drafts considered:</span> {data.draft_documents_considered} ·{' '}
               <span className="font-medium">Plan rows:</span> {data.planned_row_count} ·{' '}
               <span className="font-medium">Rows with overlay delta:</span> {rowsWithDelta.length}
+            </div>
+            <div className="rounded-lg border border-teal-200 bg-teal-50/90 p-4 text-sm text-teal-950">
+              <h2 className="text-sm font-semibold text-teal-900 mb-1">Effective action links (this property’s region)</h2>
+              <p className="text-xs text-teal-800/90 mb-3">
+                Each plan row’s <span className="font-mono">action_links</span> after production merge and after preview
+                overlay. Shown for <span className="font-mono">{regionForProperty}</span> (from portfolio label), sorted by{' '}
+                <span className="font-mono">priority</span> — the same array fields the registry editor edits. Client
+                resolvers can still add manual / static-fallback rules not shown on this plan snapshot.
+              </p>
+              <div className="overflow-x-auto border border-teal-100 rounded bg-white/80 max-h-56 overflow-y-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-teal-100/60 sticky top-0">
+                    <tr>
+                      <th className="p-2">Requirement</th>
+                      <th className="p-2">Production (plan row)</th>
+                      <th className="p-2">Preview (with draft merge)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.rows || [])
+                      .filter(
+                        (r) =>
+                          (r.production?.action_links && r.production.action_links.length) ||
+                          (r.preview?.action_links && r.preview.action_links.length),
+                      )
+                      .map((r) => {
+                        const pLinks = filterAndSortActionLinksForRegion(r.production?.action_links, regionForProperty);
+                        const vLinks = filterAndSortActionLinksForRegion(r.preview?.action_links, regionForProperty);
+                        return (
+                          <tr key={r.requirement_type} className="border-t border-teal-100">
+                            <td className="p-2 font-mono align-top whitespace-nowrap">{r.requirement_type}</td>
+                            <td className="p-2 align-top text-gray-800 max-w-sm">
+                              {pLinks.length ? (
+                                <ul className="list-disc pl-4 space-y-1">
+                                  {pLinks.map((l) => (
+                                    <li key={l.key || l.url}>
+                                      <span className="font-medium">{l.label || l.key}</span>{' '}
+                                      {l.url ? (
+                                        <a
+                                          className="text-electric-teal break-all"
+                                          href={l.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                        >
+                                          {l.url}
+                                        </a>
+                                      ) : null}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
+                            <td className="p-2 align-top text-gray-900 max-w-sm">
+                              {vLinks.length ? (
+                                <ul className="list-disc pl-4 space-y-1">
+                                  {vLinks.map((l) => (
+                                    <li key={`${(l.key || l.url) || 'x'}v`}>
+                                      <span className="font-medium">{l.label || l.key}</span>{' '}
+                                      {l.url ? (
+                                        <a
+                                          className="text-electric-teal break-all"
+                                          href={l.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                        >
+                                          {l.url}
+                                        </a>
+                                      ) : null}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    {!(data.rows || []).some(
+                      (r) =>
+                        (r.production?.action_links && r.production.action_links.length) ||
+                        (r.preview?.action_links && r.preview.action_links.length),
+                    ) && (
+                      <tr>
+                        <td colSpan={3} className="p-3 text-gray-500">
+                          No action links on plan rows in this result (or none for this run).
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
             <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[70vh] overflow-y-auto">
               <table className="w-full text-xs text-left">

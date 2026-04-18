@@ -12,6 +12,7 @@ published merge when configured), then merges Mongo drafts in memory for read-on
 """
 from __future__ import annotations
 
+import copy
 import logging
 from typing import Annotated, Any, Dict, List, Optional
 
@@ -113,10 +114,19 @@ async def list_registry_drafts(
         False,
         description="When true, only drafts with non-empty governance.needs_review_fields",
     ),
+    include_registry_validation: bool = Query(
+        False,
+        description="When true, attach validate_registry_draft per row (use limit <= 50 for performance).",
+    ),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
 ):
     _ = user
+    if include_registry_validation and int(limit) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="include_registry_validation requires limit <= 50",
+        )
     db = database.get_db()
     col = db[COLLECTION]
     parts: List[Dict[str, Any]] = []
@@ -162,6 +172,24 @@ async def list_registry_drafts(
     items = await cursor.to_list(length=limit)
     total = await col.count_documents(filt)
     review_queue_total = await col.count_documents({"governance.needs_review_fields.0": {"$exists": True}})
+
+    if include_registry_validation:
+        for item in items:
+            eid = (item or {}).get("entry_id")
+            if not eid:
+                item["registry_validation"] = {"valid": False, "errors": ["missing entry_id"]}
+                continue
+            full = await col.find_one({"entry_id": eid}, {"_id": 0})
+            if not full:
+                item["registry_validation"] = {"valid": False, "errors": ["draft not found"]}
+                continue
+            d2 = copy.deepcopy(full)
+            v_errs = validate_registry_draft(d2)
+            item["registry_validation"] = {
+                "valid": len(v_errs) == 0,
+                "errors": v_errs,
+            }
+
     return {
         "items": items,
         "total": total,
