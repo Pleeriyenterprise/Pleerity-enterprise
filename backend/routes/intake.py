@@ -17,6 +17,7 @@ INTAKE-LEVEL GATING (NON-NEGOTIABLE):
   3. Provisioning safeguards (defense in depth)
 """
 from fastapi import APIRouter, HTTPException, Request, status, UploadFile, File, Form
+from pydantic import BaseModel
 from utils.rate_limiter import rate_limiter
 from database import database
 from models import (
@@ -37,7 +38,7 @@ import uuid
 import string
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/intake", tags=["intake"])
