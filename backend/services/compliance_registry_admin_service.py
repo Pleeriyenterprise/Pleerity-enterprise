@@ -348,6 +348,36 @@ def load_baseline_bundle_from_disk() -> Dict[str, Any]:
         return json.load(f)
 
 
+def _ensure_why_it_matters_short_for_baseline_import(
+    doc: Dict[str, Any], summary: Dict[str, Any], canonical_code: str
+) -> None:
+    """
+    Baseline JSON often omits product copy. ``validate_registry_draft`` requires a non-empty
+    ``why_it_matters_short`` when the draft is client-visible and actionable. Fill a short
+    placeholder and flag for editorial review so imports can persist.
+    """
+    cls = doc.get("classification") if isinstance(doc.get("classification"), dict) else {}
+    rt = str(cls.get("requirement_type") or "").strip().upper()
+    if cls.get("client_surface_visible") is False:
+        return
+    if rt not in {"DOCUMENT", "JOB", "OBLIGATION"}:
+        return
+    if str(doc.get("why_it_matters_short") or "").strip():
+        return
+    name = str((doc.get("identity") or {}).get("name") or canonical_code or "requirement").strip()
+    stub = f"Statutory and portfolio compliance: {name}."
+    doc["why_it_matters_short"] = stub[:280]
+    gov = doc.setdefault("governance", {})
+    if isinstance(gov, dict):
+        nr = [str(x) for x in (gov.get("needs_review_fields") or []) if str(x).strip()]
+        if "why_it_matters_short" not in nr:
+            nr.append("why_it_matters_short")
+        gov["needs_review_fields"] = nr
+    summary.setdefault("autofilled_why_it_matters_short", []).append(
+        {"canonical_code": str(canonical_code or "").upper(), "scope_key": str(doc.get("scope_key") or "DEFAULT")}
+    )
+
+
 def bundle_entries_to_drafts(bundle: Dict[str, Any], *, actor: Dict[str, str]) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
     Convert import bundle entries to draft documents.
@@ -407,6 +437,7 @@ def bundle_entries_to_drafts(bundle: Dict[str, Any], *, actor: Dict[str, str]) -
                     dict.fromkeys(list(gov.get("needs_review_fields") or []) + [str(x) for x in nrv])
                 )
                 summary["needs_review"].append({"canonical_code": code, "fields": gov["needs_review_fields"]})
+        _ensure_why_it_matters_short_for_baseline_import(doc, summary, code)
         out.append(doc)
         summary["drafts_built"] += 1
 

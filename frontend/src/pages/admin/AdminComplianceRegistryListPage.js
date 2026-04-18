@@ -86,10 +86,26 @@ export default function AdminComplianceRegistryListPage() {
           Array.isArray(br.detected_conflicts) ? br.detected_conflicts.length : 0,
           Array.isArray(br.suspected_cross_jurisdiction_mixing) ? br.suspected_cross_jurisdiction_mixing.length : 0,
         ].reduce((a, b) => a + b, 0);
-        toast.success(
-          `Import: inserted ${s.inserted ?? 0}, updated ${s.updated ?? 0}, skipped ${s.skipped_existing ?? 0}. ` +
-            `Baseline triage lines on disk: ${triageCounts} (review panels below).`,
-        );
+        const ins = s.inserted ?? 0;
+        const upd = s.updated ?? 0;
+        const sk = s.skipped_existing ?? 0;
+        const vf = s.validation_failures;
+        const vfCount = Array.isArray(vf) ? vf.length : 0;
+        const firstErr = vfCount > 0 && Array.isArray(vf[0]?.errors) ? String(vf[0].errors[0] || '') : '';
+        if (vfCount > 0 && ins + upd + sk === 0) {
+          toast.error(
+            `Import did not save any drafts: ${vfCount} validation error(s). ${firstErr ? `Example: ${firstErr}` : 'Open Network → import-baseline-bundle response for details.'}`,
+          );
+        } else if (vfCount > 0) {
+          toast.warning(
+            `Import: inserted ${ins}, updated ${upd}, skipped ${sk}. ${vfCount} row(s) failed validation. ${firstErr ? `Example: ${firstErr}` : ''}`.trim(),
+          );
+        } else {
+          toast.success(
+            `Import: inserted ${ins}, updated ${upd}, skipped ${sk}. ` +
+              `Baseline triage lines on disk: ${triageCounts} (review panels below).`,
+          );
+        }
         fetchList(qInput);
       })
       .catch((err) => {

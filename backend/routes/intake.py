@@ -26,6 +26,7 @@ from models import (
 )
 from services.stripe_service import stripe_service
 from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingError, StripeModeMismatchError
+from services.compliance_rules_registry import canonicalize_uk_portfolio_label
 from services.crn_service import get_next_crn
 from utils.audit import create_audit_log
 import logging
@@ -623,6 +624,60 @@ async def lookup_postcode(postcode: str):
         )
 
 
+class IntakeRequirementsPreviewRequest(BaseModel):
+    properties: List[IntakePropertyData]
+
+
+@router.post("/requirements-preview")
+async def preview_generated_requirements(body: IntakeRequirementsPreviewRequest):
+    """
+    Read-only planner preview for intake UX.
+    Returns generated requirement summary per property (no persistence, no manual selection).
+    """
+    from services.compliance_requirement_registry import build_requirement_plan_for_property
+    from services.requirement_action_resolver import infer_action_type
+
+    summaries = []
+    for idx, prop in enumerate(body.properties or []):
+        p = prop.model_dump()
+        jur = canonicalize_uk_portfolio_label(p.get("jurisdiction"))
+        if not jur:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Property {idx + 1}: jurisdiction must be Scotland, England, Wales, or Northern Ireland",
+            )
+        p["jurisdiction"] = jur
+        plan = build_requirement_plan_for_property(p, {})
+        action_type_counts: Dict[str, int] = {}
+        for item in plan:
+            action = infer_action_type({"compliance_requirement_class": item.compliance_requirement_class}) or "UNKNOWN"
+            action_type_counts[action] = int(action_type_counts.get(action, 0)) + 1
+        summaries.append(
+            {
+                "property_index": idx,
+                "property_nickname": p.get("nickname") or f"Property {idx + 1}",
+                "jurisdiction": jur,
+                "key_driver_facts": {
+                    "property_type": p.get("property_type"),
+                    "is_hmo": p.get("is_hmo"),
+                    "has_gas_supply": p.get("has_gas_supply"),
+                    "tenancy_active": p.get("tenancy_active"),
+                    "deposit_taken": p.get("deposit_taken"),
+                    "furnished": p.get("furnished"),
+                    "has_communal_areas": p.get("has_communal_areas"),
+                    "local_authority": p.get("council_name"),
+                },
+                "action_type_breakdown": action_type_counts,
+                "top_generated_requirements": [str(i.description) for i in plan[:6]],
+                "total_generated_requirements": len(plan),
+                "assumptions": {
+                    "has_gas_supply_unknown_assumed_true_for_planning": p.get("has_gas_supply") is None,
+                },
+            }
+        )
+    return {"properties": summaries}
+
+
 @router.post("/submit")
 async def submit_intake(request: Request, data: IntakeFormData):
     """Universal intake wizard submission.
@@ -812,6 +867,12 @@ async def submit_intake(request: Request, data: IntakeFormData):
         property_temp_key_map = {}  # Map temp_key to property_id for document reconciliation
         
         for i, prop_data in enumerate(data.properties):
+            prop_jurisdiction = canonicalize_uk_portfolio_label(prop_data.jurisdiction)
+            if not prop_jurisdiction:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Property {i + 1}: jurisdiction must be Scotland, England, Wales, or Northern Ireland",
+                )
             # Determine HMO license requirement based on is_hmo and licence_required
             hmo_license_required = (
                 prop_data.is_hmo and 
@@ -828,9 +889,14 @@ async def submit_intake(request: Request, data: IntakeFormData):
                 property_type=prop_data.property_type,
                 bedrooms=prop_data.bedrooms,
                 occupancy=prop_data.occupancy,
+                jurisdiction=prop_jurisdiction,
                 is_hmo=prop_data.is_hmo,
                 hmo_license_required=hmo_license_required,
-                has_gas_supply=True,  # Default, can be updated later
+                has_gas_supply=prop_data.has_gas_supply,
+                tenancy_active=prop_data.tenancy_active,
+                deposit_taken=prop_data.deposit_taken,
+                furnished=prop_data.furnished,
+                has_communal_areas=prop_data.has_communal_areas,
                 # Normalize council name to full official format for audit-readiness
                 local_authority=normalize_council_name(prop_data.council_name, prop_data.council_code) if prop_data.council_name else None,
                 local_authority_code=prop_data.council_code,

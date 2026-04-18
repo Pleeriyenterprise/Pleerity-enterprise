@@ -36,6 +36,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PropertyLimitPrompt } from '../components/UpgradePrompt';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { BRAND_LOGO_URL, branding } from '../config/branding';
+import { JURISDICTION_OPTIONS } from '../utils/jurisdictionComplianceCopy';
 
 // Plan limits - NEW PLAN STRUCTURE (must match backend plan_registry.py)
 const PLAN_LIMITS = {
@@ -122,6 +123,17 @@ export function buildIntakeSubmitPayload(formData, intakeSessionId, marketing = 
       ...p,
       bedrooms: coerceBedrooms(p.bedrooms),
       is_hmo: coerceBool(p.is_hmo),
+      has_gas_supply:
+        p.has_gas_supply === null || p.has_gas_supply === undefined || p.has_gas_supply === ''
+          ? null
+          : coerceBool(p.has_gas_supply),
+      tenancy_active: coerceBool(p.tenancy_active),
+      deposit_taken: coerceBool(p.deposit_taken),
+      furnished:
+        p.furnished === null || p.furnished === undefined || p.furnished === ''
+          ? null
+          : coerceBool(p.furnished),
+      has_communal_areas: coerceBool(p.has_communal_areas),
     })),
   };
   if (marketing.lead_id) payload.lead_id = marketing.lead_id;
@@ -173,7 +185,13 @@ const IntakePage = () => {
       address_line_2: '',
       city: '',
       property_type: 'house',
+      jurisdiction: '',
       is_hmo: false,
+      has_gas_supply: null,
+      tenancy_active: false,
+      deposit_taken: false,
+      furnished: null,
+      has_communal_areas: false,
       bedrooms: '',
       occupancy: 'single_family',
       council_name: '',
@@ -319,6 +337,10 @@ const IntakePage = () => {
             setError(`Property ${i + 1}: City is required`);
             return false;
           }
+          if (!String(prop.jurisdiction || '').trim()) {
+            setError(`Property ${i + 1}: Jurisdiction is required`);
+            return false;
+          }
           if ((prop.send_reminders_to === 'AGENT' || prop.send_reminders_to === 'BOTH')) {
             if (!prop.agent_name.trim() || !prop.agent_email.trim()) {
               setError(`Property ${i + 1}: Agent name and email are required`);
@@ -436,7 +458,13 @@ const IntakePage = () => {
         address_line_2: '',
         city: '',
         property_type: 'house',
+        jurisdiction: '',
         is_hmo: false,
+        has_gas_supply: null,
+        tenancy_active: false,
+        deposit_taken: false,
+        furnished: null,
+        has_communal_areas: false,
         bedrooms: '',
         occupancy: 'single_family',
         council_name: '',
@@ -1437,6 +1465,39 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
           </div>
         </div>
 
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Jurisdiction *</label>
+            <select
+              value={property.jurisdiction || ''}
+              onChange={(e) => updateProperty(index, 'jurisdiction', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+              data-testid={`property-${index}-jurisdiction`}
+            >
+              <option value="">Select jurisdiction...</option>
+              {JURISDICTION_OPTIONS.map((j) => (
+                <option key={j} value={j}>{j}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Gas supply</label>
+            <select
+              value={property.has_gas_supply === null || property.has_gas_supply === undefined ? '' : String(property.has_gas_supply)}
+              onChange={(e) => {
+                const v = e.target.value;
+                updateProperty(index, 'has_gas_supply', v === '' ? null : v === 'true');
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+              data-testid={`property-${index}-gas-supply`}
+            >
+              <option value="">Not sure yet</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+        </div>
+
         {/* HMO Toggle */}
         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
           <div>
@@ -1448,6 +1509,58 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
             onCheckedChange={(checked) => updateProperty(index, 'is_hmo', checked)}
             data-testid={`property-${index}-hmo`}
           />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div>
+              <p className="font-medium text-sm text-midnight-blue">Active tenancy?</p>
+              <p className="text-xs text-gray-500">Drives tenancy-specific obligations</p>
+            </div>
+            <Switch
+              checked={!!property.tenancy_active}
+              onCheckedChange={(checked) => updateProperty(index, 'tenancy_active', checked)}
+              data-testid={`property-${index}-tenancy-active`}
+            />
+          </div>
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div>
+              <p className="font-medium text-sm text-midnight-blue">Deposit taken?</p>
+              <p className="text-xs text-gray-500">Used for deposit prescribed info</p>
+            </div>
+            <Switch
+              checked={!!property.deposit_taken}
+              onCheckedChange={(checked) => updateProperty(index, 'deposit_taken', checked)}
+              data-testid={`property-${index}-deposit-taken`}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Furnished</label>
+            <select
+              value={property.furnished === null || property.furnished === undefined ? '' : String(property.furnished)}
+              onChange={(e) => {
+                const v = e.target.value;
+                updateProperty(index, 'furnished', v === '' ? null : v === 'true');
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+              data-testid={`property-${index}-furnished`}
+            >
+              <option value="">Not sure yet</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div>
+              <p className="font-medium text-sm text-midnight-blue">Has communal areas?</p>
+              <p className="text-xs text-gray-500">Used for communal-area requirements</p>
+            </div>
+            <Switch
+              checked={!!property.has_communal_areas}
+              onCheckedChange={(checked) => updateProperty(index, 'has_communal_areas', checked)}
+              data-testid={`property-${index}-communal`}
+            />
+          </div>
         </div>
 
         {/* Council Search */}
@@ -1831,6 +1944,9 @@ const Step4Preferences = ({ formData, setFormData, onNext, onBack, intakeSession
 const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading, intakeSessionId }) => {
   const selectedPlan = plans.find(p => p.plan_id === formData.billing_plan);
   const [stagedFiles, setStagedFiles] = useState([]);
+  const [requirementsPreview, setRequirementsPreview] = useState([]);
+  const [requirementsPreviewLoading, setRequirementsPreviewLoading] = useState(false);
+  const [requirementsPreviewError, setRequirementsPreviewError] = useState('');
   const maxProps = PLAN_LIMITS[formData.billing_plan] || 2;
 
   useEffect(() => {
@@ -1844,6 +1960,33 @@ const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading, int
       .then((list) => setStagedFiles(Array.isArray(list) ? list : []))
       .catch(() => setStagedFiles([]));
   }, [intakeSessionId, formData.document_submission_method]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadPreview = async () => {
+      setRequirementsPreviewLoading(true);
+      setRequirementsPreviewError('');
+      try {
+        const res = await intakeAPI.previewRequirements(formData.properties || []);
+        if (!cancelled) {
+          setRequirementsPreview(Array.isArray(res.data?.properties) ? res.data.properties : []);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setRequirementsPreview([]);
+          setRequirementsPreviewError(
+            typeof err?.response?.data?.detail === 'string'
+              ? err.response.data.detail
+              : 'Could not generate compliance summary preview'
+          );
+        }
+      } finally {
+        if (!cancelled) setRequirementsPreviewLoading(false);
+      }
+    };
+    if ((formData.properties || []).length > 0) loadPreview();
+    return () => { cancelled = true; };
+  }, [formData.properties]);
 
   const clientTypeLabels = {
     INDIVIDUAL: 'Individual Landlord',
@@ -1959,6 +2102,9 @@ const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading, int
                   <p className="text-sm text-gray-600">{prop.address_line_1}, {prop.city}, {prop.postcode}</p>
                 </div>
                 <div className="flex gap-2">
+                  {prop.jurisdiction && (
+                    <span className="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">{prop.jurisdiction}</span>
+                  )}
                   {prop.is_hmo && (
                     <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">HMO</span>
                   )}
@@ -1967,6 +2113,52 @@ const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading, int
                   )}
                 </div>
               </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <div className="px-6 py-3 bg-gray-50 border-b">
+          <h3 className="font-semibold text-midnight-blue">Generated Compliance Summary (read-only)</h3>
+          <p className="text-xs text-gray-500 mt-1">Engine-generated from property facts. Requirements are not manually selectable here.</p>
+        </div>
+        <CardContent className="pt-4 space-y-3">
+          {requirementsPreviewLoading && (
+            <p className="text-sm text-gray-500">Generating summary...</p>
+          )}
+          {!requirementsPreviewLoading && requirementsPreviewError && (
+            <p className="text-sm text-amber-700">{requirementsPreviewError}</p>
+          )}
+          {!requirementsPreviewLoading && !requirementsPreviewError && requirementsPreview.length === 0 && (
+            <p className="text-sm text-gray-500">No preview available yet.</p>
+          )}
+          {!requirementsPreviewLoading && requirementsPreview.map((row, idx) => (
+            <div key={idx} className="border rounded-lg p-3 bg-white">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-medium text-midnight-blue">{row.property_nickname || `Property ${idx + 1}`}</p>
+                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                  {row.jurisdiction || 'Unknown jurisdiction'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Drivers: type={row.key_driver_facts?.property_type || 'n/a'}, hmo={String(row.key_driver_facts?.is_hmo)},
+                gas={row.key_driver_facts?.has_gas_supply === null ? 'unknown' : String(row.key_driver_facts?.has_gas_supply)},
+                tenancy={String(row.key_driver_facts?.tenancy_active)}, deposit={String(row.key_driver_facts?.deposit_taken)},
+                furnished={row.key_driver_facts?.furnished === null ? 'unknown' : String(row.key_driver_facts?.furnished)},
+                communal={String(row.key_driver_facts?.has_communal_areas)}, council={row.key_driver_facts?.local_authority || 'n/a'}
+              </p>
+              <p className="text-xs text-gray-600 mt-2">
+                Action types: {Object.entries(row.action_type_breakdown || {}).map(([k, v]) => `${k} ${v}`).join(' · ') || 'None'}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                Top requirements: {(row.top_generated_requirements || []).slice(0, 5).join(', ') || 'None'}
+              </p>
+              {row.assumptions?.has_gas_supply_unknown_assumed_true_for_planning && (
+                <p className="text-xs text-amber-700 mt-1">
+                  Gas supply is marked "Not sure"; planner currently assumes gas-supply obligations until confirmed.
+                </p>
+              )}
             </div>
           ))}
         </CardContent>

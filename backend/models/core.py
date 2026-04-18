@@ -785,7 +785,7 @@ class Property(BaseModel):
     # Enhanced property attributes for dynamic requirement generation
     is_hmo: bool = False  # House in Multiple Occupation
     hmo_license_required: bool = False  # Selective/additional licensing
-    has_gas_supply: bool = True  # If false, skip gas safety requirement
+    has_gas_supply: Optional[bool] = None  # True/False/None (unknown) for intake + planning visibility
     building_age_years: Optional[int] = None  # For EICR frequency
     has_communal_areas: bool = False  # For fire safety requirements
     local_authority: Optional[str] = None  # For location-specific rules (council name)
@@ -806,6 +806,7 @@ class Property(BaseModel):
     
     # Tenancy and furnishing (for dynamic requirement applicability; catalog uses tenancy_active for tenancy docs)
     tenancy_active: bool = False
+    deposit_taken: bool = False
     furnished: Optional[bool] = None  # True/False/None (unknown) for requirement rules
     
     # Certificate availability flags (collected at intake for deterministic compliance)
@@ -1047,7 +1048,13 @@ class IntakePropertyData(BaseModel):
     address_line_2: Optional[str] = None
     city: str
     property_type: str  # flat, house, bungalow, commercial
+    jurisdiction: str  # Scotland | England | Wales | Northern Ireland (required at intake)
     is_hmo: bool = False
+    has_gas_supply: Optional[bool] = None  # None = unknown/not sure
+    tenancy_active: bool = False
+    deposit_taken: bool = False
+    furnished: Optional[bool] = None
+    has_communal_areas: bool = False
     bedrooms: Optional[int] = None
     occupancy: Optional[str] = None  # single_family, multi_family, student, professional
 

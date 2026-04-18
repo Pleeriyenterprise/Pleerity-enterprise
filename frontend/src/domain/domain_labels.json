@@ -118,6 +118,48 @@
       "action_label": "Renew or upload your gas safety certificate",
       "category": "Safety",
       "upload_document_type": "Gas Safety Certificate"
+    },
+    "landlord_registration": {
+      "display_label": "Landlord registration",
+      "short_label": "Landlord reg.",
+      "action_label": "Confirm landlord registration is current and upload evidence",
+      "category": "Licensing",
+      "upload_document_type": "Other"
+    },
+    "scotland_landlord_registration": {
+      "display_label": "Landlord registration (Scotland)",
+      "short_label": "Scottish landlord reg.",
+      "action_label": "Renew or confirm Scottish landlord registration (typically every 3 years)",
+      "category": "Licensing",
+      "upload_document_type": "Other"
+    },
+    "hmo_fire_risk": {
+      "display_label": "HMO fire safety evidence",
+      "short_label": "HMO fire safety",
+      "action_label": "Upload or renew HMO fire safety / fire risk assessment evidence",
+      "category": "Fire safety",
+      "upload_document_type": "Fire Risk Assessment"
+    },
+    "hmo_fire_risk_evidence": {
+      "display_label": "HMO fire safety evidence",
+      "short_label": "HMO fire evidence",
+      "action_label": "Upload or renew HMO fire safety evidence",
+      "category": "Fire safety",
+      "upload_document_type": "Fire Risk Assessment"
+    },
+    "occupation_contract": {
+      "display_label": "Occupation contract (Wales)",
+      "short_label": "Occupation contract",
+      "action_label": "Keep occupation contract terms and prescribed information on file",
+      "category": "Tenancy",
+      "upload_document_type": "Other"
+    },
+    "wales_occupation_contract": {
+      "display_label": "Occupation contract (Wales)",
+      "short_label": "Wales contract",
+      "action_label": "Review contract terms and prescribed information for this tenancy",
+      "category": "Tenancy",
+      "upload_document_type": "Other"
     }
   },
   "risk_types": {

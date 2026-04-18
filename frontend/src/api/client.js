@@ -359,6 +359,7 @@ export const authAPI = {
 
 export const intakeAPI = {
   submit: (data) => apiClient.post('/intake/submit', data),
+  previewRequirements: (properties) => apiClient.post('/intake/requirements-preview', { properties }),
   createCheckout: (clientId) => {
     const origin = window.location.origin;
     return apiClient.post('/intake/checkout', null, {
