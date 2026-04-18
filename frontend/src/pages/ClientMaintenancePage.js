@@ -125,6 +125,7 @@ function ClientMaintenancePageInner() {
   const [invoiceSaving, setInvoiceSaving] = useState(false);
   const [insights, setInsights] = useState(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
+  const [planJobGate, setPlanJobGate] = useState(null);
 
   const loadWorkOrders = useCallback(() => {
     setLoading(true);
