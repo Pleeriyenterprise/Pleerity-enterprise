@@ -30,7 +30,7 @@ def _valid_minimal_draft(entry_id: str) -> dict:
         "canonical_code": "GAS_SAFETY",
         "scope_key": "DEFAULT",
         "jurisdiction": {"display_jurisdictions": ["England", "Wales", "Scotland", "Northern Ireland"]},
-        "identity": {"name": "Draft gas"},
+        "identity": {"name": "Draft gas", "category": "SAFETY"},
         "classification": {
             "requirement_type": "DOCUMENT",
             "requires_document": True,
@@ -147,6 +147,17 @@ def test_get_published_entry_keys_active_sorted(client: TestClient):
     body = r.json()
     assert body.get("active") is True
     assert body.get("keys") == ["A|DEFAULT", "Z|SCOPE2"]
+
+
+def test_get_controlled_field_options_200(client: TestClient):
+    with _patch_admin_auth():
+        r = client.get("/api/admin/compliance/registry/controlled-field-options")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "identity_categories" in body
+    assert "action_link_kinds" in body
+    vals = [x["value"] for x in body.get("action_link_kinds") or []]
+    assert set(vals) == {"directory", "official", "partner"}
 
 
 def test_get_published_entry_keys_empty_active_false(client: TestClient):

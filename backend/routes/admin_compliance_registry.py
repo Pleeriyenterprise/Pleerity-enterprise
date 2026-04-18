@@ -35,6 +35,10 @@ from services.compliance_registry_admin_service import (
     merge_partial_draft,
     validate_registry_draft,
 )
+from services.compliance_registry_controlled_vocab import (
+    controlled_field_options_payload,
+    normalise_registry_draft_for_storage,
+)
 from services.compliance_registry_publish_service import (
     REMATERIALISATION_INFO,
     approve_publish_queue_item,
@@ -104,6 +108,13 @@ class PublishQueueCreateBody(BaseModel):
 
 class PublishRejectBody(BaseModel):
     reason: str = Field(default="", max_length=2000)
+
+
+@router.get("/controlled-field-options")
+async def registry_controlled_field_options(user: dict = Depends(require_admin)):
+    """Canonical enum option sets for the registry editor (aligned with draft validation)."""
+    _ = user
+    return controlled_field_options_payload()
 
 
 @router.get("/drafts")
@@ -301,12 +312,16 @@ async def patch_registry_draft(
     if not isinstance(base, dict):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Invalid stored document")
     merged = merge_partial_draft(base, body.patch if isinstance(body.patch, dict) else {})
+    norm_warnings = normalise_registry_draft_for_storage(merged)
     merged["updated_by"] = _actor(user)
     errs = validate_registry_draft(merged)
     if errs:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"errors": errs})
     await col.update_one({"entry_id": entry_id}, {"$set": {k: v for k, v in merged.items() if k != "_id"}})
-    return _strip_id(await col.find_one({"entry_id": entry_id}, {"_id": 0}))
+    out = _strip_id(await col.find_one({"entry_id": entry_id}, {"_id": 0}))
+    if isinstance(out, dict) and norm_warnings:
+        out = {**out, "normalisation_warnings": norm_warnings}
+    return out
 
 
 @router.post("/import-baseline-bundle")

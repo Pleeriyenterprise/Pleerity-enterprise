@@ -17,6 +17,11 @@ from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 
 from services.compliance_rules_registry import ComplianceRuleSpec, REGISTRY_BY_JURISDICTION, get_rule
 from services.requirement_action_links import _load_registry_by_code
+from services.compliance_registry_controlled_vocab import (
+    REGISTRY_IDENTITY_CATEGORY_SET,
+    REGISTRY_UK_DISPLAY_REGION_SET,
+    normalise_registry_draft_for_storage,
+)
 from services.requirement_action_links_admin_service import validate_action_links_override
 
 _CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
@@ -103,7 +108,7 @@ def default_draft_shell(
         "canonical_code": code,
         "identity": {
             "name": name,
-            "category": "COMPLIANCE",
+            "category": "REGULATORY",
             "description": spec_ew.description if spec_ew else "",
             "legal_reference": "",
             "display_order": 0,
@@ -159,6 +164,8 @@ def default_draft_shell(
 
 def validate_registry_draft(doc: Dict[str, Any]) -> List[str]:
     errs: List[str] = []
+    normalise_registry_draft_for_storage(doc)
+
     code = str(doc.get("canonical_code") or "").strip().upper()
     if not code or not _CODE_RE.match(code):
         errs.append("canonical_code must match ^[A-Z][A-Z0-9_]{0,63}$")
@@ -169,6 +176,15 @@ def validate_registry_draft(doc: Dict[str, Any]) -> List[str]:
     ident = doc.get("identity") if isinstance(doc.get("identity"), dict) else {}
     if not str(ident.get("name") or "").strip():
         errs.append("identity.name is required")
+    cat = str(ident.get("category") or "").strip().upper()
+    if not cat:
+        errs.append("identity.category is required (controlled taxonomy)")
+    elif cat not in REGISTRY_IDENTITY_CATEGORY_SET:
+        errs.append(
+            "identity.category must be a controlled value: "
+            + ", ".join(sorted(REGISTRY_IDENTITY_CATEGORY_SET))
+            + f"; got {ident.get('category')!r}",
+        )
 
     cls = doc.get("classification") if isinstance(doc.get("classification"), dict) else {}
     rt = str(cls.get("requirement_type") or "").strip().upper()
@@ -197,6 +213,17 @@ def validate_registry_draft(doc: Dict[str, Any]) -> List[str]:
                 "jurisdiction.display_jurisdictions must list at least one UK region for client-visible "
                 "actionable requirements; an empty or missing list makes applicability unsafe to publish"
             )
+    if isinstance(dj, list):
+        for idx, x in enumerate(dj):
+            tok = str(x or "").strip().upper()
+            if not tok:
+                errs.append(f"jurisdiction.display_jurisdictions[{idx}] is empty")
+            elif tok not in REGISTRY_UK_DISPLAY_REGION_SET:
+                errs.append(
+                    "jurisdiction.display_jurisdictions must use canonical UK codes "
+                    "(ENGLAND, SCOTLAND, WALES, NORTHERN_IRELAND) — "
+                    f"got {x!r} at index {idx}",
+                )
 
     cond = doc.get("conditions") if isinstance(doc.get("conditions"), dict) else {}
     logic = str(cond.get("logic") or "ALL").upper()

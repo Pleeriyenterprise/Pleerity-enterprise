@@ -2,7 +2,12 @@ import React from 'react';
 import { Button } from '../ui/button';
 
 const REGIONS = ['ENGLAND', 'WALES', 'SCOTLAND', 'NORTHERN_IRELAND'];
-const KINDS = ['official', 'guidance', 'form', 'register', 'other'];
+/** Canonical kinds only (aligned with registry validation / publish). */
+const KINDS = [
+  { value: 'official', label: 'Official' },
+  { value: 'directory', label: 'Directory' },
+  { value: 'partner', label: 'Partner' },
+];
 
 const emptyLink = () => ({
   key: '',
@@ -67,8 +72,18 @@ export default function RegistryActionLinksForm({ value, onChange, disabled, pre
         (emergency / ticketed), (2) <span className="font-mono">action_links</span> from the active published
         registry snapshot, (3) static <span className="font-mono">presentation/requirements_action_links.json</span>{' '}
         fallback. This form edits the draft that flows into (2) after publish.
+        <span className="block mt-1 text-slate-700">
+          <strong>Kind</strong> is a controlled enum (<span className="font-mono">official</span>,{' '}
+          <span className="font-mono">directory</span>, <span className="font-mono">partner</span>);{' '}
+          <strong>jurisdictions</strong> must be the four UK region codes;           <strong>priority</strong> is an integer (-1000000–1000000).
+        </span>
       </p>
-      {rows.map((row, i) => (
+      {rows.map((row, i) => {
+        const kRaw = String(row.kind || 'official').toLowerCase();
+        const kindOptions = KINDS.some((k) => k.value === kRaw)
+          ? KINDS
+          : [{ value: kRaw, label: `${kRaw} (legacy — pick canonical)` }, ...KINDS];
+        return (
         <div
           key={`${i}-${row.key || 'row'}`}
           className="border border-gray-200 rounded-lg p-3 space-y-2 bg-white"
@@ -107,13 +122,13 @@ export default function RegistryActionLinksForm({ value, onChange, disabled, pre
               <span className="text-gray-500">Kind</span>
               <select
                 className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
-                value={row.kind || 'official'}
+                value={kRaw}
                 onChange={(e) => update(i, { kind: e.target.value })}
                 disabled={disabled}
               >
-                {KINDS.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
+                {kindOptions.map((k) => (
+                  <option key={k.value} value={k.value}>
+                    {k.label} ({k.value})
                   </option>
                 ))}
               </select>
@@ -122,6 +137,8 @@ export default function RegistryActionLinksForm({ value, onChange, disabled, pre
               <span className="text-gray-500">Priority (lower = first when ties)</span>
               <input
                 type="number"
+                min={-1000000}
+                max={1000000}
                 className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
                 value={row.priority != null ? row.priority : 100}
                 onChange={(e) => update(i, { priority: Number(e.target.value) || 0 })}
@@ -160,7 +177,8 @@ export default function RegistryActionLinksForm({ value, onChange, disabled, pre
             </Button>
           </div>
         </div>
-      ))}
+        );
+      })}
       <div className="flex flex-wrap gap-2 items-center">
         <Button type="button" size="sm" variant="secondary" onClick={add} disabled={disabled}>
           Add action link

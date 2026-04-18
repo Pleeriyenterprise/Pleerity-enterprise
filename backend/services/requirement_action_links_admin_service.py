@@ -14,6 +14,10 @@ from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from services.compliance_rules_registry import portfolio_jurisdiction_label
+from services.compliance_registry_controlled_vocab import (
+    REGISTRY_ACTION_LINK_KIND_SET,
+    normalise_action_link_kind,
+)
 from services.requirement_action_links import (
     _VALID_REGIONS,
     filter_action_links_for_region,
@@ -71,13 +75,23 @@ def normalize_admin_action_link_item(raw: Dict[str, Any], *, generate_key_if_mis
         return None, "priority must be an integer"
     is_active = raw.get("is_active")
     is_active_b = False if is_active is False else True
-    kind = str(raw.get("kind") or "official").strip() or "official"
+    kind_raw = str(raw.get("kind") or "official").strip() or "official"
+    kind_canon, _kw = normalise_action_link_kind(kind_raw)
+    if kind_canon not in REGISTRY_ACTION_LINK_KIND_SET:
+        return (
+            None,
+            "kind must be one of "
+            + ", ".join(sorted(REGISTRY_ACTION_LINK_KIND_SET))
+            + f"; got {kind_raw!r}",
+        )
+    if priority < -1_000_000 or priority > 1_000_000:
+        return None, "priority must be between -1000000 and 1000000"
     return (
         {
             "key": key,
             "label": label,
             "url": url,
-            "kind": kind,
+            "kind": kind_canon,
             "jurisdictions": regions,
             "is_active": is_active_b,
             "priority": priority,

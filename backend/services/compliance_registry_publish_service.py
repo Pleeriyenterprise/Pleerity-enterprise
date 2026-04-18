@@ -341,7 +341,7 @@ async def publish_publish_queue_item(
         v_errs = validate_registry_draft(d_val)
         if v_errs:
             raise ValueError(f"draft_invalid:{eid_s}:{'; '.join(v_errs[:3])}")
-        draft_docs.append(d)
+        draft_docs.append(d_val)
 
     try:
         entries = _snapshot_entries_from_drafts(draft_docs)

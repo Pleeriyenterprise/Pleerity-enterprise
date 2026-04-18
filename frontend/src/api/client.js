@@ -765,6 +765,8 @@ export const adminAPI = {
   importComplianceRegistryBaselineBundle: (body = {}) =>
     apiClient.post('/admin/compliance/registry/import-baseline-bundle', body),
   getComplianceRegistryBaselineBundleMeta: () => apiClient.get('/admin/compliance/registry/baseline-bundle-meta'),
+  getComplianceRegistryControlledFieldOptions: () =>
+    apiClient.get('/admin/compliance/registry/controlled-field-options'),
   getComplianceRegistryPublishedEntryKeys: () => apiClient.get('/admin/compliance/registry/published/entry-keys'),
   getComplianceRegistryPublishImpact: (entryIdsCsv) =>
     apiClient.get('/admin/compliance/registry/publish-impact', { params: { entry_ids: entryIdsCsv } }),

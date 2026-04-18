@@ -86,7 +86,7 @@ class FakeRegistryMongo:
                 "canonical_code": "GAS_SAFETY",
                 "scope_key": "DEFAULT",
                 "jurisdiction": {"display_jurisdictions": ["England", "Wales", "Scotland", "Northern Ireland"]},
-                "identity": {"name": "Draft gas"},
+                "identity": {"name": "Draft gas", "category": "SAFETY"},
                 "classification": {
                     "requirement_type": "DOCUMENT",
                     "requires_document": True,

@@ -38,6 +38,101 @@ function Field({ label, value, onChange, disabled, textarea }) {
   );
 }
 
+/** Mirrors ``controlled_field_options_payload`` in backend (fallback if options API fails). */
+const FALLBACK_CONTROLLED_OPTIONS = {
+  identity_categories: [
+    { value: 'ELECTRICAL', label: 'Electrical' },
+    { value: 'GAS', label: 'Gas' },
+    { value: 'FIRE', label: 'Fire safety' },
+    { value: 'HEALTH', label: 'Health' },
+    { value: 'REGULATORY', label: 'Regulatory / statutory' },
+    { value: 'ENERGY', label: 'Energy' },
+    { value: 'TENANCY', label: 'Tenancy' },
+    { value: 'LICENSING', label: 'Licensing' },
+    { value: 'SAFETY', label: 'Safety' },
+    { value: 'OTHER', label: 'Other' },
+  ],
+  requirement_types: [
+    { value: 'DOCUMENT', label: 'Document' },
+    { value: 'JOB', label: 'Job' },
+    { value: 'OBLIGATION', label: 'Obligation' },
+    { value: 'SYSTEM', label: 'System' },
+  ],
+  criticality: [
+    { value: 'HIGH', label: 'High' },
+    { value: 'MEDIUM', label: 'Medium' },
+    { value: 'LOW', label: 'Low' },
+  ],
+  uk_display_regions: [
+    { value: 'ENGLAND', label: 'England' },
+    { value: 'SCOTLAND', label: 'Scotland' },
+    { value: 'WALES', label: 'Wales' },
+    { value: 'NORTHERN_IRELAND', label: 'Northern Ireland' },
+  ],
+  primary_action_modes: [
+    { value: 'upload_document', label: 'Upload document' },
+    { value: 'arrange_job', label: 'Arrange job' },
+    { value: 'view_guidance', label: 'View guidance' },
+    { value: 'hidden', label: 'Hidden' },
+  ],
+};
+
+function ControlledEnumSelect({ label, help, value, options, onChange, disabled, unknownValue }) {
+  const v = value == null ? '' : String(value);
+  const known = (options || []).some((o) => o.value === v);
+  return (
+    <label className="block mb-3">
+      <span className="text-xs text-gray-500 block mb-1">{label}</span>
+      {help ? <p className="text-[11px] text-slate-600 mb-1">{help}</p> : null}
+      <select
+        disabled={disabled}
+        className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm bg-white"
+        value={known ? v : v || ''}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">— Select —</option>
+        {(options || []).map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label} ({o.value})
+          </option>
+        ))}
+        {!known && v ? (
+          <option value={v}>
+            {unknownValue || v} (not in current list — save may fail until replaced)
+          </option>
+        ) : null}
+      </select>
+    </label>
+  );
+}
+
+function JurisdictionCheckboxes({ label, help, regionDefs, selected, onChange, disabled }) {
+  const sel = new Set((selected || []).map((x) => String(x || '').trim().toUpperCase()).filter(Boolean));
+  const toggle = (code) => {
+    const next = new Set(sel);
+    if (next.has(code)) next.delete(code);
+    else next.add(code);
+    const ordered = (regionDefs || []).map((r) => r.value).filter((c) => next.has(c));
+    onChange(ordered);
+  };
+  return (
+    <div className="mb-3">
+      <span className="text-xs text-gray-500 block mb-1">{label}</span>
+      {help ? <p className="text-[11px] text-slate-600 mb-2">{help}</p> : null}
+      <div className="flex flex-wrap gap-3">
+        {(regionDefs || []).map((r) => (
+          <label key={r.value} className="inline-flex items-center gap-2 text-sm text-gray-800">
+            <input type="checkbox" checked={sel.has(r.value)} onChange={() => toggle(r.value)} disabled={disabled} />
+            <span>
+              {r.label} <span className="text-xs text-gray-400 font-mono">({r.value})</span>
+            </span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminComplianceRegistryEditorPage() {
   const { entryId } = useParams();
   const { isOwner, isAdmin } = useAuth();
@@ -51,6 +146,9 @@ export default function AdminComplianceRegistryEditorPage() {
   const [whyByJurisdictionText, setWhyByJurisdictionText] = useState('{}');
   const [linkPreviewRegion, setLinkPreviewRegion] = useState('ENGLAND');
   const [showLinksAdvanced, setShowLinksAdvanced] = useState(false);
+  const [fieldOptions, setFieldOptions] = useState(null);
+
+  const opts = fieldOptions || FALLBACK_CONTROLLED_OPTIONS;
 
   const actionLinksValue = useMemo(() => {
     try {
@@ -85,6 +183,15 @@ export default function AdminComplianceRegistryEditorPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    adminAPI
+      .getComplianceRegistryControlledFieldOptions()
+      .then((r) => setFieldOptions(r.data))
+      .catch(() => {
+        /* FALLBACK_CONTROLLED_OPTIONS */
+      });
+  }, []);
 
   const setIdentity = (k, v) => {
     setDraft((prev) => ({ ...prev, identity: { ...prev.identity, [k]: v } }));
@@ -145,11 +252,15 @@ export default function AdminComplianceRegistryEditorPage() {
     adminAPI
       .patchComplianceRegistryDraft(entryId, { patch })
       .then((res) => {
-        setDraft(res.data);
-        setConditionsText(JSON.stringify(res.data?.conditions || {}, null, 2));
-        setActionLinksJson(JSON.stringify(res.data?.action_links || [], null, 2));
-        setWhyByJurisdictionText(JSON.stringify(res.data?.why_it_matters_by_jurisdiction || {}, null, 2));
+        const { normalisation_warnings: nw, ...rest } = res.data || {};
+        setDraft(rest);
+        setConditionsText(JSON.stringify(rest?.conditions || {}, null, 2));
+        setActionLinksJson(JSON.stringify(rest?.action_links || [], null, 2));
+        setWhyByJurisdictionText(JSON.stringify(rest?.why_it_matters_by_jurisdiction || {}, null, 2));
         toast.success('Saved');
+        if (Array.isArray(nw) && nw.length) {
+          toast.info('Legacy values normalised', { description: nw.join(' · ') });
+        }
         return adminAPI.getComplianceRegistryDraftCompare(entryId);
       })
       .then((cRes) => setCompare(cRes.data))
@@ -216,6 +327,11 @@ export default function AdminComplianceRegistryEditorPage() {
           <strong>Publish queue</strong> approval, the active registry snapshot is merged with the in-code engine in
           planner / resolver paths. <strong>Per-property Mongo requirement rows do not auto-refresh</strong> — use the
           sync path on the Publish page when a site must pick up materialised text/links.
+          <span className="block mt-1 text-amber-900/95">
+            Category, requirement type, criticality, UK regions, primary action mode, and action-link kinds are{' '}
+            <strong>controlled system values</strong> (same lists as validation / publish). Narrative fields (name,
+            descriptions, legal reference, notes, conditions JSON) stay free-form.
+          </span>
         </div>
         {broadWarning && (
           <div className="rounded-md border border-amber-300 bg-amber-100/80 px-3 py-2 mb-4 text-xs text-amber-950">
@@ -227,9 +343,61 @@ export default function AdminComplianceRegistryEditorPage() {
           <strong>Effective jurisdictions (summary):</strong> {effJur}
         </div>
 
+        <Section title="Preview as client sees it (summary)">
+          <p className="text-xs text-gray-600 mb-2">
+            High-level copy of what operators configure — not a full portal render. Uses the same canonical values as
+            validation and publish.
+          </p>
+          <ul className="text-sm text-gray-800 space-y-1 list-disc pl-5">
+            <li>
+              <span className="font-medium">Name:</span> {draft.identity?.name || '—'}
+            </li>
+            <li>
+              <span className="font-medium">Category:</span>{' '}
+              {opts.identity_categories?.find((o) => o.value === draft.identity?.category)?.label ||
+                draft.identity?.category ||
+                '—'}
+            </li>
+            <li>
+              <span className="font-medium">Requirement type:</span>{' '}
+              {opts.requirement_types?.find((o) => o.value === draft.classification?.requirement_type)?.label ||
+                draft.classification?.requirement_type ||
+                '—'}
+            </li>
+            <li>
+              <span className="font-medium">Criticality:</span> {draft.classification?.criticality || '—'}
+            </li>
+            <li>
+              <span className="font-medium">Regions (stored):</span>{' '}
+              {(draft.jurisdiction?.display_jurisdictions || [])
+                .map((c) => opts.uk_display_regions?.find((o) => o.value === c)?.label || c)
+                .join(', ') || '—'}
+            </li>
+            <li>
+              <span className="font-medium">Primary action:</span>{' '}
+              {opts.primary_action_modes?.find((o) => o.value === draft.action_behaviour?.primary_action_mode)?.label ||
+                draft.action_behaviour?.primary_action_mode ||
+                '—'}
+            </li>
+            <li>
+              <span className="font-medium">Why it matters (short):</span>{' '}
+              {(draft.why_it_matters_short || '').slice(0, 160)}
+              {(draft.why_it_matters_short || '').length > 160 ? '…' : ''}
+            </li>
+          </ul>
+        </Section>
+
         <Section title="Identity">
           <Field label="Name" value={draft.identity?.name || ''} onChange={(v) => setIdentity('name', v)} disabled={!canMutate} />
-          <Field label="Category" value={draft.identity?.category || ''} onChange={(v) => setIdentity('category', v)} disabled={!canMutate} />
+          <ControlledEnumSelect
+            label="Category"
+            help="Controlled taxonomy — stored values are uppercase system tokens (aligned with validation and publish)."
+            value={draft.identity?.category || ''}
+            options={opts.identity_categories}
+            onChange={(v) => setIdentity('category', v)}
+            disabled={!canMutate}
+            unknownValue={draft.identity?.category}
+          />
           <Field
             label="Description"
             value={draft.identity?.description || ''}
@@ -246,17 +414,23 @@ export default function AdminComplianceRegistryEditorPage() {
         </Section>
 
         <Section title="Classification">
-          <Field
-            label="Requirement type (DOCUMENT | JOB | OBLIGATION | SYSTEM)"
+          <ControlledEnumSelect
+            label="Requirement type"
+            help="Strict enum — drives planner materialisation shape and client surfaces."
             value={draft.classification?.requirement_type || ''}
+            options={opts.requirement_types}
             onChange={(v) => setClassification('requirement_type', v)}
             disabled={!canMutate}
+            unknownValue={draft.classification?.requirement_type}
           />
-          <Field
-            label="Criticality (HIGH | MEDIUM | LOW)"
+          <ControlledEnumSelect
+            label="Criticality"
+            help="Strict enum — portfolio and alerting weighting."
             value={draft.classification?.criticality || ''}
+            options={opts.criticality}
             onChange={(v) => setClassification('criticality', v)}
             disabled={!canMutate}
+            unknownValue={draft.classification?.criticality}
           />
           <div className="flex gap-4 mb-2 text-sm">
             <label className="flex items-center gap-2">
@@ -296,18 +470,12 @@ export default function AdminComplianceRegistryEditorPage() {
             usual shared line, not an automatic “all properties” override — the region list must still be explicit to
             publish safely.
           </p>
-          <Field
-            label="Display jurisdictions (comma-separated, e.g. ENGLAND, WALES, SCOTLAND, NORTHERN_IRELAND)"
-            value={(draft.jurisdiction?.display_jurisdictions || []).join(', ')}
-            onChange={(v) =>
-              setJurisdiction(
-                'display_jurisdictions',
-                v
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              )
-            }
+          <JurisdictionCheckboxes
+            label="Display jurisdictions (stored as canonical UK codes)"
+            help="Select one or more of the four UK regions. Free-text region lists are not accepted — saves and publish use these tokens only."
+            regionDefs={opts.uk_display_regions}
+            selected={draft.jurisdiction?.display_jurisdictions || []}
+            onChange={(list) => setJurisdiction('display_jurisdictions', list)}
             disabled={!canMutate}
           />
           <Field
@@ -347,11 +515,14 @@ export default function AdminComplianceRegistryEditorPage() {
         </Section>
 
         <Section title="Action behaviour">
-          <Field
-            label="Primary action mode (upload_document | arrange_job | view_guidance | hidden)"
+          <ControlledEnumSelect
+            label="Primary action mode"
+            help="Strict enum — controls default client CTA behaviour for this requirement."
             value={draft.action_behaviour?.primary_action_mode || ''}
+            options={opts.primary_action_modes}
             onChange={(v) => setActionBehaviour('primary_action_mode', v)}
             disabled={!canMutate}
+            unknownValue={draft.action_behaviour?.primary_action_mode}
           />
           <Field
             label="CTA label override"
