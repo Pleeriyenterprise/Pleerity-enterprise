@@ -21,6 +21,7 @@ export default function AdminComplianceRegistryPublishQueuePage() {
   const [revertBusyLine, setRevertBusyLine] = useState(null);
   const [syncPropertyId, setSyncPropertyId] = useState('');
   const [syncBusy, setSyncBusy] = useState(false);
+  const [publishImpactByQueue, setPublishImpactByQueue] = useState({});
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -43,6 +44,33 @@ export default function AdminComplianceRegistryPublishQueuePage() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!items.length) {
+      setPublishImpactByQueue({});
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      const m = {};
+      for (const row of items) {
+        const ids = row.draft_entry_ids;
+        if (!Array.isArray(ids) || !ids.length) continue;
+        const csv = ids.join(',');
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const res = await adminAPI.getComplianceRegistryPublishImpact(csv);
+          if (!cancelled) m[row.queue_id] = res.data;
+        } catch {
+          if (!cancelled) m[row.queue_id] = null;
+        }
+      }
+      if (!cancelled) setPublishImpactByQueue(m);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [items]);
 
   const parseIds = () =>
     idsText
@@ -78,9 +106,9 @@ export default function AdminComplianceRegistryPublishQueuePage() {
       .then(() => {
         const hint =
           label === 'Published'
-            ? ' Re-materialise per property below if clients need Mongo rows updated for a specific site.'
+            ? ' Active registry line updated for merged planner and resolver. Existing property rows stay as-is until per-property sync; new visits may already see copy/links from the new line where materialised. Use sync below for a specific site.'
             : '';
-        toast.success(`${label}.${hint}`);
+        toast.success(`${label}${hint ? `. ${hint}` : ''}`);
         refresh();
       })
       .catch((err) => {
@@ -143,9 +171,11 @@ export default function AdminComplianceRegistryPublishQueuePage() {
       <div className="p-6 max-w-5xl">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Registry publish queue</h1>
         <p className="text-sm text-gray-600 mb-6">
-          Audited workflow (draft → submitted → approved → published). Publishing replaces the active snapshot merged into
-          requirement generation alongside the in-code registry. <strong>Approve</strong> and <strong>Publish</strong> are{' '}
-          <strong>Owner-only</strong> for now; other transitions remain available to Admin where shown.
+          Audited workflow (draft → submitted → approved → published). <strong>Global line:</strong> the published snapshot
+          is merged for planner, preview, and resolver layers immediately. <strong>Per-property data:</strong> materialised
+          Mongo requirement rows for existing homes are <strong>not</strong> bulk-rewritten — use sync with a
+          <span className="font-mono"> property_id</span> when a site must pick up changed rows. <strong>Approve</strong>{' '}
+          and <strong>Publish</strong> are <strong>Owner-only</strong> for now; other transitions remain to Admin where shown.
         </p>
         <div className="flex flex-wrap gap-3 mb-6 text-sm">
           <Link to="/admin/compliance/registry" className="text-electric-teal hover:underline">
@@ -183,11 +213,12 @@ export default function AdminComplianceRegistryPublishQueuePage() {
         {canRunRequirementsSync && (
           <div className="rounded-lg border border-gray-200 bg-white p-4 mb-6 text-sm">
             <h2 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-              Per-property requirements sync
+              Convergence: per-property requirements sync
             </h2>
             <p className="text-xs text-gray-600 mb-3">
-              After publish or revert, run this for each affected <span className="font-mono">property_id</span> so
-              Mongo requirements match the active registry line. This does not fan out fleet-wide.
+              The live registry line applies globally to <em>new</em> plan materialisation, but <strong>stored</strong> rows
+              for a property update only when you run sync. After publish or revert, run for each <span className="font-mono">property_id</span>{' '}
+              that should reflect the new definitions — no automatic fleet run.
             </p>
             <div className="flex flex-wrap gap-2 items-end">
               <div className="flex-1 min-w-[200px]">
@@ -323,6 +354,7 @@ export default function AdminComplianceRegistryPublishQueuePage() {
                   <th className="p-3">Status</th>
                   <th className="p-3">Title</th>
                   <th className="p-3">Drafts</th>
+                  <th className="p-3 min-w-[220px]">Impact (pre-publish)</th>
                   <th className="p-3 w-48">Actions</th>
                 </tr>
               </thead>
@@ -331,12 +363,36 @@ export default function AdminComplianceRegistryPublishQueuePage() {
                   const st = row.status || '';
                   const qid = row.queue_id;
                   const disabled = busyId === qid;
+                  const imp = publishImpactByQueue[qid];
+                  const im = imp?.impact;
                   return (
                     <tr key={qid} className="border-t border-gray-100">
                       <td className="p-3 font-mono text-xs align-top break-all max-w-[200px]">{qid}</td>
                       <td className="p-3 align-top whitespace-nowrap">{st}</td>
                       <td className="p-3 align-top">{row.title || '—'}</td>
                       <td className="p-3 align-top text-xs text-gray-600">{(row.draft_entry_ids || []).length}</td>
+                      <td className="p-3 align-top text-xs text-gray-700 max-w-sm">
+                        {!imp && <span className="text-gray-400">…</span>}
+                        {im && (
+                          <div className="space-y-0.5">
+                            <p>
+                              <span className="font-medium">{im.draft_count}</span> line(s) · changes{' '}
+                              <span className="font-mono">
+                                {im.per_draft?.filter((d) => d.change_kind === 'new').length || 0} new,{' '}
+                                {im.per_draft?.filter((d) => d.change_kind === 'update').length || 0} update
+                              </span>
+                            </p>
+                            <p className="text-gray-600">Regions in union: { (im.display_regions_union || []).join(', ') || '—'}</p>
+                            {im.broad_uk_operator_warning && (
+                              <p className="text-amber-800 font-medium">Includes a rule covering all four UK display regions—confirm.</p>
+                            )}
+                            {im.has_blocking_validation_errors && (
+                              <p className="text-red-700 font-medium">Validation blockers on one or more drafts — cannot publish until fixed in editor.</p>
+                            )}
+                            <p className="text-gray-500">{imp?.rematerialisation?.detail}</p>
+                          </div>
+                        )}
+                      </td>
                       <td className="p-3 align-top space-x-1 flex flex-wrap gap-1">
                         {canMutate && st === 'draft' && (
                           <Button

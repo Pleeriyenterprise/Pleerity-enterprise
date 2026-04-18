@@ -24,7 +24,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from services.compliance_registry_admin_service import COLLECTION as DRAFTS_COLLECTION
+from services.compliance_registry_admin_service import COLLECTION as DRAFTS_COLLECTION, validate_registry_draft
 
 COLLECTION_QUEUE = "compliance_registry_publish_queue"
 COLLECTION_PUBLISHED = "compliance_requirement_registry_published"
@@ -337,6 +337,10 @@ async def publish_publish_queue_item(
         d = await db[DRAFTS_COLLECTION].find_one({"entry_id": eid_s}, {"_id": 0})
         if not d:
             raise ValueError(f"missing_draft:{eid_s}")
+        d_val = copy.deepcopy(d)
+        v_errs = validate_registry_draft(d_val)
+        if v_errs:
+            raise ValueError(f"draft_invalid:{eid_s}:{'; '.join(v_errs[:3])}")
         draft_docs.append(d)
 
     try:

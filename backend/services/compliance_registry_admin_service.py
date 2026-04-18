@@ -186,6 +186,17 @@ def validate_registry_draft(doc: Dict[str, Any]) -> List[str]:
     dj = jur.get("display_jurisdictions")
     if dj is not None and not isinstance(dj, list):
         errs.append("jurisdiction.display_jurisdictions must be a list when set")
+    j_client_actionable = cls.get("client_surface_visible") is not False and rt in {
+        "DOCUMENT",
+        "JOB",
+        "OBLIGATION",
+    }
+    if j_client_actionable:
+        if not isinstance(dj, list) or not [x for x in dj if str(x or "").strip()]:
+            errs.append(
+                "jurisdiction.display_jurisdictions must list at least one UK region for client-visible "
+                "actionable requirements; an empty or missing list makes applicability unsafe to publish"
+            )
 
     cond = doc.get("conditions") if isinstance(doc.get("conditions"), dict) else {}
     logic = str(cond.get("logic") or "ALL").upper()
@@ -668,4 +679,83 @@ def build_registry_preview_simulation(
         "planned_row_count": len(preview_rows),
         "rows": preview_rows,
         "preview_coverage": REGISTRY_PREVIEW_COVERAGE,
+    }
+
+
+_UK_ALL = frozenset({"ENGLAND", "WALES", "SCOTLAND", "NORTHERN_IRELAND"})
+
+
+def registry_entry_key(doc: Dict[str, Any]) -> str:
+    """Stable key for published snapshot rows: CANONICAL_CODE|scope_key."""
+    cc = str(doc.get("canonical_code") or "").strip().upper()
+    sk = str(doc.get("scope_key") or "DEFAULT").strip() or "DEFAULT"
+    return f"{cc}|{sk}"
+
+
+def _norm_region_token(s: str) -> str:
+    t = (s or "").strip().upper().replace(" ", "_")
+    if t in ("NORTHERN_IRELAND", "NI", "N_IRELAND"):
+        return "NORTHERN_IRELAND"
+    if t in ("E_W", "ENGLAND_WALES", "ENGLANDANDWALES"):
+        return "ENGLAND"  # conservative: do not count as "all four"
+    return t
+
+
+def build_registry_publish_impact(
+    draft_docs: List[Dict[str, Any]],
+    *,
+    published_entries: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Pre-publish / operator summary: per-draft validation, key overlap with active published,
+    and union of display_jurisdictions. Honest: does not assert fleet rematerialisation.
+    """
+    pe: Dict[str, Any] = published_entries if isinstance(published_entries, dict) else {}
+    per: List[Dict[str, Any]] = []
+    region_union: Set[str] = set()
+    scopes: Set[str] = set()
+    for raw in draft_docs or []:
+        d2: Dict[str, Any] = deepcopy(raw) if raw else {}
+        key = registry_entry_key(d2)
+        errs = validate_registry_draft(d2)
+        jur = d2.get("jurisdiction") if isinstance(d2.get("jurisdiction"), dict) else {}
+        dj = jur.get("display_jurisdictions")
+        in_pub = key in pe
+        r_norm: Set[str] = set()
+        if isinstance(dj, list):
+            for r in dj:
+                rn = _norm_region_token(str(r))
+                if rn:
+                    r_norm.add(rn)
+                    region_union.add(rn)
+        uk_all_covered = _UK_ALL.issubset(r_norm) if r_norm else False
+        can = str(d2.get("canonical_code") or "")
+        if can:
+            scopes.add(str(d2.get("scope_key") or "DEFAULT") or "DEFAULT")
+        per.append(
+            {
+                "entry_id": d2.get("entry_id"),
+                "canonical_code": d2.get("canonical_code"),
+                "scope_key": d2.get("scope_key") or "DEFAULT",
+                "publish_key": key,
+                "in_active_published": in_pub,
+                "change_kind": "update" if in_pub else "new",
+                "display_regions": sorted(r_norm) if r_norm else [],
+                "validation_errors": errs,
+                "broad_uk_covered_by_this_draft": uk_all_covered,
+            }
+        )
+    blockers = [p for p in per if p.get("validation_errors")]
+    broad = any(p.get("broad_uk_covered_by_this_draft") for p in per)
+    return {
+        "draft_count": len(draft_docs or []),
+        "unique_scope_keys": sorted(scopes) if scopes else ["DEFAULT"],
+        "display_regions_union": sorted(region_union),
+        "broad_uk_included_in_union": _UK_ALL.issubset(region_union) if region_union else False,
+        "any_draft_covers_all_four_regions": broad,
+        "broad_uk_operator_warning": broad
+        or (_UK_ALL.issubset(region_union) if region_union else False),
+        "per_draft": per,
+        "has_blocking_validation_errors": len(blockers) > 0,
+        "blocking_draft_count": len(blockers),
     }

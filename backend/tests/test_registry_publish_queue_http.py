@@ -87,7 +87,19 @@ class FakeRegistryMongo:
                 "scope_key": "DEFAULT",
                 "jurisdiction": {"display_jurisdictions": ["England", "Wales", "Scotland", "Northern Ireland"]},
                 "identity": {"name": "Draft gas"},
-                "classification": {"requirement_type": "DOCUMENT"},
+                "classification": {
+                    "requirement_type": "DOCUMENT",
+                    "requires_document": True,
+                    "criticality": "HIGH",
+                    "client_surface_visible": True,
+                },
+                "action_behaviour": {"primary_action_mode": "upload_document"},
+                "conditions": {"logic": "ALL", "rules": []},
+                "governance": {"needs_review_fields": []},
+                "action_links": [],
+                "why_it_matters_short": "Statutory gas safety compliance for this property.",
+                "why_it_matters_long": "",
+                "why_it_matters_by_jurisdiction": {},
                 "frequency": {"frequency_days": 365, "reminder_lead_days": 30},
             }
         }

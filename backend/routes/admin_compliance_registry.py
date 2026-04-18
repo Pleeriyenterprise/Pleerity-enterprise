@@ -26,6 +26,7 @@ from services.compliance_registry_admin_service import (
     COLLECTION,
     build_published_baseline_snapshot,
     build_registry_preview_simulation,
+    build_registry_publish_impact,
     bundle_entries_to_drafts,
     default_draft_shell,
     diff_draft_vs_baseline,
@@ -168,6 +169,50 @@ async def list_registry_drafts(
         "limit": limit,
         "review_queue_total": review_queue_total,
     }
+
+
+@router.get("/publish-impact")
+async def registry_publish_impact(
+    user: dict = Depends(require_admin),
+    entry_ids: str = Query(
+        ...,
+        min_length=1,
+        description="Comma-separated list of draft entry_id values to assess",
+    ),
+):
+    """
+    Pre-publish / operator impact: validation per draft, keys vs active published, region union.
+    Read-only; does not mutate. Use before submit/approve to catch unsafe jurisdiction or copy gaps.
+    """
+    _ = user
+    db = database.get_db()
+    ids = [s.strip() for s in (entry_ids or "").split(",") if s.strip()]
+    if not ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="entry_ids required")
+    draft_docs: List[Dict[str, Any]] = []
+    for eid in ids:
+        d = await db[COLLECTION].find_one({"entry_id": eid}, {"_id": 0})
+        if not d:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"draft_not_found:{eid}")
+        draft_docs.append(d)
+    published = await fetch_active_published_registry_entries(db)
+    impact = build_registry_publish_impact(draft_docs, published_entries=published)
+    return {
+        "entry_ids": ids,
+        "impact": impact,
+        "rematerialisation": REMATERIALISATION_INFO,
+    }
+
+
+@router.get("/published/entry-keys")
+async def registry_published_entry_keys_index(user: dict = Depends(require_admin)):
+    """Lightweight index of keys in the active published snapshot (canonical_code|scope_key)."""
+    _ = user
+    db = database.get_db()
+    ent = await fetch_active_published_registry_entries(db)
+    if not isinstance(ent, dict) or not ent:
+        return {"active": bool(ent), "keys": []}
+    return {"active": True, "keys": sorted(ent.keys())}
 
 
 @router.get("/drafts/{entry_id}")

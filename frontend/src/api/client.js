@@ -765,6 +765,9 @@ export const adminAPI = {
   importComplianceRegistryBaselineBundle: (body = {}) =>
     apiClient.post('/admin/compliance/registry/import-baseline-bundle', body),
   getComplianceRegistryBaselineBundleMeta: () => apiClient.get('/admin/compliance/registry/baseline-bundle-meta'),
+  getComplianceRegistryPublishedEntryKeys: () => apiClient.get('/admin/compliance/registry/published/entry-keys'),
+  getComplianceRegistryPublishImpact: (entryIdsCsv) =>
+    apiClient.get('/admin/compliance/registry/publish-impact', { params: { entry_ids: entryIdsCsv } }),
   /** Same planner as production + read-only draft overlay merge (no writes). */
   getComplianceRegistryPreviewSimulation: (params) =>
     apiClient.get('/admin/compliance/registry/preview-simulation', { params }),

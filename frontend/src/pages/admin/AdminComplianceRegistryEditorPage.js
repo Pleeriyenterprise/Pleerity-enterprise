@@ -1,10 +1,16 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
+import RegistryActionLinksForm from '../../components/admin/RegistryActionLinksForm';
 import { adminAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
+import {
+  buildEffectiveJurisdictionsSummary,
+  displayRegionsCoverAllUK,
+  formatScopeKeyLabel,
+} from '../../utils/complianceRegistryOperatorUi';
 
 function Section({ title, children }) {
   return (
@@ -43,6 +49,17 @@ export default function AdminComplianceRegistryEditorPage() {
   const [actionLinksJson, setActionLinksJson] = useState('[]');
   const [conditionsText, setConditionsText] = useState('{}');
   const [whyByJurisdictionText, setWhyByJurisdictionText] = useState('{}');
+  const [linkPreviewRegion, setLinkPreviewRegion] = useState('ENGLAND');
+  const [showLinksAdvanced, setShowLinksAdvanced] = useState(false);
+
+  const actionLinksValue = useMemo(() => {
+    try {
+      const p = JSON.parse(actionLinksJson || '[]');
+      return Array.isArray(p) ? p : [];
+    } catch {
+      return [];
+    }
+  }, [actionLinksJson]);
 
   const load = useCallback(() => {
     if (!entryId) return;
@@ -165,6 +182,10 @@ export default function AdminComplianceRegistryEditorPage() {
   }
 
   const diffRows = compare?.diff || [];
+  const displayRegs = draft.jurisdiction?.display_jurisdictions;
+  const broadWarning = displayRegionsCoverAllUK(displayRegs);
+  const effJur = buildEffectiveJurisdictionsSummary(draft);
+  const scopeReadable = formatScopeKeyLabel(draft.scope_key);
 
   return (
     <UnifiedAdminLayout>
@@ -177,8 +198,12 @@ export default function AdminComplianceRegistryEditorPage() {
             Preview &amp; simulation
           </Link>
           <span className="text-gray-300">|</span>
-          <h1 className="text-xl font-bold text-gray-900 font-mono">{draft.canonical_code}</h1>
-          <span className="text-sm text-gray-500 font-mono">scope: {draft.scope_key}</span>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-gray-900 leading-tight">{draft.identity?.name || 'Requirement'}</h1>
+            <p className="text-xs text-gray-500 font-mono mt-0.5">
+              {draft.canonical_code} · scope {draft.scope_key} <span className="text-gray-400">({scopeReadable})</span>
+            </p>
+          </div>
           {canMutate && (
             <Button className="ml-auto" size="sm" onClick={save} disabled={saving}>
               {saving ? 'Saving…' : 'Save draft'}
@@ -187,9 +212,19 @@ export default function AdminComplianceRegistryEditorPage() {
         </div>
 
         <div className="rounded-md border border-amber-200 bg-amber-50/90 px-3 py-2 mb-4 text-xs text-amber-950">
-          <strong>Draft governance only.</strong> Edits here are stored as Mongo drafts and do not change live client
-          generation. The planner and materialiser still use the in-code registry until a future publish and integration
-          path exists. Compare below is for drift review against that engine baseline.
+          <strong>Draft (editable) — not live until published.</strong> Saving writes Mongo only. After{' '}
+          <strong>Publish queue</strong> approval, the active registry snapshot is merged with the in-code engine in
+          planner / resolver paths. <strong>Per-property Mongo requirement rows do not auto-refresh</strong> — use the
+          sync path on the Publish page when a site must pick up materialised text/links.
+        </div>
+        {broadWarning && (
+          <div className="rounded-md border border-amber-300 bg-amber-100/80 px-3 py-2 mb-4 text-xs text-amber-950">
+            <strong>Wide jurisdiction coverage:</strong> this line lists all four UK regions. Confirm that is intentional
+            before publish — a broad rule will surface everywhere the planner applies it.
+          </div>
+        )}
+        <div className="rounded-md border border-slate-200 bg-slate-50/90 px-3 py-2 mb-4 text-xs text-slate-800">
+          <strong>Effective jurisdictions (summary):</strong> {effJur}
         </div>
 
         <Section title="Identity">
@@ -254,9 +289,15 @@ export default function AdminComplianceRegistryEditorPage() {
           </div>
         </Section>
 
-        <Section title="Jurisdiction">
+        <Section title="Jurisdiction (safety)">
+          <p className="text-xs text-gray-600 mb-2">
+            <strong>display_jurisdictions</strong> is where this row applies in the client. It is independent of the{' '}
+            <span className="font-mono">scope_key</span> merge bucket: <span className="font-mono">DEFAULT</span> is the
+            usual shared line, not an automatic “all properties” override — the region list must still be explicit to
+            publish safely.
+          </p>
           <Field
-            label="Display jurisdictions (comma-separated: England, Wales, Scotland, Northern Ireland)"
+            label="Display jurisdictions (comma-separated, e.g. ENGLAND, WALES, SCOTLAND, NORTHERN_IRELAND)"
             value={(draft.jurisdiction?.display_jurisdictions || []).join(', ')}
             onChange={(v) =>
               setJurisdiction(
@@ -320,11 +361,47 @@ export default function AdminComplianceRegistryEditorPage() {
           />
         </Section>
 
-        <Section title="Action links (JSON array; validated server-side)">
-          <Field label="action_links" value={actionLinksJson} onChange={setActionLinksJson} disabled={!canMutate} textarea />
+        <Section title="Action links (governed; preview below)">
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-gray-600">Preview as region</span>
+            <select
+              className="border border-gray-200 rounded px-2 py-1 text-sm"
+              value={linkPreviewRegion}
+              onChange={(e) => setLinkPreviewRegion(e.target.value)}
+            >
+              {['ENGLAND', 'WALES', 'SCOTLAND', 'NORTHERN_IRELAND'].map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
+          <RegistryActionLinksForm
+            value={actionLinksValue}
+            onChange={(arr) => setActionLinksJson(JSON.stringify(arr, null, 2))}
+            disabled={!canMutate}
+            previewRegion={linkPreviewRegion}
+          />
+          <button
+            type="button"
+            className="text-xs text-electric-teal hover:underline mt-2"
+            onClick={() => setShowLinksAdvanced((o) => !o)}
+          >
+            {showLinksAdvanced ? 'Hide' : 'Show'} raw JSON (advanced)
+          </button>
+          {showLinksAdvanced && (
+            <div className="mt-2">
+              <Field label="action_links JSON" value={actionLinksJson} onChange={setActionLinksJson} disabled={!canMutate} textarea />
+            </div>
+          )}
         </Section>
 
-        <Section title="Why it matters">
+        <Section title="Why it matters (client copy)">
+          <p className="text-xs text-gray-600 mb-2">
+            Shown (with jurisdiction overrides) on portal requirement surfaces via plan merge and explanation helpers.
+            Keep short text scannable; use long for detail drawers. Compare below highlights when these differ from the
+            engine-only baseline.
+          </p>
           <Field
             label="Short explanation (required for client-visible actionable requirements)"
             value={draft.why_it_matters_short || ''}
@@ -339,7 +416,7 @@ export default function AdminComplianceRegistryEditorPage() {
             textarea
           />
           <Field
-            label='Jurisdiction overrides JSON (e.g. {"SCOTLAND":{"short":"...","long":"..."}})'
+            label='Jurisdiction-specific overrides (JSON) — e.g. {"SCOTLAND":{"short":"...","long":"..."}}'
             value={whyByJurisdictionText}
             onChange={setWhyByJurisdictionText}
             disabled={!canMutate}
@@ -374,9 +451,11 @@ export default function AdminComplianceRegistryEditorPage() {
           </p>
         </Section>
 
-        <Section title="Compare — draft vs engine baseline (read-only)">
+        <Section title="Compare — draft vs in-code engine baseline (read-only)">
           <p className="text-xs text-gray-500 mb-2">
-            Published column is the in-code compliance_rules_registry (+ action link catalogue), not Mongo drafts.
+            Baseline column is the in-code <span className="font-mono">compliance_rules_registry</span> plus static action
+            link JSON — not the Mongo draft. Rows with <span className="font-mono">why_it_matters</span> or action links
+            are client-facing copy; changes there should be easy to spot.
           </p>
           <div className="overflow-x-auto max-h-80 overflow-y-auto border border-gray-100 rounded">
             <table className="w-full text-xs text-left">
@@ -389,18 +468,26 @@ export default function AdminComplianceRegistryEditorPage() {
                 </tr>
               </thead>
               <tbody>
-                {diffRows.map((r) => (
-                  <tr key={r.path} className={r.changed ? 'bg-amber-50' : ''}>
-                    <td className="p-2 font-mono whitespace-nowrap">{r.path}</td>
-                    <td className="p-2 break-all">{typeof r.draft === 'object' ? JSON.stringify(r.draft) : String(r.draft)}</td>
-                    <td className="p-2 break-all">
-                      {typeof r.published_baseline === 'object'
-                        ? JSON.stringify(r.published_baseline)
-                        : String(r.published_baseline)}
-                    </td>
-                    <td className="p-2">{r.changed ? 'yes' : ''}</td>
-                  </tr>
-                ))}
+                {diffRows.map((r) => {
+                  const why = String(r.path || '').includes('why_it_matters') || r.path === 'action_links.length';
+                  return (
+                    <tr
+                      key={r.path}
+                      className={r.changed ? (why ? 'bg-teal-50/90 ring-1 ring-teal-200' : 'bg-amber-50') : ''}
+                    >
+                      <td className="p-2 font-mono whitespace-nowrap">{r.path}</td>
+                      <td className="p-2 break-all">
+                        {typeof r.draft === 'object' ? JSON.stringify(r.draft) : String(r.draft)}
+                      </td>
+                      <td className="p-2 break-all">
+                        {typeof r.published_baseline === 'object'
+                          ? JSON.stringify(r.published_baseline)
+                          : String(r.published_baseline)}
+                      </td>
+                      <td className="p-2">{r.changed ? 'yes' : ''}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
