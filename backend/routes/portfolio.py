@@ -173,6 +173,7 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
                 "days_to_expiry": days,
                 "evidence_doc_id": None,
                 "requirement_id": r.get("requirement_id"),
+                "property_id": property_id,
             })
         if not matrix:
             property_score = 100

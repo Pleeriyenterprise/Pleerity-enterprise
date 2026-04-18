@@ -86,7 +86,7 @@ async def get_property_compliance_detail(
 ) -> Optional[Dict[str, Any]]:
     """
     Catalog-driven compliance detail for one property.
-    Returns matrix (per applicable requirement: code, title, status, score, criticality, weight, expiry_date, days_to_expiry, evidence_doc_id),
+    Returns matrix (per applicable requirement: code, title, status, score, criticality, weight, expiry_date, days_to_expiry, evidence_doc_id, property_id),
     property_score, risk_index, risk_level. If catalog empty, returns None (caller can fall back to legacy).
     """
     db = database.get_db()
@@ -211,6 +211,7 @@ async def get_property_compliance_detail(
             "days_to_expiry": days,
             "evidence_doc_id": evidence_doc_id,
             "requirement_id": row.get("requirement_id") if row else None,
+            "property_id": property_id,
         })
 
     if weight_sum <= 0:
