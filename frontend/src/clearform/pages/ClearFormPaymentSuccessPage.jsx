@@ -16,7 +16,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { useClearFormAuth } from '../contexts/ClearFormAuthContext';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { BRAND_LOGO_URL } from '../../config/branding';
 
 const ClearFormPaymentSuccessPage = () => {

@@ -670,7 +670,7 @@ export const adminAPI = {
   getDashboard: () => apiClient.get('/admin/dashboard'),
   globalSearch: (q, limit = 20, includeArchived = false) =>
     apiClient.get('/admin/search', { params: { q, limit, include_archived: includeArchived || undefined } }),
-  getPendingVerificationDocuments: (hours = 24, clientId = null, limit = 50, skip = 0) =>
+  getPendingVerificationDocuments: (hours = 0, clientId = null, limit = 50, skip = 0) =>
     apiClient.get('/admin/documents/pending-verification', { params: { hours, client_id: clientId || undefined, limit, skip } }),
   getClients: (skip = 0, limit = 50) => apiClient.get('/admin/clients', { params: { skip, limit } }),
   getClientDetail: (clientId) => apiClient.get(`/admin/clients/${clientId}`),
@@ -705,6 +705,14 @@ export const adminAPI = {
     apiClient.get(`/admin/identities/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/permanent-delete-check`),
   identityPermanentDelete: (kind, id, config = {}) =>
     apiClient.delete(`/admin/identities/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/permanent`, config),
+  identitySetTestLike: (kind, id, body, config = {}) =>
+    apiClient.post(
+      `/admin/identities/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/test-like`,
+      body,
+      config,
+    ),
+  portalUserSetTestLike: (portalUserId, body, config = {}) =>
+    apiClient.post(`/admin/users/${encodeURIComponent(portalUserId)}/test-like`, body, config),
   retryProvisioningJob: (jobId) => apiClient.post(`/admin/provisioning-jobs/${jobId}/retry`),
   getClientControlPanel: (clientId) => apiClient.get(`/admin/clients/${clientId}/control-panel`),
   getClientComplianceActivity: (clientId, params = {}) =>

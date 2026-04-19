@@ -14,7 +14,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import AdminLayout from '../components/admin/AdminLayout';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 // Import modular components
 import {

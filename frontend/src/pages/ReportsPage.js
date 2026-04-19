@@ -6,7 +6,7 @@ import { useEntitlements } from '../contexts/EntitlementsContext';
 import { UpgradeRequired } from '../components/UpgradePrompt';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { 

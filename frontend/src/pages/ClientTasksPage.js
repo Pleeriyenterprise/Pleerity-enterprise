@@ -47,7 +47,7 @@ import {
   DialogTitle,
 } from '../components/ui/dialog';
 import { Loader2, LayoutList, Info, ExternalLink, Bell, EyeOff, CheckCircle, RotateCcw, History, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { TodayUrgencyRow } from '../components/client/UrgencyDisplay';
 import {
   resolveClientPortalPath,

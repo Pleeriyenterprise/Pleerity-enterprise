@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '../../components/ui/select';
 import { Mail, Phone, MapPin, Clock, Send, CheckCircle2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 function getUtmAndReferrer() {
   if (typeof window === 'undefined') return {};

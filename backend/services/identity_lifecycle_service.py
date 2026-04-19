@@ -14,6 +14,29 @@ from utils.audit import create_audit_log
 logger = logging.getLogger(__name__)
 
 
+async def set_identity_test_like(
+    db,
+    kind: str,
+    resource_id: str,
+    is_test_like: bool,
+    actor_id: str,
+    *,
+    actor_role: UserRole,
+) -> None:
+    k = _norm_kind(kind)
+    if k != IdentityKind.PORTAL_USER.value:
+        raise ValueError("test_flag_portal_users_only")
+    from services.portal_user_lifecycle_service import set_portal_user_test_like_flag
+
+    await set_portal_user_test_like_flag(
+        db,
+        resource_id.strip(),
+        is_test_like,
+        actor_id,
+        actor_role=actor_role,
+    )
+
+
 def _norm_kind(kind: str) -> str:
     return (kind or "").strip().lower()
 
@@ -309,10 +332,13 @@ async def list_unified_identities(
     q: Optional[str] = None,
     skip: int = 0,
     limit: int = 40,
+    flags_filter: Optional[str] = None,
+    include_hard_delete_eligibility: bool = False,
 ) -> Dict[str, Any]:
     """Merge recent rows from up to three collections (best-effort; not a full-text index)."""
     kf = _norm_kind(kind_filter) if kind_filter else None
     lf = (lifecycle_filter or "").strip().upper() or None
+    ff = (flags_filter or "").strip().lower() or None
     qstrip = (q or "").strip()
     search_regex = {"$regex": re.escape(qstrip), "$options": "i"} if len(qstrip) >= 2 else None
 
@@ -339,12 +365,17 @@ async def list_unified_identities(
                 "is_deleted": 1,
                 "subscription_status": 1,
                 "onboarding_status": 1,
+                "is_test_like": 1,
             },
         ).sort("updated_at", -1).limit(200)
         rows = await cur.to_list(200)
         for c in rows:
             label = _client_lifecycle_label(c)
             if lf and label != lf:
+                continue
+            if ff == "test_like" and not bool(c.get("is_test_like")):
+                continue
+            if ff == "live" and bool(c.get("is_test_like")):
                 continue
             items.append(
                 {
@@ -354,10 +385,13 @@ async def list_unified_identities(
                     "name": c.get("full_name"),
                     "roles": ["CLIENT"],
                     "lifecycle_status": label,
+                    "is_test_like": bool(c.get("is_test_like")),
                 }
             )
 
     async def _push_contractor_rows() -> None:
+        if ff in ("test_like", "live"):
+            return
         if kf and kf != IdentityKind.CONTRACTOR.value:
             return
         match: Dict[str, Any] = {}
@@ -401,12 +435,24 @@ async def list_unified_identities(
             ]
         cur = db.portal_users.find(
             match if match else {},
-            {"_id": 0, "portal_user_id": 1, "auth_email": 1, "role": 1, "status": 1, "is_deleted": 1},
+            {
+                "_id": 0,
+                "portal_user_id": 1,
+                "auth_email": 1,
+                "role": 1,
+                "status": 1,
+                "is_deleted": 1,
+                "is_test_like": 1,
+            },
         ).sort("_id", -1).limit(200)
         rows = await cur.to_list(200)
         for u in rows:
             label = _portal_user_lifecycle_label(u)
             if lf and label != lf:
+                continue
+            if ff == "test_like" and not bool(u.get("is_test_like")):
+                continue
+            if ff == "live" and bool(u.get("is_test_like")):
                 continue
             role = (u.get("role") or "").upper()
             rlabels = []
@@ -424,6 +470,7 @@ async def list_unified_identities(
                     "name": u.get("auth_email") or u.get("email") or "—",
                     "roles": rlabels,
                     "lifecycle_status": label,
+                    "is_test_like": bool(u.get("is_test_like")),
                 }
             )
 
@@ -434,6 +481,20 @@ async def list_unified_identities(
     items.sort(key=lambda x: (x.get("name") or ""))
     total = len(items)
     page = items[skip : skip + limit]
+
+    if include_hard_delete_eligibility:
+        from services.portal_user_lifecycle_service import permanent_delete_preflight as _pu_preflight
+
+        for item in page:
+            if item.get("kind") != IdentityKind.PORTAL_USER.value:
+                continue
+            pid = item.get("id")
+            if not pid:
+                continue
+            ok, blockers = await _pu_preflight(db, str(pid))
+            item["hard_delete_allowed"] = ok
+            item["hard_delete_blockers"] = [] if ok else blockers
+
     return {"items": page, "total": total, "skip": skip, "limit": limit}
 
 
@@ -443,6 +504,8 @@ def identity_http_detail(exc: ValueError) -> Tuple[int, Any]:
         blockers = [b for b in key.split(":", 1)[1].split(",") if b]
         return 400, {"message": "Permanent delete not allowed", "blockers": blockers}
     static = {
+        "test_flag_portal_users_only": (400, "Test/dummy flag applies to portal_user identities only"),
+        "owner_cannot_be_flagged_test_like": (403, "Owner accounts cannot be marked as test or dummy"),
         "invalid_identity_kind": (400, "Invalid identity kind (use client, contractor, portal_user)"),
         "purge_eligible_clients_only": (400, "Purge eligibility applies to client organisations only"),
         "contractor_not_found": (404, "Contractor not found"),

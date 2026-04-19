@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { AlertTriangle, RefreshCw, CheckCircle, MessageSquare } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 const VALID_STATUS = ['open', 'acknowledged', 'resolved'];
 

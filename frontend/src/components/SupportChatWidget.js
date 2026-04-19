@@ -20,7 +20,7 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import client from '../api/client';
 import { TawkToAPI } from './TawkToWidget';
 

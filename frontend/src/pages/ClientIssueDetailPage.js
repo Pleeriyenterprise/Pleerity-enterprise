@@ -8,7 +8,7 @@ import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { AlertCircle, Loader2, Wrench, ArrowLeft, History } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';

@@ -15,7 +15,7 @@ import {
 } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import api from '../../api/client';
 
 const DISCLAIMER =

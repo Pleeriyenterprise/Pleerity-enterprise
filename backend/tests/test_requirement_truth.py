@@ -96,3 +96,48 @@ def test_enrich_requirement_dict_adds_presentation():
     assert r["date_source"] == "SYSTEM_ESTIMATED"
     assert "Estimated" in r["date_label"]
     assert r["evidence_badge_label"]
+
+
+def test_evidence_state_awaiting_user_confirm_when_extraction_not_approved():
+    from services.requirement_truth import EVIDENCE_AWAITING_USER_CONFIRM, evidence_state_from_documents
+
+    docs = [
+        {
+            "status": "UPLOADED",
+            "requirement_evidence_mismatch": False,
+            "ai_extraction": {"status": "completed", "review_status": "AWAITING_USER_CONFIRM", "data": {"expiry_date": "2027-01-01"}},
+        }
+    ]
+    assert evidence_state_from_documents(docs) == EVIDENCE_AWAITING_USER_CONFIRM
+
+
+def test_evidence_state_mismatch_overrides_awaiting_confirm():
+    from services.requirement_truth import EVIDENCE_MISMATCH_FLAGGED, evidence_state_from_documents
+
+    docs = [
+        {
+            "status": "UPLOADED",
+            "requirement_evidence_mismatch": True,
+            "ai_extraction": {"status": "completed", "review_status": "AWAITING_USER_CONFIRM", "data": {}},
+        }
+    ]
+    assert evidence_state_from_documents(docs) == EVIDENCE_MISMATCH_FLAGGED
+
+
+def test_detect_requirement_document_mismatch_epc_vs_gas():
+    from services.document_requirement_evidence import detect_requirement_document_mismatch
+
+    req = {"requirement_type": "gas_safety", "requirement_code": "GAS_SAFETY"}
+    extracted = {"document_type": "Energy Performance Certificate (EPC)"}
+    is_mm, reason = detect_requirement_document_mismatch(req, extracted)
+    assert is_mm is True
+    assert reason
+
+
+def test_detect_requirement_document_mismatch_no_false_positive_when_type_blank():
+    from services.document_requirement_evidence import detect_requirement_document_mismatch
+
+    req = {"requirement_type": "gas_safety"}
+    is_mm, reason = detect_requirement_document_mismatch(req, {"document_type": ""})
+    assert is_mm is False
+    assert reason is None

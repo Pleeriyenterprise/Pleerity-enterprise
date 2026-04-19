@@ -31,7 +31,7 @@ import {
   Lock,
   ArrowUpRight
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { v4 as uuidv4 } from 'uuid';
 import { PropertyLimitPrompt } from '../components/UpgradePrompt';
 import { useEntitlements } from '../contexts/EntitlementsContext';

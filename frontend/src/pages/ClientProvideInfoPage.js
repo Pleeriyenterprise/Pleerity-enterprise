@@ -21,7 +21,7 @@ import {
   File,
   X,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { cn } from '../lib/utils';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 

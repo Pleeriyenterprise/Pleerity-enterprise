@@ -6,7 +6,7 @@ import { UpgradeRequired } from '../components/UpgradePrompt';
 import EmptyState from '../components/EmptyState';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { complianceActionToastOptions } from '../utils/confidenceUxCopy';
 import { 
   FileText, 
@@ -37,6 +37,11 @@ import {
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { normalizeRequirementCode, documentListStatusLabel } from '../domain/presentDomain';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
+
+function isExtractionReviewPending(reviewStatus) {
+  const s = String(reviewStatus || '').toUpperCase();
+  return !s || s === 'PENDING' || s === 'AWAITING_USER_CONFIRM';
+}
 
 const EVIDENCE_DOCUMENT_TYPES = [
   { value: '', label: 'Select type (optional)' },
@@ -373,12 +378,13 @@ const DocumentsPage = () => {
       });
 
       const outcome = res.data?.outcome;
-      const uploadOutcomeMsg = outcome?.message;
-      const base = uploadOutcomeMsg || 'Document uploaded — this helps keep your property compliant.';
+      const base =
+        'Document uploaded — saved to your vault. Confirm extracted dates when prompted so this requirement can move forward accurately.';
       toast.success(
         base,
         complianceActionToastOptions(outcome, {
-          fallbackDescription: 'Extraction runs next so renewal and overdue logic stay accurate.',
+          fallbackDescription:
+            'Background scoring may refresh; requirement dates are finalized after you confirm extraction (or enter dates if extraction is unavailable).',
         }),
       );
       if (typeof window !== 'undefined') {
@@ -555,25 +561,74 @@ const DocumentsPage = () => {
     }
     setConfirmDetailsSaving(true);
     try {
-      await api.patch(
-        `/properties/${confirmDetailsModal.property_id}/requirements/${confirmDetailsModal.requirement_id}`,
-        payload
-      );
-      toast.success(
-        'Details saved. Calendar and reminders now use these dates—overdue views update on the next compliance recalculation.',
-      );
+      if (confirmDetailsModal.document_id && !confirmDetailsModal.extractionFailed) {
+        if (!confirmExpiryDate.trim()) {
+          toast.error('Please confirm an expiry date before saving.');
+          return;
+        }
+        let extractionPayload = {};
+        try {
+          const extRes = await api.get(`/documents/${confirmDetailsModal.document_id}/extraction`);
+          const d = extRes.data?.extraction?.data || {};
+          extractionPayload = {
+            document_type: d.document_type || d.doc_type || '',
+            certificate_number: confirmCertificateNumber.trim() || d.certificate_number || '',
+            issue_date: confirmIssueDate.trim() || d.issue_date || '',
+            expiry_date: confirmExpiryDate.trim() || d.expiry_date || '',
+            engineer_details:
+              typeof d.engineer_details === 'object' && d.engineer_details !== null ? d.engineer_details : {},
+            result_summary:
+              typeof d.result_summary === 'object' && d.result_summary !== null ? d.result_summary : {},
+            confidence_scores:
+              typeof d.confidence_scores === 'object' && d.confidence_scores !== null
+                ? d.confidence_scores
+                : undefined,
+          };
+        } catch (_) {
+          extractionPayload = {
+            document_type: '',
+            certificate_number: confirmCertificateNumber.trim(),
+            issue_date: confirmIssueDate.trim(),
+            expiry_date: confirmExpiryDate.trim(),
+            engineer_details: {},
+            result_summary: {},
+          };
+        }
+        const response = await api.post(`/documents/${confirmDetailsModal.document_id}/apply-extraction`, {
+          confirmed_data: extractionPayload,
+        });
+        const outcome = response.data?.outcome;
+        toast.success(
+          outcome?.message ||
+            'Dates applied — this document is marked confirmed and linked fields are updated.',
+          complianceActionToastOptions(outcome, {
+            fallbackDescription: 'Compliance refreshes on the next recalculation.',
+          }),
+        );
+        if (response.data?.outcome && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: response.data.outcome }));
+        }
+      } else {
+        await api.patch(
+          `/properties/${confirmDetailsModal.property_id}/requirements/${confirmDetailsModal.requirement_id}`,
+          payload,
+        );
+        toast.success(
+          'Details saved. Calendar and reminders now use these dates—overdue views update on the next compliance recalculation.',
+        );
+        if (confirmDetailsModal.property_id && typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('compliance-outcome', { detail: { property_id: confirmDetailsModal.property_id } }),
+          );
+        }
+      }
       setConfirmDetailsModal(null);
       setConfirmExpiryDate('');
       setConfirmIssueDate('');
       setConfirmCertificateNumber('');
       fetchData();
-      if (confirmDetailsModal.property_id && typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('compliance-outcome', { detail: { property_id: confirmDetailsModal.property_id } }),
-        );
-      }
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to save details');
+      toast.error(parseApiError(error, 'Failed to save details'));
     } finally {
       setConfirmDetailsSaving(false);
     }
@@ -655,13 +710,14 @@ const DocumentsPage = () => {
         </span>
       );
     }
+    const rs = doc.ai_extraction?.review_status;
     const status = doc.extraction_status || (doc.ai_extraction?.status === 'completed'
-      ? (doc.ai_extraction?.review_status === 'approved' ? 'CONFIRMED' : doc.ai_extraction?.review_status === 'rejected' ? 'REJECTED' : 'NEEDS_REVIEW')
+      ? (rs === 'approved' ? 'CONFIRMED' : rs === 'rejected' ? 'REJECTED' : 'NEEDS_REVIEW')
       : doc.ai_extraction?.status === 'failed' ? 'FAILED' : 'PENDING');
     const config = {
       PENDING: { label: 'Awaiting verification', color: 'bg-gray-100 text-gray-700' },
       EXTRACTED: { label: 'Extracted', color: 'bg-teal-100 text-teal-800' },
-      NEEDS_REVIEW: { label: 'Needs review', color: 'bg-amber-100 text-amber-800' },
+      NEEDS_REVIEW: { label: 'Awaiting your confirmation', color: 'bg-amber-100 text-amber-800' },
       CONFIRMED: { label: 'Confirmed', color: 'bg-green-100 text-green-800' },
       REJECTED: { label: 'Rejected', color: 'bg-red-100 text-red-800' },
       FAILED: { label: 'Failed', color: 'bg-red-100 text-red-800' }
@@ -680,6 +736,10 @@ const DocumentsPage = () => {
     }
     if (status === 'rejected') {
       return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Manual Entry</span>;
+    }
+    const u = String(status || '').toUpperCase();
+    if (u === 'AWAITING_USER_CONFIRM') {
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Awaiting confirmation</span>;
     }
     return <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Review Needed</span>;
   };
@@ -709,8 +769,28 @@ const DocumentsPage = () => {
     () =>
       requirements.filter((r) => {
         if (!isRequirementIncludedInAttentionViews(r)) return false;
+        const ev = String(r.evidence_state || '').toUpperCase();
+        if (ev !== 'MISSING') return false;
         const s = String(r.status || '').toUpperCase();
         return s === 'PENDING' || s === 'OVERDUE' || s === 'MISSING' || s === 'MISSING_EVIDENCE';
+      }).length,
+    [requirements],
+  );
+
+  const requirementsAwaitingEvidenceConfirm = useMemo(
+    () =>
+      requirements.filter((r) => {
+        if (!isRequirementIncludedInAttentionViews(r)) return false;
+        return String(r.evidence_state || '').toUpperCase() === 'AWAITING_USER_CONFIRM';
+      }).length,
+    [requirements],
+  );
+
+  const requirementsEvidenceMismatch = useMemo(
+    () =>
+      requirements.filter((r) => {
+        if (!isRequirementIncludedInAttentionViews(r)) return false;
+        return String(r.evidence_state || '').toUpperCase() === 'MISMATCH_FLAGGED';
       }).length,
     [requirements],
   );
@@ -776,10 +856,41 @@ const DocumentsPage = () => {
           >
             <p className="text-sm text-amber-950">
               <span className="font-semibold">{requirementsNeedingDocuments}</span>{' '}
-              {requirementsNeedingDocuments === 1 ? 'requirement needs' : 'requirements need'} a document.
+              {requirementsNeedingDocuments === 1 ? 'requirement has' : 'requirements have'} no uploaded evidence yet
+              (missing file).
             </p>
             <Button variant="outline" size="sm" className="border-amber-300 shrink-0 min-h-10" asChild>
               <Link to="/requirements?status=OVERDUE_OR_MISSING">View missing requirements</Link>
+            </Button>
+          </div>
+        )}
+        {requirementsAwaitingEvidenceConfirm > 0 && (
+          <div
+            className="mb-6 rounded-xl border border-teal-200 bg-teal-50/90 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+            data-testid="documents-awaiting-confirm-banner"
+          >
+            <p className="text-sm text-teal-950">
+              <span className="font-semibold">{requirementsAwaitingEvidenceConfirm}</span>{' '}
+              {requirementsAwaitingEvidenceConfirm === 1 ? 'requirement has' : 'requirements have'} a file uploaded with
+              extracted dates that still need your confirmation before they fully apply.
+            </p>
+            <Button variant="outline" size="sm" className="border-teal-300 shrink-0 min-h-10" asChild>
+              <a href="#upload-form-anchor">Review on this page</a>
+            </Button>
+          </div>
+        )}
+        {requirementsEvidenceMismatch > 0 && (
+          <div
+            className="mb-6 rounded-xl border border-red-200 bg-red-50/90 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+            data-testid="documents-mismatch-banner"
+          >
+            <p className="text-sm text-red-950">
+              <span className="font-semibold">{requirementsEvidenceMismatch}</span>{' '}
+              {requirementsEvidenceMismatch === 1 ? 'upload may' : 'uploads may'} not match the selected requirement
+              (wrong document type detected). Open the document row to review or re-upload.
+            </p>
+            <Button variant="outline" size="sm" className="border-red-300 shrink-0 min-h-10" asChild>
+              <a href="#upload-form-anchor">Go to documents</a>
             </Button>
           </div>
         )}
@@ -968,7 +1079,8 @@ const DocumentsPage = () => {
                   </span>
                 </CardTitle>
                 <p className="text-sm text-gray-500 mt-1">
-                  When you upload a certificate and choose a property and requirement, the linked requirement on the Requirements page is updated automatically after extraction (all plans).
+                  After upload, extraction suggests dates — confirm them (Review and Apply or the post-upload prompt)
+                  before the requirement and compliance score treat the certificate as final evidence.
                 </p>
               </CardHeader>
               <CardContent>
@@ -1051,7 +1163,17 @@ const DocumentsPage = () => {
                             <p className="text-sm text-gray-500 mb-2">
                               Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}
                             </p>
-                            
+                            {doc.requirement_evidence_mismatch ? (
+                              <div
+                                className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+                                data-testid={`doc-mismatch-${doc.document_id}`}
+                              >
+                                <span className="font-medium">Possible wrong document for this requirement.</span>{' '}
+                                {doc.requirement_evidence_mismatch_reason ||
+                                  'Check the file matches the selected requirement, or correct the extracted type before applying.'}
+                              </div>
+                            ) : null}
+
                             {/* AI Extraction Results - only when extraction succeeded (no false confidence when failed) */}
                             {(() => {
                               const extractionFailed = doc.extraction_status === 'FAILED' || doc.ai_extraction?.status === 'failed';
@@ -1125,7 +1247,7 @@ const DocumentsPage = () => {
                                 )}
 
                                 {/* Review & Apply: available on all plans for user consent and accurate compliance */}
-                                {doc.ai_extraction.review_status === 'pending' && (
+                                {isExtractionReviewPending(doc.ai_extraction.review_status) && (
                                   <div className="mt-3 pt-3 border-t border-teal-200">
                                     <Button
                                       size="sm"
@@ -1239,7 +1361,7 @@ const DocumentsPage = () => {
                                 )}
                               </Button>
                             )}
-                            {doc.ai_extraction?.data && doc.ai_extraction.review_status !== 'pending' && (
+                            {doc.ai_extraction?.data && !isExtractionReviewPending(doc.ai_extraction.review_status) && (
                               <Button
                                 variant="ghost"
                                 size="sm"

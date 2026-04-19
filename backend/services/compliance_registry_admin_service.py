@@ -37,6 +37,11 @@ _VALID_ACTION_MODES = frozenset({"upload_document", "arrange_job", "view_guidanc
 # Backward-compatible names for imports of this module.
 _VALID_CONDITION_FIELDS = VALID_REGISTRY_CONDITION_FIELDS
 
+# Seeded on new manual drafts so validation passes; editors must replace before publish-quality copy.
+REGISTRY_WHY_SHORT_MANUAL_PLACEHOLDER = (
+    "Draft placeholder: replace with a concise client-facing reason (max 280 characters)."
+)
+
 COLLECTION = "compliance_requirement_registry_drafts"
 
 
@@ -134,7 +139,7 @@ def default_draft_shell(
             "completion_notes": None,
         },
         "action_links": list(_load_registry_by_code().get(code) or []),
-        "why_it_matters_short": "",
+        "why_it_matters_short": REGISTRY_WHY_SHORT_MANUAL_PLACEHOLDER,
         "why_it_matters_long": "",
         "why_it_matters_by_jurisdiction": {},
         "why_it_matters_by_context": {},
@@ -262,15 +267,20 @@ def validate_registry_draft(doc: Dict[str, Any]) -> List[str]:
                 if lg is not None and (not isinstance(lg, str) or len(lg.strip()) > 4000):
                     errs.append(f"why_it_matters_by_jurisdiction.{k}.long must be a string <= 4000 chars")
     why_required = cls.get("client_surface_visible") is not False and rt in {"DOCUMENT", "JOB", "OBLIGATION"}
-    missing_why_short = why_required and not str(doc.get("why_it_matters_short") or "").strip()
+    why_text = str(doc.get("why_it_matters_short") or "").strip()
+    missing_why_short = why_required and not why_text
     if missing_why_short:
         errs.append("why_it_matters_short is required for client-visible actionable requirements")
+    # Placeholder satisfies API validation but must still surface in editorial review until replaced.
+    incomplete_why_short = why_required and (
+        not why_text or why_text == REGISTRY_WHY_SHORT_MANUAL_PLACEHOLDER
+    )
     gov = doc.get("governance") if isinstance(doc.get("governance"), dict) else {}
     needs_review = list(gov.get("needs_review_fields") or [])
     needs_review = [str(x) for x in needs_review if str(x).strip()]
-    if missing_why_short and "why_it_matters_short" not in needs_review:
+    if incomplete_why_short and "why_it_matters_short" not in needs_review:
         needs_review.append("why_it_matters_short")
-    if (not missing_why_short) and "why_it_matters_short" in needs_review:
+    if (not incomplete_why_short) and "why_it_matters_short" in needs_review:
         needs_review = [x for x in needs_review if x != "why_it_matters_short"]
     gov["needs_review_fields"] = needs_review
     doc["governance"] = gov

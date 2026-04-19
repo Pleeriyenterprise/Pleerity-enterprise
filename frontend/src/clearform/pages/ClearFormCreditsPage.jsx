@@ -24,7 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Badge } from '../../components/ui/badge';
 import { useClearFormAuth } from '../contexts/ClearFormAuthContext';
 import { creditsApi, subscriptionsApi } from '../api/clearformApi';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { BRAND_LOGO_URL } from '../../config/branding';
 
 const ClearFormCreditsPage = () => {

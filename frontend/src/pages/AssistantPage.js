@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Send, ArrowLeft, AlertCircle, Shield, ChevronDown, ChevronUp, FileText, Sparkles, RefreshCw, Building2, UserCircle } from 'lucide-react';
 import axios from 'axios';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 

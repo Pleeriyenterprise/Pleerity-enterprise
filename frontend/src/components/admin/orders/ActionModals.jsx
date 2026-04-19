@@ -52,7 +52,7 @@ import {
   Play,
   ArrowRight,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 // Regeneration reasons dropdown options
 const REGEN_REASONS = [

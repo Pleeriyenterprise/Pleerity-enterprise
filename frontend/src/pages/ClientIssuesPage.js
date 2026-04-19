@@ -8,7 +8,7 @@ import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { AlertCircle, Plus, Loader2, FileText, X, Wrench, Building2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { reinforcementToastOptions } from '../utils/confidenceUxCopy';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { issueStatusLabel, issueSeverityLabel } from '../domain/presentDomain';

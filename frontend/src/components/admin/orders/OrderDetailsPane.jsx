@@ -75,7 +75,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import ordersApi, { formatPriceShort } from '../../../api/ordersApi';
 import { AuditTimeline } from './AuditTimeline';
 import { STATUS_COLORS, formatDate } from './OrderList';

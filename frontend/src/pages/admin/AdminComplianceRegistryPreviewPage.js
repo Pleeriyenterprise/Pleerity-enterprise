@@ -4,7 +4,7 @@ import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { adminAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { filterAndSortActionLinksForRegion, portfolioJurisdictionLabelToRegion } from '../../utils/complianceRegistryOperatorUi';
 
 /** Mirrors ``REGISTRY_PREVIEW_COVERAGE`` in ``compliance_registry_admin_service.py`` (keep in sync). */
@@ -114,7 +114,7 @@ export default function AdminComplianceRegistryPreviewPage() {
       })
       .catch((err) => {
         const d = err?.response?.data?.detail;
-        toast.error(typeof d === 'string' ? d : 'Preview failed');
+        toast.error(typeof d === 'string' ? d : 'Preview failed', { critical: true });
         setData(null);
       })
       .finally(() => setLoading(false));
@@ -139,7 +139,7 @@ export default function AdminComplianceRegistryPreviewPage() {
       })
       .catch((err) => {
         const d = err?.response?.data?.detail;
-        toast.error(typeof d === 'string' ? d : 'Sync failed');
+        toast.error(typeof d === 'string' ? d : 'Sync failed', { critical: true });
       })
       .finally(() => setSyncBusy(false));
   };

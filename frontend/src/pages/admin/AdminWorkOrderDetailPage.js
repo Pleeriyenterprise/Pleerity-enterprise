@@ -15,7 +15,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Wrench, Loader2, ArrowLeft, UserPlus, Info, ChevronDown, ChevronUp, ListChecks, Calendar, FileSearch, Receipt } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import {
   adminInterventionRequired,
   adminSimplifiedProgressFromWorkOrder,

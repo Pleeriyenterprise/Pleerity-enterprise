@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { adminAPI } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { TrendingUp, RefreshCw, ArrowLeft } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 function Row({ label, value }) {
   return (

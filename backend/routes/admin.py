@@ -38,6 +38,7 @@ from services.portal_user_lifecycle_service import (
     restore_portal_user,
     permanent_delete_portal_user,
     permanent_delete_preflight,
+    set_portal_user_test_like_flag,
 )
 from services.client_lifecycle_service import default_active_client_match, derive_client_lifecycle_status
 from services.compliance_rules_registry import (
@@ -73,6 +74,10 @@ def _portal_lifecycle_http(exc: ValueError) -> HTTPException:
         "not_archived": (status.HTTP_400_BAD_REQUEST, "User is not archived"),
         "owner_cannot_be_archived": (status.HTTP_403_FORBIDDEN, "OWNER cannot be archived"),
         "owner_cannot_be_deleted": (status.HTTP_403_FORBIDDEN, "OWNER cannot be permanently deleted"),
+        "owner_cannot_be_flagged_test_like": (
+            status.HTTP_403_FORBIDDEN,
+            "Owner accounts cannot be marked as test or dummy",
+        ),
         "last_active_admin": (
             status.HTTP_400_BAD_REQUEST,
             "Cannot archive the last active admin. Add another admin first.",
@@ -126,6 +131,10 @@ def _iso_or_none_billing_period(value: Any) -> Optional[str]:
 class AdminInviteRequest(BaseModel):
     email: EmailStr
     full_name: str
+
+
+class PortalUserTestLikeBody(BaseModel):
+    is_test_like: bool = Field(..., description="Mark account as test/dummy for narrowed permanent-delete policy")
 
 
 class ValidateComplianceScoreRequest(BaseModel):
@@ -293,17 +302,19 @@ async def get_email_health(request: Request):
 @router.get("/documents/pending-verification", dependencies=[Depends(require_owner_or_admin)])
 async def list_pending_verification_documents(
     request: Request,
-    hours: int = Query(24, ge=1, le=720),
+    hours: int = Query(0, ge=0, le=720),
     client_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     skip: int = Query(0, ge=0),
 ):
-    """List documents with status UPLOADED older than X hours (default 24), filterable by client_id. Paginated."""
+    """List documents with status UPLOADED. When hours > 0, only include rows with uploaded_at at least that many hours ago (staleness filter). Default hours=0 lists all pending uploads so new files appear immediately."""
     await admin_route_guard(request)
     db = database.get_db()
     try:
-        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
-        query = {"status": "UPLOADED", "uploaded_at": {"$lte": cutoff}}
+        query: Dict[str, Any] = {"status": "UPLOADED"}
+        if hours and hours > 0:
+            cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+            query["uploaded_at"] = {"$lte": cutoff}
         if client_id:
             query["client_id"] = client_id
         total = await db.documents.count_documents(query)
@@ -592,6 +603,7 @@ async def global_search(
         "created_at": 1,
         "client_lifecycle_status": 1,
         "is_deleted": 1,
+        "is_test_like": 1,
     }
     
     try:
@@ -880,12 +892,14 @@ async def get_clients(
     q: str = None,
     lifecycle_bucket: str = None,
     include_archived_clients: bool = False,
+    account_environment: str = None,
 ):
     """
     Get all clients (admin only). Supports filtering by subscription_status, onboarding_status,
     plan_code (solo|portfolio|pro), min_properties, max_properties, and q (search name/email/CRN).
     lifecycle_bucket: active (default), all, archived, purge_eligible, test_like, pending_setup, suspended.
     By default archived/purge-eligible/deleted clients are excluded unless include_archived_clients or bucket=all.
+    account_environment: optional live | non_production — intersects with lifecycle_bucket (live = not is_test_like).
     """
     await admin_route_guard(request)
     db = database.get_db()
@@ -946,6 +960,19 @@ async def get_clients(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid lifecycle_bucket (use active, all, archived, purge_eligible, test_like, pending_setup, suspended)",
+            )
+
+        env = (account_environment or "").strip().lower()
+        if env == "live":
+            live_q = {"$or": [{"is_test_like": {"$ne": True}}, {"is_test_like": {"$exists": False}}]}
+            match = {"$and": [match, live_q]} if match else live_q
+        elif env == "non_production":
+            np = {"is_test_like": True}
+            match = {"$and": [match, np]} if match else np
+        elif env not in ("", "all", "none", None):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid account_environment (use live, non_production, or omit)",
             )
 
         pipeline = [
@@ -4306,7 +4333,16 @@ async def get_client_control_panel(request: Request, client_id: str):
 
         portal_users = await db.portal_users.find(
             {"client_id": client_id},
-            {"_id": 0, "portal_user_id": 1, "role": 1, "status": 1, "password_status": 1, "last_login": 1, "auth_email": 1},
+            {
+                "_id": 0,
+                "portal_user_id": 1,
+                "role": 1,
+                "status": 1,
+                "password_status": 1,
+                "last_login": 1,
+                "auth_email": 1,
+                "is_test_like": 1,
+            },
         ).to_list(10)
         primary_user = next((u for u in portal_users if u.get("role") == UserRole.ROLE_CLIENT_ADMIN.value), None)
         if not primary_user and portal_users:
@@ -4409,6 +4445,7 @@ async def get_client_control_panel(request: Request, client_id: str):
                 "phone": client.get("phone"),
                 "plan": client.get("billing_plan"),
                 "status": client.get("subscription_status"),
+                "is_test_like": bool(client.get("is_test_like")),
             },
             "account_state": {
                 "password_set": bool(primary_user and primary_user.get("password_status") == PasswordStatus.SET.value),
@@ -4810,6 +4847,14 @@ async def list_admins(request: Request, include_archived: bool = Query(False)):
             q = merge_active_portal_user(q)
         admins = await db.portal_users.find(q, {"_id": 0, "password_hash": 0}).to_list(100)
 
+        for a in admins:
+            pid = a.get("portal_user_id")
+            if pid:
+                ok, blockers = await permanent_delete_preflight(db, str(pid))
+                a["hard_delete_allowed"] = ok
+                a["hard_delete_blockers"] = [] if ok else blockers
+            a["is_test_like"] = bool(a.get("is_test_like"))
+
         return {
             "admins": admins,
             "total": len(admins),
@@ -4872,7 +4917,7 @@ async def restore_staff_user(request: Request, portal_user_id: str):
 @router.get("/users/{portal_user_id}/permanent-delete-check")
 async def permanent_delete_check(request: Request, portal_user_id: str):
     """Return whether hard delete is allowed (billing and audit preflight)."""
-    await admin_route_guard(request)
+    await require_owner_or_admin(request)
     db = database.get_db()
     allowed, blockers = await permanent_delete_preflight(db, portal_user_id)
     return {"allowed": allowed, "blockers": blockers}
@@ -4881,7 +4926,7 @@ async def permanent_delete_check(request: Request, portal_user_id: str):
 @router.delete("/users/{portal_user_id}/permanent")
 async def permanent_delete_user(request: Request, portal_user_id: str):
     """Remove portal_users row only when preflight passes; never deletes Stripe, clients, or invoice rows."""
-    user = await admin_route_guard(request)
+    user = await require_owner(request)
     await require_recent_step_up(request, user)
     db = database.get_db()
     try:
@@ -4901,6 +4946,37 @@ async def permanent_delete_user(request: Request, portal_user_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to permanently delete user",
+        )
+
+
+@router.post("/users/{portal_user_id}/test-like")
+async def set_portal_user_test_like_route(
+    request: Request,
+    portal_user_id: str,
+    body: PortalUserTestLikeBody,
+):
+    """Mark or unmark a portal user as test/dummy (OWNER/ADMIN, step-up). Never applies to OWNER role."""
+    user = await require_owner_or_admin(request)
+    await require_recent_step_up(request, user)
+    db = database.get_db()
+    try:
+        await set_portal_user_test_like_flag(
+            db,
+            portal_user_id,
+            body.is_test_like,
+            user["portal_user_id"],
+            actor_role=UserRole(user["role"]),
+        )
+        return {"ok": True, "portal_user_id": portal_user_id, "is_test_like": body.is_test_like}
+    except ValueError as e:
+        raise _portal_lifecycle_http(e)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("set portal user test-like error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update test flag",
         )
 
 

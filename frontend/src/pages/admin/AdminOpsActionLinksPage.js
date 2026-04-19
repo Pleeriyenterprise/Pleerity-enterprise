@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { adminAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 function JsonBlock({ title, data }) {
   return (
@@ -75,7 +75,7 @@ export default function AdminOpsActionLinksPage() {
       }
       toast.success(`Loaded ${(data.items || []).length} requirement row(s)`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Failed to load requirements');
+      toast.error(e?.response?.data?.detail || 'Failed to load requirements', { critical: true });
       setReqItems([]);
     } finally {
       setLoading(false);
@@ -97,7 +97,7 @@ export default function AdminOpsActionLinksPage() {
       setDraftJson(JSON.stringify(seed, null, 2));
       toast.success('Preview loaded');
     } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Failed to load preview');
+      toast.error(e?.response?.data?.detail || 'Failed to load preview', { critical: true });
       setPreview(null);
     } finally {
       setLoading(false);
@@ -126,7 +126,7 @@ export default function AdminOpsActionLinksPage() {
       await loadPreview();
     } catch (e) {
       const d = e?.response?.data?.detail;
-      toast.error(typeof d === 'object' ? JSON.stringify(d) : d || 'Save failed');
+      toast.error(typeof d === 'object' ? JSON.stringify(d) : d || 'Save failed', { critical: true });
     } finally {
       setBusy(false);
     }
@@ -159,7 +159,7 @@ export default function AdminOpsActionLinksPage() {
       toast.success('Reverted to registry defaults');
       await loadPreview();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Revert failed');
+      toast.error(e?.response?.data?.detail || 'Revert failed', { critical: true });
     } finally {
       setBusy(false);
     }

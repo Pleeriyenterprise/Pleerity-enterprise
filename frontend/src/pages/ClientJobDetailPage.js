@@ -47,7 +47,7 @@ import {
   Receipt,
   MessageSquareText,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { operationalExceptionLabel } from '../domain/presentDomain';
 import {
   clientCurrentUpdateSummary,
@@ -243,6 +243,8 @@ function ClientJobDetailInner() {
   const [assignableContractors, setAssignableContractors] = useState([]);
   /** Effective job jurisdiction from assignable-contractors API (for filtering + UX). */
   const [assignableJobJurisdiction, setAssignableJobJurisdiction] = useState(null);
+  /** Server pipeline counts: who appears in directory vs excluded at each gate (mutually exclusive buckets). */
+  const [assignableFilterDiagnostics, setAssignableFilterDiagnostics] = useState(null);
   const [assignableLoading, setAssignableLoading] = useState(false);
   const [contractorFilter, setContractorFilter] = useState('');
   const [tradeTypeFilter, setTradeTypeFilter] = useState('all');
@@ -327,6 +329,7 @@ function ClientJobDetailInner() {
       try {
         const r = await clientAPI.getJobAssignableContractors(jobId, { limit: 200 });
         setAssignableContractors(r.data?.contractors || []);
+        setAssignableFilterDiagnostics(r.data?.filter_diagnostics ?? null);
         const jj = r.data?.job_jurisdiction ?? null;
         setAssignableJobJurisdiction(jj);
         setNewContractor((prev) => ({
@@ -561,6 +564,16 @@ function ClientJobDetailInner() {
         (c.contractor_id || '').toLowerCase().includes(q)
     );
   }, [assignableContractors, contractorFilter, tradeTypeFilter]);
+
+  const assignableClientFilterStats = useMemo(() => {
+    const total = assignableContractors.length;
+    const afterTrade = assignableContractors.filter((c) => contractorMatchesTradeFilter(c, tradeTypeFilter));
+    const hiddenByTrade =
+      tradeTypeFilter && tradeTypeFilter !== 'all' ? Math.max(0, total - afterTrade.length) : 0;
+    const q = (contractorFilter || '').toLowerCase().trim();
+    const hiddenBySearch = q ? Math.max(0, afterTrade.length - filteredAssignableContractors.length) : 0;
+    return { total, hiddenByTrade, hiddenBySearch, afterTradeCount: afterTrade.length };
+  }, [assignableContractors, tradeTypeFilter, contractorFilter, filteredAssignableContractors]);
 
   const openEvidenceFile = async (key) => {
     if (!jobId || !key || key.startsWith('document:')) return;
@@ -1313,6 +1326,7 @@ function ClientJobDetailInner() {
           if (!open) {
             setShowAddContractorForm(false);
             setAllowCreateDespiteDuplicates(false);
+            setAssignableFilterDiagnostics(null);
           }
         }}
       >
@@ -1333,6 +1347,73 @@ function ClientJobDetailInner() {
                   accordingly.
                 </AlertDescription>
               </Alert>
+            ) : null}
+            {!assignableLoading && assignableFilterDiagnostics ? (
+              <div
+                className="rounded-lg border border-gray-200 bg-gray-50/90 px-3 py-2 text-xs text-gray-800 space-y-1.5"
+                data-testid="assign-contractor-funnel"
+              >
+                <p className="font-semibold text-gray-900">Who can appear on this list</p>
+                <ul className="space-y-0.5 list-none">
+                  <li>
+                    In your contractor directory:{' '}
+                    <strong>{assignableFilterDiagnostics.visible_in_directory}</strong>
+                  </li>
+                  <li className="text-gray-600">
+                    Excluded — not assignment-ready (email, vetting, portal activation, status, or marked unavailable):{' '}
+                    <strong>{assignableFilterDiagnostics.excluded_not_assignment_ready}</strong>
+                  </li>
+                  <li className="text-gray-600">
+                    Excluded — property / location rules:{' '}
+                    <strong>
+                      {assignableFilterDiagnostics.excluded_property_scope +
+                        assignableFilterDiagnostics.excluded_location_postcode}
+                    </strong>{' '}
+                    <span className="text-gray-500">
+                      (property scope: {assignableFilterDiagnostics.excluded_property_scope}, postcode / coverage:{' '}
+                      {assignableFilterDiagnostics.excluded_location_postcode})
+                    </span>
+                  </li>
+                  <li className="text-gray-600">
+                    Excluded — job capability (e.g. verified compliance for this requirement):{' '}
+                    <strong>{assignableFilterDiagnostics.excluded_execution_capability}</strong>
+                  </li>
+                  <li className="text-gray-600">
+                    Excluded — service region does not include this jurisdiction:{' '}
+                    <strong>{assignableFilterDiagnostics.excluded_service_region_jurisdiction}</strong>
+                  </li>
+                  <li className="text-gray-600">
+                    Excluded — maintenance trade vs job category:{' '}
+                    <strong>{assignableFilterDiagnostics.excluded_maintenance_trade}</strong>
+                  </li>
+                  <li className="text-gray-600">
+                    Excluded — other client scope:{' '}
+                    <strong>{assignableFilterDiagnostics.excluded_wrong_client_scope}</strong>
+                  </li>
+                  <li>
+                    <span className="text-teal-800 font-medium">Eligible from server for this job: </span>
+                    <strong>{assignableFilterDiagnostics.eligible}</strong>
+                  </li>
+                </ul>
+                <p className="text-[11px] text-gray-500 border-t border-gray-200 pt-1.5">
+                  Each contractor is counted once at the first rule that blocked them. The dropdown below can hide
+                  additional rows using the trade and search filters (client-side only).
+                </p>
+              </div>
+            ) : null}
+            {(tradeTypeFilter && tradeTypeFilter !== 'all') || (contractorFilter || '').trim() ? (
+              <div className="flex flex-wrap gap-2">
+                {tradeTypeFilter && tradeTypeFilter !== 'all' ? (
+                  <Button type="button" variant="outline" size="sm" className="text-xs h-8" onClick={() => setTradeTypeFilter('all')}>
+                    Show all trades
+                  </Button>
+                ) : null}
+                {(contractorFilter || '').trim() ? (
+                  <Button type="button" variant="outline" size="sm" className="text-xs h-8" onClick={() => setContractorFilter('')}>
+                    Clear search
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Filter by trade / service</label>
@@ -1380,10 +1461,39 @@ function ClientJobDetailInner() {
                     ))}
                   </select>
                   {!filteredAssignableContractors.length ? (
-                    <p className="text-xs text-amber-800 mt-1">
-                      No matching contractors. Widen the trade filter, check jurisdiction coverage (see note above), or add a
-                      new contractor below.
-                    </p>
+                    <div className="text-xs text-amber-800 mt-1 space-y-1">
+                      <p>No rows in the dropdown match the current trade and search filters.</p>
+                      {assignableClientFilterStats.total > 0 ? (
+                        <p>
+                          {assignableClientFilterStats.hiddenByTrade > 0 ? (
+                            <>
+                              Hidden by trade filter: <strong>{assignableClientFilterStats.hiddenByTrade}</strong>
+                              {' · '}
+                            </>
+                          ) : null}
+                          {assignableClientFilterStats.hiddenBySearch > 0 ? (
+                            <>
+                              Hidden by search: <strong>{assignableClientFilterStats.hiddenBySearch}</strong>
+                            </>
+                          ) : null}
+                          {assignableClientFilterStats.hiddenByTrade === 0 &&
+                          assignableClientFilterStats.hiddenBySearch === 0 ? (
+                            <span>Use &quot;Show all trades&quot; or clear search.</span>
+                          ) : (
+                            <span> Try &quot;Show all trades&quot; or clear search.</span>
+                          )}
+                        </p>
+                      ) : assignableFilterDiagnostics &&
+                        (assignableFilterDiagnostics.visible_in_directory || 0) > 0 ? (
+                        <p>
+                          The server returned no eligible contractors for this job (
+                          <strong>{assignableFilterDiagnostics.eligible}</strong> eligible). Use the funnel above to see
+                          which rule removed them (common: region, compliance verification, or assignment-ready status).
+                        </p>
+                      ) : (
+                        <p>No contractors in your directory yet — add one below.</p>
+                      )}
+                    </div>
                   ) : null}
                 </div>
                 <Button type="button" size="sm" disabled={!!actionBusy} onClick={handleAssign}>

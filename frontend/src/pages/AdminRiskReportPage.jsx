@@ -4,7 +4,7 @@ import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import client from '../api/client';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { ArrowLeft } from 'lucide-react';
 
 const SCORE_CAP = 97;

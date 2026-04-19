@@ -219,6 +219,9 @@ class AuditAction(str, Enum):
     USER_ARCHIVED = "USER_ARCHIVED"
     USER_RESTORED = "USER_RESTORED"
     USER_DELETED_PERMANENTLY = "USER_DELETED_PERMANENTLY"
+    USER_HARD_DELETE_ATTEMPTED = "USER_HARD_DELETE_ATTEMPTED"
+    USER_HARD_DELETE_BLOCKED = "USER_HARD_DELETE_BLOCKED"
+    PORTAL_USER_TEST_LIKE_SET = "PORTAL_USER_TEST_LIKE_SET"
 
     # Route Guards
     ROUTE_GUARD_REDIRECT = "ROUTE_GUARD_REDIRECT"
@@ -765,6 +768,8 @@ class PortalUser(BaseModel):
     last_login: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     created_by_owner_id: Optional[str] = None  # For staff: OWNER who created this user
+    # When True, permanent-delete preflight may bypass the audit_logs_present blocker only (other blockers unchanged).
+    is_test_like: bool = False
 
 class Property(BaseModel):
     model_config = ConfigDict(extra="ignore")

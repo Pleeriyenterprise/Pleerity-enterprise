@@ -26,7 +26,7 @@ import {
   CalendarClock,
   Zap,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import {
   buildInvoiceByWorkOrderId,
   formatMoneyGbp,

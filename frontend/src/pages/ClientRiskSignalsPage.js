@@ -46,7 +46,7 @@ import {
   ChevronUp,
   Info,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import {

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { adminAPI } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { LayoutDashboard, Settings, Users, BarChart3, RefreshCw, Shield, TrendingUp, ClipboardCheck } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 const MODULE_LINKS = [
   { id: 'maintenance', label: 'Jobs', icon: Settings, href: '/admin/ops/maintenance' },

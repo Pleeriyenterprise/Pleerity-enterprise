@@ -7,7 +7,7 @@ import { REGISTRY_CONDITION_BUILDER_FALLBACK } from '../../data/registryConditio
 import { adminAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import {
   buildEffectiveJurisdictionsSummary,
   displayRegionsCoverAllUK,
@@ -208,7 +208,7 @@ export default function AdminComplianceRegistryEditorPage() {
         setWhyByJurisdictionText(JSON.stringify(dRes.data?.why_it_matters_by_jurisdiction || {}, null, 2));
       })
       .catch((err) => {
-        toast.error(err?.response?.data?.detail || 'Failed to load draft');
+        toast.error(err?.response?.data?.detail || 'Failed to load draft', { critical: true });
         setDraft(null);
       })
       .finally(() => setLoading(false));
@@ -308,7 +308,9 @@ export default function AdminComplianceRegistryEditorPage() {
       .then((cRes) => setCompare(cRes.data))
       .catch((err) => {
         const d = err?.response?.data?.detail;
-        toast.error(Array.isArray(d?.errors) ? d.errors.join('; ') : typeof d === 'string' ? d : 'Save failed');
+        toast.error(Array.isArray(d?.errors) ? d.errors.join('; ') : typeof d === 'string' ? d : 'Save failed', {
+          critical: true,
+        });
       })
       .finally(() => setSaving(false));
   };

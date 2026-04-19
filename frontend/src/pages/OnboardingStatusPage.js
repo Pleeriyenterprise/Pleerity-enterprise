@@ -19,7 +19,7 @@ import { Button } from '../components/ui/button';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { SUPPORT_EMAIL } from '../config';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 const POLL_INTERVAL_MS = 5000;
 const POLL_DURATION_MS = 180000;

@@ -3,7 +3,7 @@ import { adminAPI } from '../../api/client';
 import { useAuth } from '../../contexts/AuthContext';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { Zap, RefreshCw, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 export default function AdminOpsFeatureControlsPage() {
   const { user } = useAuth();

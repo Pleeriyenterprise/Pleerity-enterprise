@@ -36,7 +36,7 @@ import {
 } from '../components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ScrollArea } from '../components/ui/scroll-area';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import client from '../api/client';
 
 // Status badge colors

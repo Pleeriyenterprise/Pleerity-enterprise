@@ -18,7 +18,7 @@ import { Badge } from '../components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '../components/ui/select';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import client from '../api/client';
 
 // Enhanced Stat card with trend indicator and previous value

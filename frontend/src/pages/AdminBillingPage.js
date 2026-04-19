@@ -31,7 +31,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import api from '../api/client';
 import AdminPendingPaymentsPage from './AdminPendingPaymentsPage';
 

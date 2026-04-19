@@ -6,7 +6,7 @@ import api, { clientAPI, authAPI } from '../api/client';
 import { Button } from './ui/button';
 import { SUPPORT_EMAIL } from '../config';
 import { branding, BRAND_LOGO_URL } from '../config/branding';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import SessionIdleGuard from './SessionIdleGuard';
 import {
   LayoutDashboard,

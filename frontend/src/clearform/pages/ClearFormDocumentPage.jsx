@@ -32,7 +32,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { documentsApi } from '../api/clearformApi';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { BRAND_LOGO_URL } from '../../config/branding';
 
 // Configure PDF.js worker - use local worker file

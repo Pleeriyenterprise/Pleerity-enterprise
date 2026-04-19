@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { Shield, RefreshCw, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 function MetricCard({ title, value }) {
   return (

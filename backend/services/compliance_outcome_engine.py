@@ -247,7 +247,17 @@ async def apply_action_outcome(event: Dict[str, Any]) -> Dict[str, Any]:
     status_change = "improved" if status_after != status_before and status_after in ("AMBER", "GREEN") else "unchanged"
     label = _event_label(event_type, event.get("requirement_type"))
     score_part = f"Compliance score {'+' if score_change >= 0 else ''}{score_change}"
-    message = f"{label} -> {score_part} -> Risk {risk_change}"
+    meta = event.get("metadata") or {}
+    if event_type == EVENT_CERTIFICATE_UPLOADED and meta.get("evidence_pending_user_confirmation"):
+        req_t = (event.get("requirement_type") or "").strip()
+        req_part = f"{req_t} evidence uploaded — file saved. " if req_t else "Evidence uploaded — file saved. "
+        message = (
+            f"{req_part}"
+            "Confirm extracted dates in Documents before this fully satisfies the requirement. "
+            f"({score_part}; risk {risk_change})"
+        )
+    else:
+        message = f"{label} -> {score_part} -> Risk {risk_change}"
 
     created_at = event.get("timestamp") or _now_iso()
     activity_doc = {

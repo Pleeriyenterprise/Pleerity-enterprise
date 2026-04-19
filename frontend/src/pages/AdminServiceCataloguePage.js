@@ -51,7 +51,7 @@ import {
   ToggleLeft,
   ToggleRight,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { cn } from '../lib/utils';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;

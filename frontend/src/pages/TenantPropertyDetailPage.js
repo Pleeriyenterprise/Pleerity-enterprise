@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { CheckCircle, XCircle, Clock, Building2, ArrowLeft, Download, Wrench } from 'lucide-react';
 import {
   formatCertStatusLabel,

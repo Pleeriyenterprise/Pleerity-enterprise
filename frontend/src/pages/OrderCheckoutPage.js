@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import client from '../api/client';
 import { createCheckoutSession } from '../api/checkoutApi';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 export default function OrderCheckoutPage() {
   const [searchParams] = useSearchParams();

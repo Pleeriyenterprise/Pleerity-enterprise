@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { adminAPI } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { Users, Plus, Pencil, Trash2, Loader2, CheckCircle, Clock, Mail, BarChart3, Info, ChevronDown, ChevronUp, ShieldOff, RefreshCw, Briefcase, Send, XCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { Button } from '../../components/ui/button';
 
 export default function AdminOpsContractorsPage() {

@@ -42,7 +42,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 

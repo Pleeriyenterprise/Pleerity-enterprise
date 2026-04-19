@@ -1564,7 +1564,25 @@ async def list_assignable_contractors_for_work_order(
         },
     )
     if not wo or wo.get("client_id") != client_id:
-        return {"contractors": [], "total": 0, "skip": skip, "limit": limit, "job_jurisdiction": None}
+        empty_diag = {
+            "visible_in_directory": 0,
+            "excluded_not_assignment_ready": 0,
+            "excluded_wrong_client_scope": 0,
+            "excluded_property_scope": 0,
+            "excluded_location_postcode": 0,
+            "excluded_execution_capability": 0,
+            "excluded_maintenance_trade": 0,
+            "excluded_service_region_jurisdiction": 0,
+            "eligible": 0,
+        }
+        return {
+            "contractors": [],
+            "total": 0,
+            "skip": skip,
+            "limit": limit,
+            "job_jurisdiction": None,
+            "filter_diagnostics": empty_diag,
+        }
     job_jurisdiction = await resolve_effective_work_order_jurisdiction(db, wo, client_id)
     prop_pc = None
     if wo.get("property_id"):
@@ -1577,27 +1595,46 @@ async def list_assignable_contractors_for_work_order(
     cursor = db.contractors.find(q).sort("name", 1)
     all_rows = await cursor.to_list(500)
     matched: List[Dict[str, Any]] = []
+    diag = {
+        "visible_in_directory": len(all_rows),
+        "excluded_not_assignment_ready": 0,
+        "excluded_wrong_client_scope": 0,
+        "excluded_property_scope": 0,
+        "excluded_location_postcode": 0,
+        "excluded_execution_capability": 0,
+        "excluded_maintenance_trade": 0,
+        "excluded_service_region_jurisdiction": 0,
+        "eligible": 0,
+    }
     for raw in all_rows:
         c = _sanitize_doc(raw)
         ok, _ = contractor_is_assignable(c)
         if not ok:
+            diag["excluded_not_assignment_ready"] += 1
             continue
         if not contractor_client_link_allows(c, client_id):
+            diag["excluded_wrong_client_scope"] += 1
             continue
         if not contractor_property_scope_allows(c, wo.get("property_id")):
+            diag["excluded_property_scope"] += 1
             continue
         if not contractor_location_matches_property(c, prop_pc):
+            diag["excluded_location_postcode"] += 1
             continue
         if not contractor_passes_work_order_execution_gate(c, wo):
+            diag["excluded_execution_capability"] += 1
             continue
         kind = (wo.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
         if kind == WORK_ORDER_KIND_MAINTENANCE:
             if not contractor_trade_matches_category(c, wo.get("category")):
+                diag["excluded_maintenance_trade"] += 1
                 continue
         if not contractor_service_regions_allow_jurisdiction(c, job_jurisdiction):
+            diag["excluded_service_region_jurisdiction"] += 1
             continue
         matched.append(c)
     total = len(matched)
+    diag["eligible"] = total
     page = matched[skip : skip + limit]
     return {
         "contractors": page,
@@ -1605,6 +1642,7 @@ async def list_assignable_contractors_for_work_order(
         "skip": skip,
         "limit": limit,
         "job_jurisdiction": job_jurisdiction,
+        "filter_diagnostics": diag,
     }
 
 

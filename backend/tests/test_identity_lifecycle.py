@@ -68,3 +68,41 @@ async def test_portal_user_delete_preflight_allows_clean_non_tenant():
     ok, blockers = await portal_user_delete_preflight(db, "u1")
     assert ok is True
     assert blockers == []
+
+
+@pytest.mark.asyncio
+async def test_portal_preflight_blocks_audit_logs_when_not_test_flag():
+    db = MagicMock()
+    db.portal_users.find_one = AsyncMock(
+        return_value={
+            "portal_user_id": "u2",
+            "client_id": None,
+            "role": UserRole.ROLE_ADMIN.value,
+            "is_test_like": False,
+        }
+    )
+    db.audit_logs = MagicMock()
+    db.audit_logs.count_documents = AsyncMock(return_value=1)
+
+    ok, blockers = await portal_user_delete_preflight(db, "u2")
+    assert ok is False
+    assert "audit_logs_present" in blockers
+
+
+@pytest.mark.asyncio
+async def test_portal_preflight_allows_audit_when_test_flag():
+    db = MagicMock()
+    db.portal_users.find_one = AsyncMock(
+        return_value={
+            "portal_user_id": "u3",
+            "client_id": None,
+            "role": UserRole.ROLE_ADMIN.value,
+            "is_test_like": True,
+        }
+    )
+    db.audit_logs = MagicMock()
+    db.audit_logs.count_documents = AsyncMock(return_value=99)
+
+    ok, blockers = await portal_user_delete_preflight(db, "u3")
+    assert ok is True
+    assert blockers == []

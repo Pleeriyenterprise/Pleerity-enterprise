@@ -24,7 +24,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '../components/ui/dialog';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import api, { openBlobApiResponse } from '../api/client';
 import { buildEntityRoute, resolveClientPortalPath } from '../utils/clientPortalNavigation';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';

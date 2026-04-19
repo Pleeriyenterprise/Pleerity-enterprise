@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import { ClipboardCheck, Loader2, Download, Search, Wrench, Briefcase, Eye, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot, portalDrawerPanelClass } from '../components/client/ClientPortalPatterns';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';

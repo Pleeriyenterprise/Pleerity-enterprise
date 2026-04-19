@@ -85,7 +85,7 @@ import {
   complianceObligationPrimaryAction,
   compliancePriorityRecommendedNext,
 } from '../utils/complianceObligationPresent';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { buildEntityRoute, buildSafeQueryPath, resolveClientPortalPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
 import { cn } from '../lib/utils';
 import {

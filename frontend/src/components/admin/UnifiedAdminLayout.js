@@ -85,6 +85,7 @@ const navSections = [
     icon: ClipboardCheck,
     items: [
       { href: '/admin/ops', label: 'Overview', icon: LayoutDashboard },
+      { href: '/admin/ops/identities', label: 'Identity lifecycle', icon: Shield },
       { href: '/admin/ops/maintenance', label: 'Jobs', icon: Settings },
       { href: '/admin/ops/contractors', label: 'Contractors', icon: Users },
       { href: '/admin/ops/risk', label: 'Risk & Insights', icon: BarChart3 },

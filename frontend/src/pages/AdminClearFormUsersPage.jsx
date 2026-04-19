@@ -20,7 +20,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import api from '../api/client';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 const AdminClearFormUsersPage = () => {
   const [users, setUsers] = useState([]);

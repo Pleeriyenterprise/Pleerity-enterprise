@@ -1,7 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
+import AccountEnvironmentBadge from '../components/admin/AccountEnvironmentBadge';
+import {
+  clientOrgPermanentDeleteHint,
+  isNonProductionAccount,
+  NON_PRODUCTION_ACCOUNT_LABEL,
+  PRODUCTION_ACCOUNT_LABEL,
+} from '../utils/adminAccountClassification';
 import api, { adminAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useStepUpApi } from '../hooks/useStepUpApi';
@@ -365,7 +372,10 @@ const AdminClientControlPanelPage = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-midnight-blue">Client Control Panel</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold text-midnight-blue">Client Control Panel</h1>
+              {!loading && data?.identity ? <AccountEnvironmentBadge doc={data.identity} showLiveBadge /> : null}
+            </div>
             <p className="text-sm text-gray-600">
               Unified client state, billing, compliance, operations, and controlled actions.
             </p>
@@ -433,6 +443,21 @@ const AdminClientControlPanelPage = () => {
             </button>
           </div>
         </div>
+
+        {!loading && data?.identity ? (
+          <div
+            className={`rounded-lg border p-4 text-sm ${
+              isNonProductionAccount(data.identity)
+                ? 'border-fuchsia-400 bg-fuchsia-50/90 text-fuchsia-950'
+                : 'border-slate-200 bg-slate-50 text-slate-900'
+            }`}
+          >
+            <p className="font-semibold text-base">
+              {isNonProductionAccount(data.identity) ? NON_PRODUCTION_ACCOUNT_LABEL : PRODUCTION_ACCOUNT_LABEL}
+            </p>
+            <p className="mt-1 text-gray-700">{clientOrgPermanentDeleteHint(isNonProductionAccount(data.identity))}</p>
+          </div>
+        ) : null}
 
         {loading ? (
           <div className="bg-white border border-gray-200 rounded-xl p-6 text-gray-600">Loading control panel...</div>

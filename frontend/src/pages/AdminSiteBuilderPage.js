@@ -23,7 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
 import { Skeleton } from '../components/ui/skeleton';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import {
   FileText,
   Plus,

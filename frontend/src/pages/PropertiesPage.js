@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { resolvePropertyPath } from '../utils/clientPortalNavigation';
 import api, { clientAPI, parseApiError } from '../api/client';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { 
   Building2, 
   Plus, 

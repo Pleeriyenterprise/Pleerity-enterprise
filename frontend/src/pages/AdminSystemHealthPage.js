@@ -4,7 +4,7 @@ import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { Activity, AlertTriangle, CheckCircle, RefreshCw, Clock } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 export default function AdminSystemHealthPage() {
   const { isOwner, isAdmin } = useAuth();

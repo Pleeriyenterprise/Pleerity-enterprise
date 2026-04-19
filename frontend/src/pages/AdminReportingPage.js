@@ -26,7 +26,7 @@ import {
 } from '../components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Switch } from '../components/ui/switch';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import client from '../api/client';
 
 // Format icons

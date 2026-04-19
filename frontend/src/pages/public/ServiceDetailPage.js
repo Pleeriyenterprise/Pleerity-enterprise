@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import client from '../../api/client';
 import { capturePricing, captureAutomationEnquiry, captureMarketResearchEnquiry } from '../../api/leadsApi';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 // Map service codes to icons
 const SERVICE_ICONS = {

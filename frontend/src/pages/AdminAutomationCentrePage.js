@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { Zap, Play, RefreshCw, Clock, CheckCircle, AlertTriangle, XCircle, HelpCircle, FileText, Download } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 // Jobs that have message_logs drill-down (delivery reconciliation)
 const MESSAGE_LOGS_JOBS = new Set([

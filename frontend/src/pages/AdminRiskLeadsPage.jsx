@@ -8,7 +8,7 @@ import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Search, Download, Mail, FileText, Play, Check } from 'lucide-react';
 import client from '../api/client';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 const AdminRiskLeadsPage = () => {
   const [items, setItems] = useState([]);

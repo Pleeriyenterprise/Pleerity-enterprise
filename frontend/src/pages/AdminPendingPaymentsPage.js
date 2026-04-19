@@ -37,15 +37,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../components/ui/alert-dialog';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import api, { adminAPI } from '../api/client';
+import AccountEnvironmentBadge from '../components/admin/AccountEnvironmentBadge';
 import { useStepUpApi } from '../hooks/useStepUpApi';
 
 const BUCKETS = [
   { id: 'pending', label: 'Pending setup' },
   { id: 'archived', label: 'Archived' },
   { id: 'purge_eligible', label: 'Purge eligible' },
-  { id: 'test_like', label: 'Test-like' },
+  { id: 'test_like', label: 'Test / Dummy / Pre-production' },
   { id: 'all', label: 'All (funnel)' },
 ];
 
@@ -412,19 +413,12 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
                           {bill.stripe_customer_id ? 'Cust' : '—'} / {bill.stripe_subscription_id ? 'Sub' : '—'}
                         </td>
                         <td className="py-2">
-                          <div className="flex flex-wrap gap-1">
-                            {item.is_test_like ? (
-                              <Badge variant="secondary" className="text-[10px]">
-                                Test-like
-                              </Badge>
-                            ) : null}
+                          <div className="flex flex-wrap gap-1 items-center">
+                            <AccountEnvironmentBadge doc={item} showLiveBadge />
                             {item.purge_eligible ? (
                               <Badge variant="outline" className="text-[10px] border-amber-600 text-amber-800">
                                 Purge
                               </Badge>
-                            ) : null}
-                            {!item.is_test_like && !item.purge_eligible ? (
-                              <span className="text-muted-foreground">—</span>
                             ) : null}
                           </div>
                         </td>

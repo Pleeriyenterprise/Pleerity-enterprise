@@ -53,7 +53,7 @@ import {
 } from '../../components/ui/dropdown-menu';
 import { useClearFormAuth } from '../contexts/ClearFormAuthContext';
 import { workspacesApi, profilesApi } from '../api/clearformApi';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { BRAND_LOGO_URL } from '../../config/branding';
 
 const ClearFormWorkspacesPage = () => {

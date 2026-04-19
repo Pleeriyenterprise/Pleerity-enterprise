@@ -13,7 +13,7 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 function formatGbpPence(pence) {
   if (pence == null || Number.isNaN(Number(pence))) return '—';

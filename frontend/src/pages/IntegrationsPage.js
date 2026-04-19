@@ -29,7 +29,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Switch } from '../components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import api from '../api/client';
 import UpgradePrompt from '../components/UpgradePrompt';
 import { useEntitlements } from '../contexts/EntitlementsContext';

@@ -34,7 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { useClearFormAuth } from '../contexts/ClearFormAuthContext';
 import { documentsApi, creditsApi, templatesApi } from '../api/clearformApi';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { BRAND_LOGO_URL } from '../../config/branding';
 
 const DOCUMENT_ICONS = {

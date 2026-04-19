@@ -4,7 +4,7 @@ import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { adminAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 export default function AdminComplianceRegistryPublishQueuePage() {
   const { isOwner, isAdmin, isSupport } = useAuth();
@@ -36,7 +36,7 @@ export default function AdminComplianceRegistryPublishQueuePage() {
         setHistoryItems(h.data?.items || []);
       })
       .catch((err) => {
-        toast.error(err?.response?.data?.detail || 'Failed to load publish queue');
+        toast.error(err?.response?.data?.detail || 'Failed to load publish queue', { critical: true });
       })
       .finally(() => setLoading(false));
   }, []);
@@ -95,7 +95,7 @@ export default function AdminComplianceRegistryPublishQueuePage() {
       })
       .catch((err) => {
         const d = err?.response?.data?.detail;
-        toast.error(typeof d === 'string' ? d : 'Create failed');
+        toast.error(typeof d === 'string' ? d : 'Create failed', { critical: true });
       });
   };
 
@@ -130,7 +130,7 @@ export default function AdminComplianceRegistryPublishQueuePage() {
       })
       .catch((err) => {
         const d = err?.response?.data?.detail;
-        toast.error(typeof d === 'string' ? d : 'Reject failed');
+        toast.error(typeof d === 'string' ? d : 'Reject failed', { critical: true });
       })
       .finally(() => setBusyId(null));
   };
@@ -161,7 +161,7 @@ export default function AdminComplianceRegistryPublishQueuePage() {
       })
       .catch((err) => {
         const d = err?.response?.data?.detail;
-        toast.error(typeof d === 'string' ? d : 'Revert failed');
+        toast.error(typeof d === 'string' ? d : 'Revert failed', { critical: true });
       })
       .finally(() => setRevertBusyLine(null));
   };
@@ -251,7 +251,7 @@ export default function AdminComplianceRegistryPublishQueuePage() {
                     })
                     .catch((err) => {
                       const d = err?.response?.data?.detail;
-                      toast.error(typeof d === 'string' ? d : 'Sync failed');
+                      toast.error(typeof d === 'string' ? d : 'Sync failed', { critical: true });
                     })
                     .finally(() => setSyncBusy(false));
                 }}

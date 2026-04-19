@@ -28,6 +28,8 @@ DATE_SOURCE_VERIFIED_DOCUMENT = "VERIFIED_DOCUMENT"
 
 EVIDENCE_MISSING = "MISSING"
 EVIDENCE_UPLOADED_UNVERIFIED = "UPLOADED_UNVERIFIED"
+EVIDENCE_AWAITING_USER_CONFIRM = "AWAITING_USER_CONFIRM"
+EVIDENCE_MISMATCH_FLAGGED = "MISMATCH_FLAGGED"
 EVIDENCE_VERIFIED = "VERIFIED"
 
 CONFIDENCE_ESTIMATED = "ESTIMATED"
@@ -45,7 +47,7 @@ def _status_upper(st: Optional[str]) -> str:
 
 
 def evidence_state_from_document_statuses(statuses: List[str]) -> str:
-    """Aggregate document statuses for one requirement_id."""
+    """Aggregate document statuses for one requirement_id (status strings only; legacy callers)."""
     if not statuses:
         return EVIDENCE_MISSING
     up = [_status_upper(s) for s in statuses]
@@ -54,6 +56,43 @@ def evidence_state_from_document_statuses(statuses: List[str]) -> str:
     if any(s not in ("REJECTED", "EXPIRED", "") for s in up):
         return EVIDENCE_UPLOADED_UNVERIFIED
     return EVIDENCE_MISSING
+
+
+def _extraction_review_is_approved(review_status: Optional[str]) -> bool:
+    return _status_upper(review_status or "") in ("APPROVED", "APPROVE")
+
+
+def evidence_state_from_documents(docs: List[Dict[str, Any]]) -> str:
+    """
+    Aggregate evidence for one requirement_id using document rows (status + extraction + mismatch flags).
+    Precedence: verified evidence wins; then mismatch; then awaiting user confirmation on extracted uploads;
+    then generic uploaded-unverified; missing only when nothing counts.
+    """
+    if not docs:
+        return EVIDENCE_MISSING
+    statuses = [_status_upper(d.get("status")) for d in docs]
+    if any(s == "VERIFIED" for s in statuses):
+        return EVIDENCE_VERIFIED
+
+    active = [
+        d
+        for d in docs
+        if _status_upper(d.get("status")) not in ("REJECTED", "EXPIRED", "")
+    ]
+    if not active:
+        return EVIDENCE_MISSING
+
+    if any(d.get("requirement_evidence_mismatch") is True for d in active):
+        return EVIDENCE_MISMATCH_FLAGGED
+
+    for d in active:
+        if _status_upper(d.get("status")) != "UPLOADED":
+            continue
+        ai = d.get("ai_extraction") if isinstance(d.get("ai_extraction"), dict) else {}
+        if _status_upper(ai.get("status")) == "COMPLETED" and not _extraction_review_is_approved(ai.get("review_status")):
+            return EVIDENCE_AWAITING_USER_CONFIRM
+
+    return EVIDENCE_UPLOADED_UNVERIFIED
 
 
 async def load_evidence_state_by_requirement_id(
@@ -66,15 +105,21 @@ async def load_evidence_state_by_requirement_id(
         return {}
     cursor = db.documents.find(
         {"client_id": client_id, "requirement_id": {"$in": requirement_ids}},
-        {"_id": 0, "requirement_id": 1, "status": 1},
+        {
+            "_id": 0,
+            "requirement_id": 1,
+            "status": 1,
+            "ai_extraction": 1,
+            "requirement_evidence_mismatch": 1,
+        },
     )
-    by_rid: Dict[str, List[str]] = {}
+    by_rid: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     async for doc in cursor:
         rid = doc.get("requirement_id")
         if not rid:
             continue
-        by_rid.setdefault(rid, []).append(str(doc.get("status") or ""))
-    return {rid: evidence_state_from_document_statuses(sts) for rid, sts in by_rid.items()}
+        by_rid.setdefault(str(rid), []).append(doc)
+    return {rid: evidence_state_from_documents(lst) for rid, lst in by_rid.items()}
 
 
 def infer_date_source(requirement: Dict[str, Any], evidence_state: str) -> str:
@@ -147,6 +192,22 @@ def build_date_presentation(
     d = _parse_due_date_value(due_raw)
     formatted = _format_gb_date(d) if d else None
 
+    if evidence_state == EVIDENCE_MISMATCH_FLAGGED:
+        return (
+            f"Review required — date on file: {formatted}" if formatted else "Review required — possible wrong document for this requirement",
+            "The uploaded file does not look like the expected certificate type for this requirement. Upload the correct evidence or correct the extracted type and apply.",
+        )
+    if evidence_state == EVIDENCE_AWAITING_USER_CONFIRM:
+        if formatted:
+            return (
+                f"Extracted date (not yet applied): {formatted}",
+                "Confirm extracted details in Documents before your compliance score treats this certificate as final evidence.",
+            )
+        return (
+            "Awaiting your confirmation",
+            "Open Documents, review extracted dates, and apply them so renewals and scores update.",
+        )
+
     if not formatted:
         if date_source == DATE_SOURCE_SYSTEM_ESTIMATED:
             return (
@@ -176,8 +237,12 @@ def build_date_presentation(
 def evidence_badge_label(evidence_state: str) -> str:
     if evidence_state == EVIDENCE_VERIFIED:
         return "Verified"
+    if evidence_state == EVIDENCE_MISMATCH_FLAGGED:
+        return "Possible wrong document (review required)"
+    if evidence_state == EVIDENCE_AWAITING_USER_CONFIRM:
+        return "Extracted — confirm dates to apply"
     if evidence_state == EVIDENCE_UPLOADED_UNVERIFIED:
-        return "Uploaded (awaiting verification)"
+        return "Uploaded (processing or awaiting verification)"
     return "Not uploaded"
 
 
@@ -385,7 +450,7 @@ async def enrich_requirements_for_admin(
 
 
 def evidence_state_for_documents_list(docs: List[Dict[str, Any]]) -> str:
-    return evidence_state_from_document_statuses([str(d.get("status") or "") for d in docs])
+    return evidence_state_from_documents(docs)
 
 
 def infer_date_source_for_scoring(

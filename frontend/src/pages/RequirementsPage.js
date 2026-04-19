@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import api from '../api/client';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import {
   FileCheck,

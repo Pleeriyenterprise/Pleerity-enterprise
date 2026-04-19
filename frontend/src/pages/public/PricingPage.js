@@ -32,7 +32,7 @@ import {
   AccordionTrigger,
 } from '../../components/ui/accordion';
 import { capturePricing } from '../../api/leadsApi';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 function getUtmParams() {
   if (typeof window === 'undefined') return {};

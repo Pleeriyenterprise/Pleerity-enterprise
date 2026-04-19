@@ -4,7 +4,7 @@ import { adminAPI, parseApiError } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/button';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import {
   Megaphone,
   RefreshCw,

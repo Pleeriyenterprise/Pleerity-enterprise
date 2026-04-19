@@ -20,7 +20,7 @@ import {
 import { Button } from '../components/ui/button';
 import { Switch } from '../components/ui/switch';
 import { Input } from '../components/ui/input';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import api from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import UpgradePrompt from '../components/UpgradePrompt';

@@ -27,7 +27,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '../components/ui/select';
 import { Separator } from '../components/ui/separator';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import client from '../api/client';
 import { validateCheckout, createCheckoutSession, isDocumentPack, getPackTierName } from '../api/checkoutApi';
 import { BRAND_LOGO_URL } from '../config/branding';

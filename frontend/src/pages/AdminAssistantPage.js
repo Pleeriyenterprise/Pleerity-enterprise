@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { 
   Shield, 
   MessageSquare, 

@@ -8,7 +8,7 @@ import { Label } from '../../components/ui/label';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Calendar, Clock, CheckCircle2, Send, Loader2 } from 'lucide-react';
 import { capturePricing } from '../../api/leadsApi';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 const BookingPage = () => {
   const [callbackForm, setCallbackForm] = useState({ name: '', email: '', phone: '', marketing_consent: false });

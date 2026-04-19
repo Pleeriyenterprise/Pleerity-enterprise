@@ -89,6 +89,7 @@ class Database:
             await self.db.portal_users.create_index("portal_user_id", unique=True)
             try:
                 await self.db.portal_users.create_index("is_deleted")
+                await self.db.portal_users.create_index("is_test_like")
             except Exception:
                 pass
 

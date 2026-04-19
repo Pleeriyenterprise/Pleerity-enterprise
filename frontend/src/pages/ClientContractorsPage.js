@@ -5,7 +5,7 @@ import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Briefcase, Loader2, AlertCircle, CheckCircle, Send, UserPlus, Eye } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 function sourceLabel(sourceType) {
   const s = (sourceType || '').toLowerCase();

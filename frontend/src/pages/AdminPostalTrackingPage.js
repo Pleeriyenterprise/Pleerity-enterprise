@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/client';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';

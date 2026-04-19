@@ -17,7 +17,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Wrench, Loader2, FileText, CheckCircle, XCircle, AlertCircle, Upload, Zap } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import {
   contractorPortalExecutableActions,
   contractorListPrimaryAction,

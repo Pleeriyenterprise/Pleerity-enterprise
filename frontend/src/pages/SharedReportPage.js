@@ -8,7 +8,7 @@ import { FileText, Download, Clock, AlertCircle, CheckCircle, RefreshCw } from '
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 // Same base as api/client.js: relative /api when REACT_APP_BACKEND_URL not set
 const _backend = process.env.REACT_APP_BACKEND_URL;

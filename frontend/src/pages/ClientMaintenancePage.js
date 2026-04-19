@@ -19,7 +19,7 @@ import {
   AlertTriangle,
   FileText,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { issueSeverityLabel, workOrderStatusLabel } from '../domain/presentDomain';
 import { assetIdParts } from '../utils/assetDisplay';
 import { normalizeRouteId, resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';

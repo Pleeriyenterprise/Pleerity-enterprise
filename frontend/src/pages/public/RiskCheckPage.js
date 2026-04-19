@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '../../components/ui/select';
 import { getPreview, postReport, activate } from '../../api/riskCheckAPI';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 
 const SCORE_CAP = 97;
 

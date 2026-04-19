@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../api/client';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { Wrench, Plus, Loader2, UserPlus, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { Button } from '../../components/ui/button';
 
 const STATUS_OPTIONS = [

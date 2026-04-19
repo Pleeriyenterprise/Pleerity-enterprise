@@ -3,10 +3,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import api, { adminAPI } from '../api/client';
 import { useStepUpApi } from '../hooks/useStepUpApi';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { presentScoreChangeReason } from '../utils/timelinePresent';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
+import AccountEnvironmentBadge from '../components/admin/AccountEnvironmentBadge';
+import {
+  accountEnvironmentActionNote,
+  clientOrgPermanentDeleteHint,
+  isNonProductionAccount,
+  NON_PRODUCTION_ACCOUNT_LABEL,
+  PRODUCTION_ACCOUNT_LABEL,
+} from '../utils/adminAccountClassification';
 import { 
   LayoutDashboard, 
   Users, 
@@ -82,7 +90,7 @@ const ADMIN_CLIENT_LIFECYCLE_BUCKETS = [
   { id: 'suspended', label: 'Suspended' },
   { id: 'archived', label: 'Archived' },
   { id: 'purge_eligible', label: 'Purge eligible' },
-  { id: 'test_like', label: 'Test-like' },
+  { id: 'test_like', label: 'Test / Dummy / Pre-production' },
   { id: 'all', label: 'All' },
 ];
 
@@ -222,6 +230,7 @@ const GlobalSearch = ({ onSelectClient }) => {
                   <div>
                     <p className="font-medium text-midnight-blue flex flex-wrap items-center gap-1.5">
                       {client.full_name}
+                      <AccountEnvironmentBadge doc={client} />
                       {inactiveLabel ? (
                         <span className="text-[10px] font-normal px-1.5 py-0 rounded bg-slate-200 text-slate-700">
                           {inactiveLabel}
@@ -1788,6 +1797,7 @@ const ClientsManagement = () => {
   const subscriptionFilter = searchParams.get('subscription_status') || '';
   const statusFilter = searchParams.get('onboarding_status') || 'all';
   const lifecycleBucket = searchParams.get('lifecycle_bucket') || 'active';
+  const accountEnvironment = searchParams.get('account_environment') || 'all';
   const searchTerm = searchParams.get('q') || '';
 
   useEffect(() => {
@@ -1822,6 +1832,9 @@ const ClientsManagement = () => {
       if (lifecycleBucket && lifecycleBucket !== 'active') {
         params.set('lifecycle_bucket', lifecycleBucket);
       }
+      if (accountEnvironment && accountEnvironment !== 'all') {
+        params.set('account_environment', accountEnvironment);
+      }
       const response = await api.get(`/admin/clients?${params.toString()}`);
       setClients(response.data.clients || []);
       setTotal(response.data.total ?? 0);
@@ -1833,7 +1846,7 @@ const ClientsManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [planFilter, subscriptionFilter, statusFilter, lifecycleBucket, searchTerm]);
+  }, [planFilter, subscriptionFilter, statusFilter, lifecycleBucket, accountEnvironment, searchTerm]);
 
   useEffect(() => {
     fetchClients();
@@ -1884,6 +1897,7 @@ const ClientsManagement = () => {
     subscriptionFilter ||
     (statusFilter && statusFilter !== 'all') ||
     (lifecycleBucket && lifecycleBucket !== 'active') ||
+    (accountEnvironment && accountEnvironment !== 'all') ||
     searchTerm.trim();
 
   if (loading) {
@@ -1912,6 +1926,29 @@ const ClientsManagement = () => {
                 lifecycleBucket === b.id
                   ? 'bg-electric-teal text-white border-electric-teal'
                   : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Account type</span>
+          {[
+            { id: 'all', label: 'All', activeClass: 'bg-electric-teal text-white border-electric-teal' },
+            { id: 'live', label: 'Live (production)', activeClass: 'bg-slate-800 text-white border-slate-800' },
+            {
+              id: 'non_production',
+              label: 'Test / Dummy / Pre-production',
+              activeClass: 'bg-fuchsia-700 text-white border-fuchsia-700',
+            },
+          ].map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => updateParams({ account_environment: b.id === 'all' ? null : b.id })}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                accountEnvironment === b.id ? b.activeClass : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
               }`}
             >
               {b.label}
@@ -2015,10 +2052,8 @@ const ClientsManagement = () => {
                       >
                         {client.derived_client_lifecycle_status || '—'}
                       </span>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {client.is_test_like ? (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-700">Test-like</span>
-                        ) : null}
+                      <div className="mt-1 flex flex-wrap gap-1 items-center">
+                        <AccountEnvironmentBadge doc={client} showLiveBadge />
                         {client.purge_eligible ? (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-800">Purge</span>
                         ) : null}
@@ -2063,11 +2098,27 @@ const ClientsManagement = () => {
         {/* Client Details Panel */}
         {clientDetails && (
           <div className="w-96 bg-white rounded-xl border border-gray-200 p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-midnight-blue">Client Details</h3>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-lg font-semibold text-midnight-blue">Client Details</h3>
+                <AccountEnvironmentBadge doc={clientDetails.client} showLiveBadge />
+              </div>
               <button onClick={() => { setSelectedClient(null); setClientDetails(null); }} className="text-gray-400 hover:text-gray-600">
                 <XCircle className="w-5 h-5" />
               </button>
+            </div>
+
+            <div
+              className={`rounded-lg border p-3 text-sm ${
+                isNonProductionAccount(clientDetails.client)
+                  ? 'border-fuchsia-400 bg-fuchsia-50/80 text-fuchsia-950'
+                  : 'border-slate-200 bg-slate-50 text-slate-800'
+              }`}
+            >
+              <p className="font-semibold">
+                {isNonProductionAccount(clientDetails.client) ? NON_PRODUCTION_ACCOUNT_LABEL : PRODUCTION_ACCOUNT_LABEL}
+              </p>
+              <p className="mt-1 text-gray-700">{clientOrgPermanentDeleteHint(isNonProductionAccount(clientDetails.client))}</p>
             </div>
 
             {/* Client Info */}
@@ -2108,8 +2159,8 @@ const ClientsManagement = () => {
                     <span className="text-xs text-gray-500">stored: {clientDetails.client.client_lifecycle_status}</span>
                   ) : null}
                 </div>
-                <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
-                  {clientDetails.client?.is_test_like ? <span>Test-like</span> : null}
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600 items-center">
+                  <AccountEnvironmentBadge doc={clientDetails.client} showLiveBadge />
                   {clientDetails.client?.purge_eligible ? <span>Purge eligible</span> : null}
                   {clientDetails.client?.is_deleted ? <span className="text-amber-700">Archived / hidden</span> : null}
                 </div>
@@ -2127,7 +2178,11 @@ const ClientsManagement = () => {
               <div className="border-t pt-4">
                 <h4 className="text-sm font-medium text-gray-500 mb-3">Portal Access</h4>
                 {(clientDetails.portal_users ?? []).map((user, idx) => (
-                  <div key={idx} className="space-y-2">
+                  <div key={user.portal_user_id || idx} className="space-y-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-xs font-mono text-gray-500">{user.auth_email || user.email || 'Portal user'}</span>
+                      <AccountEnvironmentBadge doc={user} showLiveBadge />
+                    </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Status</span>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(user.status)}`}>
@@ -2640,7 +2695,10 @@ const EmailDelivery = () => {
 };
 
 // Admin Users Management Component
+const HARD_DELETE_CONFIRM_PHRASE = 'PERMANENTLY DELETE TEST ACCOUNT';
+
 const AdminsManagement = () => {
+  const { user: authUser } = useAuth();
   const stepUp = useStepUpApi();
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2732,7 +2790,7 @@ const AdminsManagement = () => {
     }
   };
 
-  const handlePermanentDelete = async (portalUserId, email) => {
+  const handlePermanentDelete = async (portalUserId, email, adminRow) => {
     setActionLoading(portalUserId);
     try {
       const check = await api.get(`/admin/users/${portalUserId}/permanent-delete-check`);
@@ -2745,11 +2803,19 @@ const AdminsManagement = () => {
         );
         return;
       }
+      const envNote = accountEnvironmentActionNote(Boolean(adminRow?.is_test_like));
       if (
         !window.confirm(
-          `Permanently remove ${email} from the database? This cannot be undone. Billing records and the client account are not deleted.`,
+          `${envNote}\n\nPermanently remove ${email} from the database? This cannot be undone. Billing records and the client account are not deleted.`,
         )
       ) {
+        return;
+      }
+      const typed = window.prompt(
+        `Owner confirmation: type exactly:\n${HARD_DELETE_CONFIRM_PHRASE}`,
+      );
+      if (typed !== HARD_DELETE_CONFIRM_PHRASE) {
+        toast.error('Phrase did not match — permanent delete cancelled.');
         return;
       }
       await stepUp.request((headers) =>
@@ -2835,7 +2901,12 @@ const AdminsManagement = () => {
         <div>
           <h2 className="text-xl font-semibold text-midnight-blue">Admin Users</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Manage administrator access to Compliance Vault Pro
+            Manage administrator access to Compliance Vault Pro. For deactivate (suspend), archive, restore, and
+            permanent delete across all portal identities, use{' '}
+            <Link to="/admin/ops/identities" className="text-electric-teal font-medium hover:underline">
+              Identity lifecycle
+            </Link>
+            .
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -3041,8 +3112,9 @@ const AdminsManagement = () => {
                           {admin.full_name?.charAt(0)?.toUpperCase() || admin.auth_email?.charAt(0)?.toUpperCase() || 'A'}
                         </div>
                         <div>
-                          <p className="font-medium text-midnight-blue">
+                          <p className="font-medium text-midnight-blue flex flex-wrap items-center gap-2">
                             {admin.full_name || 'Unnamed Admin'}
+                            <AccountEnvironmentBadge doc={admin} showLiveBadge />
                           </p>
                           <p className="text-sm text-gray-500">{admin.auth_email}</p>
                         </div>
@@ -3091,14 +3163,27 @@ const AdminsManagement = () => {
                                 >
                                   <RotateCcw className="w-4 h-4" />
                                 </button>
-                                <button
-                                  onClick={() => handlePermanentDelete(admin.portal_user_id, admin.auth_email)}
-                                  className="p-2 text-gray-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="Permanent delete (only when billing/audit checks pass)"
-                                  data-testid={`permanent-delete-admin-${admin.portal_user_id}`}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                {authUser?.role === 'ROLE_OWNER' && admin.hard_delete_allowed ? (
+                                  <button
+                                    onClick={() => handlePermanentDelete(admin.portal_user_id, admin.auth_email, admin)}
+                                    className="p-2 text-gray-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Permanently delete test account (pre-flight checks passed)"
+                                    data-testid={`permanent-delete-admin-${admin.portal_user_id}`}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                ) : authUser?.role === 'ROLE_OWNER' && !admin.hard_delete_allowed ? (
+                                  <span
+                                    className="p-2 text-gray-300 cursor-not-allowed inline-flex"
+                                    title={
+                                      admin.hard_delete_blockers?.length
+                                        ? `Not eligible: ${admin.hard_delete_blockers.join(', ')}`
+                                        : 'Not eligible for permanent delete'
+                                    }
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </span>
+                                ) : null}
                               </>
                             ) : (
                               <>
@@ -4441,7 +4526,7 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
   const [dashboardError, setDashboardError] = useState(null);
   const [pendingList, setPendingList] = useState({ documents: [], total: 0, returned: 0, has_more: false });
   const [pendingLoading, setPendingLoading] = useState(false);
-  const [pendingHours, setPendingHours] = useState(24);
+  const [pendingHours, setPendingHours] = useState(0);
   const [pendingClientId, setPendingClientId] = useState('');
   const [pendingListWarning, setPendingListWarning] = useState(null);
   const [rejectModalDoc, setRejectModalDoc] = useState(null);
@@ -4833,7 +4918,10 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
       {/* Pending verification (UPLOADED older than X hours) */}
       <div id="pending-verification-section" className="bg-white rounded-xl border border-gray-200 p-6" data-testid="pending-verification-section">
         <h3 className="text-lg font-semibold text-midnight-blue mb-4">Pending verification</h3>
-        <p className="text-sm text-gray-500 mb-4">Documents with status UPLOADED older than selected hours (filterable by client).</p>
+        <p className="text-sm text-gray-500 mb-4">
+          Documents with status UPLOADED (awaiting verification). Set minimum age in hours to focus on older
+          queue items; choose 0 to list every pending upload, including those just added.
+        </p>
         {pendingListWarning && (
           <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800" role="alert">
             {pendingListWarning}
@@ -4841,13 +4929,14 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
         )}
         <div className="flex flex-wrap items-center gap-4 mb-4">
           <label className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Older than (hours)</span>
+            <span className="text-sm text-gray-600">Min. age (hours)</span>
             <select
               value={pendingHours}
               onChange={(e) => setPendingHours(Number(e.target.value))}
               className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
               data-testid="pending-verification-hours"
             >
+              <option value={0}>0 — all pending</option>
               <option value={24}>24</option>
               <option value={48}>48</option>
               <option value={72}>72</option>

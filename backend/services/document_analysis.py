@@ -241,7 +241,7 @@ class DocumentAnalysisService:
                                     "doc_type_hint": doc_type_hint,
                                     "extraction_quality": extraction_quality,
                                     "requires_review": True,
-                                    "review_status": "pending",
+                                    "review_status": "AWAITING_USER_CONFIRM",
                                 }
                             }}
                         )
@@ -333,7 +333,7 @@ class DocumentAnalysisService:
                             "doc_type_hint": doc_type_hint,
                             "extraction_quality": extraction_quality,
                             "requires_review": True,  # ALWAYS requires review
-                            "review_status": "pending"
+                            "review_status": "AWAITING_USER_CONFIRM",
                         }
                     }}
                 )

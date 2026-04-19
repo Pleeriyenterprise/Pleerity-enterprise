@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import UpgradePrompt from '../components/UpgradePrompt';
 import api from '../api/client';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { 
   TrendingUp,
   ArrowLeft,

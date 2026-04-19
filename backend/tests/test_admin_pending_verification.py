@@ -188,3 +188,38 @@ async def test_non_admin_gets_403_for_pending_verification():
             await require_owner_or_admin(request)
         assert exc_info.value.status_code == 403
         assert "Insufficient permissions" in str(exc_info.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_pending_verification_hours_zero_lists_all_uploaded_without_age_filter():
+    """hours=0 should not add uploaded_at filter so brand-new uploads appear in the admin queue."""
+    from routes.admin import list_pending_verification_documents
+    from fastapi import Request
+
+    request = MagicMock(spec=Request)
+    request.state = MagicMock()
+    request.state.user = {"portal_user_id": "admin-1", "role": "ROLE_ADMIN"}
+
+    cursor = MagicMock()
+    cursor.sort = MagicMock(return_value=cursor)
+    cursor.skip = MagicMock(return_value=cursor)
+    cursor.limit = MagicMock(return_value=cursor)
+    cursor.to_list = AsyncMock(return_value=[])
+
+    db = MagicMock()
+    db.documents = MagicMock()
+    db.documents.count_documents = AsyncMock(return_value=0)
+    db.documents.find = MagicMock(return_value=cursor)
+    db.clients = MagicMock()
+    db.clients.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+
+    with patch("routes.admin.admin_route_guard", new_callable=AsyncMock), patch(
+        "routes.admin.database.get_db", return_value=db
+    ):
+        await list_pending_verification_documents(
+            request, hours=0, client_id=None, limit=50, skip=0
+        )
+
+    q = db.documents.find.call_args[0][0]
+    assert q.get("status") == "UPLOADED"
+    assert "uploaded_at" not in q

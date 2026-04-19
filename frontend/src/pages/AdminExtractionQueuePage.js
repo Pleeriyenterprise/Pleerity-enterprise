@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Loader2, Check, X, FileText, AlertTriangle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import api from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 

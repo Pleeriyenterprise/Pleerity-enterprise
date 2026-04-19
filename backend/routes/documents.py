@@ -408,49 +408,6 @@ DOCUMENT_STORAGE_PATH = Path(os.environ.get("DOCUMENT_STORAGE_PATH", str(Path(DA
 DOCUMENT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
 
 
-async def _apply_extraction_to_requirement(
-    db,
-    requirement_id: str,
-    property_id: str,
-    client_id: str,
-    expiry_date_str: str,
-    actor_id: Optional[str],
-) -> bool:
-    """Update requirement due_date and status from extracted expiry. Used after upload+analysis and by apply-extraction."""
-    try:
-        expiry_dt = _normalize_and_parse_date(expiry_date_str)
-    except ValueError:
-        return False
-    now = datetime.now(timezone.utc)
-    if expiry_dt < now:
-        status_value = RequirementStatus.OVERDUE.value
-    elif expiry_dt < now + timedelta(days=30):
-        status_value = RequirementStatus.EXPIRING_SOON.value
-    else:
-        status_value = RequirementStatus.COMPLIANT.value
-    update_fields = {
-        "due_date": expiry_dt.isoformat(),
-        "extracted_expiry_date": expiry_dt.isoformat(),
-        "expiry_source": "EXTRACTED",
-        "status": status_value,
-        "updated_at": now.isoformat(),
-    }
-    await db.requirements.update_one(
-        {"requirement_id": requirement_id},
-        {"$set": update_fields},
-    )
-    from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_AI_APPLIED, ACTOR_CLIENT
-    await enqueue_compliance_recalc(
-        property_id=property_id,
-        client_id=client_id,
-        trigger_reason=TRIGGER_AI_APPLIED,
-        actor_type=ACTOR_CLIENT,
-        actor_id=actor_id,
-        correlation_id=f"EXTRACTION_APPLIED:{requirement_id}",
-    )
-    return True
-
-
 async def _run_analysis_after_upload(
     document_id: str,
     client_id: str,
@@ -487,32 +444,31 @@ async def _run_analysis_after_upload(
                 document_id, error_code,
             )
         else:
-            # Success: auto-update linked requirement so Requirements page reflects evidence (enterprise: upload+extract => requirement updated)
+            # Success: persist extraction only (analyze_document already wrote ai_extraction).
+            # Requirement / compliance updates run only after the client confirms via apply-extraction
+            # or an explicit admin flow — not on upload alone.
             extracted_data = result.get("extracted_data") or {}
-            expiry_date = extracted_data.get("expiry_date")
-            if expiry_date:
-                doc = await db.documents.find_one(
-                    {"document_id": document_id},
-                    {"_id": 0, "requirement_id": 1, "property_id": 1, "client_id": 1},
+            doc = await db.documents.find_one(
+                {"document_id": document_id},
+                {"_id": 0, "requirement_id": 1, "property_id": 1, "client_id": 1},
+            )
+            extra: Dict[str, Any] = {}
+            if doc and doc.get("requirement_id") and doc.get("client_id"):
+                from services.document_requirement_evidence import detect_requirement_document_mismatch
+
+                req = await db.requirements.find_one(
+                    {"requirement_id": doc["requirement_id"], "client_id": doc["client_id"]},
+                    {"_id": 0, "requirement_type": 1, "requirement_code": 1},
                 )
-                if doc and doc.get("requirement_id"):
-                    ok = await _apply_extraction_to_requirement(
-                        db,
-                        doc["requirement_id"],
-                        doc["property_id"],
-                        doc["client_id"],
-                        expiry_date,
-                        actor_id,
-                    )
-                    if ok:
-                        await db.documents.update_one(
-                            {"document_id": document_id},
-                            {"$set": {"ai_extraction.review_status": "approved"}},
-                        )
-                        logger.info(
-                            "Document extraction applied to requirement: document_id=%s requirement_id=%s",
-                            document_id, doc["requirement_id"],
-                        )
+                is_mm, reason = detect_requirement_document_mismatch(req, extracted_data)
+                if is_mm:
+                    extra["requirement_evidence_mismatch"] = True
+                    extra["requirement_evidence_mismatch_reason"] = (reason or "Possible wrong document for this requirement.")[:500]
+                else:
+                    extra["requirement_evidence_mismatch"] = False
+                    extra["requirement_evidence_mismatch_reason"] = None
+            if extra:
+                await db.documents.update_one({"document_id": document_id}, {"$set": extra})
     except Exception as e:
         logger.warning("Post-upload analysis failed for %s: %s", document_id, e)
         await db.documents.update_one(
@@ -1276,7 +1232,10 @@ async def perform_client_document_upload(
                 "dedupe_key": f"{EVENT_CERTIFICATE_UPLOADED}:{document.document_id}",
                 "actor_id": user.get("portal_user_id"),
                 "actor_role": "CLIENT",
-                "metadata": {"document_id": document.document_id},
+                "metadata": {
+                    "document_id": document.document_id,
+                    "evidence_pending_user_confirmation": True,
+                },
             }
         )
     except Exception as outcome_err:
@@ -2626,6 +2585,8 @@ async def apply_ai_extraction(
             "ai_extraction.applied_data": data,
             "ai_extracted_data": data,  # Legacy field for compatibility
             "status": DocumentStatus.VERIFIED.value,
+            "requirement_evidence_mismatch": False,
+            "requirement_evidence_mismatch_reason": None,
         }
         if extraction_id:
             document_update["extraction_status"] = "CONFIRMED"

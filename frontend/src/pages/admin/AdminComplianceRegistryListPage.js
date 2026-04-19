@@ -4,7 +4,7 @@ import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { adminAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import {
   formatDisplayJurisdictions,
   formatScopeKeyLabel,
@@ -76,7 +76,7 @@ export default function AdminComplianceRegistryListPage() {
           setReviewQueueTotal(res.data?.review_queue_total ?? 0);
         })
         .catch((err) => {
-          toast.error(err?.response?.data?.detail || 'Failed to load registry drafts');
+          toast.error(err?.response?.data?.detail || 'Failed to load registry drafts', { critical: true });
           setItems([]);
         })
         .finally(() => setLoading(false));
@@ -129,6 +129,7 @@ export default function AdminComplianceRegistryListPage() {
         if (vfCount > 0 && ins + upd + sk === 0) {
           toast.error(
             `Import did not save any drafts: ${vfCount} validation error(s). ${firstErr ? `Example: ${firstErr}` : 'Open Network → import-baseline-bundle response for details.'}`,
+            { critical: true },
           );
         } else if (vfCount > 0) {
           toast.warning(
@@ -144,7 +145,7 @@ export default function AdminComplianceRegistryListPage() {
       })
       .catch((err) => {
         const d = err?.response?.data?.detail;
-        toast.error(typeof d === 'string' ? d : d?.message || 'Import failed');
+        toast.error(typeof d === 'string' ? d : d?.message || 'Import failed', { critical: true });
       })
       .finally(() => setImporting(false));
   };
@@ -166,7 +167,7 @@ export default function AdminComplianceRegistryListPage() {
           toast.error('Draft already exists for this code and scope');
           window.location.href = `/admin/compliance/registry/${encodeURIComponent(d.entry_id)}`;
         } else {
-          toast.error(typeof d === 'string' ? d : JSON.stringify(d || err.message));
+          toast.error(typeof d === 'string' ? d : JSON.stringify(d || err.message), { critical: true });
         }
       });
   };

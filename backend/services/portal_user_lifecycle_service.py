@@ -69,11 +69,49 @@ async def permanent_delete_preflight(db, portal_user_id: str) -> Tuple[bool, Lis
         if await db.maintenance_issues.count_documents({"reporter_id": portal_user_id}) > 0:
             blockers.append("tenant_maintenance_issues_exist")
 
-    # Block only when this user has acted in the system (preserves compliance trail).
+    # Block when this user has audit history as actor — unless explicitly flagged test/dummy
+    # (narrow bypass: does not waive Stripe, invoices, properties, or tenant artefacts).
     if await db.audit_logs.count_documents({"actor_id": portal_user_id}) > 0:
-        blockers.append("audit_logs_present")
+        if not bool(user.get("is_test_like")):
+            blockers.append("audit_logs_present")
 
     return len(blockers) == 0, blockers
+
+
+async def set_portal_user_test_like_flag(
+    db,
+    portal_user_id: str,
+    is_test_like: bool,
+    actor_portal_user_id: str,
+    *,
+    actor_role: UserRole,
+) -> None:
+    """Mark a portal user as test/dummy for admin cleanup policy (never on OWNER)."""
+    target = await get_portal_user_any_status(db, portal_user_id)
+    if not target:
+        raise ValueError("user_not_found")
+    if target.get("role") == UserRole.ROLE_OWNER.value:
+        raise ValueError("owner_cannot_be_flagged_test_like")
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.portal_users.update_one(
+        {"portal_user_id": portal_user_id},
+        {"$set": {"is_test_like": bool(is_test_like), "updated_at": now}},
+    )
+
+    await create_audit_log(
+        action=AuditAction.PORTAL_USER_TEST_LIKE_SET,
+        actor_role=actor_role,
+        actor_id=actor_portal_user_id,
+        client_id=target.get("client_id"),
+        resource_type="portal_user",
+        resource_id=portal_user_id,
+        metadata={
+            "is_test_like": bool(is_test_like),
+            "target_email": target.get("auth_email") or target.get("email"),
+            "target_role": target.get("role"),
+        },
+    )
 
 
 async def archive_portal_user(
@@ -195,8 +233,34 @@ async def permanent_delete_portal_user(
     if target.get("role") == UserRole.ROLE_OWNER.value:
         raise ValueError("owner_cannot_be_deleted")
 
+    await create_audit_log(
+        action=AuditAction.USER_HARD_DELETE_ATTEMPTED,
+        actor_role=actor_role,
+        actor_id=actor_portal_user_id,
+        client_id=target.get("client_id"),
+        resource_type="portal_user",
+        resource_id=portal_user_id,
+        metadata={
+            "target_email": target.get("auth_email") or target.get("email"),
+            "target_role": target.get("role"),
+            "is_test_like": bool(target.get("is_test_like")),
+        },
+    )
+
     allowed, blockers = await permanent_delete_preflight(db, portal_user_id)
     if not allowed:
+        await create_audit_log(
+            action=AuditAction.USER_HARD_DELETE_BLOCKED,
+            actor_role=actor_role,
+            actor_id=actor_portal_user_id,
+            client_id=target.get("client_id"),
+            resource_type="portal_user",
+            resource_id=portal_user_id,
+            metadata={
+                "blockers": blockers,
+                "is_test_like": bool(target.get("is_test_like")),
+            },
+        )
         raise ValueError("preflight_failed:" + ",".join(blockers))
 
     res = await db.portal_users.delete_one({"portal_user_id": portal_user_id})

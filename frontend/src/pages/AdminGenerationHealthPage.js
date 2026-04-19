@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import { Input } from '../components/ui/input';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import { Activity, RefreshCw } from 'lucide-react';
 
 function formatTime(iso) {

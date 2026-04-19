@@ -3,6 +3,9 @@
  * Manage roles, permissions, and admin users with custom role builder
  */
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import AccountEnvironmentBadge from '../components/admin/AccountEnvironmentBadge';
+import { accountEnvironmentActionNote } from '../utils/adminAccountClassification';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import {
   Users, Shield, Plus, Edit, Trash2, CheckCircle, XCircle,
@@ -27,8 +30,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Switch } from '../components/ui/switch';
 import { Textarea } from '../components/ui/textarea';
-import { toast } from 'sonner';
+import { toast } from '@/utils/portalNotifications';
 import client from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
+
+const HARD_DELETE_CONFIRM_PHRASE = 'PERMANENTLY DELETE TEST ACCOUNT';
 
 // Stat Card component
 function StatCard({ title, value, icon: Icon, color = 'blue', description }) {
@@ -58,6 +64,7 @@ function StatCard({ title, value, icon: Icon, color = 'blue', description }) {
 }
 
 export default function AdminTeamPage() {
+  const { user: authUser } = useAuth();
   const stepUp = useStepUpApi();
   const [activeTab, setActiveTab] = useState('users');
   const [loading, setLoading] = useState(false);
@@ -269,11 +276,20 @@ export default function AdminTeamPage() {
         );
         return;
       }
+      const row = users.find((u) => u.portal_user_id === userId);
+      const envNote = accountEnvironmentActionNote(Boolean(row?.is_test_like));
       if (
         !window.confirm(
-          `Permanently remove ${email}? Billing and client records are not deleted.`,
+          `${envNote}\n\nPermanently remove ${email}? Billing and client records are not deleted.`,
         )
       ) {
+        return;
+      }
+      const typed = window.prompt(
+        `Owner confirmation: type exactly:\n${HARD_DELETE_CONFIRM_PHRASE}`,
+      );
+      if (typed !== HARD_DELETE_CONFIRM_PHRASE) {
+        toast.error('Phrase did not match — permanent delete cancelled.');
         return;
       }
       await stepUp.request((headers) =>
@@ -322,6 +338,10 @@ export default function AdminTeamPage() {
             <h1 className="text-2xl font-bold text-gray-900">Team Permissions</h1>
             <p className="text-gray-500">
               Manage admin users and roles • Your role: <Badge variant="outline">{myPermissions.role_name}</Badge>
+              {' · '}
+              <Link to="/admin/ops/identities" className="text-teal-600 hover:underline font-medium">
+                Identity lifecycle (archive / deactivate / test flag / delete)
+              </Link>
             </p>
           </div>
           <div className="flex gap-2">
@@ -410,6 +430,7 @@ export default function AdminTeamPage() {
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Role</TableHead>
+                        <TableHead>Account</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Last Login</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -441,6 +462,11 @@ export default function AdminTeamPage() {
                               </SelectContent>
                             </Select>
                           </TableCell>
+                          <TableCell className="align-top">
+                            <div className="py-0.5">
+                              <AccountEnvironmentBadge doc={user} showLiveBadge />
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <Badge variant={archived ? 'outline' : user.status === 'ACTIVE' ? 'default' : 'secondary'}>
                               {archived ? 'Archived' : user.status}
@@ -465,14 +491,33 @@ export default function AdminTeamPage() {
                                   >
                                     <RotateCcw className="h-4 w-4 text-green-600" />
                                   </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
+                                  {authUser?.role === 'ROLE_OWNER' && user.hard_delete_allowed ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
                                     onClick={() => handlePermanentTeamUser(user.portal_user_id, user.email)}
-                                    title="Permanent delete"
-                                  >
-                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                  </Button>
+                                    title={
+                                      user.is_test_like
+                                        ? 'Non-production account — permanently delete test portal row (checks passed)'
+                                        : 'Live account — permanent delete blocked unless flagged test/dummy and checks pass'
+                                    }
+                                    >
+                                      <Trash2 className="h-4 w-4 text-red-500" />
+                                    </Button>
+                                  ) : authUser?.role === 'ROLE_OWNER' && !user.hard_delete_allowed ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      disabled
+                                      title={
+                                        user.hard_delete_blockers?.length
+                                          ? `Not eligible: ${user.hard_delete_blockers.join(', ')}`
+                                          : 'Not eligible for permanent delete'
+                                      }
+                                    >
+                                      <Trash2 className="h-4 w-4 text-gray-300" />
+                                    </Button>
+                                  ) : null}
                                 </>
                               ) : (
                                 <Button

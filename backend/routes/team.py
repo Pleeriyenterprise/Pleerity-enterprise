@@ -19,7 +19,11 @@ from models.permissions import (
 )
 from utils.audit import create_audit_log
 from utils.portal_user_scope import merge_active_portal_user
-from services.portal_user_lifecycle_service import archive_portal_user, restore_portal_user
+from services.portal_user_lifecycle_service import (
+    archive_portal_user,
+    permanent_delete_preflight,
+    restore_portal_user,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -330,7 +334,13 @@ async def list_admin_users(
         else:
             custom_role = await db.custom_roles.find_one({"role_id": role_id}, {"_id": 0, "name": 1})
             user["role_name"] = custom_role["name"] if custom_role else "Unknown"
-    
+        pid = user.get("portal_user_id")
+        if pid:
+            ok, blockers = await permanent_delete_preflight(db, str(pid))
+            user["hard_delete_allowed"] = ok
+            user["hard_delete_blockers"] = [] if ok else blockers
+        user["is_test_like"] = bool(user.get("is_test_like"))
+
     return {"users": users, "total": len(users)}
 
 
