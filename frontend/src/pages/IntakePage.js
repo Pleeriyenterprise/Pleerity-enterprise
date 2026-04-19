@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { intakeAPI } from '../api/client';
+import { intakeAPI, publicAgreementsAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
@@ -159,6 +159,13 @@ const IntakePage = () => {
   const [intakeSessionId] = useState(() => uuidv4());
   const [marketing, setMarketing] = useState({ lead_id: null, source: null });
 
+  /** After a successful submit, allow checkout retry without re-posting submit (e.g. payment or acceptance errors). Cleared when leaving step 5. */
+  const [resumeClientId, setResumeClientId] = useState(null);
+  const [agreementCurrent, setAgreementCurrent] = useState(null);
+  const [agreementLoading, setAgreementLoading] = useState(false);
+  const [agreementFetchError, setAgreementFetchError] = useState('');
+  const [serviceAgreementAccepted, setServiceAgreementAccepted] = useState(false);
+
   // Form data state (initial plan from URL ?plan=)
   const planParam = searchParams.get('plan');
   const leadIdParam = searchParams.get('lead_id');
@@ -277,6 +284,44 @@ const IntakePage = () => {
     };
     loadPlans();
   }, []);
+
+  useEffect(() => {
+    if (step !== 5) {
+      setResumeClientId(null);
+      setServiceAgreementAccepted(false);
+    }
+  }, [step]);
+
+  useEffect(() => {
+    if (step !== 5) return;
+    let cancelled = false;
+    setAgreementLoading(true);
+    setAgreementFetchError('');
+    publicAgreementsAPI
+      .getCurrent()
+      .then((res) => {
+        if (!cancelled) setAgreementCurrent(res.data || null);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setAgreementCurrent(null);
+          const d = err.response?.data?.detail;
+          const msg =
+            typeof d === 'object' && d && d.message
+              ? d.message
+              : typeof d === 'string'
+                ? d
+                : 'Could not load the service agreement. Please refresh and try again.';
+          setAgreementFetchError(msg);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAgreementLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [step]);
 
   // Step validation
   const validateStep = (stepNum) => {
@@ -502,9 +547,24 @@ const IntakePage = () => {
     setFormData({ ...formData, properties: updated });
   };
 
-  // Submit intake (submit then checkout; button stays disabled until request completes)
+  // Submit intake (submit → agreement acceptance → checkout; button stays disabled until request completes)
   const handleSubmit = async () => {
     if (!validateStep(4)) return;
+    if (agreementLoading) {
+      setError('The service agreement is still loading. Please wait a moment.');
+      return;
+    }
+    if (agreementFetchError || !agreementCurrent) {
+      setError(
+        agreementFetchError ||
+          'The service agreement could not be loaded. Refresh the page or try again later.',
+      );
+      return;
+    }
+    if (!serviceAgreementAccepted) {
+      setError('Please confirm you have read and accept the service agreement before paying.');
+      return;
+    }
     setLoading(true);
     setError('');
     setErrorDetail(null);
@@ -517,25 +577,53 @@ const IntakePage = () => {
         const bedroomTypes = (submitData.properties || []).map((p, i) => ({ i, bedrooms: p.bedrooms, type: typeof p.bedrooms }));
         console.debug('[CVP] Intake submit payload (bedrooms as number):', { bedroomTypes, fullPayload: submitData });
       }
-      const response = await intakeAPI.submit(submitData);
-      const { client_id, customer_reference } = response.data;
-      if (isDev) console.debug('[CVP] Intake submit 200 client_id=', client_id);
-      localStorage.setItem('pending_client_id', client_id);
-      if (customer_reference) {
-        localStorage.setItem('customer_reference', customer_reference);
-      } else {
-        localStorage.removeItem('customer_reference');
+
+      let clientId = resumeClientId;
+      let customer_reference = null;
+      if (!clientId) {
+        const response = await intakeAPI.submit(submitData);
+        clientId = response.data.client_id;
+        customer_reference = response.data.customer_reference;
+        if (isDev) console.debug('[CVP] Intake submit 200 client_id=', clientId);
+        localStorage.setItem('pending_client_id', clientId);
+        if (customer_reference) {
+          localStorage.setItem('customer_reference', customer_reference);
+        } else {
+          localStorage.removeItem('customer_reference');
+        }
+        toast.success(
+          customer_reference
+            ? `Registration successful! Reference: ${customer_reference}`
+            : "Registration successful! You'll receive your Customer Reference Number (CRN) after payment.",
+        );
+        setResumeClientId(clientId);
       }
-      toast.success(
-        customer_reference
-          ? `Registration successful! Reference: ${customer_reference}`
-          : "Registration successful! You'll receive your Customer Reference Number (CRN) after payment."
-      );
+
+      const acceptanceBody = {
+        client_id: clientId,
+        intake_session_id: intakeSessionId,
+        template_code: agreementCurrent.template_code,
+        acceptance_text_snapshot: agreementCurrent.acceptance_text_required || '',
+        accepted_by_name: (formData.full_name || '').trim(),
+        accepted_by_email: (formData.email || '').trim(),
+      };
+      const accRes = await publicAgreementsAPI.postAcceptance(acceptanceBody);
+      const acceptance_id = accRes.data?.acceptance_id;
+      if (!acceptance_id) {
+        setError('Could not record agreement acceptance. Please refresh and try again.');
+        return;
+      }
+
       if (isDev) {
         const base = typeof window !== 'undefined' && window.__CVP_BACKEND_URL;
-        console.debug('[CVP] Intake checkout → POST', base ? `${base}/api/intake/checkout` : '/api/intake/checkout', 'client_id=', client_id);
+        console.debug(
+          '[CVP] Intake checkout → POST',
+          base ? `${base}/api/intake/checkout` : '/api/intake/checkout',
+          'client_id=',
+          clientId,
+        );
       }
-      const checkoutResponse = await intakeAPI.createCheckout(client_id);
+      const checkoutResponse = await intakeAPI.createCheckout(clientId, { acceptance_id });
       const checkoutUrl = checkoutResponse?.data?.checkout_url;
       if (checkoutUrl) {
         if (isDev) console.debug('[CVP] Intake checkout 200 redirect →', checkoutUrl?.slice(0, 50) + '...');
@@ -571,6 +659,33 @@ const IntakePage = () => {
       setErrorDetail(requestId || code ? { error_code: code, request_id: requestId } : null);
       if (code === 'PROPERTY_LIMIT_EXCEEDED') {
         setError(message || 'Property limit exceeded for your plan. Please reduce properties or choose a higher plan.');
+      } else if (
+        code === 'ACCEPTANCE_COMMERCIAL_MISMATCH' ||
+        code === 'ACCEPTANCE_NOT_FOUND' ||
+        code === 'ACCEPTANCE_NOT_VALID_FOR_CHECKOUT' ||
+        code === 'ACCEPTANCE_CLIENT_MISMATCH' ||
+        code === 'AGREEMENT_VERSION_NOT_PUBLISHED' ||
+        code === 'AGREEMENT_TEMPLATE_INACTIVE'
+      ) {
+        setServiceAgreementAccepted(false);
+        setError(
+          message ||
+            'Your details no longer match the agreement snapshot. Please read the agreement again, tick the box, and retry payment.',
+        );
+      } else if (code === 'INTAKE_SESSION_INVALID') {
+        setServiceAgreementAccepted(false);
+        setError(
+          message ||
+            'Your browser session does not match this registration. Refresh the page and start again, or contact support.',
+        );
+      } else if (code === 'ACCEPTANCE_CHECKOUT_LINK_FAILED') {
+        setServiceAgreementAccepted(false);
+        setError(
+          message ||
+            'Payment could not be linked to your agreement acceptance. Please confirm the agreement again and retry.',
+        );
+      } else if (status === 429 || code === 'RATE_LIMIT_EXCEEDED') {
+        setError(message || 'Too many requests. Please wait a few minutes and try again.');
       } else if (status === 402 || code === 'CHECKOUT_FAILED' || code === 'CHECKOUT_URL_MISSING') {
         setError(requestId
           ? `Payment setup failed. Reference: ${requestId}`
@@ -751,6 +866,11 @@ const IntakePage = () => {
             onBack={prevStep}
             loading={loading}
             intakeSessionId={intakeSessionId}
+            agreementCurrent={agreementCurrent}
+            agreementLoading={agreementLoading}
+            agreementError={agreementFetchError}
+            serviceAgreementAccepted={serviceAgreementAccepted}
+            onServiceAgreementAcceptedChange={setServiceAgreementAccepted}
           />
         )}
       </main>
@@ -1941,7 +2061,20 @@ const Step4Preferences = ({ formData, setFormData, onNext, onBack, intakeSession
 // ============================================================================
 // STEP 5: REVIEW & PAYMENT
 // ============================================================================
-const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading, intakeSessionId }) => {
+const Step5Review = ({
+  formData,
+  plans,
+  goToStep,
+  onSubmit,
+  onBack,
+  loading,
+  intakeSessionId,
+  agreementCurrent,
+  agreementLoading,
+  agreementError,
+  serviceAgreementAccepted,
+  onServiceAgreementAcceptedChange,
+}) => {
   const selectedPlan = plans.find(p => p.plan_id === formData.billing_plan);
   const [stagedFiles, setStagedFiles] = useState([]);
   const [requirementsPreview, setRequirementsPreview] = useState([]);
@@ -2203,6 +2336,49 @@ const Step5Review = ({ formData, plans, goToStep, onSubmit, onBack, loading, int
             <CheckCircle className="w-4 h-4 text-green-500" />
             <span className="text-sm text-gray-700">GDPR and service terms accepted</span>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <div className="px-6 py-3 bg-gray-50 border-b">
+          <h3 className="font-semibold text-midnight-blue">Service agreement</h3>
+          <p className="text-xs text-gray-500 mt-1">You must accept this agreement before payment. Text is loaded from our servers.</p>
+        </div>
+        <CardContent className="pt-4 space-y-4">
+          {agreementLoading && <p className="text-sm text-gray-600">Loading agreement…</p>}
+          {agreementError && !agreementLoading && (
+            <p className="text-sm text-amber-800" data-testid="intake-agreement-load-error">
+              {agreementError}
+            </p>
+          )}
+          {!agreementLoading && agreementCurrent && (
+            <>
+              <div className="border rounded-md max-h-72 overflow-y-auto p-4 bg-white text-sm text-gray-800 space-y-3">
+                <div>
+                  <p className="font-semibold text-midnight-blue">{agreementCurrent.title}</p>
+                  {agreementCurrent.subtitle ? (
+                    <p className="text-xs text-gray-500 mt-1">{agreementCurrent.subtitle}</p>
+                  ) : null}
+                </div>
+                {(agreementCurrent.content_blocks || []).map((block) => (
+                  <div key={block.key || block.label} className="space-y-1">
+                    {block.label ? <p className="text-xs font-medium text-gray-600">{block.label}</p> : null}
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed">{block.content || ''}</div>
+                  </div>
+                ))}
+              </div>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-electric-teal focus:ring-electric-teal"
+                  checked={serviceAgreementAccepted}
+                  onChange={(e) => onServiceAgreementAcceptedChange(e.target.checked)}
+                  data-testid="intake-service-agreement-checkbox"
+                />
+                <span className="text-sm text-gray-700">{agreementCurrent.acceptance_text_required}</span>
+              </label>
+            </>
+          )}
         </CardContent>
       </Card>
 

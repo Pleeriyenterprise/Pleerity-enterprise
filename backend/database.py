@@ -638,6 +638,43 @@ class Database:
                 )
             except Exception:
                 pass
+            # Agreement management (CVP service agreements; not legal_content)
+            try:
+                await self.db.agreement_templates.create_index("code", unique=True)
+                await self.db.agreement_templates.create_index("template_id", unique=True)
+            except Exception:
+                pass
+            try:
+                await self.db.agreement_template_versions.create_index("version_id", unique=True)
+                await self.db.agreement_template_versions.create_index([("template_id", 1), ("version_number", 1)])
+            except Exception:
+                pass
+            try:
+                await self.db.agreement_acceptances.create_index("acceptance_id", unique=True)
+                await self.db.agreement_acceptances.create_index("client_id")
+                await self.db.agreement_acceptances.create_index("stripe_checkout_session_id", sparse=True)
+            except Exception:
+                pass
+            try:
+                await self.db.issued_agreements.create_index("issued_id", unique=True)
+                await self.db.issued_agreements.create_index("client_id")
+                await self.db.issued_agreements.create_index("acceptance_id")
+                await self.db.issued_agreements.create_index(
+                    [("client_id", 1), ("stripe_event_id", 1)], name="idx_issued_agreements_client_event"
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.system_document_settings.create_index("settings_id", unique=True)
+            except Exception:
+                pass
+            try:
+                from services.agreement_seed import ensure_default_agreement_assets
+
+                await ensure_default_agreement_assets()
+            except Exception as seed_err:
+                logger.warning("Agreement seed skipped or failed: %s", seed_err)
+
             await self._seed_requirements_catalog()
             logger.info("MongoDB indexes created/verified")
         except Exception as e:

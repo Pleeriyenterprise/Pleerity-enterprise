@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 import uuid
 from contextlib import asynccontextmanager
 from database import database
-from routes import auth, intake, onboarding, portal, webhooks, client, client_read_api, admin, admin_client_lifecycle, admin_identity_lifecycle, documents, assistant, profile, properties, rules, compliance_governed_rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, client_billing, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, admin_compliance_registry, analytics, admin_generation_analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads
+from routes import auth, intake, onboarding, portal, webhooks, client, client_read_api, admin, admin_client_lifecycle, admin_identity_lifecycle, documents, assistant, profile, properties, rules, compliance_governed_rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, client_billing, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, admin_compliance_registry, analytics, admin_generation_analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads, agreements_public, admin_client_agreements
 from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, api_compliance_workflow, client_approvals, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre, admin_communications
 from utils.request_ip import get_client_ip as _client_ip
 
@@ -1171,6 +1171,8 @@ app.include_router(webhooks_config.router)
 app.include_router(billing.router)
 app.include_router(admin_billing.router)
 app.include_router(public.router)
+app.include_router(agreements_public.router)
+app.include_router(admin_client_agreements.router)
 app.include_router(public_orders.router)
 app.include_router(admin_orders.router)
 app.include_router(orders.router)

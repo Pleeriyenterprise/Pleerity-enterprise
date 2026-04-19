@@ -2,7 +2,7 @@
 
 Endpoints:
 - POST /api/intake/submit - Submit completed intake wizard
-- POST /api/intake/checkout - Create Stripe checkout session
+- POST /api/intake/checkout - Create Stripe checkout session (JSON body: { "acceptance_id": "<uuid>" } required)
 - GET /api/intake/onboarding-status/{client_id} - Get onboarding progress
 - GET /api/intake/councils - Search UK councils
 - POST /api/intake/upload-document - Upload document during intake (non-blocking)
@@ -16,7 +16,7 @@ INTAKE-LEVEL GATING (NON-NEGOTIABLE):
   2. Intake API validation (block submission)
   3. Provisioning safeguards (defense in depth)
 """
-from fastapi import APIRouter, HTTPException, Request, status, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Request, status, UploadFile, File, Form, Body
 from pydantic import BaseModel
 from utils.rate_limiter import rate_limiter
 from database import database
@@ -28,6 +28,8 @@ from models import (
 from services.stripe_service import stripe_service
 from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingError, StripeModeMismatchError
 from services.compliance_rules_registry import canonicalize_uk_portfolio_label
+from models.agreements import IntakeCheckoutBody
+from services.agreement_acceptance_service import mark_acceptance_checkout_started, validate_acceptance_for_checkout
 from services.crn_service import get_next_crn
 from utils.audit import create_audit_log
 import logging
@@ -1005,7 +1007,8 @@ async def submit_intake(request: Request, data: IntakeFormData):
             "message": "Intake submitted successfully",
             "client_id": client.client_id,
             "customer_reference": crn,
-            "next_step": "checkout"
+            "intake_session_id": data.intake_session_id,
+            "next_step": "checkout",
         }
     
     except HTTPException:
@@ -1199,9 +1202,10 @@ def _checkout_error_detail(error_code: str, message: str, request_id: str) -> di
 
 
 @router.post("/checkout")
-async def create_checkout(request: Request, client_id: str):
+async def create_checkout(request: Request, client_id: str, checkout_body: IntakeCheckoutBody = Body(...)):
     """Create Stripe checkout session for intake payment.
     Returns checkout_url for redirect; no entitlement is granted until Stripe payment succeeds.
+    Requires a valid agreement acceptance (see POST /api/public/agreements/acceptance).
     All error responses include error_code, message, and request_id for correlation.
     """
     request_id = str(uuid.uuid4())
@@ -1244,24 +1248,51 @@ async def create_checkout(request: Request, client_id: str):
         plan_code = client.get("billing_plan") or "PLAN_1_SOLO"
         customer_email = client.get("contact_email") or client.get("email")
         lead_id = (client.get("marketing") or {}).get("lead_id") if client.get("marketing") else None
+
+        acc_doc, acc_err = await validate_acceptance_for_checkout(
+            client_id=client_id,
+            acceptance_id=checkout_body.acceptance_id.strip(),
+        )
+        if acc_err:
+            status_map = {
+                "ACCEPTANCE_NOT_FOUND": status.HTTP_404_NOT_FOUND,
+                "ACCEPTANCE_CLIENT_MISMATCH": status.HTTP_403_FORBIDDEN,
+                "ACCEPTANCE_NOT_VALID_FOR_CHECKOUT": status.HTTP_409_CONFLICT,
+                "AGREEMENT_VERSION_NOT_PUBLISHED": status.HTTP_503_SERVICE_UNAVAILABLE,
+                "AGREEMENT_TEMPLATE_INACTIVE": status.HTTP_503_SERVICE_UNAVAILABLE,
+                "ACCEPTANCE_COMMERCIAL_MISMATCH": status.HTTP_409_CONFLICT,
+            }
+            st = status_map.get(acc_err, status.HTTP_400_BAD_REQUEST)
+            raise HTTPException(
+                status_code=st,
+                detail=_checkout_error_detail(
+                    acc_err,
+                    "Agreement acceptance is missing, invalid, or no longer matches your details. Please review and accept again.",
+                    request_id,
+                ),
+            )
+
+        template_id = str(acc_doc.get("template_id") or "")
+        template_version_id = str(acc_doc.get("template_version_id") or "")
         session = await stripe_service.create_checkout_session(
             client_id=client_id,
             plan_code=plan_code,
             origin_url=origin,
             customer_email=customer_email,
             lead_id=lead_id,
+            customer_reference=client.get("customer_reference"),
+            acceptance_id=checkout_body.acceptance_id.strip(),
+            agreement_template_id=template_id,
+            agreement_template_version_id=template_version_id,
         )
         url = session.get("checkout_url")
         session_id = session.get("session_id")
-        if lead_id and session_id:
-            try:
-                await db.risk_leads.update_one(
-                    {"lead_id": lead_id},
-                    {"$set": {"stripe_session_id": session_id, "updated_at": datetime.now(timezone.utc).isoformat()}},
-                )
-            except Exception as e:
-                logger.warning("Risk lead stripe_session_id update failed lead_id=%s: %s", lead_id, e)
-        if not url:
+        if not url or not (session_id or "").strip():
+            if (session_id or "").strip():
+                try:
+                    await stripe_service.expire_checkout_session(session_id)
+                except Exception as exp_err:
+                    logger.warning("expire_checkout_session after missing checkout_url failed: %s", exp_err)
             logger.error("Stripe session missing checkout_url for client %s request_id=%s", client_id, request_id)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -1271,6 +1302,51 @@ async def create_checkout(request: Request, client_id: str):
                     request_id,
                 ),
             )
+        try:
+            await mark_acceptance_checkout_started(checkout_body.acceptance_id.strip(), session_id)
+        except ValueError as acc_link_err:
+            logger.error(
+                "mark_acceptance_checkout_started failed client_id=%s acceptance_id=%s: %s",
+                client_id,
+                checkout_body.acceptance_id.strip(),
+                acc_link_err,
+                exc_info=True,
+            )
+            try:
+                await create_audit_log(
+                    action=AuditAction.AGREEMENT_ACCEPTANCE_CHECKOUT_LINK_FAILED,
+                    actor_role="SYSTEM",
+                    client_id=client_id,
+                    resource_type="agreement_acceptance",
+                    resource_id=checkout_body.acceptance_id.strip(),
+                    metadata={
+                        "request_id": request_id,
+                        "stripe_checkout_session_id": session_id,
+                        "reason": str(acc_link_err),
+                    },
+                )
+            except Exception as audit_err:
+                logger.warning("audit log AGREEMENT_ACCEPTANCE_CHECKOUT_LINK_FAILED failed: %s", audit_err)
+            try:
+                await stripe_service.expire_checkout_session(session_id)
+            except Exception as exp_err:
+                logger.warning("expire_checkout_session after link failure failed: %s", exp_err)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=_checkout_error_detail(
+                    "ACCEPTANCE_CHECKOUT_LINK_FAILED",
+                    "Could not link your agreement acceptance to this payment session. Please accept the agreement again and try checkout.",
+                    request_id,
+                ),
+            )
+        if lead_id and session_id:
+            try:
+                await db.risk_leads.update_one(
+                    {"lead_id": lead_id},
+                    {"$set": {"stripe_session_id": session_id, "updated_at": datetime.now(timezone.utc).isoformat()}},
+                )
+            except Exception as e:
+                logger.warning("Risk lead stripe_session_id update failed lead_id=%s: %s", lead_id, e)
         try:
             from services.analytics_service import log_event
             await log_event("checkout_started", {

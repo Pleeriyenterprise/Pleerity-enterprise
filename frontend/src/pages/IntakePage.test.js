@@ -7,10 +7,26 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import IntakePage from './IntakePage';
 import { buildIntakeSubmitPayload } from './IntakePage';
-import { intakeAPI } from '../api/client';
+import { intakeAPI, publicAgreementsAPI } from '../api/client';
 
 // Mock intake API
 jest.mock('../api/client', () => ({
+  publicAgreementsAPI: {
+    getCurrent: jest.fn(() =>
+      Promise.resolve({
+        data: {
+          title: 'Test service agreement',
+          subtitle: '',
+          template_code: 'property_compliance_management_agreement',
+          acceptance_text_required: 'I have read and agree to the service agreement above.',
+          content_blocks: [{ key: 'sec1', label: 'Terms', content: 'Agreement body from API.' }],
+        },
+      })
+    ),
+    postAcceptance: jest.fn(() =>
+      Promise.resolve({ data: { acceptance_id: 'accept-test-1' } })
+    ),
+  },
   intakeAPI: {
     getPlans: jest.fn(() =>
       Promise.resolve({
@@ -391,6 +407,10 @@ async function advanceToStep5() {
   await waitFor(() => {
     expect(screen.getByRole('button', { name: /Proceed to Payment/i }) || screen.getByTestId('submit-payment')).toBeInTheDocument();
   });
+  await waitFor(() => {
+    expect(screen.getByTestId('intake-service-agreement-checkbox')).toBeInTheDocument();
+  });
+  fireEvent.click(screen.getByTestId('intake-service-agreement-checkbox'));
 }
 
 describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
@@ -430,7 +450,8 @@ describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
 
     await waitFor(() => {
       expect(intakeAPI.submit).toHaveBeenCalled();
-      expect(intakeAPI.createCheckout).toHaveBeenCalledWith('test-client');
+      expect(publicAgreementsAPI.postAcceptance).toHaveBeenCalled();
+      expect(intakeAPI.createCheckout).toHaveBeenCalledWith('test-client', { acceptance_id: 'accept-test-1' });
     });
     const submitPayload = intakeAPI.submit.mock.calls[0][0];
     expect(submitPayload.properties).toBeDefined();
@@ -471,7 +492,8 @@ describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
 
     await waitFor(() => {
       expect(intakeAPI.submit).toHaveBeenCalled();
-      expect(intakeAPI.createCheckout).toHaveBeenCalledWith('test-client');
+      expect(publicAgreementsAPI.postAcceptance).toHaveBeenCalled();
+      expect(intakeAPI.createCheckout).toHaveBeenCalledWith('test-client', { acceptance_id: 'accept-test-1' });
     });
     await waitFor(() => {
       expect(screen.getByTestId('intake-error-alert')).toBeInTheDocument();

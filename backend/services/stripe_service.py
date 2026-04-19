@@ -60,6 +60,9 @@ class StripeService:
         customer_email: Optional[str] = None,
         customer_reference: Optional[str] = None,
         lead_id: Optional[str] = None,
+        acceptance_id: Optional[str] = None,
+        agreement_template_id: Optional[str] = None,
+        agreement_template_version_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Create Stripe checkout session for new subscription.
@@ -151,6 +154,19 @@ class StripeService:
                     "service": "COMPLIANCE_VAULT_PRO",
                     **({"customer_reference": customer_reference} if customer_reference else {}),
                     **({"lead_id": (lead_id or "").strip()[:128]} if (lead_id and (lead_id or "").strip()) else {}),
+                    **({"acceptance_id": (acceptance_id or "").strip()[:128]} if (acceptance_id or "").strip() else {}),
+                    **(
+                        {"agreement_template_id": (agreement_template_id or "").strip()[:128]}
+                        if (agreement_template_id or "").strip()
+                        else {}
+                    ),
+                    **(
+                        {
+                            "agreement_template_version_id": (agreement_template_version_id or "").strip()[:128],
+                        }
+                        if (agreement_template_version_id or "").strip()
+                        else {}
+                    ),
                 },
                 "subscription_data": {
                     "metadata": {
@@ -158,6 +174,19 @@ class StripeService:
                         "plan_code": plan.value,
                         **({"customer_reference": customer_reference} if customer_reference else {}),
                         **({"lead_id": (lead_id or "").strip()[:128]} if (lead_id and (lead_id or "").strip()) else {}),
+                        **({"acceptance_id": (acceptance_id or "").strip()[:128]} if (acceptance_id or "").strip() else {}),
+                        **(
+                            {"agreement_template_id": (agreement_template_id or "").strip()[:128]}
+                            if (agreement_template_id or "").strip()
+                            else {}
+                        ),
+                        **(
+                            {
+                                "agreement_template_version_id": (agreement_template_version_id or "").strip()[:128],
+                            }
+                            if (agreement_template_version_id or "").strip()
+                            else {}
+                        ),
                     },
                 },
                 "expand": ["line_items"],  # Expand for webhook processing
@@ -194,7 +223,17 @@ class StripeService:
         except stripe.error.StripeError as e:
             logger.error(f"Stripe checkout error for client {client_id}: {e}")
             raise ValueError(f"Failed to create checkout session: {str(e)}")
-    
+
+    async def expire_checkout_session(self, session_id: Optional[str]) -> None:
+        """Best-effort: expire Stripe Checkout after DB linkage failure so the URL is not left usable without acceptance."""
+        sid = (session_id or "").strip()
+        if not sid:
+            return
+        try:
+            stripe.checkout.Session.expire(sid)
+        except Exception as e:
+            logger.warning("expire_checkout_session failed session_id=%s: %s", sid, e)
+
     async def create_upgrade_session(
         self,
         client_id: str,

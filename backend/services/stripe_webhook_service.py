@@ -456,6 +456,9 @@ class StripeWebhookService:
         This is the existing subscription logic moved to a separate method.
         """
         db = database.get_db()
+        agreement_pdf_bytes: Optional[bytes] = None
+        agreement_pdf_filename: Optional[str] = None
+        agreement_issued_id_for_email: Optional[str] = None
         checkout_session_id = session.get("id")
         if hasattr(session, "to_dict"):
             session = session.to_dict()
@@ -632,8 +635,65 @@ class StripeWebhookService:
             logger.error(f"CRN assignment failed for {client_id}: {crn_err}")
             raise
 
+        # Service agreement issuance (accepted version; immutable PDF) — not tied to provisioning.
+        session_md = session.get("metadata") or {}
+        acc_id = (session_md.get("acceptance_id") or "").strip()
+        ver_meta = (session_md.get("agreement_template_version_id") or "").strip()
+        if not acc_id or not ver_meta:
+            try:
+                await create_audit_log(
+                    action=AuditAction.AGREEMENT_ISSUANCE_SKIPPED_LEGACY_CHECKOUT,
+                    actor_role=UserRole.SYSTEM,
+                    client_id=client_id,
+                    metadata={"checkout_session_id": checkout_session_id, "reason": "missing_acceptance_metadata"},
+                )
+            except Exception:
+                pass
+        else:
+            try:
+                from services.agreement_issuance_service import (
+                    issue_agreement_for_subscription_payment,
+                    load_issued_pdf_bytes,
+                )
+
+                ok_ag, err_ag, issued_doc = await issue_agreement_for_subscription_payment(
+                    client_id=client_id,
+                    acceptance_id=acc_id,
+                    template_version_id_from_metadata=ver_meta,
+                    payment_reference=checkout_session_id or (session.get("id") or ""),
+                    stripe_event_id=event.get("id") if event else None,
+                    crn=client_crn,
+                )
+                if ok_ag and issued_doc:
+                    iid = issued_doc.get("issued_id")
+                    fn = (issued_doc.get("document_files") or {}).get("pdf_filename") or f"agreement_{iid}.pdf"
+                    if iid:
+                        agreement_issued_id_for_email = str(iid)
+                        agreement_pdf_bytes = await load_issued_pdf_bytes(str(iid), client_id)
+                        agreement_pdf_filename = str(fn)
+                        try:
+                            await create_audit_log(
+                                action=AuditAction.AGREEMENT_EMAIL_ATTACHMENT_ADDED,
+                                actor_role=UserRole.SYSTEM,
+                                client_id=client_id,
+                                resource_type="issued_agreement",
+                                resource_id=str(iid),
+                                metadata={"checkout_session_id": checkout_session_id, "filename": agreement_pdf_filename},
+                            )
+                        except Exception:
+                            pass
+                elif err_ag:
+                    logger.error(
+                        "Agreement issuance failed client_id=%s acceptance_id=%s err=%s",
+                        client_id,
+                        acc_id,
+                        err_ag,
+                    )
+            except Exception as ag_ex:
+                logger.exception("Agreement issuance raised client_id=%s acceptance_id=%s", client_id, acc_id)
+
         # Provisioning jobs: persist state only; return 200 quickly. Poller processes PAYMENT_CONFIRMED jobs.
-        checkout_session_id = session.get("id")
+        checkout_session_id = session.get("id") or checkout_session_id
         provisioning_triggered = False
         if entitlement_status == EntitlementStatus.ENABLED and checkout_session_id:
             existing_job = await db.provisioning_jobs.find_one(
@@ -829,6 +889,17 @@ class StripeWebhookService:
             except Exception as pdf_ex:
                 logger.warning("CVP subscription invoice PDF failed (non-blocking): %s", pdf_ex)
 
+            if agreement_pdf_bytes and agreement_pdf_filename:
+                if not sub_ctx.get("attachments"):
+                    sub_ctx["attachments"] = []
+                sub_ctx["attachments"].append(
+                    {
+                        "Name": agreement_pdf_filename,
+                        "Content": base64.b64encode(agreement_pdf_bytes).decode("utf-8"),
+                        "ContentType": "application/pdf",
+                    }
+                )
+
             result = await notification_orchestrator.send(
                 template_key="SUBSCRIPTION_CONFIRMED",
                 client_id=client_id,
@@ -836,19 +907,42 @@ class StripeWebhookService:
                 idempotency_key=idempotency_key,
                 event_type="checkout.session.completed",
             )
-            if result.outcome in ("sent", "duplicate_ignored") and sub_ctx.get("attachments") and subscription_invoice_number:
-                try:
-                    await create_audit_log(
-                        action=AuditAction.ORDER_RECEIPT_ATTACHED_TO_EMAIL,
-                        client_id=client_id,
-                        metadata={
+            if result.outcome in ("sent", "duplicate_ignored") and sub_ctx.get("attachments"):
+                if subscription_invoice_number or agreement_issued_id_for_email:
+                    try:
+                        att_meta: Dict[str, Any] = {
                             "source": "cvp_subscription_checkout",
-                            "invoice_number": subscription_invoice_number,
                             "template_key": "SUBSCRIPTION_CONFIRMED",
-                        },
+                        }
+                        if subscription_invoice_number:
+                            att_meta["invoice_number"] = subscription_invoice_number
+                        if agreement_issued_id_for_email:
+                            att_meta["issued_agreement_id"] = agreement_issued_id_for_email
+                        await create_audit_log(
+                            action=AuditAction.ORDER_RECEIPT_ATTACHED_TO_EMAIL,
+                            client_id=client_id,
+                            metadata=att_meta,
+                        )
+                    except Exception:
+                        pass
+            if result.outcome in ("sent", "duplicate_ignored") and agreement_issued_id_for_email:
+                try:
+                    from services.agreement_issuance_service import mark_issued_agreement_email_delivered
+
+                    await mark_issued_agreement_email_delivered(
+                        issued_id=agreement_issued_id_for_email,
+                        client_id=client_id,
+                        template_key="SUBSCRIPTION_CONFIRMED",
+                        stripe_event_id=event_id,
+                        message_id=getattr(result, "message_id", None),
                     )
-                except Exception:
-                    pass
+                except Exception as mark_em:
+                    logger.warning(
+                        "mark_issued_agreement_email_delivered failed issued_id=%s client_id=%s: %s",
+                        agreement_issued_id_for_email,
+                        client_id,
+                        mark_em,
+                    )
             if result.outcome in ("sent", "duplicate_ignored"):
                 from services.onboarding_email_governance import milestone_set_payload
 

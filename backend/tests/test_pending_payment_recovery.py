@@ -155,12 +155,20 @@ def test_stripe_mode_mismatch_returns_400_from_intake_checkout():
 
     with patch("routes.intake.database.get_db", return_value=mock_db):
         with patch("routes.intake.create_audit_log", new_callable=AsyncMock):
-            with patch("routes.intake.stripe_service.create_checkout_session", new_callable=AsyncMock) as mock_create:
-                mock_create.side_effect = StripeModeMismatchError("Stripe key is test mode but STRIPE_TEST_PRICE_PLAN_1_SOLO_MONTHLY is not set")
-                response = test_client.post(
-                    "/api/intake/checkout?client_id=c1",
-                    headers={"Origin": "https://example.com"},
-                )
+            with patch(
+                "routes.intake.validate_acceptance_for_checkout",
+                new_callable=AsyncMock,
+                return_value=({"template_id": "t1", "template_version_id": "v1"}, None),
+            ):
+                with patch("routes.intake.stripe_service.create_checkout_session", new_callable=AsyncMock) as mock_create:
+                    mock_create.side_effect = StripeModeMismatchError(
+                        "Stripe key is test mode but STRIPE_TEST_PRICE_PLAN_1_SOLO_MONTHLY is not set"
+                    )
+                    response = test_client.post(
+                        "/api/intake/checkout?client_id=c1",
+                        headers={"Origin": "https://example.com"},
+                        json={"acceptance_id": "acc-test-1"},
+                    )
 
     assert response.status_code == 400
     data = response.json()

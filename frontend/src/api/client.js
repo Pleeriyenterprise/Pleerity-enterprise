@@ -357,14 +357,23 @@ export const authAPI = {
   idleSessionNotify: () => apiClient.post('/auth/session/idle-notify'),
 };
 
+/** Public (pre-auth) service agreement for intake checkout — same axios instance, no Bearer required. */
+export const publicAgreementsAPI = {
+  getCurrent: (templateCode) =>
+    apiClient.get('/public/agreements/current', {
+      params: templateCode ? { template_code: templateCode } : undefined,
+    }),
+  postAcceptance: (body) => apiClient.post('/public/agreements/acceptance', body),
+};
+
 export const intakeAPI = {
   submit: (data) => apiClient.post('/intake/submit', data),
   previewRequirements: (properties) => apiClient.post('/intake/requirements-preview', { properties }),
-  createCheckout: (clientId) => {
+  createCheckout: (clientId, body) => {
     const origin = window.location.origin;
-    return apiClient.post('/intake/checkout', null, {
+    return apiClient.post('/intake/checkout', body, {
       params: { client_id: clientId },
-      headers: { origin }
+      headers: { origin },
     });
   },
   getOnboardingStatus: (clientId) => apiClient.get(`/intake/onboarding-status/${clientId}`),
