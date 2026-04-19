@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { intakeAPI, publicAgreementsAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -161,6 +161,9 @@ const IntakePage = () => {
 
   /** After a successful submit, allow checkout retry without re-posting submit (e.g. payment or acceptance errors). Cleared when leaving step 5. */
   const [resumeClientId, setResumeClientId] = useState(null);
+  const [step1EmailCheckLoading, setStep1EmailCheckLoading] = useState(false);
+  /** Shown with duplicate-email message so users can jump to portal login. */
+  const [showLoginLink, setShowLoginLink] = useState(false);
   const [agreementCurrent, setAgreementCurrent] = useState(null);
   const [agreementLoading, setAgreementLoading] = useState(false);
   const [agreementFetchError, setAgreementFetchError] = useState('');
@@ -326,6 +329,7 @@ const IntakePage = () => {
   // Step validation
   const validateStep = (stepNum) => {
     setError('');
+    setShowLoginLink(false);
     
     switch (stepNum) {
       case 1:
@@ -420,14 +424,43 @@ const IntakePage = () => {
     }
   };
 
-  const nextStep = () => {
-    if (validateStep(step)) {
-      setStep(step + 1);
-      window.scrollTo(0, 0);
+  const nextStep = async () => {
+    if (!validateStep(step)) return;
+    if (step === 1) {
+      const email = (formData.email || '').trim();
+      setStep1EmailCheckLoading(true);
+      setError('');
+      setShowLoginLink(false);
+      try {
+        const res = await intakeAPI.checkEmailAvailability(email);
+        if (!res.data?.available) {
+          setError('An account with this email already exists.');
+          setShowLoginLink(true);
+          return;
+        }
+      } catch (err) {
+        const status = err.response?.status;
+        const d = err.response?.data?.detail;
+        const msg =
+          typeof d === 'string'
+            ? d
+            : d && typeof d === 'object' && d.message
+              ? d.message
+              : 'Could not verify email. Please try again.';
+        setError(status === 429 ? msg : msg);
+        return;
+      } finally {
+        setStep1EmailCheckLoading(false);
+      }
     }
+    setStep(step + 1);
+    window.scrollTo(0, 0);
   };
 
   const prevStep = () => {
+    setError('');
+    setErrorDetail(null);
+    setShowLoginLink(false);
     setStep(step - 1);
     window.scrollTo(0, 0);
   };
@@ -435,6 +468,9 @@ const IntakePage = () => {
   const goToStep = (stepNum) => {
     // Only allow going back or staying on current step
     if (stepNum <= step) {
+      setError('');
+      setErrorDetail(null);
+      setShowLoginLink(false);
       setStep(stepNum);
       window.scrollTo(0, 0);
     }
@@ -568,8 +604,27 @@ const IntakePage = () => {
     setLoading(true);
     setError('');
     setErrorDetail(null);
+    setShowLoginLink(false);
     const isDev = process.env.NODE_ENV !== 'production';
     try {
+      // Belt-and-suspenders: email may have been registered between step 1 and review (or clock skew / race).
+      if (!resumeClientId) {
+        const email = (formData.email || '').trim();
+        const checkRes = await intakeAPI.checkEmailAvailability(email);
+        if (!checkRes.data?.available) {
+          setError('An account with this email already exists.');
+          setShowLoginLink(true);
+          try {
+            localStorage.removeItem('customer_reference');
+            localStorage.removeItem('pending_client_id');
+          } catch (_) {
+            /* ignore */
+          }
+          setResumeClientId(null);
+          return;
+        }
+      }
+
       const submitData = buildIntakeSubmitPayload(formData, intakeSessionId, marketing);
       if (isDev) {
         const base = typeof window !== 'undefined' && window.__CVP_BACKEND_URL;
@@ -591,12 +646,10 @@ const IntakePage = () => {
         } else {
           localStorage.removeItem('customer_reference');
         }
-        toast.success(
-          customer_reference
-            ? `Registration successful! Reference: ${customer_reference}`
-            : "Registration successful! You'll receive your Customer Reference Number (CRN) after payment.",
-        );
         setResumeClientId(clientId);
+      } else {
+        customer_reference =
+          typeof window !== 'undefined' ? window.localStorage.getItem('customer_reference') : null;
       }
 
       const acceptanceBody = {
@@ -627,6 +680,14 @@ const IntakePage = () => {
       const checkoutUrl = checkoutResponse?.data?.checkout_url;
       if (checkoutUrl) {
         if (isDev) console.debug('[CVP] Intake checkout 200 redirect →', checkoutUrl?.slice(0, 50) + '...');
+        const crn =
+          customer_reference ||
+          (typeof window !== 'undefined' ? window.localStorage.getItem('customer_reference') : null);
+        toast.success(
+          crn
+            ? `Opening secure payment. Your customer reference: ${crn}`
+            : 'Opening secure payment…',
+        );
         window.location.href = checkoutUrl;
         return;
       }
@@ -646,7 +707,8 @@ const IntakePage = () => {
       } else if (Array.isArray(detail) && detail.length > 0) {
         const first = detail[0];
         const msg = first?.msg ?? first?.message ?? JSON.stringify(first);
-        message = `Validation failed: ${msg}`;
+        const loc = Array.isArray(first?.loc) ? first.loc.filter(Boolean).join(' → ') : '';
+        message = loc ? `Validation failed: ${msg} (${loc})` : `Validation failed: ${msg}`;
       } else if (data?.message) {
         message = data.message;
       } else if (!err.response) {
@@ -691,8 +753,26 @@ const IntakePage = () => {
           ? `Payment setup failed. Reference: ${requestId}`
           : (message || 'Could not start payment. Please try again.'));
       } else {
+        const duplicateEmail =
+          status === 400 &&
+          typeof message === 'string' &&
+          message.toLowerCase().includes('already exists');
+        if (duplicateEmail) {
+          try {
+            localStorage.removeItem('customer_reference');
+            localStorage.removeItem('pending_client_id');
+          } catch (_) {
+            /* ignore */
+          }
+          setResumeClientId(null);
+          setShowLoginLink(true);
+        }
         if (requestId) {
-          setError(message ? `${message} Reference: ${requestId}` : `Request failed. Reference: ${requestId}`);
+          setError(
+            message
+              ? `${message} Support ID: ${requestId}`
+              : `Request failed. Support ID: ${requestId}`,
+          );
         } else {
           setError(message);
         }
@@ -791,6 +871,14 @@ const IntakePage = () => {
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               <span>{error}</span>
+              {showLoginLink && (
+                <p className="mt-2 text-sm">
+                  <Link to="/login/client" className="font-medium text-electric-teal underline hover:no-underline">
+                    Sign in to the client portal
+                  </Link>{' '}
+                  if you already have an account, or use a different email to register.
+                </p>
+              )}
               {errorDetail?.request_id && (
                 <p className="mt-2 text-xs opacity-90">Reference: {errorDetail.request_id}</p>
               )}
@@ -814,6 +902,7 @@ const IntakePage = () => {
             formData={formData} 
             setFormData={setFormData}
             onNext={nextStep}
+            emailCheckLoading={step1EmailCheckLoading}
           />
         )}
 
@@ -881,7 +970,7 @@ const IntakePage = () => {
 // ============================================================================
 // STEP 1: YOUR DETAILS
 // ============================================================================
-const Step1YourDetails = ({ formData, setFormData, onNext }) => {
+const Step1YourDetails = ({ formData, setFormData, onNext, emailCheckLoading }) => {
   const clientTypes = [
     { value: 'INDIVIDUAL', label: 'Individual Landlord', icon: User, desc: 'Managing your own properties' },
     { value: 'COMPANY', label: 'Property Company', icon: Building2, desc: 'Corporate property management' },
@@ -1006,9 +1095,19 @@ const Step1YourDetails = ({ formData, setFormData, onNext }) => {
             onClick={onNext} 
             className="w-full bg-electric-teal hover:bg-teal-600"
             data-testid="step1-next"
+            disabled={emailCheckLoading}
           >
-            Next: Select Plan
-            <ChevronRight className="w-4 h-4 ml-2" />
+            {emailCheckLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin inline" />
+                Checking email…
+              </>
+            ) : (
+              <>
+                Next: Select Plan
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </>
+            )}
           </Button>
         </div>
       </CardContent>
@@ -2087,8 +2186,9 @@ const Step5Review = ({
       setStagedFiles([]);
       return;
     }
-    const apiUrl = process.env.REACT_APP_API_URL || '';
-    fetch(`${apiUrl}/api/intake/uploads/list/${intakeSessionId}`)
+    const raw = (process.env.REACT_APP_BACKEND_URL || '').trim().replace(/\/$/, '');
+    const apiUrl = raw ? `${raw}/api` : '/api';
+    fetch(`${apiUrl}/intake/uploads/list/${intakeSessionId}`)
       .then((res) => (res.ok ? res.json() : []))
       .then((list) => setStagedFiles(Array.isArray(list) ? list : []))
       .catch(() => setStagedFiles([]));
@@ -2349,6 +2449,11 @@ const Step5Review = ({
           {agreementError && !agreementLoading && (
             <p className="text-sm text-amber-800" data-testid="intake-agreement-load-error">
               {agreementError}
+            </p>
+          )}
+          {!agreementLoading && !agreementCurrent && !agreementError && (
+            <p className="text-sm text-amber-800" data-testid="intake-agreement-empty">
+              No agreement content was returned. Refresh the page or try again later. If this persists, contact support.
             </p>
           )}
           {!agreementLoading && agreementCurrent && (

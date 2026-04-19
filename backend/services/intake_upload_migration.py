@@ -76,6 +76,7 @@ async def migrate_intake_uploads_to_vault(client_id: str) -> dict:
             continue
         file_size = os.path.getsize(dest_path)
         document_id = str(uuid.uuid4())
+        stored_rel = f"{client_id}/{unique_name}"
         # Only set property_id when explicitly provided (e.g. from intake mapping); else client-level
         property_id = upload.get("property_id") or None
         doc = Document(
@@ -83,7 +84,7 @@ async def migrate_intake_uploads_to_vault(client_id: str) -> dict:
             client_id=client_id,
             property_id=property_id,
             file_name=original_filename,
-            file_path=str(dest_path),
+            file_path=stored_rel,
             file_size=file_size,
             mime_type=upload.get("content_type", "application/octet-stream"),
             status=DocumentStatus.PENDING,

@@ -847,6 +847,7 @@ async def upload_zip_archive(
                         
                         # Get file size
                         file_size = os.path.getsize(file_path)
+                        stored_rel = f"{user['client_id']}/{unique_filename}"
                         
                         # Determine MIME type
                         mime_types = {
@@ -865,7 +866,7 @@ async def upload_zip_archive(
                             property_id=property_id,
                             requirement_id=None,
                             file_name=filename,
-                            file_path=str(dest_path),
+                            file_path=stored_rel,
                             file_size=file_size,
                             mime_type=mime_type,
                             status=DocumentStatus.UPLOADED,
@@ -2247,6 +2248,10 @@ async def get_document_file(request: Request, document_id: str, download: bool =
 
 async def _resolve_document_file_path(db, document_id: str):
     """Resolve document record and filesystem path for serving. Returns (document, path, media_type, filename). Raises HTTPException if not found."""
+    try:
+        DOCUMENT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        logger.warning("DOCUMENT_STORAGE_PATH mkdir failed: %s", e)
     document = await db.documents.find_one(
         {"document_id": document_id},
         {"_id": 0, "client_id": 1, "file_path": 1, "file_name": 1, "mime_type": 1}
@@ -2300,16 +2305,30 @@ async def _resolve_document_file_path(db, document_id: str):
                 except ValueError:
                     pass
         if not file_path.is_file():
-            storage_dir = (DOCUMENT_STORAGE_PATH / client_id_val).resolve() if client_id_val else DOCUMENT_STORAGE_PATH
-            dir_exists = storage_dir.is_dir() if client_id_val else DOCUMENT_STORAGE_PATH.is_dir()
+            vault_root = DOCUMENT_STORAGE_PATH.resolve()
+            storage_dir = (DOCUMENT_STORAGE_PATH / client_id_val).resolve() if client_id_val else vault_root
+            vault_root_exists = vault_root.is_dir()
+            client_dir_exists = storage_dir.is_dir() if client_id_val else vault_root_exists
             logger.warning(
-                "Document file missing: document_id=%s stored_path=%s DOCUMENT_STORAGE_PATH=%s storage_dir_exists=%s",
-                document_id, raw_path, str(DOCUMENT_STORAGE_PATH), dir_exists,
+                "Document file missing: document_id=%s stored_path=%s DOCUMENT_STORAGE_PATH=%s "
+                "vault_root_exists=%s client_dir_exists=%s",
+                document_id,
+                raw_path,
+                str(DOCUMENT_STORAGE_PATH),
+                vault_root_exists,
+                client_dir_exists,
+            )
+            _vault_s = str(vault_root).replace("\\", "/")
+            hint_tmp = (
+                " Document storage is under /tmp (or similar); restarts often clear those files while the database still lists the document. Set DOCUMENT_STORAGE_PATH to a persistent volume."
+                if "/tmp/" in _vault_s
+                else ""
             )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="File not found. The document record exists but the file is missing from server storage. "
-                "If uploads were done on another server or DOCUMENT_STORAGE_PATH differs, the file may not be available here.",
+                "If uploads were done on another server or DOCUMENT_STORAGE_PATH differs, the file may not be available here."
+                + hint_tmp,
             )
     if resolved_via_fallback:
         logger.info(

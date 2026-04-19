@@ -367,12 +367,31 @@ export const publicAgreementsAPI = {
 };
 
 export const intakeAPI = {
+  /** Same duplicate rule as submit; rate-limited. Use before advancing past step 1. */
+  checkEmailAvailability: (email) => apiClient.post('/intake/check-email', { email }),
   submit: (data) => apiClient.post('/intake/submit', data),
   previewRequirements: (properties) => apiClient.post('/intake/requirements-preview', { properties }),
   createCheckout: (clientId, body) => {
     const origin = window.location.origin;
-    return apiClient.post('/intake/checkout', body, {
-      params: { client_id: clientId },
+    const cid = typeof clientId === 'string' ? clientId.trim() : '';
+    const acceptance_id =
+      body && typeof body.acceptance_id === 'string' ? body.acceptance_id.trim() : '';
+    if (!cid) {
+      return Promise.reject(
+        Object.assign(new Error('checkout_missing_client_id'), {
+          response: { status: 400, data: { detail: 'Missing client_id for checkout' } },
+        }),
+      );
+    }
+    if (!acceptance_id) {
+      return Promise.reject(
+        Object.assign(new Error('checkout_missing_acceptance_id'), {
+          response: { status: 400, data: { detail: 'Missing agreement acceptance_id for checkout' } },
+        }),
+      );
+    }
+    return apiClient.post('/intake/checkout', { acceptance_id }, {
+      params: { client_id: cid },
       headers: { origin },
     });
   },

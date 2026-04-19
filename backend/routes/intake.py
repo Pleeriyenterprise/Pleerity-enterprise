@@ -8,6 +8,7 @@ Endpoints:
 - POST /api/intake/upload-document - Upload document during intake (non-blocking)
 - GET /api/intake/plans - Get available billing plans with limits
 - POST /api/intake/validate-property-count - Validate property count against plan limit
+- POST /api/intake/check-email - Whether email is available for new intake (rate-limited; matches submit duplicate rule)
 
 INTAKE-LEVEL GATING (NON-NEGOTIABLE):
 - Plan gating MUST be enforced inside the intake form
@@ -17,7 +18,7 @@ INTAKE-LEVEL GATING (NON-NEGOTIABLE):
   3. Provisioning safeguards (defense in depth)
 """
 from fastapi import APIRouter, HTTPException, Request, status, UploadFile, File, Form, Body
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from utils.rate_limiter import rate_limiter
 from database import database
 from models import (
@@ -41,6 +42,8 @@ import string
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
+
+from pymongo.errors import DuplicateKeyError
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/intake", tags=["intake"])
@@ -335,6 +338,41 @@ async def get_plans(request: Request):
         })
     
     return {"plans": plans}
+
+
+INTAKE_EMAIL_CHECK_RATE_ATTEMPTS = 40
+INTAKE_EMAIL_CHECK_RATE_WINDOW_MINUTES = 10
+
+
+class IntakeEmailCheckBody(BaseModel):
+    """Public intake: same email identity rule as POST /submit (clients.email unique)."""
+
+    email: EmailStr
+
+
+async def _intake_client_email_taken(db, email: str) -> bool:
+    """True if a client row already uses this email (same predicate as submit duplicate guard)."""
+    existing = await db.clients.find_one({"email": email}, {"_id": 0})
+    return existing is not None
+
+
+@router.post("/check-email")
+async def check_intake_email_available(request: Request, body: IntakeEmailCheckBody):
+    """Return whether this email can start a new CVP intake (no existing clients row).
+
+    Rate-limited per IP. Intended for step-1 gating before multi-step wizard investment.
+    """
+    ip = _client_ip_intake(request)
+    allowed, rl_msg = await rate_limiter.check_rate_limit(
+        f"intake_check_email:{ip}",
+        INTAKE_EMAIL_CHECK_RATE_ATTEMPTS,
+        INTAKE_EMAIL_CHECK_RATE_WINDOW_MINUTES,
+    )
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=rl_msg or "Too many requests.")
+    db = database.get_db()
+    taken = await _intake_client_email_taken(db, str(body.email))
+    return {"available": not taken, "email": str(body.email)}
 
 
 @router.post("/validate-property-count")
@@ -707,16 +745,11 @@ async def submit_intake(request: Request, data: IntakeFormData):
     try:
         # =========== VALIDATION ===========
         
-        # Check if client already exists
-        existing_client = await db.clients.find_one(
-            {"email": data.email},
-            {"_id": 0}
-        )
-        
-        if existing_client:
+        # Check if client already exists (same rule as POST /check-email)
+        if await _intake_client_email_taken(db, str(data.email)):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="An account with this email already exists"
+                detail="An account with this email already exists",
             )
         
         # Validate conditional fields
@@ -843,7 +876,16 @@ async def submit_intake(request: Request, data: IntakeFormData):
                 "lead_id": (lead_id_val or "").strip()[:128],
             }
         
-        await db.clients.insert_one(client_doc)
+        try:
+            await db.clients.insert_one(client_doc)
+        except DuplicateKeyError as dup_err:
+            err_s = str(dup_err).lower()
+            if ("dup key" in err_s or "duplicate key" in err_s) and "email" in err_s:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="An account with this email already exists",
+                ) from dup_err
+            raise
         try:
             from services.client_lifecycle_service import persist_operational_client_lifecycle_if_needed
 
@@ -1077,11 +1119,14 @@ async def _reconcile_intake_documents(db, client_id: str, session_id: str, prope
                         dest_path = dest_dir / unique_name
                         shutil.copy2(old_path, dest_path)
                         file_size = os.path.getsize(dest_path)
+                        # Store relative vault key (same convention as portal uploads) so GET /documents/{id}/file
+                        # survives DOCUMENT_STORAGE_PATH / volume changes and matches _resolve_document_file_path.
+                        stored_rel = f"{client_id}/{unique_name}"
                         await db.documents.update_one(
                             {"document_id": doc["document_id"]},
-                            {"$set": {"file_path": str(dest_path), "file_size": file_size}}
+                            {"$set": {"file_path": stored_rel, "file_size": file_size}}
                         )
-                        logger.info(f"Copied intake document {doc['document_id']} to vault at {dest_path}")
+                        logger.info(f"Copied intake document {doc['document_id']} to vault at {dest_path} (db file_path={stored_rel})")
                     except Exception as copy_err:
                         logger.warning("Intake doc vault copy failed document_id=%s: %s", doc["document_id"], copy_err)
 

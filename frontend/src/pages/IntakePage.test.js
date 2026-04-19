@@ -28,6 +28,7 @@ jest.mock('../api/client', () => ({
     ),
   },
   intakeAPI: {
+    checkEmailAvailability: jest.fn(() => Promise.resolve({ data: { available: true, email: 'test@example.com' } })),
     getPlans: jest.fn(() =>
       Promise.resolve({
         data: {
@@ -449,6 +450,7 @@ describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
     fireEvent.click(payButton);
 
     await waitFor(() => {
+      expect(intakeAPI.checkEmailAvailability).toHaveBeenCalled();
       expect(intakeAPI.submit).toHaveBeenCalled();
       expect(publicAgreementsAPI.postAcceptance).toHaveBeenCalled();
       expect(intakeAPI.createCheckout).toHaveBeenCalledWith('test-client', { acceptance_id: 'accept-test-1' });
@@ -491,6 +493,7 @@ describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
     fireEvent.click(payButton);
 
     await waitFor(() => {
+      expect(intakeAPI.checkEmailAvailability).toHaveBeenCalled();
       expect(intakeAPI.submit).toHaveBeenCalled();
       expect(publicAgreementsAPI.postAcceptance).toHaveBeenCalled();
       expect(intakeAPI.createCheckout).toHaveBeenCalledWith('test-client', { acceptance_id: 'accept-test-1' });

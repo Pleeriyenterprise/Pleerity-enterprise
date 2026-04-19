@@ -205,6 +205,22 @@ async def lifespan(app: FastAPI):
 
     async def _heavy_startup():
         await database.connect()
+
+        # Document vault: ensure directory exists and log resolved path (ops: /tmp is ephemeral on many hosts)
+        try:
+            from routes.documents import DOCUMENT_STORAGE_PATH as _doc_vault
+
+            _doc_vault.mkdir(parents=True, exist_ok=True)
+            _resolved = _doc_vault.resolve()
+            logger.info("Document vault DOCUMENT_STORAGE_PATH=%s (is_dir=%s)", _resolved, _resolved.is_dir())
+            _env_l = (os.environ.get("ENV") or os.environ.get("ENVIRONMENT") or "").strip().lower()
+            if _env_l in ("production", "prod") and str(_resolved).replace("\\", "/").startswith("/tmp/"):
+                logger.warning(
+                    "DOCUMENT_STORAGE_PATH is under /tmp in production; uploaded files will be lost on restart. "
+                    "Mount a persistent volume and set DOCUMENT_STORAGE_PATH (and DATA_DIR) to that mount."
+                )
+        except Exception as _vault_log_err:
+            logger.warning("Document vault startup check failed: %s", _vault_log_err)
         
         # Alerting: warn if admin incident emails are not configured (ops visibility)
         _alert_emails = (os.environ.get("ADMIN_ALERT_EMAILS") or os.environ.get("OPS_ALERT_EMAIL") or "").strip()
@@ -1316,9 +1332,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     request_id = str(uuid.uuid4())
     errors = exc.errors()
     path = getattr(request, "url", None) and getattr(request.url, "path", "") or ""
-    if "intake" in path and "submit" in path:
+    if ("intake" in path and "submit" in path) or "/intake/checkout" in path or "/public/agreements/" in path:
         logger.warning(
-            "Intake validation failed request_id=%s path=%s errors=%s",
+            "Request validation failed request_id=%s path=%s errors=%s",
             request_id,
             path,
             [(e.get("loc"), e.get("msg"), e.get("type")) for e in errors],
