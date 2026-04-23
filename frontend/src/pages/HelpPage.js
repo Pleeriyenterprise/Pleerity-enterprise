@@ -92,13 +92,9 @@ export default function HelpPage() {
     navigate(buildSafeQueryPath('/help', { article: a?.slug }));
   };
 
+  /** Always return to the in-app article index (`/help`), not browser back (often Today or another screen). */
   const backToList = () => {
-    if (window.history.length > 2) {
-      navigate(-1);
-    } else {
-      navigate('/help');
-      setArticle(null);
-    }
+    navigate('/help');
   };
 
   const handleAskSubmit = async (e) => {

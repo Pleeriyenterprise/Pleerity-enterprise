@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
+import PrepareRegistryPublishDialog from '../../components/admin/PrepareRegistryPublishDialog';
 import RegistryActionLinksForm from '../../components/admin/RegistryActionLinksForm';
 import RegistryConditionsBuilder from '../../components/admin/RegistryConditionsBuilder';
 import { REGISTRY_CONDITION_BUILDER_FALLBACK } from '../../data/registryConditionBuilderFallback';
@@ -27,6 +28,18 @@ function sanitizeConditionsForSave(cond) {
       return { field, op, value: r.value };
     });
   return { logic, rules };
+}
+
+/** Drop placeholder rows the UI adds (empty key/label/url) so PATCH does not send invalid rows that fail validation. */
+function stripEmptyActionLinkPlaceholders(links) {
+  if (!Array.isArray(links)) return [];
+  return links.filter((row) => {
+    if (!row || typeof row !== 'object') return false;
+    const label = String(row.label ?? '').trim();
+    const url = String(row.url ?? '').trim();
+    const key = String(row.key ?? '').trim();
+    return Boolean(label || url || key);
+  });
 }
 
 function Section({ title, children }) {
@@ -165,6 +178,7 @@ export default function AdminComplianceRegistryEditorPage() {
   const [showLinksAdvanced, setShowLinksAdvanced] = useState(false);
   const [showConditionsAdvanced, setShowConditionsAdvanced] = useState(false);
   const [fieldOptions, setFieldOptions] = useState(null);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
 
   const opts = useMemo(() => {
     const fo = fieldOptions || {};
@@ -183,15 +197,6 @@ export default function AdminComplianceRegistryEditorPage() {
           : REGISTRY_CONDITION_BUILDER_FALLBACK.condition_templates,
     };
   }, [fieldOptions]);
-
-  const actionLinksValue = useMemo(() => {
-    try {
-      const p = JSON.parse(actionLinksJson || '[]');
-      return Array.isArray(p) ? p : [];
-    } catch {
-      return [];
-    }
-  }, [actionLinksJson]);
 
   const load = useCallback(() => {
     if (!entryId) return;
@@ -255,12 +260,21 @@ export default function AdminComplianceRegistryEditorPage() {
     let links;
     let conditions;
     let whyByJurisdiction;
-    try {
-      links = JSON.parse(actionLinksJson || '[]');
-    } catch {
-      toast.error('Action links must be valid JSON');
-      return;
+    if (showLinksAdvanced) {
+      try {
+        links = JSON.parse(actionLinksJson || '[]');
+      } catch {
+        toast.error('Action links must be valid JSON');
+        return;
+      }
+      if (!Array.isArray(links)) {
+        toast.error('action_links must be a JSON array');
+        return;
+      }
+    } else {
+      links = Array.isArray(draft.action_links) ? draft.action_links : [];
     }
+    links = stripEmptyActionLinkPlaceholders(links);
     if (showConditionsAdvanced) {
       try {
         conditions = JSON.parse(conditionsText || '{}');
@@ -284,7 +298,7 @@ export default function AdminComplianceRegistryEditorPage() {
       conditions,
       frequency: draft.frequency,
       action_behaviour: draft.action_behaviour,
-      action_links: Array.isArray(links) ? links : [],
+      action_links: links,
       why_it_matters_short: draft.why_it_matters_short || '',
       why_it_matters_long: draft.why_it_matters_long || '',
       why_it_matters_by_jurisdiction: whyByJurisdiction && typeof whyByJurisdiction === 'object' ? whyByJurisdiction : {},
@@ -295,10 +309,16 @@ export default function AdminComplianceRegistryEditorPage() {
       .patchComplianceRegistryDraft(entryId, { patch })
       .then((res) => {
         const { normalisation_warnings: nw, ...rest } = res.data || {};
-        setDraft(rest);
-        setConditionsText(JSON.stringify(rest?.conditions || { logic: 'ALL', rules: [] }, null, 2));
-        setActionLinksJson(JSON.stringify(rest?.action_links || [], null, 2));
-        setWhyByJurisdictionText(JSON.stringify(rest?.why_it_matters_by_jurisdiction || {}, null, 2));
+        const savedLinks = Array.isArray(rest.action_links)
+          ? rest.action_links
+          : Array.isArray(patch.action_links)
+            ? patch.action_links
+            : [];
+        const mergedRest = { ...rest, action_links: savedLinks };
+        setDraft(mergedRest);
+        setConditionsText(JSON.stringify(mergedRest?.conditions || { logic: 'ALL', rules: [] }, null, 2));
+        setActionLinksJson(JSON.stringify(savedLinks, null, 2));
+        setWhyByJurisdictionText(JSON.stringify(mergedRest?.why_it_matters_by_jurisdiction || {}, null, 2));
         toast.success('Saved');
         if (Array.isArray(nw) && nw.length) {
           toast.info('Legacy values normalised', { description: nw.join(' · ') });
@@ -360,17 +380,23 @@ export default function AdminComplianceRegistryEditorPage() {
             </p>
           </div>
           {canMutate && (
-            <Button className="ml-auto" size="sm" onClick={save} disabled={saving}>
-              {saving ? 'Saving…' : 'Save draft'}
-            </Button>
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => setPublishDialogOpen(true)}>
+                Publish path…
+              </Button>
+              <Button size="sm" onClick={save} disabled={saving}>
+                {saving ? 'Saving…' : 'Save draft'}
+              </Button>
+            </div>
           )}
         </div>
 
         <div className="rounded-md border border-amber-200 bg-amber-50/90 px-3 py-2 mb-4 text-xs text-amber-950">
-          <strong>Draft (editable) — not live until published.</strong> Saving writes Mongo only. After{' '}
-          <strong>Publish queue</strong> approval, the active registry snapshot is merged with the in-code engine in
-          planner / resolver paths. <strong>Per-property Mongo requirement rows do not auto-refresh</strong> — use the
-          sync path on the Publish page when a site must pick up materialised text/links.
+          <strong>Draft (editable) — not live until published.</strong> Saving writes Mongo only. After Owner{' '}
+          <strong>Publish queue</strong> activation, this line’s snapshot <strong>merges into</strong> the active
+          published registry map (other keys already live remain unless a later publish replaces them). The planner and
+          resolver read that map immediately. <strong>Per-property Mongo requirement rows are not bulk-rewritten</strong>{' '}
+          — use per-property sync/materialise when a site must pick up changed copy or action links.
           <span className="block mt-1 text-amber-900/95">
             Category, requirement type, criticality, UK regions, primary action mode, and action-link kinds are{' '}
             <strong>controlled system values</strong> (same lists as validation / publish). Narrative fields (name,
@@ -654,21 +680,57 @@ export default function AdminComplianceRegistryEditorPage() {
             </select>
           </div>
           <RegistryActionLinksForm
-            value={actionLinksValue}
-            onChange={(arr) => setActionLinksJson(JSON.stringify(arr, null, 2))}
+            value={Array.isArray(draft.action_links) ? draft.action_links : []}
+            onChange={(arr) => {
+              setDraft((prev) => (prev ? { ...prev, action_links: arr } : prev));
+              setActionLinksJson(JSON.stringify(arr, null, 2));
+            }}
             disabled={!canMutate}
             previewRegion={linkPreviewRegion}
           />
           <button
             type="button"
             className="text-xs text-electric-teal hover:underline mt-2"
-            onClick={() => setShowLinksAdvanced((o) => !o)}
+            onClick={() => {
+              if (showLinksAdvanced) {
+                try {
+                  const parsed = JSON.parse(actionLinksJson || '[]');
+                  if (!Array.isArray(parsed)) {
+                    toast.error('action_links must be a JSON array');
+                    return;
+                  }
+                  setDraft((prev) => (prev ? { ...prev, action_links: parsed } : prev));
+                } catch {
+                  toast.error('Fix action_links JSON before leaving advanced mode');
+                  return;
+                }
+                setShowLinksAdvanced(false);
+              } else {
+                setShowLinksAdvanced(true);
+              }
+            }}
           >
             {showLinksAdvanced ? 'Hide' : 'Show'} raw JSON (advanced)
           </button>
           {showLinksAdvanced && (
             <div className="mt-2">
-              <Field label="action_links JSON" value={actionLinksJson} onChange={setActionLinksJson} disabled={!canMutate} textarea />
+              <Field
+                label="action_links JSON"
+                value={actionLinksJson}
+                onChange={(v) => {
+                  setActionLinksJson(v);
+                  try {
+                    const parsed = JSON.parse(v || '[]');
+                    if (Array.isArray(parsed)) {
+                      setDraft((prev) => (prev ? { ...prev, action_links: parsed } : prev));
+                    }
+                  } catch {
+                    /* partial JSON while typing — draft.action_links left unchanged until valid */
+                  }
+                }}
+                disabled={!canMutate}
+                textarea
+              />
             </div>
           )}
         </Section>
@@ -776,6 +838,15 @@ export default function AdminComplianceRegistryEditorPage() {
             </table>
           </div>
         </Section>
+
+        <PrepareRegistryPublishDialog
+          open={publishDialogOpen}
+          onOpenChange={setPublishDialogOpen}
+          entryId={draft?.entry_id}
+          canonicalCode={draft?.canonical_code}
+          scopeKey={draft?.scope_key}
+          canMutate={canMutate}
+        />
       </div>
     </UnifiedAdminLayout>
   );

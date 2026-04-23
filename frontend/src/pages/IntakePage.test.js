@@ -28,7 +28,11 @@ jest.mock('../api/client', () => ({
     ),
   },
   intakeAPI: {
-    checkEmailAvailability: jest.fn(() => Promise.resolve({ data: { available: true, email: 'test@example.com' } })),
+    checkEmailAvailability: jest.fn(() =>
+      Promise.resolve({
+        data: { available: true, normalized_email: 'test@example.com', reason_code: 'OK' },
+      }),
+    ),
     getPlans: jest.fn(() =>
       Promise.resolve({
         data: {
@@ -114,6 +118,52 @@ describe('buildIntakeSubmitPayload', () => {
     expect(payload.consent_data_processing).toBe(true);
     expect(typeof payload.consent_service_boundary).toBe('boolean');
     expect(payload.consent_service_boundary).toBe(true);
+  });
+
+  it('normalises email to canonical form in submit payload', () => {
+    const formData = {
+      full_name: 'Test',
+      email: '  User@Example.COM ',
+      client_type: 'INDIVIDUAL',
+      company_name: '',
+      preferred_contact: 'EMAIL',
+      phone: '',
+      billing_plan: 'PLAN_1_SOLO',
+      properties: [
+        {
+          nickname: 'P',
+          postcode: 'SW1A 1AA',
+          address_line_1: '10 St',
+          address_line_2: '',
+          city: 'London',
+          property_type: 'house',
+          jurisdiction: 'England',
+          is_hmo: false,
+          bedrooms: null,
+          occupancy: 'single_family',
+          council_name: '',
+          council_code: '',
+          licence_required: '',
+          licence_type: '',
+          licence_status: '',
+          managed_by: 'LANDLORD',
+          send_reminders_to: 'LANDLORD',
+          agent_name: '',
+          agent_email: '',
+          agent_phone: '',
+          cert_gas_safety: '',
+          cert_eicr: '',
+          cert_epc: '',
+          cert_licence: '',
+        },
+      ],
+      document_submission_method: 'UPLOAD',
+      email_upload_consent: false,
+      consent_data_processing: true,
+      consent_service_boundary: true,
+    };
+    const payload = buildIntakeSubmitPayload(formData, null);
+    expect(payload.email).toBe('user@example.com');
   });
 
   it('coerces empty bedrooms to null', () => {
@@ -218,6 +268,10 @@ async function advanceToStep4() {
   });
   fireEvent.change(screen.getByPlaceholderText('John Smith'), { target: { value: 'Test User' } });
   fireEvent.change(screen.getByPlaceholderText('john@example.com'), { target: { value: 'test@example.com' } });
+  fireEvent.blur(screen.getByTestId('email-input'));
+  await waitFor(() => {
+    expect(screen.getByTestId('email-availability-available')).toBeInTheDocument();
+  });
   fireEvent.click(screen.getByTestId('client-type-individual'));
   fireEvent.click(screen.getByTestId('step1-next'));
 
@@ -238,6 +292,8 @@ async function advanceToStep4() {
   if (addressInput) fireEvent.change(addressInput, { target: { value: '10 Test Street' } });
   const cityInput = screen.getByPlaceholderText('London');
   if (cityInput) fireEvent.change(cityInput, { target: { value: 'London' } });
+  const jurSelect = screen.getByTestId('property-0-jurisdiction');
+  fireEvent.change(jurSelect, { target: { value: 'England' } });
   fireEvent.click(screen.getByTestId('step3-next'));
 }
 
@@ -336,6 +392,10 @@ describe('IntakePage Step 3 – Property cap enforcement', () => {
     await waitFor(() => { expect(screen.getByTestId('step-indicator-1')).toBeInTheDocument(); });
     fireEvent.change(screen.getByPlaceholderText('John Smith'), { target: { value: 'Test User' } });
     fireEvent.change(screen.getByPlaceholderText('john@example.com'), { target: { value: 'test@example.com' } });
+    fireEvent.blur(screen.getByTestId('email-input'));
+    await waitFor(() => {
+      expect(screen.getByTestId('email-availability-available')).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByTestId('client-type-individual'));
     fireEvent.click(screen.getByTestId('step1-next'));
     // Step 2 – Solo
@@ -350,6 +410,7 @@ describe('IntakePage Step 3 – Property cap enforcement', () => {
     if (addressInput) fireEvent.change(addressInput, { target: { value: '10 Test Street' } });
     const cityInput = screen.getByPlaceholderText('London');
     if (cityInput) fireEvent.change(cityInput, { target: { value: 'London' } });
+    fireEvent.change(screen.getByTestId('property-0-jurisdiction'), { target: { value: 'England' } });
     fireEvent.click(screen.getByTestId('add-property-btn'));
     // At cap: Add button must be gone, limit warning visible, count 2/2
     await waitFor(() => {
@@ -370,6 +431,10 @@ describe('IntakePage Step 3 – Property cap enforcement', () => {
     await waitFor(() => { expect(screen.getByTestId('step-indicator-1')).toBeInTheDocument(); });
     fireEvent.change(screen.getByPlaceholderText('John Smith'), { target: { value: 'Test User' } });
     fireEvent.change(screen.getByPlaceholderText('john@example.com'), { target: { value: 'test@example.com' } });
+    fireEvent.blur(screen.getByTestId('email-input'));
+    await waitFor(() => {
+      expect(screen.getByTestId('email-availability-available')).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByTestId('client-type-individual'));
     fireEvent.click(screen.getByTestId('step1-next'));
     await waitFor(() => { expect(screen.getByTestId('plan-plan-2-portfolio')).toBeInTheDocument(); });
@@ -382,6 +447,7 @@ describe('IntakePage Step 3 – Property cap enforcement', () => {
     if (addressInput) fireEvent.change(addressInput, { target: { value: '10 Test Street' } });
     const cityInput = screen.getByPlaceholderText('London');
     if (cityInput) fireEvent.change(cityInput, { target: { value: 'London' } });
+    fireEvent.change(screen.getByTestId('property-0-jurisdiction'), { target: { value: 'England' } });
     for (let i = 0; i < 9; i++) {
       fireEvent.click(screen.getByTestId('add-property-btn'));
       await waitFor(() => expect(screen.getByText(new RegExp(`${i + 2}/10`))).toBeInTheDocument(), { timeout: 3000 });
@@ -450,7 +516,6 @@ describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
     fireEvent.click(payButton);
 
     await waitFor(() => {
-      expect(intakeAPI.checkEmailAvailability).toHaveBeenCalled();
       expect(intakeAPI.submit).toHaveBeenCalled();
       expect(publicAgreementsAPI.postAcceptance).toHaveBeenCalled();
       expect(intakeAPI.createCheckout).toHaveBeenCalledWith('test-client', { acceptance_id: 'accept-test-1' });
@@ -493,7 +558,6 @@ describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
     fireEvent.click(payButton);
 
     await waitFor(() => {
-      expect(intakeAPI.checkEmailAvailability).toHaveBeenCalled();
       expect(intakeAPI.submit).toHaveBeenCalled();
       expect(publicAgreementsAPI.postAcceptance).toHaveBeenCalled();
       expect(intakeAPI.createCheckout).toHaveBeenCalledWith('test-client', { acceptance_id: 'accept-test-1' });
@@ -504,4 +568,74 @@ describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
       expect(screen.getByText(/Payment setup failed|Reference:/)).toBeInTheDocument();
     });
   }, 15000);
+});
+
+describe('IntakePage Step 1 – live email availability', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    global.fetch.mockImplementation(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve([]) }),
+    );
+  });
+
+  it('shows taken and blocks progression when email is already registered', async () => {
+    intakeAPI.checkEmailAvailability.mockResolvedValue({
+      data: { available: false, normalized_email: 'taken@example.com', reason_code: 'EMAIL_TAKEN' },
+    });
+    render(
+      <MemoryRouter>
+        <IntakePage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId('step-indicator-1')).toBeInTheDocument());
+    fireEvent.change(screen.getByPlaceholderText('John Smith'), { target: { value: 'Test User' } });
+    fireEvent.change(screen.getByPlaceholderText('john@example.com'), { target: { value: 'taken@example.com' } });
+    fireEvent.blur(screen.getByTestId('email-input'));
+    await waitFor(() => expect(screen.getByTestId('email-availability-taken')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('client-type-individual'));
+    fireEvent.click(screen.getByTestId('step1-next'));
+    expect(screen.queryByTestId('plan-plan-1-solo')).not.toBeInTheDocument();
+    expect(screen.getByTestId('step-indicator-1')).toBeInTheDocument();
+  });
+
+  it('shows neutral error and retry; retry can reach available', async () => {
+    intakeAPI.checkEmailAvailability.mockRejectedValueOnce(new Error('network')).mockResolvedValue({
+      data: { available: true, normalized_email: 'ok@example.com', reason_code: 'OK' },
+    });
+    render(
+      <MemoryRouter>
+        <IntakePage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId('step-indicator-1')).toBeInTheDocument());
+    fireEvent.change(screen.getByPlaceholderText('John Smith'), { target: { value: 'Test User' } });
+    fireEvent.change(screen.getByPlaceholderText('john@example.com'), { target: { value: 'ok@example.com' } });
+    fireEvent.blur(screen.getByTestId('email-input'));
+    await waitFor(() => expect(screen.getByTestId('email-availability-error')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('client-type-individual'));
+    fireEvent.click(screen.getByTestId('step1-next'));
+    expect(screen.queryByTestId('plan-plan-1-solo')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('email-availability-retry'));
+    await waitFor(() => expect(screen.getByTestId('email-availability-available')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('step1-next'));
+    await waitFor(() => expect(screen.getByTestId('plan-plan-1-solo')).toBeInTheDocument());
+  });
+
+  it('editing email after a successful check resets inline availability until re-verified', async () => {
+    intakeAPI.checkEmailAvailability.mockResolvedValue({
+      data: { available: true, normalized_email: 'first@example.com', reason_code: 'OK' },
+    });
+    render(
+      <MemoryRouter>
+        <IntakePage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId('step-indicator-1')).toBeInTheDocument());
+    fireEvent.change(screen.getByPlaceholderText('john@example.com'), { target: { value: 'first@example.com' } });
+    fireEvent.blur(screen.getByTestId('email-input'));
+    await waitFor(() => expect(screen.getByTestId('email-availability-available')).toBeInTheDocument());
+    fireEvent.change(screen.getByTestId('email-input'), { target: { value: 'first@example.comx' } });
+    expect(screen.queryByTestId('email-availability-available')).not.toBeInTheDocument();
+  });
 });

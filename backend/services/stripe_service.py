@@ -19,9 +19,11 @@ from datetime import datetime, timezone, timedelta
 from database import database
 from services.billing_period_utils import (
     normalize_stored_period_end_for_api,
-    period_end_from_stripe_unix,
+    period_end_from_stripe_subscription_dict,
+    period_start_from_stripe_subscription_dict,
     period_start_from_stripe_unix,
 )
+from services.billing_stripe_sync_service import stripe_subscription_to_dict
 from services.billing_presentation import build_client_billing_payload
 from services.billing_line_normalization import normalize_stripe_invoice_lines
 from services.plan_registry import (
@@ -433,8 +435,8 @@ class StripeService:
                 else:
                     sub_d = dict(sub) if not isinstance(sub, dict) else sub
                 charge_automatically = sub_d.get("collection_method") == "charge_automatically"
-                fresh_end = period_end_from_stripe_unix(sub_d.get("current_period_end"))
-                fresh_start = period_start_from_stripe_unix(sub_d.get("current_period_start"))
+                fresh_end = period_end_from_stripe_subscription_dict(sub_d)
+                fresh_start = period_start_from_stripe_subscription_dict(sub_d)
                 anchor_dt = period_start_from_stripe_unix(sub_d.get("billing_cycle_anchor"))
                 for item in (sub_d.get("items") or {}).get("data") or []:
                     price = item.get("price") or {}
@@ -447,7 +449,7 @@ class StripeService:
                 set_fields: Dict[str, Any] = {
                     "updated_at": now_sync,
                     "billing_last_synced_at": now_sync,
-                    "billing_sync_state": "ok",
+                    "billing_sync_state": "ok" if fresh_end else "missing_period_end",
                 }
                 if fresh_end:
                     set_fields["current_period_end"] = fresh_end
@@ -464,7 +466,7 @@ class StripeService:
                     {"$set": set_fields},
                 )
                 billing["billing_last_synced_at"] = now_sync
-                billing["billing_sync_state"] = "ok"
+                billing["billing_sync_state"] = "ok" if fresh_end else "missing_period_end"
                 if fresh_end is not None:
                     billing["current_period_end"] = fresh_end
                 if fresh_start is not None:
@@ -602,7 +604,8 @@ class StripeService:
                     cancel_at_period_end=True
                 )
 
-            stripe_cpe = period_end_from_stripe_unix(subscription.get("current_period_end"))
+            sub_d_cancel = stripe_subscription_to_dict(subscription)
+            stripe_cpe = period_end_from_stripe_subscription_dict(sub_d_cancel)
             cancel_set: Dict[str, Any] = {
                 "cancel_at_period_end": not cancel_immediately,
                 "subscription_status": "CANCELED" if cancel_immediately else billing.get("subscription_status"),

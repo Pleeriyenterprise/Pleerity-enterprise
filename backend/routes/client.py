@@ -23,6 +23,34 @@ router = APIRouter(prefix="/api/client", tags=["client"], dependencies=[Depends(
 NOT_REQUIRED_REASONS = ["no_gas_supply", "exempt", "not_applicable", "other"]
 
 
+async def _resolved_jurisdiction_settings_for_client(db, client_id: str) -> Dict[str, Any]:
+    """
+    Return default_jurisdiction + enabled_jurisdictions for Settings UI.
+
+    Order: persisted ``clients`` fields; else union of ``properties.jurisdiction`` (intake / explicit records).
+    Last resort only (no properties, no stored row): Scotland singleton — never all four regions unless stored.
+    """
+    from services.compliance_rules_registry import (
+        canonicalize_uk_portfolio_label,
+        derive_account_jurisdiction_fields_from_property_labels,
+    )
+
+    client = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "default_jurisdiction": 1, "enabled_jurisdictions": 1},
+    ) or {}
+    stored_def = canonicalize_uk_portfolio_label(client.get("default_jurisdiction"))
+    raw_en = client.get("enabled_jurisdictions")
+    stored_en = [canonicalize_uk_portfolio_label(x) for x in (raw_en or []) if canonicalize_uk_portfolio_label(x)]
+    if stored_def and stored_en:
+        return {"default_jurisdiction": stored_def, "enabled_jurisdictions": stored_en}
+    rows = await db.properties.find({"client_id": client_id}, {"_id": 0, "jurisdiction": 1}).to_list(10000)
+    dd, dlist = derive_account_jurisdiction_fields_from_property_labels([p.get("jurisdiction") for p in rows])
+    if dd and dlist:
+        return {"default_jurisdiction": dd, "enabled_jurisdictions": dlist}
+    return {"default_jurisdiction": "Scotland", "enabled_jurisdictions": ["Scotland"]}
+
+
 def _client_surface_visible_requirement_row(row: Dict[str, Any]) -> bool:
     """False only when explicitly hidden (system / reconciled internal rows)."""
     return row.get("client_surface_visible") is not False
@@ -1414,15 +1442,7 @@ async def get_jurisdiction_settings(request: Request):
     """Get client jurisdiction settings (default_jurisdiction, enabled_jurisdictions)."""
     user = await client_route_guard(request)
     db = database.get_db()
-    client = await db.clients.find_one(
-        {"client_id": user["client_id"]},
-        {"_id": 0, "default_jurisdiction": 1, "enabled_jurisdictions": 1},
-    )
-    return {
-        # Persisted value only — omit coercing to Scotland so APIs and DB stay aligned (UI may default the picker locally).
-        "default_jurisdiction": client.get("default_jurisdiction"),
-        "enabled_jurisdictions": client.get("enabled_jurisdictions") or ["Scotland", "England", "Wales", "Northern Ireland"],
-    }
+    return await _resolved_jurisdiction_settings_for_client(db, user["client_id"])
 
 
 class JurisdictionSettingsBody(BaseModel):

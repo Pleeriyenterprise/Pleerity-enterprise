@@ -39,7 +39,8 @@ export default function JurisdictionSettingsPage() {
   const [bulkMissingLoading, setBulkMissingLoading] = useState(false);
 
   const [defaultJurisdiction, setDefaultJurisdiction] = useState('Scotland');
-  const [enabledSet, setEnabledSet] = useState(() => new Set(JURISDICTION_OPTIONS));
+  /** Initialise narrow; load() replaces from API (never assume all regions selected). */
+  const [enabledSet, setEnabledSet] = useState(() => new Set(['Scotland']));
 
   const profileKey = useMemo(() => scoringProfileForDefaultLabel(defaultJurisdiction), [defaultJurisdiction]);
   const examples = useMemo(() => impactRuleExamplesForProfile(profileKey), [profileKey]);
@@ -50,10 +51,10 @@ export default function JurisdictionSettingsPage() {
     try {
       const res = await clientAPI.getJurisdictionSettings();
       const d = res.data?.default_jurisdiction;
-      const en = Array.isArray(res.data?.enabled_jurisdictions) ? res.data.enabled_jurisdictions : JURISDICTION_OPTIONS;
-      setDefaultJurisdiction(d && JURISDICTION_OPTIONS.includes(d) ? d : 'Scotland');
-      const next = new Set(en.filter((j) => JURISDICTION_OPTIONS.includes(j)));
-      if (next.size === 0) JURISDICTION_OPTIONS.forEach((j) => next.add(j));
+      const en = Array.isArray(res.data?.enabled_jurisdictions) ? res.data.enabled_jurisdictions : [];
+      const filtered = en.filter((j) => JURISDICTION_OPTIONS.includes(j));
+      setDefaultJurisdiction(d && JURISDICTION_OPTIONS.includes(d) ? d : filtered[0] || 'Scotland');
+      const next = new Set(filtered.length ? filtered : ['Scotland']);
       setEnabledSet(next);
     } catch {
       setLoadError('Could not load jurisdiction settings. Try again or contact support.');

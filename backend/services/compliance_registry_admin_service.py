@@ -327,7 +327,6 @@ def merge_partial_draft(existing: Dict[str, Any], patch: Dict[str, Any]) -> Dict
         "conditions",
         "frequency",
         "action_behaviour",
-        "action_links",
         "governance",
         "baseline_alignment",
     ):
@@ -337,6 +336,12 @@ def merge_partial_draft(existing: Dict[str, Any], patch: Dict[str, Any]) -> Dict
                 base = {}
             base.update(patch[key])
             out[key] = base
+    if "action_links" in patch:
+        al = patch.get("action_links")
+        if isinstance(al, list):
+            out["action_links"] = [dict(x) for x in al if isinstance(x, dict)]
+        elif al is None:
+            out["action_links"] = []
     if "why_it_matters" in patch and "why_it_matters_short" not in patch:
         out["why_it_matters_short"] = str(patch.get("why_it_matters") or "").strip()
     if "why_it_matters_short" in patch:

@@ -47,7 +47,7 @@ export function jurisdictionAccountDefaultNoticeBody(effectiveLabel) {
   );
 }
 
-/** Checklist step “Set jurisdictions” opens account settings only — does not bulk-update existing properties. */
+/** Checklist step “Review jurisdiction settings” deep-links to account settings; saving does not bulk-update existing properties. */
 export const JURISDICTION_CHECKLIST_SET_JURISDICTIONS_NOTE =
   'Saving your default in Jurisdiction settings updates your account only — it does not write onto existing property records. ' +
   'New properties may use that default until you set them on each property. ' +

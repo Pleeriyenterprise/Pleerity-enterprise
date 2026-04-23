@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
+import PrepareRegistryPublishDialog from '../../components/admin/PrepareRegistryPublishDialog';
 import { adminAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
@@ -52,6 +53,13 @@ export default function AdminComplianceRegistryListPage() {
   const [reviewQueueTotal, setReviewQueueTotal] = useState(0);
   const [qInput, setQInput] = useState('');
   const [needsReviewOnly, setNeedsReviewOnly] = useState(false);
+  const [readyToPublishOnly, setReadyToPublishOnly] = useState(false);
+  const [jurisdictionFilter, setJurisdictionFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [requirementTypeFilter, setRequirementTypeFilter] = useState('');
+  const [liveSnapshotFilter, setLiveSnapshotFilter] = useState('');
+  const [sortKey, setSortKey] = useState('code_asc');
+  const [publishDialogRow, setPublishDialogRow] = useState(null);
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState(null);
   const [importing, setImporting] = useState(false);
@@ -68,6 +76,12 @@ export default function AdminComplianceRegistryListPage() {
           q: qq || undefined,
           limit: lim,
           needs_review: needsReviewOnly || undefined,
+          ready_to_publish: readyToPublishOnly || undefined,
+          jurisdiction: jurisdictionFilter || undefined,
+          category: categoryFilter || undefined,
+          requirement_type: requirementTypeFilter || undefined,
+          live_snapshot: liveSnapshotFilter || undefined,
+          sort: sortKey || undefined,
           include_registry_validation: includeValidation || undefined,
         })
         .then((res) => {
@@ -81,7 +95,16 @@ export default function AdminComplianceRegistryListPage() {
         })
         .finally(() => setLoading(false));
     },
-    [needsReviewOnly, includeValidation],
+    [
+      needsReviewOnly,
+      readyToPublishOnly,
+      jurisdictionFilter,
+      categoryFilter,
+      requirementTypeFilter,
+      liveSnapshotFilter,
+      sortKey,
+      includeValidation,
+    ],
   );
 
   useEffect(() => {
@@ -251,10 +274,24 @@ export default function AdminComplianceRegistryListPage() {
             <input
               type="checkbox"
               checked={needsReviewOnly}
-              onChange={(e) => setNeedsReviewOnly(e.target.checked)}
+              onChange={(e) => {
+                setNeedsReviewOnly(e.target.checked);
+                if (e.target.checked) setReadyToPublishOnly(false);
+              }}
             />
-            Show review queue only
+            Needs review only
             <span className="text-xs text-gray-500">({reviewQueueTotal} with flags)</span>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={readyToPublishOnly}
+              onChange={(e) => {
+                setReadyToPublishOnly(e.target.checked);
+                if (e.target.checked) setNeedsReviewOnly(false);
+              }}
+            />
+            Ready to publish only <span className="text-xs text-gray-500">(no review flags)</span>
           </label>
           <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none" title="Runs server validation; loads at most 50 rows">
             <input
@@ -291,8 +328,97 @@ export default function AdminComplianceRegistryListPage() {
           </Link>
         </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4 p-3 rounded-lg border border-gray-200 bg-white">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">UK region (display list)</label>
+            <select
+              className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+              value={jurisdictionFilter}
+              onChange={(e) => setJurisdictionFilter(e.target.value)}
+            >
+              <option value="">All regions</option>
+              {['ENGLAND', 'WALES', 'SCOTLAND', 'NORTHERN_IRELAND'].map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
+            <select
+              className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="">All</option>
+              {[
+                'ELECTRICAL',
+                'GAS',
+                'FIRE',
+                'HEALTH',
+                'REGULATORY',
+                'ENERGY',
+                'TENANCY',
+                'LICENSING',
+                'SAFETY',
+                'OTHER',
+              ].map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Requirement type</label>
+            <select
+              className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+              value={requirementTypeFilter}
+              onChange={(e) => setRequirementTypeFilter(e.target.value)}
+            >
+              <option value="">All</option>
+              {['DOCUMENT', 'JOB', 'OBLIGATION', 'SYSTEM'].map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Live snapshot</label>
+            <select
+              className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+              value={liveSnapshotFilter}
+              onChange={(e) => setLiveSnapshotFilter(e.target.value)}
+            >
+              <option value="">Any</option>
+              <option value="yes">In live snapshot</option>
+              <option value="no">Not in snapshot</option>
+            </select>
+          </div>
+          <div className="sm:col-span-2 lg:col-span-4">
+            <label className="block text-xs font-medium text-gray-500 mb-1">Sort</label>
+            <select
+              className="w-full max-w-md border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value)}
+            >
+              <option value="code_asc">Code A–Z, then scope</option>
+              <option value="code_desc">Code Z–A, then scope</option>
+              <option value="name_asc">Name A–Z</option>
+              <option value="name_desc">Name Z–A</option>
+              <option value="updated_desc">Recently updated</option>
+            </select>
+          </div>
+        </div>
+
         <p className="text-xs text-gray-500 mb-2">
-          {needsReviewOnly ? `Review queue: ${total} shown` : `Showing ${items.length} of ${total} draft line(s)`}
+          {needsReviewOnly
+            ? `Review queue: ${total} shown`
+            : readyToPublishOnly
+              ? `Editorial ready (no flags): ${total} shown`
+              : `Showing ${items.length} of ${total} draft line(s)`}
           {!needsReviewOnly && reviewQueueTotal > 0 && (
             <span className="text-amber-800"> — {reviewQueueTotal} need editorial review (flags below)</span>
           )}
@@ -307,6 +433,8 @@ export default function AdminComplianceRegistryListPage() {
                 <tr>
                   <th className="p-3">Name</th>
                   <th className="p-3">Code</th>
+                  <th className="p-3">Category</th>
+                  <th className="p-3">Req. type</th>
                   <th className="p-3">Status</th>
                   <th className="p-3">Live snapshot</th>
                   <th className="p-3">Scope</th>
@@ -332,6 +460,10 @@ export default function AdminComplianceRegistryListPage() {
                         <div className="text-[10px] text-gray-400 font-normal">Click row to edit in registry editor</div>
                       </td>
                       <td className="p-3 font-mono text-xs text-gray-700 align-top whitespace-nowrap">{row.canonical_code}</td>
+                      <td className="p-3 text-xs text-gray-700 align-top">{row.identity?.category || '—'}</td>
+                      <td className="p-3 text-xs text-gray-700 align-top">
+                        {row.classification?.requirement_type || '—'}
+                      </td>
                       <td className="p-3 align-top">
                         <EditableStatusBadge intent={st.intent} label={st.label} />
                         {nrf.length > 0 && st.intent !== 'review' ? (
@@ -370,16 +502,33 @@ export default function AdminComplianceRegistryListPage() {
                       <td className="p-3 text-gray-700 text-xs align-top min-w-[140px]">
                         {formatDisplayJurisdictions(row.jurisdiction?.display_jurisdictions || [])}
                       </td>
-                      <td className="p-3 align-top">
+                      <td className="p-3 align-top space-y-1">
                         <Button
                           type="button"
                           size="sm"
                           variant="default"
                           className="h-8 text-xs w-full"
-                          onClick={() => navigate(`/admin/compliance/registry/${encodeURIComponent(row.entry_id)}`)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/admin/compliance/registry/${encodeURIComponent(row.entry_id)}`);
+                          }}
                         >
                           Open editor
                         </Button>
+                        {canMutate && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs w-full"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPublishDialogRow(row);
+                            }}
+                          >
+                            Publish path…
+                          </Button>
+                        )}
                         <p className="text-[9px] text-center text-gray-500 mt-1">or click row</p>
                       </td>
                       <td className="p-3 text-gray-500 text-xs align-top whitespace-nowrap">{row.updated_at || '—'}</td>
@@ -392,6 +541,8 @@ export default function AdminComplianceRegistryListPage() {
               <div className="p-4 text-sm text-gray-600 border-t border-gray-100">
                 {needsReviewOnly ? (
                   <p>No drafts are currently flagged in the review queue (or filters exclude them).</p>
+                ) : readyToPublishOnly ? (
+                  <p>No drafts match “ready to publish” (no review flags) with the current filters.</p>
                 ) : (
                   <>
                     <p className="font-medium text-gray-800 mb-1">No draft registry lines yet</p>
@@ -407,6 +558,17 @@ export default function AdminComplianceRegistryListPage() {
             )}
           </div>
         )}
+
+        <PrepareRegistryPublishDialog
+          open={Boolean(publishDialogRow)}
+          onOpenChange={(o) => {
+            if (!o) setPublishDialogRow(null);
+          }}
+          entryId={publishDialogRow?.entry_id}
+          canonicalCode={publishDialogRow?.canonical_code}
+          scopeKey={publishDialogRow?.scope_key}
+          canMutate={canMutate}
+        />
       </div>
     </UnifiedAdminLayout>
   );

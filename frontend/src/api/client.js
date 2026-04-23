@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { buildClientLoginSessionExpiredUrl, isClientPortalPath } from '../utils/clientLoginRedirect';
 
 // Backend base URL: required in deployed env; fallback to relative /api for same-origin/proxy
 const _raw = process.env.REACT_APP_BACKEND_URL;
@@ -240,8 +241,16 @@ apiClient.interceptors.response.use(
       }
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
-      const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-      window.location.href = isAdminPath ? '/login/admin?session_expired=1' : '/login?session_expired=1';
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname || '';
+        const search = window.location.search || '';
+        const isAdminPath = path.startsWith('/admin');
+        window.location.href = isAdminPath
+          ? '/login/admin?session_expired=1'
+          : isClientPortalPath(path)
+            ? buildClientLoginSessionExpiredUrl(path, search)
+            : '/login?session_expired=1';
+      }
     }
     return Promise.reject(error);
   }
@@ -367,7 +376,7 @@ export const publicAgreementsAPI = {
 };
 
 export const intakeAPI = {
-  /** Same duplicate rule as submit; rate-limited. Use before advancing past step 1. */
+  /** Same duplicate rule as submit; rate-limited. Returns { available, normalized_email, reason_code }. */
   checkEmailAvailability: (email) => apiClient.post('/intake/check-email', { email }),
   submit: (data) => apiClient.post('/intake/submit', data),
   previewRequirements: (properties) => apiClient.post('/intake/requirements-preview', { properties }),

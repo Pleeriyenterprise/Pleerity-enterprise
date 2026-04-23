@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/client';
+import { buildClientLoginUrlWithNext, isClientPortalPath } from './clientLoginRedirect';
 
 const isStaffRole = (role) =>
   ['ROLE_OWNER', 'ROLE_ADMIN', 'ROLE_SUPPORT', 'ROLE_CONTENT', 'ROLE_AUDITOR'].includes(role);
@@ -11,8 +12,7 @@ export const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const location = useLocation();
   const hasLoggedBlock = useRef(false);
   const pathname = location.pathname;
-  const clientPathPrefixes = ['/app', '/dashboard', '/today', '/tasks', '/properties', '/requirements', '/documents', '/calendar', '/reports', '/settings', '/assistant', '/help', '/compliance-score', '/tenant', '/tenants', '/integrations', '/orders', '/operations'];
-  const isClientPath = clientPathPrefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  const isClientPath = isClientPortalPath(pathname);
   const isAdminPath = pathname.startsWith('/admin');
 
   // Log admin route guard blocks (non-staff trying to access admin)
@@ -34,6 +34,10 @@ export const ProtectedRoute = ({ children, requireAdmin = false }) => {
   }
 
   if (!user) {
+    if (isClientPath) {
+      const nextTarget = `${pathname}${location.search || ''}`;
+      return <Navigate to={buildClientLoginUrlWithNext(nextTarget)} replace />;
+    }
     return <Navigate to="/login" replace />;
   }
 

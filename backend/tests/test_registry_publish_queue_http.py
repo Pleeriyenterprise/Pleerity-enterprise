@@ -198,6 +198,8 @@ class _PublishedSub:
             return None
         doc = dict(pub)
         if projection:
+            if projection.get("entries") == 1 and projection.get("version") == 1:
+                return {"version": doc.get("version"), "entries": doc.get("entries")}
             if projection.get("entries") == 1:
                 return {"entries": doc.get("entries")}
             if projection.get("entries") == 0:
@@ -250,6 +252,42 @@ def test_submit_still_allowed_for_admin(client):
         r = client.post(f"/api/admin/compliance/registry/publish-queue/{qid}/submit")
     assert r.status_code == 200, r.text
     assert r.json()["queue"]["status"] == "submitted"
+
+
+def test_publish_merge_preserves_prior_snapshot_keys(client):
+    """Publishing a queue overlays keys onto the existing snapshot; other keys remain."""
+    e_gas = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
+    e_eicr = "ffffffff-ffff-4fff-8fff-ffffffffffff"
+    fake = FakeRegistryMongo(e_gas)
+    fake._drafts[e_eicr] = copy.deepcopy(fake._drafts[e_gas])
+    fake._drafts[e_eicr]["entry_id"] = e_eicr
+    fake._drafts[e_eicr]["canonical_code"] = "EICR"
+    fake._drafts[e_eicr]["identity"] = {**fake._drafts[e_gas]["identity"], "name": "Draft EICR"}
+    with _patch_auth(_OWNER_USER), _patch_registry_http(fake):
+        r0 = client.post(
+            "/api/admin/compliance/registry/publish-queue",
+            json={"title": "Gas only", "draft_entry_ids": [e_gas]},
+        )
+        assert r0.status_code == 200, r0.text
+        q0 = r0.json()["queue"]["queue_id"]
+        client.post(f"/api/admin/compliance/registry/publish-queue/{q0}/submit")
+        client.post(f"/api/admin/compliance/registry/publish-queue/{q0}/approve")
+        r_pub = client.post(f"/api/admin/compliance/registry/publish-queue/{q0}/publish")
+        assert r_pub.status_code == 200, r_pub.text
+        assert "GAS_SAFETY|DEFAULT" in (fake._published.get("entries") or {})
+
+        r1 = client.post(
+            "/api/admin/compliance/registry/publish-queue",
+            json={"title": "EICR overlay", "draft_entry_ids": [e_eicr]},
+        )
+        q1 = r1.json()["queue"]["queue_id"]
+        client.post(f"/api/admin/compliance/registry/publish-queue/{q1}/submit")
+        client.post(f"/api/admin/compliance/registry/publish-queue/{q1}/approve")
+        r_pub2 = client.post(f"/api/admin/compliance/registry/publish-queue/{q1}/publish")
+        assert r_pub2.status_code == 200, r_pub2.text
+        ent = fake._published.get("entries") or {}
+        assert "GAS_SAFETY|DEFAULT" in ent and "EICR|DEFAULT" in ent
+        assert r_pub2.json().get("entry_count") == 2
 
 
 def test_owner_full_transition_create_through_publish(client):

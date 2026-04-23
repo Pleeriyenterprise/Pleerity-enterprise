@@ -41,16 +41,23 @@ import uuid
 import string
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
+
+from utils.storage_paths import resolve_document_storage_path, resolve_intake_upload_dir
 
 from pymongo.errors import DuplicateKeyError
+from utils.client_email import (
+    INTAKE_EMAIL_ALREADY_EXISTS_MESSAGE,
+    canonical_client_email,
+    client_email_taken,
+    classify_clients_duplicate_key_error,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/intake", tags=["intake"])
 
 # Document vault path for copying intake-uploaded files (same as documents route / intake_upload_migration)
-_DATA_DIR = os.getenv("DATA_DIR", "/tmp")
-DOCUMENT_STORAGE_PATH = Path(os.environ.get("DOCUMENT_STORAGE_PATH", str(Path(_DATA_DIR) / "data" / "documents")))
+DOCUMENT_STORAGE_PATH = resolve_document_storage_path()
 
 # Plan property limits - now uses plan_registry as single source of truth
 # These are kept for backward compatibility but plan_registry is authoritative
@@ -350,13 +357,18 @@ class IntakeEmailCheckBody(BaseModel):
     email: EmailStr
 
 
-async def _intake_client_email_taken(db, email: str) -> bool:
-    """True if a client row already uses this email (same predicate as submit duplicate guard)."""
-    existing = await db.clients.find_one({"email": email}, {"_id": 0})
-    return existing is not None
+IntakeEmailReasonCode = Literal["OK", "EMAIL_TAKEN"]
 
 
-@router.post("/check-email")
+class IntakeEmailAvailabilityResponse(BaseModel):
+    """Structured result for live intake email availability (UX); submit remains authoritative."""
+
+    available: bool
+    normalized_email: str
+    reason_code: IntakeEmailReasonCode
+
+
+@router.post("/check-email", response_model=IntakeEmailAvailabilityResponse)
 async def check_intake_email_available(request: Request, body: IntakeEmailCheckBody):
     """Return whether this email can start a new CVP intake (no existing clients row).
 
@@ -371,8 +383,13 @@ async def check_intake_email_available(request: Request, body: IntakeEmailCheckB
     if not allowed:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=rl_msg or "Too many requests.")
     db = database.get_db()
-    taken = await _intake_client_email_taken(db, str(body.email))
-    return {"available": not taken, "email": str(body.email)}
+    normalized = canonical_client_email(str(body.email))
+    taken = await client_email_taken(db, normalized)
+    return IntakeEmailAvailabilityResponse(
+        available=not taken,
+        normalized_email=normalized,
+        reason_code="EMAIL_TAKEN" if taken else "OK",
+    )
 
 
 @router.post("/validate-property-count")
@@ -746,10 +763,10 @@ async def submit_intake(request: Request, data: IntakeFormData):
         # =========== VALIDATION ===========
         
         # Check if client already exists (same rule as POST /check-email)
-        if await _intake_client_email_taken(db, str(data.email)):
+        if await client_email_taken(db, str(data.email)):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="An account with this email already exists",
+                detail=INTAKE_EMAIL_ALREADY_EXISTS_MESSAGE,
             )
         
         # Validate conditional fields
@@ -845,10 +862,11 @@ async def submit_intake(request: Request, data: IntakeFormData):
         # =========== CREATE CLIENT ===========
         # Assign CRN before insert so customer_reference is never null (concurrency-safe via atomic counter).
         crn = await get_next_crn()
+        intake_email = canonical_client_email(str(data.email))
         client = Client(
             customer_reference=crn,
             full_name=data.full_name,
-            email=data.email,
+            email=intake_email,
             phone=data.phone if data.phone else None,
             company_name=data.company_name if data.company_name else None,
             client_type=data.client_type,
@@ -876,14 +894,32 @@ async def submit_intake(request: Request, data: IntakeFormData):
                 "lead_id": (lead_id_val or "").strip()[:128],
             }
         
+        # Account-level jurisdiction: mirror intake property selections (union + default = first property).
+        from services.compliance_rules_registry import derive_account_jurisdiction_fields_from_property_labels
+
+        _dj, _ej = derive_account_jurisdiction_fields_from_property_labels([p.jurisdiction for p in data.properties])
+        if _dj and _ej:
+            client_doc["default_jurisdiction"] = _dj
+            client_doc["enabled_jurisdictions"] = _ej
+
         try:
             await db.clients.insert_one(client_doc)
         except DuplicateKeyError as dup_err:
-            err_s = str(dup_err).lower()
-            if ("dup key" in err_s or "duplicate key" in err_s) and "email" in err_s:
+            kind = classify_clients_duplicate_key_error(dup_err)
+            if kind == "email":
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="An account with this email already exists",
+                    detail=INTAKE_EMAIL_ALREADY_EXISTS_MESSAGE,
+                ) from dup_err
+            if kind in ("customer_reference", "client_id", "other"):
+                logger.warning(
+                    "Intake clients.insert_one duplicate key (non-email kind=%s): %s",
+                    kind,
+                    dup_err,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Could not complete signup due to a conflict; please try again.",
                 ) from dup_err
             raise
         try:
@@ -1183,15 +1219,14 @@ async def upload_intake_document(
         
         # Generate storage path
         document_id = str(uuid.uuid4())
-        data_dir = os.getenv("DATA_DIR", "/tmp")
-        storage_dir = os.path.join(data_dir, "uploads", "intake", intake_session_id)
-        os.makedirs(storage_dir, exist_ok=True)
-        
+        storage_dir = resolve_intake_upload_dir() / intake_session_id
+        storage_dir.mkdir(parents=True, exist_ok=True)
+
         file_ext = os.path.splitext(file.filename)[1] if file.filename else ".pdf"
-        file_path = os.path.join(storage_dir, f"{document_id}{file_ext}")
+        file_path = storage_dir / f"{document_id}{file_ext}"
         
         # Save file
-        with open(file_path, "wb") as f:
+        with open(str(file_path), "wb") as f:
             f.write(content)
         
         # Create document record (UNVERIFIED, source=INTAKE_UPLOAD)
@@ -1203,7 +1238,7 @@ async def upload_intake_document(
             "intake_session_id": intake_session_id,
             "source": "INTAKE_UPLOAD",
             "file_name": file.filename,
-            "file_path": file_path,
+            "file_path": str(file_path),
             "file_size": file_size,
             "mime_type": file.content_type,
             "status": DocumentStatus.PENDING.value,

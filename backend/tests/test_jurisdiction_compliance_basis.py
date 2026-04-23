@@ -11,6 +11,7 @@ from services.compliance_rules_registry import (
     COMPLIANCE_CONFIDENCE_FALLBACK,
     build_jurisdiction_compliance_notice,
     build_portfolio_jurisdiction_attestation,
+    derive_account_jurisdiction_fields_from_property_labels,
     jurisdiction_attribution_for_property,
     property_jurisdiction_requirement_flags,
     resolve_portfolio_jurisdiction,
@@ -346,3 +347,28 @@ def test_legacy_england_wales_property_triggers_portfolio_default_fallback_notic
     n = build_jurisdiction_compliance_notice(None, [{"property_id": "p1", "jurisdiction": "ENGLAND_WALES"}])
     assert n["active"] is True
     assert n["affected_property_ids"] == ["p1"]
+
+
+def test_derive_account_jurisdiction_fields_single_region():
+    d, en = derive_account_jurisdiction_fields_from_property_labels(["scotland", "Scotland"])
+    assert d == "Scotland"
+    assert en == ["Scotland"]
+
+
+def test_derive_account_jurisdiction_fields_multi_in_order():
+    d, en = derive_account_jurisdiction_fields_from_property_labels(["England", "wales", "England"])
+    assert d == "England"
+    assert en == ["England", "Wales"]
+
+
+def test_derive_account_jurisdiction_fields_four_regions():
+    d, en = derive_account_jurisdiction_fields_from_property_labels(
+        ["Northern Ireland", "Scotland", "England", "Wales"]
+    )
+    assert d == "Northern Ireland"
+    assert en == ["Northern Ireland", "Scotland", "England", "Wales"]
+
+
+def test_derive_account_jurisdiction_fields_empty():
+    assert derive_account_jurisdiction_fields_from_property_labels([]) == (None, [])
+    assert derive_account_jurisdiction_fields_from_property_labels([None, ""]) == (None, [])

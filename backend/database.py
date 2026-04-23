@@ -52,10 +52,15 @@ class Database:
             except Exception:
                 pass  # Index may already exist with different options
             
+            # Unique on ``email`` is case-sensitive at the BSON layer. Application code stores
+            # canonical (trim + lower) addresses so the index matches the case-insensitive business rule.
             try:
                 await self.db.clients.create_index("email", unique=True)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(
+                    "clients create_index on email (unique) did not apply; duplicates may be possible until resolved: %s",
+                    e,
+                )
             
             await self.db.clients.create_index("client_id", unique=True)
             await self.db.clients.create_index("full_name")  # For name search

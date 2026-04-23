@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { BRAND_LOGO_URL, branding } from '../config/branding';
+import { sanitizeClientLoginNextPath } from '../utils/clientLoginRedirect';
 
 const STAFF_PORTAL_MESSAGE = 'This account must sign in via the Staff/Admin portal.';
 
@@ -29,8 +30,13 @@ const ClientLoginPage = () => {
     try {
       const result = await login(email, password, false); // client portal -> /api/auth/login
       if (result.success) {
-        const path = getRedirectPathForRole(result.user?.role);
-        navigate(path);
+        const nextSafe = sanitizeClientLoginNextPath(searchParams.get('next'));
+        if (nextSafe) {
+          navigate(nextSafe);
+        } else {
+          const path = getRedirectPathForRole(result.user?.role);
+          navigate(path);
+        }
       } else {
         const msg = result.error || 'Login failed';
         setError(msg);

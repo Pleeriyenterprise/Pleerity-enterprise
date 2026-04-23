@@ -6,6 +6,10 @@
 #
 # Render probes the port in $PORT. A fixed port (e.g. 8001) causes
 # "Port scan timeout / no open ports". See docs/RENDER_STARTUP_DIAGNOSIS.md.
+#
+# Persistent disk: document vault, intake uploads, and quarantine must live under the
+# disk mount or they are lost on redeploy. Existing services: add the same disk + env
+# in the dashboard if not created from this blueprint.
 
 services:
   - type: web
@@ -15,3 +19,16 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
+    disk:
+      name: pleerity-data
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: DOCUMENT_STORAGE_PATH
+        value: /var/data/data/documents
+      - key: INTAKE_UPLOAD_DIR
+        value: /var/data/uploads/intake
+      - key: INTAKE_QUARANTINE_DIR
+        value: /var/data/uploads/intake_quarantine

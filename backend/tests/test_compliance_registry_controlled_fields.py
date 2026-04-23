@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from services.compliance_registry_admin_service import validate_registry_draft
+from services.compliance_registry_admin_service import merge_partial_draft, validate_registry_draft
 from services.compliance_registry_controlled_vocab import (
     normalise_action_link_kind,
     normalise_registry_draft_for_storage,
@@ -60,6 +60,38 @@ def test_normalise_action_link_kind_guidance_to_official():
     k, w = normalise_action_link_kind("guidance")
     assert k == "official"
     assert w
+
+
+def test_merge_partial_draft_applies_action_links_list():
+    """Regression: action_links is a list on PATCH; must not be dropped (was gated on isinstance dict)."""
+    existing = {
+        "canonical_code": "GAS_SAFETY",
+        "scope_key": "DEFAULT",
+        "identity": {"name": "Gas", "category": "SAFETY"},
+        "classification": {"requirement_type": "DOCUMENT", "criticality": "HIGH", "client_surface_visible": True},
+        "jurisdiction": {"display_jurisdictions": ["ENGLAND", "WALES", "SCOTLAND", "NORTHERN_IRELAND"]},
+        "conditions": {"logic": "ALL", "rules": []},
+        "frequency": {"frequency_days": 365, "reminder_lead_days": 30},
+        "action_behaviour": {"primary_action_mode": "upload_document"},
+        "action_links": [{"key": "old", "label": "Old", "url": "https://a.example", "kind": "official", "jurisdictions": ["ENGLAND"], "priority": 1}],
+        "why_it_matters_short": "Statutory gas safety compliance for this property.",
+        "governance": {"needs_review_fields": []},
+    }
+    patch = {
+        "action_links": [
+            {
+                "key": "gov",
+                "label": "Gov",
+                "url": "https://gov.example/",
+                "kind": "official",
+                "jurisdictions": ["ENGLAND"],
+                "priority": 10,
+            }
+        ]
+    }
+    merged = merge_partial_draft(existing, patch)
+    assert len(merged["action_links"]) == 1
+    assert merged["action_links"][0]["key"] == "gov"
 
 
 def test_normalize_admin_action_link_rejects_unknown_kind():

@@ -26,7 +26,10 @@ from bson import ObjectId
 from pymongo import ReturnDocument
 
 from database import database
-from services.billing_period_utils import period_end_from_stripe_unix, period_start_from_stripe_unix
+from services.billing_period_utils import (
+    period_end_from_stripe_subscription_dict,
+    period_start_from_stripe_subscription_dict,
+)
 from services.invoice_pdf_builder import build_branded_invoice_pdf_bytes
 
 logger = logging.getLogger(__name__)
@@ -729,8 +732,8 @@ async def regenerate_subscription_checkout_invoice_pdf_for_client(
         try:
             sub = stripe.Subscription.retrieve(sub_id, expand=["items.data.price"])
             sub_d = sub.to_dict() if hasattr(sub, "to_dict") else dict(sub)
-            period_start = period_start_from_stripe_unix(sub_d.get("current_period_start"))
-            period_end = period_end_from_stripe_unix(sub_d.get("current_period_end"))
+            period_start = period_start_from_stripe_subscription_dict(sub_d)
+            period_end = period_end_from_stripe_subscription_dict(sub_d)
         except Exception as e:
             logger.warning("regenerate receipt: Subscription.retrieve failed: %s", e)
 

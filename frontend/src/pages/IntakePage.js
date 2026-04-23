@@ -37,6 +37,12 @@ import { PropertyLimitPrompt } from '../components/UpgradePrompt';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { BRAND_LOGO_URL, branding } from '../config/branding';
 import { JURISDICTION_OPTIONS } from '../utils/jurisdictionComplianceCopy';
+import {
+  INTAKE_EMAIL_DEBOUNCE_MS,
+  INTAKE_EMAIL_DUPLICATE_MESSAGE,
+  canonicalIntakeEmail,
+  isIntakeEmailFormatValid,
+} from '../utils/intakeEmail';
 
 // Plan limits - NEW PLAN STRUCTURE (must match backend plan_registry.py)
 const PLAN_LIMITS = {
@@ -113,8 +119,10 @@ function coerceBool(v) {
 
 /** Build submit payload with numeric and boolean fields coerced for /api/intake/submit */
 export function buildIntakeSubmitPayload(formData, intakeSessionId, marketing = {}) {
+  const canonEmail = canonicalIntakeEmail(formData.email) || (formData.email || '').trim();
   const payload = {
     ...formData,
+    email: canonEmail || formData.email,
     intake_session_id: intakeSessionId || null,
     email_upload_consent: coerceBool(formData.email_upload_consent),
     consent_data_processing: coerceBool(formData.consent_data_processing),
@@ -161,7 +169,10 @@ const IntakePage = () => {
 
   /** After a successful submit, allow checkout retry without re-posting submit (e.g. payment or acceptance errors). Cleared when leaving step 5. */
   const [resumeClientId, setResumeClientId] = useState(null);
-  const [step1EmailCheckLoading, setStep1EmailCheckLoading] = useState(false);
+  /** Step 1 live email: idle | checking | available | taken | error (network / server). Authoritative rule remains on submit. */
+  const [emailAvailability, setEmailAvailability] = useState('idle');
+  const emailDebounceRef = useRef(null);
+  const emailLatestRef = useRef('');
   /** Shown with duplicate-email message so users can jump to portal login. */
   const [showLoginLink, setShowLoginLink] = useState(false);
   const [agreementCurrent, setAgreementCurrent] = useState(null);
@@ -275,6 +286,82 @@ const IntakePage = () => {
     return () => { cancelled = true; };
   }, [leadTokenParam, sourceParam, leadIdParam]);
 
+  useEffect(() => {
+    emailLatestRef.current = formData.email;
+  }, [formData.email]);
+
+  useEffect(
+    () => () => {
+      if (emailDebounceRef.current) clearTimeout(emailDebounceRef.current);
+    },
+    [],
+  );
+
+  const runEmailAvailabilityCheck = useCallback(async () => {
+    const raw = (emailLatestRef.current || '').trim();
+    if (!isIntakeEmailFormatValid(raw)) {
+      setEmailAvailability('idle');
+      return;
+    }
+    const requestedCanon = canonicalIntakeEmail(raw);
+    setEmailAvailability('checking');
+    try {
+      const res = await intakeAPI.checkEmailAvailability(raw);
+      if (canonicalIntakeEmail(emailLatestRef.current) !== requestedCanon) {
+        return;
+      }
+      if (res.data?.available) {
+        setEmailAvailability('available');
+      } else {
+        setEmailAvailability('taken');
+      }
+    } catch (e) {
+      if (canonicalIntakeEmail(emailLatestRef.current) !== requestedCanon) {
+        return;
+      }
+      setEmailAvailability('error');
+    }
+  }, []);
+
+  const handleStep1EmailChange = useCallback(
+    (value) => {
+      setFormData((prev) => ({ ...prev, email: value }));
+      emailLatestRef.current = value;
+      setShowLoginLink(false);
+      setError('');
+      setEmailAvailability('idle');
+      if (emailDebounceRef.current) {
+        clearTimeout(emailDebounceRef.current);
+        emailDebounceRef.current = null;
+      }
+      if (!isIntakeEmailFormatValid(value)) {
+        return;
+      }
+      emailDebounceRef.current = setTimeout(() => {
+        emailDebounceRef.current = null;
+        void runEmailAvailabilityCheck();
+      }, INTAKE_EMAIL_DEBOUNCE_MS);
+    },
+    [runEmailAvailabilityCheck],
+  );
+
+  const handleStep1EmailBlur = useCallback(() => {
+    if (emailDebounceRef.current) {
+      clearTimeout(emailDebounceRef.current);
+      emailDebounceRef.current = null;
+    }
+    void runEmailAvailabilityCheck();
+  }, [runEmailAvailabilityCheck]);
+
+  // Risk-check prefill: run one availability check when prefill completes (same render as updated email).
+  useEffect(() => {
+    if (!prefillFromRiskCheck || step !== 1) return;
+    const raw = (formData.email || '').trim();
+    if (!isIntakeEmailFormatValid(raw)) return;
+    const tid = setTimeout(() => void runEmailAvailabilityCheck(), 0);
+    return () => clearTimeout(tid);
+  }, [prefillFromRiskCheck, step, runEmailAvailabilityCheck]);
+
   // Load plans on mount
   useEffect(() => {
     const loadPlans = async () => {
@@ -337,8 +424,29 @@ const IntakePage = () => {
           setError('Full name is required');
           return false;
         }
-        if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        if (!isIntakeEmailFormatValid(formData.email)) {
           setError('Valid email is required');
+          return false;
+        }
+        if (emailAvailability === 'checking') {
+          setError('Please wait while we verify your email address.');
+          return false;
+        }
+        if (emailAvailability === 'taken') {
+          setError(INTAKE_EMAIL_DUPLICATE_MESSAGE);
+          setShowLoginLink(true);
+          return false;
+        }
+        if (emailAvailability === 'error') {
+          setError(
+            'Could not verify email right now. Check your connection and use “Retry check”, then continue.',
+          );
+          return false;
+        }
+        if (emailAvailability !== 'available') {
+          setError(
+            'Please wait until we confirm your email is available, or leave the field to finish verification.',
+          );
           return false;
         }
         if (!formData.client_type) {
@@ -426,33 +534,6 @@ const IntakePage = () => {
 
   const nextStep = async () => {
     if (!validateStep(step)) return;
-    if (step === 1) {
-      const email = (formData.email || '').trim();
-      setStep1EmailCheckLoading(true);
-      setError('');
-      setShowLoginLink(false);
-      try {
-        const res = await intakeAPI.checkEmailAvailability(email);
-        if (!res.data?.available) {
-          setError('An account with this email already exists.');
-          setShowLoginLink(true);
-          return;
-        }
-      } catch (err) {
-        const status = err.response?.status;
-        const d = err.response?.data?.detail;
-        const msg =
-          typeof d === 'string'
-            ? d
-            : d && typeof d === 'object' && d.message
-              ? d.message
-              : 'Could not verify email. Please try again.';
-        setError(status === 429 ? msg : msg);
-        return;
-      } finally {
-        setStep1EmailCheckLoading(false);
-      }
-    }
     setStep(step + 1);
     window.scrollTo(0, 0);
   };
@@ -607,24 +688,6 @@ const IntakePage = () => {
     setShowLoginLink(false);
     const isDev = process.env.NODE_ENV !== 'production';
     try {
-      // Belt-and-suspenders: email may have been registered between step 1 and review (or clock skew / race).
-      if (!resumeClientId) {
-        const email = (formData.email || '').trim();
-        const checkRes = await intakeAPI.checkEmailAvailability(email);
-        if (!checkRes.data?.available) {
-          setError('An account with this email already exists.');
-          setShowLoginLink(true);
-          try {
-            localStorage.removeItem('customer_reference');
-            localStorage.removeItem('pending_client_id');
-          } catch (_) {
-            /* ignore */
-          }
-          setResumeClientId(null);
-          return;
-        }
-      }
-
       const submitData = buildIntakeSubmitPayload(formData, intakeSessionId, marketing);
       if (isDev) {
         const base = typeof window !== 'undefined' && window.__CVP_BACKEND_URL;
@@ -658,7 +721,7 @@ const IntakePage = () => {
         template_code: agreementCurrent.template_code,
         acceptance_text_snapshot: agreementCurrent.acceptance_text_required || '',
         accepted_by_name: (formData.full_name || '').trim(),
-        accepted_by_email: (formData.email || '').trim(),
+        accepted_by_email: canonicalIntakeEmail(formData.email) || (formData.email || '').trim(),
       };
       const accRes = await publicAgreementsAPI.postAcceptance(acceptanceBody);
       const acceptance_id = accRes.data?.acceptance_id;
@@ -756,8 +819,10 @@ const IntakePage = () => {
         const duplicateEmail =
           status === 400 &&
           typeof message === 'string' &&
-          message.toLowerCase().includes('already exists');
+          (message === INTAKE_EMAIL_DUPLICATE_MESSAGE ||
+            message.toLowerCase().includes('already exists'));
         if (duplicateEmail) {
+          setEmailAvailability('taken');
           try {
             localStorage.removeItem('customer_reference');
             localStorage.removeItem('pending_client_id');
@@ -898,11 +963,17 @@ const IntakePage = () => {
 
         {/* Step 1: Your Details */}
         {step === 1 && (
-          <Step1YourDetails 
-            formData={formData} 
+          <Step1YourDetails
+            formData={formData}
             setFormData={setFormData}
             onNext={nextStep}
-            emailCheckLoading={step1EmailCheckLoading}
+            emailAvailability={emailAvailability}
+            onEmailChange={handleStep1EmailChange}
+            onEmailBlur={handleStep1EmailBlur}
+            onRetryEmailCheck={() => {
+              setError('');
+              void runEmailAvailabilityCheck();
+            }}
           />
         )}
 
@@ -970,7 +1041,15 @@ const IntakePage = () => {
 // ============================================================================
 // STEP 1: YOUR DETAILS
 // ============================================================================
-const Step1YourDetails = ({ formData, setFormData, onNext, emailCheckLoading }) => {
+const Step1YourDetails = ({
+  formData,
+  setFormData,
+  onNext,
+  emailAvailability,
+  onEmailChange,
+  onEmailBlur,
+  onRetryEmailCheck,
+}) => {
   const clientTypes = [
     { value: 'INDIVIDUAL', label: 'Individual Landlord', icon: User, desc: 'Managing your own properties' },
     { value: 'COMPANY', label: 'Property Company', icon: Building2, desc: 'Corporate property management' },
@@ -1004,10 +1083,57 @@ const Step1YourDetails = ({ formData, setFormData, onNext, emailCheckLoading }) 
           <Input
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) => onEmailChange(e.target.value)}
+            onBlur={onEmailBlur}
             placeholder="john@example.com"
             data-testid="email-input"
+            autoComplete="email"
           />
+          {emailAvailability === 'checking' && (
+            <p
+              className="text-xs text-gray-600 flex items-center gap-1.5"
+              data-testid="email-availability-checking"
+            >
+              <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden />
+              Checking email…
+            </p>
+          )}
+          {emailAvailability === 'available' && (
+            <p className="text-xs text-emerald-700 flex items-center gap-1" data-testid="email-availability-available">
+              <CheckCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Email available
+            </p>
+          )}
+          {emailAvailability === 'taken' && (
+            <div className="text-xs text-red-700 space-y-2" data-testid="email-availability-taken">
+              <p className="flex items-start gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden />
+                <span>{INTAKE_EMAIL_DUPLICATE_MESSAGE}</span>
+              </p>
+              <p>
+                <Link to="/login/client" className="font-medium text-electric-teal underline hover:no-underline">
+                  Sign in to the client portal
+                </Link>
+                <span className="text-gray-500"> · </span>
+                <Link to="/forgot-password" className="font-medium text-electric-teal underline hover:no-underline">
+                  Forgot password
+                </Link>
+              </p>
+            </div>
+          )}
+          {emailAvailability === 'error' && (
+            <div className="text-xs text-amber-900 space-y-2" data-testid="email-availability-error">
+              <p>Could not verify email right now.</p>
+              <button
+                type="button"
+                onClick={onRetryEmailCheck}
+                className="font-medium text-electric-teal underline hover:no-underline"
+                data-testid="email-availability-retry"
+              >
+                Retry check
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Client Type - Card Selection */}
@@ -1091,13 +1217,13 @@ const Step1YourDetails = ({ formData, setFormData, onNext, emailCheckLoading }) 
         )}
 
         <div className="pt-4">
-          <Button 
-            onClick={onNext} 
+          <Button
+            onClick={onNext}
             className="w-full bg-electric-teal hover:bg-teal-600"
             data-testid="step1-next"
-            disabled={emailCheckLoading}
+            disabled={emailAvailability === 'checking'}
           >
-            {emailCheckLoading ? (
+            {emailAvailability === 'checking' ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin inline" />
                 Checking email…

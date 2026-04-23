@@ -209,16 +209,27 @@ async def lifespan(app: FastAPI):
         # Document vault: ensure directory exists and log resolved path (ops: /tmp is ephemeral on many hosts)
         try:
             from routes.documents import DOCUMENT_STORAGE_PATH as _doc_vault
+            from utils.storage_paths import is_production_env, is_unix_tmp_ephemeral_path, resolve_data_dir
 
             _doc_vault.mkdir(parents=True, exist_ok=True)
             _resolved = _doc_vault.resolve()
-            logger.info("Document vault DOCUMENT_STORAGE_PATH=%s (is_dir=%s)", _resolved, _resolved.is_dir())
-            _env_l = (os.environ.get("ENV") or os.environ.get("ENVIRONMENT") or "").strip().lower()
-            if _env_l in ("production", "prod") and str(_resolved).replace("\\", "/").startswith("/tmp/"):
-                logger.warning(
-                    "DOCUMENT_STORAGE_PATH is under /tmp in production; uploaded files will be lost on restart. "
-                    "Mount a persistent volume and set DOCUMENT_STORAGE_PATH (and DATA_DIR) to that mount."
+            _data_dir_eff = resolve_data_dir()
+            logger.info(
+                "Document vault DATA_DIR(effective)=%s DOCUMENT_STORAGE_PATH=%s (is_dir=%s)",
+                _data_dir_eff,
+                _resolved,
+                _resolved.is_dir(),
+            )
+            if is_production_env() and is_unix_tmp_ephemeral_path(_resolved):
+                msg = (
+                    "DOCUMENT_STORAGE_PATH resolves under /tmp in production; uploaded files will be lost on restart. "
+                    "Mount a persistent volume and set DATA_DIR and DOCUMENT_STORAGE_PATH under that mount "
+                    "(see render.yaml disk + env example)."
                 )
+                logger.critical(msg)
+                raise RuntimeError(msg)
+        except RuntimeError:
+            raise
         except Exception as _vault_log_err:
             logger.warning("Document vault startup check failed: %s", _vault_log_err)
         

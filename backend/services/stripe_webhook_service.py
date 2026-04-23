@@ -27,13 +27,15 @@ from typing import Dict, Any, Optional, Tuple
 from database import database
 from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
 from services.billing_period_utils import (
-    period_end_from_stripe_unix,
+    period_end_from_stripe_subscription_dict,
+    period_start_from_stripe_subscription_dict,
     period_start_from_stripe_unix,
     normalize_stored_period_end_for_api,
 )
 from services.billing_stripe_sync_service import (
     retrieve_stripe_subscription_dict,
     persist_subscription_billing_from_stripe,
+    stripe_subscription_to_dict,
 )
 from services.subscription_lifecycle_service import (
     sync_subscription_lifecycle,
@@ -537,8 +539,9 @@ class StripeWebhookService:
         entitlement_status = plan_registry.get_entitlement_status_from_subscription(subscription_status)
         
         # Upsert ClientBilling record; increment entitlements_version (Stripe is source of truth)
-        period_end_dt = period_end_from_stripe_unix(subscription.get("current_period_end"))
-        period_start_dt = period_start_from_stripe_unix(subscription.get("current_period_start"))
+        _sub_period = stripe_subscription_to_dict(subscription)
+        period_end_dt = period_end_from_stripe_subscription_dict(_sub_period)
+        period_start_dt = period_start_from_stripe_subscription_dict(_sub_period)
         anchor_dt = period_start_from_stripe_unix(subscription.get("billing_cycle_anchor"))
         now_sync = datetime.now(timezone.utc)
         billing_record = {
@@ -855,8 +858,9 @@ class StripeWebhookService:
             }
             subscription_invoice_number = None
             try:
-                period_start = period_end_from_stripe_unix(subscription.get("current_period_start"))
-                period_end = period_end_from_stripe_unix(subscription.get("current_period_end"))
+                _sub_pdf = stripe_subscription_to_dict(subscription)
+                period_start = period_start_from_stripe_subscription_dict(_sub_pdf)
+                period_end = period_end_from_stripe_subscription_dict(_sub_pdf)
                 ok_pdf, pdf_sub, inv_no, pdf_err = await ensure_subscription_checkout_invoice_pdf(
                     client_id=client_id,
                     checkout_session_id=checkout_session_id or "",
@@ -1553,7 +1557,7 @@ class StripeWebhookService:
 
         new_status = sub_d.get("status", "unknown")
         entitlement_status = plan_registry.get_entitlement_status_from_subscription(new_status)
-        period_end_dt = period_end_from_stripe_unix(sub_d.get("current_period_end"))
+        period_end_dt = period_end_from_stripe_subscription_dict(sub_d)
 
         try:
             inv_id = invoice.get("id")

@@ -7,13 +7,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
 from services import maintenance_service
+from utils.storage_paths import resolve_document_storage_path
 
 logger = logging.getLogger(__name__)
 
-_DATA_DIR = os.environ.get("DATA_DIR", os.getcwd())
-DOCUMENT_STORAGE_PATH = Path(
-    os.environ.get("DOCUMENT_STORAGE_PATH", str(Path(_DATA_DIR) / "data" / "documents"))
-)
+DOCUMENT_STORAGE_PATH = resolve_document_storage_path()
 
 MAX_BYTES = 20 * 1024 * 1024
 ALLOWED_EXTENSIONS = frozenset({".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx"})

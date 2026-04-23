@@ -20,8 +20,9 @@ Product-risk (steady-state)
 ---------------------------
 - ``portfolio_jurisdiction_label`` falls back to **"England"** when property and client omit recognised
   labels → ENGLAND_WALES scoring bucket. That can mis-rank assets if jurisdiction is unset.
-- ``client.enabled_jurisdictions`` is not enforced by provisioning; it does not block requirement generation
-  outside listed regions. See ``compliance_expiry_policy`` for related notes on expiring-soon defaults.
+- ``client.enabled_jurisdictions`` is a portfolio UX / settings field (intake mirrors property union onto the
+  client row). It is not enforced as a hard gate on requirement generation outside listed regions.
+  See ``compliance_expiry_policy`` for related notes on expiring-soon defaults.
 """
 from __future__ import annotations
 
@@ -46,6 +47,29 @@ def canonicalize_uk_portfolio_label(value: Optional[str]) -> Optional[str]:
         if t.lower() == label.lower():
             return label
     return None
+
+
+def derive_account_jurisdiction_fields_from_property_labels(
+    property_labels: List[Optional[Any]],
+) -> Tuple[Optional[str], List[str]]:
+    """
+    Derive account-level ``default_jurisdiction`` and ``enabled_jurisdictions`` from explicit property labels.
+
+    - ``enabled_jurisdictions``: distinct UK portfolio labels in **first-seen order** (intake / property list order).
+    - ``default_jurisdiction``: first distinct label (primary property convention).
+
+    Returns ``(None, [])`` when no recognised labels are present. Does **not** expand to all UK regions.
+    """
+    ordered: List[str] = []
+    seen: Set[str] = set()
+    for raw in property_labels or []:
+        lj = canonicalize_uk_portfolio_label(raw)
+        if lj and lj not in seen:
+            seen.add(lj)
+            ordered.append(lj)
+    if not ordered:
+        return None, []
+    return ordered[0], ordered
 
 
 # How we determined the label for compliance (API / UI integrity layer)

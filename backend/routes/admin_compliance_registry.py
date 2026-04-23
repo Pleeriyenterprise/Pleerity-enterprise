@@ -1,9 +1,10 @@
 """
 Admin Compliance Requirement Registry — Mongo-backed draft governance and **publish queue**.
 
-Drafts and bundle imports are preparation data until a queue item is **published**; the active
-published snapshot is then merged into ``build_requirement_plan_for_property`` (same path as
-materialisation and admin plan-preview). Unpublished drafts still do not affect client generation.
+Drafts and bundle imports are preparation data until a queue item is **published**; each activation
+**merges** this queue’s draft snapshots into the active published snapshot map (other keys already live
+stay unless superseded by a later publish). That map is read by ``build_requirement_plan_for_property``
+and related paths. Unpublished drafts still do not affect client generation.
 
 Compare endpoints project the in-code engine baseline for drift review only.
 
@@ -37,6 +38,7 @@ from services.compliance_registry_admin_service import (
 )
 from services.compliance_registry_conditions import condition_builder_options_payload
 from services.compliance_registry_controlled_vocab import (
+    REGISTRY_UK_DISPLAY_REGION_SET,
     controlled_field_options_payload,
     normalise_registry_draft_for_storage,
 )
@@ -118,6 +120,19 @@ async def registry_controlled_field_options(user: dict = Depends(require_admin))
     return {**controlled_field_options_payload(), **condition_builder_options_payload()}
 
 
+def _draft_match_clauses_for_published_keys(pub: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    if not isinstance(pub, dict) or not pub:
+        return []
+    out: List[Dict[str, Any]] = []
+    for k in pub.keys():
+        ks = str(k).strip()
+        if "|" not in ks:
+            continue
+        cc, sk = ks.split("|", 1)
+        out.append({"canonical_code": cc, "scope_key": sk})
+    return out
+
+
 @router.get("/drafts")
 async def list_registry_drafts(
     user: dict = Depends(require_admin),
@@ -125,6 +140,27 @@ async def list_registry_drafts(
     needs_review: bool = Query(
         False,
         description="When true, only drafts with non-empty governance.needs_review_fields",
+    ),
+    ready_to_publish: bool = Query(
+        False,
+        description="When true, only drafts with empty/absent governance.needs_review_fields (editorial queue clear)",
+    ),
+    jurisdiction: Optional[str] = Query(
+        None,
+        description="Filter: draft lists this UK region in jurisdiction.display_jurisdictions (ENGLAND, …)",
+    ),
+    category: Optional[str] = Query(None, description="Exact identity.category (controlled enum, case-insensitive)"),
+    requirement_type: Optional[str] = Query(
+        None,
+        description="Exact classification.requirement_type (DOCUMENT, JOB, …)",
+    ),
+    live_snapshot: Optional[str] = Query(
+        None,
+        description="yes = row key in active published snapshot; no = not in snapshot (ignored if unset)",
+    ),
+    sort: str = Query(
+        "code_asc",
+        description="code_asc | code_desc | name_asc | name_desc | updated_desc",
     ),
     include_registry_validation: bool = Query(
         False,
@@ -138,6 +174,11 @@ async def list_registry_drafts(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="include_registry_validation requires limit <= 50",
+        )
+    if needs_review and ready_to_publish:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Choose either needs_review or ready_to_publish, not both",
         )
     db = database.get_db()
     col = db[COLLECTION]
@@ -154,12 +195,63 @@ async def list_registry_drafts(
         )
     if needs_review:
         parts.append({"governance.needs_review_fields.0": {"$exists": True}})
+    if ready_to_publish:
+        parts.append(
+            {
+                "$or": [
+                    {"governance.needs_review_fields": {"$exists": False}},
+                    {"governance.needs_review_fields": []},
+                ]
+            }
+        )
+    if category and str(category).strip():
+        parts.append({"identity.category": str(category).strip().upper()})
+    if requirement_type and str(requirement_type).strip():
+        parts.append({"classification.requirement_type": str(requirement_type).strip().upper()})
+    if jurisdiction and str(jurisdiction).strip():
+        jur_tok = str(jurisdiction).strip().upper()
+        if jur_tok not in REGISTRY_UK_DISPLAY_REGION_SET:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"jurisdiction must be one of: {', '.join(sorted(REGISTRY_UK_DISPLAY_REGION_SET))}",
+            )
+        parts.append({"jurisdiction.display_jurisdictions": jur_tok})
+    ls = (live_snapshot or "").strip().lower()
+    if ls in ("yes", "y", "true", "1"):
+        pub = await fetch_active_published_registry_entries(db)
+        clauses = _draft_match_clauses_for_published_keys(pub)
+        if not clauses:
+            parts.append({"canonical_code": {"$in": []}})
+        else:
+            parts.append({"$or": clauses})
+    elif ls in ("no", "n", "false", "0"):
+        pub = await fetch_active_published_registry_entries(db)
+        clauses = _draft_match_clauses_for_published_keys(pub)
+        if clauses:
+            parts.append({"$nor": clauses})
+    elif live_snapshot not in (None, ""):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="live_snapshot must be yes or no")
+
     if not parts:
         filt: Dict[str, Any] = {}
     elif len(parts) == 1:
         filt = parts[0]
     else:
         filt = {"$and": parts}
+
+    sort_key = (sort or "code_asc").strip().lower()
+    sort_list: List[tuple]
+    if sort_key == "code_desc":
+        sort_list = [("canonical_code", -1), ("scope_key", -1)]
+    elif sort_key == "name_asc":
+        sort_list = [("identity.name", 1), ("canonical_code", 1)]
+    elif sort_key == "name_desc":
+        sort_list = [("identity.name", -1), ("canonical_code", 1)]
+    elif sort_key == "updated_desc":
+        sort_list = [("updated_at", -1), ("canonical_code", 1)]
+    else:
+        sort_list = [("canonical_code", 1), ("scope_key", 1)]
+
     cursor = (
         col.find(
             filt,
@@ -170,6 +262,7 @@ async def list_registry_drafts(
                 "scope_key": 1,
                 "status": 1,
                 "identity": 1,
+                "classification.requirement_type": 1,
                 "jurisdiction": 1,
                 "updated_at": 1,
                 "governance.needs_review_fields": 1,
@@ -177,7 +270,7 @@ async def list_registry_drafts(
                 "governance.import_source": 1,
             },
         )
-        .sort([("canonical_code", 1), ("scope_key", 1)])
+        .sort(sort_list)
         .skip(skip)
         .limit(limit)
     )

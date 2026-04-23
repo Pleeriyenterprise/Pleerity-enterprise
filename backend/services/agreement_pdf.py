@@ -16,11 +16,19 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 logger = logging.getLogger(__name__)
 
 
-def merge_placeholders(template: str, ctx: Dict[str, Any]) -> str:
+def merge_placeholders(template: str, ctx: Dict[str, Any] | None) -> str:
+    """Replace ``{{key}}`` placeholders using ``ctx``. Unknown keys become empty (no crash).
+
+    Longest keys are substituted first so overlapping names (e.g. ``{{client}}`` vs ``{{client_name}}``)
+    resolve predictably.
+    """
     out = str(template or "")
-    for k, v in sorted(ctx.keys(), key=len, reverse=True):
+    safe_ctx = ctx if isinstance(ctx, dict) else {}
+    pairs = [(str(k), v) for k, v in safe_ctx.items()]
+    for k, v in sorted(pairs, key=lambda kv: len(kv[0]), reverse=True):
         val = "" if v is None else str(v)
         out = out.replace("{{" + k + "}}", val)
+    # Any remaining ``{{...}}`` not supplied in ctx — drop to avoid leaking template syntax / raising downstream.
     out = re.sub(r"\{\{[^}]+\}\}", "", out)
     return out
 
@@ -82,15 +90,16 @@ def build_agreement_pdf_bytes(
                 story.append(Paragraph(para.strip().replace("\n", "<br/>"), body))
         story.append(Spacer(1, 3 * mm))
 
-    if footer_text:
+    merged_footer = merge_placeholders(footer_text, render_ctx)
+    if merged_footer.strip():
         story.append(Spacer(1, 8 * mm))
-        story.append(Paragraph(f"<i>{footer_text}</i>", body))
+        story.append(Paragraph(f"<i>{merged_footer}</i>", body))
 
     def _footer(canvas, doc_):
         canvas.saveState()
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(colors.grey)
-        canvas.drawString(18 * mm, 12 * mm, footer_text[:200] if footer_text else "")
+        canvas.drawString(18 * mm, 12 * mm, (merged_footer or "")[:200])
         canvas.restoreState()
 
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)

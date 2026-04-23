@@ -34,7 +34,11 @@ from middleware import admin_route_guard
 from models import AuditAction, EmailTemplateAlias, UserRole, PasswordToken
 from utils.audit import create_audit_log
 from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
-from services.billing_period_utils import period_end_from_stripe_unix, period_start_from_stripe_unix
+from services.billing_period_utils import (
+    period_end_from_stripe_subscription_dict,
+    period_start_from_stripe_subscription_dict,
+)
+from services.billing_stripe_sync_service import stripe_subscription_to_dict
 from services.provisioning import provisioning_service
 from services.stripe_service import StripeService
 
@@ -804,8 +808,9 @@ async def sync_client_billing(request: Request, client_id: str):
             new_subscription_status = active_subscription.status.upper()
             new_entitlement_status = plan_registry.get_entitlement_status_from_subscription(active_subscription.status)
             
-            cps = period_start_from_stripe_unix(getattr(active_subscription, "current_period_start", None))
-            cpe = period_end_from_stripe_unix(getattr(active_subscription, "current_period_end", None))
+            _sub_d = stripe_subscription_to_dict(active_subscription)
+            cps = period_start_from_stripe_subscription_dict(_sub_d)
+            cpe = period_end_from_stripe_subscription_dict(_sub_d)
             if not cpe:
                 logger.warning(
                     "admin billing sync: invalid or missing current_period_end client_id=%s subscription_id=%s",
@@ -1140,6 +1145,10 @@ async def change_client_plan(request: Request, client_id: str, body: ChangePlanR
         new_status = (updated_sub.status or "").upper()
         new_entitlement = plan_registry.get_entitlement_status_from_subscription(updated_sub.status)
 
+        _upd_d = stripe_subscription_to_dict(updated_sub)
+        _upd_ps = period_start_from_stripe_subscription_dict(_upd_d)
+        _upd_pe = period_end_from_stripe_subscription_dict(_upd_d)
+
         # When apply_at_period_end is True, Stripe applies the new price at period end; do not change
         # app plan/entitlement now or the client would lose features immediately.
         if body.apply_at_period_end:
@@ -1150,9 +1159,11 @@ async def change_client_plan(request: Request, client_id: str, body: ChangePlanR
                 "updated_at": datetime.now(timezone.utc),
                 "stripe_subscription_id": stripe_subscription_id,
                 "cancel_at_period_end": updated_sub.cancel_at_period_end,
-                "current_period_start": datetime.fromtimestamp(updated_sub.current_period_start, tz=timezone.utc),
-                "current_period_end": datetime.fromtimestamp(updated_sub.current_period_end, tz=timezone.utc),
             }
+            if _upd_ps:
+                billing_update["current_period_start"] = _upd_ps
+            if _upd_pe:
+                billing_update["current_period_end"] = _upd_pe
             await db.client_billing.update_one(
                 {"client_id": client_id},
                 {"$set": billing_update, "$setOnInsert": {"created_at": datetime.now(timezone.utc)}},
@@ -1175,9 +1186,11 @@ async def change_client_plan(request: Request, client_id: str, body: ChangePlanR
                 "subscription_status": new_status,
                 "entitlement_status": new_entitlement.value,
                 "cancel_at_period_end": updated_sub.cancel_at_period_end,
-                "current_period_start": datetime.fromtimestamp(updated_sub.current_period_start, tz=timezone.utc),
-                "current_period_end": datetime.fromtimestamp(updated_sub.current_period_end, tz=timezone.utc),
             }
+            if _upd_ps:
+                billing_update["current_period_start"] = _upd_ps
+            if _upd_pe:
+                billing_update["current_period_end"] = _upd_pe
             await db.client_billing.update_one(
                 {"client_id": client_id},
                 {"$set": billing_update, "$setOnInsert": {"created_at": datetime.now(timezone.utc)}},

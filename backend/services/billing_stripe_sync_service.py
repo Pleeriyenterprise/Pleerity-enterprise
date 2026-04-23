@@ -13,7 +13,12 @@ from typing import Any, Dict, Optional
 
 import stripe
 from database import database
-from services.billing_period_utils import period_end_from_stripe_unix, period_start_from_stripe_unix
+from services.billing_period_utils import (
+    period_end_from_stripe_subscription_dict,
+    period_end_from_stripe_unix,
+    period_start_from_stripe_subscription_dict,
+    period_start_from_stripe_unix,
+)
 from services.plan_registry import plan_registry
 
 logger = logging.getLogger(__name__)
@@ -113,17 +118,25 @@ async def persist_subscription_billing_from_stripe(
         stripe_customer_id = stripe_customer_id.get("id")
     stripe_subscription_id = sub_d.get("id")
 
-    period_end_dt = period_end_from_stripe_unix(sub_d.get("current_period_end"))
-    period_start_dt = period_start_from_stripe_unix(sub_d.get("current_period_start"))
+    raw_top_cpe = sub_d.get("current_period_end")
+    period_end_dt = period_end_from_stripe_subscription_dict(sub_d)
+    period_start_dt = period_start_from_stripe_subscription_dict(sub_d)
     anchor_dt = period_start_from_stripe_unix(sub_d.get("billing_cycle_anchor"))
 
     if not period_end_dt:
         logger.warning(
-            "billing_sync: current_period_end missing or invalid after Stripe retrieve client_id=%s subscription_id=%s source=%s raw_cpe=%r",
+            "billing_sync: current_period_end missing or invalid after Stripe retrieve client_id=%s subscription_id=%s source=%s raw_top_cpe=%r",
             client_id,
             stripe_subscription_id,
             event_source,
-            sub_d.get("current_period_end"),
+            raw_top_cpe,
+        )
+    elif not period_end_from_stripe_unix(raw_top_cpe):
+        logger.info(
+            "billing_sync: current_period_end derived from subscription items (top-level missing/invalid) client_id=%s subscription_id=%s source=%s",
+            client_id,
+            stripe_subscription_id,
+            event_source,
         )
 
     sync_state = "ok" if period_end_dt else "missing_period_end"

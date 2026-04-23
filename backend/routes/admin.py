@@ -47,6 +47,12 @@ from services.compliance_rules_registry import (
     scoring_jurisdiction_for_property,
 )
 from models import ClientLifecycleStatus
+from pymongo.errors import DuplicateKeyError
+from utils.client_email import (
+    canonical_client_email,
+    client_email_taken,
+    classify_clients_duplicate_key_error,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -3818,19 +3824,24 @@ async def admin_invite_client(
     
     try:
         from models import Client, BillingPlan, ClientType, PreferredContact, ServiceCode
-        
-        # Check if email already exists
-        existing = await db.clients.find_one({"email": email}, {"_id": 0})
-        if existing:
+
+        invite_email = canonical_client_email(email)
+        if not invite_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="A client with this email already exists"
+                detail="A valid email is required",
             )
-        
+
+        if await client_email_taken(db, email):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A client with this email already exists",
+            )
+
         # Create client in INVITED state (not yet provisioned)
         client = Client(
             full_name=full_name,
-            email=email,
+            email=invite_email,
             client_type=ClientType.INDIVIDUAL,
             preferred_contact=PreferredContact.EMAIL,
             billing_plan=BillingPlan(billing_plan),
@@ -3843,9 +3854,26 @@ async def admin_invite_client(
         for key in ["created_at", "updated_at"]:
             if client_doc.get(key):
                 client_doc[key] = client_doc[key].isoformat()
-        
-        await db.clients.insert_one(client_doc)
-        
+
+        try:
+            await db.clients.insert_one(client_doc)
+        except DuplicateKeyError as dup_err:
+            kind = classify_clients_duplicate_key_error(dup_err)
+            if kind == "email":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A client with this email already exists",
+                ) from dup_err
+            logger.warning(
+                "Admin invite clients.insert_one duplicate key (kind=%s): %s",
+                kind,
+                dup_err,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Could not create client due to a conflict; please retry or contact support.",
+            ) from dup_err
+
         # Audit log
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
@@ -3853,13 +3881,13 @@ async def admin_invite_client(
             client_id=client.client_id,
             metadata={
                 "action": "admin_client_invited",
-                "email": email,
+                "email": invite_email,
                 "billing_plan": billing_plan,
                 "admin_email": user["email"]
             }
         )
         
-        logger.info(f"Admin invited client: {email}")
+        logger.info("Admin invited client: %s", invite_email)
         
         return {
             "message": "Client invited successfully",

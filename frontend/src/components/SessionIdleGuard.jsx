@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { Button } from './ui/button';
+import { buildClientLoginSessionExpiredUrl, isClientPortalPath } from '../utils/clientLoginRedirect';
 
 function parseMinutes(envVal, fallback) {
   const n = parseInt(envVal, 10);
@@ -88,10 +89,16 @@ export default function SessionIdleGuard({ children }) {
         if (!hardLogoutRef.current) {
           hardLogoutRef.current = true;
           authAPI.idleSessionNotify().catch(() => {});
-          const isAdminPath = window.location.pathname.startsWith('/admin');
+          const path = window.location.pathname || '';
+          const search = window.location.search || '';
+          const isAdminPath = path.startsWith('/admin');
           localStorage.removeItem('auth_token');
           localStorage.removeItem('user');
-          window.location.href = isAdminPath ? '/login/admin?session_expired=1' : '/login?session_expired=1';
+          window.location.href = isAdminPath
+            ? '/login/admin?session_expired=1'
+            : isClientPortalPath(path)
+              ? buildClientLoginSessionExpiredUrl(path, search)
+              : '/login?session_expired=1';
         }
         return;
       }
@@ -165,10 +172,16 @@ export default function SessionIdleGuard({ children }) {
       bumpActivity();
       hardLogoutRef.current = false;
     } catch {
-      const isAdminPath = window.location.pathname.startsWith('/admin');
+      const path = window.location.pathname || '';
+      const search = window.location.search || '';
+      const isAdminPath = path.startsWith('/admin');
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
-      window.location.href = isAdminPath ? '/login/admin?session_expired=1' : '/login?session_expired=1';
+      window.location.href = isAdminPath
+        ? '/login/admin?session_expired=1'
+        : isClientPortalPath(path)
+          ? buildClientLoginSessionExpiredUrl(path, search)
+          : '/login?session_expired=1';
     } finally {
       setExtendLoading(false);
     }

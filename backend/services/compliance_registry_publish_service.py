@@ -16,6 +16,9 @@ is appended (audit chain stays linear).
 **Rematerialisation:** Changing the active snapshot (publish or revert) does **not** enqueue a global
 re-materialise of all properties. Rows refresh when ``materialize_requirements_for_property`` (or the
 client ``requirements/sync`` path you use operationally) runs per property — same as a normal publish.
+
+**Publish merge semantics:** Each approved queue publish **overlays** its draft snapshot keys onto the
+existing active ``entries`` map; keys not present in the queue are retained from the prior snapshot.
 """
 from __future__ import annotations
 
@@ -37,6 +40,12 @@ REMATERIALISATION_INFO: Dict[str, Any] = {
         "The active singleton updates immediately for planner, admin plan-preview, and the next "
         "per-property materialise/sync. There is no fleet-wide automatic re-materialise job after "
         "publish or revert."
+    ),
+    "registry_truth_vs_property_rows": (
+        "Publishing merges this queue's draft snapshots into the active published registry map "
+        "(canonical_code|scope_key → snapshot). That map is read immediately by the planner and "
+        "truth/resolver paths. Existing Mongo `requirements` rows for properties are not bulk-rewritten; "
+        "they refresh when materialise/sync runs per property."
     ),
 }
 
@@ -344,14 +353,21 @@ async def publish_publish_queue_item(
         draft_docs.append(d_val)
 
     try:
-        entries = _snapshot_entries_from_drafts(draft_docs)
+        queue_entries = _snapshot_entries_from_drafts(draft_docs)
     except ValueError as e:
         raise ValueError(str(e)) from e
 
-    prev = await db[COLLECTION_PUBLISHED].find_one({"singleton_key": SINGLETON_KEY}, {"_id": 0, "version": 1})
+    prev = await db[COLLECTION_PUBLISHED].find_one(
+        {"singleton_key": SINGLETON_KEY},
+        {"_id": 0, "version": 1, "entries": 1},
+    )
+    prev_entries = (prev or {}).get("entries") if isinstance((prev or {}).get("entries"), dict) else {}
+    merged_entries = copy.deepcopy(dict(prev_entries))
+    merged_entries.update(queue_entries)
+
     next_v = int((prev or {}).get("version") or 0) + 1
     now = _utc_iso()
-    ent_copy = copy.deepcopy(entries)
+    ent_copy = copy.deepcopy(merged_entries)
 
     await db[COLLECTION_PUBLISHED].update_one(
         {"singleton_key": SINGLETON_KEY},
@@ -400,5 +416,6 @@ async def publish_publish_queue_item(
         "queue_id": queue_id,
         "status": "published",
         "published_version": next_v,
-        "entry_count": len(entries),
+        "entry_count": len(merged_entries),
+        "keys_updated_this_publish": sorted(queue_entries.keys()),
     }

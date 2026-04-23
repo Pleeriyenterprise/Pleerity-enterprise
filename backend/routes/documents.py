@@ -16,6 +16,7 @@ import uuid
 import logging
 from pathlib import Path
 
+from utils.storage_paths import resolve_data_dir, resolve_document_storage_path
 from services.work_order_execution_constants import (
     COMPLIANCE_PROOF_NOT_SUBMITTED,
     COMPLIANCE_PROOF_SUBMITTED,
@@ -403,8 +404,8 @@ class ExtractionApplyRequest(BaseModel):
 
 
 # Document storage directory (configurable via DATA_DIR or DOCUMENT_STORAGE_PATH)
-DATA_DIR = os.getenv("DATA_DIR", "/tmp")
-DOCUMENT_STORAGE_PATH = Path(os.environ.get("DOCUMENT_STORAGE_PATH", str(Path(DATA_DIR) / "data" / "documents")))
+DATA_DIR = resolve_data_dir()
+DOCUMENT_STORAGE_PATH = resolve_document_storage_path()
 DOCUMENT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
 
 

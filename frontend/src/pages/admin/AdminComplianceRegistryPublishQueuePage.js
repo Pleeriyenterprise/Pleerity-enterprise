@@ -103,12 +103,18 @@ export default function AdminComplianceRegistryPublishQueuePage() {
     if (!canMutate) return;
     setBusyId(queueId);
     fn(queueId)
-      .then(() => {
+      .then((res) => {
+        const data = res?.data;
+        const keys = Array.isArray(data?.keys_updated_this_publish) ? data.keys_updated_this_publish : [];
+        const keyHint =
+          label === 'Published' && keys.length
+            ? ` Snapshot keys touched this activation: ${keys.join(', ')}.`
+            : '';
         const hint =
           label === 'Published'
-            ? ' Active registry line updated for merged planner and resolver. Existing property rows stay as-is until per-property sync; new visits may already see copy/links from the new line where materialised. Use sync below for a specific site.'
+            ? `${keyHint} Active published registry map updates immediately for planner/resolver. Existing per-property Mongo rows stay as-is until that property is re-materialised/synced.`
             : '';
-        toast.success(`${label}${hint ? `. ${hint}` : ''}`);
+        toast.success(`${label}${hint ? ` ${hint}` : ''}`);
         refresh();
       })
       .catch((err) => {

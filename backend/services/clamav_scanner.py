@@ -3,19 +3,19 @@ ClamAV malware scanner for intake uploads.
 Scans files; on virus or scan failure marks as QUARANTINED and moves file to quarantine dir.
 Requires ClamAV daemon (clamd) or clamscan on PATH. See docs/INTAKE_UPLOADS_CLAMAV.md.
 """
-import os
 import shutil
 import subprocess
 import logging
 from pathlib import Path
 from typing import Tuple
 
+from utils.storage_paths import resolve_intake_quarantine_dir, resolve_intake_upload_dir
+
 logger = logging.getLogger(__name__)
 
-DATA_DIR = os.getenv("DATA_DIR", "/tmp")
 # Quarantine directory for flagged/failed files (sibling to intake uploads)
-INTAKE_UPLOAD_DIR = Path(os.environ.get("INTAKE_UPLOAD_DIR", str(Path(DATA_DIR) / "uploads" / "intake")))
-QUARANTINE_DIR = Path(os.environ.get("INTAKE_QUARANTINE_DIR", str(Path(DATA_DIR) / "uploads" / "intake_quarantine")))
+INTAKE_UPLOAD_DIR = resolve_intake_upload_dir()
+QUARANTINE_DIR = resolve_intake_quarantine_dir()
 
 
 def _ensure_quarantine_dir() -> Path:

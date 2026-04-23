@@ -12,10 +12,11 @@ from database import database
 from models import Document, DocumentStatus
 from models.intake_uploads import IntakeUploadStatus
 
+from utils.storage_paths import resolve_document_storage_path
+
 logger = logging.getLogger(__name__)
 
-DATA_DIR = os.getenv("DATA_DIR", "/tmp")
-DOCUMENT_STORAGE_PATH = Path(os.environ.get("DOCUMENT_STORAGE_PATH", str(Path(DATA_DIR) / "data" / "documents")))
+DOCUMENT_STORAGE_PATH = resolve_document_storage_path()
 
 
 async def migrate_intake_uploads_to_vault(client_id: str) -> dict:

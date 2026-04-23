@@ -10,6 +10,7 @@ import logging
 from services.compliance_rules_registry import (
     build_portfolio_jurisdiction_attestation,
     canonicalize_uk_portfolio_label,
+    derive_account_jurisdiction_fields_from_property_labels,
     property_has_explicit_portfolio_jurisdiction,
 )
 
@@ -24,16 +25,6 @@ ITEM_UPLOAD_CERTIFICATES = "upload_certificates"
 ITEM_ENABLE_MAINTENANCE = "enable_maintenance"
 ITEM_REVIEW_REQUIREMENTS = "review_requirements"
 ITEM_UPLOAD_OR_COMPLIANCE_ACTION = "upload_or_compliance_action"
-
-UK_JURISDICTIONS = ["Scotland", "England", "Wales", "Northern Ireland"]
-
-
-def _default_jurisdiction_settings() -> Dict[str, Any]:
-    return {
-        "default_jurisdiction": "Scotland",
-        "enabled_jurisdictions": UK_JURISDICTIONS.copy(),
-    }
-
 
 async def get_checklist_items_for_client(client_id: str) -> List[Dict[str, Any]]:
     """
@@ -69,7 +60,7 @@ async def get_checklist_items_for_client(client_id: str) -> List[Dict[str, Any]]
     # Required: Set jurisdictions defaults + each property’s jurisdiction (or acknowledge default assumptions)
     items.append({
         "id": ITEM_SET_JURISDICTIONS,
-        "label": "Set jurisdictions — defaults and each property (or acknowledge continuing with default assumptions)",
+        "label": "Review jurisdiction settings — confirm account defaults match each property (or acknowledge assumptions)",
         "required": True,
         "deep_link": "/settings/jurisdiction",
         "completed_at": completed_map.get(ITEM_SET_JURISDICTIONS),
@@ -133,7 +124,8 @@ async def validate_item_completion(client_id: str, item_id: str) -> bool:
         count = await db.properties.count_documents({"client_id": client_id})
         return count >= 1
     if item_id == ITEM_SET_JURISDICTIONS:
-        # Client-level ack is onboarding gating only; per-property jurisdiction remains the compliance source of truth.
+        # Effective account settings = persisted client row OR union of property.jurisdiction (intake path).
+        # Per-property explicit UK labels remain the compliance source of truth; client ack only gates gaps.
         client = await db.clients.find_one(
             {"client_id": client_id},
             {
@@ -145,14 +137,25 @@ async def validate_item_completion(client_id: str, item_id: str) -> bool:
         )
         if client is None:
             return False
-        if not canonicalize_uk_portfolio_label(client.get("default_jurisdiction")) or not client.get(
-            "enabled_jurisdictions"
-        ):
-            return False
         props = await db.properties.find(
             {"client_id": client_id},
             {"_id": 0, "jurisdiction": 1},
         ).to_list(10000)
+        if not props:
+            return False
+        prop_labels = [p.get("jurisdiction") for p in props]
+        derived_def, derived_en = derive_account_jurisdiction_fields_from_property_labels(prop_labels)
+        stored_def = canonicalize_uk_portfolio_label(client.get("default_jurisdiction"))
+        raw_en = client.get("enabled_jurisdictions")
+        stored_en = [canonicalize_uk_portfolio_label(x) for x in (raw_en or []) if canonicalize_uk_portfolio_label(x)]
+        if stored_def and stored_en:
+            effective_def, effective_en = stored_def, stored_en
+        elif derived_def and derived_en:
+            effective_def, effective_en = derived_def, derived_en
+        else:
+            effective_def, effective_en = None, []
+        if not effective_def or not effective_en:
+            return False
         for p in props:
             if not property_has_explicit_portfolio_jurisdiction(p):
                 return bool(client.get("jurisdiction_fallback_acknowledged_at"))

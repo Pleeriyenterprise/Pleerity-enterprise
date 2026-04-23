@@ -15,14 +15,15 @@ from pathlib import Path
 import logging
 import re
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
+from utils.storage_paths import resolve_data_dir, resolve_intake_upload_dir
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/intake/uploads", tags=["intake-uploads"])
 
 # Limits (safe defaults)
-DATA_DIR = os.getenv("DATA_DIR", "/tmp")
-INTAKE_UPLOAD_DIR = Path(os.environ.get("INTAKE_UPLOAD_DIR", str(Path(DATA_DIR) / "uploads" / "intake")))
+DATA_DIR = resolve_data_dir()
+INTAKE_UPLOAD_DIR = resolve_intake_upload_dir()
 INTAKE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_FILE_BYTES = 20 * 1024 * 1024   # 20MB per file
