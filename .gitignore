@@ -55,6 +55,9 @@ __pycache__/
 venv/
 .venv/
 
+# Ephemeral on-disk storage when DATA_DIR / volume is unavailable (see utils.storage_paths)
+backend/runtime_local_data/
+
 # Platform config (optional; not used for Render/Vercel deploy)
 .emergent/
 

@@ -354,9 +354,10 @@ const IntakePage = () => {
   }, [runEmailAvailabilityCheck]);
 
   // Risk-check prefill: run one availability check when prefill completes (same render as updated email).
+  // Read email from emailLatestRef so deps stay stable (ref is synced whenever formData.email changes).
   useEffect(() => {
     if (!prefillFromRiskCheck || step !== 1) return;
-    const raw = (formData.email || '').trim();
+    const raw = (emailLatestRef.current || '').trim();
     if (!isIntakeEmailFormatValid(raw)) return;
     const tid = setTimeout(() => void runEmailAvailabilityCheck(), 0);
     return () => clearTimeout(tid);
