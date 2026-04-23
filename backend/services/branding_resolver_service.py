@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import html
 import logging
-import os
 import re
 from dataclasses import dataclass, field
 from enum import Enum
@@ -19,6 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
 from services.plan_registry import plan_registry
+from utils.storage_paths import resolve_data_dir
 from utils.branding import (
     COMPANY_NAME,
     PRODUCT_NAME,
@@ -33,7 +33,7 @@ from utils.branding import (
 
 logger = logging.getLogger(__name__)
 
-DATA_DIR = os.getenv("DATA_DIR", "/tmp")
+DATA_DIR = resolve_data_dir()
 BRANDING_LOGOS_PATH = Path(DATA_DIR) / "data" / "branding_logos"
 
 # Email template aliases that must never use tenant/client white-label (platform / staff).

@@ -755,6 +755,15 @@ async def get_health_summary(request: Request):
     return await build_health_summary_payload()
 
 
+@router.get("/storage-paths")
+async def get_storage_paths_report(request: Request):
+    """Effective DATA_DIR / document vault / intake dirs with exists + writable (admin)."""
+    await admin_route_guard(request)
+    from utils.storage_paths import build_storage_health_report
+
+    return build_storage_health_report()
+
+
 @router.get("/framework-audit")
 async def get_automation_framework_audit(request: Request):
     """

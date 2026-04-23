@@ -15,6 +15,7 @@ import os
 import uuid
 
 from utils.api_errors import log_api_error, structured_error
+from utils.storage_paths import resolve_data_dir
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/client", tags=["client"], dependencies=[Depends(client_route_guard)])
@@ -2984,7 +2985,7 @@ async def resend_tenant_invite(request: Request, tenant_id: str):
 # BRANDING SETTINGS (White-Label)
 # ============================================================================
 
-DATA_DIR = os.getenv("DATA_DIR", "/tmp")
+DATA_DIR = resolve_data_dir()
 BRANDING_LOGOS_PATH = Path(DATA_DIR) / "data" / "branding_logos"
 BRANDING_LOGOS_PATH.mkdir(parents=True, exist_ok=True)
 BRANDING_LOGO_MAX_BYTES = 2 * 1024 * 1024  # 2MB

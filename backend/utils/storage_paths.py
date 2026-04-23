@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -116,3 +117,58 @@ def is_unix_tmp_ephemeral_path(path: Path) -> bool:
     """True when resolved path lives under host ``/tmp`` (cleared on many Linux hosts / deploys)."""
     s = str(path.resolve()).replace("\\", "/").rstrip("/")
     return s == "/tmp" or s.startswith("/tmp/")
+
+
+def is_runtime_local_fallback_path(path: Path) -> bool:
+    """True when path lives under the deploy-tree fallback (lost on typical PaaS redeploy)."""
+    s = str(path.resolve()).replace("\\", "/")
+    return "runtime_local_data" in s
+
+
+def _path_writable_entry(p: Path) -> Dict[str, Any]:
+    try:
+        resolved = p.resolve()
+    except OSError:
+        resolved = p
+    exists = resolved.exists()
+    is_dir = resolved.is_dir() if exists else False
+    writable = False
+    if exists and is_dir:
+        writable = bool(os.access(resolved, os.W_OK))
+    elif exists and resolved.is_file():
+        writable = bool(os.access(resolved, os.W_OK))
+    else:
+        try:
+            parent = resolved.parent
+            if parent.exists():
+                writable = bool(os.access(parent, os.W_OK))
+        except OSError:
+            writable = False
+    return {
+        "path": str(resolved),
+        "exists": exists,
+        "is_directory": is_dir,
+        "writable": writable,
+        "ephemeral_unix_tmp": is_unix_tmp_ephemeral_path(resolved),
+        "deploy_runtime_fallback": is_runtime_local_fallback_path(resolved),
+    }
+
+
+def build_storage_health_report() -> Dict[str, Any]:
+    """Effective paths + writability for ops (startup logs, GET …/observability/storage-paths)."""
+    data_root = Path(resolve_data_dir())
+    doc = resolve_document_storage_path()
+    intake_ul = resolve_intake_upload_dir()
+    intake_q = resolve_intake_quarantine_dir()
+    return {
+        "DATA_DIR": _path_writable_entry(data_root),
+        "DOCUMENT_STORAGE_PATH": _path_writable_entry(doc),
+        "INTAKE_UPLOAD_DIR": _path_writable_entry(intake_ul),
+        "INTAKE_QUARANTINE_DIR": _path_writable_entry(intake_q),
+        "env": {
+            "DATA_DIR": bool((os.environ.get("DATA_DIR") or "").strip()),
+            "DOCUMENT_STORAGE_PATH": bool((os.environ.get("DOCUMENT_STORAGE_PATH") or "").strip()),
+            "INTAKE_UPLOAD_DIR": bool((os.environ.get("INTAKE_UPLOAD_DIR") or "").strip()),
+            "INTAKE_QUARANTINE_DIR": bool((os.environ.get("INTAKE_QUARANTINE_DIR") or "").strip()),
+        },
+    }

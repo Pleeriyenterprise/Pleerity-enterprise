@@ -53,6 +53,7 @@ from utils.client_email import (
     client_email_taken,
     classify_clients_duplicate_key_error,
 )
+from utils.storage_paths import resolve_data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -1144,7 +1145,7 @@ async def get_client_avatar(request: Request, client_id: str):
     if not client or not client.get("avatar_ext"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No profile picture")
     ext = client.get("avatar_ext", ".jpg")
-    avatars_dir = Path(os.getenv("DATA_DIR", "/tmp")) / "data" / "profile_avatars"
+    avatars_dir = Path(resolve_data_dir()) / "data" / "profile_avatars"
     file_path = avatars_dir / f"{client_id}{ext}"
     if not file_path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No profile picture")
@@ -4833,8 +4834,7 @@ async def admin_start_impersonation(request: Request, client_id: str, ttl_minute
     }
 
 def _get_profile_avatars_path():
-    data_dir = os.getenv("DATA_DIR", "/tmp")
-    return Path(data_dir) / "data" / "profile_avatars"
+    return Path(resolve_data_dir()) / "data" / "profile_avatars"
 
 
 @router.get("/clients/{client_id}/avatar")

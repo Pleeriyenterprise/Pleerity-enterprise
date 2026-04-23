@@ -20,6 +20,7 @@ from models import AuditAction
 from utils.audit import create_audit_log
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from config.security_limits import security_limits
+from utils.storage_paths import resolve_data_dir
 
 router = APIRouter(prefix="/api/portal", tags=["portal"])
 
@@ -494,7 +495,7 @@ async def download_portal_digest_pdf(request: Request, digest_id: str):
     rel = (doc.get("pdf_storage_relpath") or "").strip().replace("\\", "/")
     if not rel or ".." in rel or rel.startswith("/"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PDF not available")
-    data_dir = Path(os.getenv("DATA_DIR", "/tmp"))
+    data_dir = Path(resolve_data_dir())
     full_path = (data_dir / rel).resolve()
     try:
         full_path.relative_to(data_dir.resolve())

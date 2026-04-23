@@ -7,7 +7,6 @@ from __future__ import annotations
 import html
 import io
 import logging
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -18,6 +17,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from services.monthly_digest_limits import DIGEST_PDF_MAX_REQUIREMENT_ROWS
+from utils.storage_paths import resolve_data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -385,7 +385,7 @@ def write_monthly_digest_pdf_to_storage(client_id: str, report_month_key: str, p
     Persist PDF under DATA_DIR/monthly_digest_pdfs/{client_id}/{report_month_key}.pdf.
     Returns relative path from DATA_DIR for storage in digest_logs.
     """
-    data_dir = os.getenv("DATA_DIR", "/tmp")
+    data_dir = resolve_data_dir()
     rel = Path("monthly_digest_pdfs") / client_id / f"{report_month_key}.pdf"
     dest = Path(data_dir) / rel
     dest.parent.mkdir(parents=True, exist_ok=True)

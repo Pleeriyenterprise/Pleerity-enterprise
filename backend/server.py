@@ -206,20 +206,51 @@ async def lifespan(app: FastAPI):
     async def _heavy_startup():
         await database.connect()
 
-        # Document vault: ensure directory exists and log resolved path (ops: /tmp is ephemeral on many hosts)
+        # Document vault + intake storage: log effective paths (must match Render disk + env)
         try:
             from routes.documents import DOCUMENT_STORAGE_PATH as _doc_vault
-            from utils.storage_paths import is_production_env, is_unix_tmp_ephemeral_path, resolve_data_dir
+            from utils.storage_paths import (
+                build_storage_health_report,
+                is_production_env,
+                is_unix_tmp_ephemeral_path,
+            )
 
             _doc_vault.mkdir(parents=True, exist_ok=True)
             _resolved = _doc_vault.resolve()
-            _data_dir_eff = resolve_data_dir()
+            _report = build_storage_health_report()
             logger.info(
-                "Document vault DATA_DIR(effective)=%s DOCUMENT_STORAGE_PATH=%s (is_dir=%s)",
-                _data_dir_eff,
-                _resolved,
-                _resolved.is_dir(),
+                "Storage layout: DATA_DIR path=%s exists=%s writable=%s ephemeral_tmp=%s runtime_fallback=%s",
+                _report["DATA_DIR"]["path"],
+                _report["DATA_DIR"]["exists"],
+                _report["DATA_DIR"]["writable"],
+                _report["DATA_DIR"]["ephemeral_unix_tmp"],
+                _report["DATA_DIR"]["deploy_runtime_fallback"],
             )
+            logger.info(
+                "Storage layout: DOCUMENT_STORAGE_PATH path=%s exists=%s writable=%s ephemeral_tmp=%s runtime_fallback=%s",
+                _report["DOCUMENT_STORAGE_PATH"]["path"],
+                _report["DOCUMENT_STORAGE_PATH"]["exists"],
+                _report["DOCUMENT_STORAGE_PATH"]["writable"],
+                _report["DOCUMENT_STORAGE_PATH"]["ephemeral_unix_tmp"],
+                _report["DOCUMENT_STORAGE_PATH"]["deploy_runtime_fallback"],
+            )
+            logger.info(
+                "Storage layout: INTAKE_UPLOAD_DIR path=%s exists=%s writable=%s ephemeral_tmp=%s runtime_fallback=%s",
+                _report["INTAKE_UPLOAD_DIR"]["path"],
+                _report["INTAKE_UPLOAD_DIR"]["exists"],
+                _report["INTAKE_UPLOAD_DIR"]["writable"],
+                _report["INTAKE_UPLOAD_DIR"]["ephemeral_unix_tmp"],
+                _report["INTAKE_UPLOAD_DIR"]["deploy_runtime_fallback"],
+            )
+            logger.info(
+                "Storage layout: INTAKE_QUARANTINE_DIR path=%s exists=%s writable=%s ephemeral_tmp=%s runtime_fallback=%s",
+                _report["INTAKE_QUARANTINE_DIR"]["path"],
+                _report["INTAKE_QUARANTINE_DIR"]["exists"],
+                _report["INTAKE_QUARANTINE_DIR"]["writable"],
+                _report["INTAKE_QUARANTINE_DIR"]["ephemeral_unix_tmp"],
+                _report["INTAKE_QUARANTINE_DIR"]["deploy_runtime_fallback"],
+            )
+            logger.info("Storage env overrides set: %s", _report.get("env"))
             if is_production_env() and is_unix_tmp_ephemeral_path(_resolved):
                 msg = (
                     "DOCUMENT_STORAGE_PATH resolves under /tmp in production; uploaded files will be lost on restart. "

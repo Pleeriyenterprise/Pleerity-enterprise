@@ -15,10 +15,12 @@ from pathlib import Path
 import os
 import logging
 
+from utils.storage_paths import resolve_data_dir
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
-DATA_DIR = os.getenv("DATA_DIR", "/tmp")
+DATA_DIR = resolve_data_dir()
 PROFILE_AVATARS_PATH = Path(DATA_DIR) / "data" / "profile_avatars"
 PROFILE_AVATARS_PATH.mkdir(parents=True, exist_ok=True)
 AVATAR_MAX_BYTES = 5 * 1024 * 1024  # 5MB
