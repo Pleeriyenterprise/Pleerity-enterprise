@@ -256,6 +256,7 @@ def enrich_requirement_dict(
     *,
     audience: str = "client",
     published_registry_entries: Optional[Dict[str, Any]] = None,
+    property_doc: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Mutates a shallow copy: adds presentation + truth fields. Keeps all original keys.
@@ -280,6 +281,10 @@ def enrich_requirement_dict(
         published_registry_entries=published_registry_entries,
         requirement_type=str(out.get("requirement_type") or out.get("requirement_code") or ""),
         portfolio_label=str(out.get("jurisdiction") or ""),
+        property_doc=property_doc,
+        # Read-time payloads should resolve published copy for already emitted rows even when
+        # draft conditions depend on fields that are not persisted on property documents.
+        enforce_conditions=False,
     )
     witm = resolve_effective_why_it_matters(entry=published_entry, portfolio_label=str(out.get("jurisdiction") or ""))
     out["why_it_matters_short"] = witm.get("why_it_matters_short")
@@ -364,6 +369,17 @@ async def enrich_requirements_for_client(
             if pid:
                 jur_by_prop[str(pid)] = portfolio_jurisdiction_label(p, client_doc or {})
 
+    props_full: Dict[str, Dict[str, Any]] = {}
+    if prop_ids:
+        cur2 = db.properties.find(
+            {"client_id": client_id, "property_id": {"$in": prop_ids}},
+            {"_id": 0},
+        )
+        async for p in cur2:
+            pid = p.get("property_id")
+            if pid:
+                props_full[str(pid)] = p
+
     enriched = []
     for r in requirements:
         rid = r.get("requirement_id")
@@ -379,6 +395,7 @@ async def enrich_requirements_for_client(
                 ev,
                 audience="client",
                 published_registry_entries=published_entries,
+                property_doc=props_full.get(str(rc.get("property_id") or "")),
             )
         )
     return enriched, build_presentation_meta(enriched)

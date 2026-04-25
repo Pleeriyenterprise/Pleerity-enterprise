@@ -65,13 +65,28 @@ def _audit_append(doc: Dict[str, Any], action: str, actor: Dict[str, str], note:
     log.append(entry)
 
 
+def _normalise_active_snapshot_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Active singleton entries are live data regardless of their original draft-origin payload.
+    Keep historical audit rows untouched; normalize only the active runtime view.
+    """
+    out = dict(entry) if isinstance(entry, dict) else {}
+    out["status"] = "published"
+    return out
+
+
 async def fetch_active_published_registry_entries(db) -> Optional[Dict[str, Any]]:
     """Return the ``entries`` map for the active published snapshot, or ``None`` if none."""
     doc = await db[COLLECTION_PUBLISHED].find_one({"singleton_key": SINGLETON_KEY}, {"_id": 0, "entries": 1})
     if not doc:
         return None
     ent = doc.get("entries")
-    return ent if isinstance(ent, dict) else None
+    if not isinstance(ent, dict):
+        return None
+    return {
+        str(k): _normalise_active_snapshot_entry(v if isinstance(v, dict) else {})
+        for k, v in ent.items()
+    }
 
 
 async def fetch_published_metadata(db) -> Optional[Dict[str, Any]]:

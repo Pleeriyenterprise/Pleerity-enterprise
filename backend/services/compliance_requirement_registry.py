@@ -278,6 +278,7 @@ def resolve_published_entry_for_requirement(
     requirement_type: str,
     portfolio_label: str,
     property_doc: Optional[Dict[str, Any]] = None,
+    enforce_conditions: bool = True,
 ) -> Optional[Dict[str, Any]]:
     """Pick the best matching published entry for one requirement_type + jurisdiction label."""
     if not isinstance(published_registry_entries, dict) or not published_registry_entries:
@@ -303,7 +304,7 @@ def resolve_published_entry_for_requirement(
             continue
         if not draft_applies_to_portfolio_label(entry, portfolio_label):
             continue
-        if not property_matches_registry_conditions(property_doc, entry.get("conditions")):
+        if enforce_conditions and not property_matches_registry_conditions(property_doc, entry.get("conditions")):
             continue
         spec = draft_overlay_specificity(entry)
         if best is None or spec > best[0]:

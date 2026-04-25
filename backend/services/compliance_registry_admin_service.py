@@ -486,13 +486,25 @@ def plan_types_for_draft_canonical(canonical_code: str) -> FrozenSet[str]:
             out.add(str(spec.storage_type).strip().lower())
     extra: Dict[str, FrozenSet[str]] = {
         "LANDLORD_REGISTRATION": frozenset({"scotland_landlord_registration", "landlord_registration_ni"}),
-        "OCCUPATION_CONTRACT": frozenset({"wales_occupation_contract"}),
+        # Legacy + current row variants in live data.
+        "OCCUPATION_CONTRACT": frozenset({"wales_occupation_contract", "occupation_contract"}),
         # Core registry uses hmo_fire_risk; catalog may surface a distinct evidence row.
         "HMO_FIRE_RISK": frozenset({"hmo_fire_risk_evidence"}),
-        "RIGHT_TO_RENT": frozenset({"right_to_rent"}),
-        "RENT_SMART_WALES": frozenset({"rent_smart_wales"}),
+        "RIGHT_TO_RENT": frozenset({"right_to_rent", "right_to_rent_checks"}),
+        "RIGHT_TO_RENT_CHECKS": frozenset({"right_to_rent", "right_to_rent_checks"}),
+        "RENT_SMART_WALES": frozenset({"rent_smart_wales", "rent_smart_wales_registration"}),
+        "RENT_SMART_WALES_REGISTRATION": frozenset({"rent_smart_wales", "rent_smart_wales_registration"}),
         "LANDLORD_REGISTRATION_NI": frozenset({"landlord_registration_ni"}),
-        "PORTABLE_APPLIANCE": frozenset({"portable_appliance_test"}),
+        "PAT_TESTING": frozenset({"portable_appliance_test", "pat_testing"}),
+        "PORTABLE_APPLIANCE": frozenset({"portable_appliance_test", "pat_testing"}),
+        "HMO_LICENSING": frozenset({"hmo_license", "property_licence", "hmo_licensing"}),
+        "FIRE_DETECTION": frozenset({"fire_alarm", "fire_detection", "smoke_alarms", "co_alarms"}),
+        "SMOKE_HEAT_ALARMS": frozenset({"smoke_alarms", "co_alarms", "smoke_heat_alarms"}),
+        "TENANCY_DEPOSIT_PROTECTION": frozenset({"deposit_pi", "tenancy_deposit_protection"}),
+        # Often informational/system; currently no direct planner emission in some tenants.
+        "FITNESS_FOR_HUMAN_HABITATION": frozenset({"fitness_for_human_habitation"}),
+        "REPAIRING_STANDARD": frozenset({"repairing_standard"}),
+        "LEAD_TESTING": frozenset({"lead_testing"}),
     }
     out |= set(extra.get(c, frozenset()))
     return frozenset(out)
