@@ -22,6 +22,7 @@ from services.compliance_gap_engine import (
     gaps_to_priority_actions,
     infer_compliance_gaps_for_requirement,
 )
+from services.requirement_truth import enrich_requirements_for_client
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +162,7 @@ async def fetch_client_priority_actions(client_id: str, property_id_filter: Opti
         client_doc=client_doc,
         properties=props_surface,
     )
+    gap_reqs, _presentation = await enrich_requirements_for_client(db, client_id, gap_reqs)
     # Collapse duplicate requirement rows from the cursor; still emit every gap_kind per requirement.
     gap_reqs_by_rid: Dict[str, Dict[str, Any]] = {}
     for r in gap_reqs:

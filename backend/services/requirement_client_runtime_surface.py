@@ -11,18 +11,23 @@ and per-property plan type sets.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Set
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from services.compliance_registry_publish_service import fetch_active_published_registry_entries
 from services.compliance_requirement_registry import (
     REQUIREMENT_GENERATION_SOURCE_REGISTRY,
     build_requirement_plan_for_property,
+    resolve_published_entry_for_requirement,
 )
+from services.compliance_registry_admin_service import registry_entry_key
+from services.compliance_registry_conditions import property_matches_registry_conditions
 from services.compliance_rules_registry import (
     canonicalize_uk_portfolio_label,
     portfolio_jurisdiction_label,
 )
 from services.provisioning import REQUIREMENT_GENERATION_SOURCE_DB_RULE
+from services.requirement_code_registry import normalize_requirement_code
 
 
 CLIENT_RUNTIME_REQUIREMENT_SURFACE_INVARIANT = (
@@ -31,6 +36,25 @@ CLIENT_RUNTIME_REQUIREMENT_SURFACE_INVARIANT = (
     "NOT_REQUIRED, non-visible, hidden-primary-action, archived metadata, draft-only registry rows, "
     "and wrong-jurisdiction rows."
 )
+
+_ALIAS_FAMILY_BY_CANONICAL: Dict[str, str] = {
+    # True alias family: same fire-detection obligation represented by legacy slugs.
+    "fire_detection": "fire_detection_alias_family",
+    "fire_alarm": "fire_detection_alias_family",
+    "smoke_alarms": "fire_detection_alias_family",
+    "co_alarms": "fire_detection_alias_family",
+    "smoke_heat_alarms": "fire_detection_alias_family",
+    # True alias family: same HMO fire-risk obligation represented in legacy/evidence variants.
+    "hmo_fire_risk": "hmo_fire_risk_alias_family",
+    "hmo_fire_risk_evidence": "hmo_fire_risk_alias_family",
+    # True alias family: tenancy deposit protection rows from legacy/current slugs.
+    "deposit_pi": "tenancy_deposit_alias_family",
+    "tenancy_deposit_protection": "tenancy_deposit_alias_family",
+    "deposit_prescribed_info": "tenancy_deposit_alias_family",
+    # True alias family: right-to-rent check slugs.
+    "right_to_rent": "right_to_rent_alias_family",
+    "right_to_rent_checks": "right_to_rent_alias_family",
+}
 
 
 def _status_upper(val: Optional[str]) -> str:
@@ -43,6 +67,178 @@ def _norm_requirement_type(row: Dict[str, Any]) -> str:
         .strip()
         .lower()
     )
+
+
+def _parse_dt(value: Any) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    s = str(value or "").replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(s)
+    except Exception:
+        return datetime.min
+
+
+def _property_jurisdiction_source(property_doc: Dict[str, Any], client_doc: Optional[Dict[str, Any]]) -> Tuple[str, str]:
+    raw = str((property_doc or {}).get("jurisdiction") or "").strip()
+    if raw:
+        canon = canonicalize_uk_portfolio_label(raw) or raw
+        return canon, "property_explicit"
+    cdef = str((client_doc or {}).get("default_jurisdiction") or "").strip()
+    if cdef:
+        canon = canonicalize_uk_portfolio_label(cdef) or cdef
+        return canon, "client_default"
+    return "England", "default_fallback"
+
+
+def _published_overlay_exists_for_row(
+    row: Dict[str, Any],
+    *,
+    property_doc: Dict[str, Any],
+    client_doc: Optional[Dict[str, Any]],
+    published_registry_entries: Optional[Dict[str, Any]],
+) -> bool:
+    plabel = portfolio_jurisdiction_label(property_doc, client_doc or {})
+    pe = resolve_published_entry_for_requirement(
+        published_registry_entries=published_registry_entries,
+        requirement_type=str(row.get("requirement_type") or row.get("requirement_code") or ""),
+        portfolio_label=str(plabel or ""),
+        property_doc=property_doc,
+        enforce_conditions=True,
+    )
+    return isinstance(pe, dict)
+
+
+def _runtime_source_for_row(
+    row: Dict[str, Any],
+    *,
+    property_doc: Dict[str, Any],
+    client_doc: Optional[Dict[str, Any]],
+    published_registry_entries: Optional[Dict[str, Any]],
+    baseline_plan_types_lower: Set[str],
+) -> str:
+    rt = _norm_requirement_type(row)
+    baseline = rt in baseline_plan_types_lower
+    overlay = _published_overlay_exists_for_row(
+        row,
+        property_doc=property_doc,
+        client_doc=client_doc,
+        published_registry_entries=published_registry_entries,
+    )
+    if baseline and overlay:
+        return "both"
+    if overlay:
+        return "published"
+    return "baseline"
+
+
+def _alias_family_key_for_row(row: Dict[str, Any]) -> Optional[str]:
+    raw = str(row.get("requirement_code") or row.get("requirement_type") or "").strip()
+    canon = normalize_requirement_code(raw) or _norm_requirement_type(row)
+    return _ALIAS_FAMILY_BY_CANONICAL.get(str(canon or "").strip().lower())
+
+
+def _canonical_code_for_row(row: Dict[str, Any]) -> str:
+    raw = str(row.get("requirement_code") or row.get("requirement_type") or "").strip()
+    canon = normalize_requirement_code(raw)
+    if canon:
+        return canon
+    return str(_norm_requirement_type(row) or raw).strip().lower()
+
+
+def _dedupe_rank_for_row(row: Dict[str, Any]) -> Tuple[int, int, datetime]:
+    # Precedence:
+    # a) published-enriched row wins
+    # b) evidence/tracked row wins
+    # c) newest row wins
+    meta = row.get("registry_metadata") if isinstance(row.get("registry_metadata"), dict) else {}
+    has_published = int(
+        bool(meta.get("action_links_published"))
+        or bool(meta.get("why_it_matters_short_published"))
+        or bool(meta.get("why_it_matters_long_published"))
+        or str(row.get("source") or "").strip().lower() in {"published", "both"}
+    )
+    has_evidence_or_tracking = int(
+        bool(row.get("evidence_doc_id"))
+        or bool(str(row.get("document_id") or "").strip())
+        or bool(row.get("is_tracked") is True)
+        or str(row.get("evidence_state") or "").strip().upper() not in {"", "MISSING"}
+    )
+    return (has_published, has_evidence_or_tracking, _parse_dt(row.get("updated_at")))
+
+
+def _build_canonical_runtime_row(
+    row: Dict[str, Any],
+    *,
+    property_doc: Dict[str, Any],
+    client_doc: Optional[Dict[str, Any]],
+    source: str,
+) -> Dict[str, Any]:
+    out = dict(row)
+    prop_jur, jur_source = _property_jurisdiction_source(property_doc, client_doc)
+    out["property_jurisdiction"] = prop_jur
+    out["jurisdiction_source"] = jur_source
+    out["jurisdiction_basis"] = "property_jurisdiction" if jur_source == "property_explicit" else jur_source
+    out["canonical_code"] = _canonical_code_for_row(row)
+    out["display_name"] = str(row.get("display_label") or row.get("description") or row.get("requirement_code") or row.get("requirement_type") or "")
+    out["category"] = (
+        ((row.get("registry_metadata") or {}).get("category"))
+        or ((row.get("registry_metadata") or {}).get("identity_category"))
+        or None
+    )
+    out["risk"] = str(row.get("criticality") or row.get("risk_level") or "").strip().upper() or None
+    out["cta_action_mode"] = str(((row.get("take_action") or {}).get("primary") or {}).get("action_type") or "").strip() or None
+    out["cta_label"] = str(((row.get("take_action") or {}).get("primary") or {}).get("label") or "").strip() or None
+    out["cta_url"] = ((row.get("take_action") or {}).get("primary") or {}).get("url")
+    out["source"] = source
+    out["trigger_explanation"] = {
+        "jurisdiction_basis": out.get("jurisdiction_basis"),
+        "property_jurisdiction": out.get("property_jurisdiction"),
+        "requirement_type": row.get("requirement_type"),
+    }
+    return out
+
+
+def _dedupe_alias_rows_for_property(
+    rows: List[Dict[str, Any]],
+    *,
+    include_trace: bool,
+) -> List[Dict[str, Any]]:
+    if not rows:
+        return rows
+    keep: List[Dict[str, Any]] = []
+    by_family: Dict[str, List[Dict[str, Any]]] = {}
+    for r in rows:
+        fam = _alias_family_key_for_row(r)
+        if not fam:
+            keep.append(r)
+            continue
+        by_family.setdefault(fam, []).append(r)
+    for fam, family_rows in by_family.items():
+        if len(family_rows) == 1:
+            row = family_rows[0]
+            if include_trace:
+                row["_runtime_trace"] = {
+                    **(row.get("_runtime_trace") if isinstance(row.get("_runtime_trace"), dict) else {}),
+                    "alias_family": fam,
+                    "dedupe_decision": "kept_single_family_row",
+                    "dedupe_candidates": [str(row.get("requirement_id") or row.get("requirement_type") or "")],
+                }
+            keep.append(row)
+            continue
+        ordered = sorted(family_rows, key=_dedupe_rank_for_row, reverse=True)
+        winner = ordered[0]
+        losers = ordered[1:]
+        if include_trace:
+            winner["_runtime_trace"] = {
+                **(winner.get("_runtime_trace") if isinstance(winner.get("_runtime_trace"), dict) else {}),
+                "alias_family": fam,
+                "dedupe_decision": "kept_winner_alias_row",
+                "dedupe_candidates": [str(x.get("requirement_id") or x.get("requirement_type") or "") for x in ordered],
+                "dedupe_excluded": [str(x.get("requirement_id") or x.get("requirement_type") or "") for x in losers],
+            }
+        keep.append(winner)
+    return keep
 
 
 def _generation_source(row: Dict[str, Any]) -> str:
@@ -140,6 +336,33 @@ def requirement_row_passes_client_runtime_surface_gates(
     return True
 
 
+def _first_exclusion_reason(
+    row: Dict[str, Any],
+    *,
+    property_doc: Dict[str, Any],
+    client_doc: Optional[Dict[str, Any]],
+    plan_types_lower: Set[str],
+) -> Optional[str]:
+    if _status_upper(row.get("applicability")) == "NOT_REQUIRED" or _status_upper(row.get("status")) == "NOT_REQUIRED":
+        return "not_required_row"
+    if row.get("client_surface_visible") is False:
+        return "client_surface_hidden"
+    if _primary_action_hidden(row):
+        return "primary_action_hidden"
+    if _registry_metadata_archived(row):
+        return "archived_registry_metadata"
+    if _registry_draft_or_unpublished_materialization(row):
+        return "draft_or_unpublished_materialization"
+    if _explicit_row_jurisdiction_mismatches_property(row, property_doc, client_doc):
+        return "row_jurisdiction_mismatch"
+    rtype = _norm_requirement_type(row)
+    if not rtype:
+        return "missing_requirement_type"
+    if _needs_catalog_planner_membership(row) and rtype not in plan_types_lower:
+        return "not_in_planner_membership"
+    return None
+
+
 def _property_plan_types_lower(
     property_doc: Dict[str, Any],
     client_doc: Optional[Dict[str, Any]],
@@ -161,6 +384,7 @@ async def filter_requirement_rows_for_client_runtime_surfaces(
     client_doc: Optional[Dict[str, Any]] = None,
     properties: Optional[List[Dict[str, Any]]] = None,
     published_registry_entries: Optional[Dict[str, Any]] = None,
+    include_trace: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Async safe wrapper: loads published snapshot once, resolves property docs, filters rows.
@@ -201,6 +425,7 @@ async def filter_requirement_rows_for_client_runtime_surfaces(
                     prop_by_id[str(pid)] = p
 
     plan_cache: Dict[str, Set[str]] = {}
+    baseline_plan_cache: Dict[str, Set[str]] = {}
 
     def plan_for(pid: str) -> Set[str]:
         if pid in plan_cache:
@@ -210,7 +435,16 @@ async def filter_requirement_rows_for_client_runtime_surfaces(
         plan_cache[pid] = types_lower
         return types_lower
 
+    def baseline_plan_for(pid: str) -> Set[str]:
+        if pid in baseline_plan_cache:
+            return baseline_plan_cache[pid]
+        prop = prop_by_id.get(pid) or {}
+        types_lower = _property_plan_types_lower(prop, client_doc, None)
+        baseline_plan_cache[pid] = types_lower
+        return types_lower
+
     out: List[Dict[str, Any]] = []
+    out_by_property: Dict[str, List[Dict[str, Any]]] = {}
     for row in requirements:
         pid = row.get("property_id")
         if not pid:
@@ -226,8 +460,34 @@ async def filter_requirement_rows_for_client_runtime_surfaces(
             plan_types_lower=pt,
             published_registry_entries=published_registry_entries,
         ):
-            out.append(row)
-    return out
+            source = _runtime_source_for_row(
+                row,
+                property_doc=prop,
+                client_doc=client_doc,
+                published_registry_entries=published_registry_entries,
+                baseline_plan_types_lower=baseline_plan_for(str(pid)),
+            )
+            canon_row = _build_canonical_runtime_row(
+                row,
+                property_doc=prop,
+                client_doc=client_doc,
+                source=source,
+            )
+            if include_trace:
+                canon_row["_runtime_trace"] = {
+                    "included": True,
+                    "inclusion_reason": "passes_runtime_surface_gates",
+                    "matched_published_overlay": source in ("published", "both"),
+                    "source": source,
+                }
+            out.append(canon_row)
+            out_by_property.setdefault(str(pid), []).append(canon_row)
+
+    deduped: List[Dict[str, Any]] = []
+    for pid, rows in out_by_property.items():
+        _ = pid
+        deduped.extend(_dedupe_alias_rows_for_property(rows, include_trace=include_trace))
+    return deduped
 
 
 async def requirement_row_eligible_on_client_runtime_surfaces(
@@ -262,9 +522,113 @@ async def requirement_row_eligible_on_client_runtime_surfaces(
     return len(filtered) == 1
 
 
+async def explain_runtime_requirement_rows_for_property(
+    db,
+    *,
+    client_id: str,
+    property_id: str,
+) -> Dict[str, Any]:
+    """
+    Admin/dev explain payload for requirement inclusion/exclusion decisions on one property.
+    """
+    prop = await db.properties.find_one({"client_id": client_id, "property_id": property_id}, {"_id": 0}) or {}
+    client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+    raw = await db.requirements.find(
+        {"client_id": client_id, "property_id": property_id},
+        {"_id": 0},
+    ).to_list(5000)
+    published = await fetch_active_published_registry_entries(db)
+    included = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=raw,
+        client_doc=client_doc,
+        properties=[prop],
+        published_registry_entries=published,
+        include_trace=True,
+    )
+    included_by_id = {str(r.get("requirement_id") or ""): r for r in included if str(r.get("requirement_id") or "")}
+    plan_types = _property_plan_types_lower(prop, client_doc, published)
+    baseline_types = _property_plan_types_lower(prop, client_doc, None)
+    explained_rows: List[Dict[str, Any]] = []
+    for row in raw:
+        rid = str(row.get("requirement_id") or "")
+        plabel = portfolio_jurisdiction_label(prop, client_doc)
+        pe = resolve_published_entry_for_requirement(
+            published_registry_entries=published,
+            requirement_type=str(row.get("requirement_type") or row.get("requirement_code") or ""),
+            portfolio_label=plabel,
+            property_doc=prop,
+            enforce_conditions=True,
+        )
+        conditions = (pe or {}).get("conditions") if isinstance(pe, dict) else None
+        cond_ok = property_matches_registry_conditions(prop, conditions) if isinstance(conditions, dict) else None
+        if rid and rid in included_by_id:
+            ir = included_by_id[rid]
+            explained_rows.append(
+                {
+                    "requirement_id": rid,
+                    "requirement_type": row.get("requirement_type"),
+                    "requirement_code": row.get("requirement_code"),
+                    "property_jurisdiction": ir.get("property_jurisdiction"),
+                    "jurisdiction_source": ir.get("jurisdiction_source"),
+                    "matched_published_key": registry_entry_key(pe) if isinstance(pe, dict) else None,
+                    "baseline_key": _canonical_code_for_row(row),
+                    "conditions_satisfied": cond_ok,
+                    "conditions": conditions,
+                    "source": ir.get("source"),
+                    "included": True,
+                    "inclusion_reason": ((ir.get("_runtime_trace") or {}).get("inclusion_reason") if isinstance(ir.get("_runtime_trace"), dict) else "included"),
+                    "alias_dedupe_decision": ((ir.get("_runtime_trace") or {}).get("dedupe_decision") if isinstance(ir.get("_runtime_trace"), dict) else None),
+                    "trace": ir.get("_runtime_trace"),
+                }
+            )
+            continue
+        reason = _first_exclusion_reason(
+            row,
+            property_doc=prop,
+            client_doc=client_doc,
+            plan_types_lower=plan_types,
+        )
+        source = _runtime_source_for_row(
+            row,
+            property_doc=prop,
+            client_doc=client_doc,
+            published_registry_entries=published,
+            baseline_plan_types_lower=baseline_types,
+        )
+        explained_rows.append(
+            {
+                "requirement_id": rid,
+                "requirement_type": row.get("requirement_type"),
+                "requirement_code": row.get("requirement_code"),
+                "property_jurisdiction": _property_jurisdiction_source(prop, client_doc)[0],
+                "jurisdiction_source": _property_jurisdiction_source(prop, client_doc)[1],
+                "matched_published_key": registry_entry_key(pe) if isinstance(pe, dict) else None,
+                "baseline_key": _canonical_code_for_row(row),
+                "conditions_satisfied": cond_ok,
+                "conditions": conditions,
+                "source": source,
+                "included": False,
+                "exclusion_reason": reason or "excluded_by_alias_dedupe_or_runtime_policy",
+                "alias_dedupe_decision": "excluded_or_not_selected",
+            }
+        )
+    return {
+        "client_id": client_id,
+        "property_id": property_id,
+        "property_jurisdiction": _property_jurisdiction_source(prop, client_doc)[0],
+        "jurisdiction_source": _property_jurisdiction_source(prop, client_doc)[1],
+        "included_count": len(included),
+        "raw_count": len(raw),
+        "rows": explained_rows,
+    }
+
+
 __all__ = (
     "CLIENT_RUNTIME_REQUIREMENT_SURFACE_INVARIANT",
     "filter_requirement_rows_for_client_runtime_surfaces",
     "requirement_row_passes_client_runtime_surface_gates",
     "requirement_row_eligible_on_client_runtime_surfaces",
+    "explain_runtime_requirement_rows_for_property",
 )

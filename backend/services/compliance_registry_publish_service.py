@@ -312,6 +312,18 @@ async def submit_publish_queue_item(db, queue_id: str, actor: Dict[str, str]) ->
 
 
 async def approve_publish_queue_item(db, queue_id: str, actor: Dict[str, str]) -> Dict[str, Any]:
+    doc = await db[COLLECTION_QUEUE].find_one({"queue_id": queue_id}, {"_id": 0})
+    if not doc:
+        raise ValueError("queue_not_found")
+    st = str(doc.get("status") or "")
+    if st != "submitted":
+        raise ValueError(f"invalid_status:{st}")
+    gate = doc.get("review_gate") if isinstance(doc.get("review_gate"), dict) else {}
+    required = bool(gate.get("require_preview_before_approve", True))
+    if required:
+        review_ack = gate.get("review_ack") if isinstance(gate.get("review_ack"), dict) else {}
+        if not str(review_ack.get("token") or "").strip():
+            raise ValueError("preview_required_before_approve")
     return await _transition(
         db,
         queue_id,
@@ -329,7 +341,9 @@ async def reject_publish_queue_item(
     *,
     reason: str,
 ) -> Dict[str, Any]:
-    r = (reason or "").strip() or "rejected"
+    r = (reason or "").strip()
+    if not r:
+        raise ValueError("reject_reason_required")
     return await _transition(
         db,
         queue_id,
@@ -434,3 +448,34 @@ async def publish_publish_queue_item(
         "entry_count": len(merged_entries),
         "keys_updated_this_publish": sorted(queue_entries.keys()),
     }
+
+
+async def record_publish_queue_review_ack(
+    db,
+    queue_id: str,
+    actor: Dict[str, str],
+    *,
+    scope: str = "full_review",
+) -> Dict[str, Any]:
+    """Persist reviewer acknowledgement token used as approve gate evidence."""
+    doc = await db[COLLECTION_QUEUE].find_one({"queue_id": queue_id}, {"_id": 0})
+    if not doc:
+        raise ValueError("queue_not_found")
+    token = str(uuid.uuid4())
+    now = _utc_iso()
+    gate = doc.get("review_gate") if isinstance(doc.get("review_gate"), dict) else {}
+    gate["require_preview_before_approve"] = True
+    gate["review_ack"] = {
+        "token": token,
+        "reviewed_at": now,
+        "reviewed_by": actor,
+        "scope": str(scope or "full_review"),
+    }
+    log = list(doc.get("audit_log") or []) if isinstance(doc.get("audit_log"), list) else []
+    log.append({"at": now, "action": "review_acknowledged", "actor": actor, "scope": scope})
+    await db[COLLECTION_QUEUE].update_one(
+        {"queue_id": queue_id},
+        {"$set": {"review_gate": gate, "updated_at": now, "audit_log": log}},
+    )
+    out = {**doc, "review_gate": gate, "updated_at": now, "audit_log": log}
+    return {k: v for k, v in out.items() if k != "_id"}

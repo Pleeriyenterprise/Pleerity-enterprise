@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import pytest
 
+from services.provisioning import REQUIREMENT_GENERATION_SOURCE_DB_RULE
 from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 
 
@@ -87,7 +88,7 @@ async def test_injected_leak_rows_removed_by_shared_surface_filter():
             "applicability": "REQUIRED",
             "status": "PENDING",
             "client_surface_visible": True,
-            "requirement_generation_source": "catalog_registry",
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
         },
         # England-only row on Wales property
         {
@@ -99,7 +100,7 @@ async def test_injected_leak_rows_removed_by_shared_surface_filter():
             "applicability": "REQUIRED",
             "status": "PENDING",
             "client_surface_visible": True,
-            "requirement_generation_source": "catalog_registry",
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
         },
         # Draft-only materialisation flag (never published snapshot)
         {
@@ -111,7 +112,7 @@ async def test_injected_leak_rows_removed_by_shared_surface_filter():
             "applicability": "REQUIRED",
             "status": "PENDING",
             "client_surface_visible": True,
-            "requirement_generation_source": "catalog_registry",
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
             "registry_metadata": {"draft_only_materialization": True},
         },
         # Archived registry metadata on row
@@ -124,7 +125,7 @@ async def test_injected_leak_rows_removed_by_shared_surface_filter():
             "applicability": "REQUIRED",
             "status": "PENDING",
             "client_surface_visible": True,
-            "requirement_generation_source": "catalog_registry",
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
             "registry_metadata": {"lifecycle": {"status": "archived"}},
         },
         # Valid rows (one per property)
@@ -137,7 +138,7 @@ async def test_injected_leak_rows_removed_by_shared_surface_filter():
             "applicability": "REQUIRED",
             "status": "PENDING",
             "client_surface_visible": True,
-            "requirement_generation_source": "catalog_registry",
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
         },
         {
             "requirement_id": "ok-gas-wales",
@@ -148,7 +149,7 @@ async def test_injected_leak_rows_removed_by_shared_surface_filter():
             "applicability": "REQUIRED",
             "status": "PENDING",
             "client_surface_visible": True,
-            "requirement_generation_source": "catalog_registry",
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
         },
     ]
     db = _FakeDB(props)
@@ -169,3 +170,85 @@ async def test_injected_leak_rows_removed_by_shared_surface_filter():
         "leak-archived-gas",
     ):
         assert bid not in ids
+
+
+@pytest.mark.asyncio
+async def test_true_alias_family_rows_are_deduped_with_precedence_and_legal_distinct_rows_remain():
+    props = [_england_residential("p-eng")]
+    rows = [
+        # Same fire-detection obligation represented by legacy alias rows.
+        {
+            "requirement_id": "fire-a",
+            "client_id": "c1",
+            "property_id": "p-eng",
+            "requirement_type": "fire_alarm",
+            "requirement_code": "fire_alarm",
+            "jurisdiction": "England",
+            "applicability": "REQUIRED",
+            "status": "PENDING",
+            "client_surface_visible": True,
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
+            "updated_at": "2026-01-01T00:00:00Z",
+            "registry_metadata": {"action_links_published": [{"key": "k1"}]},
+        },
+        {
+            "requirement_id": "fire-b",
+            "client_id": "c1",
+            "property_id": "p-eng",
+            "requirement_type": "fire_detection",
+            "requirement_code": "fire_detection",
+            "jurisdiction": "England",
+            "applicability": "REQUIRED",
+            "status": "PENDING",
+            "client_surface_visible": True,
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
+            "updated_at": "2026-01-02T00:00:00Z",
+        },
+        # Legally distinct obligations must remain separate.
+        {
+            "requirement_id": "em-light",
+            "client_id": "c1",
+            "property_id": "p-eng",
+            "requirement_type": "emergency_lighting",
+            "requirement_code": "emergency_lighting",
+            "jurisdiction": "England",
+            "applicability": "REQUIRED",
+            "status": "PENDING",
+            "client_surface_visible": True,
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
+            "updated_at": "2026-01-03T00:00:00Z",
+        },
+        {
+            "requirement_id": "ext",
+            "client_id": "c1",
+            "property_id": "p-eng",
+            "requirement_type": "fire_extinguisher",
+            "requirement_code": "fire_extinguisher",
+            "jurisdiction": "England",
+            "applicability": "REQUIRED",
+            "status": "PENDING",
+            "client_surface_visible": True,
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
+            "updated_at": "2026-01-04T00:00:00Z",
+        },
+    ]
+    db = _FakeDB(props)
+    out = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id="c1",
+        requirements=rows,
+        client_doc={"default_jurisdiction": "England"},
+        properties=props,
+        published_registry_entries=None,
+    )
+    ids = {r["requirement_id"] for r in out}
+    # Published-enriched fire alias row wins within family.
+    assert "fire-a" in ids
+    assert "fire-b" not in ids
+    # Distinct obligations remain.
+    assert "em-light" in ids
+    assert "ext" in ids
+    for r in out:
+        assert r.get("canonical_code")
+        assert r.get("source") in {"baseline", "published", "both"}
+        assert r.get("property_jurisdiction") == "England"

@@ -7,12 +7,21 @@ Do not change provisioning/auth; read-side only.
 from database import database
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from utils.catalog_rules import build_property_profile, evaluate_applies_to
 from utils.risk_bands import score_to_risk_level
 from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 import logging
 
 logger = logging.getLogger(__name__)
+
+_HIGH_CRITICALITY_CODES = {
+    "gas_safety",
+    "eicr",
+    "epc",
+    "hmo_license",
+    "right_to_rent",
+    "landlord_registration_ni",
+    "deposit_pi",
+}
 
 # Status -> base points; EXPIRING_SOON uses expiry decay (see _requirement_score).
 STATUS_POINTS = {"COMPLIANT": 100, "VALID": 100, "PENDING": 30, "MISSING": 30, "OVERDUE": 0, "EXPIRED": 0}
@@ -125,25 +134,11 @@ async def get_property_compliance_detail(
         "jurisdiction_required": _jf["jurisdiction_required"],
         "compliance_confidence": _jf["compliance_confidence"],
     }
-    catalog = await _load_catalog(db)
-    if not catalog:
-        return None
-    profile = build_property_profile(prop)
-    applicable = [c for c in catalog if evaluate_applies_to(profile, c.get("applies_to"))]
-    if not applicable:
-        return {
-            "property_id": property_id,
-            "property_name": prop.get("nickname") or prop.get("address_line_1") or property_id,
-            "matrix": [],
-            "property_score": 100,
-            "risk_index": 0.0,
-            "risk_level": "Low Risk",
-            "kpis": {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0},
-            **_jurisdiction_extra,
-        }
+    # Client-facing compliance matrix must represent active canonical runtime obligations only.
+    # Broader catalog-applicability rows are not emitted here to avoid split-brain across surfaces.
     reqs = await db.requirements.find(
         {"client_id": client_id, "property_id": property_id},
-        {"_id": 0, "requirement_id": 1, "requirement_type": 1, "requirement_code": 1, "status": 1, "due_date": 1, "applicability": 1},
+        {"_id": 0},
     ).to_list(200)
     reqs = await filter_requirement_rows_for_client_runtime_surfaces(
         db,
@@ -152,6 +147,16 @@ async def get_property_compliance_detail(
         client_doc=client_row,
         properties=[prop],
     )
+    from services.requirement_truth import enrich_requirements_for_client
+
+    enriched, _presentation = await enrich_requirements_for_client(db, client_id, reqs)
+    enriched = [r for r in enriched if r.get("client_surface_visible", True)]
+    catalog_items = await _load_catalog(db)
+    catalog_by_code = {
+        str(x.get("code") or "").strip().lower(): x
+        for x in catalog_items
+        if str(x.get("code") or "").strip()
+    }
     docs = await db.documents.find(
         {"client_id": client_id, "property_id": property_id, "status": "VERIFIED"},
         {"_id": 0, "requirement_id": 1, "document_id": 1},
@@ -171,54 +176,65 @@ async def get_property_compliance_detail(
     high_total = 0
     kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0}
 
-    for cat in applicable:
-        code = cat.get("code", "")
-        weight = int(cat.get("weight") or 1)
-        criticality = (cat.get("criticality") or "MED").upper()
+    for row in enriched:
+        code = str(row.get("canonical_code") or row.get("requirement_code") or row.get("requirement_type") or "").strip().lower()
+        if not code:
+            continue
+        cat_meta = catalog_by_code.get(code, {})
+        weight = int(row.get("weight") or cat_meta.get("weight") or 1)
+        criticality = str(row.get("risk") or row.get("criticality") or cat_meta.get("criticality") or "").upper()
+        if not criticality:
+            criticality = "HIGH" if code in _HIGH_CRITICALITY_CODES else "MED"
         is_high = criticality == "HIGH"
         if is_high:
             high_total += 1
-        row = next((r for r in reqs if _requirement_matches_code(r, code)), None)
-        # Exclude from matrix and score if a requirement row exists with applicability=NOT_REQUIRED
-        if row and (row.get("applicability") or "").strip().upper() == "NOT_REQUIRED":
+        if (row.get("applicability") or "").strip().upper() == "NOT_REQUIRED":
             continue
-        status = (row.get("status") or "PENDING").strip() if row else "PENDING"
-        due_date = row.get("due_date") if row else None
+        status = str(row.get("status") or "PENDING").strip().upper()
+        due_date = row.get("due_date")
         days = _days_to_expiry(due_date) if due_date else None
         score = _requirement_numeric_score(status, due_date)
-        evidence_doc_id = req_id_to_doc.get(row["requirement_id"]) if row else None
-        if row:
-            if status in ("OVERDUE", "EXPIRED"):
-                kpis["overdue"] += 1
-                if is_high:
-                    high_overdue += 1
-            elif status == "EXPIRING_SOON" and days is not None and 0 <= days <= 30:
-                kpis["expiring_30"] += 1
-                if is_high:
-                    high_expiring += 1
-            elif status in ("PENDING", "MISSING"):
-                kpis["missing"] += 1
-                if is_high:
-                    high_missing += 1
-            else:
-                kpis["compliant"] += 1
-        else:
+        evidence_doc_id = req_id_to_doc.get(row.get("requirement_id"))
+        if status in ("OVERDUE", "EXPIRED"):
+            kpis["overdue"] += 1
+            if is_high:
+                high_overdue += 1
+        elif status == "EXPIRING_SOON" and days is not None and 0 <= days <= 30:
+            kpis["expiring_30"] += 1
+            if is_high:
+                high_expiring += 1
+        elif status in ("PENDING", "MISSING"):
             kpis["missing"] += 1
             if is_high:
                 high_missing += 1
+        else:
+            kpis["compliant"] += 1
         weighted_sum += weight * score
         weight_sum += weight
         matrix.append({
             "requirement_code": code,
-            "title": cat.get("title") or code,
+            "display_name": row.get("display_name") or row.get("display_label") or row.get("description") or code,
+            "title": row.get("display_name") or row.get("display_label") or row.get("description") or code,
             "status": status,
             "numeric_score": score,
             "criticality": criticality,
             "weight": weight,
+            "property_jurisdiction": row.get("property_jurisdiction") or _att.get("effective_jurisdiction_label"),
+            "category": row.get("category") or cat_meta.get("category"),
+            "risk": row.get("risk") or criticality,
             "expiry_date": due_date.isoformat() if hasattr(due_date, "isoformat") else due_date,
             "days_to_expiry": days,
             "evidence_doc_id": evidence_doc_id,
-            "requirement_id": row.get("requirement_id") if row else None,
+            "cta_action_mode": row.get("cta_action_mode"),
+            "cta_label": row.get("cta_label"),
+            "cta_url": row.get("cta_url"),
+            "action_links": row.get("action_links") or [],
+            "why_it_matters_short": row.get("why_it_matters_short"),
+            "why_it_matters_long": row.get("why_it_matters_long"),
+            "source": row.get("source"),
+            "trigger_explanation": row.get("trigger_explanation"),
+            "requirement_id": row.get("requirement_id"),
+            "canonical_code": row.get("canonical_code"),
             "property_id": property_id,
         })
 

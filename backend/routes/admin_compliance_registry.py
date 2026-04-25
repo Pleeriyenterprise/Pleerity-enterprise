@@ -36,7 +36,7 @@ from services.compliance_registry_admin_service import (
     merge_partial_draft,
     validate_registry_draft,
 )
-from services.compliance_registry_conditions import condition_builder_options_payload
+from services.compliance_registry_conditions import condition_builder_options_payload, human_summary_registry_conditions
 from services.compliance_registry_controlled_vocab import (
     REGISTRY_UK_DISPLAY_REGION_SET,
     controlled_field_options_payload,
@@ -53,10 +53,12 @@ from services.compliance_registry_publish_service import (
     list_publish_queue_items,
     list_published_history,
     publish_publish_queue_item,
+    record_publish_queue_review_ack,
     reject_publish_queue_item,
     revert_active_published_to_line_version,
     submit_publish_queue_item,
 )
+from services.requirement_client_runtime_surface import explain_runtime_requirement_rows_for_property
 from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
@@ -111,6 +113,10 @@ class PublishQueueCreateBody(BaseModel):
 
 class PublishRejectBody(BaseModel):
     reason: str = Field(default="", max_length=2000)
+
+
+class PublishApproveBody(BaseModel):
+    review_ack_token: str = Field(default="", max_length=128)
 
 
 @router.get("/controlled-field-options")
@@ -615,6 +621,194 @@ async def registry_publish_queue_get(queue_id: str, user: dict = Depends(require
     return {"queue": _strip_id(doc)}
 
 
+def _registry_entry_key(draft_doc: Dict[str, Any]) -> str:
+    cc = str(draft_doc.get("canonical_code") or "").strip().upper()
+    sk = str(draft_doc.get("scope_key") or "DEFAULT").strip() or "DEFAULT"
+    return f"{cc}|{sk}"
+
+
+def _field_diff_rows(current: Dict[str, Any], proposed: Dict[str, Any], *, prefix: str = "") -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    keys = sorted(set((current or {}).keys()) | set((proposed or {}).keys()))
+    for k in keys:
+        path = f"{prefix}.{k}" if prefix else str(k)
+        lv = (current or {}).get(k)
+        rv = (proposed or {}).get(k)
+        if isinstance(lv, dict) and isinstance(rv, dict):
+            rows.extend(_field_diff_rows(lv, rv, prefix=path))
+            continue
+        if lv != rv:
+            rows.append({"path": path, "current": lv, "proposed": rv})
+    return rows
+
+
+def _extract_review_warnings(draft_docs: List[Dict[str, Any]], impact: Dict[str, Any]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    if bool(impact.get("broad_uk_operator_warning")):
+        out.append({"code": "broad_uk_scope", "severity": "warning", "message": "At least one draft covers all four UK regions."})
+    if bool(impact.get("has_blocking_validation_errors")):
+        out.append({"code": "validation_blockers", "severity": "error", "message": "One or more drafts contain blocking validation errors."})
+    overlap: Dict[str, List[str]] = {}
+    for d in draft_docs:
+        cc = str(d.get("canonical_code") or "").strip().upper()
+        if not cc:
+            continue
+        overlap.setdefault(cc, []).append(_registry_entry_key(d))
+        jur = (d.get("jurisdiction") or {}).get("display_jurisdictions")
+        if not isinstance(jur, list) or not [x for x in jur if str(x or "").strip()]:
+            out.append(
+                {
+                    "code": "missing_jurisdiction",
+                    "severity": "warning",
+                    "entry_key": _registry_entry_key(d),
+                    "message": "Client-visible draft has no explicit display_jurisdictions list.",
+                }
+            )
+        short = str(d.get("why_it_matters_short") or "").strip()
+        if not short:
+            out.append(
+                {
+                    "code": "missing_why_it_matters_short",
+                    "severity": "warning",
+                    "entry_key": _registry_entry_key(d),
+                    "message": "why_it_matters_short is empty.",
+                }
+            )
+    for cc, keys in overlap.items():
+        if len(keys) > 1:
+            out.append(
+                {
+                    "code": "duplicate_or_overlap_risk",
+                    "severity": "warning",
+                    "canonical_code": cc,
+                    "keys": sorted(keys),
+                    "message": "Multiple scope entries for same canonical_code in this queue; verify scope intent.",
+                }
+            )
+    return out
+
+
+def _client_preview_payload_for_jurisdiction(draft_doc: Dict[str, Any], jurisdiction: str) -> Dict[str, Any]:
+    jur = str(jurisdiction or "").strip().upper()
+    by_j = draft_doc.get("why_it_matters_by_jurisdiction") if isinstance(draft_doc.get("why_it_matters_by_jurisdiction"), dict) else {}
+    j_block = by_j.get(jur) if isinstance(by_j.get(jur), dict) else {}
+    why_short = str(j_block.get("short") or draft_doc.get("why_it_matters_short") or "").strip() or None
+    why_long = str(j_block.get("long") or draft_doc.get("why_it_matters_long") or "").strip() or None
+    links = [x for x in (draft_doc.get("action_links") or []) if isinstance(x, dict)]
+    filtered = []
+    for link in links:
+        js = link.get("jurisdictions")
+        if isinstance(js, list) and js:
+            tok = [str(x).strip().upper() for x in js if str(x).strip()]
+            if jur not in tok:
+                continue
+        if link.get("is_active") is False:
+            continue
+        filtered.append(link)
+    filtered.sort(key=lambda x: int(x.get("priority") or 9999))
+    ab = draft_doc.get("action_behaviour") if isinstance(draft_doc.get("action_behaviour"), dict) else {}
+    return {
+        "jurisdiction": jur,
+        "requirement_card": {
+            "name": ((draft_doc.get("identity") or {}).get("name") or draft_doc.get("canonical_code")),
+            "code": draft_doc.get("canonical_code"),
+            "category": ((draft_doc.get("identity") or {}).get("category")),
+            "criticality": ((draft_doc.get("classification") or {}).get("criticality")),
+            "client_visible": ((draft_doc.get("classification") or {}).get("client_surface_visible")),
+        },
+        "why_it_matters_short": why_short,
+        "why_it_matters_long": why_long,
+        "action_links": filtered,
+        "cta": {
+            "primary_action_mode": ab.get("primary_action_mode"),
+            "cta_label_override": ab.get("cta_label_override"),
+        },
+    }
+
+
+@router.get("/publish-queue/{queue_id}/review")
+async def registry_publish_queue_review(queue_id: str, user: dict = Depends(require_admin)):
+    """
+    Admin-only review payload reusing existing compare/impact logic + queue drafts.
+    Also records a review acknowledgement token required by approve.
+    """
+    db = database.get_db()
+    queue = await get_publish_queue_item(db, queue_id)
+    if not queue:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue item not found")
+    ids = [str(x).strip() for x in (queue.get("draft_entry_ids") or []) if str(x).strip()]
+    if not ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="queue_has_no_drafts")
+
+    draft_docs: List[Dict[str, Any]] = []
+    for eid in ids:
+        d = await db[COLLECTION].find_one({"entry_id": eid}, {"_id": 0})
+        if not d:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"draft_not_found:{eid}")
+        draft_docs.append(d)
+
+    published_meta = await fetch_published_metadata(db) or {}
+    published_entries = await fetch_active_published_registry_entries(db) or {}
+    impact = build_registry_publish_impact(draft_docs, published_entries=published_entries)
+
+    current_entries = dict(published_entries or {})
+    proposed_entries = dict(current_entries)
+    touched_rows: List[Dict[str, Any]] = []
+    affected_jurisdictions: set[str] = set()
+    for d in draft_docs:
+        key = _registry_entry_key(d)
+        proposed_entries[key] = d
+        for tok in (((d.get("jurisdiction") or {}).get("display_jurisdictions")) or []):
+            if str(tok).strip():
+                affected_jurisdictions.add(str(tok).strip().upper())
+        touched_rows.append(
+            {
+                "entry_id": d.get("entry_id"),
+                "entry_key": key,
+                "canonical_code": d.get("canonical_code"),
+                "scope_key": d.get("scope_key"),
+                "conditions_summary": human_summary_registry_conditions(d.get("conditions") if isinstance(d.get("conditions"), dict) else {}),
+                "why_it_matters_short": d.get("why_it_matters_short"),
+                "why_it_matters_long": d.get("why_it_matters_long"),
+                "action_behaviour": d.get("action_behaviour"),
+                "action_links": d.get("action_links") or [],
+                "baseline_diff": diff_draft_vs_baseline(d, build_published_baseline_snapshot(str(d.get("canonical_code") or "").strip().upper())),
+                "field_diff_vs_current_live": _field_diff_rows(current_entries.get(key) if isinstance(current_entries.get(key), dict) else {}, d),
+                "current_live_entry": current_entries.get(key),
+                "proposed_entry": d,
+                "client_preview_by_jurisdiction": {
+                    region: _client_preview_payload_for_jurisdiction(d, region)
+                    for region in ("ENGLAND", "SCOTLAND", "WALES", "NORTHERN_IRELAND")
+                },
+            }
+        )
+
+    queue_with_ack = await record_publish_queue_review_ack(db, queue_id, _actor(user), scope="full_review")
+    review_ack = (((queue_with_ack or {}).get("review_gate") or {}).get("review_ack") or {})
+    warnings = _extract_review_warnings(draft_docs, impact)
+
+    return {
+        "queue": _strip_id(queue_with_ack),
+        "review_ack_token": review_ack.get("token"),
+        "current_live_published": {
+            "active": bool(published_meta),
+            "version": published_meta.get("version"),
+            "updated_at": published_meta.get("updated_at"),
+            "entry_count": len(current_entries),
+            "entries": current_entries,
+        },
+        "proposed_published_after_approval": {
+            "entry_count": len(proposed_entries),
+            "entries": proposed_entries,
+        },
+        "touched_entries": touched_rows,
+        "affected_jurisdictions": sorted(affected_jurisdictions),
+        "publish_impact": impact,
+        "warnings": warnings,
+        "rematerialisation": REMATERIALISATION_INFO,
+    }
+
+
 @router.post("/publish-queue/{queue_id}/submit")
 async def registry_publish_queue_submit(
     request: Request,
@@ -644,10 +838,20 @@ async def registry_publish_queue_submit(
 async def registry_publish_queue_approve(
     request: Request,
     queue_id: str,
+    body: PublishApproveBody = PublishApproveBody(),
     user: dict = Depends(require_owner),
 ):
     """Owner-only (temporary product gate); Admin may still submit/reject earlier states."""
     db = database.get_db()
+    q = await get_publish_queue_item(db, queue_id)
+    if not q:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="queue_not_found")
+    gate = q.get("review_gate") if isinstance(q.get("review_gate"), dict) else {}
+    review_ack = gate.get("review_ack") if isinstance(gate.get("review_ack"), dict) else {}
+    expected_tok = str(review_ack.get("token") or "").strip()
+    got_tok = str(body.review_ack_token or "").strip()
+    if bool(gate.get("require_preview_before_approve", True)) and (not expected_tok or expected_tok != got_tok):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="preview_required_before_approve")
     try:
         doc = await approve_publish_queue_item(db, queue_id, _actor(user))
     except ValueError as e:
@@ -673,9 +877,12 @@ async def registry_publish_queue_reject(
     body: PublishRejectBody,
     user: dict = Depends(require_owner_or_admin),
 ):
+    reason = (body.reason or "").strip()
+    if not reason:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="reject_reason_required")
     db = database.get_db()
     try:
-        doc = await reject_publish_queue_item(db, queue_id, _actor(user), reason=body.reason)
+        doc = await reject_publish_queue_item(db, queue_id, _actor(user), reason=reason)
     except ValueError as e:
         msg = str(e)
         if msg == "queue_not_found":
@@ -687,7 +894,7 @@ async def registry_publish_queue_reject(
         actor_id=str(user.get("portal_user_id") or user.get("user_id") or ""),
         resource_type="compliance_registry_publish_queue",
         resource_id=queue_id,
-        metadata={"reason": (body.reason or "").strip()},
+        metadata={"reason": reason},
         ip_address=request.client.host if request.client else None,
     )
     return {"ok": True, "queue": doc}
@@ -816,3 +1023,23 @@ async def registry_published_revert_to_version(
         ip_address=request.client.host if request.client else None,
     )
     return {"ok": True, **result, "rematerialisation": REMATERIALISATION_INFO}
+
+
+@router.get("/runtime-requirements/explain")
+async def registry_runtime_requirements_explain(
+    user: dict = Depends(require_admin),
+    client_id: str = Query(..., min_length=1),
+    property_id: str = Query(..., min_length=1),
+):
+    """
+    Admin/dev explain mode for runtime requirement inclusion + dedupe decisions.
+    Never exposed on client routes.
+    """
+    _ = user
+    db = database.get_db()
+    out = await explain_runtime_requirement_rows_for_property(
+        db,
+        client_id=client_id,
+        property_id=property_id,
+    )
+    return out

@@ -271,7 +271,9 @@ def test_publish_merge_preserves_prior_snapshot_keys(client):
         assert r0.status_code == 200, r0.text
         q0 = r0.json()["queue"]["queue_id"]
         client.post(f"/api/admin/compliance/registry/publish-queue/{q0}/submit")
-        client.post(f"/api/admin/compliance/registry/publish-queue/{q0}/approve")
+        r_ap0 = client.get(f"/api/admin/compliance/registry/publish-queue/{q0}/review")
+        tok0 = r_ap0.json().get("review_ack_token")
+        client.post(f"/api/admin/compliance/registry/publish-queue/{q0}/approve", json={"review_ack_token": tok0})
         r_pub = client.post(f"/api/admin/compliance/registry/publish-queue/{q0}/publish")
         assert r_pub.status_code == 200, r_pub.text
         assert "GAS_SAFETY|DEFAULT" in (fake._published.get("entries") or {})
@@ -282,7 +284,9 @@ def test_publish_merge_preserves_prior_snapshot_keys(client):
         )
         q1 = r1.json()["queue"]["queue_id"]
         client.post(f"/api/admin/compliance/registry/publish-queue/{q1}/submit")
-        client.post(f"/api/admin/compliance/registry/publish-queue/{q1}/approve")
+        r_ap1 = client.get(f"/api/admin/compliance/registry/publish-queue/{q1}/review")
+        tok1 = r_ap1.json().get("review_ack_token")
+        client.post(f"/api/admin/compliance/registry/publish-queue/{q1}/approve", json={"review_ack_token": tok1})
         r_pub2 = client.post(f"/api/admin/compliance/registry/publish-queue/{q1}/publish")
         assert r_pub2.status_code == 200, r_pub2.text
         ent = fake._published.get("entries") or {}
@@ -305,7 +309,10 @@ def test_owner_full_transition_create_through_publish(client):
         assert r1.status_code == 200, r1.text
         assert r1.json()["queue"]["status"] == "submitted"
 
-        r2 = client.post(f"/api/admin/compliance/registry/publish-queue/{qid}/approve")
+        r_review = client.get(f"/api/admin/compliance/registry/publish-queue/{qid}/review")
+        assert r_review.status_code == 200, r_review.text
+        tok = r_review.json().get("review_ack_token")
+        r2 = client.post(f"/api/admin/compliance/registry/publish-queue/{qid}/approve", json={"review_ack_token": tok})
         assert r2.status_code == 200, r2.text
         assert r2.json()["queue"]["status"] == "approved"
 
@@ -343,6 +350,79 @@ def test_reject_submitted_allowed_for_admin(client):
     assert r.status_code == 200, r.text
     assert r.json()["queue"]["status"] == "rejected"
     assert r.json()["queue"]["rejection_reason"] == "needs more review"
+
+
+def test_reject_requires_reason(client):
+    fake = FakeRegistryMongo("e-rej-empty")
+    qid = "queue-reject-empty"
+    fake._queues[qid] = {
+        "queue_id": qid,
+        "status": "submitted",
+        "title": "t",
+        "draft_entry_ids": ["e-rej-empty"],
+        "audit_log": [],
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z",
+    }
+    with _patch_auth(_ADMIN_USER), _patch_registry_http(fake):
+        r = client.post(
+            f"/api/admin/compliance/registry/publish-queue/{qid}/reject",
+            json={"reason": "   "},
+        )
+    assert r.status_code == 400
+    assert r.json().get("detail") == "reject_reason_required"
+
+
+def test_approve_requires_review_ack_token(client):
+    fake = FakeRegistryMongo("e-appr-1")
+    qid = "queue-approve-gate"
+    fake._queues[qid] = {
+        "queue_id": qid,
+        "status": "submitted",
+        "title": "t",
+        "draft_entry_ids": ["e-appr-1"],
+        "audit_log": [],
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z",
+    }
+    with _patch_auth(_OWNER_USER), _patch_registry_http(fake):
+        r_fail = client.post(f"/api/admin/compliance/registry/publish-queue/{qid}/approve", json={"review_ack_token": ""})
+        assert r_fail.status_code == 400
+        assert r_fail.json().get("detail") == "preview_required_before_approve"
+        r_review = client.get(f"/api/admin/compliance/registry/publish-queue/{qid}/review")
+        assert r_review.status_code == 200, r_review.text
+        tok = r_review.json().get("review_ack_token")
+        assert tok
+        r_ok = client.post(f"/api/admin/compliance/registry/publish-queue/{qid}/approve", json={"review_ack_token": tok})
+    assert r_ok.status_code == 200, r_ok.text
+    assert r_ok.json()["queue"]["status"] == "approved"
+
+
+def test_publish_queue_review_payload_contains_preview_data(client):
+    eid = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
+    fake = FakeRegistryMongo(eid)
+    qid = "queue-review-payload"
+    fake._queues[qid] = {
+        "queue_id": qid,
+        "status": "submitted",
+        "title": "preview-review",
+        "draft_entry_ids": [eid],
+        "audit_log": [],
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z",
+    }
+    with _patch_auth(_OWNER_USER), _patch_registry_http(fake):
+        r = client.get(f"/api/admin/compliance/registry/publish-queue/{qid}/review")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("review_ack_token")
+    assert body.get("current_live_published") is not None
+    assert body.get("proposed_published_after_approval") is not None
+    touched = body.get("touched_entries") or []
+    assert len(touched) == 1
+    cp = (touched[0].get("client_preview_by_jurisdiction") or {}).get("ENGLAND") or {}
+    assert "why_it_matters_short" in cp
+    assert "cta" in cp
 
 
 def test_auditor_cannot_create_publish_queue(client):
