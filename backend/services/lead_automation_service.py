@@ -457,15 +457,54 @@ async def detect_inactive_users_and_trigger() -> int:
 
 
 async def detect_compliance_gap_and_trigger() -> int:
+    from services.requirement_evidence_authority import authority_gap_missing_states, EA_VERIFIED_EXPIRED
+
     db = database.get_db()
+    gap_states = authority_gap_missing_states()
     clients = await db.clients.find({}, {"_id": 0, "client_id": 1}).to_list(2000)
     triggered = 0
     for c in clients:
         cid = c.get("client_id")
         if not cid:
             continue
-        missing_docs = await db.requirements.count_documents({"client_id": cid, "status": {"$in": ["MISSING", "MISSING_EVIDENCE"]}})
-        expired = await db.requirements.count_documents({"client_id": cid, "status": {"$in": ["OVERDUE", "EXPIRED"]}})
+        missing_docs = await db.requirements.count_documents(
+            {
+                "client_id": cid,
+                "$or": [
+                    {
+                        "evidence_authority_synced_at": {"$ne": None},
+                        "evidence_authority.version": {"$gte": 1},
+                        "evidence_authority.state": {"$in": gap_states},
+                    },
+                    {
+                        "$or": [
+                            {"evidence_authority_synced_at": None},
+                            {"evidence_authority.version": {"$lt": 1}},
+                        ],
+                        "status": {"$in": ["MISSING", "MISSING_EVIDENCE"]},
+                    },
+                ],
+            }
+        )
+        expired = await db.requirements.count_documents(
+            {
+                "client_id": cid,
+                "$or": [
+                    {
+                        "evidence_authority_synced_at": {"$ne": None},
+                        "evidence_authority.version": {"$gte": 1},
+                        "evidence_authority.state": EA_VERIFIED_EXPIRED,
+                    },
+                    {
+                        "$or": [
+                            {"evidence_authority_synced_at": None},
+                            {"evidence_authority.version": {"$lt": 1}},
+                        ],
+                        "status": {"$in": ["OVERDUE", "EXPIRED"]},
+                    },
+                ],
+            }
+        )
         high_risk = await db.risk_signals.count_documents({"client_id": cid, "status": {"$nin": ["resolved"]}, "risk_level": {"$in": ["HIGH", "CRITICAL"]}})
         if missing_docs > 0:
             await record_client_event(client_id=cid, event_type=EVENT_MISSING_DOCUMENT, source="compliance_gap_scan", metadata={"count": int(missing_docs)})

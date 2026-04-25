@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
+from database import database
 from services.unified_tasks_service import get_unified_tasks_digest, get_unified_tasks_for_client
 from services import risk_signal_service
 
@@ -169,6 +170,16 @@ async def get_command_center_bundle(
             else:
                 jreq = property_id_filter in jreq_ids
                 jconf = "fallback" if jreq else "explicit"
+        gap_engine_counts: Dict[str, Any] = {}
+        try:
+            from services.compliance_gap_sync import aggregate_gap_counts_for_client
+
+            gap_engine_counts = await aggregate_gap_counts_for_client(
+                database.get_db(), client_id, property_id_filter
+            )
+        except Exception as e:
+            logger.warning("command_center gap_engine aggregate failed: %s", e)
+            gap_engine_counts = {"by_kind": {}, "by_severity": {}, "total_open": 0}
         compliance_status_summary = {
             "score": cs.get("score"),
             "grade": cs.get("grade"),
@@ -178,6 +189,7 @@ async def get_command_center_bundle(
             "requirements_overdue": stats.get("overdue"),
             "requirements_expiring_soon": stats.get("expiring_soon"),
             "requirements_pending": stats.get("pending"),
+            "gap_engine": gap_engine_counts,
             "jurisdiction_compliance_notice": notice,
             "jurisdiction_required": jreq,
             "compliance_confidence": jconf,
@@ -198,6 +210,7 @@ async def get_command_center_bundle(
             "score": None,
             "grade": None,
             "message": None,
+            "gap_engine": {"by_kind": {}, "by_severity": {}, "total_open": 0},
             "jurisdiction_compliance_notice": {
                 "active": False,
                 "compliance_basis": None,

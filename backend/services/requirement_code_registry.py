@@ -32,6 +32,8 @@ CANONICAL_REQUIREMENT_CODES: FrozenSet[str] = frozenset(
         "wales_occupation_contract",
         "deposit_pi",
         "right_to_rent",
+        "rent_smart_wales",
+        "landlord_registration_ni",
         "how_to_rent",
         "tenancy_agreement",
     }
@@ -77,6 +79,8 @@ _LEGACY_ALIASES: Dict[str, str] = {
     "selective_license": "selective_license",
     "deposit_pi": "deposit_pi",
     "right_to_rent": "right_to_rent",
+    "rent_smart_wales": "rent_smart_wales",
+    "landlord_registration_ni": "landlord_registration_ni",
     "how_to_rent": "how_to_rent",
     "tenancy_agreement": "tenancy_agreement",
     "landlord_registration": "landlord_registration",

@@ -251,6 +251,23 @@ class Database:
                 )
             except Exception:
                 pass
+            # Governed compliance gaps (stable gap_key upserts + client dashboards)
+            try:
+                await self.db.compliance_gaps.create_index("gap_key", unique=True)
+                await self.db.compliance_gaps.create_index([("client_id", 1), ("status", 1)])
+                await self.db.compliance_gaps.create_index([("client_id", 1), ("property_id", 1), ("status", 1)])
+                await self.db.compliance_gaps.create_index([("requirement_id", 1), ("status", 1)])
+            except Exception:
+                pass
+            try:
+                await self.db.tenant_delivery_proofs.create_index("delivery_id", unique=True)
+                await self.db.tenant_delivery_proofs.create_index([("client_id", 1), ("property_id", 1), ("created_at", -1)])
+                await self.db.tenant_delivery_proofs.create_index([("tenant_portal_user_id", 1), ("created_at", -1)])
+                await self.db.tenant_delivery_proofs.create_index("provider_message_id", sparse=True)
+                await self.db.compliance_audit_packs.create_index("pack_id", unique=True)
+                await self.db.compliance_audit_packs.create_index([("client_id", 1), ("property_id", 1), ("generated_at", -1)])
+            except Exception:
+                pass
             # Compliance recalc SLA alerts (dedupe by property + alert type)
             try:
                 await self.db.compliance_sla_alerts.create_index(
@@ -308,6 +325,12 @@ class Database:
             try:
                 await self.db.stripe_checkout_invoices.create_index([("client_id", 1), ("created_at", -1)])
                 await self.db.stripe_checkout_invoices.create_index([("client_id", 1), ("invoice_number", 1)])
+            except Exception:
+                pass
+            # CVP subscription renewal / proration receipts (invoice.paid; _id = Stripe invoice id)
+            try:
+                await self.db.cvp_subscription_renewal_receipts.create_index([("client_id", 1), ("paid_at", -1)])
+                await self.db.cvp_subscription_renewal_receipts.create_index([("client_id", 1), ("invoice_number", 1)])
             except Exception:
                 pass
             # Provisioning status per property/module (compliance, maintenance)
@@ -882,6 +905,7 @@ class Database:
             {"template_key": "ORDER_DOCUMENTS_READY", "channel": "EMAIL", "email_template_alias": "order-intake-confirmation", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "system_critical", "is_active": True, "updated_at": now},
             {"template_key": "AI_EXTRACTION_APPLIED", "channel": "EMAIL", "email_template_alias": "ai-extraction-applied", "sms_body": None, "requires_provisioned": True, "requires_active_subscription": True, "requires_entitlement_enabled": True, "plan_required_feature_key": None, "email_category": "compliance_notifications", "is_active": True, "updated_at": now},
             {"template_key": "TENANT_INVITE", "channel": "EMAIL", "email_template_alias": "tenant-invite", "sms_body": None, "requires_provisioned": True, "requires_active_subscription": True, "requires_entitlement_enabled": True, "plan_required_feature_key": "tenant_portal", "email_category": "system_critical", "is_active": True, "updated_at": now},
+            {"template_key": "TENANT_COMPLIANCE_PACKAGE_DELIVERY", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": True, "requires_active_subscription": True, "requires_entitlement_enabled": True, "plan_required_feature_key": "tenant_portal", "email_category": "compliance_notifications", "is_active": True, "updated_at": now},
             {"template_key": "CUSTOM_NOTIFICATION", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": True, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},
             {"template_key": "SUPPORT_TICKET_CONFIRMATION", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},
             {"template_key": "SUPPORT_INTERNAL_NOTIFICATION", "channel": "EMAIL", "email_template_alias": "admin-manual", "sms_body": None, "requires_provisioned": False, "requires_active_subscription": False, "requires_entitlement_enabled": False, "plan_required_feature_key": None, "email_category": "internal", "is_active": True, "updated_at": now},

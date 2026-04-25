@@ -8,6 +8,7 @@ from urllib.parse import quote as _url_quote
 import logging
 
 from database import database
+from utils.expiry_utils import get_effective_expiry_date
 from presentation.label_service import (
     issue_status_label,
     requirement_label,
@@ -15,6 +16,12 @@ from presentation.label_service import (
     work_order_status_label,
 )
 from services.compliance_requirement_engine import requirement_row_in_client_priority_stream
+from services.compliance_gap_engine import (
+    GAP_EXPIRED,
+    GAP_EXPIRING_SOON,
+    gaps_to_priority_actions,
+    infer_compliance_gaps_for_requirement,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,14 +61,8 @@ def _iso_or_none(val: Any) -> Optional[str]:
 
 
 def _requirement_effective_due_iso(r: Dict[str, Any]) -> Optional[str]:
-    for key in ("confirmed_expiry_date", "due_date", "extracted_expiry_date", "expires_at"):
-        v = r.get(key)
-        if v is None:
-            continue
-        iso = _iso_or_none(v)
-        if iso:
-            return iso
-    return None
+    eff = get_effective_expiry_date(r)
+    return _iso_or_none(eff)
 
 
 def _requirement_code_for_hash(r: Dict[str, Any]) -> str:
@@ -121,92 +122,62 @@ def _action(
     return out
 
 
+def _priority_stream_kind_for_gap(gap_kind: str) -> str:
+    if gap_kind == GAP_EXPIRED:
+        return "overdue"
+    if gap_kind == GAP_EXPIRING_SOON:
+        return "expiring"
+    return "missing"
+
+
 async def fetch_client_priority_actions(client_id: str, property_id_filter: Optional[str], limit: int) -> List[Dict[str, Any]]:
     db = database.get_db()
     actions: List[Dict[str, Any]] = []
+    client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+    props_surface = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(500)
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 
-    q_req = {"client_id": client_id, "status": {"$in": ["OVERDUE", "EXPIRED"]}}
+    # --- Compliance gaps (single governed engine; evidence_authority is truth when synced) ---
+    q_gap = {
+        "client_id": client_id,
+        "$or": [
+            {"evidence_authority_synced_at": {"$ne": None}, "evidence_authority.version": {"$gte": 1}},
+            {
+                "$or": [
+                    {"evidence_authority_synced_at": None},
+                    {"evidence_authority.version": {"$lt": 1}},
+                ],
+                "status": {"$in": ["OVERDUE", "EXPIRED", "EXPIRING_SOON", "PENDING", "MISSING"]},
+            },
+        ],
+    }
     if property_id_filter:
-        q_req["property_id"] = property_id_filter
-    reqs = await db.requirements.find(q_req).limit(limit).to_list(limit)
-    for r in reqs:
-        ok, _eng = requirement_row_in_client_priority_stream(r, kind="overdue")
-        if not ok:
-            continue
-        prop_id = r.get("property_id")
-        code_raw = r.get("code") or r.get("requirement_type") or ""
-        disp = requirement_label(code_raw) if code_raw else "Compliance item"
-        req_code = _requirement_code_for_hash(r) or code_raw or None
+        q_gap["property_id"] = property_id_filter
+    gap_reqs = await db.requirements.find(q_gap, {"_id": 0}).limit(max(limit * 6, 120)).to_list(max(limit * 6, 120))
+    gap_reqs = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=gap_reqs,
+        client_doc=client_doc,
+        properties=props_surface,
+    )
+    # Collapse duplicate requirement rows from the cursor; still emit every gap_kind per requirement.
+    gap_reqs_by_rid: Dict[str, Dict[str, Any]] = {}
+    for r in gap_reqs:
         rid = r.get("requirement_id")
-        due_iso = _requirement_effective_due_iso(r)
-        src_upd = _iso_or_none(r.get("updated_at"))
-        hash_frag = f"#req={_url_quote(req_code, safe='')}" if req_code and prop_id else ""
-        actions.append(_action(
-            ACTION_OVERDUE_COMPLIANCE, f"Overdue: {disp}", f"{disp} is overdue at this property.",
-            SCORE_OVERDUE_COMPLIANCE, SEVERITY_HIGH, related_property_id=prop_id, related_requirement_id=rid,
-            requirement_code=req_code or None, due_at=due_iso, source_updated_at=src_upd,
-            why_matters="Overdue statutory or contractual obligations can invalidate insurance and attract enforcement.",
-            recommended_action_detail="Upload valid evidence or renew the certificate, then confirm dates.",
-            recommended_url=(f"/properties/{prop_id}{hash_frag}" if prop_id else "/compliance-score"),
-            recommended_action_label="Review compliance",
-            portfolio_jurisdiction=r.get("jurisdiction"),
-        ))
-
-    q_exp = {"client_id": client_id, "status": "EXPIRING_SOON"}
-    if property_id_filter:
-        q_exp["property_id"] = property_id_filter
-    exp_reqs = await db.requirements.find(q_exp).limit(limit).to_list(limit)
-    for r in exp_reqs:
-        ok, _eng = requirement_row_in_client_priority_stream(r, kind="expiring")
-        if not ok:
+        if not rid:
             continue
-        prop_id = r.get("property_id")
-        code_raw = r.get("code") or r.get("requirement_type") or ""
-        disp = requirement_label(code_raw) if code_raw else "Certificate"
-        req_code = _requirement_code_for_hash(r) or code_raw or None
+        gap_reqs_by_rid[str(rid)] = r
+    for r in gap_reqs_by_rid.values():
         rid = r.get("requirement_id")
-        due_iso = _requirement_effective_due_iso(r)
-        src_upd = _iso_or_none(r.get("updated_at"))
-        hash_frag = f"#req={_url_quote(req_code, safe='')}" if req_code and prop_id else ""
-        actions.append(_action(
-            ACTION_CERT_EXPIRING_SOON, f"Due soon: {disp}", f"{disp} is due to expire soon; renew or upload evidence.",
-            SCORE_CERT_EXPIRING_7D, SEVERITY_MEDIUM, related_property_id=prop_id, related_requirement_id=rid,
-            requirement_code=req_code or None, due_at=due_iso, source_updated_at=src_upd,
-            why_matters="Expiry reduces your compliance score and increases enforcement and void-risk exposure.",
-            recommended_action_detail="Renew or schedule renewal and upload evidence with confirmed expiry dates.",
-            recommended_url=(f"/properties/{prop_id}{hash_frag}" if prop_id else "/compliance-score"),
-            recommended_action_label="Review compliance",
-            portfolio_jurisdiction=r.get("jurisdiction"),
-        ))
-
-    q_miss = {"client_id": client_id, "status": {"$in": ["PENDING", "MISSING"]}}
-    if property_id_filter:
-        q_miss["property_id"] = property_id_filter
-    miss_reqs = await db.requirements.find(q_miss).limit(limit).to_list(limit)
-    for r in miss_reqs:
-        if r.get("evidence_doc_id"):
-            continue
-        ok, _eng = requirement_row_in_client_priority_stream(r, kind="missing")
-        if not ok:
-            continue
-        prop_id = r.get("property_id")
-        code_raw = r.get("code") or r.get("requirement_type") or ""
-        disp = requirement_label(code_raw) if code_raw else "Document"
-        req_code = _requirement_code_for_hash(r) or code_raw or None
-        rid = r.get("requirement_id")
-        due_iso = _requirement_effective_due_iso(r)
-        src_upd = _iso_or_none(r.get("updated_at"))
-        hash_frag = f"#req={_url_quote(req_code, safe='')}" if req_code and prop_id else ""
-        actions.append(_action(
-            ACTION_MISSING_DOCUMENT, f"Evidence needed: {disp}", f"Required evidence for {disp} is missing.",
-            SCORE_MISSING_DOCUMENT, SEVERITY_MEDIUM, related_property_id=prop_id, related_requirement_id=rid,
-            requirement_code=req_code or None, due_at=due_iso, source_updated_at=src_upd,
-            why_matters="Without evidence, the platform cannot confirm compliance for this obligation.",
-            recommended_action_detail="Upload the certificate or statutory document and confirm extracted dates.",
-            recommended_url=(f"/properties/{prop_id}{hash_frag}" if prop_id else "/documents"),
-            recommended_action_label="Upload document",
-            portfolio_jurisdiction=r.get("jurisdiction"),
-        ))
+        prop_doc = next((p for p in props_surface if p.get("property_id") == r.get("property_id")), None)
+        raw_gaps = infer_compliance_gaps_for_requirement(r, property_doc=prop_doc)
+        for g in raw_gaps:
+            kind = _priority_stream_kind_for_gap(g.gap_kind)
+            ok, _eng = requirement_row_in_client_priority_stream(r, kind=kind)
+            if not ok:
+                continue
+            actions.extend(gaps_to_priority_actions([g], r))
 
     try:
         from services import risk_signal_service

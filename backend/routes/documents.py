@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form, Depends, status, Body, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from database import database
 from middleware import client_route_guard, admin_route_guard
 from models import Document, DocumentStatus, RequirementStatus, AuditAction
@@ -17,11 +17,22 @@ import logging
 from pathlib import Path
 
 from utils.storage_paths import resolve_data_dir, resolve_document_storage_path
+from services.requirement_evidence_authority import (
+    normalize_document_evidence_scope,
+    sync_for_documents_touching,
+    sync_requirement_evidence_authority,
+)
 from services.work_order_execution_constants import (
     COMPLIANCE_PROOF_NOT_SUBMITTED,
     COMPLIANCE_PROOF_SUBMITTED,
     COMPLIANCE_PROOF_VERIFIED,
     WORK_ORDER_KIND_COMPLIANCE,
+)
+from services.evidence_document_taxonomy import POLICY_BLOCK_UPLOAD, MATCH_OUTCOME_MATCH_CONFIRMED
+from services.evidence_document_match_engine import (
+    evaluate_document_requirement_match,
+    match_evaluation_to_persisted_document_fields,
+    document_blocks_verified_satisfaction,
 )
 
 logger = logging.getLogger(__name__)
@@ -403,6 +414,15 @@ class ExtractionApplyRequest(BaseModel):
     confirmed_data: Optional[Dict[str, Any]] = None
 
 
+class VerifyDocumentBody(BaseModel):
+    """Admin verify: optional override when evidence match engine blocked verification."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    evidence_mismatch_override: bool = False
+    evidence_mismatch_override_reason: Optional[str] = None
+
+
 # Document storage directory (configurable via DATA_DIR or DOCUMENT_STORAGE_PATH)
 DATA_DIR = resolve_data_dir()
 DOCUMENT_STORAGE_PATH = resolve_document_storage_path()
@@ -454,22 +474,29 @@ async def _run_analysis_after_upload(
                 {"_id": 0, "requirement_id": 1, "property_id": 1, "client_id": 1},
             )
             extra: Dict[str, Any] = {}
-            if doc and doc.get("requirement_id") and doc.get("client_id"):
-                from services.document_requirement_evidence import detect_requirement_document_mismatch
-
-                req = await db.requirements.find_one(
-                    {"requirement_id": doc["requirement_id"], "client_id": doc["client_id"]},
-                    {"_id": 0, "requirement_type": 1, "requirement_code": 1},
+            if doc and doc.get("client_id"):
+                req = None
+                if doc.get("requirement_id"):
+                    req = await db.requirements.find_one(
+                        {"requirement_id": doc["requirement_id"], "client_id": doc["client_id"]},
+                        {"_id": 0},
+                    )
+                mev = evaluate_document_requirement_match(
+                    requirement=req,
+                    filename=str(doc.get("file_name") or ""),
+                    user_declared_document_type=doc.get("document_type"),
+                    extracted_data=extracted_data,
+                    upload_route_context="post_ai_extraction",
                 )
-                is_mm, reason = detect_requirement_document_mismatch(req, extracted_data)
-                if is_mm:
-                    extra["requirement_evidence_mismatch"] = True
-                    extra["requirement_evidence_mismatch_reason"] = (reason or "Possible wrong document for this requirement.")[:500]
-                else:
-                    extra["requirement_evidence_mismatch"] = False
-                    extra["requirement_evidence_mismatch_reason"] = None
+                extra.update(match_evaluation_to_persisted_document_fields(mev))
+                extra["requirement_evidence_mismatch"] = bool(mev.get("requirement_evidence_mismatch"))
+                rtxt = mev.get("mismatch_reason_text")
+                extra["requirement_evidence_mismatch_reason"] = (rtxt[:500] if isinstance(rtxt, str) else None)
+                if mev.get("manual_review_flag_suggested"):
+                    extra["manual_review_flag"] = True
             if extra:
                 await db.documents.update_one({"document_id": document_id}, {"$set": extra})
+            await sync_for_documents_touching(db, document_id=document_id)
     except Exception as e:
         logger.warning("Post-upload analysis failed for %s: %s", document_id, e)
         await db.documents.update_one(
@@ -531,6 +558,15 @@ async def bulk_upload_documents(
             {"property_id": property_id, "client_id": user["client_id"]},
             {"_id": 0}
         ).to_list(100)
+        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=user["client_id"],
+            requirements=requirements,
+            client_doc=await db.clients.find_one({"client_id": user["client_id"]}, {"_id": 0}) or {},
+            properties=[property_doc],
+        )
         
         results = []
         
@@ -566,62 +602,85 @@ async def bulk_upload_documents(
                 
                 await db.documents.insert_one(doc)
                 
-                # Try AI analysis to auto-match requirement
+                # Try AI analysis + requirement-aware match engine (parity with single-upload validation)
                 matched_requirement = None
+                bulk_match_payload: Dict[str, Any] = {}
                 try:
                     from services.document_analysis import document_analysis_service
-                    
+
                     analysis_result = await document_analysis_service.analyze_document(
                         file_path=str(file_path),
                         mime_type=file.content_type or "application/pdf",
                         document_id=document.document_id,
                         client_id=user["client_id"],
-                        actor_id=user["portal_user_id"]
+                        actor_id=user["portal_user_id"],
                     )
-                    
-                    if analysis_result["success"]:
-                        doc_type = analysis_result["extracted_data"].get("document_type", "").lower()
-                        
-                        # Match to requirement based on document type
-                        type_mapping = {
-                            "gas safety": "gas_safety",
-                            "gas safe": "gas_safety",
-                            "cp12": "gas_safety",
-                            "eicr": "eicr",
-                            "electrical": "eicr",
-                            "epc": "epc",
-                            "energy performance": "epc",
-                            "fire": "fire_alarm",
-                            "legionella": "legionella",
-                            "hmo": "hmo_license",
-                            "pat": "pat_testing"
-                        }
-                        
-                        for key, req_type in type_mapping.items():
-                            if key in doc_type:
-                                # Find matching requirement
-                                for req in requirements:
-                                    if req["requirement_type"] == req_type:
-                                        matched_requirement = req["requirement_id"]
-                                        
-                                        # Update document with requirement
-                                        await db.documents.update_one(
-                                            {"document_id": document.document_id},
-                                            {"$set": {"requirement_id": matched_requirement}}
-                                        )
-                                        # Do not mark requirement satisfied on upload; user confirms via modal or apply-extraction
-                                        break
-                                break
+
+                    if analysis_result.get("success"):
+                        extracted = analysis_result.get("extracted_data") or {}
+                        best_ev: Optional[Dict[str, Any]] = None
+                        best_req_id: Optional[str] = None
+                        best_score = -1.0
+                        from services.evidence_document_taxonomy import (
+                            MATCH_OUTCOME_MATCH_CONFIRMED,
+                            MATCH_OUTCOME_MATCH_LIKELY,
+                        )
+
+                        for req in requirements:
+                            ev = evaluate_document_requirement_match(
+                                requirement=req,
+                                filename=file.filename or "",
+                                user_declared_document_type=None,
+                                extracted_data=extracted,
+                                upload_route_context="bulk_upload_post_analysis",
+                            )
+                            mo = str(ev.get("match_outcome") or "")
+                            if mo not in (MATCH_OUTCOME_MATCH_CONFIRMED, MATCH_OUTCOME_MATCH_LIKELY):
+                                continue
+                            if not ev.get("evidence_satisfies_requirement"):
+                                continue
+                            sc = float(ev.get("match_confidence") or 0.0)
+                            if sc > best_score:
+                                best_score = sc
+                                best_ev = ev
+                                best_req_id = str(req.get("requirement_id") or "")
+
+                        if best_req_id and best_ev:
+                            matched_requirement = best_req_id
+                            bulk_match_payload = match_evaluation_to_persisted_document_fields(best_ev)
+                            bulk_match_payload["requirement_id"] = best_req_id
+                        else:
+                            ev_unlinked = evaluate_document_requirement_match(
+                                requirement=None,
+                                filename=file.filename or "",
+                                user_declared_document_type=None,
+                                extracted_data=extracted,
+                                upload_route_context="bulk_upload_post_analysis_unlinked",
+                            )
+                            bulk_match_payload = match_evaluation_to_persisted_document_fields(ev_unlinked)
+                            if ev_unlinked.get("manual_review_flag_suggested"):
+                                bulk_match_payload["manual_review_flag"] = True
+
+                        if bulk_match_payload:
+                            await db.documents.update_one(
+                                {"document_id": document.document_id},
+                                {"$set": bulk_match_payload},
+                            )
+                        if matched_requirement:
+                            await sync_requirement_evidence_authority(db, matched_requirement)
                 except Exception as e:
                     logger.warning(f"AI analysis failed for {file.filename}: {e}")
-                
-                results.append({
-                    "filename": file.filename,
-                    "document_id": document.document_id,
-                    "status": "uploaded",
-                    "matched_requirement": matched_requirement,
-                    "ai_analyzed": matched_requirement is not None
-                })
+
+                results.append(
+                    {
+                        "filename": file.filename,
+                        "document_id": document.document_id,
+                        "status": "uploaded",
+                        "matched_requirement": matched_requirement,
+                        "ai_analyzed": matched_requirement is not None,
+                        "evidence_match": bulk_match_payload or None,
+                    }
+                )
                 
             except Exception as e:
                 logger.error(f"Failed to upload {file.filename}: {e}")
@@ -768,6 +827,15 @@ async def upload_zip_archive(
             {"property_id": property_id, "client_id": user["client_id"]},
             {"_id": 0}
         ).to_list(100)
+        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=user["client_id"],
+            requirements=requirements,
+            client_doc=await db.clients.find_one({"client_id": user["client_id"]}, {"_id": 0}) or {},
+            properties=[property_doc],
+        )
         
         # Save ZIP to temp location
         temp_dir = tempfile.mkdtemp()
@@ -879,60 +947,84 @@ async def upload_zip_archive(
                         
                         await db.documents.insert_one(doc)
                         
-                        # Try AI analysis for auto-matching
                         matched_requirement = None
+                        bulk_match_payload: Dict[str, Any] = {}
                         try:
                             from services.document_analysis import document_analysis_service
-                            
+
                             analysis_result = await document_analysis_service.analyze_document(
                                 file_path=str(dest_path),
                                 mime_type=mime_type,
                                 document_id=document.document_id,
                                 client_id=user["client_id"],
-                                actor_id=user["portal_user_id"]
+                                actor_id=user["portal_user_id"],
                             )
-                            
-                            if analysis_result["success"]:
-                                doc_type = analysis_result["extracted_data"].get("document_type", "").lower()
-                                
-                                # Match to requirement based on document type
-                                type_mapping = {
-                                    "gas safety": "gas_safety",
-                                    "gas safe": "gas_safety",
-                                    "cp12": "gas_safety",
-                                    "eicr": "eicr",
-                                    "electrical": "eicr",
-                                    "epc": "epc",
-                                    "energy performance": "epc",
-                                    "fire": "fire_alarm",
-                                    "legionella": "legionella",
-                                    "hmo": "hmo_license",
-                                    "pat": "pat_testing"
-                                }
-                                
-                                for key, req_type in type_mapping.items():
-                                    if key in doc_type:
-                                        for req in requirements:
-                                            if req["requirement_type"] == req_type:
-                                                matched_requirement = req["requirement_id"]
-                                                
-                                                await db.documents.update_one(
-                                                    {"document_id": document.document_id},
-                                                    {"$set": {"requirement_id": matched_requirement}}
-                                                )
-                                                # Do not mark requirement satisfied on upload; user confirms via modal or apply-extraction
-                                                break
-                                        break
+
+                            if analysis_result.get("success"):
+                                extracted = analysis_result.get("extracted_data") or {}
+                                best_ev: Optional[Dict[str, Any]] = None
+                                best_req_id: Optional[str] = None
+                                best_score = -1.0
+                                from services.evidence_document_taxonomy import (
+                                    MATCH_OUTCOME_MATCH_CONFIRMED,
+                                    MATCH_OUTCOME_MATCH_LIKELY,
+                                )
+
+                                for req in requirements:
+                                    ev = evaluate_document_requirement_match(
+                                        requirement=req,
+                                        filename=filename,
+                                        user_declared_document_type=None,
+                                        extracted_data=extracted,
+                                        upload_route_context="zip_upload_post_analysis",
+                                    )
+                                    mo = str(ev.get("match_outcome") or "")
+                                    if mo not in (MATCH_OUTCOME_MATCH_CONFIRMED, MATCH_OUTCOME_MATCH_LIKELY):
+                                        continue
+                                    if not ev.get("evidence_satisfies_requirement"):
+                                        continue
+                                    sc = float(ev.get("match_confidence") or 0.0)
+                                    if sc > best_score:
+                                        best_score = sc
+                                        best_ev = ev
+                                        best_req_id = str(req.get("requirement_id") or "")
+
+                                if best_req_id and best_ev:
+                                    matched_requirement = best_req_id
+                                    bulk_match_payload = match_evaluation_to_persisted_document_fields(best_ev)
+                                    bulk_match_payload["requirement_id"] = best_req_id
+                                else:
+                                    ev_unlinked = evaluate_document_requirement_match(
+                                        requirement=None,
+                                        filename=filename,
+                                        user_declared_document_type=None,
+                                        extracted_data=extracted,
+                                        upload_route_context="zip_upload_post_analysis_unlinked",
+                                    )
+                                    bulk_match_payload = match_evaluation_to_persisted_document_fields(ev_unlinked)
+                                    if ev_unlinked.get("manual_review_flag_suggested"):
+                                        bulk_match_payload["manual_review_flag"] = True
+
+                                if bulk_match_payload:
+                                    await db.documents.update_one(
+                                        {"document_id": document.document_id},
+                                        {"$set": bulk_match_payload},
+                                    )
+                                if matched_requirement:
+                                    await sync_requirement_evidence_authority(db, matched_requirement)
                         except Exception as e:
                             logger.warning(f"AI analysis failed for {filename}: {e}")
-                        
-                        results.append({
-                            "filename": filename,
-                            "document_id": document.document_id,
-                            "status": "uploaded",
-                            "matched_requirement": matched_requirement,
-                            "ai_analyzed": matched_requirement is not None
-                        })
+
+                        results.append(
+                            {
+                                "filename": filename,
+                                "document_id": document.document_id,
+                                "status": "uploaded",
+                                "matched_requirement": matched_requirement,
+                                "ai_analyzed": matched_requirement is not None,
+                                "evidence_match": bulk_match_payload or None,
+                            }
+                        )
                         
                     except Exception as e:
                         logger.error(f"Failed to process {filename}: {e}")
@@ -977,7 +1069,7 @@ async def upload_zip_archive(
                             actor_user_id=user.get("portal_user_id"),
                             actor_role=ACTOR_ROLE_CLIENT,
                             property_id=property_id,
-                            requirement_id=r.get("requirement_id"),
+                            requirement_id=r.get("matched_requirement"),
                             document_id=r["document_id"],
                             metadata={"filename": r.get("filename"), "zip": file.filename},
                         )
@@ -1021,7 +1113,17 @@ async def perform_client_document_upload(
     notes: Optional[str] = None,
     source: Optional[str] = None,
     document_metadata: Optional[str] = None,
+    evidence_scope_type: str = "PROPERTY",
 ) -> Dict[str, Any]:
+    if str(evidence_scope_type or "PROPERTY").strip().upper() != "PROPERTY":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=structured_error(
+                "EVIDENCE_SCOPE_NOT_SUPPORTED",
+                "Only PROPERTY-scoped compliance evidence uploads are supported in client flows.",
+            ),
+        )
+
     """
     Persist a client compliance upload (shared by POST /api/documents/upload and requirement-scoped routes).
     Caller must enforce rate limits and authentication.
@@ -1066,6 +1168,26 @@ async def perform_client_document_upload(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Requirement not found",
             )
+        from services.requirement_client_runtime_surface import requirement_row_eligible_on_client_runtime_surfaces
+
+        if not await requirement_row_eligible_on_client_runtime_surfaces(
+            db,
+            client_id=user["client_id"],
+            row=requirement,
+            property_doc=property_doc,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Requirement not found",
+            )
+        if (requirement.get("property_id") or "").strip() != (property_id or "").strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=structured_error(
+                    "EVIDENCE_SCOPE_MISMATCH",
+                    "Document property does not match the requirement's property; upload evidence for the correct property.",
+                ),
+            )
         requirement_id = rid
     else:
         requirement_id = None
@@ -1108,6 +1230,26 @@ async def perform_client_document_upload(
                 ),
             )
 
+    document_type_stored = document_type.strip() if isinstance(document_type, str) else None
+    evidence_match_evaluation = evaluate_document_requirement_match(
+        requirement=requirement,
+        filename=file.filename or "",
+        user_declared_document_type=document_type_stored,
+        extracted_data=None,
+        upload_route_context=(
+            "client_upload_pre_analysis" if requirement else "client_upload_pre_analysis_no_requirement"
+        ),
+    )
+    if requirement and evidence_match_evaluation.get("evidence_match_policy") == POLICY_BLOCK_UPLOAD:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=structured_error(
+                "EVIDENCE_DOCUMENT_TYPE_MISMATCH",
+                (evidence_match_evaluation.get("mismatch_reason_text") or "This file does not match the selected obligation."),
+                evidence_match=evidence_match_evaluation,
+            ),
+        )
+
     file_extension = Path(file.filename).suffix
     unique_filename = f"{uuid.uuid4()}{file_extension}"
     file_path = DOCUMENT_STORAGE_PATH / user["client_id"] / unique_filename
@@ -1120,7 +1262,6 @@ async def perform_client_document_upload(
     stored_path = f"{user['client_id']}/{unique_filename}"
 
     validated_at_iso = datetime.now(timezone.utc).isoformat()
-    document_type_stored = document_type.strip() if isinstance(document_type, str) else None
     validation_result_persist: Optional[Dict[str, Any]] = None
     if document_validation is not None:
         validation_result_persist = _build_validation_result_persist(
@@ -1149,8 +1290,25 @@ async def perform_client_document_upload(
 
     doc = document.model_dump()
     doc["uploaded_at"] = doc["uploaded_at"].isoformat()
+    doc.update(match_evaluation_to_persisted_document_fields(evidence_match_evaluation))
+    if evidence_match_evaluation.get("manual_review_flag_suggested"):
+        doc["manual_review_flag"] = True
+    try:
+        scope_payload = normalize_document_evidence_scope(
+            property_id=property_id,
+            client_id=user["client_id"],
+            evidence_scope_type="PROPERTY",
+        )
+        doc.update(scope_payload)
+    except ValueError as ve:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=structured_error("EVIDENCE_SCOPE_INVALID", str(ve)),
+        ) from ve
 
     await db.documents.insert_one(doc)
+    if requirement_id:
+        await sync_requirement_evidence_authority(db, requirement_id)
 
     asyncio.create_task(
         _run_analysis_after_upload(
@@ -1248,6 +1406,15 @@ async def perform_client_document_upload(
         "document_id": document.document_id,
         "outcome": outcome,
     }
+    out["evidence_match"] = {
+        "match_outcome": evidence_match_evaluation.get("match_outcome"),
+        "match_confidence": evidence_match_evaluation.get("match_confidence"),
+        "predicted_document_type": evidence_match_evaluation.get("predicted_document_type"),
+        "mismatch_reason_code": evidence_match_evaluation.get("mismatch_reason_code"),
+        "mismatch_reason_text": evidence_match_evaluation.get("mismatch_reason_text"),
+        "user_messages": evidence_match_evaluation.get("user_messages") or [],
+        "evidence_satisfies_requirement": evidence_match_evaluation.get("evidence_satisfies_requirement"),
+    }
     if document_validation is not None:
         out["document_validation"] = {
             "valid": document_validation.get("valid"),
@@ -1276,6 +1443,7 @@ async def upload_document(
         None,
         description='Optional JSON object for jurisdiction-aware checks, e.g. {"issue_date":"2024-06-01","engineer_id":"GAS123"}',
     ),
+    evidence_scope_type: str = Form("PROPERTY"),
 ):
     """Upload a compliance document (client or admin). requirement_id optional for 'Other' docs (link later)."""
     user = await client_route_guard(request)
@@ -1292,6 +1460,7 @@ async def upload_document(
             notes=notes,
             source=source,
             document_metadata=document_metadata,
+            evidence_scope_type=evidence_scope_type,
         )
 
     except HTTPException:
@@ -1386,6 +1555,18 @@ async def admin_upload_document(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Requirement not found"
             )
+        from services.requirement_client_runtime_surface import requirement_row_eligible_on_client_runtime_surfaces
+
+        if not await requirement_row_eligible_on_client_runtime_surfaces(
+            db,
+            client_id=client_id,
+            row=requirement,
+            property_doc=property_doc,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Requirement not found",
+            )
 
         validated_wo = await _validate_optional_work_order_document_link(
             db,
@@ -1394,7 +1575,25 @@ async def admin_upload_document(
             property_id=property_id,
             requirement_id=requirement_id,
         )
-        
+
+        document_type_stored = document_type.strip() if isinstance(document_type, str) else None
+        admin_mev = evaluate_document_requirement_match(
+            requirement=requirement,
+            filename=file.filename or "",
+            user_declared_document_type=document_type_stored,
+            extracted_data=None,
+            upload_route_context="admin_upload_pre_analysis",
+        )
+        if admin_mev.get("evidence_match_policy") == POLICY_BLOCK_UPLOAD:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=structured_error(
+                    "EVIDENCE_DOCUMENT_TYPE_MISMATCH",
+                    (admin_mev.get("mismatch_reason_text") or "This file does not match the selected obligation."),
+                    evidence_match=admin_mev,
+                ),
+            )
+
         # Create unique filename
         file_extension = Path(file.filename).suffix
         unique_filename = f"{uuid.uuid4()}{file_extension}"
@@ -1419,16 +1618,20 @@ async def admin_upload_document(
             mime_type=file.content_type or "application/octet-stream",
             status=DocumentStatus.UPLOADED,
             uploaded_by=user["portal_user_id"],
-            manual_review_flag=False,
-            document_type=document_type.strip() if isinstance(document_type, str) else None,
+            manual_review_flag=bool(admin_mev.get("manual_review_flag_suggested")),
+            document_type=document_type_stored,
             source=(source.strip() if isinstance(source, str) and source.strip() else None) or "admin",
             notes=notes.strip() if isinstance(notes, str) else None,
         )
         
         doc = document.model_dump()
         doc["uploaded_at"] = doc["uploaded_at"].isoformat()
-        
+        doc.update(match_evaluation_to_persisted_document_fields(admin_mev))
+        if admin_mev.get("manual_review_flag_suggested"):
+            doc["manual_review_flag"] = True
+
         await db.documents.insert_one(doc)
+        await sync_requirement_evidence_authority(db, requirement_id)
         
         # Do not mark requirement as satisfied on upload; user/admin confirms via apply-extraction or modal
         from services.provisioning import provisioning_service
@@ -1579,6 +1782,7 @@ async def admin_confirm_extraction(request: Request, body: AdminExtractionConfir
                 except (TypeError, ValueError):
                     pass
             await db.requirements.update_one({"requirement_id": requirement_id}, {"$set": update_fields})
+            await sync_requirement_evidence_authority(db, requirement_id)
         except ValueError:
             pass
     now = datetime.now(timezone.utc)
@@ -1613,14 +1817,15 @@ async def admin_reject_extraction(request: Request, body: AdminExtractionRejectB
     extraction_id = document.get("extraction_id")
     if extraction_id:
         now = datetime.now(timezone.utc)
-        await db.extracted_documents.update_one(
-            {"extraction_id": extraction_id},
-            {"$set": {"status": "REJECTED", "audit.updated_at": now}}
-        )
+    await db.extracted_documents.update_one(
+        {"extraction_id": extraction_id},
+        {"$set": {"status": "REJECTED", "audit.updated_at": now}}
+    )
     await db.documents.update_one(
         {"document_id": document_id},
         {"$set": {"extraction_status": "REJECTED", "ai_extraction.review_status": "rejected", "ai_extraction.rejection_reason": body.reason or "Admin rejected"}}
     )
+    await sync_for_documents_touching(db, document_id=document_id)
     await create_audit_log(
         action=AuditAction.DOCUMENT_AI_ANALYZED,
         actor_id=None,
@@ -1633,7 +1838,11 @@ async def admin_reject_extraction(request: Request, body: AdminExtractionRejectB
 
 
 @router.post("/verify/{document_id}")
-async def verify_document(request: Request, document_id: str):
+async def verify_document(
+    request: Request,
+    document_id: str,
+    body: VerifyDocumentBody = Body(default_factory=VerifyDocumentBody),
+):
     """Admin verifies a document."""
     user = await admin_route_guard(request)
     db = database.get_db()
@@ -1644,6 +1853,50 @@ async def verify_document(request: Request, document_id: str):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Document not found"
+            )
+
+        if document.get("requirement_id") and document_blocks_verified_satisfaction(document):
+            if not body.evidence_mismatch_override:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=structured_error(
+                        "EVIDENCE_MATCH_VERIFICATION_BLOCKED",
+                        "This document failed automated evidence matching against the linked obligation. "
+                        "Use override only after manual review, or relink / reject instead.",
+                        evidence_match={
+                            "match_outcome": document.get("match_outcome"),
+                            "predicted_document_type": document.get("predicted_document_type"),
+                            "mismatch_reason_code": document.get("mismatch_reason_code"),
+                            "mismatch_reason_text": document.get("mismatch_reason_text"),
+                        },
+                    ),
+                )
+            now_iso = datetime.now(timezone.utc).isoformat()
+            await db.documents.update_one(
+                {"document_id": document_id},
+                {
+                    "$set": {
+                        "reviewed_match_outcome": MATCH_OUTCOME_MATCH_CONFIRMED,
+                        "reviewed_match_actor_id": user.get("portal_user_id"),
+                        "reviewed_match_at": now_iso,
+                        "evidence_satisfies_requirement": True,
+                        "match_outcome": MATCH_OUTCOME_MATCH_CONFIRMED,
+                        "requirement_evidence_mismatch": False,
+                        "requirement_evidence_mismatch_reason": None,
+                    }
+                },
+            )
+            document = await db.documents.find_one({"document_id": document_id}, {"_id": 0}) or document
+            await create_audit_log(
+                action=AuditAction.ADMIN_ACTION,
+                actor_id=user.get("portal_user_id"),
+                client_id=document.get("client_id"),
+                resource_type="document",
+                resource_id=document_id,
+                metadata={
+                    "action_type": "EVIDENCE_MATCH_OVERRIDE_VERIFY",
+                    "reason": (body.evidence_mismatch_override_reason or "")[:2000] if body else None,
+                },
             )
         
         old_status = document["status"]
@@ -1668,6 +1921,7 @@ async def verify_document(request: Request, document_id: str):
                     }
                 },
             )
+            await sync_requirement_evidence_authority(db, str(document["requirement_id"]))
             try:
                 await _finalize_active_compliance_jobs_after_certificate_verified(
                     db,
@@ -1989,6 +2243,7 @@ async def _revert_requirement_if_no_verified_docs(db, requirement_id: str, prope
         {"requirement_id": requirement_id, "status": DocumentStatus.VERIFIED.value}
     )
     if remaining > 0:
+        await sync_requirement_evidence_authority(db, requirement_id, property_id_hint=property_id)
         return
     filter_query = {"requirement_id": requirement_id}
     if property_id:
@@ -2011,6 +2266,7 @@ async def _revert_requirement_if_no_verified_docs(db, requirement_id: str, prope
             "$unset": {"extracted_expiry_date": "", "confirmed_expiry_date": ""},
         },
     )
+    await sync_requirement_evidence_authority(db, requirement_id, property_id_hint=property_id)
     if property_id:
         from services.provisioning import provisioning_service
         await provisioning_service._update_property_compliance(property_id)
@@ -2424,9 +2680,15 @@ async def list_documents(request: Request, property_id: str = None, requirement_
     db = database.get_db()
     
     try:
-        query = {"client_id": user["client_id"]}
+        query: Dict[str, Any] = {"client_id": user["client_id"]}
         if property_id:
-            query["property_id"] = property_id
+            query["$or"] = [
+                {"property_id": property_id},
+                {
+                    "authoritative_property_id": property_id,
+                    "evidence_scope_type": {"$nin": ["INTAKE_STAGING", "PORTFOLIO", "UNRESOLVED"]},
+                },
+            ]
         if requirement_id:
             query["requirement_id"] = requirement_id
         
@@ -2550,7 +2812,42 @@ async def apply_ai_extraction(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Associated requirement not found: {requirement_id}"
             )
-        
+        cid_apply = document.get("client_id")
+        prop_apply = await db.properties.find_one(
+            {"property_id": document.get("property_id"), "client_id": cid_apply},
+            {"_id": 0},
+        )
+        if user.get("role") != "ROLE_ADMIN" and prop_apply:
+            from services.requirement_client_runtime_surface import requirement_row_eligible_on_client_runtime_surfaces
+
+            if not await requirement_row_eligible_on_client_runtime_surfaces(
+                db,
+                client_id=str(cid_apply),
+                row=requirement,
+                property_doc=prop_apply,
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Associated requirement not found: {requirement_id}",
+                )
+
+        apply_mev = evaluate_document_requirement_match(
+            requirement=requirement,
+            filename=str(document.get("file_name") or ""),
+            user_declared_document_type=document.get("document_type"),
+            extracted_data=data,
+            upload_route_context="apply_extraction_confirmation",
+        )
+        if not apply_mev.get("evidence_satisfies_requirement"):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=structured_error(
+                    "EVIDENCE_MATCH_BLOCKS_APPLY",
+                    "The confirmed extraction does not match the linked obligation. Relink to the correct requirement or ask an administrator to review.",
+                    evidence_match=apply_mev,
+                ),
+            )
+
         # Capture before state for audit
         before_state = {
             "due_date": requirement.get("due_date"),
@@ -2605,9 +2902,11 @@ async def apply_ai_extraction(
             "ai_extraction.applied_data": data,
             "ai_extracted_data": data,  # Legacy field for compatibility
             "status": DocumentStatus.VERIFIED.value,
-            "requirement_evidence_mismatch": False,
-            "requirement_evidence_mismatch_reason": None,
         }
+        document_update.update(match_evaluation_to_persisted_document_fields(apply_mev))
+        document_update["requirement_evidence_mismatch"] = bool(apply_mev.get("requirement_evidence_mismatch"))
+        mrt = apply_mev.get("mismatch_reason_text")
+        document_update["requirement_evidence_mismatch_reason"] = (mrt[:500] if isinstance(mrt, str) else None)
         if extraction_id:
             document_update["extraction_status"] = "CONFIRMED"
             await db.extracted_documents.update_one(
@@ -2645,6 +2944,7 @@ async def apply_ai_extraction(
             {"requirement_id": requirement_id},
             {"$set": merged_req_update},
         )
+        await sync_requirement_evidence_authority(db, requirement_id)
         after_state["due_date"] = merged_req_update.get("due_date", after_state["due_date"])
         after_state["status"] = merged_req_update.get("status", after_state["status"])
         
@@ -2949,6 +3249,21 @@ async def get_document_details(request: Request, document_id: str):
                 {"requirement_id": document["requirement_id"]},
                 {"_id": 0}
             )
+            if requirement and user.get("role") != "ROLE_ADMIN":
+                prop_d = await db.properties.find_one(
+                    {"property_id": document.get("property_id"), "client_id": user["client_id"]},
+                    {"_id": 0},
+                )
+                if prop_d:
+                    from services.requirement_client_runtime_surface import requirement_row_eligible_on_client_runtime_surfaces
+
+                    if not await requirement_row_eligible_on_client_runtime_surfaces(
+                        db,
+                        client_id=user["client_id"],
+                        row=requirement,
+                        property_doc=prop_d,
+                    ):
+                        requirement = None
         
         # Get property info
         property_doc = None

@@ -22,8 +22,10 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.graphics.shapes import Drawing, Rect
 from reportlab.graphics.charts.piecharts import Pie
 from database import database
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
+
+from utils.expiry_utils import get_computed_status, get_effective_expiry_date
 import io
 import logging
 
@@ -164,18 +166,38 @@ class ProfessionalReportGenerator:
         client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
         properties = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
         requirements = await db.requirements.find({"client_id": client_id}, {"_id": 0}).to_list(10000)
-        
+        from services.requirement_client_runtime_surface import (
+            filter_requirement_rows_for_client_runtime_surfaces,
+        )
+
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=client_id,
+            requirements=requirements,
+            client_doc=client,
+            properties=properties,
+        )
+        client_doc = client or {}
+        prop_map = {p["property_id"]: p for p in properties if p.get("property_id")}
+
+        def _row_cs(req: Dict[str, Any]) -> str:
+            return get_computed_status(
+                req,
+                property_doc=prop_map.get(req.get("property_id")),
+                client_doc=client_doc,
+            ) or ""
+
         # Calculate stats
         total_props = len(properties)
         green = sum(1 for p in properties if p.get("compliance_status") == "GREEN")
         amber = sum(1 for p in properties if p.get("compliance_status") == "AMBER")
         red = sum(1 for p in properties if p.get("compliance_status") == "RED")
-        
+
         total_reqs = len(requirements)
-        compliant = sum(1 for r in requirements if r.get("status") == "COMPLIANT")
-        pending = sum(1 for r in requirements if r.get("status") == "PENDING")
-        overdue = sum(1 for r in requirements if r.get("status") == "OVERDUE")
-        expiring = sum(1 for r in requirements if r.get("status") == "EXPIRING_SOON")
+        compliant = sum(1 for r in requirements if _row_cs(r) in ("COMPLIANT", "NOT_REQUIRED"))
+        pending = sum(1 for r in requirements if _row_cs(r) == "UNKNOWN_DATE")
+        overdue = sum(1 for r in requirements if _row_cs(r) in ("OVERDUE", "EXPIRED"))
+        expiring = sum(1 for r in requirements if _row_cs(r) == "EXPIRING_SOON")
         
         # Build PDF
         buffer = io.BytesIO()
@@ -402,8 +424,6 @@ class ProfessionalReportGenerator:
         days: int = 90
     ) -> io.BytesIO:
         """Generate expiry schedule PDF showing upcoming certificate expirations."""
-        from datetime import timedelta
-        
         db = database.get_db()
         branding = await self.get_branding(client_id)
         styles = self.create_styles(branding)
@@ -413,21 +433,41 @@ class ProfessionalReportGenerator:
         now = datetime.now(timezone.utc)
         end_date = (now + timedelta(days=days)).isoformat()
         
-        properties = await db.properties.find(
-            {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1}
-        ).to_list(1000)
-        
+        properties = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
+
         property_map = {p["property_id"]: p for p in properties}
         property_ids = list(property_map.keys())
-        
-        requirements = await db.requirements.find(
-            {
-                "property_id": {"$in": property_ids},
-                "due_date": {"$lte": end_date, "$gte": now.isoformat()}
-            },
-            {"_id": 0}
-        ).sort("due_date", 1).to_list(500)
+        client_row = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
+
+        all_reqs = await db.requirements.find(
+            {"property_id": {"$in": property_ids}},
+            {"_id": 0},
+        ).to_list(10000)
+        from services.requirement_client_runtime_surface import (
+            filter_requirement_rows_for_client_runtime_surfaces,
+        )
+
+        all_reqs = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=client_id,
+            requirements=all_reqs,
+            client_doc=client_row,
+            properties=properties,
+        )
+
+        requirements: List[Dict[str, Any]] = []
+        end_dt = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+        for r in all_reqs:
+            eff = get_effective_expiry_date(r)
+            if eff is None:
+                continue
+            if eff.tzinfo is None:
+                eff = eff.replace(tzinfo=timezone.utc)
+            if now <= eff <= end_dt:
+                requirements.append(r)
+
+        requirements.sort(key=lambda x: get_effective_expiry_date(x) or now)
+        requirements = requirements[:500]
         
         # Build PDF
         buffer = io.BytesIO()
@@ -464,19 +504,20 @@ class ProfessionalReportGenerator:
         exp_data = [["Expiry Date", "Requirement", "Property", "Status"]]
         for req in requirements:
             prop = property_map.get(req.get("property_id"), {})
-            due_date = req.get("due_date", "")
-            if due_date:
+            eff = get_effective_expiry_date(req)
+            due_date = ""
+            if eff:
                 try:
-                    dt = datetime.fromisoformat(due_date.replace('Z', '+00:00'))
-                    due_date = dt.strftime('%d %b %Y')
-                except:
-                    pass
-            
+                    due_date = eff.strftime("%d %b %Y")
+                except Exception:
+                    due_date = str(eff)[:12]
+            cs = get_computed_status(req, property_doc=prop, client_doc=client_row) or (req.get("status") or "")
+
             exp_data.append([
                 due_date,
                 req.get("requirement_type", "Unknown"),
                 prop.get("address_line_1", "")[:25],
-                req.get("status", "")
+                cs,
             ])
         
         exp_table = Table(exp_data, colWidths=[80, 140, 150, 80])

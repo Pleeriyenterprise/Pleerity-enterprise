@@ -91,6 +91,11 @@ class TestProvisioningEmailFailureIsolation:
         db, _ = _make_mock_db(client_status="PROVISIONING", has_portal_user=True, has_properties=True)
 
         with patch("services.provisioning.database.get_db", return_value=db), \
+             patch(
+                 "services.provisioning.materialize_requirements_for_property",
+                 new_callable=AsyncMock,
+                 return_value={"ok": True, "planned_types": [], "upsert_passes": 0, "reconciled_obsolete": 0},
+             ), \
              patch("services.provisioning.create_audit_log", new_callable=AsyncMock) as mock_audit:
             with patch.object(
                 provisioning_service,
@@ -128,6 +133,11 @@ class TestProvisioningFailedRetry:
         db, client = _make_mock_db(client_status="FAILED", has_portal_user=True, has_properties=True)
 
         with patch("services.provisioning.database.get_db", return_value=db), \
+             patch(
+                 "services.provisioning.materialize_requirements_for_property",
+                 new_callable=AsyncMock,
+                 return_value={"ok": True, "planned_types": [], "upsert_passes": 0, "reconciled_obsolete": 0},
+             ), \
              patch("services.provisioning.create_audit_log", new_callable=AsyncMock):
             with patch.object(
                 provisioning_service,

@@ -201,6 +201,8 @@ _SPECS_BY_STORAGE_SLUG: Dict[str, _EngineSpec] = {
     "deposit_pi": _TENANCY_SOFT,
     "deposit_prescribed_info": _TENANCY_SOFT,
     "right_to_rent": _TENANCY_SOFT,
+    "rent_smart_wales": _LANDLORD_REG,
+    "landlord_registration_ni": _LANDLORD_REG,
     "smoke_alarms": _SPECS_BY_SCORING_CODE["FIRE_DETECTION"],
     "co_alarms": _SPECS_BY_SCORING_CODE["FIRE_DETECTION"],
     "fire_risk_assessment": _HMO_FIRE,

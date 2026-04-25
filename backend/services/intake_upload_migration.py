@@ -94,6 +94,21 @@ async def migrate_intake_uploads_to_vault(client_id: str) -> dict:
         )
         doc_dict = doc.model_dump()
         doc_dict["uploaded_at"] = doc_dict["uploaded_at"].isoformat() if hasattr(doc_dict["uploaded_at"], "isoformat") else doc_dict["uploaded_at"]
+        from services.evidence_document_match_engine import (
+            evaluate_document_requirement_match,
+            match_evaluation_to_persisted_document_fields,
+        )
+        from services.evidence_document_taxonomy import EVIDENCE_MATCH_LEGACY_STATE_UNCLASSIFIED_PRE_ENGINE
+
+        _mev = evaluate_document_requirement_match(
+            requirement=None,
+            filename=original_filename,
+            user_declared_document_type=None,
+            extracted_data=None,
+            upload_route_context="intake_migration",
+        )
+        doc_dict.update(match_evaluation_to_persisted_document_fields(_mev))
+        doc_dict["evidence_match_legacy_state"] = EVIDENCE_MATCH_LEGACY_STATE_UNCLASSIFIED_PRE_ENGINE
         await db.documents.insert_one(doc_dict)
         now = datetime.now(timezone.utc).isoformat()
         await db.intake_uploads.update_one(

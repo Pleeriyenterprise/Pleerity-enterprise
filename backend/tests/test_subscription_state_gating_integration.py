@@ -2,7 +2,7 @@
 Integration tests for subscription state gating (CANCELED / PAST_DUE / UNPAID) and downgrade reconciliation.
 
 Ensures:
-- Pro client with subscription_status CANCELED/PAST_DUE/UNPAID gets 403 SUBSCRIPTION_INACTIVE on gated features.
+- Pro client with subscription_status CANCELED/PAST_DUE/UNPAID gets appropriate deny codes (cancelled / grace / suspended).
 - Plan reconciliation disables scheduled reports, SMS prefs, tenant access, white-label on downgrade/cancel.
 - Job runner skips scheduled reports and SMS when plan/subscription does not allow.
 """
@@ -18,7 +18,7 @@ if str(backend_root) not in sys.path:
 
 @pytest.mark.asyncio
 async def test_enforce_feature_returns_subscription_inactive_when_canceled():
-    """Client with billing_plan=PLAN_3_PRO but subscription_status=CANCELED → enforce_feature denies with SUBSCRIPTION_INACTIVE."""
+    """Client with billing_plan=PLAN_3_PRO but subscription_status=CANCELED → enforce_feature denies (cancelled)."""
     from services.plan_registry import plan_registry
 
     db = MagicMock()
@@ -33,8 +33,8 @@ async def test_enforce_feature_returns_subscription_inactive_when_canceled():
         allowed, msg, details = await plan_registry.enforce_feature("client-pro-canceled", "reports_pdf")
     assert allowed is False
     assert details is not None
-    assert details.get("error_code") == "SUBSCRIPTION_INACTIVE"
-    assert "CANCELED" in (msg or "")
+    assert details.get("error_code") == "SUBSCRIPTION_CANCELLED"
+    assert "cancel" in (msg or "").lower()
 
 
 @pytest.mark.asyncio
@@ -54,7 +54,29 @@ async def test_enforce_feature_returns_subscription_inactive_when_past_due():
         allowed, msg, details = await plan_registry.enforce_feature("client-past-due", "reports_csv")
     assert allowed is False
     assert details is not None
-    assert details.get("error_code") == "SUBSCRIPTION_INACTIVE"
+    assert details.get("error_code") == "SUBSCRIPTION_GRACE_PAYMENT"
+
+
+@pytest.mark.asyncio
+async def test_enforce_feature_allows_core_feature_when_past_due():
+    """PAST_DUE is GRACE: compliance_dashboard is not blocked during grace."""
+    from services.plan_registry import plan_registry
+
+    db = MagicMock()
+    db.clients.find_one = AsyncMock(
+        return_value={
+            "client_id": "client-pd-grace",
+            "billing_plan": "PLAN_3_PRO",
+            "subscription_status": "PAST_DUE",
+        }
+    )
+    db.client_billing = MagicMock()
+    db.client_billing.find_one = AsyncMock(return_value=None)
+    with patch("services.plan_registry.database.get_db", return_value=db):
+        allowed, msg, details = await plan_registry.enforce_feature("client-pd-grace", "compliance_dashboard")
+    assert allowed is True
+    assert msg is None
+    assert details is None
 
 
 @pytest.mark.asyncio
@@ -73,7 +95,7 @@ async def test_enforce_feature_returns_subscription_inactive_when_unpaid():
     with patch("services.plan_registry.database.get_db", return_value=db):
         allowed, _, details = await plan_registry.enforce_feature("client-unpaid", "scheduled_reports")
     assert allowed is False
-    assert details.get("error_code") == "SUBSCRIPTION_INACTIVE"
+    assert details.get("error_code") == "SUBSCRIPTION_SUSPENDED"
 
 
 @pytest.mark.asyncio

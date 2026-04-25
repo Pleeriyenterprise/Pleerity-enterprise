@@ -37,6 +37,7 @@ import {
   ListTodo,
   Inbox,
   Gauge,
+  Mail,
 } from 'lucide-react';
 import { resolveNotificationTarget } from '../utils/notificationDeepLink';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
@@ -66,6 +67,7 @@ const PORTAL_TABS = [
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { type: 'group', label: 'Operations', icon: Wrench, children: OPERATIONS_CHILDREN },
   { path: '/tenants', label: 'Tenants', icon: Users, feature: 'tenant_portal' },
+  { path: '/compliance/tenant-delivery', label: 'Tenant delivery', icon: Mail, feature: 'tenant_portal' },
   { path: '/settings/billing', label: 'Billing', icon: CreditCard, feature: 'invoicing' },
   { path: '/settings', label: 'Settings', icon: Settings, end: true },
 ];

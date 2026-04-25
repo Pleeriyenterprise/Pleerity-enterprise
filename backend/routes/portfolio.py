@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from typing import Optional
 import logging
 
+from utils.expiry_utils import get_computed_status, get_effective_expiry_date
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"], dependencies=[Depends(client_route_guard)])
 
@@ -70,7 +72,7 @@ async def get_compliance_summary(request: Request):
     db = database.get_db()
     properties = await db.properties.find(
         {"client_id": client_id},
-        {"_id": 0, "property_id": 1, "address_line_1": 1, "postcode": 1, "nickname": 1},
+        {"_id": 0},
     ).to_list(100)
     if not properties:
         return {
@@ -78,24 +80,45 @@ async def get_compliance_summary(request: Request):
             "risk_level": "Low Risk",
             "properties": [],
         }
+    client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
     requirements = await db.requirements.find(
         {"client_id": client_id},
-        {"_id": 0, "property_id": 1, "status": 1},
+        {"_id": 0},
     ).to_list(1000)
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=requirements,
+        client_doc=client_doc,
+        properties=properties,
+    )
+    prop_by_id = {p["property_id"]: p for p in properties if p.get("property_id")}
     total_weighted_score = 0.0
     total_requirements = 0
     property_summaries = []
     for prop in properties:
         pid = prop["property_id"]
         prop_reqs = [r for r in requirements if r.get("property_id") == pid]
-        overdue_count = sum(1 for r in prop_reqs if r.get("status") in ("OVERDUE", "EXPIRED"))
-        expiring_soon_count = sum(1 for r in prop_reqs if r.get("status") == "EXPIRING_SOON")
+        pd = prop_by_id.get(pid)
+        overdue_count = sum(
+            1
+            for r in prop_reqs
+            if get_computed_status(r, property_doc=pd, client_doc=client_doc) in ("OVERDUE", "EXPIRED")
+        )
+        expiring_soon_count = sum(
+            1
+            for r in prop_reqs
+            if get_computed_status(r, property_doc=pd, client_doc=client_doc) == "EXPIRING_SOON"
+        )
         if not prop_reqs:
             property_score = 100
         else:
             points = []
             for r in prop_reqs:
-                status_val = (r.get("status") or "PENDING").upper().strip()
+                cs = get_computed_status(r, property_doc=pd, client_doc=client_doc)
+                status_val = (cs or "PENDING").upper().strip()
                 pt = REQUIREMENT_POINTS.get(status_val, REQUIREMENT_POINTS["PENDING"])
                 points.append(pt)
             property_score = round(sum(points) / len(points))
@@ -139,7 +162,16 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": client_id},
-        {"_id": 0, "property_id": 1, "nickname": 1, "address_line_1": 1, "compliance_score": 1, "risk_level": 1, "compliance_last_calculated_at": 1},
+        {
+            "_id": 0,
+            "property_id": 1,
+            "nickname": 1,
+            "address_line_1": 1,
+            "compliance_score": 1,
+            "risk_level": 1,
+            "compliance_last_calculated_at": 1,
+            "jurisdiction": 1,
+        },
     )
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
@@ -153,23 +185,39 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
             response["risk_level"] = response["risk_level"]
     else:
         # Fallback: no catalog or no applicable; return minimal from requirements
+        client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
+        prop_full = await db.properties.find_one(
+            {"property_id": property_id, "client_id": client_id},
+            {"_id": 0},
+        ) or prop
         requirements = await db.requirements.find(
             {"client_id": client_id, "property_id": property_id},
-            {"_id": 0, "requirement_id": 1, "requirement_type": 1, "status": 1, "due_date": 1, "description": 1},
+            {"_id": 0},
         ).to_list(200)
+        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=client_id,
+            requirements=requirements,
+            client_doc=client_doc,
+            properties=[prop_full],
+        )
         from services.catalog_compliance import _days_to_expiry, _requirement_numeric_score
         matrix = []
         for r in requirements:
-            due = r.get("due_date")
-            days = _days_to_expiry(due)
+            due = get_effective_expiry_date(r)
+            due_raw = due.isoformat() if due and hasattr(due, "isoformat") else r.get("due_date")
+            days = _days_to_expiry(due_raw)
+            cs = get_computed_status(r, property_doc=prop_full, client_doc=client_doc)
             matrix.append({
                 "requirement_code": r.get("requirement_type"),
                 "title": r.get("description") or r.get("requirement_type"),
-                "status": r.get("status") or "PENDING",
-                "numeric_score": _requirement_numeric_score(r.get("status"), due),
+                "status": cs or "PENDING",
+                "numeric_score": _requirement_numeric_score(cs, due_raw),
                 "criticality": "MED",
                 "weight": 1,
-                "expiry_date": due.isoformat() if hasattr(due, "isoformat") else due,
+                "expiry_date": due.isoformat() if due and hasattr(due, "isoformat") else due_raw,
                 "days_to_expiry": days,
                 "evidence_doc_id": None,
                 "requirement_id": r.get("requirement_id"),
@@ -326,7 +374,7 @@ async def get_property_evidence(request: Request, property_id: str):
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": client_id},
-        {"_id": 0, "property_id": 1},
+        {"_id": 0, "property_id": 1, "jurisdiction": 1},
     )
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
@@ -338,22 +386,38 @@ async def get_property_evidence(request: Request, property_id: str):
     ).sort("uploaded_at", -1).to_list(500)
 
     # Requirements for this property (for missing-critical count)
+    client_doc_ev = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
+    prop_evidence = await db.properties.find_one(
+        {"property_id": property_id, "client_id": client_id},
+        {"_id": 0},
+    ) or prop
     requirements = await db.requirements.find(
         {"client_id": client_id, "property_id": property_id},
-        {"_id": 0, "requirement_id": 1, "status": 1, "applicability": 1},
+        {"_id": 0},
     ).to_list(200)
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=requirements,
+        client_doc=client_doc_ev,
+        properties=[prop_evidence],
+    )
 
     # Linked: documents that have a requirement linked
     linked = sum(1 for d in documents if d.get("requirement_id"))
     # Requirement IDs that have at least one document linked
     linked_req_ids = {d.get("requirement_id") for d in documents if d.get("requirement_id")}
-    need_evidence_statuses = {"MISSING", "PENDING", "OVERDUE", "EXPIRING_SOON"}
-    missing_critical = sum(
-        1 for r in requirements
-        if (r.get("status") or "").upper() in need_evidence_statuses
-        and (r.get("applicability") or "").upper() != "NOT_REQUIRED"
-        and r.get("requirement_id") not in linked_req_ids
-    )
+    missing_critical = 0
+    for r in requirements:
+        if (r.get("applicability") or "").upper() == "NOT_REQUIRED":
+            continue
+        if r.get("requirement_id") in linked_req_ids:
+            continue
+        cs = get_computed_status(r, property_doc=prop_evidence, client_doc=client_doc_ev)
+        if cs in ("OVERDUE", "EXPIRED", "EXPIRING_SOON", "UNKNOWN_DATE"):
+            missing_critical += 1
 
     # Pending confirmation: has extraction but status != VERIFIED
     def _has_extraction(doc):

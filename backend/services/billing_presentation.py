@@ -125,6 +125,15 @@ def build_client_billing_payload(
     billing_last_synced_at_iso: Optional[str] = None,
     billing_sync_state: str = "unknown",
     currency: str = "gbp",
+    canonical_entitlement_state: Optional[str] = None,
+    last_payment_at_iso: Optional[str] = None,
+    last_payment_amount_pence: Optional[int] = None,
+    last_payment_stripe_invoice_id: Optional[str] = None,
+    last_payment_invoice_number: Optional[str] = None,
+    last_payment_status: Optional[str] = None,
+    open_invoice_status: Optional[str] = None,
+    stripe_next_payment_attempt_iso: Optional[str] = None,
+    last_invoice_failure_message: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Fields returned from GET /api/billing/status for portal users only.
@@ -172,6 +181,17 @@ def build_client_billing_payload(
             ),
             "renewal_soon": False,
             "currency": cur,
+            "canonical_entitlement_state": None,
+            "grace_period_summary": None,
+            "last_payment_at": None,
+            "last_payment_display": None,
+            "last_payment_amount_pence": None,
+            "last_payment_stripe_invoice_id": None,
+            "last_payment_invoice_number": None,
+            "last_payment_status": None,
+            "open_invoice_status": None,
+            "stripe_next_payment_attempt_at": None,
+            "last_invoice_failure_message": None,
         }
 
     cpe_iso = current_period_end_iso if current_period_end_iso is not None else next_renewal_date_iso
@@ -197,6 +217,29 @@ def build_client_billing_payload(
             setup_state = "paid"
         else:
             setup_state = "applies_first_cycle"
+
+    grace_period_summary: Optional[str] = None
+    if grace_period_ends_at_iso:
+        try:
+            gdt = datetime.fromisoformat(grace_period_ends_at_iso.replace("Z", "+00:00"))
+            grace_period_summary = (
+                f"Payment grace active — resolve billing by {gdt.strftime('%d %B %Y, %H:%M')} UTC "
+                f"to avoid losing full access."
+            )
+        except (ValueError, TypeError, OSError):
+            grace_period_summary = "Payment grace active — update your payment method in Billing."
+
+    last_payment_display: Optional[str] = None
+    if last_payment_at_iso:
+        try:
+            pdt = datetime.fromisoformat(last_payment_at_iso.replace("Z", "+00:00"))
+            tpart = pdt.strftime("%d %B %Y, %H:%M UTC")
+        except (ValueError, TypeError, OSError):
+            tpart = last_payment_at_iso[:19]
+        if last_payment_amount_pence is not None:
+            last_payment_display = f"{tpart} · {money_pence(last_payment_amount_pence) or '—'}"
+        else:
+            last_payment_display = tpart
 
     payload: Dict[str, Any] = {
         "has_subscription": has_subscription,
@@ -244,5 +287,16 @@ def build_client_billing_payload(
             period_end=period_end_dt,
         ),
         "currency": cur,
+        "canonical_entitlement_state": canonical_entitlement_state,
+        "grace_period_summary": grace_period_summary,
+        "last_payment_at": last_payment_at_iso,
+        "last_payment_display": last_payment_display,
+        "last_payment_amount_pence": last_payment_amount_pence,
+        "last_payment_stripe_invoice_id": last_payment_stripe_invoice_id,
+        "last_payment_invoice_number": last_payment_invoice_number,
+        "last_payment_status": last_payment_status,
+        "open_invoice_status": open_invoice_status,
+        "stripe_next_payment_attempt_at": stripe_next_payment_attempt_iso,
+        "last_invoice_failure_message": last_invoice_failure_message,
     }
     return payload

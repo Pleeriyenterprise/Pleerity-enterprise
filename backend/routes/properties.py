@@ -8,7 +8,7 @@ from models import Property, ComplianceStatus, AuditAction, UserRole
 from utils.expiry_utils import get_effective_expiry_date, get_computed_status, is_included_for_calendar
 from utils.audit import create_audit_log
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 import logging
 
@@ -584,6 +584,10 @@ async def patch_requirement(
         {"$set": update},
     )
 
+    from services.requirement_evidence_authority import sync_requirement_evidence_authority
+
+    await sync_requirement_evidence_authority(db, requirement_id, property_id_hint=property_id)
+
     # Recalculate property compliance when requirement expiry/status changes (e.g. confirm details later)
     from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROPERTY_UPDATED, ACTOR_CLIENT
     await enqueue_compliance_recalc(
@@ -626,17 +630,32 @@ async def list_properties(request: Request):
             {"client_id": user["client_id"]},
             {"_id": 0}
         ).to_list(100)
-        
-        # Get requirements count for each property
+        client_row = await db.clients.find_one({"client_id": user["client_id"]}, {"_id": 0}) or {}
+        all_reqs = await db.requirements.find(
+            {"client_id": user["client_id"]},
+            {"_id": 0},
+        ).to_list(2000)
+        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+        all_reqs = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=user["client_id"],
+            requirements=all_reqs,
+            client_doc=client_row,
+            properties=properties,
+        )
+        by_pid: Dict[str, List[Dict[str, Any]]] = {}
+        for r in all_reqs:
+            pid = r.get("property_id")
+            if not pid:
+                continue
+            by_pid.setdefault(str(pid), []).append(r)
+
         for prop in properties:
-            requirements = await db.requirements.find(
-                {"property_id": prop["property_id"]},
-                {"_id": 0}
-            ).to_list(100)
-            
+            requirements = by_pid.get(str(prop.get("property_id")), [])
             prop["requirements_count"] = len(requirements)
-            prop["compliant_count"] = sum(1 for r in requirements if r["status"] == "COMPLIANT")
-            prop["overdue_count"] = sum(1 for r in requirements if r["status"] == "OVERDUE")
+            prop["compliant_count"] = sum(1 for r in requirements if r.get("status") == "COMPLIANT")
+            prop["overdue_count"] = sum(1 for r in requirements if r.get("status") == "OVERDUE")
         
         return {"properties": properties}
     
@@ -874,6 +893,17 @@ async def get_upcoming_deadlines(request: Request, days: int = 30):
             {"client_id": user["client_id"]},
             {"_id": 0}
         ).to_list(1000)
+        props_all = await db.properties.find({"client_id": user["client_id"]}, {"_id": 0}).to_list(1000)
+        client_row_ud = await db.clients.find_one({"client_id": user["client_id"]}, {"_id": 0}) or {}
+        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=user["client_id"],
+            requirements=requirements,
+            client_doc=client_row_ud,
+            properties=props_all,
+        )
         
         # Filter for upcoming deadlines
         now = datetime.now(timezone.utc)
@@ -935,6 +965,15 @@ async def get_property_requirements_api(request: Request, property_id: str):
         {"property_id": property_id, "client_id": user["client_id"]},
         {"_id": 0},
     ).to_list(100)
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=user["client_id"],
+        requirements=requirements,
+        client_doc=await db.clients.find_one({"client_id": user["client_id"]}, {"_id": 0}) or {},
+        properties=[prop],
+    )
     from services.requirement_truth import enrich_requirements_for_client
 
     enriched, presentation = await enrich_requirements_for_client(db, user["client_id"], requirements)

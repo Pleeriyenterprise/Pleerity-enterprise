@@ -167,6 +167,20 @@ async def get_portal_facts(
         req_query,
         {"_id": 0, "requirement_id": 1, "property_id": 1, "requirement_type": 1, "status": 1, "due_date": 1},
     ).to_list(1000)
+    client_doc_plan = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "default_jurisdiction": 1},
+    ) or {}
+    props_plan = await db.properties.find({"client_id": client_id}, {"_id": 0}).limit(100).to_list(100)
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=requirements,
+        client_doc={**(client or {}), **client_doc_plan},
+        properties=props_plan,
+    )
 
     doc_query = {"client_id": client_id}
     if property_id:

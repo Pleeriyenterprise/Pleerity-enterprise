@@ -528,6 +528,17 @@ async def get_dashboard(request: Request):
             {"client_id": user["client_id"]},
             {"_id": 0}
         ).to_list(1000)
+        from services.requirement_client_runtime_surface import (
+            filter_requirement_rows_for_client_runtime_surfaces,
+        )
+
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=user["client_id"],
+            requirements=requirements,
+            client_doc=client or {},
+            properties=properties,
+        )
         visible_reqs = [r for r in requirements if _client_surface_visible_requirement_row(r)]
 
         # Calculate compliance summary (portal-visible rows only; aligns with Requirements list)
@@ -1024,6 +1035,9 @@ async def post_client_evidence_pack_job(
     Plan: requires audit_log_export (Pro). Rate: max 5 jobs per client per rolling 24h.
     Optional `period_start` / `period_end` (YYYY-MM-DD): filter requirements, documents, scores, work orders to that range; properties remain full portfolio.
     Set `background: true` to enqueue generation and poll GET /evidence-pack/jobs until status is completed.
+
+    For a single governed **per-property** audit bundle (PDF report + verified certs + timeline +
+    delivery proof + checksum manifest), use ``POST /api/client/compliance/audit-pack/generate`` instead.
     """
     from services.plan_registry import plan_registry
     from models import AuditAction
@@ -1628,6 +1642,17 @@ async def get_property_requirements(request: Request, property_id: str):
             {"property_id": property_id, "client_id": user["client_id"]},
             {"_id": 0}
         ).to_list(100)
+        from services.requirement_client_runtime_surface import (
+            filter_requirement_rows_for_client_runtime_surfaces,
+        )
+
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=user["client_id"],
+            requirements=requirements,
+            client_doc=await db.clients.find_one({"client_id": user["client_id"]}, {"_id": 0}) or {},
+            properties=[prop],
+        )
 
         from services.requirement_truth import enrich_requirements_for_client
 
@@ -1657,7 +1682,7 @@ async def get_requirement_explanation(
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
-        {"_id": 1},
+        {"_id": 0},
     )
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
@@ -1673,6 +1698,15 @@ async def get_requirement_explanation(
         raise HTTPException(status_code=400, detail="Provide requirement_code or requirement_id")
     req = await db.requirements.find_one(query, {"_id": 0})
     if not req:
+        raise HTTPException(status_code=404, detail="Requirement not found")
+    from services.requirement_client_runtime_surface import requirement_row_eligible_on_client_runtime_surfaces
+
+    if not await requirement_row_eligible_on_client_runtime_surfaces(
+        db,
+        client_id=user["client_id"],
+        row=req,
+        property_doc=prop,
+    ):
         raise HTTPException(status_code=404, detail="Requirement not found")
     code = req.get("requirement_code") or req.get("requirement_type")
     catalog = await db.requirements_catalog.find_one({"code": code}, {"_id": 0}) if code else None
@@ -1792,6 +1826,21 @@ async def get_all_requirements(request: Request):
             {"client_id": user["client_id"]},
             {"_id": 0}
         ).to_list(1000)
+        from services.requirement_client_runtime_surface import (
+            filter_requirement_rows_for_client_runtime_surfaces,
+        )
+
+        props_all = await db.properties.find(
+            {"client_id": user["client_id"]},
+            {"_id": 0},
+        ).to_list(1000)
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=user["client_id"],
+            requirements=requirements,
+            client_doc=await db.clients.find_one({"client_id": user["client_id"]}, {"_id": 0}) or {},
+            properties=props_all,
+        )
 
         from services.requirement_truth import enrich_requirements_for_client
 

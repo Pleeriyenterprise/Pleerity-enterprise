@@ -5,10 +5,15 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from services.compliance_expiry_policy import get_default_expiring_soon_days
 from services.document_status_service import (
+    STATUS_EXPIRED,
+    STATUS_EXPIRING_SOON,
     STATUS_TO_FRACTION,
+    STATUS_VALID,
+    STATUS_NEEDS_REVIEW,
     compute_requirement_status,
     pick_evidence_document,
 )
+from services.requirement_evidence_authority import map_authority_to_scoring_status
 from services.requirement_truth import (
     CONFIDENCE_ESTIMATED,
     evidence_state_for_documents_list,
@@ -47,6 +52,10 @@ _SHARED_LEGAL_CORE_WEIGHTS = {
 _EXTENDED_LEGAL_CORE_WEIGHTS = {
     "HMO_FIRE_RISK": {"weight": 8.0, "risk_level_if_failed": "HIGH"},
     "OCCUPATION_CONTRACT": {"weight": 3.0, "risk_level_if_failed": "LOW"},
+    "RIGHT_TO_RENT": {"weight": 5.0, "risk_level_if_failed": "MEDIUM"},
+    "RENT_SMART_WALES": {"weight": 5.0, "risk_level_if_failed": "MEDIUM"},
+    "LANDLORD_REGISTRATION_NI": {"weight": 8.0, "risk_level_if_failed": "MEDIUM"},
+    "PORTABLE_APPLIANCE": {"weight": 4.0, "risk_level_if_failed": "MEDIUM"},
 }
 _SCOTLAND_ONLY_WEIGHTS = {
     "LANDLORD_REGISTRATION": {"weight": 8.0, "risk_level_if_failed": "MEDIUM"},
@@ -85,12 +94,19 @@ REQ_ALIASES = {
     "SCOTLAND_LANDLORD_REGISTRATION": "LANDLORD_REGISTRATION",
     "LANDLORD_REGISTRATION_SCOTLAND": "LANDLORD_REGISTRATION",
     "WALES_OCCUPATION_CONTRACT": "OCCUPATION_CONTRACT",
+    "RENT_SMART_WALES": "RENT_SMART_WALES",
+    "LANDLORD_REGISTRATION_NI": "LANDLORD_REGISTRATION_NI",
+    "PORTABLE_APPLIANCE_TEST": "PORTABLE_APPLIANCE",
 }
 
 REQ_TO_DOC_TYPE = {
     "GAS_SAFETY": "gas_safety",
     "EICR": "eicr",
     "EPC": "epc",
+    "RIGHT_TO_RENT": "tenancy_agreement",
+    "RENT_SMART_WALES": "licence",
+    "LANDLORD_REGISTRATION_NI": "licence",
+    "PORTABLE_APPLIANCE": "electrical_installation",
     "FIRE_DETECTION": "fire_safety",
     "LEGIONELLA": "legionella",
     "HMO_FIRE_RISK": "fire_safety",
@@ -159,6 +175,63 @@ def _status_fraction_from_requirement(
 ) -> Tuple[float, str, Optional[str], Optional[str], List[str]]:
     if not req:
         return _status_fraction_from_doc(code, docs, as_of, expiring_soon_days, expects_expiry=expects_expiry)
+    auth_status = map_authority_to_scoring_status(req)
+    if auth_status:
+        eff = req.get("evidence_authority") or {}
+        exp_raw = eff.get("effective_expiry_date")
+        exp_d: Optional[date] = None
+        if exp_raw:
+            try:
+                exp_d = datetime.fromisoformat(str(exp_raw).replace("Z", "+00:00")).date()
+            except ValueError:
+                exp_d = None
+        if auth_status == "VALID" and exp_d is not None:
+            days = (exp_d - as_of).days
+            if days < 0:
+                return (
+                    STATUS_TO_FRACTION[STATUS_EXPIRED],
+                    "EXPIRED",
+                    exp_d.isoformat(),
+                    None,
+                    ["DOCUMENT_EXPIRED"],
+                )
+            if days <= expiring_soon_days:
+                return (
+                    STATUS_TO_FRACTION[STATUS_EXPIRING_SOON],
+                    "EXPIRING_SOON",
+                    exp_d.isoformat(),
+                    None,
+                    ["DOCUMENT_EXPIRING_SOON"],
+                )
+            return (
+                STATUS_TO_FRACTION[STATUS_VALID],
+                "VALID",
+                exp_d.isoformat(),
+                None,
+                [],
+            )
+        if auth_status == "VALID":
+            return (STATUS_TO_FRACTION[STATUS_VALID], "VALID", None, None, [])
+        if auth_status == "EXPIRED":
+            return (
+                STATUS_TO_FRACTION[STATUS_EXPIRED],
+                "EXPIRED",
+                exp_d.isoformat() if exp_d else None,
+                None,
+                ["DOCUMENT_EXPIRED"],
+            )
+        if auth_status == "NEEDS_REVIEW":
+            return (
+                STATUS_TO_FRACTION[STATUS_NEEDS_REVIEW],
+                "NEEDS_REVIEW",
+                exp_d.isoformat() if exp_d else None,
+                None,
+                ["AUTHORITY_NEEDS_REVIEW"],
+            )
+        if auth_status == "MISSING":
+            return (0.0, "MISSING", exp_d.isoformat() if exp_d else None, None, ["NO_DOCUMENT_FOUND"])
+        if auth_status == "NOT_APPLICABLE":
+            return (1.0, "NOT_APPLICABLE", exp_d.isoformat() if exp_d else None, None, [])
     app = (req.get("applicability") or "").strip().upper()
     if app == "NOT_REQUIRED":
         due = _parse_due(req.get("due_date") or req.get("expiry_date"))
@@ -205,9 +278,9 @@ def _str_truthy(val: Any) -> bool:
 
 def _applies_if(code: str, property_doc: Dict[str, Any], client_doc: Optional[Dict[str, Any]] = None) -> bool:
     if code == "GAS_SAFETY":
-        gas_decl = str(property_doc.get("cert_gas_safety") or "").upper() == "YES"
-        has_gas = bool(property_doc.get("has_gas_supply") or property_doc.get("has_gas"))
-        return gas_decl or has_gas
+        return _str_truthy(property_doc.get("has_gas_supply")) or str(
+            property_doc.get("cert_gas_safety") or ""
+        ).strip().upper() == "YES"
     if code == "LANDLORD_REGISTRATION":
         from services.compliance_rules_registry import resolve_portfolio_jurisdiction
 
@@ -226,6 +299,35 @@ def _applies_if(code: str, property_doc: Dict[str, Any], client_doc: Optional[Di
         return r.effective_label == "Wales"
     if code == "HMO_FIRE_RISK":
         return bool(property_doc.get("is_hmo"))
+    if code == "RIGHT_TO_RENT":
+        from services.compliance_rules_registry import resolve_portfolio_jurisdiction
+
+        if _is_commercial_property(property_doc):
+            return False
+        if not _str_truthy(property_doc.get("tenancy_active")):
+            return False
+        r = resolve_portfolio_jurisdiction(property_doc, client_doc)
+        return r.effective_label == "England"
+    if code == "RENT_SMART_WALES":
+        from services.compliance_rules_registry import resolve_portfolio_jurisdiction
+
+        if _is_commercial_property(property_doc):
+            return False
+        if not _str_truthy(property_doc.get("tenancy_active")):
+            return False
+        r = resolve_portfolio_jurisdiction(property_doc, client_doc)
+        return r.effective_label == "Wales"
+    if code == "LANDLORD_REGISTRATION_NI":
+        from services.compliance_rules_registry import resolve_portfolio_jurisdiction
+
+        if _is_commercial_property(property_doc):
+            return False
+        r = resolve_portfolio_jurisdiction(property_doc, client_doc)
+        return r.effective_label == "Northern Ireland"
+    if code == "PORTABLE_APPLIANCE":
+        if _is_commercial_property(property_doc):
+            return False
+        return _str_truthy(property_doc.get("tenancy_active")) and _str_truthy(property_doc.get("furnished"))
     return True
 
 

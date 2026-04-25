@@ -30,6 +30,10 @@ HMO_FIRE_RISK_EVIDENCE = "HMO_FIRE_RISK_EVIDENCE"
 HMO_FIRE_RISK = "HMO_FIRE_RISK"
 SCOTLAND_LANDLORD_REGISTRATION = "SCOTLAND_LANDLORD_REGISTRATION"
 WALES_OCCUPATION_CONTRACT = "WALES_OCCUPATION_CONTRACT"
+RIGHT_TO_RENT = "RIGHT_TO_RENT"
+RENT_SMART_WALES = "RENT_SMART_WALES"
+LANDLORD_REGISTRATION_NI = "LANDLORD_REGISTRATION_NI"
+PORTABLE_APPLIANCE_TEST = "PORTABLE_APPLIANCE_TEST"
 
 # Evidence mapping: requirement key -> document_type (for scoring pipeline)
 REQUIREMENT_KEY_TO_DOCUMENT_TYPE: Dict[str, str] = {
@@ -41,6 +45,10 @@ REQUIREMENT_KEY_TO_DOCUMENT_TYPE: Dict[str, str] = {
     HMO_FIRE_RISK_EVIDENCE: "fire_safety",
     SCOTLAND_LANDLORD_REGISTRATION: "licence",
     WALES_OCCUPATION_CONTRACT: "tenancy_agreement",
+    RIGHT_TO_RENT: "tenancy_agreement",
+    RENT_SMART_WALES: "licence",
+    LANDLORD_REGISTRATION_NI: "licence",
+    PORTABLE_APPLIANCE_TEST: "electrical_installation",
 }
 
 
@@ -71,13 +79,17 @@ def get_applicable_requirements(property_doc: dict, client_doc: Optional[dict] =
     Rules (MUST follow exactly):
     - Property type: COMMERCIAL excludes residential-only items (tenancy, How to Rent, deposit prescribed info).
     - EICR_CERT, EPC_CERT: always applicable (residential and commercial lettings).
-    - GAS_SAFETY_CERT: applicable iff cert_gas_safety == "YES" (do not penalize when NO).
+    - GAS_SAFETY_CERT: applicable when ``has_gas_supply`` is truthy **or** legacy ``cert_gas_safety`` is YES.
     - PROPERTY_LICENCE: applicable iff is_hmo or licence_required=="YES" or cert_licence=="YES" or licence_type non-empty.
     - Tenancy docs: only if tenancy_active and NOT commercial; if absent, exclude.
     - Deposit prescribed info: only if deposit_taken and NOT commercial; if absent, exclude.
     - HMO_FIRE_RISK_EVIDENCE: applicable when is_hmo (supplementary fire safety / FRA posture).
     - SCOTLAND_LANDLORD_REGISTRATION: residential Scotland (uses client default jurisdiction when property unset).
     - WALES_OCCUPATION_CONTRACT: residential Wales with an active tenancy flag.
+    - RIGHT_TO_RENT: residential England with an active tenancy.
+    - RENT_SMART_WALES: residential Wales with an active tenancy.
+    - LANDLORD_REGISTRATION_NI: residential Northern Ireland.
+    - PORTABLE_APPLIANCE_TEST: residential, active tenancy, and furnished.
     """
     applicable: List[str] = []
     is_commercial = _is_commercial(property_doc)
@@ -86,8 +98,8 @@ def get_applicable_requirements(property_doc: dict, client_doc: Optional[dict] =
     applicable.append(EICR_CERT)
     applicable.append(EPC_CERT)
 
-    # GAS_SAFETY_CERT: only when cert_gas_safety == "YES"
-    if _norm(property_doc.get("cert_gas_safety") or "") == "YES":
+    gas_on = _str_truthy(property_doc.get("has_gas_supply")) or _norm(property_doc.get("cert_gas_safety") or "") == "YES"
+    if gas_on:
         applicable.append(GAS_SAFETY_CERT)
 
     # PROPERTY_LICENCE: any of is_hmo, licence_required==YES, cert_licence==YES, licence_type non-empty
@@ -118,6 +130,17 @@ def get_applicable_requirements(property_doc: dict, client_doc: Optional[dict] =
             applicable.append(SCOTLAND_LANDLORD_REGISTRATION)
         if not is_commercial and juris == "Wales" and _str_truthy(property_doc.get("tenancy_active")):
             applicable.append(WALES_OCCUPATION_CONTRACT)
+            applicable.append(RENT_SMART_WALES)
+        if not is_commercial and juris == "England" and _str_truthy(property_doc.get("tenancy_active")):
+            applicable.append(RIGHT_TO_RENT)
+        if not is_commercial and juris == "Northern Ireland":
+            applicable.append(LANDLORD_REGISTRATION_NI)
+        if (
+            not is_commercial
+            and _str_truthy(property_doc.get("tenancy_active"))
+            and _str_truthy(property_doc.get("furnished"))
+        ):
+            applicable.append(PORTABLE_APPLIANCE_TEST)
     except Exception:
         pass
 
@@ -136,6 +159,10 @@ _EXPLAINABLE_CATALOG_KEYS: tuple = (
     HMO_FIRE_RISK_EVIDENCE,
     SCOTLAND_LANDLORD_REGISTRATION,
     WALES_OCCUPATION_CONTRACT,
+    RIGHT_TO_RENT,
+    RENT_SMART_WALES,
+    LANDLORD_REGISTRATION_NI,
+    PORTABLE_APPLIANCE_TEST,
 )
 
 
@@ -166,7 +193,7 @@ def explain_catalog_keys_for_property(
             elif key == EPC_CERT:
                 reason = "Always applicable for lettings (EPC)."
             elif key == GAS_SAFETY_CERT:
-                reason = "cert_gas_safety is YES on the property."
+                reason = "has_gas_supply is true or cert_gas_safety is YES on the property."
             elif key == PROPERTY_LICENCE:
                 reason = "Licence signals: is_hmo, licence_required YES, cert_licence YES, or licence_type set."
             elif key == HMO_FIRE_RISK_EVIDENCE:
@@ -179,13 +206,21 @@ def explain_catalog_keys_for_property(
                 reason = f"Residential and portfolio jurisdiction is Scotland (effective={juris!r})."
             elif key == WALES_OCCUPATION_CONTRACT:
                 reason = f"Residential Wales and tenancy_active is true (effective jurisdiction={juris!r})."
+            elif key == RIGHT_TO_RENT:
+                reason = "Residential England and tenancy_active is true."
+            elif key == RENT_SMART_WALES:
+                reason = "Residential Wales and tenancy_active is true."
+            elif key == LANDLORD_REGISTRATION_NI:
+                reason = f"Residential Northern Ireland (effective jurisdiction={juris!r})."
+            elif key == PORTABLE_APPLIANCE_TEST:
+                reason = "Residential with tenancy_active and furnished."
             else:
                 reason = "Applicable under catalog rules for this property."
         else:
             if key in (EICR_CERT, EPC_CERT):
                 reason = "Unexpected exclusion (should always apply); check get_applicable_requirements."
             elif key == GAS_SAFETY_CERT:
-                reason = "Excluded: cert_gas_safety is not YES (no scoring penalty for undeclared gas)."
+                reason = "Excluded: has_gas_supply is false/unset and cert_gas_safety is not YES."
             elif key == PROPERTY_LICENCE:
                 reason = "Excluded: not HMO and no licence_required/cert_licence/licence_type signals."
             elif key == HMO_FIRE_RISK_EVIDENCE:
@@ -211,6 +246,14 @@ def explain_catalog_keys_for_property(
                     reason = f"Excluded: effective jurisdiction is not Wales ({juris!r})."
                 else:
                     reason = "Excluded: tenancy_active is false or unset."
+            elif key == RIGHT_TO_RENT:
+                reason = "Excluded: not England residential with active tenancy."
+            elif key == RENT_SMART_WALES:
+                reason = "Excluded: not Wales residential with active tenancy."
+            elif key == LANDLORD_REGISTRATION_NI:
+                reason = f"Excluded: not Northern Ireland ({juris!r})."
+            elif key == PORTABLE_APPLIANCE_TEST:
+                reason = "Excluded: tenancy_active and furnished not both true."
             else:
                 reason = "Excluded for this property configuration."
         out.append({"catalog_key": key, "included": included, "reason": reason})

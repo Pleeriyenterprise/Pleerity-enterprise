@@ -15,7 +15,11 @@ from fastapi.responses import Response
 from database import database
 from middleware import client_route_guard
 from models import AuditAction
-from services.order_receipt_service import STRIPE_CHECKOUT_INVOICES, read_receipt_pdf_bytes
+from services.order_receipt_service import (
+    CVP_SUBSCRIPTION_RENEWAL_RECEIPTS,
+    STRIPE_CHECKOUT_INVOICES,
+    read_receipt_pdf_bytes,
+)
 from utils.app_urls import get_api_base_url
 from utils.audit import create_audit_log
 
@@ -32,6 +36,13 @@ def _money_display(pence: Optional[int], currency: str) -> Optional[str]:
     return f"{sym}{pence / 100:.2f}" + ("" if sym else f" {cur}")
 
 
+def _receipt_kind_from_doc(doc: Dict[str, Any]) -> str:
+    sid = doc.get("_id")
+    if isinstance(sid, str) and sid.startswith("in_"):
+        return "subscription_renewal"
+    return "subscription_checkout"
+
+
 def _pdf_download_url(receipt_id: str) -> str:
     """Absolute API URL for authenticated PDF download."""
     base = get_api_base_url().rstrip("/")
@@ -39,10 +50,10 @@ def _pdf_download_url(receipt_id: str) -> str:
     return f"{base}/api/client/billing/receipt/{safe}/download"
 
 
-def _doc_to_summary(doc: Dict[str, Any]) -> Dict[str, Any]:
+def _doc_to_summary(doc: Dict[str, Any], *, receipt_kind: str = "subscription_checkout") -> Dict[str, Any]:
     inv = doc.get("invoice_number") or ""
     sid = doc.get("_id")
-    created = doc.get("created_at")
+    created = doc.get("paid_at") if receipt_kind == "subscription_renewal" else doc.get("created_at")
     if isinstance(created, datetime):
         date_issued = created.isoformat()
     else:
@@ -54,9 +65,11 @@ def _doc_to_summary(doc: Dict[str, Any]) -> Dict[str, Any]:
         breakdown = []
     line_descriptions = [str(x.get("description") or "").strip() for x in breakdown if isinstance(x, dict)]
     line_summary = "; ".join(line_descriptions[:4]) if line_descriptions else None
-    return {
+    out: Dict[str, Any] = {
         "receipt_id": inv,
-        "stripe_checkout_session_id": sid,
+        "receipt_kind": receipt_kind,
+        "stripe_checkout_session_id": sid if receipt_kind == "subscription_checkout" else None,
+        "stripe_invoice_id": str(sid) if receipt_kind == "subscription_renewal" and sid else None,
         "invoice_number": inv,
         "date_issued": date_issued,
         "amount_total_pence": pence,
@@ -67,6 +80,24 @@ def _doc_to_summary(doc: Dict[str, Any]) -> Dict[str, Any]:
         "billing_breakdown": breakdown,
         "line_summary": line_summary,
     }
+    if receipt_kind == "subscription_renewal":
+        h = (doc.get("hosted_invoice_url") or "").strip()
+        if h:
+            out["hosted_invoice_url"] = h
+        sn = doc.get("stripe_invoice_number")
+        if sn:
+            out["stripe_invoice_number"] = sn
+        bps = doc.get("billing_period_start")
+        bpe = doc.get("billing_period_end")
+        if isinstance(bps, datetime):
+            out["billing_period_start"] = bps.isoformat()
+        elif bps:
+            out["billing_period_start"] = str(bps)
+        if isinstance(bpe, datetime):
+            out["billing_period_end"] = bpe.isoformat()
+        elif bpe:
+            out["billing_period_end"] = str(bpe)
+    return out
 
 
 async def _find_receipt_for_client(client_id: str, receipt_id: str) -> Optional[Dict[str, Any]]:
@@ -79,6 +110,14 @@ async def _find_receipt_for_client(client_id: str, receipt_id: str) -> Optional[
         doc = await col.find_one({"_id": receipt_id, "client_id": client_id})
         if doc:
             return doc
+    rcol = db[CVP_SUBSCRIPTION_RENEWAL_RECEIPTS]
+    rdoc = await rcol.find_one({"client_id": client_id, "invoice_number": receipt_id})
+    if rdoc:
+        return rdoc
+    if receipt_id.startswith("in_"):
+        rdoc2 = await rcol.find_one({"_id": receipt_id, "client_id": client_id})
+        if rdoc2:
+            return rdoc2
     # Fallback: pinned fields on client (e.g. ledger row missing)
     cl = await db.clients.find_one(
         {"client_id": client_id, "last_subscription_invoice_number": receipt_id},
@@ -106,7 +145,7 @@ async def _find_receipt_for_client(client_id: str, receipt_id: str) -> Optional[
 
 @router.get("/receipts")
 async def list_subscription_receipts(current_user: dict = Depends(client_route_guard)):
-    """All subscription checkout receipts for this client (newest first)."""
+    """Subscription checkout and renewal receipts for this client (newest first by issued date)."""
     client_id = current_user.get("client_id")
     if not client_id:
         raise HTTPException(status_code=400, detail="Missing client context")
@@ -129,13 +168,48 @@ async def list_subscription_receipts(current_user: dict = Depends(client_route_g
         .limit(100)
     )
     docs = await cursor.to_list(100)
-    receipts = [_doc_to_summary(d) for d in docs]
+    rcur = (
+        db[CVP_SUBSCRIPTION_RENEWAL_RECEIPTS]
+        .find(
+            {"client_id": client_id},
+            {
+                "_id": 1,
+                "invoice_number": 1,
+                "paid_at": 1,
+                "created_at": 1,
+                "amount_total_pence": 1,
+                "currency": 1,
+                "payment_status": 1,
+                "billing_breakdown": 1,
+                "hosted_invoice_url": 1,
+                "stripe_invoice_number": 1,
+                "billing_period_start": 1,
+                "billing_period_end": 1,
+            },
+        )
+        .sort("paid_at", -1)
+        .limit(100)
+    )
+    rdocs = await rcur.to_list(100)
+    merged: list[tuple[datetime, Dict[str, Any], str]] = []
+    for d in docs:
+        ts = d.get("created_at")
+        if not isinstance(ts, datetime):
+            ts = datetime.min.replace(tzinfo=timezone.utc)
+        merged.append((ts, d, "subscription_checkout"))
+    for d in rdocs:
+        ts = d.get("paid_at") or d.get("created_at")
+        if not isinstance(ts, datetime):
+            ts = datetime.min.replace(tzinfo=timezone.utc)
+        merged.append((ts, d, "subscription_renewal"))
+    merged.sort(key=lambda x: x[0], reverse=True)
+    receipts = [_doc_to_summary(d, receipt_kind=k) for _, d, k in merged[:100]]
     return {"receipts": receipts, "count": len(receipts)}
 
 
 @router.get("/receipt/latest")
 async def get_latest_subscription_receipt(current_user: dict = Depends(client_route_guard)):
-    """Most recent receipt, or synthetic row from client `last_subscription_*` if ledger empty."""
+    """Most recent checkout or renewal receipt, or synthetic row from client `last_subscription_*` if both empty."""
     client_id = current_user.get("client_id")
     if not client_id:
         raise HTTPException(status_code=400, detail="Missing client context")
@@ -143,8 +217,19 @@ async def get_latest_subscription_receipt(current_user: dict = Depends(client_ro
     cur = db[STRIPE_CHECKOUT_INVOICES].find({"client_id": client_id}).sort("created_at", -1).limit(1)
     docs = await cur.to_list(1)
     doc = docs[0] if docs else None
+    rcur = db[CVP_SUBSCRIPTION_RENEWAL_RECEIPTS].find({"client_id": client_id}).sort("paid_at", -1).limit(1)
+    rdocs = await rcur.to_list(1)
+    rdoc = rdocs[0] if rdocs else None
+    if doc and rdoc:
+        d_ts = doc.get("created_at")
+        r_ts = rdoc.get("paid_at") or rdoc.get("created_at")
+        if isinstance(r_ts, datetime) and (not isinstance(d_ts, datetime) or r_ts >= d_ts):
+            return {"receipt": _doc_to_summary(rdoc, receipt_kind="subscription_renewal")}
+        return {"receipt": _doc_to_summary(doc)}
     if doc:
         return {"receipt": _doc_to_summary(doc)}
+    if rdoc:
+        return {"receipt": _doc_to_summary(rdoc, receipt_kind="subscription_renewal")}
     client = await db.clients.find_one(
         {"client_id": client_id},
         {
@@ -187,7 +272,7 @@ async def get_subscription_receipt(receipt_id: str, current_user: dict = Depends
     doc = await _find_receipt_for_client(client_id, receipt_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Receipt not found")
-    return {"receipt": _doc_to_summary(doc)}
+    return {"receipt": _doc_to_summary(doc, receipt_kind=_receipt_kind_from_doc(doc))}
 
 
 @router.get("/receipt/{receipt_id}/download")

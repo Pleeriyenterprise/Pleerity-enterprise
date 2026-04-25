@@ -7,16 +7,23 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from services.requirement_evidence_authority import AUTHORITY_VERSION
+from utils.expiry_utils import get_computed_status, get_effective_expiry_date
+
 
 def requirement_fingerprint(req: Dict[str, Any]) -> str:
-    """Compact state for comparison (status + evidence + due)."""
-    due = req.get("due_date")
-    if hasattr(due, "isoformat"):
-        due = due.isoformat()
+    """Compact state for comparison (computed status + authority evidence + effective due)."""
+    eff = get_effective_expiry_date(req)
+    if eff is not None and hasattr(eff, "isoformat"):
+        due = eff.isoformat()
     else:
-        due = str(due or "")
-    st = str(req.get("status") or "")
-    ev = str(req.get("evidence_state") or "")
+        due = str(req.get("due_date") or "")
+    st = str(get_computed_status(req) or req.get("status") or "")
+    ea = req.get("evidence_authority") or {}
+    if req.get("evidence_authority_synced_at") and int(ea.get("version") or 0) >= AUTHORITY_VERSION:
+        ev = str(ea.get("state") or req.get("evidence_state") or "")
+    else:
+        ev = str(req.get("evidence_state") or "")
     rid = str(req.get("requirement_id") or "")
     return f"{rid}|{st}|{ev}|{due}"
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
-import api, { adminAPI } from '../api/client';
+import api, { adminAPI, parseApiError, parseStructuredApiDetail } from '../api/client';
 import { useStepUpApi } from '../hooks/useStepUpApi';
 import { toast } from '@/utils/portalNotifications';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
@@ -4532,6 +4532,15 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
   const [rejectModalDoc, setRejectModalDoc] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
+  const [verifyOverrideModal, setVerifyOverrideModal] = useState(null);
+  const [verifyOverrideReason, setVerifyOverrideReason] = useState('');
+  const [verifyOverrideSubmitting, setVerifyOverrideSubmitting] = useState(false);
+  const [resolveMatchModal, setResolveMatchModal] = useState(null);
+  const [resolveMatchAction, setResolveMatchAction] = useState('approve_override');
+  const [resolveMatchReason, setResolveMatchReason] = useState('');
+  const [resolveRelinkId, setResolveRelinkId] = useState('');
+  const [resolveSubmitting, setResolveSubmitting] = useState(false);
+  const [backfillBusy, setBackfillBusy] = useState(false);
   const [priorityActions, setPriorityActions] = useState({ actions: [], total: 0 });
   const [priorityActionsClientId, setPriorityActionsClientId] = useState('');
   const [clientsForFilter, setClientsForFilter] = useState([]);
@@ -4585,12 +4594,96 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
   const handleVerifyDocument = async (doc) => {
     if (!doc?.document_id) return;
     try {
-      await api.post(`/documents/verify/${doc.document_id}`);
+      await adminAPI.verifyDocument(doc.document_id, {});
       toast.success('Document verified');
       fetchPendingVerification();
       fetchStats();
     } catch (e) {
-      toast.error(e.response?.data?.detail || 'Failed to verify document');
+      if (e.response?.status === 409) {
+        const s = parseStructuredApiDetail(e);
+        setVerifyOverrideModal({ doc, detail: s });
+        setVerifyOverrideReason('');
+        toast.error(
+          s?.message || 'Automated evidence check blocked verification. Use override after manual review, or Resolve match.',
+        );
+        return;
+      }
+      toast.error(parseApiError(e, 'Failed to verify document'));
+    }
+  };
+
+  const handleVerifyWithOverride = async () => {
+    const doc = verifyOverrideModal?.doc;
+    if (!doc?.document_id) return;
+    const reason = verifyOverrideReason.trim();
+    if (!reason) {
+      toast.error('Enter a short reason for the override (audit trail)');
+      return;
+    }
+    setVerifyOverrideSubmitting(true);
+    try {
+      await adminAPI.verifyDocument(doc.document_id, {
+        evidence_mismatch_override: true,
+        evidence_mismatch_override_reason: reason,
+      });
+      toast.success('Document verified with evidence-match override (audit log: EVIDENCE_MATCH_OVERRIDE_VERIFY)');
+      setVerifyOverrideModal(null);
+      setVerifyOverrideReason('');
+      fetchPendingVerification();
+      fetchStats();
+    } catch (e) {
+      toast.error(parseApiError(e, 'Verify with override failed'));
+    } finally {
+      setVerifyOverrideSubmitting(false);
+    }
+  };
+
+  const handleResolveEvidenceMatch = async () => {
+    const doc = resolveMatchModal;
+    if (!doc?.document_id) return;
+    const action = (resolveMatchAction || '').trim();
+    if (action === 'relink_requirement' && !resolveRelinkId.trim()) {
+      toast.error('Enter the target requirement_id for relink');
+      return;
+    }
+    setResolveSubmitting(true);
+    try {
+      const body = {
+        action,
+        reason: resolveMatchReason.trim() || undefined,
+        ...(action === 'relink_requirement' ? { relink_requirement_id: resolveRelinkId.trim() } : {}),
+      };
+      await adminAPI.resolveEvidenceMatch(doc.document_id, body);
+      const auditHint =
+        action === 'approve_override'
+          ? 'EVIDENCE_MATCH_ADMIN_APPROVE_OVERRIDE'
+          : action === 'reject_evidence'
+            ? 'EVIDENCE_MATCH_ADMIN_REJECT'
+            : 'EVIDENCE_MATCH_ADMIN_RELINK';
+      toast.success(`Resolution recorded (${auditHint})`);
+      setResolveMatchModal(null);
+      setResolveMatchReason('');
+      setResolveRelinkId('');
+      fetchPendingVerification();
+      fetchStats();
+    } catch (e) {
+      toast.error(parseApiError(e, 'Resolve evidence match failed'));
+    } finally {
+      setResolveSubmitting(false);
+    }
+  };
+
+  const handleBackfillEvidenceMatch = async () => {
+    if (!window.confirm('Run evidence-match backfill on up to 50 documents missing match_outcome? This is audited.')) return;
+    setBackfillBusy(true);
+    try {
+      const { data } = await adminAPI.backfillEvidenceMatch({ limit: 50, dry_run: false });
+      toast.success(`Backfill complete: updated ${data?.updated ?? 0} (scanned ${data?.scanned ?? 0})`);
+      fetchPendingVerification();
+    } catch (e) {
+      toast.error(parseApiError(e, 'Backfill failed'));
+    } finally {
+      setBackfillBusy(false);
     }
   };
 
@@ -4963,6 +5056,16 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
             {pendingLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Refresh list
           </button>
+          <button
+            type="button"
+            onClick={handleBackfillEvidenceMatch}
+            disabled={backfillBusy || pendingLoading}
+            className="px-4 py-2 bg-midnight-blue text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
+            data-testid="pending-verification-backfill-evidence-match"
+            title="Batch-tag or re-persist evidence match for legacy rows (audited)"
+          >
+            {backfillBusy ? 'Backfill…' : 'Backfill evidence match'}
+          </button>
         </div>
         {pendingLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -4978,14 +5081,20 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
                   <th className="py-2 pr-4">CRN</th>
                   <th className="py-2 pr-4">Client ID</th>
                   <th className="py-2 pr-4">Property ID</th>
-                  <th className="py-2 pr-4">Requirement ID</th>
+                  <th className="py-2 pr-4">Requirement</th>
+                  <th className="py-2 pr-4">Predicted type</th>
+                  <th className="py-2 pr-4">Match outcome</th>
+                  <th className="py-2 pr-4">Confidence</th>
+                  <th className="py-2 pr-4">Satisfies</th>
+                  <th className="py-2 pr-4">Mismatch reason</th>
+                  <th className="py-2 pr-4">Legacy</th>
                   <th className="py-2 pr-4">Uploaded at</th>
                   <th className="py-2 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {(pendingList.documents ?? []).length === 0 ? (
-                  <tr><td colSpan={8} className="py-4 text-gray-500 text-center">No documents matching filters.</td></tr>
+                  <tr><td colSpan={14} className="py-4 text-gray-500 text-center">No documents matching filters.</td></tr>
                 ) : (
                   (pendingList.documents ?? []).filter(Boolean).map((doc, idx) => (
                     <tr
@@ -5009,7 +5118,38 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
                       <td className="py-2 pr-4 font-mono text-xs">{doc?.crn ?? '—'}</td>
                       <td className="py-2 pr-4 font-mono text-xs">{doc?.client_id ?? '—'}</td>
                       <td className="py-2 pr-4 font-mono text-xs">{doc?.property_id ?? '—'}</td>
-                      <td className="py-2 pr-4 font-mono text-xs">{doc?.requirement_id ?? '—'}</td>
+                      <td className="py-2 pr-4 text-xs max-w-[140px]" title={doc?.requirement_id || ''}>
+                        <div className="font-mono text-[11px] text-gray-700">{doc?.requirement_id ?? '—'}</div>
+                        {doc?.requirement_label && (
+                          <div className="text-gray-500 truncate mt-0.5">{doc.requirement_label}</div>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 text-xs">{doc?.predicted_document_type ?? '—'}</td>
+                      <td className="py-2 pr-4 text-xs">{doc?.match_outcome ?? '—'}</td>
+                      <td className="py-2 pr-4 text-xs">{doc?.match_confidence != null ? String(doc.match_confidence) : '—'}</td>
+                      <td className="py-2 pr-4 text-xs">
+                        {doc?.evidence_satisfies_requirement === true ? (
+                          <span className="text-green-700">Yes</span>
+                        ) : doc?.evidence_satisfies_requirement === false ? (
+                          <span className="text-amber-800">No</span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 text-xs max-w-[160px]">
+                        <div className="line-clamp-2" title={doc?.mismatch_reason_text || doc?.mismatch_reason_code || ''}>
+                          {doc?.mismatch_reason_text || doc?.mismatch_reason_code || '—'}
+                        </div>
+                      </td>
+                      <td className="py-2 pr-4 text-xs">
+                        {doc?.evidence_match_legacy_state ? (
+                          <span className="px-1.5 py-0.5 rounded bg-gray-200 text-gray-800" title="Pre-engine or unclassified — not a strong auto-match">
+                            {String(doc.evidence_match_legacy_state)}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td className="py-2 pr-4 text-gray-600">{doc?.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : '—'}</td>
                       <td className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2 flex-wrap">
@@ -5041,6 +5181,19 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
                           >
                             <CheckCircle className="w-3.5 h-3.5" />
                             Verify
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResolveMatchModal(doc);
+                              setResolveMatchAction('approve_override');
+                              setResolveMatchReason('');
+                              setResolveRelinkId('');
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-teal-900 bg-teal-100 hover:bg-teal-200 rounded"
+                            data-testid={`resolve-match-${doc?.document_id}`}
+                          >
+                            Resolve match
                           </button>
                           <button
                             type="button"
@@ -5102,6 +5255,115 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
               >
                 {rejectSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
                 Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {verifyOverrideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-labelledby="verify-override-title">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h2 id="verify-override-title" className="text-lg font-semibold text-midnight-blue mb-2">Verify with evidence override</h2>
+            <p className="text-sm text-gray-600 mb-2">
+              Document {verifyOverrideModal.doc?.document_id}
+              {verifyOverrideModal.doc?.client_name && ` · ${verifyOverrideModal.doc.client_name}`}
+            </p>
+            {verifyOverrideModal.detail?.evidence_match && (
+              <div className="text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 font-mono">
+                <div>Outcome: {verifyOverrideModal.detail.evidence_match.match_outcome ?? '—'}</div>
+                <div>Predicted: {verifyOverrideModal.detail.evidence_match.predicted_document_type ?? '—'}</div>
+                <div className="mt-1 text-gray-600">{verifyOverrideModal.detail.evidence_match.mismatch_reason_text ?? ''}</div>
+              </div>
+            )}
+            <p className="text-xs text-amber-800 mb-3">
+              Override is audited (EVIDENCE_MATCH_OVERRIDE_VERIFY). Use only after manual review of the file against the obligation.
+            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Reason (required)</label>
+            <textarea
+              value={verifyOverrideReason}
+              onChange={(e) => setVerifyOverrideReason(e.target.value)}
+              placeholder="e.g. Verified CP12 against gas safety obligation — filename misleading"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[80px] mb-4"
+              data-testid="verify-override-reason"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setVerifyOverrideModal(null); setVerifyOverrideReason(''); }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleVerifyWithOverride}
+                disabled={!verifyOverrideReason.trim() || verifyOverrideSubmitting}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-700 hover:bg-green-800 disabled:opacity-50 rounded-lg flex items-center gap-2"
+                data-testid="verify-override-submit"
+              >
+                {verifyOverrideSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                Verify with override
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {resolveMatchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-labelledby="resolve-match-title">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h2 id="resolve-match-title" className="text-lg font-semibold text-midnight-blue mb-2">Resolve evidence match</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Document {resolveMatchModal.document_id} — audited admin action on the evidence document matching queue.
+            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Action</label>
+            <select
+              value={resolveMatchAction}
+              onChange={(e) => setResolveMatchAction(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3"
+              data-testid="resolve-match-action"
+            >
+              <option value="approve_override">Approve override (treat as matching obligation)</option>
+              <option value="reject_evidence">Reject evidence (document REJECTED)</option>
+              <option value="relink_requirement">Relink to another requirement (scope-checked)</option>
+            </select>
+            {resolveMatchAction === 'relink_requirement' && (
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                New requirement_id
+                <input
+                  type="text"
+                  value={resolveRelinkId}
+                  onChange={(e) => setResolveRelinkId(e.target.value)}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
+                  placeholder="requirement_id"
+                  data-testid="resolve-match-relink-id"
+                />
+              </label>
+            )}
+            <label className="block text-sm font-medium text-gray-700 mb-2 mt-2">Notes (optional)</label>
+            <textarea
+              value={resolveMatchReason}
+              onChange={(e) => setResolveMatchReason(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[72px] mb-4"
+              data-testid="resolve-match-notes"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setResolveMatchModal(null); setResolveMatchReason(''); setResolveRelinkId(''); }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleResolveEvidenceMatch}
+                disabled={resolveSubmitting}
+                className="px-4 py-2 text-sm font-medium text-white bg-electric-teal hover:opacity-90 disabled:opacity-50 rounded-lg"
+                data-testid="resolve-match-submit"
+              >
+                {resolveSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Submit'}
               </button>
             </div>
           </div>

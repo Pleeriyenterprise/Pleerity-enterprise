@@ -95,6 +95,7 @@ const AdminBillingPage = () => {
 
   const [lifecycleJobRunning, setLifecycleJobRunning] = useState(false);
   const [lastLifecycleJobResult, setLastLifecycleJobResult] = useState(null);
+  const [stripeReconcileRunning, setStripeReconcileRunning] = useState(false);
 
   // Receipts & invoices (canonical ledger + orders)
   const [receipts, setReceipts] = useState([]);
@@ -236,6 +237,26 @@ const AdminBillingPage = () => {
       toast.error(error.response?.data?.detail || 'Sync failed');
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleRunStripeSubscriptionReconcile = async () => {
+    setStripeReconcileRunning(true);
+    try {
+      const response = await api.post('/admin/billing/jobs/stripe-subscription-reconcile');
+      const d = response.data || {};
+      toast.success('Stripe subscription reconcile finished', {
+        description: `Reconciled: ${d.reconciled ?? '—'} · Errors: ${d.errors ?? '—'} · Attempted: ${d.attempted ?? '—'}`,
+      });
+      fetchStatistics();
+      if (selectedClientId) {
+        await fetchBillingSnapshot(selectedClientId);
+      }
+    } catch (error) {
+      console.error('Stripe reconcile job error:', error);
+      toast.error(error.response?.data?.detail || 'Stripe reconcile job failed');
+    } finally {
+      setStripeReconcileRunning(false);
     }
   };
 
@@ -864,6 +885,50 @@ const AdminBillingPage = () => {
                             : '—'}
                         </p>
                       </div>
+                      <div>
+                        <p className="text-gray-500">Canonical entitlement</p>
+                        <p className="font-mono text-xs">
+                          {billingSnapshot.canonical_entitlement_state ||
+                            billingSnapshot.subscription_lifecycle?.canonical_entitlement_state ||
+                            '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Last payment (Stripe mirror)</p>
+                        <p className="font-medium text-xs">
+                          {formatAdminDate(billingSnapshot.last_payment_at) || '—'}
+                          {typeof billingSnapshot.last_payment_amount_pence === 'number'
+                            ? ` · £${(billingSnapshot.last_payment_amount_pence / 100).toFixed(2)}`
+                            : ''}
+                          {billingSnapshot.last_payment_status ? ` · ${billingSnapshot.last_payment_status}` : ''}
+                        </p>
+                        {billingSnapshot.last_payment_stripe_invoice_id && (
+                          <p className="font-mono text-[10px] text-gray-500 break-all mt-0.5">
+                            {billingSnapshot.last_payment_stripe_invoice_id}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Open invoice / retry</p>
+                        <p className="font-medium text-xs">
+                          {billingSnapshot.open_invoice_status || '—'}
+                          {billingSnapshot.stripe_next_payment_attempt_at
+                            ? ` · next ${formatAdminDate(billingSnapshot.stripe_next_payment_attempt_at)}`
+                            : ''}
+                        </p>
+                        {billingSnapshot.last_invoice_failure_message && (
+                          <p className="text-xs text-red-700 mt-1">{billingSnapshot.last_invoice_failure_message}</p>
+                        )}
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="text-gray-500">Last Stripe webhook (app)</p>
+                        <p className="font-medium text-xs">
+                          {formatAdminDate(billingSnapshot.stripe_webhook_last_received_at) || '—'}
+                          {billingSnapshot.stripe_webhook_last_event_type
+                            ? ` · ${billingSnapshot.stripe_webhook_last_event_type}`
+                            : ''}
+                        </p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -906,6 +971,10 @@ const AdminBillingPage = () => {
                               <div>
                                 <p className="text-gray-500">Entitlement (billing record)</p>
                                 <div className="mt-1">{getEntitlementBadge(sl.entitlement_status || '—')}</div>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">canonical_entitlement_state</p>
+                                <p className="font-mono text-xs">{sl.canonical_entitlement_state || '—'}</p>
                               </div>
                               <div>
                                 <p className="text-gray-500">Period end (API)</p>
@@ -1336,6 +1405,23 @@ const AdminBillingPage = () => {
                         <Play className="w-4 h-4 mr-2" />
                       )}
                       Run subscription lifecycle job
+                    </Button>
+
+                    <Button
+                      type="button"
+                      onClick={handleRunStripeSubscriptionReconcile}
+                      disabled={stripeReconcileRunning}
+                      variant="outline"
+                      className="w-full justify-start"
+                      data-testid="stripe-subscription-reconcile-job-btn"
+                      title="Re-fetch a batch of Stripe subscriptions (scheduled job safety net)"
+                    >
+                      {stripeReconcileRunning ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      Run Stripe subscription reconcile batch
                     </Button>
                     {lastLifecycleJobResult?.outcome_metrics && (
                       <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 space-y-1">

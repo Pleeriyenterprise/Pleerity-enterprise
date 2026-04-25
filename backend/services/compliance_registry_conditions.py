@@ -247,7 +247,13 @@ def property_matches_registry_conditions(
     * Empty or missing ``rules`` → True (applies to all properties).
     """
     if property_doc is None:
-        return True
+        # Fail closed when rules exist (cannot evaluate); preserve legacy True only when no rules.
+        if not isinstance(conditions, dict):
+            return True
+        rules = conditions.get("rules")
+        if not isinstance(rules, list) or not rules:
+            return True
+        return False
     if not isinstance(conditions, dict):
         return True
     rules = conditions.get("rules")

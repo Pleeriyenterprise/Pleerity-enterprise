@@ -45,14 +45,9 @@ def _iso_or_none(val: Any) -> Optional[str]:
 
 def _requirement_effective_due_iso(r: Dict[str, Any]) -> Optional[str]:
     """Best-effort compliance due / expiry for prioritization and task display."""
-    for key in ("confirmed_expiry_date", "due_date", "extracted_expiry_date", "expires_at"):
-        v = r.get(key)
-        if v is None:
-            continue
-        iso = _iso_or_none(v)
-        if iso:
-            return iso
-    return None
+    from utils.expiry_utils import get_effective_expiry_date
+
+    return _iso_or_none(get_effective_expiry_date(r))
 
 
 def _requirement_code_for_hash(r: Dict[str, Any]) -> str:

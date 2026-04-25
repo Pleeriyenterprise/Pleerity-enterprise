@@ -78,7 +78,7 @@ async def log_public_track(event_name: str, page: Optional[str] = None, session_
     Stores event, ts, page, session_id, and props as metadata (sanitized).
     """
     db = database.get_db()
-    if not db:
+    if db is None:
         return False
     now = datetime.now(timezone.utc)
     doc: dict[str, Any] = {"ts": now, "event": event_name}

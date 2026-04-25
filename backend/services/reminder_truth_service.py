@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from utils.expiry_utils import get_effective_expiry_date, is_included_for_calendar
+from services.requirement_evidence_authority import authority_runtime_requirement_status
 
 COLLECTION_REMINDER_ITEM_STATE = "reminder_item_state"
 COLLECTION_REMINDER_EVALUATION_LOG = "reminder_evaluation_log"
@@ -22,6 +23,30 @@ DEFAULT_REMINDER_COOLDOWN_HOURS_BY_TYPE = {
     "DAILY_COMPLIANCE_EXPIRY_SMS": 24,
     "PENDING_VERIFICATION_DIGEST": 24,
 }
+
+_SEVERITY_ORDER = {"LOW": 0, "MEDIUM": 1, "HIGH": 2, "CRITICAL": 3}
+
+
+def _gap_engine_context_for_reminder(requirement: Dict[str, Any]) -> Dict[str, Any]:
+    """Attach governed gap classification (same engine as vault / Command Centre)."""
+    try:
+        from services.compliance_gap_engine import infer_compliance_gaps_for_requirement
+
+        gaps = infer_compliance_gaps_for_requirement(requirement, property_doc=None)
+    except Exception:
+        return {"gaps": [], "gap_kinds": [], "max_severity": None}
+    best = -1
+    max_sev: Optional[str] = None
+    for g in gaps:
+        o = _SEVERITY_ORDER.get((g.severity or "").upper(), -1)
+        if o >= best:
+            best = o
+            max_sev = g.severity
+    return {
+        "gap_kinds": [g.gap_kind for g in gaps],
+        "max_severity": max_sev,
+        "gaps": [{"gap_kind": g.gap_kind, "severity": g.severity, "title": g.title} for g in gaps],
+    }
 
 
 def _now() -> datetime:
@@ -151,11 +176,24 @@ async def evaluate_requirement_for_daily_reminder(
             state_key=state_key,
             decision="evaluated_suppressed",
             suppression_reason=REASON_ITEM_NOT_FOUND,
-            underlying_state={"status": None},
+            underlying_state={"status": None, "gap_engine": {"gaps": [], "gap_kinds": [], "max_severity": None}},
         )
-        return {"eligible": False, "suppression_reason": REASON_ITEM_NOT_FOUND, "classification": None, "state_key": state_key, "current_requirement": None}
+        return {
+            "eligible": False,
+            "suppression_reason": REASON_ITEM_NOT_FOUND,
+            "classification": None,
+            "state_key": state_key,
+            "current_requirement": None,
+            "gap_engine": {"gaps": [], "gap_kinds": [], "max_severity": None},
+        }
 
-    status = str(current.get("status") or "").upper()
+    gap_ctx = _gap_engine_context_for_reminder(current)
+
+    status = str(
+        authority_runtime_requirement_status(current)
+        or current.get("status")
+        or ""
+    ).upper()
     applicability = str(current.get("applicability") or "").upper()
     if status in {"COMPLIANT", "VERIFIED", "RESOLVED", "COMPLETED", "REGULARISED", "REGULARIZED", "REPLACED"} or applicability == "NOT_REQUIRED":
         await db.reminder_item_state.update_one(
@@ -180,9 +218,16 @@ async def evaluate_requirement_for_daily_reminder(
             state_key=state_key,
             decision="evaluated_suppressed",
             suppression_reason=REASON_ALREADY_RESOLVED,
-            underlying_state={"status": status, "applicability": applicability},
+            underlying_state={"status": status, "applicability": applicability, "gap_engine": gap_ctx},
         )
-        return {"eligible": False, "suppression_reason": REASON_ALREADY_RESOLVED, "classification": None, "state_key": state_key, "current_requirement": current}
+        return {
+            "eligible": False,
+            "suppression_reason": REASON_ALREADY_RESOLVED,
+            "classification": None,
+            "state_key": state_key,
+            "current_requirement": current,
+            "gap_engine": gap_ctx,
+        }
 
     if not is_included_for_calendar(current):
         await db.reminder_item_state.update_one(
@@ -206,9 +251,16 @@ async def evaluate_requirement_for_daily_reminder(
             state_key=state_key,
             decision="evaluated_suppressed",
             suppression_reason=REASON_NOT_RELEVANT,
-            underlying_state={"status": status, "applicability": applicability},
+            underlying_state={"status": status, "applicability": applicability, "gap_engine": gap_ctx},
         )
-        return {"eligible": False, "suppression_reason": REASON_NOT_RELEVANT, "classification": None, "state_key": state_key, "current_requirement": current}
+        return {
+            "eligible": False,
+            "suppression_reason": REASON_NOT_RELEVANT,
+            "classification": None,
+            "state_key": state_key,
+            "current_requirement": current,
+            "gap_engine": gap_ctx,
+        }
 
     due_date = get_effective_expiry_date(current)
     if due_date is None:
@@ -233,9 +285,16 @@ async def evaluate_requirement_for_daily_reminder(
             state_key=state_key,
             decision="evaluated_suppressed",
             suppression_reason=REASON_NO_EFFECTIVE_DATE,
-            underlying_state={"status": status, "applicability": applicability},
+            underlying_state={"status": status, "applicability": applicability, "gap_engine": gap_ctx},
         )
-        return {"eligible": False, "suppression_reason": REASON_NO_EFFECTIVE_DATE, "classification": None, "state_key": state_key, "current_requirement": current}
+        return {
+            "eligible": False,
+            "suppression_reason": REASON_NO_EFFECTIVE_DATE,
+            "classification": None,
+            "state_key": state_key,
+            "current_requirement": current,
+            "gap_engine": gap_ctx,
+        }
 
     days_until_due = (due_date - now).days
     classification = None
@@ -265,9 +324,16 @@ async def evaluate_requirement_for_daily_reminder(
             state_key=state_key,
             decision="evaluated_suppressed",
             suppression_reason=REASON_NO_LONGER_DUE,
-            underlying_state={"status": status, "days_until_due": days_until_due},
+            underlying_state={"status": status, "days_until_due": days_until_due, "gap_engine": gap_ctx},
         )
-        return {"eligible": False, "suppression_reason": REASON_NO_LONGER_DUE, "classification": None, "state_key": state_key, "current_requirement": current}
+        return {
+            "eligible": False,
+            "suppression_reason": REASON_NO_LONGER_DUE,
+            "classification": None,
+            "state_key": state_key,
+            "current_requirement": current,
+            "gap_engine": gap_ctx,
+        }
 
     state = await db.reminder_item_state.find_one(state_key, {"_id": 0, "next_eligible_send_at": 1})
     next_eligible = _parse_iso((state or {}).get("next_eligible_send_at"))
@@ -293,9 +359,16 @@ async def evaluate_requirement_for_daily_reminder(
             state_key=state_key,
             decision="evaluated_suppressed",
             suppression_reason=REASON_COOLDOWN_ACTIVE,
-            underlying_state={"status": status, "days_until_due": days_until_due},
+            underlying_state={"status": status, "days_until_due": days_until_due, "gap_engine": gap_ctx},
         )
-        return {"eligible": False, "suppression_reason": REASON_COOLDOWN_ACTIVE, "classification": None, "state_key": state_key, "current_requirement": current}
+        return {
+            "eligible": False,
+            "suppression_reason": REASON_COOLDOWN_ACTIVE,
+            "classification": None,
+            "state_key": state_key,
+            "current_requirement": current,
+            "gap_engine": gap_ctx,
+        }
 
     await db.reminder_item_state.update_one(
         state_key,
@@ -318,9 +391,16 @@ async def evaluate_requirement_for_daily_reminder(
         state_key=state_key,
         decision="evaluated_send",
         suppression_reason=None,
-        underlying_state={"status": status, "days_until_due": days_until_due},
+        underlying_state={"status": status, "days_until_due": days_until_due, "gap_engine": gap_ctx},
     )
-    return {"eligible": True, "suppression_reason": None, "classification": classification, "state_key": state_key, "current_requirement": current}
+    return {
+        "eligible": True,
+        "suppression_reason": None,
+        "classification": classification,
+        "state_key": state_key,
+        "current_requirement": current,
+        "gap_engine": gap_ctx,
+    }
 
 
 async def mark_requirement_reminder_sent(

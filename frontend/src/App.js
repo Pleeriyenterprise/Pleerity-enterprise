@@ -120,6 +120,7 @@ import TenantPropertiesPage from './pages/TenantPropertiesPage';
 import TenantPropertyDetailPage from './pages/TenantPropertyDetailPage';
 import TenantSettingsPage from './pages/TenantSettingsPage';
 import TenantManagementPage from './pages/TenantManagementPage';
+import ClientTenantComplianceDeliveryPage from './pages/ClientTenantComplianceDeliveryPage';
 import BulkPropertyImportPage from './pages/BulkPropertyImportPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import BrandingSettingsPage from './pages/BrandingSettingsPage';
@@ -180,6 +181,7 @@ import AdminSecurityDashboardPage from './pages/AdminSecurityDashboardPage';
 import AdminControlCentrePage from './pages/AdminControlCentrePage';
 import AdminOpsOverviewPage from './pages/admin/AdminOpsOverviewPage';
 import AdminOpsCompliancePage from './pages/admin/AdminOpsCompliancePage';
+import AdminTenantDeliveryCompliancePage from './pages/admin/AdminTenantDeliveryCompliancePage';
 import AdminComplianceRegistryListPage from './pages/admin/AdminComplianceRegistryListPage';
 import AdminComplianceRegistryEditorPage from './pages/admin/AdminComplianceRegistryEditorPage';
 import AdminComplianceRegistryPreviewPage from './pages/admin/AdminComplianceRegistryPreviewPage';
@@ -384,6 +386,16 @@ function App() {
               <Route path="settings" element={<TenantSettingsPage />} />
             </Route>
             <Route path="/tenants" element={<ClientPortal><EntitlementProtectedRoute requiredFeature="tenant_portal"><TenantManagementPage /></EntitlementProtectedRoute></ClientPortal>} />
+            <Route
+              path="/compliance/tenant-delivery"
+              element={
+                <ClientPortal>
+                  <EntitlementProtectedRoute requiredFeature="tenant_portal">
+                    <ClientTenantComplianceDeliveryPage />
+                  </EntitlementProtectedRoute>
+                </ClientPortal>
+              }
+            />
             <Route path="/integrations" element={<ClientPortal><EntitlementProtectedRoute requiredFeature="webhooks"><IntegrationsPage /></EntitlementProtectedRoute></ClientPortal>} />
             <Route path="/orders/:orderId/provide-info" element={<ClientPortal><ClientProvideInfoPage /></ClientPortal>} />
             <Route path="/orders" element={<ClientPortal><ClientOrdersPage /></ClientPortal>} />
@@ -679,6 +691,14 @@ function App() {
             {/* Operations & Compliance */}
             <Route path="/admin/ops" element={<ProtectedRoute requireAdmin><AdminOpsOverviewPage /></ProtectedRoute>} />
             <Route path="/admin/ops/compliance" element={<ProtectedRoute requireAdmin><AdminOpsCompliancePage /></ProtectedRoute>} />
+            <Route
+              path="/admin/compliance/tenant-delivery"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminTenantDeliveryCompliancePage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/admin/compliance/registry/preview"
               element={<ProtectedRoute requireAdmin><AdminComplianceRegistryPreviewPage /></ProtectedRoute>}

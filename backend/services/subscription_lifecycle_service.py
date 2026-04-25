@@ -13,6 +13,7 @@ from enum import Enum
 from typing import Any, Dict, Optional, Tuple
 
 from database import database
+from services.entitlement_access import compute_canonical_entitlement_state
 from services.plan_registry import EntitlementStatus, plan_registry
 from services.billing_period_utils import normalize_stored_period_end_for_api, period_end_from_stripe_unix
 
@@ -168,17 +169,46 @@ async def sync_subscription_lifecycle(client_id: str, bump_version: bool = True)
     else:
         sub_for_client = sub_upper or "NONE"
 
-    if prev_lc == lifecycle and prev_ent == target_ent:
-        await db.clients.update_one(
-            {"client_id": client_id},
-            {"$set": {"billing_lifecycle_state": lifecycle, "subscription_status": sub_for_client}},
-        )
-        await _persist_client_lifecycle_after_subscription_sync(db, client_id)
-        return {"updated": False, "billing_lifecycle_state": lifecycle, "entitlement_status": target_ent}
+    canon_wanted = compute_canonical_entitlement_state(
+        billing_lifecycle_state=lifecycle,
+        subscription_status_upper=sub_upper,
+    )
 
+    if prev_lc == lifecycle and prev_ent == target_ent:
+        prev_canon = billing.get("canonical_entitlement_state") or ""
+        if prev_canon != canon_wanted:
+            await db.client_billing.update_one(
+                {"client_id": client_id},
+                {"$set": {"canonical_entitlement_state": canon_wanted, "updated_at": now}},
+            )
+            await db.clients.update_one(
+                {"client_id": client_id},
+                {
+                    "$set": {
+                        "billing_lifecycle_state": lifecycle,
+                        "subscription_status": sub_for_client,
+                        "canonical_entitlement_state": canon_wanted,
+                    }
+                },
+            )
+        else:
+            await db.clients.update_one(
+                {"client_id": client_id},
+                {"$set": {"billing_lifecycle_state": lifecycle, "subscription_status": sub_for_client}},
+            )
+        await _persist_client_lifecycle_after_subscription_sync(db, client_id)
+        return {
+            "updated": False,
+            "billing_lifecycle_state": lifecycle,
+            "entitlement_status": target_ent,
+            "canonical_entitlement_state": canon_wanted,
+        }
+
+    canonical = canon_wanted
     set_doc: Dict[str, Any] = {
         "billing_lifecycle_state": lifecycle,
         "entitlement_status": target_ent,
+        "canonical_entitlement_state": canonical,
         "updated_at": now,
     }
     update: Dict[str, Any] = {"$set": set_doc}
@@ -196,6 +226,7 @@ async def sync_subscription_lifecycle(client_id: str, bump_version: bool = True)
             "$set": {
                 "billing_lifecycle_state": lifecycle,
                 "entitlement_status": target_ent,
+                "canonical_entitlement_state": canonical,
                 "entitlements_version": ent_ver,
                 "subscription_status": sub_for_client,
             }
@@ -215,6 +246,7 @@ async def sync_subscription_lifecycle(client_id: str, bump_version: bool = True)
         "updated": True,
         "billing_lifecycle_state": lifecycle,
         "entitlement_status": target_ent,
+        "canonical_entitlement_state": canonical,
     }
 
 

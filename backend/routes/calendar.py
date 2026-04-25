@@ -124,20 +124,30 @@ async def get_expiry_calendar(
             {"_id": 0, "default_jurisdiction": 1},
         ) or {}
 
-        # Get all properties for this client
+        # Get all properties for this client (full docs for planner-aligned requirement filtering)
         properties = await db.properties.find(
             {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "address_line_1": 1, "city": 1, "postcode": 1, "jurisdiction": 1},
+            {"_id": 0},
         ).to_list(100)
         
         property_map = {p["property_id"]: p for p in properties}
         property_ids = list(property_map.keys())
-        
-        # Get all requirements for properties (filter by effective date in code; exclude NOT_REQUIRED)
-        requirements = await db.requirements.find(
-            {"property_id": {"$in": property_ids}},
-            {"_id": 0}
-        ).to_list(500)
+        if not property_ids:
+            requirements = []
+        else:
+            requirements = await db.requirements.find(
+                {"property_id": {"$in": property_ids}, "client_id": client_id},
+                {"_id": 0},
+            ).to_list(500)
+            from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+            requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+                db,
+                client_id=client_id,
+                requirements=requirements,
+                client_doc=client_row,
+                properties=properties,
+            )
 
         events_by_date = {}
         for req in requirements:

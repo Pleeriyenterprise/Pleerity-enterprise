@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from utils.catalog_rules import build_property_profile, evaluate_applies_to
 from utils.risk_bands import score_to_risk_level
+from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 import logging
 
 logger = logging.getLogger(__name__)
@@ -144,6 +145,13 @@ async def get_property_compliance_detail(
         {"client_id": client_id, "property_id": property_id},
         {"_id": 0, "requirement_id": 1, "requirement_type": 1, "requirement_code": 1, "status": 1, "due_date": 1, "applicability": 1},
     ).to_list(200)
+    reqs = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=reqs or [],
+        client_doc=client_row,
+        properties=[prop],
+    )
     docs = await db.documents.find(
         {"client_id": client_id, "property_id": property_id, "status": "VERIFIED"},
         {"_id": 0, "requirement_id": 1, "document_id": 1},

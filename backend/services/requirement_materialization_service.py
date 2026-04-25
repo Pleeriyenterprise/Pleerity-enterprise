@@ -61,6 +61,16 @@ def _registry_metadata(item: RequirementPlanItem, existing_meta: Optional[Dict[s
         meta["why_it_matters_by_jurisdiction_published"] = item.why_it_matters_by_jurisdiction
     else:
         meta.pop("why_it_matters_by_jurisdiction_published", None)
+    pam = getattr(item, "primary_action_mode", None)
+    if pam:
+        meta["primary_action_mode"] = pam
+    else:
+        meta.pop("primary_action_mode", None)
+    cta = getattr(item, "cta_label_override", None)
+    if cta:
+        meta["cta_label_override"] = cta
+    else:
+        meta.pop("cta_label_override", None)
     return meta
 
 

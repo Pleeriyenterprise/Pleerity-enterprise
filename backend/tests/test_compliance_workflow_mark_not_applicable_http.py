@@ -13,6 +13,18 @@ CLIENT_ID = "cli-na-test"
 REQ_ID = "req-na-test"
 PROP_ID = "prop-na-test"
 
+PROP_DOC = {
+    "property_id": PROP_ID,
+    "client_id": CLIENT_ID,
+    "jurisdiction": "England",
+    "property_type": "residential",
+    "tenancy_active": True,
+    "has_gas_supply": True,
+    "deposit_taken": True,
+    "furnished": False,
+    "is_hmo": False,
+}
+
 
 async def _fake_client_guard(request: Request):
     return {
@@ -31,6 +43,11 @@ def _mock_db_for_requirement():
             "property_id": PROP_ID,
             "requirement_code": "gas_safety",
             "requirement_type": "gas_safety",
+            "jurisdiction": "England",
+            "applicability": "REQUIRED",
+            "status": "PENDING",
+            "client_surface_visible": True,
+            "requirement_generation_source": "catalog_registry",
         }
     }
 
@@ -45,6 +62,12 @@ def _mock_db_for_requirement():
     mock_db = MagicMock()
     mock_db.requirements.find_one = AsyncMock(side_effect=find_one)
     mock_db.requirements.update_one = AsyncMock(side_effect=update_one)
+    mock_db.properties = MagicMock()
+    mock_db.properties.find_one = AsyncMock(return_value=dict(PROP_DOC))
+    mock_db.clients = MagicMock()
+    mock_db.clients.find_one = AsyncMock(
+        return_value={"client_id": CLIENT_ID, "default_jurisdiction": "England"}
+    )
     return mock_db
 
 

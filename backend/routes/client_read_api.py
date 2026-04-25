@@ -250,6 +250,15 @@ async def data_property_requirements(request: Request, property_id: str):
             {"property_id": property_id, "client_id": ctx["client_id"]},
             {"_id": 0},
         ).to_list(500)
+        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=ctx["client_id"],
+            requirements=requirements,
+            client_doc=await db.clients.find_one({"client_id": ctx["client_id"]}, {"_id": 0}) or {},
+            properties=[prop],
+        )
         return {"requirements": requirements}
     except Exception as e:
         logger.error("read-api requirements error: %s", e)

@@ -175,6 +175,7 @@ class AuditAction(str, Enum):
     COMPLIANCE_REGISTRY_PUBLISH_QUEUE_REJECTED = "COMPLIANCE_REGISTRY_PUBLISH_QUEUE_REJECTED"
     COMPLIANCE_REGISTRY_PUBLISH_ACTIVATED = "COMPLIANCE_REGISTRY_PUBLISH_ACTIVATED"
     COMPLIANCE_REGISTRY_PUBLISH_REVERTED = "COMPLIANCE_REGISTRY_PUBLISH_REVERTED"
+    COMPLIANCE_REGISTRY_DRAFT_DELETED = "COMPLIANCE_REGISTRY_DRAFT_DELETED"
     COMPLIANCE_REGISTRY_ADMIN_PROPERTY_REQUIREMENTS_SYNCED = "COMPLIANCE_REGISTRY_ADMIN_PROPERTY_REQUIREMENTS_SYNCED"
     COMPLIANCE_STATUS_UPDATED = "COMPLIANCE_STATUS_UPDATED"
     COMPLIANCE_SCORE_UPDATED = "COMPLIANCE_SCORE_UPDATED"
@@ -184,6 +185,19 @@ class AuditAction(str, Enum):
     COMPLIANCE_SCORE_REPAIRED = "COMPLIANCE_SCORE_REPAIRED"
     COMPLIANCE_RECALC_SLA_BREACH = "COMPLIANCE_RECALC_SLA_BREACH"
     COMPLIANCE_RECALC_SLA_RESOLVED = "COMPLIANCE_RECALC_SLA_RESOLVED"
+    COMPLIANCE_GAP_OPENED = "COMPLIANCE_GAP_OPENED"
+    COMPLIANCE_GAP_RESOLVED = "COMPLIANCE_GAP_RESOLVED"
+    COMPLIANCE_GAP_ISSUE_CREATED = "COMPLIANCE_GAP_ISSUE_CREATED"
+    COMPLIANCE_GAP_BACKFILL_COMPLETED = "COMPLIANCE_GAP_BACKFILL_COMPLETED"
+    TENANT_DELIVERY_INITIATED = "TENANT_DELIVERY_INITIATED"
+    TENANT_DELIVERY_SUCCEEDED = "TENANT_DELIVERY_SUCCEEDED"
+    TENANT_DELIVERY_FAILED = "TENANT_DELIVERY_FAILED"
+    TENANT_DELIVERY_PROVIDER_DELIVERED = "TENANT_DELIVERY_PROVIDER_DELIVERED"
+    TENANT_DELIVERY_PROVIDER_OPENED = "TENANT_DELIVERY_PROVIDER_OPENED"
+    TENANT_DELIVERY_PROVIDER_BOUNCED = "TENANT_DELIVERY_PROVIDER_BOUNCED"
+    TENANT_DELIVERY_ACKNOWLEDGED = "TENANT_DELIVERY_ACKNOWLEDGED"
+    COMPLIANCE_AUDIT_PACK_GENERATED = "COMPLIANCE_AUDIT_PACK_GENERATED"
+    COMPLIANCE_AUDIT_PACK_DOWNLOADED = "COMPLIANCE_AUDIT_PACK_DOWNLOADED"
 
     # Password
     PASSWORD_TOKEN_GENERATED = "PASSWORD_TOKEN_GENERATED"
@@ -877,13 +891,13 @@ class Requirement(BaseModel):
     confirmed_expiry_date: Optional[datetime] = None
     extracted_expiry_date: Optional[datetime] = None
     expiry_source: Optional[ExpirySource] = ExpirySource.NONE
-    extraction_confidence: Optional[float] = None  # 0-1
+    extraction_confidence: Optional[float] = None
     not_required_reason: Optional[str] = None  # When applicability=NOT_REQUIRED, controlled list
     issue_date: Optional[datetime] = None  # From document extraction or user confirmation
     certificate_number: Optional[str] = None  # From document extraction or user confirmation
     # Truth / presentation (see services/requirement_truth.py); optional for legacy rows
     date_source: Optional[str] = None  # SYSTEM_ESTIMATED | USER_PROVIDED | VERIFIED_DOCUMENT
-    evidence_state: Optional[str] = None  # MISSING | UPLOADED_UNVERIFIED | VERIFIED
+    evidence_state: Optional[str] = None  # MISSING | UPLOADED_UNVERIFIED | VERIFIED — legacy surface; non-authoritative when evidence_authority is set
     confidence_state: Optional[str] = None  # ESTIMATED | PARTIALLY_CONFIRMED | VERIFIED
     # Compliance registry (generation + attention flows): DOCUMENT | JOB | OBLIGATION | SYSTEM
     compliance_requirement_class: Optional[str] = None
@@ -900,6 +914,10 @@ class Requirement(BaseModel):
     registry_metadata: Optional[Dict[str, Any]] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.now().astimezone().tzinfo))
+    # Authoritative evidence + expiry projection (services.requirement_evidence_authority). When set with version>=1, readers must prefer this over legacy date fields.
+    evidence_authority: Optional[Dict[str, Any]] = None
+    evidence_authority_synced_at: Optional[datetime] = None
+
 
 class RequirementRule(BaseModel):
     """Defines a compliance requirement rule that can be applied to properties."""
@@ -929,7 +947,10 @@ class Document(BaseModel):
     
     document_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_id: str
-    property_id: Optional[str] = None  # None = client-level document (e.g. intake migration with no mapping)
+    property_id: Optional[str] = None  # None only when evidence_scope_type is PORTFOLIO, INTAKE_STAGING, or UNRESOLVED (explicit)
+    evidence_scope_type: Optional[str] = None  # PROPERTY | PORTFOLIO | INTAKE_STAGING | UNRESOLVED (quarantine)
+    evidence_scope_id: Optional[str] = None
+    authoritative_property_id: Optional[str] = None
     requirement_id: Optional[str] = None  # Optional for bulk uploads without auto-matching
     file_name: str
     file_path: str
@@ -949,6 +970,23 @@ class Document(BaseModel):
     document_metadata: Optional[Dict[str, Any]] = None
     # Snapshot from last upload-time validation (when requirement-linked); includes valid, jurisdiction, validated_at, missing_metadata_fields
     validation_result: Optional[Dict[str, Any]] = None
+    # Evidence document matching (Compliance Vault Pro — services.evidence_document_match_engine)
+    predicted_document_type: Optional[str] = None
+    predicted_document_subtype: Optional[str] = None
+    match_outcome: Optional[str] = None
+    match_confidence: Optional[float] = None
+    mismatch_reason_code: Optional[str] = None
+    mismatch_reason_text: Optional[str] = None
+    matched_requirement_family: Optional[str] = None
+    detection_signals: Optional[Dict[str, Any]] = None
+    evidence_match_policy: Optional[str] = None
+    evidence_satisfies_requirement: Optional[bool] = None
+    evidence_match_user_messages: Optional[List[str]] = None
+    reviewed_match_outcome: Optional[str] = None
+    reviewed_match_actor_id: Optional[str] = None
+    reviewed_match_at: Optional[datetime] = None
+    # Pre-engine rows or intake staging (see services.evidence_document_taxonomy)
+    evidence_match_legacy_state: Optional[str] = None
 
 class AuditLog(BaseModel):
     model_config = ConfigDict(extra="ignore")

@@ -36,6 +36,8 @@ logger = logging.getLogger(__name__)
 
 GRIDFS_BUCKET = "order_files"
 STRIPE_CHECKOUT_INVOICES = "stripe_checkout_invoices"
+# Subscription renewals / proration invoices (invoice.paid) — not checkout sessions
+CVP_SUBSCRIPTION_RENEWAL_RECEIPTS = "cvp_subscription_renewal_receipts"
 
 
 async def allocate_invoice_number() -> str:
@@ -756,3 +758,169 @@ async def regenerate_subscription_checkout_invoice_pdf_for_client(
     if not ok:
         return False, None, err or "PDF regeneration failed"
     return True, inv_no, None
+
+
+def _breakdown_rows_to_pdf_line_items(breakdown: Any) -> List[Dict[str, Any]]:
+    if not isinstance(breakdown, list) or not breakdown:
+        return []
+    out: List[Dict[str, Any]] = []
+    for row in breakdown:
+        if not isinstance(row, dict):
+            continue
+        amt = int(row.get("amount") or 0)
+        desc = str(row.get("description") or row.get("type") or "Subscription").strip() or "Subscription"
+        out.append({"description": desc, "quantity": 1, "unit_pence": amt, "line_total_pence": amt})
+    return out
+
+
+async def persist_cvp_subscription_renewal_receipt(
+    *,
+    client_id: str,
+    stripe_invoice_id: str,
+    stripe_invoice_dict: Dict[str, Any],
+    pleerity_invoice_number: Optional[str],
+    paid_at: datetime,
+    billing_period_start: Optional[datetime],
+    billing_period_end: Optional[datetime],
+    amount_total_pence: int,
+    currency: str,
+    hosted_invoice_url: Optional[str],
+    billing_breakdown: Optional[List[Dict[str, Any]]],
+    plan_code: Any,
+    customer_name: str,
+    customer_email: str,
+    billing_reason: str,
+) -> Tuple[bool, Optional[str], Optional[str]]:
+    """
+    Upsert a renewal/proration receipt row + optional Pleerity PDF (GridFS).
+    Document _id is the Stripe invoice id (in_...) for idempotency across invoice.paid / payment_succeeded.
+
+    ``pleerity_invoice_number``: if None, reuse an existing row's number or allocate a new INV-YYYY-NNNNNN.
+
+    Returns (ok, error_message, gridfs_id_or_none).
+    """
+    from services.plan_registry import plan_registry
+
+    db = database.get_db()
+    existing_full = await db[CVP_SUBSCRIPTION_RENEWAL_RECEIPTS].find_one({"_id": stripe_invoice_id})
+    if existing_full and existing_full.get("invoice_number"):
+        inv_no = str(existing_full["invoice_number"])
+    elif pleerity_invoice_number:
+        inv_no = str(pleerity_invoice_number)
+    else:
+        inv_no = await allocate_invoice_number()
+    tax_vals = []
+    for t in (stripe_invoice_dict.get("total_tax_amounts") or []) or []:
+        try:
+            tax_vals.append(int(t.get("amount") or 0))
+        except (TypeError, ValueError):
+            continue
+    vat_pence = int(sum(tax_vals)) if tax_vals else 0
+    if not vat_pence:
+        td_obj = stripe_invoice_dict.get("total_details") or {}
+        try:
+            vat_pence = int(td_obj.get("amount_tax") or 0)
+        except (TypeError, ValueError):
+            vat_pence = 0
+
+    note = _format_billing_period_note(billing_period_start, billing_period_end)
+    pdf_rows = _breakdown_rows_to_pdf_line_items(billing_breakdown)
+    if not pdf_rows:
+        primary = plan_registry.format_cvp_invoice_product_line(plan_code) if plan_code else "Subscription"
+        full_desc = f"{primary}\n{note}" if note else primary
+        data = subscription_session_to_invoice_data(
+            invoice_number=inv_no,
+            order_reference=stripe_invoice_id,
+            customer_name=customer_name or "Customer",
+            customer_email=customer_email or "",
+            primary_line_description=full_desc,
+            amount_total_pence=amount_total_pence,
+            currency=currency,
+            vat_pence=vat_pence,
+            billing_period_start=billing_period_start,
+            billing_period_end=billing_period_end,
+        )
+    else:
+        if note:
+            adj = []
+            for i, r in enumerate(pdf_rows):
+                if i == 0:
+                    d = str(r.get("description") or "")
+                    r = {**r, "description": f"{d}\n{note}".strip() if d else note}
+                adj.append(r)
+            pdf_rows = adj
+        data = _subscription_checkout_multiline_invoice_data(
+            invoice_number=inv_no,
+            order_reference=stripe_invoice_id,
+            customer_name=customer_name or "Customer",
+            customer_email=customer_email or "",
+            line_items=pdf_rows,
+            amount_total_pence=amount_total_pence,
+            currency=currency,
+            vat_pence=vat_pence,
+        )
+    data["date_issued"] = paid_at.strftime("%d %B %Y %H:%M UTC")
+
+    pdf_bytes: Optional[bytes] = None
+    pdf_err: Optional[str] = None
+    try:
+        pdf_bytes = build_branded_invoice_pdf_bytes(data)
+    except Exception as e:
+        logger.warning("Renewal receipt PDF build failed client_id=%s inv=%s: %s", client_id, stripe_invoice_id, e)
+        pdf_err = str(e)
+
+    gridfs_id: Optional[str] = None
+    safe_inv = re.sub(r"[^\w\-]+", "_", inv_no)[:60]
+    filename = f"{safe_inv}.pdf"
+    if pdf_bytes:
+        try:
+            meta = {
+                "client_id": client_id,
+                "stripe_invoice_id": stripe_invoice_id,
+                "invoice_number": inv_no,
+                "kind": "subscription_renewal_receipt",
+                "content_type": "application/pdf",
+            }
+            gridfs_id = await _upload_pdf_to_gridfs(filename, pdf_bytes, meta)
+        except Exception as e:
+            logger.warning("Renewal receipt GridFS upload failed client_id=%s: %s", client_id, e)
+            pdf_err = (pdf_err or "") + str(e)
+
+    now = datetime.now(timezone.utc)
+    stripe_num = (stripe_invoice_dict.get("number") or "").strip() or None
+    ledger: Dict[str, Any] = {
+        "client_id": client_id,
+        "invoice_number": inv_no,
+        "stripe_invoice_id": stripe_invoice_id,
+        "stripe_invoice_number": stripe_num,
+        "hosted_invoice_url": (hosted_invoice_url or "").strip() or None,
+        "billing_reason": billing_reason,
+        "amount_total_pence": amount_total_pence,
+        "currency": (currency or "gbp").lower(),
+        "payment_status": "PAID",
+        "paid_at": paid_at,
+        "billing_period_start": billing_period_start,
+        "billing_period_end": billing_period_end,
+        "billing_breakdown": billing_breakdown or [],
+        "pdf_build_error": pdf_err,
+        "updated_at": now,
+    }
+    if gridfs_id:
+        ledger["gridfs_id"] = gridfs_id
+        ledger["filename"] = filename
+    elif existing_full and existing_full.get("gridfs_id"):
+        ledger["gridfs_id"] = existing_full["gridfs_id"]
+        ledger["filename"] = existing_full.get("filename") or filename
+    existing = await db[CVP_SUBSCRIPTION_RENEWAL_RECEIPTS].find_one({"_id": stripe_invoice_id}, {"_id": 0, "created_at": 1})
+    if not existing or not existing.get("created_at"):
+        ledger["created_at"] = now
+    try:
+        await db[CVP_SUBSCRIPTION_RENEWAL_RECEIPTS].update_one(
+            {"_id": stripe_invoice_id},
+            {"$set": ledger},
+            upsert=True,
+        )
+    except Exception as e:
+        logger.exception("persist_cvp_subscription_renewal_receipt failed: %s", e)
+        return False, str(e), gridfs_id
+    return True, None, gridfs_id

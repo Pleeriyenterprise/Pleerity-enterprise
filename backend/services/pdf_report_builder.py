@@ -19,6 +19,7 @@ from presentation.jurisdiction_reporting import (
     jurisdiction_default_fallback_report_disclaimer,
     portfolio_jurisdiction_summary_sentence,
 )
+from utils.expiry_utils import get_computed_status, get_effective_expiry_date
 
 PDF_FOOTER_DISCLAIMER = "This report does not constitute legal advice."
 
@@ -119,11 +120,26 @@ def _build_styles_and_table_style(branding: dict) -> tuple:
     return styles, table_style
 
 
-def _derive_counts_and_risk(properties: List[dict], requirements: List[dict], now: datetime) -> dict:
-    valid = sum(1 for r in requirements if (r.get("status") or "").upper() in ("COMPLIANT", "VALID"))
-    expiring = sum(1 for r in requirements if (r.get("status") or "").upper() == "EXPIRING_SOON")
-    overdue = sum(1 for r in requirements if (r.get("status") or "").upper() in ("OVERDUE", "EXPIRED"))
-    missing = sum(1 for r in requirements if (r.get("status") or "").upper() in ("PENDING", "MISSING"))
+def _row_computed_status(
+    req: dict, properties: List[dict], client_doc: Optional[dict]
+) -> str:
+    pmap = {p.get("property_id"): p for p in properties if p.get("property_id")}
+    pd = pmap.get(req.get("property_id"))
+    return (
+        get_computed_status(req, property_doc=pd, client_doc=client_doc or {}) or ""
+    ).upper()
+
+
+def _derive_counts_and_risk(
+    properties: List[dict], requirements: List[dict], now: datetime, client_doc: Optional[dict] = None
+) -> dict:
+    def st(r: dict) -> str:
+        return _row_computed_status(r, properties, client_doc)
+
+    valid = sum(1 for r in requirements if st(r) in ("COMPLIANT", "VALID", "NOT_REQUIRED"))
+    expiring = sum(1 for r in requirements if st(r) == "EXPIRING_SOON")
+    overdue = sum(1 for r in requirements if st(r) in ("OVERDUE", "EXPIRED"))
+    missing = sum(1 for r in requirements if st(r) in ("PENDING", "MISSING", "UNKNOWN_DATE"))
     scores = [p.get("compliance_score") for p in properties if p.get("compliance_score") is not None]
     portfolio_score = round(sum(scores) / len(scores)) if scores else None
     risk_levels = [p.get("risk_level") for p in properties if p.get("risk_level")]
@@ -138,15 +154,20 @@ def _derive_counts_and_risk(properties: List[dict], requirements: List[dict], no
     }
 
 
-def _top_risk_drivers(requirements: List[dict], limit: int = 10) -> List[dict]:
+def _top_risk_drivers(
+    requirements: List[dict],
+    properties: List[dict],
+    client_doc: Optional[dict],
+    limit: int = 10,
+) -> List[dict]:
     """Requirements that are overdue, expired, or expiring soon."""
     out = []
     for r in requirements:
-        s = (r.get("status") or "").upper()
+        s = _row_computed_status(r, properties, client_doc)
         if s in ("OVERDUE", "EXPIRED", "EXPIRING_SOON"):
             out.append({
                 "requirement_type": r.get("requirement_type") or r.get("description") or "—",
-                "status": _status_label(r.get("status")),
+                "status": _status_label(s),
                 "property_id": r.get("property_id"),
             })
     return out[:limit]
@@ -172,8 +193,8 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     }
 
     styles, table_style = _build_styles_and_table_style(branding)
-    derived = _derive_counts_and_risk(properties, requirements, now)
-    top_risks = _top_risk_drivers(requirements)
+    derived = _derive_counts_and_risk(properties, requirements, now, client_doc=client)
+    top_risks = _top_risk_drivers(requirements, properties, client, limit=10)
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -258,13 +279,20 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
         elements.append(Paragraph(f"<b>{p.get('address_line_1') or p.get('property_id')}</b>", styles["body"]))
         rows = [["Requirement", "Status", "Due date", "Days to expiry"]]
         for r in reqs_by_prop.get(p["property_id"], [])[:30]:
-            due = r.get("due_date")
-            due_str = due.isoformat()[:10] if hasattr(due, "isoformat") else str(due)[:10] if due else "—"
-            days = _days_to_expiry(due, now)
+            due = get_effective_expiry_date(r)
+            due_for_days = due if due is not None else r.get("due_date")
+            if due and hasattr(due, "isoformat"):
+                due_str = due.date().isoformat() if hasattr(due, "date") else due.isoformat()[:10]
+            elif isinstance(r.get("due_date"), str) and r.get("due_date"):
+                due_str = str(r.get("due_date"))[:10]
+            else:
+                due_str = "—"
+            days = _days_to_expiry(due_for_days, now)
             days_str = str(days) if days is not None else "—"
+            cs = get_computed_status(r, property_doc=p, client_doc=client)
             rows.append([
                 (r.get("description") or r.get("requirement_type") or "—")[:35],
-                _status_label(r.get("status")),
+                _status_label(cs),
                 due_str,
                 days_str,
             ])
@@ -573,8 +601,8 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     score_change_summary = report_data.get("score_change_summary")
 
     styles, table_style = _build_styles_and_table_style(branding)
-    derived = _derive_counts_and_risk(properties, requirements, now)
-    top_risks = _top_risk_drivers(requirements)
+    derived = _derive_counts_and_risk(properties, requirements, now, client_doc=client)
+    top_risks = _top_risk_drivers(requirements, properties, client, limit=10)
     prop = properties[0] if properties else {}
 
     buffer = io.BytesIO()
@@ -638,13 +666,20 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     elements.append(Paragraph("Requirement matrix", styles["heading"]))
     rows = [["Requirement", "Status", "Due date", "Days to expiry"]]
     for r in requirements[:50]:
-        due = r.get("due_date")
-        due_str = due.isoformat()[:10] if hasattr(due, "isoformat") else str(due)[:10] if due else "—"
-        days = _days_to_expiry(due, now)
+        due = get_effective_expiry_date(r)
+        due_for_days = due if due is not None else r.get("due_date")
+        if due and hasattr(due, "isoformat"):
+            due_str = due.date().isoformat() if hasattr(due, "date") else due.isoformat()[:10]
+        elif isinstance(r.get("due_date"), str) and r.get("due_date"):
+            due_str = str(r.get("due_date"))[:10]
+        else:
+            due_str = "—"
+        days = _days_to_expiry(due_for_days, now)
         days_str = str(days) if days is not None else "—"
+        cs = get_computed_status(r, property_doc=prop, client_doc=client)
         rows.append([
             (r.get("description") or r.get("requirement_type") or "—")[:40],
-            _status_label(r.get("status")),
+            _status_label(cs),
             due_str,
             days_str,
         ])

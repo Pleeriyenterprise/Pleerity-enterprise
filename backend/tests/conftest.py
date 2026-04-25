@@ -28,6 +28,12 @@ _STRIPE_TEST_DEFAULTS = {
 for _k, _v in _STRIPE_TEST_DEFAULTS.items():
     os.environ.setdefault(_k, _v)
 
+# OTP unit tests require a pepper at import-time of services.otp_service (via app import). Not a production secret.
+os.environ.setdefault(
+    "OTP_PEPPER",
+    "pytest-otp-pepper-not-for-production-use-32chars!",
+)
+
 import pytest
 
 # CMS, blog, experimental tooling, internal analytics only (Phase 5.3). Not landlord core flows.

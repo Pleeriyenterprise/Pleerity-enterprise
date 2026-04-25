@@ -15,8 +15,8 @@ from services.requirement_catalog import (
 
 
 def test_plan_is_per_property_types_no_cross_merge():
-    p1 = {"property_id": "a", "jurisdiction": "England", "cert_gas_safety": "YES"}
-    p2 = {"property_id": "b", "jurisdiction": "Scotland", "cert_gas_safety": "YES", "is_hmo": True}
+    p1 = {"property_id": "a", "jurisdiction": "England", "has_gas_supply": True}
+    p2 = {"property_id": "b", "jurisdiction": "Scotland", "has_gas_supply": True, "is_hmo": True}
     c = {}
     plan1 = build_requirement_plan_for_property(p1, c)
     plan2 = build_requirement_plan_for_property(p2, c)
@@ -41,7 +41,7 @@ def test_obligation_types_not_tracked():
 
 
 def test_hmo_job_rows_tracked():
-    prop = {"jurisdiction": "England", "is_hmo": True, "cert_gas_safety": "YES"}
+    prop = {"jurisdiction": "England", "is_hmo": True, "has_gas_supply": True}
     plan = build_requirement_plan_for_property(prop, {})
     em = next((x for x in plan if x.requirement_type == "emergency_lighting"), None)
     assert em is not None
@@ -50,7 +50,7 @@ def test_hmo_job_rows_tracked():
 
 
 def test_core_pack_document_class():
-    prop = {"jurisdiction": "England", "cert_gas_safety": "YES"}
+    prop = {"jurisdiction": "England", "has_gas_supply": True}
     plan = build_requirement_plan_for_property(prop, {})
     gas = next((x for x in plan if x.requirement_type == "gas_safety"), None)
     assert gas is not None

@@ -692,8 +692,13 @@ async def preview_generated_requirements(body: IntakeRequirementsPreviewRequest)
     Read-only planner preview for intake UX.
     Returns generated requirement summary per property (no persistence, no manual selection).
     """
+    from database import database
+    from services.compliance_registry_publish_service import fetch_active_published_registry_entries
     from services.compliance_requirement_registry import build_requirement_plan_for_property
     from services.requirement_action_resolver import infer_action_type
+
+    db = database.get_db()
+    published = await fetch_active_published_registry_entries(db)
 
     summaries = []
     for idx, prop in enumerate(body.properties or []):
@@ -705,7 +710,7 @@ async def preview_generated_requirements(body: IntakeRequirementsPreviewRequest)
                 detail=f"Property {idx + 1}: jurisdiction must be Scotland, England, Wales, or Northern Ireland",
             )
         p["jurisdiction"] = jur
-        plan = build_requirement_plan_for_property(p, {})
+        plan = build_requirement_plan_for_property(p, {}, published_registry_entries=published)
         action_type_counts: Dict[str, int] = {}
         for item in plan:
             action = infer_action_type({"compliance_requirement_class": item.compliance_requirement_class}) or "UNKNOWN"
@@ -1132,13 +1137,20 @@ async def _reconcile_intake_documents(db, client_id: str, session_id: str, prope
             if property_temp_key and property_temp_key in property_map:
                 actual_property_id = property_map[property_temp_key]
 
+                from services.requirement_evidence_authority import normalize_document_evidence_scope
+
+                prop_scope = normalize_document_evidence_scope(
+                    property_id=actual_property_id,
+                    client_id=client_id,
+                    evidence_scope_type="PROPERTY",
+                )
                 await db.documents.update_one(
                     {"document_id": doc["document_id"]},
                     {
                         "$set": {
                             "client_id": client_id,
-                            "property_id": actual_property_id,
-                            "property_temp_key": None
+                            "property_temp_key": None,
+                            **prop_scope,
                         }
                     }
                 )
@@ -1229,11 +1241,18 @@ async def upload_intake_document(
         with open(str(file_path), "wb") as f:
             f.write(content)
         
+        from services.requirement_evidence_authority import normalize_document_evidence_scope
+
+        scope_fields = normalize_document_evidence_scope(
+            property_id=None,
+            client_id="",
+            evidence_scope_type="INTAKE_STAGING",
+            intake_session_id=intake_session_id,
+        )
         # Create document record (UNVERIFIED, source=INTAKE_UPLOAD)
         doc_record = {
             "document_id": document_id,
             "client_id": None,  # Will be set after intake submission
-            "property_id": None,  # Will be set after intake submission
             "property_temp_key": f"{intake_session_id}_property_{property_index}",
             "intake_session_id": intake_session_id,
             "source": "INTAKE_UPLOAD",
@@ -1252,9 +1271,25 @@ async def upload_intake_document(
             "suggested_expiry_date": None,
             "suggested_certificate_number": None,
             "extraction_confidence": None,
-            "manual_review_flag": True  # Always require review for intake uploads
+            "manual_review_flag": True,  # Always require review for intake uploads
+            **scope_fields,
         }
-        
+        from services.evidence_document_match_engine import (
+            evaluate_document_requirement_match,
+            match_evaluation_to_persisted_document_fields,
+        )
+        from services.evidence_document_taxonomy import EVIDENCE_MATCH_LEGACY_STATE_UNCLASSIFIED_PRE_ENGINE
+
+        _mev = evaluate_document_requirement_match(
+            requirement=None,
+            filename=file.filename or "",
+            user_declared_document_type=document_type,
+            extracted_data=None,
+            upload_route_context="intake_wizard_upload",
+        )
+        doc_record.update(match_evaluation_to_persisted_document_fields(_mev))
+        doc_record["evidence_match_legacy_state"] = EVIDENCE_MATCH_LEGACY_STATE_UNCLASSIFIED_PRE_ENGINE
+
         await db.documents.insert_one(doc_record)
         
         logger.info(f"Intake document uploaded: {document_id} for session {intake_session_id}")

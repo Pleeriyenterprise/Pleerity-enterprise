@@ -26,6 +26,8 @@ from services.compliance_rules_registry import (
     property_jurisdiction_requirement_flags,
     resolve_portfolio_jurisdiction,
 )
+from utils.expiry_utils import get_effective_expiry_date
+from services.requirement_evidence_authority import authority_runtime_requirement_status, authority_state
 import logging
 
 logger = logging.getLogger(__name__)
@@ -183,11 +185,35 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         else:
             breakdown = {}
         grade, color, message = score_to_grade_color_message(client_score)
-        property_ids = [p["property_id"] for p in properties]
-        requirements = await db.requirements.find(
+        client_row = await db.clients.find_one(
             {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "requirement_id": 1, "requirement_type": 1, "status": 1, "due_date": 1, "description": 1}
+            {"_id": 0, "default_jurisdiction": 1, "jurisdiction_fallback_acknowledged_at": 1},
+        ) or {}
+        property_ids = [p["property_id"] for p in properties]
+        raw_requirements = await db.requirements.find(
+            {"client_id": client_id},
+            {"_id": 0},
         ).to_list(500)
+        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+        raw_requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=client_id,
+            requirements=raw_requirements,
+            client_doc=client_row,
+            properties=properties,
+        )
+        requirements = []
+        for r in raw_requirements:
+            eff = get_effective_expiry_date(r)
+            requirements.append(
+                {
+                    **r,
+                    "status": authority_runtime_requirement_status(r) or r.get("status"),
+                    "due_date": eff.isoformat() if eff else None,
+                    "evidence_state": authority_state(r) or r.get("evidence_state"),
+                }
+            )
         total_reqs = len(requirements)
         compliant = sum(1 for r in requirements if r.get("status") == "COMPLIANT")
         pending = sum(1 for r in requirements if r.get("status") == "PENDING")
@@ -265,11 +291,13 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "nearest_expiry_type": nearest_type,
             "hmo_properties": sum(1 for p in properties if p.get("is_hmo")),
         }
+        try:
+            from services.compliance_gap_sync import aggregate_gap_counts_for_client
+
+            stats["gap_engine"] = await aggregate_gap_counts_for_client(db, client_id)
+        except Exception:
+            stats["gap_engine"] = {"by_kind": {}, "by_severity": {}, "total_open": 0}
         prop_map = {p["property_id"]: p for p in properties}
-        client_row = await db.clients.find_one(
-            {"client_id": client_id},
-            {"_id": 0, "default_jurisdiction": 1, "jurisdiction_fallback_acknowledged_at": 1},
-        ) or {}
         jurisdiction_compliance_notice = build_jurisdiction_compliance_notice(client_row, properties)
         res_by_pid = {
             p["property_id"]: resolve_portfolio_jurisdiction(p, client_row)
@@ -578,6 +606,29 @@ async def _calculate_compliance_score_legacy_from_db(client_id: str) -> Dict[str
                 "recommendations": [],
                 "enhanced_model": True,
             }
+        client_row_l = await db.clients.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "default_jurisdiction": 1, "jurisdiction_fallback_acknowledged_at": 1},
+        ) or {}
+        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=client_id,
+            requirements=requirements,
+            client_doc=client_row_l,
+            properties=properties,
+        )
+        if not requirements:
+            return {
+                "score": 100,
+                "grade": "A",
+                "color": "green",
+                "message": "No requirements to evaluate",
+                "breakdown": {},
+                "recommendations": [],
+                "enhanced_model": True,
+            }
         documents = await db.documents.find(
             {"property_id": {"$in": property_ids}},
             {"_id": 0}
@@ -865,7 +916,7 @@ async def get_requirement_type_breakdown(client_id: str) -> Dict[str, Any]:
     
     properties = await db.properties.find(
         {"client_id": client_id},
-        {"_id": 0, "property_id": 1}
+        {"_id": 0},
     ).to_list(100)
     
     if not properties:
@@ -877,6 +928,19 @@ async def get_requirement_type_breakdown(client_id: str) -> Dict[str, Any]:
         {"property_id": {"$in": property_ids}},
         {"_id": 0}
     ).to_list(500)
+    client_row_b = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "default_jurisdiction": 1, "jurisdiction_fallback_acknowledged_at": 1},
+    ) or {}
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=requirements,
+        client_doc=client_row_b,
+        properties=properties,
+    )
     
     type_breakdown = {}
     

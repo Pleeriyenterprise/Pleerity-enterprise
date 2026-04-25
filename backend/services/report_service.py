@@ -17,6 +17,8 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 import io
 import logging
+from utils.expiry_utils import get_effective_expiry_date
+from services.requirement_evidence_authority import authority_runtime_requirement_status, authority_state
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +59,32 @@ async def generate_evidence_readiness_pdf(
         raise ValueError("Property not found")
 
     property_ids = [p["property_id"] for p in properties]
-    requirements = await db.requirements.find(
+    raw_requirements = await db.requirements.find(
         {"client_id": client_id, "property_id": {"$in": property_ids}},
-        {"_id": 0, "property_id": 1, "requirement_type": 1, "status": 1, "due_date": 1, "description": 1},
+        {"_id": 0},
     ).to_list(5000)
+    from services.requirement_client_runtime_surface import (
+        filter_requirement_rows_for_client_runtime_surfaces,
+    )
+
+    raw_requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=raw_requirements,
+        client_doc=client,
+        properties=properties,
+    )
+    requirements = []
+    for r in raw_requirements:
+        eff = get_effective_expiry_date(r)
+        requirements.append(
+            {
+                **r,
+                "status": authority_runtime_requirement_status(r) or r.get("status"),
+                "due_date": eff.isoformat() if eff else None,
+                "evidence_state": authority_state(r) or r.get("evidence_state"),
+            }
+        )
 
     cutoff = (now - timedelta(days=30)).isoformat()
     audit_logs = await db.audit_logs.find(
@@ -258,10 +282,32 @@ async def load_evidence_readiness_data(
     )
     company_name = (client or {}).get("company_name") or (client or {}).get("full_name") or "Client"
     property_ids = [p["property_id"] for p in properties]
-    requirements = await db.requirements.find(
+    raw_requirements = await db.requirements.find(
         {"client_id": client_id, "property_id": {"$in": property_ids}},
-        {"_id": 0, "property_id": 1, "requirement_type": 1, "status": 1, "due_date": 1, "description": 1},
+        {"_id": 0},
     ).to_list(5000)
+    from services.requirement_client_runtime_surface import (
+        filter_requirement_rows_for_client_runtime_surfaces,
+    )
+
+    raw_requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=raw_requirements,
+        client_doc=client,
+        properties=properties,
+    )
+    requirements = []
+    for r in raw_requirements:
+        eff = get_effective_expiry_date(r)
+        requirements.append(
+            {
+                **r,
+                "status": authority_runtime_requirement_status(r) or r.get("status"),
+                "due_date": eff.isoformat() if eff else None,
+                "evidence_state": authority_state(r) or r.get("evidence_state"),
+            }
+        )
     cutoff = (now - timedelta(days=30)).isoformat()
     audit_logs = await db.audit_logs.find(
         {"client_id": client_id, "timestamp": {"$gte": cutoff}},

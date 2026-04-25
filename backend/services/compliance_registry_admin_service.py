@@ -485,23 +485,51 @@ def plan_types_for_draft_canonical(canonical_code: str) -> FrozenSet[str]:
         if spec and spec.storage_type:
             out.add(str(spec.storage_type).strip().lower())
     extra: Dict[str, FrozenSet[str]] = {
-        "LANDLORD_REGISTRATION": frozenset({"scotland_landlord_registration"}),
+        "LANDLORD_REGISTRATION": frozenset({"scotland_landlord_registration", "landlord_registration_ni"}),
         "OCCUPATION_CONTRACT": frozenset({"wales_occupation_contract"}),
         # Core registry uses hmo_fire_risk; catalog may surface a distinct evidence row.
         "HMO_FIRE_RISK": frozenset({"hmo_fire_risk_evidence"}),
+        "RIGHT_TO_RENT": frozenset({"right_to_rent"}),
+        "RENT_SMART_WALES": frozenset({"rent_smart_wales"}),
+        "LANDLORD_REGISTRATION_NI": frozenset({"landlord_registration_ni"}),
+        "PORTABLE_APPLIANCE": frozenset({"portable_appliance_test"}),
     }
     out |= set(extra.get(c, frozenset()))
     return frozenset(out)
 
 
+def _display_jurisdiction_list_to_region_codes(dj: Any) -> Optional[Set[str]]:
+    """
+    Normalise ``jurisdiction.display_jurisdictions`` tokens to canonical region codes.
+
+    Returns:
+        non-empty set of codes in REGISTRY_UK_DISPLAY_REGION_SET,
+        empty set when the list exists but resolves to no valid codes (fail closed),
+        None when ``dj`` is missing / not a list (legacy: fall through to scope_key heuristics).
+    """
+    if not isinstance(dj, list):
+        return None
+    codes: Set[str] = set()
+    for x in dj:
+        tok = str(x or "").strip().upper().replace(" ", "_")
+        if tok == "NORTHERNIRELAND":
+            tok = "NORTHERN_IRELAND"
+        if tok in REGISTRY_UK_DISPLAY_REGION_SET:
+            codes.add(tok)
+    return codes
+
+
 def draft_applies_to_portfolio_label(draft: Dict[str, Any], portfolio_label: str) -> bool:
-    """True when draft jurisdiction metadata does not exclude this property's portfolio label."""
+    """True when the draft's ``display_jurisdictions`` explicitly includes this property's UK region."""
+    from services.requirement_action_links import portfolio_label_to_region
+
+    active_region = portfolio_label_to_region(portfolio_label)
     label = (portfolio_label or "").strip()
     jur = draft.get("jurisdiction") if isinstance(draft.get("jurisdiction"), dict) else {}
     dj = jur.get("display_jurisdictions")
-    if isinstance(dj, list) and dj:
-        allowed = {str(x).strip().lower() for x in dj if str(x).strip()}
-        return label.lower() in allowed
+    codes = _display_jurisdiction_list_to_region_codes(dj)
+    if codes is not None:
+        return active_region in codes
     sk = str(draft.get("scope_key") or "DEFAULT").strip().upper()
     if sk == "WALES":
         return label == "Wales"
@@ -538,8 +566,15 @@ def matching_drafts_for_plan_row(
     return matched
 
 
-def merge_draft_overlay_onto_plan_row(prod: Dict[str, Any], draft: Dict[str, Any]) -> Dict[str, Any]:
-    """Apply one draft's overlay fields onto a serialized plan row (preview only)."""
+def merge_draft_overlay_onto_plan_row(
+    prod: Dict[str, Any],
+    draft: Dict[str, Any],
+    *,
+    portfolio_label: str,
+) -> Dict[str, Any]:
+    """Apply one draft's overlay fields onto a serialized plan row (preview / published merge)."""
+    from services.requirement_action_links import filter_action_links_for_region, portfolio_label_to_region
+
     out = dict(prod)
     ident = draft.get("identity") if isinstance(draft.get("identity"), dict) else {}
     name = str(ident.get("name") or "").strip()
@@ -574,6 +609,24 @@ def merge_draft_overlay_onto_plan_row(prod: Dict[str, Any], draft: Dict[str, Any
     by_j = draft.get("why_it_matters_by_jurisdiction")
     if isinstance(by_j, dict) and by_j:
         out["why_it_matters_by_jurisdiction"] = by_j
+
+    ab = draft.get("action_behaviour") if isinstance(draft.get("action_behaviour"), dict) else {}
+    pam = str(ab.get("primary_action_mode") or "").strip().lower()
+    if pam in _VALID_ACTION_MODES:
+        out["primary_action_mode"] = pam
+    cta_ov = str(ab.get("cta_label_override") or "").strip()
+    if cta_ov:
+        out["cta_label_override"] = cta_ov
+    if pam == "hidden":
+        out["client_surface_visible"] = False
+
+    region = portfolio_label_to_region(portfolio_label)
+    if isinstance(out.get("action_links"), list) and out["action_links"]:
+        out["action_links"] = filter_action_links_for_region(
+            [x for x in out["action_links"] if isinstance(x, dict)],
+            region,
+            max_links=24,
+        )
     return out
 
 
@@ -651,7 +704,7 @@ def build_registry_preview_simulation(
         preview = dict(prod)
         sources: List[Dict[str, str]] = []
         for d in matched:
-            preview = merge_draft_overlay_onto_plan_row(preview, d)
+            preview = merge_draft_overlay_onto_plan_row(preview, d, portfolio_label=portfolio)
             sources.append(
                 {
                     "entry_id": str(d.get("entry_id") or ""),

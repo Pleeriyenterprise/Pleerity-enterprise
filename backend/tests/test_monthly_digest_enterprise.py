@@ -137,10 +137,17 @@ def test_pdf_omits_property_section_when_preference_off(monkeypatch):
 
 
 def test_compute_deltas_newly_overdue():
+    prev_req = {
+        "requirement_id": "x",
+        "status": "COMPLIANT",
+        "evidence_state": "VERIFIED",
+        "due_date": "2026-06-01T00:00:00+00:00",
+    }
+    prev_fp = requirement_fingerprint(prev_req)
     prev = {
         "compliance_score": 80,
         "requirement_fingerprints": {
-            "x": "x|COMPLIANT|VERIFIED|2026-06-01T00:00:00+00:00",
+            "x": prev_fp,
         },
         "missing_evidence_count": 0,
         "documents_uploaded_in_report_period": 1,

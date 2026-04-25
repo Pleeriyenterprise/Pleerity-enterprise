@@ -21,6 +21,7 @@ from services import maintenance_issues_service
 from services.maintenance_issues_service import OPEN_ISSUE_STATUSES
 from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE
 from services import risk_signal_service as rss
+from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 
 logger = logging.getLogger(__name__)
 
@@ -247,9 +248,21 @@ async def _maybe_upgrade_electrical_to_auto(
     db = database.get_db()
     cursor = db.requirements.find(
         {"property_id": property_id, "client_id": client_id, "status": {"$in": list(_BAD_REQ_STATUSES)}},
-        {"_id": 0, "requirement_code": 1, "requirement_type": 1, "title": 1},
+        {"_id": 0},
     )
     reqs = await cursor.to_list(50)
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": client_id},
+        {"_id": 0},
+    )
+    client_row = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+    reqs = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=reqs,
+        client_doc=client_row,
+        properties=[prop] if prop else [],
+    )
     for r in reqs:
         if _is_critical_compliance_row(r) and "elec" in " ".join(
             [str(r.get("requirement_code")), str(r.get("requirement_type")), str(r.get("title"))]
@@ -270,6 +283,18 @@ async def evaluate_compliance_driven_issues(client_id: str, property_id: str) ->
         {"_id": 0},
     )
     reqs = await cursor.to_list(200)
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": client_id},
+        {"_id": 0},
+    )
+    client_row = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+    reqs = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=reqs,
+        client_doc=client_row,
+        properties=[prop] if prop else [],
+    )
 
     for r in reqs:
         if not _is_critical_compliance_row(r):
@@ -277,6 +302,32 @@ async def evaluate_compliance_driven_issues(client_id: str, property_id: str) ->
         code = (r.get("requirement_code") or r.get("requirement_type") or "unknown").strip()
         root = _operational_root_key_compliance(code)
         st = (r.get("status") or "").upper()
+        rid = r.get("requirement_id")
+        # Gap engine + bridge own governed issue creation for material gaps — avoid duplicate legacy automation.
+        if rid:
+            try:
+                gap_owned = await db.compliance_gaps.count_documents(
+                    {
+                        "client_id": client_id,
+                        "property_id": property_id,
+                        "requirement_id": str(rid),
+                        "status": "open",
+                        "gap_kind": {"$in": ["EXPIRED", "MISSING_EVIDENCE", "MISMATCHED_EVIDENCE", "EVIDENCE_UPLOADED_UNCONFIRMED"]},
+                    }
+                )
+            except Exception:
+                gap_owned = 0
+            if gap_owned > 0:
+                await _log_suppressed(
+                    client_id,
+                    property_id,
+                    "compliance_critical_superseded",
+                    "compliance_gap_engine_active",
+                    operational_root_key=root,
+                    requirement_code=code,
+                    requirement_id=str(rid),
+                )
+                continue
 
         if await _open_issue_exists_for_root(client_id, property_id, root):
             await _log_suppressed(

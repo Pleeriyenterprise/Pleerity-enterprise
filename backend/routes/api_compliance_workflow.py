@@ -88,6 +88,16 @@ def _actor_id(user: Dict[str, Any]) -> Optional[str]:
     return user.get("portal_user_id") or user.get("email") or user.get("user_id")
 
 
+async def _client_requirement_row_eligible(db, user: Dict[str, Any], req: Optional[Dict[str, Any]]) -> bool:
+    if not req:
+        return False
+    from services.requirement_client_runtime_surface import requirement_row_eligible_on_client_runtime_surfaces
+
+    return await requirement_row_eligible_on_client_runtime_surfaces(
+        db, client_id=str(user.get("client_id") or ""), row=req
+    )
+
+
 async def _resolve_contractor_for_job_pricing(request: Request, job_id: str) -> Dict[str, str]:
     """Contractor JWT or job token (?token= / X-Job-Token); validates assignment to job_id."""
     raw_q = (request.query_params.get("token") or "").strip()
@@ -134,7 +144,7 @@ async def get_requirement_by_id(request: Request, requirement_id: str, user: Dic
         {"requirement_id": requirement_id.strip(), "client_id": user["client_id"]},
         {"_id": 0},
     )
-    if not req:
+    if not req or not await _client_requirement_row_eligible(db, user, req):
         raise HTTPException(status_code=404, detail="Requirement not found")
     from services.requirement_truth import enrich_requirements_for_client
 
@@ -171,7 +181,7 @@ async def create_requirement_compliance_job(
         {"requirement_id": requirement_id.strip(), "client_id": user["client_id"]},
         {"_id": 0},
     )
-    if not req:
+    if not req or not await _client_requirement_row_eligible(db, user, req):
         raise HTTPException(status_code=404, detail="Requirement not found")
     code = (req.get("requirement_code") or req.get("requirement_type") or "").strip()
     if not code:
@@ -219,7 +229,7 @@ async def mark_requirement_not_applicable_by_id(
         {"requirement_id": rid, "client_id": user["client_id"]},
         {"_id": 0},
     )
-    if not req:
+    if not req or not await _client_requirement_row_eligible(db, user, req):
         raise HTTPException(status_code=404, detail="Requirement not found")
     prop_id = str(req.get("property_id") or "").strip()
     from datetime import datetime, timezone
@@ -305,7 +315,7 @@ async def reopen_requirement(request: Request, requirement_id: str, user: Dict[s
         {"requirement_id": rid, "client_id": user["client_id"]},
         {"_id": 0},
     )
-    if not req:
+    if not req or not await _client_requirement_row_eligible(db, user, req):
         raise HTTPException(status_code=404, detail="Requirement not found")
     prop_id = str(req.get("property_id") or "").strip()
     from datetime import datetime, timezone
@@ -377,9 +387,9 @@ async def upload_document_for_requirement(
     rid = requirement_id.strip()
     req = await db.requirements.find_one(
         {"requirement_id": rid, "client_id": user["client_id"]},
-        {"_id": 0, "property_id": 1},
+        {"_id": 0},
     )
-    if not req:
+    if not req or not await _client_requirement_row_eligible(db, user, req):
         raise HTTPException(status_code=404, detail="Requirement not found")
     prop_id = str(req.get("property_id") or "").strip()
     try:

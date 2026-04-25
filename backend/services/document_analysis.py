@@ -245,6 +245,14 @@ class DocumentAnalysisService:
                                 }
                             }}
                         )
+                        try:
+                            from services.evidence_document_match_engine import (
+                                persist_document_evidence_match_after_extraction,
+                            )
+
+                            await persist_document_evidence_match_after_extraction(db, document_id)
+                        except Exception as pm_err:
+                            logger.warning("Evidence match persist after OpenAI analysis failed: %s", pm_err)
                         await create_audit_log(
                             action=AuditAction.DOCUMENT_AI_ANALYZED,
                             actor_id=actor_id,
@@ -337,7 +345,15 @@ class DocumentAnalysisService:
                         }
                     }}
                 )
-                
+                try:
+                    from services.evidence_document_match_engine import (
+                        persist_document_evidence_match_after_extraction,
+                    )
+
+                    await persist_document_evidence_match_after_extraction(db, document_id)
+                except Exception as pm_err:
+                    logger.warning("Evidence match persist after Gemini analysis failed: %s", pm_err)
+
                 # Audit log
                 await create_audit_log(
                     action=AuditAction.DOCUMENT_AI_ANALYZED,

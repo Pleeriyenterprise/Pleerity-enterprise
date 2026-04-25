@@ -31,6 +31,23 @@ class _AsyncPropCursor:
         return v
 
 
+_REMINDER_SCHEDULER_TEST_PROPERTY = {
+    "property_id": "p1",
+    "client_id": "c1",
+    "jurisdiction": "England",
+    "property_type": "residential",
+    "tenancy_active": True,
+    "has_gas_supply": True,
+    "deposit_taken": True,
+    "furnished": False,
+    "is_hmo": False,
+    "nickname": None,
+    "address_line_1": "1 Example Rd",
+    "city": "London",
+    "postcode": "N1",
+}
+
+
 class TestGetEffectiveExpiryDate:
     """Single rule: confirmed_expiry_date else extracted_expiry_date else due_date."""
 
@@ -63,6 +80,33 @@ class TestGetEffectiveExpiryDate:
         req = {}
         assert get_effective_expiry_date(req) is None
         req = {"applicability": "UNKNOWN"}
+        assert get_effective_expiry_date(req) is None
+
+    def test_authority_effective_expiry_overrides_legacy_when_synced(self):
+        req = {
+            "evidence_authority_synced_at": "2026-01-01T00:00:00+00:00",
+            "evidence_authority": {
+                "version": 1,
+                "effective_expiry_date": "2026-08-15T00:00:00+00:00",
+                "effective_expiry_is_null": False,
+            },
+            "confirmed_expiry_date": "2027-01-01T00:00:00+00:00",
+            "due_date": "2020-01-01T00:00:00+00:00",
+        }
+        d = get_effective_expiry_date(req)
+        assert d is not None
+        assert d.month == 8 and d.day == 15
+
+    def test_authority_null_expiry_ignores_legacy_when_marked_null(self):
+        req = {
+            "evidence_authority_synced_at": "2026-01-01T00:00:00+00:00",
+            "evidence_authority": {
+                "version": 1,
+                "effective_expiry_date": None,
+                "effective_expiry_is_null": True,
+            },
+            "due_date": "2026-12-31T00:00:00+00:00",
+        }
         assert get_effective_expiry_date(req) is None
 
 
@@ -143,7 +187,11 @@ class TestReminderWritesReminderTypeAndRefs:
                                 "property_id": "p1",
                                 "due_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
                                 "description": "Gas Safety",
-                                "requirement_type": "GAS_SAFETY_CERT",
+                                "requirement_type": "gas_safety",
+                                "applicability": "REQUIRED",
+                                "status": "PENDING",
+                                "jurisdiction": "England",
+                                "client_surface_visible": True,
                             }
                         ]
                         scheduler.db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=reqs)))
@@ -165,17 +213,7 @@ class TestReminderWritesReminderTypeAndRefs:
                         )
                         scheduler.db.reminder_evaluation_log = MagicMock(insert_one=AsyncMock())
                         scheduler.db.properties.find = MagicMock(
-                            return_value=_AsyncPropCursor(
-                                [
-                                    {
-                                        "property_id": "p1",
-                                        "nickname": None,
-                                        "address_line_1": "1 Example Rd",
-                                        "city": "London",
-                                        "postcode": "N1",
-                                    },
-                                ]
-                            )
+                            return_value=_AsyncPropCursor([dict(_REMINDER_SCHEDULER_TEST_PROPERTY)])
                         )
                         with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock):
                             with patch("services.plan_registry.plan_registry.enforce_feature", new_callable=AsyncMock, return_value=(False, None, None)):
@@ -223,9 +261,12 @@ class TestReminderWritesReminderTypeAndRefs:
                         "requirement_id": "r_overdue",
                         "client_id": "c1",
                         "property_id": "p1",
-                        "requirement_type": "GAS_SAFETY_CERT",
+                        "requirement_type": "gas_safety",
                         "due_date": past,
                         "applicability": "REQUIRED",
+                        "status": "OVERDUE",
+                        "jurisdiction": "England",
+                        "client_surface_visible": True,
                     }
                 ]
                 scheduler.db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=reqs)))
@@ -247,17 +288,7 @@ class TestReminderWritesReminderTypeAndRefs:
                 )
                 scheduler.db.reminder_evaluation_log = MagicMock(insert_one=AsyncMock())
                 scheduler.db.properties.find = MagicMock(
-                    return_value=_AsyncPropCursor(
-                        [
-                            {
-                                "property_id": "p1",
-                                "nickname": None,
-                                "address_line_1": "1 Example Rd",
-                                "city": "London",
-                                "postcode": "N1",
-                            },
-                        ]
-                    )
+                    return_value=_AsyncPropCursor([dict(_REMINDER_SCHEDULER_TEST_PROPERTY)])
                 )
 
                 with patch("services.jobs.JobScheduler._resolve_reminder_recipients", new_callable=AsyncMock, return_value=["u@example.com"]):
@@ -274,7 +305,7 @@ class TestReminderWritesReminderTypeAndRefs:
                             import json
                             refs = json.loads(refs)
                         assert isinstance(refs, list)
-                        overdue_refs = [r for r in refs if r.get("requirement_type") == "GAS_SAFETY_CERT" or r.get("property_id") == "p1"]
+                        overdue_refs = [r for r in refs if r.get("requirement_type") == "gas_safety" or r.get("property_id") == "p1"]
                         assert len(overdue_refs) >= 1
                         assert overdue_refs[0].get("due_date")
         asyncio.run(_run())

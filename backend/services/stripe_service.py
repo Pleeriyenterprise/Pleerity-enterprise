@@ -405,7 +405,7 @@ class StripeService:
             }
 
         # Legacy rows without lifecycle: one-time reconcile (no version bump)
-        if billing.get("billing_lifecycle_state") is None:
+        if billing.get("billing_lifecycle_state") is None or billing.get("canonical_entitlement_state") is None:
             try:
                 from services.subscription_lifecycle_service import sync_subscription_lifecycle
 
@@ -524,6 +524,13 @@ class StripeService:
         else:
             api_billing_sync_state = "unknown"
 
+        from services.entitlement_access import compute_canonical_entitlement_state
+
+        canon = billing.get("canonical_entitlement_state") or compute_canonical_entitlement_state(
+            billing_lifecycle_state=lifecycle_out,
+            subscription_status_upper=sub_u,
+        )
+
         if client_facing:
             return build_client_billing_payload(
                 has_subscription=True,
@@ -548,14 +555,25 @@ class StripeService:
                 billing_last_synced_at_iso=billing_last_iso,
                 billing_sync_state=api_billing_sync_state,
                 currency=str((plan_def or {}).get("currency") or "gbp"),
+                canonical_entitlement_state=canon,
+                last_payment_at_iso=_billing_timestamp_iso(billing.get("last_payment_at")),
+                last_payment_amount_pence=billing.get("last_payment_amount_pence"),
+                last_payment_stripe_invoice_id=billing.get("last_payment_stripe_invoice_id"),
+                last_payment_invoice_number=billing.get("last_payment_invoice_number"),
+                last_payment_status=billing.get("last_payment_status"),
+                open_invoice_status=billing.get("open_invoice_status"),
+                stripe_next_payment_attempt_iso=_billing_timestamp_iso(billing.get("stripe_next_payment_attempt_at")),
+                last_invoice_failure_message=billing.get("last_invoice_failure_message"),
             )
 
         return {
             "has_subscription": True,
             "stripe_subscription_id": billing.get("stripe_subscription_id"),
+            "stripe_customer_id": billing.get("stripe_customer_id"),
             "current_plan_code": plan_code_str,
             "subscription_status": billing.get("subscription_status"),
             "entitlement_status": billing.get("entitlement_status"),
+            "canonical_entitlement_state": canon,
             "billing_lifecycle_state": lifecycle_out,
             "current_period_end": cpe_out,
             "current_period_start": cps_out,
@@ -567,6 +585,18 @@ class StripeService:
             "charge_automatically": charge_automatically,
             "billing_last_synced_at": billing_last_iso,
             "billing_sync_state": api_billing_sync_state,
+            "latest_invoice_id": billing.get("latest_invoice_id"),
+            "last_payment_at": _billing_timestamp_iso(billing.get("last_payment_at")),
+            "last_payment_amount_pence": billing.get("last_payment_amount_pence"),
+            "last_payment_status": billing.get("last_payment_status"),
+            "last_payment_stripe_invoice_id": billing.get("last_payment_stripe_invoice_id"),
+            "last_payment_invoice_number": billing.get("last_payment_invoice_number"),
+            "open_invoice_id": billing.get("open_invoice_id"),
+            "open_invoice_status": billing.get("open_invoice_status"),
+            "stripe_next_payment_attempt_at": _billing_timestamp_iso(billing.get("stripe_next_payment_attempt_at")),
+            "last_invoice_failure_message": billing.get("last_invoice_failure_message"),
+            "stripe_webhook_last_received_at": _billing_timestamp_iso(billing.get("stripe_webhook_last_received_at")),
+            "stripe_webhook_last_event_type": billing.get("stripe_webhook_last_event_type"),
         }
     
     async def cancel_subscription(

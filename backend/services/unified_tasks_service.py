@@ -35,6 +35,7 @@ from services.requirement_code_registry import (
 )
 from services.compliance_requirement_engine import resolve_engine_payload_from_code
 from services.requirement_action_resolver import resolve_take_action_for_priority_action, resolve_take_action_envelope
+from services.requirement_evidence_authority import authority_runtime_requirement_status
 
 logger = logging.getLogger(__name__)
 
@@ -613,20 +614,32 @@ async def _recently_completed_tasks(client_id: str, limit: int = 15) -> List[Dic
     req_cursor = db.requirements.find(
         {
             "client_id": client_id,
-            "status": {"$in": ["COMPLIANT", "VALID"]},
             "updated_at": {"$gte": since_req},
         },
-        {
-            "_id": 0,
-            "requirement_id": 1,
-            "property_id": 1,
-            "code": 1,
-            "requirement_type": 1,
-            "updated_at": 1,
-            "status": 1,
-        },
-    ).sort("updated_at", -1).limit(limit)
-    reqs = await req_cursor.to_list(length=limit)
+        {"_id": 0},
+    ).sort("updated_at", -1).limit(limit * 3)
+    raw_reqs = await req_cursor.to_list(length=limit * 3)
+    props_surface = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(500)
+    client_row_ut = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "default_jurisdiction": 1},
+    ) or {}
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    raw_reqs = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=raw_reqs,
+        client_doc=client_row_ut,
+        properties=props_surface,
+    )
+    reqs = []
+    for r in raw_reqs:
+        st = authority_runtime_requirement_status(r) or r.get("status")
+        if str(st or "").upper() in ("COMPLIANT", "VALID"):
+            reqs.append({**r, "status": st})
+        if len(reqs) >= limit:
+            break
     prop_ids = [r.get("property_id") for r in reqs if r.get("property_id")]
     labels = await _load_property_labels(client_id, [x for x in prop_ids if x])
 

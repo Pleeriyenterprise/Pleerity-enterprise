@@ -667,6 +667,31 @@ class EmailService:
             amount = html_module.escape(str(model.get("amount_display") or ""))
             pdate = html_module.escape(str(model.get("payment_date_display") or ""))
             ref = html_module.escape(str(model.get("reference_display") or ""))
+            is_renewal = model.get("receipt_kind") == "subscription_renewal"
+            extra_rows = ""
+            ps = model.get("payment_status_display")
+            if ps:
+                pse = html_module.escape(str(ps))
+                extra_rows += f'<tr><td style="padding: 8px 0; color: #64748b;">Payment status</td><td style="padding: 8px 0; text-align: right;"><strong>{pse}</strong></td></tr>'
+            sid = model.get("stripe_invoice_id_display")
+            if sid:
+                extra_rows += f'<tr><td style="padding: 8px 0; color: #64748b;">Stripe invoice</td><td style="padding: 8px 0; text-align: right; font-family: monospace; font-size: 12px;">{html_module.escape(str(sid))}</td></tr>'
+            snum = model.get("stripe_invoice_number_display")
+            if snum:
+                extra_rows += f'<tr><td style="padding: 8px 0; color: #64748b;">Invoice number</td><td style="padding: 8px 0; text-align: right; font-family: monospace; font-size: 12px;">{html_module.escape(str(snum))}</td></tr>'
+            bp = model.get("billing_period_display")
+            if bp:
+                extra_rows += f'<tr><td style="padding: 8px 0; color: #64748b;">Billing period</td><td style="padding: 8px 0; text-align: right;">{html_module.escape(str(bp))}</td></tr>'
+            nrd = model.get("next_renewal_display")
+            if nrd:
+                extra_rows += f'<tr><td style="padding: 8px 0; color: #64748b;">Next billing date</td><td style="padding: 8px 0; text-align: right;">{html_module.escape(str(nrd))}</td></tr>'
+            host = model.get("hosted_invoice_url")
+            if host:
+                he = html_module.escape(str(host))
+                extra_rows += (
+                    '<tr><td style="padding: 8px 0; color: #64748b;">Official invoice</td>'
+                    f'<td style="padding: 8px 0; text-align: right;"><a href="{he}" style="color: #00B8A9;">View on Stripe</a></td></tr>'
+                )
             next_steps = model.get("next_steps_html") or (
                 "<ol style=\"margin: 16px 0; padding-left: 20px; color: #334155;\">"
                 "<li>We’ll email you shortly with a link to <strong>set your password</strong>.</li>"
@@ -677,22 +702,32 @@ class EmailService:
             )
             body = f"""
             <p>Thank you — your payment for <strong>{plan}</strong> was received successfully.</p>
-            <table style="width: 100%; max-width: 480px; border-collapse: collapse; margin: 20px 0; font-size: 14px;">
+            <table style="width: 100%; max-width: 520px; border-collapse: collapse; margin: 20px 0; font-size: 14px;">
               <tr><td style="padding: 8px 0; color: #64748b;">Amount</td><td style="padding: 8px 0; text-align: right;"><strong>{amount}</strong></td></tr>
               <tr><td style="padding: 8px 0; color: #64748b;">Date</td><td style="padding: 8px 0; text-align: right;">{pdate}</td></tr>
               <tr><td style="padding: 8px 0; color: #64748b;">Reference</td><td style="padding: 8px 0; text-align: right; font-family: monospace; font-size: 12px;">{ref}</td></tr>
+              {extra_rows}
             </table>
             <p style="color: #0B1D3A; font-weight: 600;">What happens next</p>
             {next_steps}
             """
+            why = (
+                "your subscription renewed or was adjusted and Stripe recorded a successful invoice payment."
+                if is_renewal
+                else "you completed checkout for Compliance Vault Pro."
+            )
+            header_title = (
+                str(model.get("header_title") or "").strip()
+                or ("Subscription renewed" if is_renewal else "Payment received")
+            )
             return _customer_email_html(
                 model,
                 greeting=greeting,
                 body_html=body,
-                header_title="Payment received",
+                header_title=header_title,
                 cta_label=model.get("receipt_cta_label"),
                 cta_url=model.get("receipt_cta_url"),
-                why_received="you completed checkout for Compliance Vault Pro.",
+                why_received=why,
                 show_preferences_link=False,
                 customer_reference=model.get("customer_reference") or None,
             )
@@ -1610,8 +1645,29 @@ This link will expire in {expiry_phrase}.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.PAYMENT_RECEIPT:
+            is_ren = model.get("receipt_kind") == "subscription_renewal"
+            extra_lines = ""
+            if model.get("payment_status_display"):
+                extra_lines += f"Payment status: {model.get('payment_status_display')}\n"
+            if model.get("stripe_invoice_id_display"):
+                extra_lines += f"Stripe invoice: {model.get('stripe_invoice_id_display')}\n"
+            if model.get("stripe_invoice_number_display"):
+                extra_lines += f"Invoice number: {model.get('stripe_invoice_number_display')}\n"
+            if model.get("billing_period_display"):
+                extra_lines += f"Billing period: {model.get('billing_period_display')}\n"
+            if model.get("next_renewal_display"):
+                extra_lines += f"Next billing date: {model.get('next_renewal_display')}\n"
+            if model.get("hosted_invoice_url"):
+                extra_lines += f"Hosted invoice: {model.get('hosted_invoice_url')}\n"
+            title = "Subscription renewed" if is_ren else "Payment received"
+            next_default = (
+                "Your subscription remains active. See Billing in the portal for receipts and payment methods.\n"
+                if is_ren
+                else "1. You'll receive a separate email to set your password.\n2. After activation, sign in to manage properties and compliance.\n"
+            )
+            next_block = model.get("next_steps_text") or next_default
             return f"""
-Payment received — Compliance Vault Pro
+{title} — Compliance Vault Pro
 {ref_line}
 
 {_format_greeting(model.get('client_name'))}
@@ -1622,11 +1678,9 @@ Plan: {model.get('plan_name', '')}
 Amount: {model.get('amount_display', '')}
 Date: {model.get('payment_date_display', '')}
 Reference: {model.get('reference_display', '')}
-
+{extra_lines}
 What happens next:
-1. You'll receive a separate email to set your password.
-2. After activation, sign in to manage properties and compliance.
-
+{next_block}
 {footer}
             """
         elif template_alias == EmailTemplateAlias.PASSWORD_RESET:

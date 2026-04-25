@@ -32,7 +32,18 @@ class TestUploadVerifyUpdatesRequirementAndScore:
                 db = MagicMock()
                 get_db.return_value = db
                 db.properties.find_one = AsyncMock(return_value={"property_id": "p1", "client_id": "c1"})
-                db.requirements.find_one = AsyncMock(return_value={"requirement_id": "r1", "client_id": "c1", "frequency_days": 365})
+                db.clients.find_one = AsyncMock(return_value={"client_id": "c1", "default_jurisdiction": None})
+                _up_doc_cur = MagicMock()
+                _up_doc_cur.to_list = AsyncMock(return_value=[])
+                db.documents.find = MagicMock(return_value=_up_doc_cur)
+                db.requirements.find_one = AsyncMock(
+                    return_value={
+                        "requirement_id": "r1",
+                        "client_id": "c1",
+                        "property_id": "p1",
+                        "frequency_days": 365,
+                    }
+                )
                 db.documents.insert_one = AsyncMock()
                 db.requirements.update_one = AsyncMock()
                 with patch("routes.documents.regenerate_requirement_due_date", new_callable=AsyncMock) as regen:
@@ -49,7 +60,18 @@ class TestUploadVerifyUpdatesRequirementAndScore:
                             with patch("routes.documents.create_audit_log", new_callable=AsyncMock), \
                                  patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock):
                                 try:
-                                    await upload_document(req, file=file, property_id="p1", requirement_id="r1")
+                                    await upload_document(
+                                        req,
+                                        file=file,
+                                        property_id="p1",
+                                        requirement_id="r1",
+                                        work_order_id=None,
+                                        document_type=None,
+                                        notes=None,
+                                        source=None,
+                                        document_metadata=None,
+                                        evidence_scope_type="PROPERTY",
+                                    )
                                 except Exception as e:
                                     if "client_route_guard" in str(e) or "state" in str(e):
                                         pytest.skip("Request state setup skipped")
@@ -77,7 +99,18 @@ class TestDeleteRevertsRequirementAndScore:
         })
         db.documents.delete_one = AsyncMock()
         db.documents.count_documents = AsyncMock(return_value=0)
-        db.requirements.find_one = AsyncMock(return_value={"frequency_days": 365})
+        _doc_cur = MagicMock()
+        _doc_cur.to_list = AsyncMock(return_value=[])
+        db.documents.find = MagicMock(return_value=_doc_cur)
+        db.properties.find_one = AsyncMock(return_value={"property_id": "p1", "client_id": "c1"})
+        db.requirements.find_one = AsyncMock(
+            return_value={
+                "requirement_id": "r1",
+                "client_id": "c1",
+                "property_id": "p1",
+                "frequency_days": 365,
+            }
+        )
         db.requirements.update_one = AsyncMock()
         req = MagicMock()
         with patch("routes.documents.client_route_guard", new_callable=AsyncMock) as guard:
@@ -91,12 +124,15 @@ class TestDeleteRevertsRequirementAndScore:
                                 prov._update_property_compliance = AsyncMock()
                                 result = await delete_document(req, "d1")
         assert result.get("message") == "Document deleted"
-        db.requirements.update_one.assert_called_once()
-        call_args = db.requirements.update_one.call_args
-        update_doc = call_args[0][1]
-        assert update_doc["$set"]["status"] == "PENDING"
-        assert "due_date" in update_doc["$set"]
-        assert update_doc["$set"].get("date_source") == "SYSTEM_ESTIMATED"
+        revert_sets = [
+            c[0][1].get("$set", {})
+            for c in db.requirements.update_one.call_args_list
+            if len(c[0]) > 1 and isinstance(c[0][1], dict)
+        ]
+        pending_sets = [s for s in revert_sets if s.get("status") == "PENDING"]
+        assert pending_sets, "revert update should set requirement to PENDING before authority sync"
+        assert "due_date" in pending_sets[0]
+        assert pending_sets[0].get("date_source") == "SYSTEM_ESTIMATED"
 
 
 class TestAdminActionsBehaveIdentically:

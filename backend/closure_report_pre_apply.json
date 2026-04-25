@@ -1,0 +1,13 @@
+﻿{
+  "drift_count_before": 0,
+  "drift_count_after": 0,
+  "backfill_dry_run": {
+    "documents_matched_unscoped": 11,
+    "document_scope_plan": {
+      "PROPERTY": 11
+    },
+    "documents_planned_unresolved": 0,
+    "requirements_to_sync_if_applied": 286
+  },
+  "note": "No writes performed. drift_count_after matches drift_count_before. Run `python -m scripts.backfill_evidence_authority` without --dry-run on staging, then `python -m scripts.detect_evidence_authority_drift --json` for post-apply drift."
+}

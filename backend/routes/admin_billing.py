@@ -278,6 +278,7 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             )
 
         checkout_receipt_count = await db.stripe_checkout_invoices.count_documents({"client_id": client_id})
+        renewal_receipt_count = await db.cvp_subscription_renewal_receipts.count_documents({"client_id": client_id})
 
         # Get property count
         property_count = await db.properties.count_documents({"client_id": client_id})
@@ -331,6 +332,7 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             # Stripe activity & receipts (for admin UI)
             "stripe_timeline": stripe_timeline,
             "checkout_receipt_ledger_count": checkout_receipt_count,
+            "renewal_receipt_ledger_count": renewal_receipt_count,
             "next_billing_date": billing.get("current_period_end") if billing else None,
             "last_stripe_invoice_id": billing.get("latest_invoice_id") if billing else None,
             
@@ -367,8 +369,43 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             ss = sub_status.get("subscription_status")
             if ss:
                 snapshot["stripe_subscription_status"] = ss
+            snapshot["canonical_entitlement_state"] = sub_status.get("canonical_entitlement_state")
+            snapshot["last_payment_at"] = sub_status.get("last_payment_at")
+            snapshot["last_payment_amount_pence"] = sub_status.get("last_payment_amount_pence")
+            snapshot["last_payment_status"] = sub_status.get("last_payment_status")
+            snapshot["last_payment_stripe_invoice_id"] = sub_status.get("last_payment_stripe_invoice_id")
+            snapshot["last_payment_invoice_number"] = sub_status.get("last_payment_invoice_number")
+            snapshot["open_invoice_id"] = sub_status.get("open_invoice_id")
+            snapshot["open_invoice_status"] = sub_status.get("open_invoice_status")
+            snapshot["stripe_next_payment_attempt_at"] = sub_status.get("stripe_next_payment_attempt_at")
+            snapshot["last_invoice_failure_message"] = sub_status.get("last_invoice_failure_message")
+            snapshot["stripe_webhook_last_received_at"] = sub_status.get("stripe_webhook_last_received_at")
+            snapshot["stripe_webhook_last_event_type"] = sub_status.get("stripe_webhook_last_event_type")
         else:
             snapshot["stripe_subscription_status"] = None
+
+        last_renewal = await db.cvp_subscription_renewal_receipts.find_one(
+            {"client_id": client_id},
+            sort=[("paid_at", -1)],
+        )
+        if last_renewal:
+            lr: Dict[str, Any] = {
+                "stripe_invoice_id": last_renewal.get("stripe_invoice_id") or last_renewal.get("_id"),
+                "pleerity_invoice_number": last_renewal.get("invoice_number"),
+                "stripe_invoice_number": last_renewal.get("stripe_invoice_number"),
+                "amount_total_pence": last_renewal.get("amount_total_pence"),
+                "currency": last_renewal.get("currency"),
+                "paid_at": last_renewal.get("paid_at"),
+                "hosted_invoice_url": last_renewal.get("hosted_invoice_url"),
+                "pleerity_pdf_available": bool(last_renewal.get("gridfs_id")),
+                "billing_period_start": last_renewal.get("billing_period_start"),
+                "billing_period_end": last_renewal.get("billing_period_end"),
+                "payment_status": last_renewal.get("payment_status"),
+                "billing_reason": last_renewal.get("billing_reason"),
+            }
+            if sub_status.get("has_subscription"):
+                lr["canonical_entitlement_state"] = sub_status.get("canonical_entitlement_state")
+            snapshot["last_renewal_receipt"] = lr
 
         # Per-client attention (rule-based; only flags we can justify from stored fields)
         attention: List[Dict[str, Any]] = []
@@ -497,7 +534,6 @@ def _parse_admin_date(q: Optional[str]) -> Optional[datetime]:
 
 @router.get("/clients/{client_id}/receipts")
 async def list_admin_client_receipts(
-    request: Request,
     client_id: str,
     type: str = Query("all", description="all | subscription | order | intake_order | one_off_order | cvp_order"),
     status: Optional[str] = Query(None, description="Filter by payment_status e.g. PAID"),
@@ -506,8 +542,6 @@ async def list_admin_client_receipts(
     limit: int = Query(200, ge=1, le=500),
 ):
     """Merged subscription checkout receipts and paid orders for the selected client only."""
-    admin = await admin_route_guard(request)
-    _ = admin
     from services.admin_billing_receipts import list_receipts_for_client
 
     df = _parse_admin_date(date_from)
@@ -1864,6 +1898,33 @@ async def trigger_renewal_reminders(request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to run renewal reminder job"
+        )
+
+
+@router.post("/jobs/stripe-subscription-reconcile")
+async def trigger_stripe_subscription_reconcile_job(request: Request):
+    """Run the Stripe subscription reconcile batch (same as scheduled `stripe_subscription_reconcile`)."""
+    admin = await admin_route_guard(request)
+    try:
+        from services.jobs import run_stripe_subscription_reconcile
+
+        result = await run_stripe_subscription_reconcile()
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role=UserRole.ROLE_ADMIN,
+            actor_id=admin.get("portal_user_id"),
+            metadata={
+                "action_type": "JOB_TRIGGERED",
+                "job_name": "stripe_subscription_reconcile",
+                "result": result,
+            },
+        )
+        return {"success": True, "job": "stripe_subscription_reconcile", **(result or {})}
+    except Exception as e:
+        logger.error("Stripe subscription reconcile job error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to run Stripe subscription reconcile job",
         )
 
 

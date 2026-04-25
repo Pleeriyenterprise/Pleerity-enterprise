@@ -46,7 +46,13 @@ def require_feature(feature_key: str):
             # Always fetch client fresh from DB by client_id; do not read plan from request/payload
             client = await db.clients.find_one(
                 {"client_id": client_id},
-                {"_id": 0, "billing_plan": 1, "subscription_status": 1}
+                {
+                    "_id": 0,
+                    "billing_plan": 1,
+                    "subscription_status": 1,
+                    "billing_lifecycle_state": 1,
+                    "canonical_entitlement_state": 1,
+                },
             )
 
             if not client:
@@ -54,52 +60,20 @@ def require_feature(feature_key: str):
 
             billing = await db.client_billing.find_one(
                 {"client_id": client_id},
-                {"billing_lifecycle_state": 1, "subscription_status": 1},
-            )
-            subscription_status = (billing or {}).get("subscription_status") or client.get("subscription_status")
-            lifecycle = (billing or {}).get("billing_lifecycle_state") or "active"
-            lc = (lifecycle or "active").lower()
-
-            from services.plan_registry import (
-                plan_registry,
-                subscription_allows_feature_access,
-                FEATURES_BLOCKED_DURING_GRACE_PERIOD,
-                LIMITED_RECOVERY_FEATURES,
+                {
+                    "_id": 0,
+                    "billing_lifecycle_state": 1,
+                    "subscription_status": 1,
+                    "canonical_entitlement_state": 1,
+                },
             )
 
-            if lc == "expired":
-                raise HTTPException(
-                    status_code=403,
-                    detail="Your subscription has ended. Open Billing to renew and restore access.",
-                )
-            if lc == "cancelled":
-                raise HTTPException(
-                    status_code=403,
-                    detail="This subscription is cancelled. Open Billing if you need to resubscribe.",
-                )
-            if lc == "limited":
-                if feature_key not in LIMITED_RECOVERY_FEATURES:
-                    raise HTTPException(
-                        status_code=403,
-                        detail=(
-                            "Your account is restricted after the payment grace period. "
-                            "Update your payment method in Billing to restore full access."
-                        ),
-                    )
-            elif lc == "grace_period":
-                if feature_key in FEATURES_BLOCKED_DURING_GRACE_PERIOD:
-                    raise HTTPException(
-                        status_code=403,
-                        detail=(
-                            "This action is paused while we retry your payment. "
-                            "Update your payment method in Billing to restore it."
-                        ),
-                    )
-            elif not subscription_allows_feature_access(subscription_status):
-                raise HTTPException(
-                    status_code=403,
-                    detail="Subscription not active. Please update your billing to access features.",
-                )
+            from services.entitlement_access import evaluate_subscription_feature_access
+            from services.plan_registry import plan_registry
+
+            denial = evaluate_subscription_feature_access(client=client, billing=billing, feature_key=feature_key)
+            if denial:
+                raise HTTPException(status_code=403, detail=denial[0])
 
             # Resolve plan via public API; do not use plan_code from client document
             plan_str = client.get("billing_plan", "PLAN_1_SOLO")

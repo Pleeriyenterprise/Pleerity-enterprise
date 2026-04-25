@@ -226,6 +226,12 @@ async def postmark_webhook(
             except Exception as e:
                 logger.warning(f"Postmark webhook: delivery record/order update failed: {e}")
             logger.info(f"Email delivered: {message_id}")
+            try:
+                from services.tenant_delivery_reconciliation import reconcile_tenant_delivery_proofs_for_postmark_message_id
+
+                await reconcile_tenant_delivery_proofs_for_postmark_message_id(db, str(message_id))
+            except Exception as te:
+                logger.warning("Postmark webhook: tenant_delivery reconcile (delivered) failed: %s", te)
             return {"status": "received"}
         if record_type in ("Bounce", "HardBounce", "SoftBounce", "bounce"):
             update = {
@@ -278,6 +284,25 @@ async def postmark_webhook(
             except Exception as e:
                 logger.warning(f"Postmark webhook: delivery record/order update (bounce) failed: {e}")
             logger.warning(f"Email bounced: {message_id}")
+            try:
+                from services.tenant_delivery_reconciliation import reconcile_tenant_delivery_proofs_for_postmark_message_id
+
+                await reconcile_tenant_delivery_proofs_for_postmark_message_id(db, str(message_id))
+            except Exception as te:
+                logger.warning("Postmark webhook: tenant_delivery reconcile (bounce) failed: %s", te)
+            return {"status": "received"}
+        if record_type in ("Open", "Opened", "open"):
+            received = body.get("ReceivedAt") or body.get("FirstOpen") or body.get("ReadDate") or now
+            await db.message_logs.update_many(
+                {"$or": [{"postmark_message_id": message_id}, {"provider_message_id": message_id}]},
+                {"$set": {"opened_at": received}},
+            )
+            try:
+                from services.tenant_delivery_reconciliation import reconcile_tenant_delivery_proofs_for_postmark_message_id
+
+                await reconcile_tenant_delivery_proofs_for_postmark_message_id(db, str(message_id))
+            except Exception as te:
+                logger.warning("Postmark webhook: tenant_delivery reconcile (open) failed: %s", te)
             return {"status": "received"}
         if record_type in ("SpamComplaint", "Spam", "spam_complaint"):
             update = {"status": "BOUNCED", "error_message": "Spam complaint"}
@@ -316,6 +341,12 @@ async def postmark_webhook(
             except Exception as e:
                 logger.warning(f"Postmark webhook: delivery record/order update (spam) failed: {e}")
             logger.warning(f"Email spam complaint: {message_id}")
+            try:
+                from services.tenant_delivery_reconciliation import reconcile_tenant_delivery_proofs_for_postmark_message_id
+
+                await reconcile_tenant_delivery_proofs_for_postmark_message_id(db, str(message_id))
+            except Exception as te:
+                logger.warning("Postmark webhook: tenant_delivery reconcile (spam) failed: %s", te)
             return {"status": "received"}
         return {"status": "ignored", "RecordType": record_type}
     except Exception as e:
@@ -345,6 +376,12 @@ async def postmark_delivery_webhook(
             {"$set": {"status": "DELIVERED", "delivered_at": body.get("DeliveredAt") or now}},
         )
         logger.info(f"Email delivered: {message_id}")
+        try:
+            from services.tenant_delivery_reconciliation import reconcile_tenant_delivery_proofs_for_postmark_message_id
+
+            await reconcile_tenant_delivery_proofs_for_postmark_message_id(db, str(message_id))
+        except Exception as te:
+            logger.warning("Postmark legacy delivery webhook: tenant_delivery reconcile failed: %s", te)
         return {"status": "received"}
     except Exception as e:
         logger.error(f"Postmark delivery webhook error: {e}")
@@ -373,6 +410,12 @@ async def postmark_bounce_webhook(
             {"$set": {"status": "BOUNCED", "bounced_at": body.get("BouncedAt") or now, "error_message": body.get("Description") or "Bounced"}},
         )
         logger.warning(f"Email bounced: {message_id}")
+        try:
+            from services.tenant_delivery_reconciliation import reconcile_tenant_delivery_proofs_for_postmark_message_id
+
+            await reconcile_tenant_delivery_proofs_for_postmark_message_id(db, str(message_id))
+        except Exception as te:
+            logger.warning("Postmark legacy bounce webhook: tenant_delivery reconcile failed: %s", te)
         return {"status": "received"}
     except Exception as e:
         logger.error(f"Postmark bounce webhook error: {e}")

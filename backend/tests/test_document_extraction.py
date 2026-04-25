@@ -60,6 +60,13 @@ def test_confirm_endpoint_sets_confirmed_and_updates_requirement():
     db.documents.find_one = AsyncMock(side_effect=[document])
     db.extracted_documents.find_one = AsyncMock(return_value=rec)
     db.requirements.update_one = AsyncMock()
+    db.requirements.find_one = AsyncMock(
+        return_value={"requirement_id": "req-1", "client_id": "c1", "property_id": "p1"}
+    )
+    db.properties.find_one = AsyncMock(return_value={"property_id": "p1", "client_id": "c1"})
+    _sync_docs = MagicMock()
+    _sync_docs.to_list = AsyncMock(return_value=[])
+    db.documents.find = MagicMock(return_value=_sync_docs)
     db.extracted_documents.update_one = AsyncMock()
     db.documents.update_one = AsyncMock()
 

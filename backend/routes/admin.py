@@ -311,6 +311,7 @@ async def list_pending_verification_documents(
     request: Request,
     hours: int = Query(0, ge=0, le=720),
     client_id: Optional[str] = Query(None),
+    property_id: Optional[str] = Query(None, description="Filter to PROPERTY-scoped evidence for this property"),
     limit: int = Query(50, ge=1, le=200),
     skip: int = Query(0, ge=0),
 ):
@@ -324,10 +325,38 @@ async def list_pending_verification_documents(
             query["uploaded_at"] = {"$lte": cutoff}
         if client_id:
             query["client_id"] = client_id
+        if property_id:
+            query["$or"] = [
+                {"property_id": property_id},
+                {"authoritative_property_id": property_id},
+            ]
+            query["evidence_scope_type"] = {"$nin": ["INTAKE_STAGING", "PORTFOLIO", "UNRESOLVED"]}
         total = await db.documents.count_documents(query)
         cursor = db.documents.find(
             query,
-            {"_id": 0, "document_id": 1, "client_id": 1, "property_id": 1, "requirement_id": 1, "uploaded_at": 1}
+            {
+                "_id": 0,
+                "document_id": 1,
+                "client_id": 1,
+                "property_id": 1,
+                "authoritative_property_id": 1,
+                "evidence_scope_type": 1,
+                "evidence_scope_id": 1,
+                "requirement_id": 1,
+                "uploaded_at": 1,
+                "file_name": 1,
+                "document_type": 1,
+                "match_outcome": 1,
+                "match_confidence": 1,
+                "predicted_document_type": 1,
+                "mismatch_reason_code": 1,
+                "mismatch_reason_text": 1,
+                "detection_signals": 1,
+                "evidence_satisfies_requirement": 1,
+                "manual_review_flag": 1,
+                "requirement_evidence_mismatch": 1,
+                "evidence_match_legacy_state": 1,
+            },
         ).sort("uploaded_at", 1).skip(skip).limit(limit)
         items = await cursor.to_list(limit)
         # Enrich with client display name and CRN for admin table
@@ -343,10 +372,26 @@ async def list_pending_verification_documents(
                     "client_name": c.get("full_name") or "—",
                     "crn": c.get("customer_reference") or "—",
                 }
+        req_ids = list({d.get("requirement_id") for d in items if d.get("requirement_id")})
+        req_map: Dict[str, Dict[str, Any]] = {}
+        if req_ids:
+            rc = db.requirements.find(
+                {"requirement_id": {"$in": req_ids}},
+                {"_id": 0, "requirement_id": 1, "description": 1, "requirement_type": 1, "requirement_code": 1},
+            )
+            for r in await rc.to_list(len(req_ids)):
+                rid = r.get("requirement_id")
+                if rid:
+                    req_map[str(rid)] = r
         for d in items:
             info = clients_map.get(d.get("client_id"), {})
             d["client_name"] = info.get("client_name", "—")
             d["crn"] = info.get("crn", "—")
+            rr = req_map.get(str(d.get("requirement_id") or ""))
+            if rr:
+                d["requirement_label"] = (rr.get("description") or rr.get("requirement_type") or rr.get("requirement_code") or d.get("requirement_id"))
+            else:
+                d["requirement_label"] = None
         returned = len(items)
         return {
             "documents": items,
@@ -355,6 +400,7 @@ async def list_pending_verification_documents(
             "has_more": skip + returned < total,
             "hours": hours,
             "client_id_filter": client_id,
+            "property_id_filter": property_id,
         }
     except Exception as e:
         logger.error(f"Pending verification list error: {e}")
@@ -362,6 +408,479 @@ async def list_pending_verification_documents(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to list pending verification documents"
         )
+
+
+@router.get("/documents/unresolved", dependencies=[Depends(require_owner_or_admin)])
+async def list_unresolved_evidence_documents(
+    request: Request,
+    client_id: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    skip: int = Query(0, ge=0),
+):
+    """Queue for UNRESOLVED evidence ownership documents requiring admin disposition."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    query: Dict[str, Any] = {"evidence_scope_type": "UNRESOLVED"}
+    if client_id:
+        query["client_id"] = client_id
+    total = await db.documents.count_documents(query)
+    rows = await db.documents.find(
+        query,
+        {
+            "_id": 0,
+            "document_id": 1,
+            "client_id": 1,
+            "property_id": 1,
+            "authoritative_property_id": 1,
+            "evidence_scope_type": 1,
+            "evidence_scope_id": 1,
+            "requirement_id": 1,
+            "status": 1,
+            "file_name": 1,
+            "source": 1,
+            "intake_session_id": 1,
+            "manual_review_flag": 1,
+            "uploaded_at": 1,
+        },
+    ).sort("uploaded_at", -1).skip(skip).limit(limit).to_list(limit)
+    return {
+        "documents": rows,
+        "total": total,
+        "returned": len(rows),
+        "has_more": skip + len(rows) < total,
+    }
+
+
+class ResolveUnresolvedScopeRequest(BaseModel):
+    scope_type: str  # PROPERTY | PORTFOLIO
+    property_id: Optional[str] = None
+    requirement_id: Optional[str] = None
+
+
+@router.post("/documents/{document_id}/resolve-scope", dependencies=[Depends(require_owner_or_admin)])
+async def resolve_unresolved_document_scope(
+    request: Request,
+    document_id: str,
+    body: ResolveUnresolvedScopeRequest,
+):
+    """Resolve UNRESOLVED evidence to PROPERTY or PORTFOLIO scope with validation and audit."""
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    from services.requirement_evidence_authority import normalize_document_evidence_scope, sync_requirement_evidence_authority
+
+    doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    if (doc.get("evidence_scope_type") or "").upper() != "UNRESOLVED":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Document is not UNRESOLVED")
+    scope_type = (body.scope_type or "").strip().upper()
+    if scope_type not in {"PROPERTY", "PORTFOLIO"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="scope_type must be PROPERTY or PORTFOLIO")
+    if scope_type == "PORTFOLIO":
+        # Policy: explicit block in user/admin operational flows for now.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="PORTFOLIO evidence uploads/resolution are not enabled in operational flows.",
+        )
+    if not (body.property_id or "").strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PROPERTY resolution requires property_id")
+    prop = await db.properties.find_one(
+        {"property_id": body.property_id.strip(), "client_id": doc.get("client_id")},
+        {"_id": 0, "property_id": 1},
+    )
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found for this client")
+    scope_patch = normalize_document_evidence_scope(
+        property_id=body.property_id.strip(),
+        client_id=doc.get("client_id") or "",
+        evidence_scope_type="PROPERTY",
+    )
+    update_payload: Dict[str, Any] = {**scope_patch, "manual_review_flag": False}
+    if (body.requirement_id or "").strip():
+        req = await db.requirements.find_one(
+            {
+                "requirement_id": body.requirement_id.strip(),
+                "client_id": doc.get("client_id"),
+                "property_id": body.property_id.strip(),
+            },
+            {"_id": 0, "requirement_id": 1},
+        )
+        if not req:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Requirement not found for property/client")
+        update_payload["requirement_id"] = body.requirement_id.strip()
+    await db.documents.update_one({"document_id": document_id}, {"$set": update_payload})
+    if update_payload.get("requirement_id"):
+        await sync_requirement_evidence_authority(db, update_payload["requirement_id"], property_id_hint=body.property_id.strip())
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user.get("portal_user_id"),
+        client_id=doc.get("client_id"),
+        resource_type="document",
+        resource_id=document_id,
+        metadata={
+            "action_type": "UNRESOLVED_SCOPE_RESOLVED",
+            "resolved_scope_type": "PROPERTY",
+            "property_id": body.property_id.strip(),
+            "requirement_id": update_payload.get("requirement_id"),
+        },
+    )
+    return {"message": "Document scope resolved", "document_id": document_id, "resolved_scope_type": "PROPERTY"}
+
+
+class AdminDocumentRequirementLinkRequest(BaseModel):
+    requirement_id: str
+
+
+@router.post("/documents/{document_id}/link-requirement", dependencies=[Depends(require_owner_or_admin)])
+async def admin_link_document_requirement(request: Request, document_id: str, body: AdminDocumentRequirementLinkRequest):
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    from services.requirement_evidence_authority import (
+        document_evidence_compatible_with_requirement,
+        sync_requirement_evidence_authority,
+    )
+
+    doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    req = await db.requirements.find_one(
+        {"requirement_id": body.requirement_id, "client_id": doc.get("client_id")},
+        {"_id": 0},
+    )
+    if not req:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found")
+    candidate = {**doc, "requirement_id": body.requirement_id}
+    if not document_evidence_compatible_with_requirement(candidate, req):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Document scope is incompatible with requirement scope")
+    await db.documents.update_one(
+        {"document_id": document_id},
+        {"$set": {"requirement_id": body.requirement_id, "manual_review_flag": False}},
+    )
+    await sync_requirement_evidence_authority(db, body.requirement_id, property_id_hint=req.get("property_id"))
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user.get("portal_user_id"),
+        client_id=doc.get("client_id"),
+        resource_type="document",
+        resource_id=document_id,
+        metadata={"action_type": "DOCUMENT_REQUIREMENT_LINKED", "requirement_id": body.requirement_id},
+    )
+    return {"message": "Requirement linked", "document_id": document_id, "requirement_id": body.requirement_id}
+
+
+@router.post("/documents/{document_id}/unlink-requirement", dependencies=[Depends(require_owner_or_admin)])
+async def admin_unlink_document_requirement(request: Request, document_id: str):
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    from services.requirement_evidence_authority import sync_requirement_evidence_authority
+
+    doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    prior_requirement_id = doc.get("requirement_id")
+    await db.documents.update_one({"document_id": document_id}, {"$set": {"requirement_id": None}})
+    if prior_requirement_id:
+        await sync_requirement_evidence_authority(db, str(prior_requirement_id), property_id_hint=doc.get("property_id"))
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user.get("portal_user_id"),
+        client_id=doc.get("client_id"),
+        resource_type="document",
+        resource_id=document_id,
+        metadata={"action_type": "DOCUMENT_REQUIREMENT_UNLINKED", "prior_requirement_id": prior_requirement_id},
+    )
+    return {"message": "Requirement unlinked", "document_id": document_id}
+
+
+@router.post("/documents/{document_id}/reject-unresolved", dependencies=[Depends(require_owner_or_admin)])
+async def admin_reject_unresolved_document(request: Request, document_id: str):
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    from services.requirement_evidence_authority import sync_requirement_evidence_authority
+
+    doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    prior_requirement_id = doc.get("requirement_id")
+    await db.documents.update_one(
+        {"document_id": document_id},
+        {"$set": {"status": "REJECTED", "manual_review_flag": True}},
+    )
+    if prior_requirement_id:
+        await sync_requirement_evidence_authority(db, str(prior_requirement_id), property_id_hint=doc.get("property_id"))
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user.get("portal_user_id"),
+        client_id=doc.get("client_id"),
+        resource_type="document",
+        resource_id=document_id,
+        metadata={"action_type": "UNRESOLVED_DOCUMENT_REJECTED"},
+    )
+    return {"message": "Unresolved document rejected", "document_id": document_id}
+
+
+class AdminEvidenceMatchResolutionBody(BaseModel):
+    """Governed admin resolution for evidence document matching (audited)."""
+
+    action: str = Field(
+        ...,
+        description="approve_override | reject_evidence | relink_requirement",
+    )
+    reason: Optional[str] = Field(None, max_length=2000)
+    relink_requirement_id: Optional[str] = Field(None, description="When action=relink_requirement")
+
+
+@router.post(
+    "/documents/{document_id}/resolve-evidence-match",
+    dependencies=[Depends(require_owner_or_admin)],
+)
+async def admin_resolve_evidence_match(
+    request: Request,
+    document_id: str,
+    body: AdminEvidenceMatchResolutionBody,
+):
+    """Approve, relink, or reject evidence after automated mismatch / unknown-type detection."""
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    from services.requirement_evidence_authority import (
+        document_evidence_compatible_with_requirement,
+        sync_requirement_evidence_authority,
+    )
+    from services.evidence_document_taxonomy import MATCH_OUTCOME_MATCH_CONFIRMED
+    from services.evidence_document_match_engine import persist_document_evidence_match_after_extraction
+
+    doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    action = (body.action or "").strip().lower()
+    cid = doc.get("client_id")
+    prior_rid = doc.get("requirement_id")
+
+    if action == "approve_override":
+        now_iso = datetime.now(timezone.utc).isoformat()
+        await db.documents.update_one(
+            {"document_id": document_id},
+            {
+                "$set": {
+                    "reviewed_match_outcome": MATCH_OUTCOME_MATCH_CONFIRMED,
+                    "reviewed_match_actor_id": user.get("portal_user_id"),
+                    "reviewed_match_at": now_iso,
+                    "evidence_satisfies_requirement": True,
+                    "match_outcome": MATCH_OUTCOME_MATCH_CONFIRMED,
+                    "requirement_evidence_mismatch": False,
+                    "requirement_evidence_mismatch_reason": None,
+                    "manual_review_flag": False,
+                }
+            },
+        )
+        if prior_rid:
+            await sync_requirement_evidence_authority(db, str(prior_rid), property_id_hint=doc.get("property_id"))
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user.get("portal_user_id"),
+            client_id=cid,
+            resource_type="document",
+            resource_id=document_id,
+            metadata={
+                "action_type": "EVIDENCE_MATCH_ADMIN_APPROVE_OVERRIDE",
+                "reason": (body.reason or "")[:2000],
+            },
+        )
+        return {"message": "Evidence match approved (override)", "document_id": document_id}
+
+    if action == "reject_evidence":
+        await db.documents.update_one(
+            {"document_id": document_id},
+            {"$set": {"status": "REJECTED", "manual_review_flag": True}},
+        )
+        if prior_rid:
+            await sync_requirement_evidence_authority(db, str(prior_rid), property_id_hint=doc.get("property_id"))
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user.get("portal_user_id"),
+            client_id=cid,
+            resource_type="document",
+            resource_id=document_id,
+            metadata={
+                "action_type": "EVIDENCE_MATCH_ADMIN_REJECT",
+                "reason": (body.reason or "")[:2000],
+            },
+        )
+        return {"message": "Evidence rejected", "document_id": document_id}
+
+    if action == "relink_requirement":
+        rid = (body.relink_requirement_id or "").strip()
+        if not rid:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="relink_requirement_id required")
+        req = await db.requirements.find_one(
+            {"requirement_id": rid, "client_id": cid},
+            {"_id": 0},
+        )
+        if not req:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found")
+        candidate = {**doc, "requirement_id": rid}
+        if not document_evidence_compatible_with_requirement(candidate, req):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Document scope is incompatible with requirement scope",
+            )
+        await db.documents.update_one(
+            {"document_id": document_id},
+            {"$set": {"requirement_id": rid, "manual_review_flag": True}},
+        )
+        if prior_rid and str(prior_rid) != rid:
+            await sync_requirement_evidence_authority(db, str(prior_rid), property_id_hint=doc.get("property_id"))
+        await sync_requirement_evidence_authority(db, rid, property_id_hint=req.get("property_id"))
+        try:
+            await persist_document_evidence_match_after_extraction(db, document_id)
+        except Exception:
+            logger.exception("persist_document_evidence_match_after_extraction failed after relink document_id=%s", document_id)
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user.get("portal_user_id"),
+            client_id=cid,
+            resource_type="document",
+            resource_id=document_id,
+            metadata={
+                "action_type": "EVIDENCE_MATCH_ADMIN_RELINK",
+                "prior_requirement_id": prior_rid,
+                "new_requirement_id": rid,
+                "reason": (body.reason or "")[:2000],
+            },
+        )
+        return {"message": "Requirement relinked; match re-evaluated from extraction where available.", "document_id": document_id}
+
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown action")
+
+
+class AdminEvidenceMatchBackfillBody(BaseModel):
+    limit: int = Field(50, ge=1, le=500)
+    dry_run: bool = False
+
+
+@router.post(
+    "/documents/backfill-evidence-match",
+    dependencies=[Depends(require_owner_or_admin)],
+)
+async def admin_backfill_evidence_match(request: Request, body: AdminEvidenceMatchBackfillBody):
+    """
+    Safe batch: persist match fields from existing extraction when possible; otherwise tag legacy
+    unclassified (never silently as strong match). Re-syncs affected requirement authority.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    from services.evidence_document_match_engine import persist_document_evidence_match_after_extraction
+    from services.evidence_document_taxonomy import (
+        EVIDENCE_MATCH_LEGACY_STATE_UNCLASSIFIED_PRE_ENGINE,
+        MATCH_OUTCOME_NEEDS_ADMIN_REVIEW,
+        REASON_CODE_LEGACY_UNCLASSIFIED,
+    )
+    from services.requirement_evidence_authority import sync_requirement_evidence_authority
+
+    q: Dict[str, Any] = {
+        "$and": [
+            {"deleted": {"$ne": True}},
+            {"$or": [{"match_outcome": {"$exists": False}}, {"match_outcome": None}]},
+        ]
+    }
+    rows = await db.documents.find(q, {"_id": 0}).limit(body.limit).to_list(body.limit)
+    updated = 0
+    preview: List[Dict[str, Any]] = []
+    for doc in rows:
+        did = doc.get("document_id")
+        if not did:
+            continue
+        st = (doc.get("status") or "").upper()
+        ai = doc.get("ai_extraction") if isinstance(doc.get("ai_extraction"), dict) else {}
+        has_ext = (
+            str(ai.get("status") or "").lower() == "completed"
+            and isinstance(ai.get("data"), dict)
+            and bool(doc.get("client_id"))
+            and bool(doc.get("requirement_id"))
+        )
+        if has_ext:
+            if body.dry_run:
+                preview.append({"document_id": did, "action": "would_persist_from_extraction"})
+                continue
+            await persist_document_evidence_match_after_extraction(db, str(did))
+            updated += 1
+            continue
+
+        if st == "VERIFIED":
+            patch = {"evidence_match_legacy_state": EVIDENCE_MATCH_LEGACY_STATE_UNCLASSIFIED_PRE_ENGINE}
+        elif st in ("PENDING", "UPLOADED", ""):
+            patch = {
+                "evidence_match_legacy_state": EVIDENCE_MATCH_LEGACY_STATE_UNCLASSIFIED_PRE_ENGINE,
+                "match_outcome": MATCH_OUTCOME_NEEDS_ADMIN_REVIEW,
+                "predicted_document_type": "UNKNOWN",
+                "mismatch_reason_code": REASON_CODE_LEGACY_UNCLASSIFIED,
+                "mismatch_reason_text": "Legacy document before evidence match engine; needs review or re-analysis.",
+                "evidence_satisfies_requirement": False,
+                "manual_review_flag": True,
+            }
+        else:
+            patch = {"evidence_match_legacy_state": EVIDENCE_MATCH_LEGACY_STATE_UNCLASSIFIED_PRE_ENGINE}
+
+        if body.dry_run:
+            preview.append({"document_id": did, "action": "would_tag_legacy", "status": st})
+            continue
+        await db.documents.update_one({"document_id": did}, {"$set": patch})
+        rid = doc.get("requirement_id")
+        if rid:
+            await sync_requirement_evidence_authority(db, str(rid), property_id_hint=doc.get("property_id"))
+        updated += 1
+
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user.get("portal_user_id"),
+        client_id=None,
+        resource_type="document",
+        resource_id="batch",
+        metadata={
+            "action_type": "EVIDENCE_MATCH_BACKFILL",
+            "updated": updated,
+            "dry_run": body.dry_run,
+            "limit": body.limit,
+        },
+    )
+    return {"updated": updated, "dry_run": body.dry_run, "preview": preview[:25], "scanned": len(rows)}
+
+
+@router.get("/requirements/authority-drift", dependencies=[Depends(require_owner_or_admin)])
+async def list_requirement_authority_drift(
+    request: Request,
+    client_id: Optional[str] = Query(None),
+    limit: int = Query(200, ge=1, le=1000),
+):
+    """Detect requirement mirror drift where legacy mirrored fields diverge from evidence_authority."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    from services.requirement_evidence_authority import detect_requirement_mirror_drift
+
+    q: Dict[str, Any] = {"evidence_authority_synced_at": {"$ne": None}, "evidence_authority.version": {"$gte": 1}}
+    if client_id:
+        q["client_id"] = client_id
+    rows = await db.requirements.find(q, {"_id": 0}).limit(limit).to_list(limit)
+    drifts = []
+    for r in rows:
+        d = detect_requirement_mirror_drift(r)
+        if d.get("drift"):
+            drifts.append(
+                {
+                    "requirement_id": r.get("requirement_id"),
+                    "client_id": r.get("client_id"),
+                    "property_id": r.get("property_id"),
+                    "reasons": d.get("reasons"),
+                    "expected": d.get("expected"),
+                    "actual": {
+                        "status": r.get("status"),
+                        "evidence_state": r.get("evidence_state"),
+                        "due_date": r.get("due_date"),
+                    },
+                }
+            )
+    return {"checked": len(rows), "drift_count": len(drifts), "drifts": drifts}
 
 
 @router.get("/documents/{document_id}/file", dependencies=[Depends(require_owner_or_admin)])
@@ -4486,8 +5005,13 @@ async def get_client_control_panel(request: Request, client_id: str):
             "subscription_billing": {
                 "plan": client.get("billing_plan"),
                 "status": client.get("subscription_status"),
-                "last_payment": _iso_or_none(client.get("last_payment_date")),
+                "canonical_entitlement_state": (billing or {}).get("canonical_entitlement_state")
+                or client.get("canonical_entitlement_state"),
+                "last_payment": _iso_or_none((billing or {}).get("last_payment_at"))
+                or _iso_or_none(client.get("last_payment_date")),
                 "next_billing_date": _iso_or_none_billing_period((billing or {}).get("current_period_end")),
+                "open_invoice_status": (billing or {}).get("open_invoice_status"),
+                "stripe_next_payment_attempt_at": _iso_or_none((billing or {}).get("stripe_next_payment_attempt_at")),
                 "receipts": receipts,
                 "receipts_meta": receipts_meta,
             },

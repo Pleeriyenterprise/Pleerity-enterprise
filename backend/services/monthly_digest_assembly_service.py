@@ -21,6 +21,8 @@ from services.monthly_digest_snapshot_service import (
     load_latest_snapshot,
 )
 from utils.risk_bands import score_to_risk_level
+from utils.expiry_utils import get_effective_expiry_date
+from services.requirement_evidence_authority import authority_runtime_requirement_status
 
 from services.monthly_digest_limits import (
     DIGEST_EMAIL_TOP_PROPERTIES_AT_RISK,
@@ -183,12 +185,24 @@ async def assemble_monthly_digest_payload(
             subset_unknown_ids = sorted([x for x in raw_pids if x not in known_ids])
             properties = [p for p in properties if p.get("property_id") in pid_filter]
 
-    requirements_total_count = int(await db.requirements.count_documents({"client_id": cid}))
     requirements = await db.requirements.find({"client_id": cid}, {"_id": 0}).to_list(
         DIGEST_MAX_REQUIREMENTS_FETCH
     )
+    requirements_fetch_hit_limit = len(requirements) >= DIGEST_MAX_REQUIREMENTS_FETCH
     if pid_filter:
         requirements = [r for r in requirements if r.get("property_id") in pid_filter]
+    from services.requirement_client_runtime_surface import (
+        filter_requirement_rows_for_client_runtime_surfaces,
+    )
+
+    requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=cid,
+        requirements=requirements,
+        client_doc=client,
+        properties=properties,
+    )
+    requirements_total_count = len(requirements)
     applicable = [r for r in requirements if _applicable_requirement(r)]
 
     # Portfolio counts: same aggregates as compliance score / dashboard stats
@@ -278,17 +292,16 @@ async def assemble_monthly_digest_payload(
         pid = r.get("property_id")
         code = r.get("code") or r.get("requirement_type")
         label = requirement_label(code)
-        st = (r.get("status") or "").upper()
-        ev = (r.get("evidence_state") or "—").upper()
-        date_used = r.get("confirmed_expiry_date") or r.get("due_date") or r.get("extracted_expiry_date")
-        if hasattr(date_used, "isoformat"):
-            date_used_s = date_used.isoformat()
-        else:
-            date_used_s = str(date_used or "")
-        ds = (r.get("date_source") or r.get("expiry_source") or "").upper()
-        verified = ds in ("VERIFIED_DOCUMENT", "CONFIRMED") or (r.get("confidence_state") or "").upper() == "VERIFIED"
+        st = str(authority_runtime_requirement_status(r) or r.get("status") or "").upper()
+        ea = r.get("evidence_authority") or {}
+        ev_raw = (ea.get("state") or r.get("evidence_state") or "—") if r.get("evidence_authority_synced_at") else (r.get("evidence_state") or "—")
+        ev = str(ev_raw).upper()
+        eff_dt = get_effective_expiry_date(r)
+        date_used_s = eff_dt.isoformat() if eff_dt else ""
+        ea_src = (ea.get("expiry_source") or r.get("expiry_source") or "").upper()
+        verified = ea_src in ("VERIFIED_DOCUMENT", "CONFIRMED") or (r.get("confidence_state") or "").upper() == "VERIFIED"
         date_kind = "verified" if verified else "estimated"
-        days_n, direction = _days_remaining_or_overdue(r.get("due_date") or r.get("confirmed_expiry_date"), now)
+        days_n, direction = _days_remaining_or_overdue(date_used_s or None, now)
         if st in ("OVERDUE", "EXPIRED"):
             next_action = "Renew or upload compliant evidence urgently."
         elif _missing_evidence(r):
@@ -554,11 +567,11 @@ async def assemble_monthly_digest_payload(
             f"{DIGEST_MAX_PROPERTIES_FETCH} included in this report are reflected in portfolio detail. "
             "See the portal for the full portfolio."
         )
-    if requirements_total_count > DIGEST_MAX_REQUIREMENTS_FETCH:
+    if requirements_fetch_hit_limit:
         trunc_reasons.append("REQUIREMENTS_QUERY_LIMIT")
         trunc_lines.append(
-            f"Your account has {requirements_total_count} requirement records; this digest loads at most "
-            f"{DIGEST_MAX_REQUIREMENTS_FETCH} for detailed listing and period comparison. "
+            f"This digest loads at most {DIGEST_MAX_REQUIREMENTS_FETCH} requirement rows from the database "
+            "for detailed listing and period comparison; additional rows may exist. "
             "Open the portal for the complete requirement register."
         )
     n_req_rows = len(requirement_rows_pdf)

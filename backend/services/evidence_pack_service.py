@@ -2,6 +2,12 @@
 Compliance evidence pack: ZIP with CSV manifests + JSON index (GridFS).
 
 Tier-gated by plan_registry `audit_log_export`. Idempotent per (client_id, scope hash).
+
+**Product note:** For tribunal-grade **property-scoped** audit exports (compliance summary PDF,
+authority-filtered certificates, audit timeline slice, tenant delivery proof index, manifest +
+SHA-256), use the governed **audit pack** flow: ``POST /api/client/compliance/audit-pack/generate``
+and ``services.compliance_audit_pack_service``. This job remains for portfolio CSV / operational
+evidence extracts and must not be treated as the same contract as the audit pack.
 """
 from __future__ import annotations
 
@@ -138,6 +144,17 @@ async def _load_requirements(
     if period:
         lo, hi_excl = period
         rows = _filter_rows_by_time_field(rows, ("updated_at", "created_at"), lo, hi_excl, 5000)
+    client_row = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+    props = await db.properties.find({"client_id": client_id}, {"_id": 0}).limit(2000).to_list(2000)
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    rows = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=rows,
+        client_doc=client_row,
+        properties=props,
+    )
     return rows[:5000]
 
 

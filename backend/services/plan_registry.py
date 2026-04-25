@@ -686,7 +686,13 @@ class PlanRegistryService:
         
         client = await db.clients.find_one(
             {"client_id": client_id},
-            {"_id": 0, "billing_plan": 1, "subscription_status": 1, "billing_lifecycle_state": 1}
+            {
+                "_id": 0,
+                "billing_plan": 1,
+                "subscription_status": 1,
+                "billing_lifecycle_state": 1,
+                "canonical_entitlement_state": 1,
+            },
         )
         
         if not client:
@@ -694,91 +700,14 @@ class PlanRegistryService:
 
         billing = await db.client_billing.find_one(
             {"client_id": client_id},
-            {"_id": 0, "billing_lifecycle_state": 1, "subscription_status": 1},
+            {"_id": 0, "billing_lifecycle_state": 1, "subscription_status": 1, "canonical_entitlement_state": 1},
         )
-        subscription_status = (billing or {}).get("subscription_status") or client.get("subscription_status", "PENDING")
-        lifecycle = (billing or {}).get("billing_lifecycle_state") or client.get("billing_lifecycle_state") or "active"
-        lc = (lifecycle or "active").lower()
 
-        if lc == "expired":
-            return False, "Your subscription has ended. Open Billing to renew and restore access.", {
-                "error_code": "SUBSCRIPTION_EXPIRED",
-                "billing_lifecycle_state": lc,
-            }
-        if lc == "cancelled":
-            return False, "This subscription is cancelled. Open Billing if you need to resubscribe.", {
-                "error_code": "SUBSCRIPTION_CANCELLED",
-                "billing_lifecycle_state": lc,
-            }
-        if lc == "limited":
-            if feature not in LIMITED_RECOVERY_FEATURES:
-                return False, (
-                    "Your account is restricted after the payment grace period. "
-                    "Update your payment method in Billing to restore full access."
-                ), {
-                    "error_code": "SUBSCRIPTION_LIMITED",
-                    "billing_lifecycle_state": lc,
-                    "feature": feature,
-                }
-            plan_str = client.get("billing_plan", "PLAN_1_SOLO")
-            plan_code = self.resolve_plan_code(plan_str)
-            is_allowed, message, upgrade_info = self.check_feature_access(plan_code, feature)
-            if not is_allowed:
-                return False, message, {
-                    "error_code": "PLAN_NOT_ELIGIBLE",
-                    "feature": feature,
-                    "upgrade_required": True,
-                    "current_plan": plan_str,
-                    **(upgrade_info or {}),
-                }
-            return True, None, None
-        if lc == "grace_period":
-            if feature in FEATURES_BLOCKED_DURING_GRACE_PERIOD:
-                return False, (
-                    "This action is paused while we retry your payment. "
-                    "Update your payment method in Billing to restore it."
-                ), {
-                    "error_code": "SUBSCRIPTION_GRACE_PAYMENT",
-                    "billing_lifecycle_state": lc,
-                    "feature": feature,
-                }
-            plan_str = client.get("billing_plan", "PLAN_1_SOLO")
-            plan_code = self.resolve_plan_code(plan_str)
-            is_allowed, message, upgrade_info = self.check_feature_access(plan_code, feature)
-            if not is_allowed:
-                return False, message, {
-                    "error_code": "PLAN_NOT_ELIGIBLE",
-                    "feature": feature,
-                    "upgrade_required": True,
-                    "current_plan": plan_str,
-                    **(upgrade_info or {}),
-                }
-            return True, None, None
+        from services.entitlement_access import evaluate_subscription_feature_access
 
-        # Default: require ACTIVE/TRIALING Stripe mirror unless lifecycle already handled above
-        if not subscription_allows_feature_access(subscription_status):
-            return False, f"Subscription is {subscription_status}. Active or trialing subscription required.", {
-                "error_code": "SUBSCRIPTION_INACTIVE",
-                "subscription_status": subscription_status,
-                "billing_lifecycle_state": lc,
-            }
-
-        # Get plan (handle legacy codes)
-        plan_str = client.get("billing_plan", "PLAN_1_SOLO")
-        plan_code = self.resolve_plan_code(plan_str)
-        
-        # Check feature access
-        is_allowed, message, upgrade_info = self.check_feature_access(plan_code, feature)
-        
-        if not is_allowed:
-            return False, message, {
-                "error_code": "PLAN_NOT_ELIGIBLE",
-                "feature": feature,
-                "upgrade_required": True,
-                "current_plan": plan_str,
-                **(upgrade_info or {})
-            }
-        
+        denial = evaluate_subscription_feature_access(client=client, billing=billing, feature_key=feature)
+        if denial:
+            return False, denial[0], denial[1]
         return True, None, None
     
     async def enforce_property_limit(

@@ -67,6 +67,9 @@ def test_verify_document_updates_requirement_and_finalizes_compliance_job(client
 
     mock_db = MagicMock()
     mock_db.documents.find_one = AsyncMock(side_effect=find_document)
+    _req_docs_cur = MagicMock()
+    _req_docs_cur.to_list = AsyncMock(return_value=[])
+    mock_db.documents.find = MagicMock(return_value=_req_docs_cur)
     mock_db.documents.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
     mock_db.requirements.update_one = AsyncMock(side_effect=capture_requirement_update)
     mock_db.requirements.find_one = AsyncMock(

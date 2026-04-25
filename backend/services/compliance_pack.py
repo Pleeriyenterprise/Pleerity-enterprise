@@ -217,7 +217,17 @@ class CompliancePackService:
             req_filter,
             {"_id": 0}
         ).to_list(100)
-        
+        client_full = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=client_id,
+            requirements=requirements,
+            client_doc=client_full,
+            properties=[property_doc],
+        )
+
         # Get related documents
         req_ids = [r.get("requirement_id") for r in requirements]
         documents = await db.documents.find(
@@ -445,10 +455,10 @@ class CompliancePackService:
         """
         db = database.get_db()
         
-        # Get property
+        # Get property (full doc for planner-aligned filtering)
         property_doc = await db.properties.find_one(
             {"property_id": property_id, "client_id": client_id},
-            {"_id": 0, "address_line_1": 1, "city": 1, "postcode": 1, "nickname": 1}
+            {"_id": 0},
         )
         
         if not property_doc:
@@ -457,8 +467,18 @@ class CompliancePackService:
         # Get requirements
         requirements = await db.requirements.find(
             {"property_id": property_id, "client_id": client_id},
-            {"_id": 0, "requirement_type": 1, "status": 1, "due_date": 1}
+            {"_id": 0},
         ).to_list(100)
+        client_full = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=client_id,
+            requirements=requirements,
+            client_doc=client_full,
+            properties=[property_doc],
+        )
         
         return {
             "property_address": f"{property_doc.get('address_line_1', '')}, {property_doc.get('postcode', '')}",

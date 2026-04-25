@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from database import database
 from models import AuditAction
 from utils.audit import create_audit_log
+from utils.expiry_utils import get_computed_status
 from dotenv import load_dotenv
 import json
 
@@ -110,11 +111,28 @@ class AssistantService:
             {"_id": 0}
         ).to_list(100)
         
-        # Get requirements
+        # Get requirements (authority-aware fields for snapshot summaries)
         requirements = await db.requirements.find(
             {"client_id": client_id},
-            {"_id": 0}
+            {"_id": 0},
         ).to_list(1000)
+        from services.requirement_client_runtime_surface import (
+            filter_requirement_rows_for_client_runtime_surfaces,
+        )
+
+        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=client_id,
+            requirements=requirements,
+            client_doc=client,
+            properties=properties,
+        )
+
+        properties_ctx = await db.properties.find(
+            {"client_id": client_id},
+            {"_id": 0, "property_id": 1, "jurisdiction": 1},
+        ).to_list(500)
+        prop_by_id = {p["property_id"]: p for p in properties_ctx if p.get("property_id")}
         
         # Get documents (metadata only, no file paths)
         documents = await db.documents.find(
@@ -130,12 +148,19 @@ class AssistantService:
             }
         ).to_list(1000)
         
-        # Calculate compliance summary
+        # Calculate compliance summary (portal-aligned: effective expiry + computed status)
+        client_row = client or {}
         total_reqs = len(requirements)
-        compliant = sum(1 for r in requirements if r.get("status") == "COMPLIANT")
-        overdue = sum(1 for r in requirements if r.get("status") == "OVERDUE")
-        expiring = sum(1 for r in requirements if r.get("status") == "EXPIRING_SOON")
-        pending = sum(1 for r in requirements if r.get("status") == "PENDING")
+
+        def _cs(req: dict) -> str:
+            pid = req.get("property_id")
+            pd = prop_by_id.get(pid) if pid else None
+            return get_computed_status(req, property_doc=pd, client_doc=client_row) or ""
+
+        compliant = sum(1 for r in requirements if _cs(r) in ("COMPLIANT", "NOT_REQUIRED"))
+        overdue = sum(1 for r in requirements if _cs(r) in ("OVERDUE", "EXPIRED"))
+        expiring = sum(1 for r in requirements if _cs(r) == "EXPIRING_SOON")
+        pending = sum(1 for r in requirements if _cs(r) == "UNKNOWN_DATE")
         
         snapshot = {
             "client": client,

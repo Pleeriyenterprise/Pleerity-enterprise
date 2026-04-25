@@ -174,18 +174,67 @@ async def _fetch_issues(db, property_id: str, client_id: str, since_days: int) -
 async def _fetch_requirements_overdue(db, property_id: str, client_id: str) -> List[Dict[str, Any]]:
     cursor = db.requirements.find(
         {"property_id": property_id, "client_id": client_id, "status": {"$in": ["OVERDUE", "EXPIRED", "PENDING", "MISSING"]}},
-        {"_id": 0, "requirement_id": 1, "requirement_code": 1, "requirement_type": 1, "status": 1},
+        {"_id": 0},
     )
-    return await cursor.to_list(100)
+    rows = await cursor.to_list(100)
+    client_row = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+    prop = await db.properties.find_one({"property_id": property_id, "client_id": client_id}, {"_id": 0})
+    if not prop:
+        return []
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    rows = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=rows,
+        client_doc=client_row,
+        properties=[prop],
+    )
+    out = []
+    for r in rows:
+        out.append(
+            {
+                "requirement_id": r.get("requirement_id"),
+                "requirement_code": r.get("requirement_code"),
+                "requirement_type": r.get("requirement_type"),
+                "status": r.get("status"),
+            }
+        )
+    return out
 
 
 async def _fetch_requirements_expiring_soon(db, property_id: str, client_id: str) -> List[Dict[str, Any]]:
     """Requirements with status EXPIRING_SOON (certificate expiring within configured window)."""
     cursor = db.requirements.find(
         {"property_id": property_id, "client_id": client_id, "status": "EXPIRING_SOON"},
-        {"_id": 0, "requirement_id": 1, "requirement_code": 1, "requirement_type": 1, "title": 1, "status": 1},
+        {"_id": 0},
     )
-    return await cursor.to_list(100)
+    rows = await cursor.to_list(100)
+    client_row = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+    prop = await db.properties.find_one({"property_id": property_id, "client_id": client_id}, {"_id": 0})
+    if not prop:
+        return []
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    rows = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=rows,
+        client_doc=client_row,
+        properties=[prop],
+    )
+    out = []
+    for r in rows:
+        out.append(
+            {
+                "requirement_id": r.get("requirement_id"),
+                "requirement_code": r.get("requirement_code"),
+                "requirement_type": r.get("requirement_type"),
+                "title": r.get("title"),
+                "status": r.get("status"),
+            }
+        )
+    return out
 
 
 def _normalize_category(cat: Optional[str]) -> str:

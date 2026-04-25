@@ -1381,6 +1381,13 @@ async def run_subscription_lifecycle():
     return await run_renewal_reminders()
 
 
+async def run_stripe_subscription_reconcile_job():
+    """Batch re-sync subscription rows from Stripe (webhook safety net)."""
+    from services.jobs import run_stripe_subscription_reconcile
+
+    return await run_stripe_subscription_reconcile()
+
+
 async def run_scheduled_admin_communications():
     """Deliver admin communications scheduled for now or earlier."""
     from services import admin_communications_service as acs
@@ -1403,6 +1410,7 @@ async def run_work_order_schedule_reminders():
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
     "subscription_lifecycle": run_subscription_lifecycle,
+    "stripe_subscription_reconcile": run_stripe_subscription_reconcile_job,
     "pending_verification_digest": run_pending_verification_digest,
     "monthly_digest": run_monthly_digests,
     "compliance_check_morning": run_compliance_status_check,

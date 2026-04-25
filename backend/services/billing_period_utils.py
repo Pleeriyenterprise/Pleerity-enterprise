@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 # Reject Unix 0 and other pre-2000 timestamps (bad sync / missing Stripe field)
 MIN_VALID_PERIOD_END_TS = 946684800  # 2000-01-01 00:00:00 UTC
@@ -125,3 +125,22 @@ def period_end_stored_value_is_valid(cpe: Any) -> bool:
 def normalize_stored_period_end_for_api(cpe: Any) -> Optional[datetime]:
     """Return datetime suitable for JSON encoding, or None."""
     return coerce_stored_period_end_to_datetime(cpe)
+
+
+def billing_period_from_stripe_invoice_dict(inv_d: Dict[str, Any]) -> Tuple[Optional[datetime], Optional[datetime]]:
+    """
+    Billing window from the first invoice line that defines ``period`` (subscription cycle / proration).
+    """
+    for line in (inv_d.get("lines") or {}).get("data") or []:
+        if not isinstance(line, dict):
+            continue
+        period = line.get("period") or {}
+        st = period.get("start")
+        en = period.get("end")
+        if st is None or en is None:
+            continue
+        sdt = period_start_from_stripe_unix(st)
+        edt = period_end_from_stripe_unix(en)
+        if sdt and edt:
+            return sdt, edt
+    return None, None

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api, { clientAPI } from '../api/client';
+import api, { clientAPI, parseApiError } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { UpgradeRequired } from '../components/UpgradePrompt';
@@ -199,7 +199,8 @@ const BulkUploadPage = () => {
         documentId: r.document_id,
         matchedRequirement: r.matched_requirement,
         aiAnalyzed: r.ai_analyzed,
-        error: r.error || r.reason
+        error: r.error || r.reason,
+        evidenceMatch: r.evidence_match || null,
       }));
       setFiles(extractedFiles);
 
@@ -212,6 +213,14 @@ const BulkUploadPage = () => {
 
       if (auto_matched > 0) {
         toast.info(`${auto_matched} document(s) automatically matched to requirements via AI`);
+      }
+      const uploadedRows = (response.data.results || []).filter((r) => r.status === 'uploaded');
+      const notLinked = uploadedRows.filter((r) => !r.matched_requirement).length;
+      if (notLinked > 0) {
+        toast.warning(
+          `${notLinked} uploaded file(s) were not auto-linked to a requirement (wrong-type or ambiguous). Open Documents to link or replace.`,
+          { duration: 10000 },
+        );
       }
 
     } catch (error) {
@@ -269,7 +278,8 @@ const BulkUploadPage = () => {
           documentId: result?.document_id,
           matchedRequirement: result?.matched_requirement,
           aiAnalyzed: result?.ai_analyzed,
-          error: result?.error
+          error: result?.error,
+          evidenceMatch: result?.evidence_match || null,
         };
       }));
 
@@ -285,9 +295,17 @@ const BulkUploadPage = () => {
       if (auto_matched > 0) {
         toast.info(`${auto_matched} document(s) automatically matched to requirements via AI`);
       }
+      const uploadedRows = results.filter((r) => r.status === 'uploaded');
+      const notLinked = uploadedRows.filter((r) => !r.matched_requirement).length;
+      if (notLinked > 0) {
+        toast.warning(
+          `${notLinked} file(s) were not auto-linked — evidence match did not confirm a requirement. Review in Documents.`,
+          { duration: 10000 },
+        );
+      }
 
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Bulk upload failed');
+      toast.error(parseApiError(error, 'Bulk upload failed'));
       setFiles(prev => prev.map(f => ({ ...f, status: 'error' })));
     } finally {
       setUploading(false);
@@ -609,6 +627,12 @@ const BulkUploadPage = () => {
                                 <Sparkles className="w-3 h-3" />
                                 AI Matched
                               </span>
+                            )}
+                            {f.status === 'success' && !f.matchedRequirement && (
+                              <span className="text-amber-700">Not auto-linked</span>
+                            )}
+                            {f.evidenceMatch && f.evidenceMatch.evidence_satisfies_requirement === false && (
+                              <span className="text-amber-800">Needs review / type not confirmed</span>
                             )}
                             {f.error && (
                               <span className="text-red-500">{f.error}</span>

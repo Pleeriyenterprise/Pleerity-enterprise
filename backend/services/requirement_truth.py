@@ -84,6 +84,9 @@ def evidence_state_from_documents(docs: List[Dict[str, Any]]) -> str:
 
     if any(d.get("requirement_evidence_mismatch") is True for d in active):
         return EVIDENCE_MISMATCH_FLAGGED
+    mo_bad = {"MISMATCH_SUSPECTED", "NEEDS_ADMIN_REVIEW", "UNKNOWN_TYPE"}
+    if any(str(d.get("match_outcome") or "").strip() in mo_bad for d in active):
+        return EVIDENCE_MISMATCH_FLAGGED
 
     for d in active:
         if _status_upper(d.get("status")) != "UPLOADED":
@@ -111,6 +114,7 @@ async def load_evidence_state_by_requirement_id(
             "status": 1,
             "ai_extraction": 1,
             "requirement_evidence_mismatch": 1,
+            "match_outcome": 1,
         },
     )
     by_rid: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
@@ -283,7 +287,11 @@ def enrich_requirement_dict(
     if isinstance(published_entry, dict):
         meta = out.get("registry_metadata") if isinstance(out.get("registry_metadata"), dict) else {}
         if isinstance(published_entry.get("action_links"), list):
-            meta["action_links_published"] = [dict(x) for x in published_entry.get("action_links") if isinstance(x, dict)]
+            from services.requirement_action_links import filter_action_links_for_region, portfolio_label_to_region
+
+            region = portfolio_label_to_region(str(out.get("jurisdiction") or ""))
+            raw_links = [dict(x) for x in published_entry.get("action_links") if isinstance(x, dict)]
+            meta["action_links_published"] = filter_action_links_for_region(raw_links, region, max_links=24)
         if isinstance(published_entry.get("why_it_matters_by_jurisdiction"), dict):
             meta["why_it_matters_by_jurisdiction_published"] = published_entry.get("why_it_matters_by_jurisdiction")
         if witm.get("why_it_matters_short"):

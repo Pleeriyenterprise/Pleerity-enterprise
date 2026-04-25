@@ -17,16 +17,23 @@ Events Handled:
 - invoice.paid and invoice.payment_succeeded (same handler; renewal success, dunning clear)
 - invoice.payment_failed (grace window, dunning)
 - charge.refunded (normalized payment status = refunded)
+
+Stripe customer invoice emails (Dashboard → email settings): if “Successful payments” / invoice
+receipts are enabled for the account, customers may receive Stripe’s own receipt in addition to
+Pleerity ``SUBSCRIPTION_RENEWAL_PAID`` / ``SUBSCRIPTION_CONFIRMED``. Prefer turning Stripe’s
+duplicate subscription-invoice emails off when Pleerity-branded receipts are authoritative.
 """
+import html
 import stripe
 from pymongo.errors import DuplicateKeyError
 import os
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from database import database
 from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
 from services.billing_period_utils import (
+    billing_period_from_stripe_invoice_dict,
     period_end_from_stripe_subscription_dict,
     period_start_from_stripe_subscription_dict,
     period_start_from_stripe_unix,
@@ -47,6 +54,43 @@ from utils.audit import create_audit_log
 from models import AuditAction, ProvisioningJob, ProvisioningJobStatus, UserRole
 
 logger = logging.getLogger(__name__)
+
+# Recurring paid invoices (exclude subscription_create — initial checkout uses SUBSCRIPTION_CONFIRMED).
+SUBSCRIPTION_RENEWAL_RECEIPT_BILLING_REASONS = frozenset({"subscription_cycle", "subscription_update"})
+
+
+def _extract_successful_invoice_payment_fields(invoice: Dict[str, Any]) -> Dict[str, Any]:
+    """Persist last successful charge metadata from a paid Stripe invoice (subscription)."""
+    out: Dict[str, Any] = {}
+    st = invoice.get("status_transitions") or {}
+    paid_at = st.get("paid_at")
+    try:
+        if paid_at:
+            out["last_payment_at"] = datetime.fromtimestamp(int(paid_at), tz=timezone.utc)
+        elif invoice.get("created"):
+            out["last_payment_at"] = datetime.fromtimestamp(int(invoice["created"]), tz=timezone.utc)
+    except (TypeError, ValueError, OSError):
+        pass
+    try:
+        out["last_payment_amount_pence"] = int(invoice.get("amount_paid") or 0)
+    except (TypeError, ValueError):
+        out["last_payment_amount_pence"] = 0
+    out["last_payment_status"] = "paid"
+    inv_id = (invoice.get("id") or "").strip()
+    inv_num = (invoice.get("number") or "").strip()
+    if inv_num:
+        out["last_payment_invoice_number"] = inv_num
+    if inv_id:
+        out["last_payment_stripe_invoice_id"] = inv_id
+        out["latest_invoice_id"] = inv_id
+    nxt = invoice.get("next_payment_attempt")
+    try:
+        if nxt:
+            out["stripe_next_payment_attempt_at"] = datetime.fromtimestamp(int(nxt), tz=timezone.utc)
+    except (TypeError, ValueError, OSError):
+        pass
+    return out
+
 
 # Initialize Stripe (prefer STRIPE_SECRET_KEY; fallback STRIPE_API_KEY)
 _stripe_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
@@ -232,6 +276,23 @@ class StripeWebhookService:
                     }
                 }
             )
+
+            cid_touch = result.get("client_id")
+            if cid_touch:
+                try:
+                    now_touch = datetime.now(timezone.utc)
+                    await db.client_billing.update_one(
+                        {"client_id": cid_touch},
+                        {
+                            "$set": {
+                                "stripe_webhook_last_received_at": now_touch,
+                                "stripe_webhook_last_event_type": event_type,
+                                "updated_at": now_touch,
+                            },
+                        },
+                    )
+                except Exception as touch_err:
+                    logger.warning("stripe_webhook_last_received touch failed client_id=%s: %s", cid_touch, touch_err)
 
             logger.info(
                 "WEBHOOK_PROCESSED_OK event_id=%s event_type=%s client_id=%s",
@@ -614,14 +675,14 @@ class StripeWebhookService:
             {"client_id": client_id},
             {
                 "$set": {
-                    "subscription_status": subscription_status.upper() if subscription_status in ("active", "trialing") else "ACTIVE",
+                    "subscription_status": (subscription_status or "unknown").upper(),
                     "billing_plan": plan_code.value,
                     "stripe_customer_id": stripe_customer_id,
                     "stripe_subscription_id": stripe_subscription_id,
                     "entitlement_status": entitlement_status.value,
                     "entitlements_version": entitlements_version,
                 }
-            }
+            },
         )
 
         try:
@@ -1381,13 +1442,15 @@ class StripeWebhookService:
         old_plan = billing.get("current_plan_code")
         
         # Update to DISABLED - DO NOT DELETE DATA
+        now_del = datetime.now(timezone.utc)
         await db.client_billing.update_one(
             {"client_id": client_id},
             {
                 "$set": {
                     "subscription_status": "CANCELED",
                     "entitlement_status": EntitlementStatus.DISABLED.value,
-                    "updated_at": datetime.now(timezone.utc),
+                    "canonical_entitlement_state": "CANCELLED",
+                    "updated_at": now_del,
                 },
                 "$unset": {
                     "payment_failed_at": "",
@@ -1404,6 +1467,7 @@ class StripeWebhookService:
                 "$set": {
                     "subscription_status": "CANCELLED",
                     "entitlement_status": EntitlementStatus.DISABLED.value,
+                    "canonical_entitlement_state": "CANCELLED",
                 }
             }
         )
@@ -1559,6 +1623,8 @@ class StripeWebhookService:
         entitlement_status = plan_registry.get_entitlement_status_from_subscription(new_status)
         period_end_dt = period_end_from_stripe_subscription_dict(sub_d)
 
+        inv_d: Optional[Dict[str, Any]] = None
+        renewal_breakdown: List[Dict[str, Any]] = []
         try:
             inv_id = invoice.get("id")
             if inv_id:
@@ -1573,6 +1639,7 @@ class StripeWebhookService:
                 pc = (bill_pc or {}).get("current_plan_code")
                 plan_enum = plan_registry.resolve_plan_code(pc) if pc else None
                 br = breakdown_from_invoice_lines(inv_d, plan_enum)
+                renewal_breakdown = br
                 bset: Dict[str, Any] = {
                     "last_invoice_billing_breakdown": br,
                     "updated_at": datetime.now(timezone.utc),
@@ -1580,6 +1647,9 @@ class StripeWebhookService:
                 sub_part = sum(x["amount"] for x in br if x.get("type") == "subscription")
                 if sub_part:
                     bset["subscription_amount_pence"] = sub_part
+                inv_num_stripe = (inv_d.get("number") or "").strip()
+                if inv_num_stripe:
+                    bset["last_payment_invoice_number"] = inv_num_stripe
                 await db.client_billing.update_one({"client_id": client_id}, {"$set": bset})
         except Exception as inv_err:
             logger.warning("invoice paid: persist line breakdown failed: %s", inv_err)
@@ -1589,64 +1659,224 @@ class StripeWebhookService:
         except Exception as lc_err:
             logger.warning("sync_subscription_lifecycle after invoice.paid failed: %s", lc_err)
 
+        pay_set = _extract_successful_invoice_payment_fields(invoice)
+        now_p = datetime.now(timezone.utc)
+        if pay_set:
+            pay_set["updated_at"] = now_p
+            if inv_d:
+                num_iv = (inv_d.get("number") or "").strip()
+                if num_iv and not pay_set.get("last_payment_invoice_number"):
+                    pay_set["last_payment_invoice_number"] = num_iv
+        inv_unset = {"open_invoice_id": "", "open_invoice_status": "", "last_invoice_failure_message": ""}
+        inv_upd: Dict[str, Any] = {"$unset": inv_unset}
+        if pay_set:
+            inv_upd["$set"] = pay_set
+        await db.client_billing.update_one({"client_id": client_id}, inv_upd)
+
         billing_final = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0, "entitlement_status": 1})
         final_ent = (billing_final or {}).get("entitlement_status") or entitlement_status.value
 
         recovered = old_status in ("PAST_DUE", "UNPAID") and new_status == "active"
 
-        # Recurring cycle confirmation (not initial checkout — that uses SUBSCRIPTION_CONFIRMED)
-        if invoice.get("billing_reason") == "subscription_cycle" and new_status == "active":
+        inv_stable = (invoice.get("id") or "").strip()
+        billing_reason = (invoice.get("billing_reason") or "").strip()
+        amount_pence = int(invoice.get("amount_paid") or 0)
+        if (
+            new_status == "active"
+            and billing_reason in SUBSCRIPTION_RENEWAL_RECEIPT_BILLING_REASONS
+            and amount_pence > 0
+            and inv_stable
+        ):
             try:
-                client_row = await db.clients.find_one(
-                    {"client_id": client_id},
-                    {"_id": 0, "contact_name": 1, "full_name": 1},
+                import base64
+
+                from services.notification_orchestrator import notification_orchestrator
+                from services.order_receipt_service import (
+                    CVP_SUBSCRIPTION_RENEWAL_RECEIPTS,
+                    persist_cvp_subscription_renewal_receipt,
+                    read_receipt_pdf_bytes,
                 )
-                client_name = (client_row or {}).get("contact_name") or (client_row or {}).get("full_name") or "Valued Customer"
                 from utils.public_app_url import get_public_app_url
-                base_url = get_public_app_url(for_email_links=False)
-                cpe_out = period_end_dt or normalize_stored_period_end_for_api(billing.get("current_period_end"))
-                renewal_display = ""
-                if cpe_out:
-                    if hasattr(cpe_out, "strftime"):
-                        renewal_display = cpe_out.strftime("%d %B %Y")
+
+                src_inv: Dict[str, Any] = inv_d if inv_d else dict(invoice)
+                bp_start, bp_end = billing_period_from_stripe_invoice_dict(src_inv)
+                st_tr = (src_inv.get("status_transitions") or {}) or {}
+                paid_raw = st_tr.get("paid_at") or (invoice.get("status_transitions") or {}).get("paid_at")
+                if paid_raw:
+                    try:
+                        paid_at_dt = datetime.fromtimestamp(int(paid_raw), tz=timezone.utc)
+                    except (TypeError, ValueError, OSError):
+                        paid_at_dt = now_p
+                else:
+                    paid_at_dt = now_p
+
+                bill_pc2 = await db.client_billing.find_one(
+                    {"client_id": client_id},
+                    {"_id": 0, "current_plan_code": 1},
+                )
+                pc2 = (bill_pc2 or {}).get("current_plan_code")
+                plan_enum2 = plan_registry.resolve_plan_code(pc2) if pc2 else None
+                plan_def2 = plan_registry.get_plan(plan_enum2) if plan_enum2 else {}
+                plan_display = plan_def2.get("name") or (plan_enum2.value if plan_enum2 else "Compliance Vault Pro")
+
+                client_row_em = await db.clients.find_one(
+                    {"client_id": client_id},
+                    {
+                        "_id": 0,
+                        "contact_name": 1,
+                        "full_name": 1,
+                        "email": 1,
+                        "contact_email": 1,
+                        "customer_reference": 1,
+                    },
+                )
+                client_name = (
+                    (client_row_em or {}).get("contact_name")
+                    or (client_row_em or {}).get("full_name")
+                    or "Valued Customer"
+                )
+                client_email_pdf = (
+                    (client_row_em or {}).get("email") or (client_row_em or {}).get("contact_email") or ""
+                ).strip()
+
+                cur_l = (invoice.get("currency") or "gbp").lower()
+                sym = "£" if cur_l == "gbp" else ""
+                amt_display = f"{sym}{amount_pence / 100:.2f}" + ("" if sym else f" {cur_l.upper()}")
+                hosted = (src_inv.get("hosted_invoice_url") or "").strip()
+
+                ok_p, p_err, _gfs = await persist_cvp_subscription_renewal_receipt(
+                    client_id=client_id,
+                    stripe_invoice_id=inv_stable,
+                    stripe_invoice_dict=src_inv,
+                    pleerity_invoice_number=None,
+                    paid_at=paid_at_dt,
+                    billing_period_start=bp_start,
+                    billing_period_end=bp_end,
+                    amount_total_pence=amount_pence,
+                    currency=cur_l,
+                    hosted_invoice_url=hosted or None,
+                    billing_breakdown=renewal_breakdown,
+                    plan_code=plan_enum2,
+                    customer_name=str(client_name),
+                    customer_email=client_email_pdf,
+                    billing_reason=billing_reason,
+                )
+                if not ok_p:
+                    logger.warning(
+                        "renewal receipt persist failed client_id=%s inv=%s: %s",
+                        client_id,
+                        inv_stable,
+                        p_err,
+                    )
+
+                doc_after = await db[CVP_SUBSCRIPTION_RENEWAL_RECEIPTS].find_one({"_id": inv_stable})
+                inv_no_out = (doc_after or {}).get("invoice_number") or ""
+
+                period_fmt = "%d %b %Y"
+                bp_display = ""
+                if bp_start and bp_end:
+                    bp_display = f"{bp_start.strftime(period_fmt)} – {bp_end.strftime(period_fmt)}"
+
+                cpe_next = period_end_dt or normalize_stored_period_end_for_api(billing.get("current_period_end"))
+                next_ren_display = ""
+                if cpe_next:
+                    if hasattr(cpe_next, "strftime"):
+                        next_ren_display = cpe_next.strftime("%d %B %Y")
                     else:
-                        renewal_display = str(cpe_out)[:10]
-                amt = (invoice.get("amount_paid") or 0) / 100.0
-                cur = (invoice.get("currency") or "gbp").lower()
-                sym = "£" if cur == "gbp" else ""
-                amt_display = f"{sym}{amt:.2f}" + ("" if sym else f" {cur.upper()}")
-                # Invoice-stable idempotency: Stripe may emit both invoice.paid and invoice.payment_succeeded
-                inv_stable = (invoice.get("id") or "").strip()
+                        next_ren_display = str(cpe_next)[:10]
+
+                base_url = get_public_app_url(for_email_links=False)
+                support_email = (os.getenv("SUPPORT_EMAIL") or "info@pleerityenterprise.co.uk").strip()
                 event_id = (event or {}).get("id", "")
                 idempotency_key = (
                     f"{inv_stable}_SUBSCRIPTION_RENEWAL_PAID"
                     if inv_stable
                     else (f"{event_id}_SUBSCRIPTION_RENEWAL_PAID" if event_id else None)
                 )
-                from services.notification_orchestrator import notification_orchestrator
-                payment_date_display = datetime.now(timezone.utc).strftime("%d %B %Y %H:%M UTC")
-                next_steps = (
-                    f"<p>Your subscription remains active. Next renewal: <strong>{renewal_display or 'see Billing'}</strong>.</p>"
-                    f"<p>You can review invoices and payment methods any time from Billing.</p>"
+
+                stripe_num = (src_inv.get("number") or invoice.get("number") or "").strip()
+                ref_lines = f"{inv_stable} · #{stripe_num}" if stripe_num else inv_stable
+
+                pdf_attach: List[Dict[str, str]] = []
+                pdf_bytes_out = None
+                if doc_after and doc_after.get("gridfs_id"):
+                    pdf_bytes_out = await read_receipt_pdf_bytes(str(doc_after["gridfs_id"]))
+                if pdf_bytes_out and inv_no_out:
+                    pdf_attach = [
+                        {
+                            "Name": f"{inv_no_out}.pdf",
+                            "Content": base64.b64encode(pdf_bytes_out).decode("utf-8"),
+                            "ContentType": "application/pdf",
+                        }
+                    ]
+
+                next_steps_parts = [
+                    "<p>Your subscription remains active. Next billing date: "
+                    f"<strong>{html.escape(next_ren_display or 'see Billing')}</strong>.</p>"
+                ]
+                if hosted:
+                    next_steps_parts.append(
+                        "<p>Official Stripe invoice / PDF: "
+                        f"<a href=\"{html.escape(hosted)}\" style=\"color:#00B8A9;\">View hosted invoice</a></p>"
+                    )
+                if not pdf_bytes_out and not hosted:
+                    next_steps_parts.append(
+                        "<p>Your Pleerity receipt is on file in Billing; PDF generation will retry if it is not ready yet.</p>"
+                    )
+                next_steps_parts.append(
+                    "<p>You can review invoices and payment methods any time from Billing.</p>"
                 )
-                await notification_orchestrator.send(
+                next_steps_html = "".join(next_steps_parts)
+                next_steps_text = (
+                    f"Your subscription remains active. Next billing date: {next_ren_display or 'see Billing'}."
+                )
+                if hosted:
+                    next_steps_text += f" Official Stripe invoice: {hosted}"
+                next_steps_text += " You can review invoices and payment methods from Billing in the portal."
+
+                ctx: Dict[str, Any] = {
+                    "payment_receipt_layout": "structured",
+                    "receipt_kind": "subscription_renewal",
+                    "client_name": client_name,
+                    "plan_name": plan_display,
+                    "amount_display": amt_display,
+                    "payment_date_display": paid_at_dt.strftime("%d %B %Y %H:%M UTC"),
+                    "reference_display": ref_lines[:220],
+                    "stripe_invoice_id_display": inv_stable,
+                    "stripe_invoice_number_display": stripe_num or None,
+                    "payment_status_display": "Paid",
+                    "billing_period_display": bp_display or None,
+                    "next_renewal_display": next_ren_display or None,
+                    "hosted_invoice_url": hosted or None,
+                    "next_steps_html": next_steps_html,
+                    "next_steps_text": next_steps_text,
+                    "receipt_cta_label": "Open Billing",
+                    "receipt_cta_url": f"{base_url}/settings/billing",
+                    "support_email": support_email,
+                    "customer_reference": (client_row_em or {}).get("customer_reference") or "",
+                    "subject": "Subscription renewed — payment confirmation",
+                }
+                if pdf_attach:
+                    ctx["attachments"] = pdf_attach
+
+                result_re = await notification_orchestrator.send(
                     template_key="SUBSCRIPTION_RENEWAL_PAID",
                     client_id=client_id,
-                    context={
-                        "client_name": client_name,
-                        "plan_name": "Compliance Vault Pro subscription",
-                        "amount_display": amt_display,
-                        "payment_date_display": payment_date_display,
-                        "reference_display": (invoice.get("id") or "")[:120],
-                        "next_steps_html": next_steps,
-                        "receipt_cta_label": "Open Billing",
-                        "receipt_cta_url": f"{base_url}/settings/billing",
-                    },
+                    context=ctx,
                     idempotency_key=idempotency_key,
                     event_type=event_type,
                 )
+                if result_re.outcome in ("sent", "duplicate_ignored") and doc_after:
+                    await db[CVP_SUBSCRIPTION_RENEWAL_RECEIPTS].update_one(
+                        {"_id": inv_stable},
+                        {"$set": {"receipt_email_sent_at": now_p}},
+                    )
             except Exception as mail_err:
-                logger.warning("SUBSCRIPTION_RENEWAL_PAID send failed (non-blocking): %s", mail_err)
+                logger.warning(
+                    "SUBSCRIPTION_RENEWAL_PAID pipeline failed (non-blocking): %s",
+                    mail_err,
+                    exc_info=True,
+                )
 
         # Audit log
         await create_audit_log(
@@ -1763,6 +1993,20 @@ class StripeWebhookService:
             "updated_at": now,
             **grace_extra,
         }
+        npt = invoice.get("next_payment_attempt")
+        try:
+            if npt:
+                billing_set["stripe_next_payment_attempt_at"] = datetime.fromtimestamp(int(npt), tz=timezone.utc)
+        except (TypeError, ValueError, OSError):
+            pass
+        lf = invoice.get("last_finalization_error")
+        if isinstance(lf, dict) and lf.get("message"):
+            billing_set["last_invoice_failure_message"] = str(lf.get("message"))[:2000]
+        inv_st = (invoice.get("status") or "").strip().lower()
+        if inv_id:
+            billing_set["open_invoice_id"] = inv_id
+        if inv_st:
+            billing_set["open_invoice_status"] = inv_st
         pay_update: Dict[str, Any] = {"$set": billing_set}
         if bump:
             pay_update["$inc"] = {"entitlements_version": 1}
@@ -1913,7 +2157,7 @@ class StripeWebhookService:
         Stripe event types (e.g. invoice.paid + invoice.payment_succeeded) do not double-count.
         """
         db = database.get_db()
-        if not db:
+        if db is None:
             return
         doc = {
             "client_id": client_id,

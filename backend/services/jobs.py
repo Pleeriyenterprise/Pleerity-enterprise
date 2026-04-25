@@ -14,6 +14,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from utils.expiry_utils import get_effective_expiry_date, get_computed_status, is_included_for_calendar
+from services.requirement_evidence_authority import authority_runtime_requirement_status
 from services.reminder_truth_service import (
     evaluate_requirement_for_daily_reminder,
     mark_requirement_reminder_sent,
@@ -173,6 +174,23 @@ class JobScheduler:
                     {"client_id": client["client_id"]},
                     {"_id": 0}
                 ).to_list(500)
+                from services.requirement_client_runtime_surface import (
+                    filter_requirement_rows_for_client_runtime_surfaces,
+                )
+
+                props_for_surface = []
+                async for p in self.db.properties.find(
+                    {"client_id": client["client_id"]},
+                    {"_id": 0},
+                ):
+                    props_for_surface.append(p)
+                requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+                    self.db,
+                    client_id=client["client_id"],
+                    requirements=requirements,
+                    client_doc=client,
+                    properties=props_for_surface,
+                )
 
                 # Resolve property addresses once for reminder content
                 property_ids = list({r.get("property_id") for r in requirements if r.get("property_id")})
@@ -233,10 +251,6 @@ class JobScheduler:
                             "due_date": due_date.strftime("%Y-%m-%d"),
                             "requirement_id": current_req.get("requirement_id"),
                         })
-                        await self.db.requirements.update_one(
-                            {"requirement_id": current_req["requirement_id"]},
-                            {"$set": {"status": "OVERDUE"}}
-                        )
                         properties_status_changed.add(current_req.get("property_id"))
                     elif 0 <= days_until_due <= reminder_days:
                         prop_addr = properties_map.get(current_req.get("property_id"), "Your property")
@@ -255,10 +269,6 @@ class JobScheduler:
                             "due_date": due_date.strftime("%Y-%m-%d"),
                             "requirement_id": current_req.get("requirement_id"),
                         })
-                        await self.db.requirements.update_one(
-                            {"requirement_id": current_req["requirement_id"]},
-                            {"$set": {"status": "EXPIRING_SOON"}}
-                        )
                         properties_status_changed.add(current_req.get("property_id"))
                 
                 # Enqueue compliance recalc for properties whose requirement status changed
@@ -1325,7 +1335,10 @@ class JobScheduler:
                     {"client_id": client["client_id"]},
                     {"_id": 0}
                 ).to_list(100)
-                
+                from services.requirement_client_runtime_surface import (
+                    filter_requirement_rows_for_client_runtime_surfaces,
+                )
+
                 properties_with_changes = []
                 
                 for prop in properties:
@@ -1334,6 +1347,13 @@ class JobScheduler:
                         {"property_id": prop["property_id"]},
                         {"_id": 0}
                     ).to_list(100)
+                    requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+                        self.db,
+                        client_id=client["client_id"],
+                        requirements=requirements,
+                        client_doc=client,
+                        properties=properties,
+                    )
                     
                     # Calculate current compliance status based on requirements
                     new_status = self._calculate_property_compliance(requirements)
@@ -1481,7 +1501,7 @@ class JobScheduler:
         has_pending = False
 
         for req in requirements:
-            status = req.get("status", "PENDING")
+            status = authority_runtime_requirement_status(req) or req.get("status", "PENDING")
 
             if status in ["OVERDUE", "EXPIRED"]:
                 has_overdue = True
@@ -1490,10 +1510,9 @@ class JobScheduler:
             elif status == "PENDING":
                 has_pending = True
                 # Also check due date: if past due or within 30 days, upgrade to overdue/expiring
-                due_date_str = req.get("due_date")
-                if due_date_str:
+                due_date = get_effective_expiry_date(req)
+                if due_date:
                     try:
-                        due_date = datetime.fromisoformat(due_date_str.replace('Z', '+00:00')) if isinstance(due_date_str, str) else due_date_str
                         days_until_due = (due_date - now).days
 
                         if days_until_due < 0:
@@ -1515,7 +1534,8 @@ class JobScheduler:
         if new_status == "RED":
             overdue_types = []
             for req in requirements:
-                if req.get("status") in ["OVERDUE", "EXPIRED"]:
+                st = authority_runtime_requirement_status(req) or req.get("status")
+                if st in ["OVERDUE", "EXPIRED"]:
                     overdue_types.append(_reminder_item_label_from_req(req))
             
             if overdue_types:
@@ -1525,7 +1545,8 @@ class JobScheduler:
         elif new_status == "AMBER":
             expiring_types = []
             for req in requirements:
-                if req.get("status") == "EXPIRING_SOON":
+                st = authority_runtime_requirement_status(req) or req.get("status")
+                if st == "EXPIRING_SOON":
                     expiring_types.append(_reminder_item_label_from_req(req))
             
             if expiring_types:
@@ -1762,6 +1783,13 @@ async def run_renewal_reminders():
     if isinstance(result, dict):
         return result
     return {"message": f"Subscription lifecycle job: {result}", "count": result}
+
+
+async def run_stripe_subscription_reconcile():
+    """Re-fetch Stripe subscription rows for a batch of clients (missed-webhook safety net)."""
+    from services.stripe_subscription_reconcile_job import reconcile_all_stripe_subscriptions
+
+    return await reconcile_all_stripe_subscriptions()
 
 
 async def run_scheduled_reports():

@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from unittest.mock import AsyncMock
 
 backend_root = Path(__file__).resolve().parent.parent
 if str(backend_root) not in sys.path:
@@ -60,6 +61,11 @@ async def test_enrich_requirements_for_admin_uses_evidence_map(monkeypatch):
         return {requirement_ids[0]: rt.EVIDENCE_VERIFIED} if requirement_ids else {}
 
     monkeypatch.setattr(rt, "load_evidence_state_by_requirement_id", fake_load)
+    monkeypatch.setattr(
+        rt,
+        "fetch_active_published_registry_entries",
+        AsyncMock(return_value=None),
+    )
 
     rows = [
         {

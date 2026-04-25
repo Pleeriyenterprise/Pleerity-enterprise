@@ -58,6 +58,17 @@ def _property_display(prop: Dict[str, Any]) -> str:
 
 
 def _requirement_date_source(req: Dict[str, Any]) -> str:
+    ea = req.get("evidence_authority") or {}
+    if req.get("evidence_authority_synced_at") and int(ea.get("version") or 0) >= 1:
+        src = (ea.get("expiry_source") or "").strip().lower()
+        if src == "verified_document":
+            return "verified_document"
+        if src == "confirmed":
+            return "confirmed"
+        if src == "extracted":
+            return "extracted"
+        if src == "none":
+            return "none"
     if req.get("confirmed_expiry_date"):
         return "confirmed"
     if req.get("extracted_expiry_date"):
@@ -432,6 +443,19 @@ async def get_timeline_events_for_range(
         return []
 
     requirements = await db.requirements.find({"property_id": {"$in": property_ids}}, {"_id": 0}).to_list(2000)
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    props_full = await db.properties.find(
+        {"client_id": client_id, "property_id": {"$in": property_ids}},
+        {"_id": 0},
+    ).to_list(2000)
+    requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=requirements,
+        client_doc=client_doc,
+        properties=props_full,
+    )
     requirement_ids = [r["requirement_id"] for r in requirements if r.get("requirement_id")]
     req_to_doc: Dict[str, str] = {}
     if requirement_ids:

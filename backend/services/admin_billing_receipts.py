@@ -3,6 +3,7 @@ Admin Billing — aggregate receipt/invoice list and resend helpers.
 
 Uses canonical storage only:
 - `stripe_checkout_invoices` + GridFS (subscription checkout PDFs)
+- `cvp_subscription_renewal_receipts` + GridFS (subscription renewals / proration from ``invoice.paid``)
 - `orders` + `receipt_pdf_gridfs_id` (intake / one-off service PDFs)
 """
 from __future__ import annotations
@@ -17,6 +18,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from database import database
 from services.order_receipt_service import (
+    CVP_SUBSCRIPTION_RENEWAL_RECEIPTS,
     STRIPE_CHECKOUT_INVOICES,
     get_receipt_for_order,
     order_to_invoice_data,
@@ -109,6 +111,40 @@ def _subscription_row(
     }
 
 
+def _renewal_row(doc: Dict[str, Any]) -> Dict[str, Any]:
+    inv = doc.get("invoice_number") or ""
+    sid = doc.get("_id")
+    paid = doc.get("paid_at") or doc.get("created_at")
+    cur = (doc.get("currency") or "gbp").upper()
+    pence = doc.get("amount_total_pence")
+    gid = doc.get("gridfs_id")
+    host = doc.get("hosted_invoice_url")
+    return {
+        "source": "subscription",
+        "source_detail": "subscription_renewal",
+        "receipt_key": f"subscription_renewal:{inv or sid}",
+        "invoice_number": inv,
+        "order_reference": str(doc.get("stripe_invoice_id") or sid or ""),
+        "stripe_checkout_session_id": None,
+        "stripe_invoice_id": str(sid) if sid is not None else None,
+        "date_issued": _dt_iso(paid),
+        "amount_total_pence": pence,
+        "amount_display": _money_display(pence, cur),
+        "currency": cur,
+        "payment_status": (doc.get("payment_status") or "PAID").upper(),
+        "payment_method": "Card (Stripe)",
+        "pdf_available": bool(gid),
+        "receipt_generated_at": _dt_iso(paid) if gid else None,
+        "email_sent_at": _dt_iso(doc.get("receipt_email_sent_at")),
+        "synthetic_ledger": False,
+        "hosted_invoice_url": host,
+        "billing_period_start": _dt_iso(doc.get("billing_period_start")),
+        "billing_period_end": _dt_iso(doc.get("billing_period_end")),
+        "stripe_invoice_number": doc.get("stripe_invoice_number"),
+        "billing_reason": doc.get("billing_reason"),
+    }
+
+
 def _order_row(order: Dict[str, Any]) -> Dict[str, Any]:
     oid = order.get("order_id") or ""
     snap = order.get("pricing_snapshot") or {}
@@ -193,6 +229,17 @@ async def list_receipts_for_client(
                 "payment_status": "PAID",
             }
             rows.append(_subscription_row(synthetic_doc, synthetic=True))
+
+    if type_filter in ("all", "subscription", "subscription_renewal"):
+        rcur = (
+            db[CVP_SUBSCRIPTION_RENEWAL_RECEIPTS]
+            .find({"client_id": client_id})
+            .sort("paid_at", -1)
+            .limit(500)
+        )
+        renewals = await rcur.to_list(500)
+        for d in renewals:
+            rows.append(_renewal_row(d))
 
     # --- Orders (paid / post-payment) ---
     if type_filter in ("all", "order", "intake_order", "one_off_order", "cvp_order"):
@@ -283,6 +330,14 @@ async def get_subscription_receipt_doc_for_client(
         return doc
     if ref.startswith("cs_"):
         return await col.find_one({"_id": ref, "client_id": client_id})
+    rcol = db[CVP_SUBSCRIPTION_RENEWAL_RECEIPTS]
+    rdoc = await rcol.find_one({"client_id": client_id, "invoice_number": ref})
+    if rdoc:
+        return rdoc
+    if ref.startswith("in_"):
+        rdoc2 = await rcol.find_one({"_id": ref, "client_id": client_id})
+        if rdoc2:
+            return rdoc2
     # Pinned-only
     cl = await db.clients.find_one(
         {"client_id": client_id, "last_subscription_invoice_number": ref},

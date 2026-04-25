@@ -90,11 +90,22 @@ async def get_roi_summary_month_to_date(client_id: str, db) -> Dict[str, Any]:
     compliance_snapshot = 0
     requirements_scan_ok = True
     try:
-        cursor = db.requirements.find(
+        rows = await db.requirements.find(
             {"client_id": client_id},
-            {"_id": 0, "status": 1, "updated_at": 1},
+            {"_id": 0, "status": 1, "updated_at": 1, "property_id": 1},
+        ).to_list(5000)
+        client_row = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+        props = await db.properties.find({"client_id": client_id}, {"_id": 0}).limit(500).to_list(500)
+        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+        rows = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=client_id,
+            requirements=rows,
+            client_doc=client_row,
+            properties=props,
         )
-        async for r in cursor:
+        for r in rows:
             st = (r.get("status") or "").upper()
             if st not in _COMPLIANT_STATUSES:
                 continue

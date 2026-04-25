@@ -1,10 +1,17 @@
 """
-Deterministic certificate expiry: single source of truth for effective date and status.
-Use confirmed_expiry_date if present, else extracted_expiry_date, else none.
-Calendar and reminders must use this same rule.
+Deterministic certificate expiry for **requirements**.
 
-"Expiring soon" uses compliance_expiry_policy.resolve_expiring_soon_days_for_requirement when
-property_doc/client_doc are supplied; otherwise requirement.jurisdiction alone can inform the bucket.
+Authoritative path (preferred): ``requirement["evidence_authority"]`` populated by
+``services.requirement_evidence_authority.sync_requirement_evidence_authority`` with
+``version >= 1`` and ``evidence_authority_synced_at`` set. Use ``effective_expiry_date``
+or ``effective_expiry_is_null`` from that object.
+
+**Non-authoritative legacy** (read only when authority snapshot is absent):
+``confirmed_expiry_date``, ``extracted_expiry_date``, ``due_date`` — retained for
+unmigrated rows and gradual rollout; do not update business logic to branch on these
+directly in new code.
+
+Calendar and reminders must call ``get_effective_expiry_date`` here (not ad hoc reads).
 """
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -26,15 +33,25 @@ def _parse_date(value: Any) -> Optional[datetime]:
 
 def get_effective_expiry_date(requirement: Dict[str, Any]) -> Optional[datetime]:
     """
-    Single rule: use confirmed_expiry_date if present, else extracted_expiry_date, else none.
+    Authoritative: ``evidence_authority.effective_expiry_date`` when version >= 1 and synced.
+    Legacy fallback only when ``evidence_authority_synced_at`` is absent.
     """
+    ea = requirement.get("evidence_authority") or {}
+    synced = bool(requirement.get("evidence_authority_synced_at"))
+    if synced and int(ea.get("version") or 0) >= 1:
+        if ea.get("effective_expiry_is_null") is True:
+            return None
+        eff = _parse_date(ea.get("effective_expiry_date"))
+        if eff is not None:
+            return eff
+        return None
+
     confirmed = _parse_date(requirement.get("confirmed_expiry_date"))
     if confirmed is not None:
         return confirmed
     extracted = _parse_date(requirement.get("extracted_expiry_date"))
     if extracted is not None:
         return extracted
-    # Fallback: legacy due_date (treat as effective expiry when new fields absent)
     due = _parse_date(requirement.get("due_date"))
     return due
 
@@ -63,6 +80,8 @@ def get_computed_status(
     effective = get_effective_expiry_date(requirement)
     if effective is None:
         return RequirementStatus.UNKNOWN_DATE.value
+    if effective.tzinfo is None:
+        effective = effective.replace(tzinfo=timezone.utc)
 
     days = (effective - now).days
     if days < 0:
@@ -78,4 +97,8 @@ def is_included_for_calendar(requirement: Dict[str, Any]) -> bool:
     applicability = (requirement.get("applicability") or "UNKNOWN").strip().upper()
     if applicability == "NOT_REQUIRED":
         return False
+    ea = requirement.get("evidence_authority") or {}
+    if requirement.get("evidence_authority_synced_at") and int(ea.get("version") or 0) >= 1:
+        if (ea.get("state") or "").upper() == "NOT_REQUIRED":
+            return False
     return get_effective_expiry_date(requirement) is not None

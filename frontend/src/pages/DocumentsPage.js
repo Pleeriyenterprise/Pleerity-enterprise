@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import api, { clientAPI, parseApiError } from '../api/client';
+import api, { clientAPI, parseApiError, parseStructuredApiDetail } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { UpgradeRequired } from '../components/UpgradePrompt';
 import EmptyState from '../components/EmptyState';
@@ -67,6 +67,7 @@ const DocumentsPage = () => {
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadEvidenceBanner, setUploadEvidenceBanner] = useState(null);
   const [analyzing, setAnalyzing] = useState(null);
   const [reviewModal, setReviewModal] = useState(null);
   const [applying, setApplying] = useState(false);
@@ -377,16 +378,35 @@ const DocumentsPage = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
+      const em = res.data?.evidence_match && typeof res.data.evidence_match === 'object' ? res.data.evidence_match : null;
+      const satisfies = em?.evidence_satisfies_requirement;
       const outcome = res.data?.outcome;
-      const base =
-        'Document uploaded — saved to your vault. Confirm extracted dates when prompted so this requirement can move forward accurately.';
-      toast.success(
-        base,
-        complianceActionToastOptions(outcome, {
-          fallbackDescription:
-            'Background scoring may refresh; requirement dates are finalized after you confirm extraction (or enter dates if extraction is unavailable).',
-        }),
-      );
+      if (satisfies === false) {
+        setUploadEvidenceBanner({
+          document_id: res.data?.document_id,
+          evidence_match: em,
+          at: Date.now(),
+        });
+        const mismatchMsg =
+          em?.mismatch_reason_text ||
+          (Array.isArray(em?.user_messages) && em.user_messages.length ? em.user_messages.join(' ') : null) ||
+          'Automated checks could not confirm this file matches the selected obligation.';
+        toast.warning(
+          `Uploaded, but evidence is not confirmed for this requirement — ${mismatchMsg} Replace the file or wait for review before treating this as satisfied.`,
+          { duration: 9000 },
+        );
+      } else {
+        setUploadEvidenceBanner(null);
+        const base =
+          'Document uploaded — saved to your vault. Confirm extracted dates when prompted so this requirement can move forward accurately.';
+        toast.success(
+          base,
+          complianceActionToastOptions(outcome, {
+            fallbackDescription:
+              'Background scoring may refresh; requirement dates are finalized after you confirm extraction (or enter dates if extraction is unavailable).',
+          }),
+        );
+      }
       if (typeof window !== 'undefined') {
         const detail =
           res.data?.outcome && typeof res.data.outcome === 'object'
@@ -410,6 +430,15 @@ const DocumentsPage = () => {
       setUploadForm({ property_id: '', requirement_id: '', document_type: '', notes: '', file: null });
       fetchData();
     } catch (error) {
+      const st = error.response?.status;
+      const s = parseStructuredApiDetail(error);
+      if (st === 400 && s?.error_code === 'EVIDENCE_DOCUMENT_TYPE_MISMATCH') {
+        toast.error(
+          s.message || 'This file does not match the selected obligation.',
+          { duration: 10000 },
+        );
+        return;
+      }
       toast.error(parseApiError(error, 'Failed to upload document'));
     } finally {
       setUploading(false);
@@ -525,7 +554,17 @@ const DocumentsPage = () => {
         setUpgradeRequiredDetail(error.upgradeDetail);
         return;
       }
-      toast.error(error.response?.data?.detail || 'Failed to apply extraction');
+      const st = error.response?.status;
+      const s = parseStructuredApiDetail(error);
+      if (st === 409 && s?.error_code === 'EVIDENCE_MATCH_BLOCKS_APPLY') {
+        toast.error(
+          s.message ||
+            'The confirmed extraction does not match the linked obligation. Relink the document or ask an administrator to review.',
+          { duration: 12000 },
+        );
+        return;
+      }
+      toast.error(parseApiError(error, 'Failed to apply extraction'));
     } finally {
       setApplying(false);
     }
@@ -892,6 +931,34 @@ const DocumentsPage = () => {
             <Button variant="outline" size="sm" className="border-red-300 shrink-0 min-h-10" asChild>
               <a href="#upload-form-anchor">Go to documents</a>
             </Button>
+          </div>
+        )}
+        {uploadEvidenceBanner?.evidence_match && (
+          <div
+            className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
+            data-testid="upload-evidence-match-warning"
+          >
+            <div className="text-sm text-amber-950">
+              <p className="font-semibold">Latest upload: evidence not confirmed for the selected requirement</p>
+              <p className="mt-1 text-amber-900">
+                {uploadEvidenceBanner.evidence_match.mismatch_reason_text ||
+                  (Array.isArray(uploadEvidenceBanner.evidence_match.user_messages)
+                    ? uploadEvidenceBanner.evidence_match.user_messages.join(' ')
+                    : null) ||
+                  'Do not treat this upload as satisfying the obligation until extraction is confirmed or an administrator has reviewed it.'}
+              </p>
+              {uploadEvidenceBanner.document_id && (
+                <p className="mt-1 text-xs font-mono text-amber-800">Document {uploadEvidenceBanner.document_id}</p>
+              )}
+            </div>
+            <div className="flex flex-col gap-2 shrink-0">
+              <Button variant="outline" size="sm" className="border-amber-400" asChild>
+                <a href="#upload-form-anchor">Replace file</a>
+              </Button>
+              <Button variant="ghost" size="sm" className="text-amber-950" onClick={() => setUploadEvidenceBanner(null)}>
+                Dismiss
+              </Button>
+            </div>
           </div>
         )}
         {upgradeRequiredDetail ? (

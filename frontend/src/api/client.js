@@ -134,6 +134,9 @@ apiClient.interceptors.response.use(
       logIntakeDebug(error.config?.method?.toUpperCase() || 'GET', fullUrl, status, data);
     }
     setLastApiError(status, typeof message === 'string' ? message : JSON.stringify(detail ?? message));
+    if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+      error.structuredDetail = detail;
+    }
     const errPath = normalizedApiUrlPath(error.config || {});
     if (errPath.startsWith('contractor/') && typeof window !== 'undefined') {
       if (process.env.NODE_ENV !== 'production' || window.__CVP_CONTRACTOR_DEBUG) {
@@ -292,6 +295,21 @@ export function parseJobLinkError(
   return { title, message, errorCode: code };
 }
 
+/** FastAPI `detail` when it is an object (message, error_code, evidence_match, …). */
+export function parseStructuredApiDetail(err) {
+  const raw = err?.structuredDetail ?? err?.response?.data?.detail;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const em = raw.evidence_match && typeof raw.evidence_match === 'object' ? raw.evidence_match : null;
+  const userLines = Array.isArray(em?.user_messages) ? em.user_messages.filter(Boolean) : [];
+  return {
+    message: typeof raw.message === 'string' ? raw.message.trim() : null,
+    error_code: raw.error_code != null ? String(raw.error_code) : null,
+    evidence_match: em,
+    user_messages: userLines,
+    raw,
+  };
+}
+
 export function parseApiError(err, fallback = 'Something went wrong. Please try again or refresh the page.') {
   if (!err || !err.response) {
     if (err && err.message === 'Network Error') {
@@ -306,6 +324,9 @@ export function parseApiError(err, fallback = 'Something went wrong. Please try 
     if (typeof d.message === 'string' && d.message.trim()) {
       let msg = d.message.trim();
       if (d.retry_suggested === true) msg = `${msg} You can try again.`;
+      const em = d.evidence_match && typeof d.evidence_match === 'object' ? d.evidence_match : null;
+      const extra = Array.isArray(em?.user_messages) ? em.user_messages.filter(Boolean).join(' ') : '';
+      if (extra) msg = `${msg} ${extra}`.trim();
       return msg;
     }
     if (typeof d.error === 'string' && d.error.trim()) return d.error.trim();
@@ -709,6 +730,12 @@ export const adminAPI = {
     apiClient.get('/admin/search', { params: { q, limit, include_archived: includeArchived || undefined } }),
   getPendingVerificationDocuments: (hours = 0, clientId = null, limit = 50, skip = 0) =>
     apiClient.get('/admin/documents/pending-verification', { params: { hours, client_id: clientId || undefined, limit, skip } }),
+  /** Admin document verify (optional evidence mismatch override for audited resolution). */
+  verifyDocument: (documentId, body = {}) =>
+    apiClient.post(`/documents/verify/${encodeURIComponent(documentId)}`, body),
+  resolveEvidenceMatch: (documentId, body) =>
+    apiClient.post(`/admin/documents/${encodeURIComponent(documentId)}/resolve-evidence-match`, body),
+  backfillEvidenceMatch: (body = {}) => apiClient.post('/admin/documents/backfill-evidence-match', body ?? {}),
   getClients: (skip = 0, limit = 50) => apiClient.get('/admin/clients', { params: { skip, limit } }),
   getClientDetail: (clientId) => apiClient.get(`/admin/clients/${clientId}`),
   /** Pending payments / intake list buckets: pending | archived | purge_eligible | test_like | all */

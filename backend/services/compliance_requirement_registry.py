@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from services.compliance_rules_registry import (
+    ComplianceRuleSpec,
     apply_location_rules_enabled,
     get_rule,
     iter_core_rules,
@@ -28,7 +29,11 @@ from services.requirement_catalog import (
     HOW_TO_RENT,
     HMO_FIRE_RISK,
     HMO_FIRE_RISK_EVIDENCE,
+    LANDLORD_REGISTRATION_NI,
+    PORTABLE_APPLIANCE_TEST,
     PROPERTY_LICENCE,
+    RENT_SMART_WALES,
+    RIGHT_TO_RENT,
     SCOTLAND_LANDLORD_REGISTRATION,
     TENANCY_AGREEMENT,
     WALES_OCCUPATION_CONTRACT,
@@ -42,6 +47,46 @@ REQUIREMENT_CLASS_OBLIGATION = "OBLIGATION"
 REQUIREMENT_CLASS_SYSTEM = "SYSTEM"
 
 REQUIREMENT_GENERATION_SOURCE_REGISTRY = "catalog_registry"
+
+
+def published_registry_entry_eligible_for_runtime(entry: Dict[str, Any]) -> bool:
+    """
+    Published snapshot rows may be soft-retired without deleting history keys.
+
+    Excluded from planner merge when deprecated/archived/disabled or explicitly excluded from
+    materialisation (governance flags).
+    """
+    if not isinstance(entry, dict):
+        return False
+    jur = entry.get("jurisdiction") if isinstance(entry.get("jurisdiction"), dict) else {}
+    if jur.get("deprecated") is True or jur.get("is_active") is False:
+        return False
+    life = entry.get("lifecycle") if isinstance(entry.get("lifecycle"), dict) else {}
+    st = str(life.get("status") or "").strip().lower()
+    if st in ("archived", "superseded", "disabled", "withdrawn"):
+        return False
+    gov = entry.get("governance") if isinstance(entry.get("governance"), dict) else {}
+    if gov.get("archived") is True or gov.get("materialization_excluded") is True:
+        return False
+    return True
+
+
+def core_rule_spec_allowed_for_portfolio(spec: ComplianceRuleSpec, portfolio_label: str) -> bool:
+    """
+    ``iter_core_rules`` is keyed by scoring bucket (EW vs Scotland) and is not portfolio-label aware.
+
+    Suppress rows that are jurisdiction-specific so England does not inherit Wales/Scotland-only
+    statutory rows from the shared EW bucket, and Scotland does not double-register landlord rules.
+    """
+    cc = (spec.canonical_code or "").strip().upper()
+    if cc == "OCCUPATION_CONTRACT":
+        return portfolio_label == "Wales"
+    if cc == "LANDLORD_REGISTRATION":
+        # Scotland / NI use catalog-specific rows (``scotland_landlord_registration``,
+        # ``landlord_registration_ni``); the generic EW registry spec must not materialise.
+        return False
+    return True
+
 
 # London / Manchester selective licensing (England & Wales contexts only) — legacy LOCATION_RULES
 _LOCATION_SELECTIVE = {
@@ -81,6 +126,8 @@ class RequirementPlanItem:
     why_it_matters_short: Optional[str] = None
     why_it_matters_long: Optional[str] = None
     why_it_matters_by_jurisdiction: Optional[Dict[str, Any]] = None
+    primary_action_mode: Optional[str] = None
+    cta_label_override: Optional[str] = None
 
 
 def _norm_pt(property_doc: Dict) -> str:
@@ -127,6 +174,8 @@ def apply_published_registry_entries_to_plan(
     for _key, entry in entries.items():
         if not isinstance(entry, dict):
             continue
+        if not published_registry_entry_eligible_for_runtime(entry):
+            continue
         cc = str(entry.get("canonical_code") or "").strip().upper()
         if not cc or not draft_applies_to_portfolio_label(entry, portfolio_label):
             continue
@@ -157,7 +206,7 @@ def apply_published_registry_entries_to_plan(
             "why_it_matters_long": item.why_it_matters_long,
             "why_it_matters_by_jurisdiction": item.why_it_matters_by_jurisdiction,
         }
-        m = merge_draft_overlay_onto_plan_row(prod_row, entry)
+        m = merge_draft_overlay_onto_plan_row(prod_row, entry, portfolio_label=portfolio_label)
         cls = str(m.get("compliance_requirement_class") or item.compliance_requirement_class).strip().upper()
         if cls not in (REQUIREMENT_CLASS_DOCUMENT, REQUIREMENT_CLASS_JOB, REQUIREMENT_CLASS_OBLIGATION, REQUIREMENT_CLASS_SYSTEM):
             cls = item.compliance_requirement_class
@@ -193,6 +242,12 @@ def apply_published_registry_entries_to_plan(
                     m.get("why_it_matters_by_jurisdiction")
                     if isinstance(m.get("why_it_matters_by_jurisdiction"), dict)
                     else None
+                ),
+                primary_action_mode=(
+                    str(m.get("primary_action_mode") or "").strip().lower() or None
+                ),
+                cta_label_override=(
+                    str(m.get("cta_label_override") or "").strip() or None
                 ),
             )
         )
@@ -238,6 +293,8 @@ def resolve_published_entry_for_requirement(
     best: Optional[Tuple[int, Dict[str, Any]]] = None
     for entry in published_registry_entries.values():
         if not isinstance(entry, dict):
+            continue
+        if not published_registry_entry_eligible_for_runtime(entry):
             continue
         cc = str(entry.get("canonical_code") or "").strip().upper()
         if not cc:
@@ -295,7 +352,9 @@ def build_requirement_plan_for_property(
     prop_type = _norm_pt(property_doc)
     is_hmo = _boolish(property_doc.get("is_hmo"), False) or prop_type == "HMO"
     hmo_license_required = _boolish(property_doc.get("hmo_license_required"), False)
-    has_gas = _boolish(property_doc.get("has_gas_supply"), True)
+    has_gas = _boolish(property_doc.get("has_gas_supply"), False) or str(
+        property_doc.get("cert_gas_safety") or ""
+    ).strip().upper() == "YES"
     building_age_years = property_doc.get("building_age_years")
     has_communal = _boolish(property_doc.get("has_communal_areas"), False)
     local_authority = (property_doc.get("local_authority") or "").strip().upper()
@@ -333,6 +392,8 @@ def build_requirement_plan_for_property(
 
     # --- 1) Core cadence pack (jurisdiction-specific SLA/frequency from compliance_rules_registry) ---
     for spec in iter_core_rules(sj):
+        if not core_rule_spec_allowed_for_portfolio(spec, portfolio):
+            continue
         if spec.condition == "has_gas_supply" and not has_gas:
             continue
         frequency_days = int(spec.frequency_days)
@@ -442,11 +503,56 @@ def build_requirement_plan_for_property(
         add(
             "wales_occupation_contract",
             "wales_occupation_contract",
-            "Occupation contract (Wales)",
+            "Written occupation contract (Wales)",
             fd,
             fw,
             REQUIREMENT_CLASS_OBLIGATION,
             catalog_keys=(WALES_OCCUPATION_CONTRACT,),
+        )
+
+    if RIGHT_TO_RENT in applicable:
+        add(
+            "right_to_rent",
+            "right_to_rent",
+            "Right to Rent checks",
+            365,
+            30,
+            REQUIREMENT_CLASS_OBLIGATION,
+            catalog_keys=(RIGHT_TO_RENT,),
+        )
+
+    if RENT_SMART_WALES in applicable:
+        add(
+            "rent_smart_wales",
+            "rent_smart_wales",
+            "Rent Smart Wales registration",
+            1095,
+            45,
+            REQUIREMENT_CLASS_DOCUMENT,
+            catalog_keys=(RENT_SMART_WALES,),
+        )
+
+    if LANDLORD_REGISTRATION_NI in applicable:
+        fd, fw = _freq_from_rule(sj, "LANDLORD_REGISTRATION", 1095, 45)
+        add(
+            "landlord_registration_ni",
+            "landlord_registration_ni",
+            "Landlord registration (Northern Ireland)",
+            fd,
+            fw,
+            REQUIREMENT_CLASS_DOCUMENT,
+            catalog_keys=(LANDLORD_REGISTRATION_NI,),
+        )
+
+    if PORTABLE_APPLIANCE_TEST in applicable:
+        add(
+            "portable_appliance_test",
+            "portable_appliance_test",
+            "Portable appliance (PAT) testing",
+            365,
+            30,
+            REQUIREMENT_CLASS_JOB,
+            catalog_keys=(PORTABLE_APPLIANCE_TEST,),
         )
 
     # --- 4) HMO set expansion (additional operational / safety rows) ---

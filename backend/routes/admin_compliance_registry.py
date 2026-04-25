@@ -418,6 +418,31 @@ async def patch_registry_draft(
     return out
 
 
+@router.delete("/drafts/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_registry_draft(
+    request: Request,
+    entry_id: str,
+    user: dict = Depends(require_owner_or_admin),
+):
+    """
+    Permanently remove a draft registry row (e.g. data entry error). Does not alter the active
+    published snapshot; republish if a published key must be retired (use lifecycle/archival flags).
+    """
+    db = database.get_db()
+    res = await db[COLLECTION].delete_one({"entry_id": entry_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+    await create_audit_log(
+        action=AuditAction.COMPLIANCE_REGISTRY_DRAFT_DELETED,
+        actor_role=_portal_user_role_for_audit(user),
+        actor_id=str(user.get("portal_user_id") or user.get("user_id") or ""),
+        resource_type="compliance_requirement_registry_draft",
+        resource_id=entry_id,
+        metadata={"entry_id": entry_id},
+        ip_address=request.client.host if request.client else None,
+    )
+
+
 @router.post("/import-baseline-bundle")
 async def import_baseline_bundle(body: ImportBaselineBody, user: dict = Depends(require_owner_or_admin)):
     """

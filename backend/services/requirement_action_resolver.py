@@ -31,6 +31,9 @@ def infer_action_type(requirement: Dict[str, Any]) -> str:
     stored = str(requirement.get("action_type") or "").strip().upper()
     if stored in (ACTION_DOCUMENT, ACTION_JOB, ACTION_MAINTENANCE, ACTION_OBLIGATION):
         return stored
+    meta = requirement.get("registry_metadata") if isinstance(requirement.get("registry_metadata"), dict) else {}
+    if str(meta.get("primary_action_mode") or "").strip().lower() == "hidden":
+        return ACTION_OBLIGATION
     cls = str(requirement.get("compliance_requirement_class") or requirement.get("requirement_class") or "").strip().upper()
     if cls == "JOB":
         return ACTION_JOB
@@ -127,6 +130,19 @@ def resolve_take_action_envelope(
     code = requirement.get("requirement_code") or requirement.get("requirement_type") or ""
     eng = _engine(requirement)
     action_type = infer_action_type(requirement)
+    meta = requirement.get("registry_metadata") if isinstance(requirement.get("registry_metadata"), dict) else {}
+    if str(meta.get("primary_action_mode") or "").strip().lower() == "hidden":
+        why_fields = _registry_why_it_matters(requirement)
+        return {
+            "action_type": ACTION_OBLIGATION,
+            **why_fields,
+            "take_action": {
+                "primary": None,
+                "secondary": None,
+                "supporting_external_links": [],
+                "suppressed": True,
+            },
+        }
 
     cls = str(eng.get("compliance_requirement_class") or requirement.get("compliance_requirement_class") or "").upper()
     ff = str(eng.get("fulfillment_mode") or eng.get("engine_fulfillment_mode") or "").lower()
@@ -204,12 +220,14 @@ def resolve_take_action_envelope(
     doc_route = f"/documents?property_id={pid}&requirement_id={rid}" if (pid and rid) else (f"/documents?property_id={pid}" if pid else "/documents")
     supporting = _supporting_external_links(requirement, property_jurisdiction=property_jurisdiction)
     why_fields = _registry_why_it_matters(requirement)
+    cta = str(meta.get("cta_label_override") or "").strip()
+    upload_label = cta if cta else "Upload document"
     return {
         "action_type": ACTION_DOCUMENT,
         **why_fields,
         "take_action": {
             "primary": {
-                "label": "Upload document",
+                "label": upload_label,
                 "route": doc_route,
                 "kind": "navigate",
                 "handler": "navigate",

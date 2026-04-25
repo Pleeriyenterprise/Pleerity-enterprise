@@ -121,7 +121,7 @@ async def test_admin_resend_before_provisioned_returns_403_account_not_ready():
     with patch("routes.admin.admin_route_guard", new_callable=AsyncMock, return_value={"portal_user_id": "admin1"}):
         with patch("routes.admin.require_recent_step_up", new_callable=AsyncMock):
             with patch("routes.admin.database.get_db", return_value=db):
-                with patch("routes.admin.rate_limiter") as rl:
+                with patch("utils.rate_limiter.rate_limiter") as rl:
                     rl.check_rate_limit = AsyncMock(return_value=(True, None))
                     from fastapi import HTTPException
                     try:

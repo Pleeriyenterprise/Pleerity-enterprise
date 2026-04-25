@@ -749,6 +749,44 @@ const BillingPage = () => {
                     </p>
                   )}
                 </div>
+                {billingStatus?.has_subscription && billingStatus?.canonical_entitlement_state && (
+                  <div>
+                    <p className="text-gray-500">Access status</p>
+                    <p className="font-medium">{billingStatus.canonical_entitlement_state}</p>
+                  </div>
+                )}
+                {billingStatus?.has_subscription && billingStatus?.grace_period_summary && (
+                  <div className="sm:col-span-2">
+                    <p className="text-gray-500">Grace period</p>
+                    <p className="font-medium text-amber-900 text-sm">{billingStatus.grace_period_summary}</p>
+                  </div>
+                )}
+                {billingStatus?.has_subscription &&
+                  (billingStatus?.last_payment_display ||
+                    billingStatus?.last_payment_at ||
+                    billingStatus?.last_payment_status) && (
+                    <div className="sm:col-span-2">
+                      <p className="text-gray-500">Last successful payment</p>
+                      <p className="font-medium">
+                        {billingStatus.last_payment_display ||
+                          (billingStatus.last_payment_at
+                            ? new Date(billingStatus.last_payment_at).toLocaleString('en-GB')
+                            : null) ||
+                          '—'}
+                      </p>
+                      {billingStatus.last_payment_status && (
+                        <p className="text-xs text-gray-500 mt-0.5">Status: {billingStatus.last_payment_status}</p>
+                      )}
+                      {billingStatus.open_invoice_status && (
+                        <p className="text-xs text-amber-800 mt-1">
+                          Open invoice: {billingStatus.open_invoice_status}
+                          {billingStatus.stripe_next_payment_attempt_at
+                            ? ` · Next retry ${new Date(billingStatus.stripe_next_payment_attempt_at).toLocaleString('en-GB')}`
+                            : ''}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 <div>
                   <p className="text-gray-500">Monthly price</p>
                   <p className="font-medium">

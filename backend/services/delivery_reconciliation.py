@@ -130,7 +130,20 @@ async def run_delivery_reconciliation(hours_back: int = 48) -> Dict[str, Any]:
         if await reconcile_delivery_for_run(db, run):
             updated += 1
     logger.info("Delivery reconciliation: %s run(s) updated", updated)
-    return {"message": f"Delivery reconciliation: {updated} run(s) updated", "count": updated, "runs_processed": len(runs)}
+    tenant_summary: Dict[str, Any] = {}
+    try:
+        from services.tenant_delivery_reconciliation import reconcile_stale_tenant_delivery_proofs_from_message_logs
+
+        tenant_summary = await reconcile_stale_tenant_delivery_proofs_from_message_logs(hours_back=max(hours_back, 96), limit=500)
+    except Exception as e:
+        logger.warning("tenant_delivery proof stale reconcile failed: %s", e)
+        tenant_summary = {"error": str(e)}
+    return {
+        "message": f"Delivery reconciliation: {updated} run(s) updated",
+        "count": updated,
+        "runs_processed": len(runs),
+        "tenant_delivery_reconcile": tenant_summary,
+    }
 
 
 async def get_message_logs_for_run(db, run: dict, limit: int = 500) -> List[Dict[str, Any]]:

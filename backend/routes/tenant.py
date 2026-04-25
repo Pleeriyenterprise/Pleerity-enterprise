@@ -19,6 +19,7 @@ from models import AuditAction
 from utils.audit import create_audit_log
 from services.requirement_code_registry import normalize_requirement_code_strict
 from services.compliance_rules_registry import jurisdiction_attribution_for_property
+from utils.expiry_utils import get_computed_status, get_effective_expiry_date
 import logging
 import uuid
 
@@ -154,32 +155,45 @@ async def get_tenant_dashboard(request: Request):
     # Get requirements for these properties
     property_ids = [p["property_id"] for p in properties]
     requirements = await db.requirements.find(
-        {"property_id": {"$in": property_ids}},
-        {
-            "_id": 0,
-            "requirement_id": 1,
-            "property_id": 1,
-            "requirement_type": 1,
-            "description": 1,
-            "status": 1,
-            "due_date": 1
-        }
+        {"property_id": {"$in": property_ids}, "client_id": client_id},
+        {"_id": 0},
     ).to_list(1000)
-    
+    props_full = await db.properties.find(
+        {"client_id": client_id, "property_id": {"$in": property_ids}},
+        {"_id": 0},
+    ).to_list(200)
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=requirements,
+        client_doc=client_doc,
+        properties=props_full,
+    )
+
+    prop_by_id = {p["property_id"]: p for p in properties if p.get("property_id")}
+
     # Build simplified response
     property_summaries = []
     for prop in properties:
         att = jurisdiction_attribution_for_property(prop, client_doc)
         prop_reqs = [r for r in requirements if r.get("property_id") == prop["property_id"]]
-        
+        pd = prop_by_id.get(prop["property_id"])
+
         # Simplify requirement info for tenants
         cert_summary = []
         for req in prop_reqs:
+            cs = get_computed_status(req, property_doc=pd, client_doc=client_doc) or (req.get("status") or "UNKNOWN")
+            eff = get_effective_expiry_date(req)
+            exp_s = eff.date().isoformat() if eff and hasattr(eff, "date") else (
+                str(req.get("due_date") or "")[:10] if req.get("due_date") else "N/A"
+            )
             cert_summary.append({
                 "type": req.get("requirement_type", "Unknown"),
                 "description": req.get("description", ""),
-                "status": req.get("status", "UNKNOWN"),
-                "expiry": req.get("due_date", "N/A")[:10] if req.get("due_date") else "N/A"
+                "status": cs,
+                "expiry": exp_s if exp_s else "N/A",
             })
         
         property_summaries.append({
@@ -268,47 +282,62 @@ async def get_tenant_property_details(request: Request, property_id: str):
     
     # Get requirements
     requirements = await db.requirements.find(
-        {"property_id": property_id},
-        {
-            "_id": 0,
-            "requirement_id": 1,
-            "requirement_type": 1,
-            "description": 1,
-            "status": 1,
-            "due_date": 1,
-            "frequency_days": 1
-        }
+        {"property_id": property_id, "client_id": client_id},
+        {"_id": 0},
     ).to_list(100)
-    
+    prop_full = await db.properties.find_one(
+        {"property_id": property_id, "client_id": client_id},
+        {"_id": 0},
+    ) or property_doc
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=requirements,
+        client_doc=client_doc,
+        properties=[prop_full],
+    )
+
     # Format certificates for tenant view
     certificates = []
     for req in requirements:
+        cs = get_computed_status(req, property_doc=prop_full, client_doc=client_doc) or (
+            req.get("status") or "UNKNOWN"
+        )
         status_color = "gray"
-        if req.get("status") == "COMPLIANT":
+        if cs == "COMPLIANT" or cs == "NOT_REQUIRED":
             status_color = "green"
-        elif req.get("status") == "EXPIRING_SOON":
+        elif cs == "EXPIRING_SOON":
             status_color = "yellow"
-        elif req.get("status") == "OVERDUE":
+        elif cs in ("OVERDUE", "EXPIRED"):
             status_color = "red"
-        elif req.get("status") == "PENDING":
+        elif cs in ("PENDING", "UNKNOWN_DATE"):
             status_color = "blue"
-        
+
+        eff = get_effective_expiry_date(req)
+        exp_line = (
+            eff.date().isoformat()
+            if eff and hasattr(eff, "date")
+            else (req.get("due_date", "N/A")[:10] if req.get("due_date") else "Not Set")
+        )
+
         certificates.append({
             "type": req.get("requirement_type", "Unknown"),
             "description": req.get("description", ""),
-            "status": req.get("status", "UNKNOWN"),
+            "status": cs,
             "status_color": status_color,
-            "expiry_date": req.get("due_date", "N/A")[:10] if req.get("due_date") else "Not Set",
+            "expiry_date": exp_line,
             "renewal_frequency": f"Every {req.get('frequency_days', 0)} days" if req.get("frequency_days") else "N/A"
         })
     
-    att = jurisdiction_attribution_for_property(property_doc, client_doc)
+    att = jurisdiction_attribution_for_property(prop_full, client_doc)
     return {
         "property": {
             "property_id": property_id,
-            "address": f"{property_doc.get('address_line_1', '')}, {property_doc.get('city', '')} {property_doc.get('postcode', '')}",
-            "type": property_doc.get("property_type", "N/A"),
-            "compliance_status": property_doc.get("compliance_status", "UNKNOWN"),
+            "address": f"{prop_full.get('address_line_1', '')}, {prop_full.get('city', '')} {prop_full.get('postcode', '')}",
+            "type": prop_full.get("property_type", "N/A"),
+            "compliance_status": prop_full.get("compliance_status", "UNKNOWN"),
             "effective_jurisdiction_label": att["effective_jurisdiction_label"],
             "jurisdiction_source": att["jurisdiction_source"],
         },
@@ -384,6 +413,32 @@ async def get_tenant_compliance_pack(request: Request, property_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate compliance pack"
         )
+
+
+@router.post("/compliance/deliveries/{delivery_id}/acknowledge")
+async def acknowledge_tenant_compliance_delivery(request: Request, delivery_id: str):
+    """Tenant confirms receipt of a governed compliance delivery (distinct from provider open pixels)."""
+    user = await tenant_route_guard(request)
+    client_id = user.get("client_id")
+    tenant_id = user.get("portal_user_id")
+    if not client_id or not tenant_id:
+        raise HTTPException(status_code=403, detail="Tenant context required")
+    try:
+        from services.tenant_delivery_reconciliation import acknowledge_tenant_delivery_for_tenant
+
+        out = await acknowledge_tenant_delivery_for_tenant(
+            delivery_id=delivery_id.strip(),
+            tenant_portal_user_id=tenant_id,
+            client_id=client_id,
+        )
+    except ValueError as ve:
+        code = str(ve)
+        if code == "delivery_not_found":
+            raise HTTPException(status_code=404, detail="Delivery not found")
+        if code == "tenant_not_assigned":
+            raise HTTPException(status_code=403, detail="Not assigned to this property")
+        raise HTTPException(status_code=400, detail=code)
+    return out
 
 
 @router.post("/request-certificate")

@@ -258,7 +258,39 @@ async def client_route_guard(request: Request) -> dict:
             detail="Provisioning incomplete",
             headers={"X-Redirect": "/onboarding-status"}
         )
-    
+
+    # Subscription / entitlement: block portal API when suspended or cancelled (billing routes still allowed).
+    # Clients without a client_billing row are not evaluated here (pre-provision / legacy edge cases).
+    path = str(request.url.path) or ""
+    billing_row = await db.client_billing.find_one(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "canonical_entitlement_state": 1, "billing_lifecycle_state": 1, "subscription_status": 1},
+    )
+    if not billing_row:
+        return user
+
+    from services.entitlement_access import compute_canonical_entitlement_state
+
+    canon = (billing_row or {}).get("canonical_entitlement_state")
+    if not canon:
+        lc_b = (billing_row or {}).get("billing_lifecycle_state") or client.get("billing_lifecycle_state")
+        st_b = (billing_row or {}).get("subscription_status") or client.get("subscription_status")
+        canon = compute_canonical_entitlement_state(
+            billing_lifecycle_state=lc_b,
+            subscription_status_upper=st_b,
+        )
+    if canon in ("SUSPENDED", "CANCELLED"):
+        billing_allowed = path.startswith("/api/billing") or path.startswith("/api/client/billing")
+        if not billing_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error_code": "SUBSCRIPTION_ACCESS_BLOCKED",
+                    "message": "Your subscription is not active. Open Billing to review payment or resubscribe.",
+                    "canonical_entitlement_state": canon,
+                },
+            )
+
     return user
 
 async def admin_route_guard(request: Request) -> dict:
