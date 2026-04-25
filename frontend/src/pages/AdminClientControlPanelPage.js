@@ -453,11 +453,16 @@ const AdminClientControlPanelPage = () => {
     }
   };
 
-  const complianceHeadline = useMemo(() => deriveComplianceHeadline(compliance), [compliance]);
-  const nextActionLine = useMemo(
-    () => nextRequiredActionText(compliance, operationalSnapshot),
-    [compliance, operationalSnapshot],
-  );
+  const complianceHeadline = useMemo(() => {
+    const co = data?.compliance_overview || {};
+    return deriveComplianceHeadline(co);
+  }, [data]);
+
+  const nextActionLine = useMemo(() => {
+    const co = data?.compliance_overview || {};
+    const snap = data?.operational_snapshot || {};
+    return nextRequiredActionText(co, snap);
+  }, [data]);
 
   const tabNav = (
     <div className="flex flex-wrap gap-1 border-b border-gray-200/90 pb-px -mb-px">
