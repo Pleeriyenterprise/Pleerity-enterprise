@@ -9,6 +9,7 @@ import {
   normalizeClientJobCtaLabelFromApi,
   CLIENT_INBOX_JOB_FALLBACK_CTA,
 } from './jobWorkflowUi';
+import { inboxTaskLinkedRequirementId } from './portalRequirementAttention';
 
 const TERMINAL_WORK_ORDER_STATUSES = new Set(['COMPLETED', 'VERIFIED', 'CLOSED', 'CANCELLED']);
 
@@ -170,7 +171,13 @@ export function commandCenterJobRowHeadline(wo) {
   return 'Job needs attention';
 }
 
-export function countPropertiesAtRisk(portfolioSummary) {
+/**
+ * Properties at risk for Command Centre copy. Prefer backend ``properties_at_risk_count``
+ * from ``compliance_status_summary`` (canonical projection); legacy portfolio list is fallback only.
+ */
+export function countPropertiesAtRisk(portfolioSummary, complianceSummary) {
+  const fromApi = complianceSummary?.properties_at_risk_count;
+  if (fromApi != null && !Number.isNaN(Number(fromApi))) return Number(fromApi);
   const props = portfolioSummary?.properties;
   if (!Array.isArray(props)) return 0;
   let n = 0;
@@ -585,35 +592,31 @@ export function buildPropertyPriorityRepresentatives(urgentActions, limit = 8) {
   return reps.slice(0, limit);
 }
 
-function countUrgentByMeta(urgentActions, predicate) {
-  if (!Array.isArray(urgentActions)) return 0;
-  let n = 0;
-  for (const raw of urgentActions) {
-    const meta = raw?.metadata && typeof raw.metadata === 'object' ? raw.metadata : {};
-    if (predicate(raw, meta)) n += 1;
-  }
-  return n;
-}
-
 /**
- * Portfolio pressure metrics (single source for verdict + UI highlight on improvement).
+ * Portfolio pressure metrics for **requirement** KPIs: Command Centre must not merge APIs.
+ * Overdue / missing evidence counts come only from ``compliance_status_summary`` (backend
+ * ``calculate_compliance_score.stats``). Job pressure remains operational (work orders).
  */
 export function computePortfolioDriverMetrics({
   summary,
-  portfolioSummary,
-  urgentActions,
+  portfolioSummary: _portfolioSummary,
+  urgentActions: _urgentActions,
   breachedJobCount,
   blockedJobCount,
   awaitingProofJobCount = 0,
 }) {
-  const overdueSummary = summary?.requirements_overdue != null ? Number(summary.requirements_overdue) : 0;
-  const overdueKpi = portfolioSummary?.kpis?.overdue != null ? Number(portfolioSummary.kpis.overdue) : 0;
-  const overdueFromTasks = countUrgentByMeta(urgentActions || [], (_, meta) => meta.action_type === 'overdue_compliance');
-  const overdueDisplay = Math.max(overdueSummary, overdueKpi, overdueFromTasks);
+  const overdueDisplay =
+    summary?.requirements_overdue != null && !Number.isNaN(Number(summary.requirements_overdue))
+      ? Number(summary.requirements_overdue)
+      : 0;
 
-  const missingKpi = portfolioSummary?.kpis?.missing != null ? Number(portfolioSummary.kpis.missing) : 0;
-  const missingFromTasks = countUrgentByMeta(urgentActions || [], (_, meta) => meta.action_type === 'missing_document');
-  const missingDisplay = Math.max(missingKpi, missingFromTasks);
+  const missingDisplay =
+    summary?.requirements_missing_evidence != null &&
+    !Number.isNaN(Number(summary.requirements_missing_evidence))
+      ? Number(summary.requirements_missing_evidence)
+      : summary?.requirements_pending != null && !Number.isNaN(Number(summary.requirements_pending))
+        ? Number(summary.requirements_pending)
+        : 0;
 
   const jobPressure =
     (Number(breachedJobCount) || 0) + (Number(blockedJobCount) || 0) + (Number(awaitingProofJobCount) || 0);
@@ -644,11 +647,8 @@ export function buildPortfolioVerdictBlock({
     awaitingProofJobCount,
   });
 
-  const riskFromTasks = countUrgentByMeta(
-    urgentActions,
-    (t, meta) => meta.action_type === 'risk_signal' || t?.source_type === 'risk_signal'
-  );
-  const riskDisplay = predictiveEnabled ? Math.max(riskCount || 0, riskFromTasks) : riskFromTasks;
+  /** Risk/issue counts: use backend ``upcoming_risks`` length only (no task-stream merge). */
+  const riskDisplay = predictiveEnabled ? Number(riskCount || 0) : 0;
 
   const drivers = [];
   if (overdueDisplay > 0) {
@@ -776,4 +776,32 @@ export function buildPortfolioVerdictBlock({
     verdictSecondaryNav,
     driverSummaryFallback,
   };
+}
+
+/**
+ * Requirement-backed Command Centre row → RequirementIntelligenceModal context.
+ * @param {Record<string, unknown>} task
+ * @param {Map<string, Record<string, unknown>>} inboxRequirementById
+ */
+export function commandCenterRequirementIntelContext(task, inboxRequirementById) {
+  const st = String(task?.source_type || '').toLowerCase();
+  const rid = inboxTaskLinkedRequirementId(task);
+  if (!rid) {
+    const hint =
+      st === 'requirement'
+        ? 'This item has no linked requirement id in this view. Use Today or Requirements to continue.'
+        : null;
+    return { canOpen: false, requirementId: null, seed: null, fallbackHint: hint };
+  }
+  const meta = task?.metadata && typeof task.metadata === 'object' ? task.metadata : {};
+  const baseSeed = {
+    requirement_id: String(rid),
+    property_id: task.property_id,
+    property_label: task.property_label,
+    display_label: task.title,
+    property_jurisdiction: task.property_jurisdiction || task.jurisdiction || meta.property_jurisdiction || meta.jurisdiction,
+  };
+  const fromMap = inboxRequirementById instanceof Map ? inboxRequirementById.get(String(rid)) : null;
+  const seed = fromMap && typeof fromMap === 'object' ? { ...baseSeed, ...fromMap } : baseSeed;
+  return { canOpen: true, requirementId: String(rid), seed, fallbackHint: null };
 }

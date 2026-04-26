@@ -26,8 +26,6 @@ from services.compliance_rules_registry import (
     property_jurisdiction_requirement_flags,
     resolve_portfolio_jurisdiction,
 )
-from utils.expiry_utils import get_effective_expiry_date
-from services.requirement_evidence_authority import authority_runtime_requirement_status, authority_state
 import logging
 
 logger = logging.getLogger(__name__)
@@ -90,10 +88,15 @@ def get_requirement_weight(requirement_type: str) -> float:
 
 async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
     """Return client-level compliance score from stored property scores (fast).
-    
+
     Uses persisted compliance_score/compliance_breakdown on each Property.
     Legacy properties without a stored score get one recalc and persist (lazy backfill).
-    Single source of truth for scoring: compliance_scoring_service.
+    Single source of truth for headline score: persisted ``compliance_scoring_service`` output.
+
+    ``stats`` / ``drivers`` / ``property_breakdown`` use the portal runtime projection
+    (``project_requirement_row_client_runtime`` + visibility). When a catalog portfolio
+    exists, an alternate lens is attached as ``catalog_portfolio_view`` only — it does
+    not replace ``score`` or ``stats``.
     """
     db = database.get_db()
     try:
@@ -194,7 +197,12 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             {"client_id": client_id},
             {"_id": 0},
         ).to_list(500)
-        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+        from services.requirement_client_runtime_surface import (
+            filter_requirement_rows_for_client_runtime_surfaces,
+            client_portal_surface_visible_row,
+            project_requirement_row_client_runtime,
+            compute_client_portal_requirement_stats,
+        )
 
         raw_requirements = await filter_requirement_rows_for_client_runtime_surfaces(
             db,
@@ -203,22 +211,16 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             client_doc=client_row,
             properties=properties,
         )
-        requirements = []
-        for r in raw_requirements:
-            eff = get_effective_expiry_date(r)
-            requirements.append(
-                {
-                    **r,
-                    "status": authority_runtime_requirement_status(r) or r.get("status"),
-                    "due_date": eff.isoformat() if eff else None,
-                    "evidence_state": authority_state(r) or r.get("evidence_state"),
-                }
-            )
-        total_reqs = len(requirements)
-        compliant = sum(1 for r in requirements if r.get("status") == "COMPLIANT")
-        pending = sum(1 for r in requirements if r.get("status") == "PENDING")
-        expiring_soon = sum(1 for r in requirements if r.get("status") == "EXPIRING_SOON")
-        overdue = sum(1 for r in requirements if r.get("status") in ("OVERDUE", "EXPIRED"))
+        requirements = [project_requirement_row_client_runtime(r) for r in raw_requirements]
+        portal_reqs = [r for r in requirements if client_portal_surface_visible_row(r)]
+        portal_req_ids = {r.get("requirement_id") for r in portal_reqs if r.get("requirement_id")}
+        _counts = compute_client_portal_requirement_stats(portal_reqs)
+        total_reqs = _counts["total_requirements"]
+        compliant = _counts["compliant"]
+        pending = _counts["pending"]
+        expiring_soon = _counts["expiring_soon"]
+        overdue = _counts["overdue"]
+        missing_evidence = _counts["missing_evidence"]
         documents = await db.documents.find(
             {"client_id": client_id},
             {"_id": 0, "property_id": 1, "requirement_id": 1, "status": 1}
@@ -227,7 +229,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         req_ids_with_any_doc = set()
         for d in documents:
             rid = d.get("requirement_id")
-            if not rid:
+            if not rid or rid not in portal_req_ids:
                 continue
             req_ids_with_any_doc.add(rid)
             if d.get("status") == "VERIFIED":
@@ -237,8 +239,8 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         now = datetime.now(timezone.utc)
         days_until_next = None
         nearest_type = None
-        for r in requirements:
-            if r.get("status") in ("COMPLIANT", "PENDING", "EXPIRING_SOON"):
+        for r in portal_reqs:
+            if r.get("status") in ("COMPLIANT", "VALID", "PENDING", "EXPIRING_SOON"):
                 due = r.get("due_date")
                 if due:
                     try:
@@ -271,7 +273,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         )
         critical_overdue_count = sum(
             1
-            for r in requirements
+            for r in portal_reqs
             if r.get("status") in ("OVERDUE", "EXPIRED")
             and (r.get("requirement_type") or "").upper() in _critical_req_types
         )
@@ -279,6 +281,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "total_requirements": total_reqs,
             "compliant": compliant,
             "pending": pending,
+            "missing_evidence": missing_evidence,
             "expiring_soon": expiring_soon,
             "overdue": overdue,
             "critical_overdue": critical_overdue_count,
@@ -305,12 +308,12 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             if p.get("property_id")
         }
         by_property = {}
-        for r in requirements:
+        for r in portal_reqs:
             pid = r.get("property_id")
             if pid not in by_property:
                 by_property[pid] = {"valid": 0, "expiring": 0, "overdue": 0}
             s = r.get("status")
-            if s == "COMPLIANT":
+            if s in ("COMPLIANT", "VALID"):
                 by_property[pid]["valid"] += 1
             elif s == "EXPIRING_SOON":
                 by_property[pid]["expiring"] += 1
@@ -335,9 +338,15 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "jurisdiction_required": jf["jurisdiction_required"],
                 "compliance_confidence": jf["compliance_confidence"],
             })
+        stats["properties_at_risk_count"] = sum(
+            1
+            for row in property_breakdown
+            if int(row.get("overdue") or 0) > 0
+            or (row.get("score") is not None and float(row.get("score") or 0) < 60)
+        )
         due_0_30 = due_31_60 = due_61_90 = 0
-        for r in requirements:
-            if r.get("status") in ("COMPLIANT", "PENDING", "EXPIRING_SOON"):
+        for r in portal_reqs:
+            if r.get("status") in ("COMPLIANT", "VALID", "PENDING", "EXPIRING_SOON"):
                 due = r.get("due_date")
                 if due:
                     try:
@@ -380,9 +389,9 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             },
         }
         drivers = []
-        for r in requirements:
+        for r in portal_reqs:
             s = r.get("status")
-            if s == "COMPLIANT":
+            if s in ("COMPLIANT", "VALID"):
                 continue
             pid = r.get("property_id")
             prop = prop_map.get(pid, {})
@@ -518,26 +527,31 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "jurisdiction_compliance_notice": jurisdiction_compliance_notice,
             **_jurisdiction_api_fields(client_row, properties),
         }
-        # Single source of truth: when catalog-driven portfolio exists, use its score/risk so dashboard, compliance-score page, and reports all show the same number.
+        # Catalog matrix: optional alternate view only — headline score/grade stay persisted-scoring average.
         try:
             from services.catalog_compliance import get_portfolio_compliance_from_catalog
             catalog = await get_portfolio_compliance_from_catalog(client_id)
             if catalog and catalog.get("portfolio_score") is not None:
-                result["score"] = catalog["portfolio_score"]
+                portfolio_score = int(catalog["portfolio_score"])
                 risk_level = catalog.get("risk_level") or catalog.get("portfolio_risk_level")
-                portfolio_score = catalog["portfolio_score"]
                 if risk_level:
-                    # For Low Risk, derive grade from score (90+ → A, 80–89 → B) so 100/100 shows Grade A
-                    if risk_level.strip() == "Low Risk":
-                        g, c, m = score_to_grade_color_message(portfolio_score)
+                    if str(risk_level).strip() == "Low Risk":
+                        cg, cc, cm = score_to_grade_color_message(portfolio_score)
                     else:
-                        g, c, m = risk_level_to_grade_color_message(risk_level)
-                    result["grade"], result["color"], result["message"] = g, c, m
+                        cg, cc, cm = risk_level_to_grade_color_message(risk_level)
                 else:
-                    g, c, m = score_to_grade_color_message(portfolio_score)
-                    result["grade"], result["color"], result["message"] = g, c, m
+                    cg, cc, cm = score_to_grade_color_message(portfolio_score)
+                result["catalog_portfolio_view"] = {
+                    "portfolio_score": portfolio_score,
+                    "risk_level": risk_level,
+                    "grade": cg,
+                    "color": cc,
+                    "message": cm,
+                    "updated_at": catalog.get("updated_at"),
+                    "note": "Alternate catalog-weighted portfolio view; headline score remains persisted scoring average.",
+                }
         except Exception as cat_err:
-            logger.debug("Catalog compliance not used for score overwrite: %s", cat_err)
+            logger.debug("Catalog compliance optional view not attached: %s", cat_err)
         return result
     except Exception as e:
         logger.error(f"Error calculating compliance score: {e}")
@@ -698,7 +712,7 @@ async def _calculate_compliance_score_legacy_from_db(client_id: str) -> Dict[str
         nearest_expiry_type = None
         
         for req in requirements:
-            if req.get("status") in ["COMPLIANT", "PENDING", "EXPIRING_SOON"]:
+            if req.get("status") in ["COMPLIANT", "VALID", "PENDING", "EXPIRING_SOON"]:
                 due_date_str = req.get("due_date")
                 if due_date_str:
                     try:

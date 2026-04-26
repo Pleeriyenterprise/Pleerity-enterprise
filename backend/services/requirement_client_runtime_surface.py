@@ -57,6 +57,71 @@ _ALIAS_FAMILY_BY_CANONICAL: Dict[str, str] = {
 }
 
 
+def client_portal_surface_visible_row(row: Dict[str, Any]) -> bool:
+    """True unless the row is explicitly hidden from client portal surfaces."""
+    return row.get("client_surface_visible") is not False
+
+
+def project_requirement_row_client_runtime(requirement: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Single projection for portfolio stats, /client/dashboard summaries, and legacy portfolio KPIs:
+    authority-backed status when evidence authority is synced, else legacy ``status``;
+    ``due_date`` as ISO from ``get_effective_expiry_date``; evidence_state from authority when present.
+    Matches ``services.compliance_score.calculate_compliance_score`` row shaping.
+
+    See ``docs/COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`` for allowed client-facing status strings and semantics.
+    """
+    from utils.expiry_utils import get_effective_expiry_date
+    from services.requirement_evidence_authority import (
+        authority_runtime_requirement_status,
+        authority_state,
+    )
+
+    eff = get_effective_expiry_date(requirement)
+    st = authority_runtime_requirement_status(requirement) or requirement.get("status")
+    return {
+        **requirement,
+        "status": st,
+        "due_date": eff.isoformat() if eff else None,
+        "evidence_state": authority_state(requirement) or requirement.get("evidence_state"),
+    }
+
+
+def compute_client_portal_requirement_stats(portal_projected_rows: List[Dict[str, Any]]) -> Dict[str, int]:
+    """
+    Aggregate counts from **portal-visible** rows that have already passed
+    ``project_requirement_row_client_runtime``. Single authority for KPI tiles, Command Centre,
+    compliance score ``stats``, and reporting parity.
+    """
+    total = len(portal_projected_rows)
+    compliant = 0
+    pending = 0
+    missing_evidence = 0
+    expiring_soon = 0
+    overdue = 0
+    for r in portal_projected_rows:
+        s = (str(r.get("status") or "PENDING")).strip().upper()
+        if s in ("COMPLIANT", "VALID"):
+            compliant += 1
+        elif s == "PENDING":
+            pending += 1
+            missing_evidence += 1
+        elif s == "MISSING":
+            missing_evidence += 1
+        elif s == "EXPIRING_SOON":
+            expiring_soon += 1
+        elif s in ("OVERDUE", "EXPIRED"):
+            overdue += 1
+    return {
+        "total_requirements": total,
+        "compliant": compliant,
+        "pending": pending,
+        "missing_evidence": missing_evidence,
+        "expiring_soon": expiring_soon,
+        "overdue": overdue,
+    }
+
+
 def _status_upper(val: Optional[str]) -> str:
     return (val or "").strip().upper()
 

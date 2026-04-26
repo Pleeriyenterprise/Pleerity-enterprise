@@ -53,6 +53,7 @@ import {
   jurisdictionSourceLabel,
 } from '../utils/jurisdictionComplianceCopy';
 import { portfolioJurisdictionBannerState } from '../utils/jurisdictionUiPolicy';
+import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import {
   alignTodayPayloadTaskSections,
   requirementMapFromList,
@@ -130,12 +131,7 @@ function scoreToGradeColorMessage(score) {
 /** Customer-friendly property label: nickname, else address + postcode, else address/postcode/name/id. */
 function getPropertyDisplayLabel(p) {
   if (!p) return '';
-  if (p.nickname && p.nickname.trim()) return p.nickname.trim();
-  if (p.address_line_1 && p.postcode) return `${p.address_line_1.trim()}, ${p.postcode.trim()}`;
-  if (p.address_line_1 && p.address_line_1.trim()) return p.address_line_1.trim();
-  if (p.postcode && p.postcode.trim()) return p.postcode.trim();
-  if (p.name && p.name.trim()) return p.name.trim();
-  return p.property_id || '';
+  return getPropertyDisplayName(p) || p.property_id || '';
 }
 
 /** Max rows for dashboard “Focus” strip (distinct from full Portfolio summary table). */
@@ -866,12 +862,13 @@ const ClientDashboard = () => {
     return null;
   }, [complianceScore, portfolioSummary]);
 
-  // Actionable missing = requirement rows that are PENDING or OVERDUE (matches Requirements page filter OVERDUE_OR_MISSING)
-  // Use this so "Missing evidence" count matches what the user sees when they click through
+  // Missing-evidence bucket from canonical score stats (portal projection); no client-side pending+overdue sum.
   const actionableMissingCount = useMemo(() => {
-    const pending = complianceScore?.stats?.pending ?? 0;
-    const overdue = complianceScore?.stats?.overdue ?? 0;
-    if (complianceScore?.stats != null) return pending + overdue;
+    if (complianceScore?.stats != null) {
+      const m = complianceScore.stats.missing_evidence;
+      if (m != null && !Number.isNaN(Number(m))) return Number(m);
+      return Number(complianceScore.stats.pending ?? 0);
+    }
     return portfolioSummary?.kpis?.missing ?? 0;
   }, [complianceScore, portfolioSummary]);
 
@@ -899,7 +896,14 @@ const ClientDashboard = () => {
 
   // Audit readiness: Low / Moderate / High from overdue, missing %, expiring (single canonical snapshot)
   const auditReadiness = useMemo(() => {
-    const total = complianceScore?.stats?.total_requirements ?? (portfolioSummary?.kpis ? (portfolioSummary.kpis.compliant ?? 0) + (portfolioSummary.kpis.overdue ?? 0) + (portfolioSummary.kpis.expiring_30 ?? 0) + (portfolioSummary.kpis.missing ?? 0) : 0);
+    const total =
+      complianceScore?.stats?.total_requirements ??
+      (portfolioSummary?.kpis
+        ? (portfolioSummary.kpis.compliant ?? 0) +
+          (portfolioSummary.kpis.overdue ?? 0) +
+          (portfolioSummary.kpis.expiring_30 ?? 0) +
+          (portfolioSummary.kpis.missing ?? 0)
+        : 0);
     if (total == null || total === 0) return null;
     const overdue = complianceScore?.stats?.overdue ?? portfolioSummary?.kpis?.overdue ?? 0;
     const expiringSoon = complianceScore?.stats?.expiring_soon ?? portfolioSummary?.kpis?.expiring_30 ?? 0;
@@ -3008,12 +3012,12 @@ const ClientDashboard = () => {
                   <p className="text-sm text-gray-600 mb-1 flex items-center">
                     Overdue
                     <DashboardKpiHint label="Overdue requirements">
-                      Count of requirements past confirmed expiry in your portfolio summary. Zero is good — it does not include “due soon”
-                      items.
+                      Canonical count from compliance score (runtime projection, portal-visible rows). Same source as
+                      Command Centre and compliance score header — not the separate portfolio KPI merge.
                     </DashboardKpiHint>
                   </p>
                   <p className="text-3xl font-bold text-red-600">
-                    {portfolioSummary?.kpis?.overdue ?? data?.compliance_summary?.overdue ?? 0}
+                    {complianceScore?.stats?.overdue ?? data?.compliance_summary?.overdue ?? 0}
                   </p>
                   <p className="text-xs text-red-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
                     View →
@@ -3021,7 +3025,7 @@ const ClientDashboard = () => {
                 </div>
                 <XCircle
                   className={`w-12 h-12 ${
-                    (portfolioSummary?.kpis?.overdue ?? data?.compliance_summary?.overdue ?? 0) > 0 ? 'text-red-600' : 'text-gray-300'
+                    (complianceScore?.stats?.overdue ?? data?.compliance_summary?.overdue ?? 0) > 0 ? 'text-red-600' : 'text-gray-300'
                   }`}
                   aria-hidden
                 />
@@ -3040,11 +3044,11 @@ const ClientDashboard = () => {
                   <p className="text-sm text-gray-600 mb-1 flex items-center">
                     Expiring soon
                     <DashboardKpiHint label="Expiring soon">
-                      Requirements with expiry within the portfolio summary window (typically 30 days). Sourced from compliance summary KPIs.
+                      Canonical count from compliance score stats (same runtime projection as overdue).
                     </DashboardKpiHint>
                   </p>
                   <p className="text-3xl font-bold text-amber-600">
-                    {portfolioSummary?.kpis?.expiring_30 ?? data?.compliance_summary?.expiring_soon ?? 0}
+                    {complianceScore?.stats?.expiring_soon ?? data?.compliance_summary?.expiring_soon ?? 0}
                   </p>
                   <p className="text-xs text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
                     View →
@@ -3066,8 +3070,8 @@ const ClientDashboard = () => {
                   <p className="text-sm text-gray-600 mb-1 flex items-center">
                     Missing documents
                     <DashboardKpiHint label="Missing documents">
-                      Requirements that are overdue or missing evidence (pending + overdue from score stats when available, otherwise the
-                      missing KPI from portfolio summary). Matches the Requirements filter you land on when you click through.
+                      Missing-evidence count from compliance score (PENDING + MISSING on portal-visible projected rows). Not a
+                      client-side merge with overdue.
                     </DashboardKpiHint>
                   </p>
                   <p className="text-3xl font-bold text-gray-700">

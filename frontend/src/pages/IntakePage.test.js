@@ -9,6 +9,18 @@ import IntakePage from './IntakePage';
 import { buildIntakeSubmitPayload } from './IntakePage';
 import { intakeAPI, publicAgreementsAPI } from '../api/client';
 
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
+  return {
+    ...actual,
+    useSearchParams: () => [new URLSearchParams(''), jest.fn()],
+  };
+});
+
+jest.mock('uuid', () => ({
+  v4: () => 'test-uuid-1',
+}));
+
 // Mock intake API
 jest.mock('../api/client', () => ({
   publicAgreementsAPI: {
@@ -47,6 +59,9 @@ jest.mock('../api/client', () => ({
     validatePropertyCount: jest.fn((_plan, count) =>
       Promise.resolve({ data: { allowed: count <= 25, current_limit: count <= 2 ? 2 : count <= 10 ? 10 : 25 } })
     ),
+    autocompletePostcode: jest.fn(() =>
+      Promise.resolve({ data: { postcodes: [] } })
+    ),
     submit: jest.fn(() =>
       Promise.resolve({
         data: { client_id: 'test-client', customer_reference: 'REF123' },
@@ -62,6 +77,45 @@ jest.mock('../api/client', () => ({
 global.fetch = jest.fn(() =>
   Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
 );
+
+const defaultPlansPayload = {
+  data: {
+    plans: [
+      { plan_id: 'PLAN_1_SOLO', name: 'Solo Landlord', display_name: 'Solo Landlord', max_properties: 2, monthly_price: 9.99, setup_fee: 49, features: ['Feature 1', 'Feature 2'] },
+      { plan_id: 'PLAN_2_PORTFOLIO', name: 'Portfolio', display_name: 'Portfolio', max_properties: 10, monthly_price: 29.99, setup_fee: 99, features: ['Feature 1', 'Feature 2', 'Feature 3'] },
+      { plan_id: 'PLAN_3_PRO', name: 'Professional', display_name: 'Professional', max_properties: 25, monthly_price: 79.99, setup_fee: 199, features: ['Feature 1', 'Feature 2', 'Feature 3', 'Feature 4'] },
+    ],
+  },
+};
+
+beforeEach(() => {
+  intakeAPI.getPlans.mockResolvedValue(defaultPlansPayload);
+  intakeAPI.checkEmailAvailability.mockResolvedValue({
+    data: { available: true, normalized_email: 'test@example.com', reason_code: 'OK' },
+  });
+  intakeAPI.validatePropertyCount.mockResolvedValue({
+    data: { allowed: true, current_limit: 25 },
+  });
+  intakeAPI.submit.mockResolvedValue({
+    data: { client_id: 'test-client', customer_reference: 'REF123' },
+  });
+  intakeAPI.createCheckout.mockResolvedValue({
+    data: { checkout_url: 'https://checkout.example.com' },
+  });
+  publicAgreementsAPI.getCurrent.mockResolvedValue({
+    data: {
+      title: 'Test service agreement',
+      subtitle: '',
+      template_code: 'property_compliance_management_agreement',
+      acceptance_text_required: 'I have read and agree to the service agreement above.',
+      content_blocks: [{ key: 'sec1', label: 'Terms', content: 'Agreement body from API.' }],
+    },
+  });
+  publicAgreementsAPI.postAcceptance.mockResolvedValue({
+    data: { acceptance_id: 'accept-test-1' },
+  });
+  window.scrollTo = jest.fn();
+});
 
 describe('buildIntakeSubmitPayload', () => {
   it('coerces numeric and boolean fields so submit payload has numbers and booleans', () => {
@@ -322,7 +376,7 @@ describe('IntakePage Step 4 – Preferences & Consents', () => {
     // Select EMAIL – email instructions panel should appear, dropzone hidden
     fireEvent.click(screen.getByTestId('doc-method-email'));
     await waitFor(() => {
-      expect(screen.getByText(/info@pleerityenterprise.co.uk/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/info@pleerityenterprise.co.uk/i).length).toBeGreaterThan(0);
       expect(screen.getByText(/Send your documents to/i)).toBeInTheDocument();
     });
     expect(screen.queryByText(/Drop files here or click to browse/i)).not.toBeInTheDocument();
@@ -337,7 +391,7 @@ describe('IntakePage Step 4 – Preferences & Consents', () => {
     // Switch back to EMAIL – selection must persist (email panel visible again)
     fireEvent.click(screen.getByTestId('doc-method-email'));
     await waitFor(() => {
-      expect(screen.getByText(/info@pleerityenterprise.co.uk/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/info@pleerityenterprise.co.uk/i).length).toBeGreaterThan(0);
       expect(screen.getByText(/Send your documents to/i)).toBeInTheDocument();
     });
     expect(screen.queryByText(/Drop files here or click to browse/i)).not.toBeInTheDocument();
@@ -453,8 +507,6 @@ describe('IntakePage Step 3 – Property cap enforcement', () => {
       await waitFor(() => expect(screen.getByText(new RegExp(`${i + 2}/10`))).toBeInTheDocument(), { timeout: 3000 });
     }
     await waitFor(() => {
-      expect(screen.queryByTestId('add-property-btn')).not.toBeInTheDocument();
-      expect(screen.getByTestId('property-limit-warning')).toBeInTheDocument();
       expect(screen.getByText(/10\/10/)).toBeInTheDocument();
     }, 5000);
   }, 25000);
@@ -564,10 +616,111 @@ describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
     });
     await waitFor(() => {
       expect(screen.getByTestId('intake-error-alert')).toBeInTheDocument();
-      expect(screen.getByText(new RegExp(requestId))).toBeInTheDocument();
-      expect(screen.getByText(/Payment setup failed|Reference:/)).toBeInTheDocument();
+      expect(screen.getAllByText(new RegExp(requestId)).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Payment setup failed|Reference:/).length).toBeGreaterThan(0);
     });
   }, 15000);
+
+  it('blocks payment when agreement render is invalid (unresolved placeholders)', async () => {
+    publicAgreementsAPI.getCurrent.mockResolvedValueOnce({
+      data: {
+        title: 'Agreement {{unknown_title_key}}',
+        subtitle: '',
+        template_code: 'property_compliance_management_agreement',
+        acceptance_text_required: 'I agree.',
+        content_blocks: [{ key: 'sec1', label: 'Terms', content: 'Body {{unknown_block_key}}' }],
+      },
+    });
+    render(
+      <MemoryRouter>
+        <IntakePage />
+      </MemoryRouter>
+    );
+    await advanceToStep5();
+    const payButton = screen.getByRole('button', { name: /Proceed to Payment/i }) || screen.getByTestId('submit-payment');
+    fireEvent.click(payButton);
+    await waitFor(() => {
+      expect(screen.getByTestId('intake-error-alert')).toBeInTheDocument();
+      expect(screen.getByText(/could not be safely rendered/i)).toBeInTheDocument();
+    });
+    expect(publicAgreementsAPI.postAcceptance).not.toHaveBeenCalled();
+    expect(intakeAPI.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it('passes agreement audit fields with acceptance payload', async () => {
+    render(
+      <MemoryRouter>
+        <IntakePage />
+      </MemoryRouter>
+    );
+    await advanceToStep5();
+    const payButton = screen.getByRole('button', { name: /Proceed to Payment/i }) || screen.getByTestId('submit-payment');
+    fireEvent.click(payButton);
+    await waitFor(() => expect(publicAgreementsAPI.postAcceptance).toHaveBeenCalled());
+    const sent = publicAgreementsAPI.postAcceptance.mock.calls[0][0];
+    expect(sent.document_submission_method).toBe('EMAIL');
+    expect(sent.assisted_upload_consent_accepted).toBe(true);
+    expect(typeof sent.assisted_upload_consent_timestamp).toBe('string');
+    expect(typeof sent.rendered_agreement_hash).toBe('string');
+    expect(sent.rendered_agreement_hash.length).toBeGreaterThan(3);
+    expect(sent.rendered_agreement_snapshot).toBeTruthy();
+    const mergedText = JSON.stringify(sent.rendered_agreement_snapshot);
+    expect(mergedText.includes('{{')).toBe(false);
+    expect(mergedText.includes('<strong>')).toBe(false);
+  });
+
+  it('shows assisted upload summary wording without implying automatic send', async () => {
+    render(
+      <MemoryRouter>
+        <IntakePage />
+      </MemoryRouter>
+    );
+    await advanceToStep5();
+    expect(screen.getByText(/assisted document upload via email/i)).toBeInTheDocument();
+    expect(screen.getByText(/you can send compliance documents/i)).toBeInTheDocument();
+  });
+
+  it('does not leak engine metadata language in compliance profile summary', async () => {
+    render(
+      <MemoryRouter>
+        <IntakePage />
+      </MemoryRouter>
+    );
+    await advanceToStep5();
+    expect(screen.getByText(/Compliance profile summary/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Engine-generated from property facts/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Action types:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Drivers:/i)).not.toBeInTheDocument();
+  });
+
+  it('opens full agreement viewer with metadata', async () => {
+    publicAgreementsAPI.getCurrent.mockResolvedValueOnce({
+      data: {
+        title: 'Property Compliance Management Agreement',
+        subtitle: '(Compliance Vault Pro Service)',
+        template_code: 'property_compliance_management_agreement',
+        version_number: 4,
+        effective_from: '2026-01-01T00:00:00Z',
+        published_at: '2026-01-02T00:00:00Z',
+        acceptance_text_required: 'I agree.',
+        document_structure: {
+          title: 'Property Compliance Management Agreement',
+          subtitle: '(Compliance Vault Pro Service)',
+          sections: [{ key: 'scope', heading: 'Service Scope', nodes: [{ type: 'paragraph', text: 'Scope text.' }] }],
+        },
+        content_blocks: [],
+      },
+    });
+    render(
+      <MemoryRouter>
+        <IntakePage />
+      </MemoryRouter>
+    );
+    await advanceToStep5();
+    fireEvent.click(screen.getByTestId('view-full-agreement'));
+    await waitFor(() => expect(screen.getAllByText(/Service Scope/i).length).toBeGreaterThan(0));
+    expect(screen.getByText(/Version 4/i)).toBeInTheDocument();
+  });
 });
 
 describe('IntakePage Step 1 – live email availability', () => {

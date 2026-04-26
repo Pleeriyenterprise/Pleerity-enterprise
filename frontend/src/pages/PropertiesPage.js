@@ -24,6 +24,7 @@ import { Button } from '../components/ui/button';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
+import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 
 const PropertiesPage = () => {
   const navigate = useNavigate();
@@ -300,7 +301,7 @@ const PropertiesPage = () => {
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-semibold text-midnight-blue truncate">
-                          {property.nickname || property.address_line_1 || 'Unnamed Property'}
+                          {getPropertyDisplayName(property)}
                         </h3>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
                           <span className="flex items-center gap-1">

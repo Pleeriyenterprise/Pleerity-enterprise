@@ -28,6 +28,8 @@ export function classifyTodayTaskWorkflow(task) {
 
 const ALLOWED_BY_WORKFLOW = {
   compliance: new Set([
+    'take_action_primary',
+    'take_action_secondary',
     'upload_certificate',
     'create_compliance_work_order',
     'view_requirement',
@@ -39,6 +41,8 @@ const ALLOWED_BY_WORKFLOW = {
   issue_risk: new Set(['review_risk_signal', 'open_primary']),
   approval: new Set(['view_approval', 'open_primary']),
   unclear: new Set([
+    'take_action_primary',
+    'take_action_secondary',
     'upload_certificate',
     'create_compliance_work_order',
     'view_requirement',
@@ -52,14 +56,23 @@ const ALLOWED_BY_WORKFLOW = {
 };
 
 const ORDER_BY_WORKFLOW = {
-  /** Upload-first so document gaps beat synthetic “create job” when both are eligible. */
-  compliance: ['upload_certificate', 'create_compliance_work_order', 'view_requirement', 'open_primary'],
+  /** Canonical take_action rows first; upload_certificate kept for legacy payloads. */
+  compliance: [
+    'take_action_primary',
+    'take_action_secondary',
+    'upload_certificate',
+    'create_compliance_work_order',
+    'view_requirement',
+    'open_primary',
+  ],
   compliance_job: ['view_job', 'open_primary'],
   maintenance_job: ['view_job', 'open_primary'],
   maintenance: ['create_maintenance_job', 'view_issue', 'open_primary'],
   issue_risk: ['review_risk_signal', 'open_primary'],
   approval: ['view_approval', 'open_primary'],
   unclear: [
+    'take_action_primary',
+    'take_action_secondary',
     'upload_certificate',
     'create_compliance_work_order',
     'view_requirement',

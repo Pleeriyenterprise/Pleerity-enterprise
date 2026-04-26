@@ -8,7 +8,10 @@ from database import database
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from utils.risk_bands import score_to_risk_level
-from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+from services.requirement_client_runtime_surface import (
+    filter_requirement_rows_for_client_runtime_surfaces,
+    project_requirement_row_client_runtime,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -190,8 +193,9 @@ async def get_property_compliance_detail(
             high_total += 1
         if (row.get("applicability") or "").strip().upper() == "NOT_REQUIRED":
             continue
-        status = str(row.get("status") or "PENDING").strip().upper()
-        due_date = row.get("due_date")
+        proj = project_requirement_row_client_runtime(dict(row))
+        status = str(proj.get("status") or "PENDING").strip().upper()
+        due_date = proj.get("due_date")
         days = _days_to_expiry(due_date) if due_date else None
         score = _requirement_numeric_score(status, due_date)
         evidence_doc_id = req_id_to_doc.get(row.get("requirement_id"))

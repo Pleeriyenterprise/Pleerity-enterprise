@@ -1076,6 +1076,31 @@ def serialize_compliance_job(wo: Dict[str, Any]) -> Dict[str, Any]:
     return serialize_client_job(wo)
 
 
+def _requirement_workflow_status_labels(workflow_status: str, compliance_state: str) -> Dict[str, str]:
+    """Human-facing labels for portal intelligence surfaces (never show raw enum tokens alone)."""
+    ws = (workflow_status or "").strip().upper()
+    cs = (compliance_state or "").strip().upper()
+    ws_labels = {
+        "NOT_APPLICABLE": "Not applicable",
+        "IN_PROGRESS": "In progress",
+        "COMPLIANT": "Compliant",
+        "OVERDUE": "Overdue",
+        "ACTION_REQUIRED": "Action required",
+    }
+    cs_labels = {
+        "NOT_APPLICABLE": "Not applicable",
+        "PENDING_VERIFICATION": "Pending verification",
+        "VALID": "Verified and current",
+        "OVERDUE": "Overdue",
+        "MISSING": "Evidence missing",
+        "EXPIRING": "Expiring soon",
+    }
+    return {
+        "workflow_status_label": ws_labels.get(ws, ws.replace("_", " ").title() if ws else "—"),
+        "compliance_state_label": cs_labels.get(cs, cs.replace("_", " ").title() if cs else "—"),
+    }
+
+
 def derive_requirement_workflow_fields(
     req: Dict[str, Any],
     *,
@@ -1085,24 +1110,31 @@ def derive_requirement_workflow_fields(
     app = (req.get("applicability") or "").strip().upper()
     raw_status = (req.get("status") or "").strip().upper()
     if app == "NOT_REQUIRED" or raw_status == "NOT_REQUIRED":
-        return {
+        base = {
             "workflow_status": "NOT_APPLICABLE",
             "compliance_state": "NOT_APPLICABLE",
         }
+        return {**base, **_requirement_workflow_status_labels(base["workflow_status"], base["compliance_state"])}
     if active_compliance_job:
-        return {
+        base = {
             "workflow_status": "IN_PROGRESS",
             "compliance_state": "PENDING_VERIFICATION",
         }
+        return {**base, **_requirement_workflow_status_labels(base["workflow_status"], base["compliance_state"])}
     if raw_status == "COMPLIANT":
-        return {"workflow_status": "COMPLIANT", "compliance_state": "VALID"}
+        base = {"workflow_status": "COMPLIANT", "compliance_state": "VALID"}
+        return {**base, **_requirement_workflow_status_labels(base["workflow_status"], base["compliance_state"])}
     if raw_status == "OVERDUE":
-        return {"workflow_status": "OVERDUE", "compliance_state": "OVERDUE"}
+        base = {"workflow_status": "OVERDUE", "compliance_state": "OVERDUE"}
+        return {**base, **_requirement_workflow_status_labels(base["workflow_status"], base["compliance_state"])}
     if raw_status == "EXPIRING_SOON":
-        return {"workflow_status": "ACTION_REQUIRED", "compliance_state": "EXPIRING"}
+        base = {"workflow_status": "ACTION_REQUIRED", "compliance_state": "EXPIRING"}
+        return {**base, **_requirement_workflow_status_labels(base["workflow_status"], base["compliance_state"])}
     if raw_status == "PENDING":
-        return {"workflow_status": "ACTION_REQUIRED", "compliance_state": "MISSING"}
-    return {"workflow_status": "ACTION_REQUIRED", "compliance_state": "MISSING"}
+        base = {"workflow_status": "ACTION_REQUIRED", "compliance_state": "MISSING"}
+        return {**base, **_requirement_workflow_status_labels(base["workflow_status"], base["compliance_state"])}
+    base = {"workflow_status": "ACTION_REQUIRED", "compliance_state": "MISSING"}
+    return {**base, **_requirement_workflow_status_labels(base["workflow_status"], base["compliance_state"])}
 
 
 async def load_compliance_work_order_for_client(*, work_order_id: str, client_id: str) -> Optional[Dict[str, Any]]:

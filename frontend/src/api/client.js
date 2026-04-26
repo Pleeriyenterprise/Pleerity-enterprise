@@ -849,10 +849,12 @@ export const adminAPI = {
   createComplianceRegistryPublishQueue: (body) => apiClient.post('/admin/compliance/registry/publish-queue', body),
   getComplianceRegistryPublishQueue: (queueId) =>
     apiClient.get(`/admin/compliance/registry/publish-queue/${encodeURIComponent(queueId)}`),
+  getComplianceRegistryPublishQueueReview: (queueId) =>
+    apiClient.get(`/admin/compliance/registry/publish-queue/${encodeURIComponent(queueId)}/review`),
   submitComplianceRegistryPublishQueue: (queueId) =>
     apiClient.post(`/admin/compliance/registry/publish-queue/${encodeURIComponent(queueId)}/submit`),
-  approveComplianceRegistryPublishQueue: (queueId) =>
-    apiClient.post(`/admin/compliance/registry/publish-queue/${encodeURIComponent(queueId)}/approve`),
+  approveComplianceRegistryPublishQueue: (queueId, body) =>
+    apiClient.post(`/admin/compliance/registry/publish-queue/${encodeURIComponent(queueId)}/approve`, body || {}),
   rejectComplianceRegistryPublishQueue: (queueId, body) =>
     apiClient.post(`/admin/compliance/registry/publish-queue/${encodeURIComponent(queueId)}/reject`, body),
   publishComplianceRegistryPublishQueue: (queueId) =>

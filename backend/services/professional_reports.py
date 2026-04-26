@@ -168,6 +168,9 @@ class ProfessionalReportGenerator:
         requirements = await db.requirements.find({"client_id": client_id}, {"_id": 0}).to_list(10000)
         from services.requirement_client_runtime_surface import (
             filter_requirement_rows_for_client_runtime_surfaces,
+            client_portal_surface_visible_row,
+            project_requirement_row_client_runtime,
+            compute_client_portal_requirement_stats,
         )
 
         requirements = await filter_requirement_rows_for_client_runtime_surfaces(
@@ -178,14 +181,9 @@ class ProfessionalReportGenerator:
             properties=properties,
         )
         client_doc = client or {}
-        prop_map = {p["property_id"]: p for p in properties if p.get("property_id")}
-
-        def _row_cs(req: Dict[str, Any]) -> str:
-            return get_computed_status(
-                req,
-                property_doc=prop_map.get(req.get("property_id")),
-                client_doc=client_doc,
-            ) or ""
+        projected = [project_requirement_row_client_runtime(r) for r in requirements]
+        portal_reqs = [r for r in projected if client_portal_surface_visible_row(r)]
+        counts = compute_client_portal_requirement_stats(portal_reqs)
 
         # Calculate stats
         total_props = len(properties)
@@ -193,11 +191,11 @@ class ProfessionalReportGenerator:
         amber = sum(1 for p in properties if p.get("compliance_status") == "AMBER")
         red = sum(1 for p in properties if p.get("compliance_status") == "RED")
 
-        total_reqs = len(requirements)
-        compliant = sum(1 for r in requirements if _row_cs(r) in ("COMPLIANT", "NOT_REQUIRED"))
-        pending = sum(1 for r in requirements if _row_cs(r) == "UNKNOWN_DATE")
-        overdue = sum(1 for r in requirements if _row_cs(r) in ("OVERDUE", "EXPIRED"))
-        expiring = sum(1 for r in requirements if _row_cs(r) == "EXPIRING_SOON")
+        total_reqs = counts["total_requirements"]
+        compliant = counts["compliant"]
+        overdue = counts["overdue"]
+        expiring = counts["expiring_soon"]
+        missing_evidence = counts["missing_evidence"]
         
         # Build PDF
         buffer = io.BytesIO()
@@ -244,7 +242,7 @@ class ProfessionalReportGenerator:
         • <b>{compliant}</b> requirements are fully compliant<br/>
         • <b>{expiring}</b> are expiring soon and need renewal<br/>
         • <b>{overdue}</b> are overdue and require immediate attention<br/>
-        • <b>{pending}</b> are pending verification
+        • <b>{missing_evidence}</b> need evidence or confirmation (missing / pending on portal-visible requirements)
         """
         elements.append(Paragraph(summary_text, styles["body"]))
         elements.append(Spacer(1, 20))
@@ -295,7 +293,7 @@ class ProfessionalReportGenerator:
             ["Compliant", str(compliant), f"{round(compliant/total_reqs*100) if total_reqs else 0}%"],
             ["Expiring Soon", str(expiring), f"{round(expiring/total_reqs*100) if total_reqs else 0}%"],
             ["Overdue", str(overdue), f"{round(overdue/total_reqs*100) if total_reqs else 0}%"],
-            ["Pending", str(pending), f"{round(pending/total_reqs*100) if total_reqs else 0}%"],
+            ["Missing / pending evidence", str(missing_evidence), f"{round(missing_evidence/total_reqs*100) if total_reqs else 0}%"],
         ]
         
         req_table = Table(req_summary_data, colWidths=[150, 100, 100])
@@ -488,6 +486,14 @@ class ProfessionalReportGenerator:
             f"{branding['company_name']}<br/>Next {days} Days • Generated: {now.strftime('%d %B %Y')}",
             styles["subtitle"]
         ))
+        elements.append(
+            Paragraph(
+                "Schedule view only: statuses below are calendar urgency states for upcoming expiries, "
+                "not canonical compliance KPI counts.",
+                styles["small"],
+            )
+        )
+        elements.append(Spacer(1, 8))
         
         elements.append(HRFlowable(
             width="100%",
@@ -501,7 +507,7 @@ class ProfessionalReportGenerator:
         elements.append(Spacer(1, 15))
         
         # Expiry Schedule Table
-        exp_data = [["Expiry Date", "Requirement", "Property", "Status"]]
+        exp_data = [["Expiry Date", "Requirement", "Property", "Schedule status"]]
         for req in requirements:
             prop = property_map.get(req.get("property_id"), {})
             eff = get_effective_expiry_date(req)

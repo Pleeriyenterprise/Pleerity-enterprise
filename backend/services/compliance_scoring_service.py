@@ -47,6 +47,10 @@ async def calculate_property_compliance(
     """
     Compute compliance score for a single property from current DB state (Compliance Score v1).
     Deterministic: same DB state + same as_of_date -> same result.
+
+    Requirements are filtered with ``filter_requirement_rows_for_client_runtime_surfaces``,
+    projected with ``project_requirement_row_client_runtime``, then restricted to
+    ``client_portal_surface_visible_row`` so persisted scores align with portal KPI universe.
     """
     db = database.get_db()
     now = datetime.now(timezone.utc)
@@ -67,7 +71,7 @@ async def calculate_property_compliance(
             "error": "property_not_found",
         }
 
-    requirements = await db.requirements.find(
+    raw_requirements = await db.requirements.find(
         {"property_id": property_id},
         {"_id": 0}
     ).to_list(500)
@@ -97,6 +101,23 @@ async def calculate_property_compliance(
     _jr = resolve_portfolio_jurisdiction(property_doc, client_doc)
     _juris_flags = property_jurisdiction_requirement_flags(property_doc)
 
+    from services.requirement_client_runtime_surface import (
+        filter_requirement_rows_for_client_runtime_surfaces,
+        client_portal_surface_visible_row,
+        project_requirement_row_client_runtime,
+        compute_client_portal_requirement_stats,
+    )
+
+    filtered = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=str(property_doc.get("client_id") or ""),
+        requirements=list(raw_requirements),
+        client_doc=client_doc,
+        properties=[property_doc],
+    )
+    projected = [project_requirement_row_client_runtime(r) for r in filtered]
+    requirements = [r for r in projected if client_portal_surface_visible_row(r)]
+
     result = compute_property_score_v2(
         property_doc=property_doc,
         client_doc=client_doc,
@@ -121,12 +142,14 @@ async def calculate_property_compliance(
         "overdue_penalty_score": float((bucket_breakdown.get("operational_responsiveness") or {}).get("percent", score)),
         "risk_score": 100.0 - min(100.0, float(open_risks_count) * 10.0),
     }
+    projected_stats = compute_client_portal_requirement_stats(requirements)
     stats = {
-        "total_requirements": len([r for r in requirement_breakdown if r.get("applies_if")]),
-        "compliant": sum(1 for r in requirement_breakdown if r.get("status") == "VALID"),
-        "pending": sum(1 for r in requirement_breakdown if r.get("status") in ("MISSING", "NEEDS_REVIEW")),
-        "expiring_soon": sum(1 for r in requirement_breakdown if r.get("status") == "EXPIRING_SOON"),
-        "overdue": sum(1 for r in requirement_breakdown if r.get("status") in ("EXPIRED",)),
+        "total_requirements": projected_stats["total_requirements"],
+        "compliant": projected_stats["compliant"],
+        "pending": projected_stats["pending"],
+        "missing_evidence": projected_stats["missing_evidence"],
+        "expiring_soon": projected_stats["expiring_soon"],
+        "overdue": projected_stats["overdue"],
         "open_issues": int(open_issues_count),
         "overdue_work_orders": int(overdue_work_orders_count),
         "open_risk_signals": int(open_risks_count),

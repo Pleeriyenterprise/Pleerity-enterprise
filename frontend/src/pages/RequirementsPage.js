@@ -14,7 +14,6 @@ import {
   FileText,
   ChevronRight,
   AlertCircle,
-  Loader2,
   Eye,
   Ban,
   ExternalLink,
@@ -33,6 +32,8 @@ import { requirementLabel } from '../domain/presentDomain';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { PortalLoadingPanel } from '../components/client/ClientPortalPatterns';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
+import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
+import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import { REQUIREMENTS_PAGE_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
 import { resolveRequirementAction } from '../utils/requirementTakeActionResolver';
@@ -69,8 +70,6 @@ const RequirementsPage = () => {
   const [notApplicableCloseActiveJob, setNotApplicableCloseActiveJob] = useState(false);
   const [notApplicableActiveJobId, setNotApplicableActiveJobId] = useState(null);
   const [viewRequirementModal, setViewRequirementModal] = useState(null);
-  const [viewRequirementLoading, setViewRequirementLoading] = useState(false);
-  const [viewRequirementData, setViewRequirementData] = useState(null);
   const [planJobGate, setPlanJobGate] = useState(null);
 
   // Get filter from URL params
@@ -166,16 +165,6 @@ const RequirementsPage = () => {
 
   const openViewRequirementModal = (req) => {
     setViewRequirementModal({ requirement: req });
-    setViewRequirementData(null);
-    setViewRequirementLoading(true);
-    clientAPI
-      .getRequirementWorkflow(req.requirement_id)
-      .then((r) => setViewRequirementData(r.data))
-      .catch((err) => {
-        toast.error(err.response?.data?.detail || 'Could not load requirement');
-        setViewRequirementModal(null);
-      })
-      .finally(() => setViewRequirementLoading(false));
   };
 
   const submitNotApplicable = async () => {
@@ -264,12 +253,12 @@ const RequirementsPage = () => {
     // Search filter
     const property = getPropertyById(req.property_id);
     const reqLabel = requirementLabel(req.requirement_type || req.requirement_code || '');
+    const propertyLabel = getPropertyDisplayName(property).toLowerCase();
     const matchesSearch = searchTerm === '' ||
       req.requirement_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       reqLabel.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.nickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.address_line_1?.toLowerCase().includes(searchTerm.toLowerCase());
+      propertyLabel.includes(searchTerm.toLowerCase());
     
     if (!matchesSearch) return false;
 
@@ -316,7 +305,8 @@ const RequirementsPage = () => {
       req.engine_informational === true ||
       String(req.engine_client_visibility || req.client_visibility || '').toLowerCase() === 'informational';
 
-    const requirementPreActionLine = (() => {
+    const publishedWhy = String(req.why_it_matters_short || '').trim();
+    const requirementPreActionFallback = () => {
       if (informational) {
         return 'This is a tenancy or legal obligation to keep on record; it does not create an urgent task in Today.';
       }
@@ -329,6 +319,14 @@ const RequirementsPage = () => {
       if (st === 'EXPIRING_SOON') return 'Renewing before expiry keeps this property inside compliance windows.';
       if (st === 'COMPLIANT') return 'Keeping this row current preserves a clear audit trail for this property.';
       return 'Actions here update how this property appears in portfolio compliance views.';
+    };
+    const requirementPreActionLine = publishedWhy || requirementPreActionFallback();
+    const runtimeSourceLabel = (() => {
+      const s = String(req.source || '').toLowerCase();
+      if (s === 'published') return 'Published guidance';
+      if (s === 'both') return 'Published + core rules';
+      if (s === 'baseline') return 'Core rules';
+      return null;
     })();
     return (
       <div
@@ -362,11 +360,30 @@ const RequirementsPage = () => {
               {statusConfig.subline ? (
                 <p className="text-xs text-gray-500 mt-1 max-w-prose">{statusConfig.subline}</p>
               ) : null}
-              <p className="text-sm text-gray-600 mt-1 line-clamp-2">{req.description || 'No description available'}</p>
+              {req.why_it_matters_long ? (
+                <p className="text-sm text-gray-600 mt-1 line-clamp-3" data-testid={`why-long-${req.requirement_id}`}>
+                  {req.why_it_matters_long}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-600 mt-1 line-clamp-2">{req.description || 'No description available'}</p>
+              )}
               <div className="flex flex-col gap-1 mt-2 text-sm text-gray-500">
                 <div className="flex items-center gap-4 flex-wrap">
-                  <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" />{property.nickname || property.address_line_1 || 'Unknown Property'}</span>
+                  <span className="flex items-center gap-1 flex-wrap">
+                    <Building2 className="w-3.5 h-3.5 shrink-0" />
+                    {getPropertyDisplayName(property)}
+                    {req.property_jurisdiction ? (
+                      <span className="text-xs text-gray-500 border border-gray-200 rounded px-1.5 py-0.5" data-testid={`jurisdiction-${req.requirement_id}`}>
+                        {req.property_jurisdiction}
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{req.date_label || `Due: ${formatDate(req.due_date)}`}</span>
+                  {runtimeSourceLabel ? (
+                    <span className="text-[11px] text-gray-500 uppercase tracking-wide" data-testid={`runtime-source-${req.requirement_id}`}>
+                      {runtimeSourceLabel}
+                    </span>
+                  ) : null}
                 </div>
                 {req.date_explanation_helper && (
                   <p className="text-xs text-gray-500 max-w-2xl">{req.date_explanation_helper}</p>
@@ -680,7 +697,7 @@ const RequirementsPage = () => {
                 });
                 return Object.entries(byProperty).map(([propertyId, reqs]) => {
                   const property = getPropertyById(propertyId);
-                  const label = property?.nickname || property?.address_line_1 || `Property ${propertyId}`;
+                  const label = getPropertyDisplayName(property) || `Property ${propertyId}`;
                   return (
                     <AccordionItem key={propertyId} value={propertyId} data-testid={`accordion-property-${propertyId}`}>
                       <AccordionTrigger className="px-4 py-3 hover:no-underline">
@@ -813,57 +830,36 @@ const RequirementsPage = () => {
           </div>
         )}
 
-        {viewRequirementModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" data-testid="view-requirement-modal">
-            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6 portal-modal-scroll max-h-[min(90dvh,90vh)]">
-              <h3 className="text-lg font-semibold text-midnight-blue mb-2">Requirement</h3>
-              {viewRequirementLoading ? (
-                <div className="flex items-center gap-2 text-gray-500 py-8">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Loading…
-                </div>
-              ) : viewRequirementData?.requirement ? (
-                <div className="space-y-2 text-sm">
-                  <p className="font-medium text-gray-900">
-                    {viewRequirementData.requirement.display_label
-                      || requirementLabel(viewRequirementData.requirement.requirement_type || viewRequirementData.requirement.requirement_code)}
-                  </p>
-                  <dl className="grid grid-cols-2 gap-2 text-xs">
-                    <dt className="text-gray-500">Workflow status</dt>
-                    <dd>{viewRequirementData.requirement.workflow_status || '—'}</dd>
-                    <dt className="text-gray-500">Compliance state</dt>
-                    <dd>{viewRequirementData.requirement.compliance_state || '—'}</dd>
-                    <dt className="text-gray-500">Property</dt>
-                    <dd>{getPropertyById(viewRequirementData.requirement.property_id).nickname || getPropertyById(viewRequirementData.requirement.property_id).address_line_1 || '—'}</dd>
-                  </dl>
-                  {viewRequirementData.active_compliance_job?.job_id ? (
-                    <div className="pt-2 border-t border-gray-100 mt-2">
-                      <p className="text-xs text-gray-600 mb-1">Active compliance job</p>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        className="w-full min-h-10"
-                        onClick={() => {
-                          const jid = viewRequirementData.active_compliance_job.job_id;
-                          setViewRequirementModal(null);
-                          navigate(`/operations/jobs/${jid}`);
-                        }}
-                      >
-                        Open job {viewRequirementData.active_compliance_job.job_id?.slice(0, 8)}…
-                      </Button>
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-600">No data.</p>
-              )}
-              <div className="flex justify-end mt-6">
-                <Button variant="outline" onClick={() => setViewRequirementModal(null)}>Close</Button>
-              </div>
-            </div>
-          </div>
-        )}
+        <RequirementIntelligenceModal
+          open={!!viewRequirementModal}
+          requirementId={viewRequirementModal?.requirement?.requirement_id || null}
+          seedRequirement={viewRequirementModal?.requirement || null}
+          propertyLabel={
+            viewRequirementModal?.requirement?.property_id
+              ? getPropertyById(viewRequirementModal.requirement.property_id).nickname
+                || getPropertyById(viewRequirementModal.requirement.property_id).address_line_1
+                || null
+              : null
+          }
+          onClose={() => setViewRequirementModal(null)}
+          onNavigate={(path) => {
+            setViewRequirementModal(null);
+            navigate(path);
+          }}
+          showEditDatesAndApplicability
+          onEditDates={(merged) => {
+            setViewRequirementModal(null);
+            openEditModal(merged);
+          }}
+          onMarkNotApplicable={(merged) => {
+            setViewRequirementModal(null);
+            setNotApplicableModal({ requirement: merged });
+            setNotApplicableReason('');
+            setNotApplicableCode('other');
+            setNotApplicableCloseActiveJob(false);
+            setNotApplicableActiveJobId(null);
+          }}
+        />
 
         {/* Edit requirement modal */}
         {editModal && (
@@ -871,7 +867,7 @@ const RequirementsPage = () => {
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 portal-modal-scroll max-h-[min(90dvh,90vh)]">
               <h3 className="text-lg font-semibold text-midnight-blue mb-4">Edit tracked item</h3>
               <p className="text-sm text-gray-600 mb-2">
-                {editModal.requirement.requirement_type?.replace(/_/g, ' ')} — {editModal.property?.nickname || editModal.property?.address_line_1 || 'Property'}
+                {editModal.requirement.requirement_type?.replace(/_/g, ' ')} — {getPropertyDisplayName(editModal.property)}
               </p>
               <div className="space-y-4">
                 <div>

@@ -1,111 +1,25 @@
 /**
- * Property Compliance tab: standardized obligation copy, rule-based explanations (registry),
- * and fallbacks aligned with backend services/explanation_engine.explain_compliance_alert.
+ * Property Compliance tab: obligation copy aligned with canonical requirement narrative + take_action resolver.
  */
-import { normalizeRequirementCode, requirementLabel, requirementDocumentUploadLabel } from '../domain/presentDomain';
 import { resolveRequirementAction } from './requirementTakeActionResolver';
 import { isRequirementMissingDocument } from './propertyDocumentsMatrix';
-
-function legalContextForCode(codeNorm) {
-  const c = codeNorm || '';
-  let legalContext = '';
-  let riskOfNonCompliance = 'Non-compliance can lead to fines, invalid insurance, or legal liability.';
-  if (c === 'gas_safety' || c === 'gas_safety_certificate' || c === 'cp12') {
-    legalContext =
-      'UK law requires annual gas safety inspections by a Gas Safe registered engineer. A valid certificate must be provided to tenants.';
-    riskOfNonCompliance =
-      'If the certificate expires while a tenant occupies the property, you may face fines or legal liability.';
-  } else if (c.includes('eicr') || c === 'electrical_safety' || c === 'portable_appliance_test') {
-    legalContext = 'Electrical Installation Condition Reports are required for rental properties at least every 5 years (England).';
-    riskOfNonCompliance = 'Missing or overdue EICR can affect tenant safety and leave you exposed to enforcement action.';
-  } else if (c === 'epc') {
-    legalContext = 'An Energy Performance Certificate is required for rental properties; minimum E rating applies.';
-    riskOfNonCompliance = 'Letting without a valid EPC can result in penalties.';
-  } else if (c === 'hmo_license') {
-    legalContext = 'An HMO licence is mandatory for properties that meet the licensing criteria in your area.';
-    riskOfNonCompliance = 'Operating an unlicensed HMO can lead to significant fines and rent repayment orders.';
-  } else if (c === 'fire_risk_assessment' || c === 'fire_alarm' || c === 'fire_detection') {
-    legalContext =
-      'Fire safety requirements (e.g. risk assessment, alarm inspection) are required for many rental and HMO properties.';
-    riskOfNonCompliance = 'Failure to comply can result in enforcement and liability in the event of fire.';
-  } else {
-    legalContext =
-      'This requirement is part of your compliance framework. Keeping documents up to date helps maintain your score and reduces risk.';
-  }
-  return { legalContext, riskOfNonCompliance };
-}
+import { pickCanonicalWhyItMattersShort } from './requirementCanonicalNarrative';
 
 /**
- * Same structure as GET .../requirements/explanation (why_it_matters, recommended_action_text).
- * Safe to call for any requirement row from the property matrix.
+ * Inline compliance narrative (short why + next step) — same canonical "why" source as RequirementIntelligenceModal.
+ * @param {Record<string, unknown>} req
+ * @returns {{ why_it_matters: string, recommended_action_text: string }}
  */
-export function registryFallbackComplianceExplanation(req) {
-  const apiShort = String(req?.why_it_matters_short || req?.why_it_matters || '').trim();
-  const apiLong = String(req?.why_it_matters_long || '').trim();
-  if (apiShort || apiLong) {
-    const title =
-      (req?.title && String(req.title).trim()) ||
-      (req?.requirement_code ? requirementLabel(req.requirement_code || req.requirement_type) : '') ||
-      'Requirement';
-    const chosen = apiLong || apiShort;
-    return {
-      explanation_text: `${title}: ${chosen}`,
-      why_it_matters: chosen,
-      why_it_matters_short: apiShort || null,
-      why_it_matters_long: apiLong || null,
-      recommended_action_text: null,
-    };
-  }
-
-  const codeNorm = normalizeRequirementCode(req?.requirement_code || req?.requirement_type || '');
-  const status = String(req?.status || '').trim().toUpperCase();
-  const title =
-    (req?.title && String(req.title).trim()) ||
-    (codeNorm ? requirementLabel(req.requirement_code || req.requirement_type) : '') ||
-    'Requirement';
-  const { legalContext, riskOfNonCompliance } = legalContextForCode(codeNorm);
-  const hasDoc = !!req?.evidence_doc_id;
-
-  let why_it_matters;
-  if (status === 'PENDING' && hasDoc) {
-    why_it_matters = `${legalContext} A document is on file but still needs to be confirmed so your compliance record stays accurate. ${riskOfNonCompliance}`;
-  } else if (['OVERDUE', 'EXPIRED'].includes(status)) {
-    why_it_matters = `${legalContext} ${riskOfNonCompliance} This item is overdue or expired.`;
-  } else if (status === 'EXPIRING_SOON') {
-    why_it_matters = `${legalContext} ${riskOfNonCompliance} This item is expiring soon; renew and upload a document before the due date.`;
-  } else if (status === 'PENDING' || status === 'MISSING' || status === 'MISSING_EVIDENCE') {
-    why_it_matters = `${legalContext} A required document is missing. ${riskOfNonCompliance}`;
-  } else {
-    why_it_matters = `${legalContext} ${riskOfNonCompliance}`;
-  }
-
-  const explanation_text = `${title}: ${why_it_matters}`;
-
-  let recommended_action_text;
-  if (status === 'PENDING' && hasDoc) {
-    recommended_action_text = 'Open the Documents tab and confirm details for this requirement, or wait if the file is still being processed.';
-  } else if (['OVERDUE', 'EXPIRED'].includes(status)) {
-    recommended_action_text = 'Upload a renewed document and update dates, or mark as not applicable if this requirement does not apply.';
-  } else if (status === 'EXPIRING_SOON') {
-    if (codeNorm.includes('gas')) {
-      recommended_action_text = 'Schedule a Gas Safe inspection and upload the new certificate when complete.';
-    } else if (codeNorm.includes('eicr') || codeNorm === 'electrical_safety') {
-      recommended_action_text = 'Arrange an EICR inspection and upload the report when complete.';
-    } else {
-      recommended_action_text = 'Schedule the required inspection or renewal and upload the document when complete.';
-    }
-  } else if (status === 'PENDING' || status === 'MISSING' || status === 'MISSING_EVIDENCE') {
-    recommended_action_text = 'Upload the required document for this requirement.';
-  } else {
-    recommended_action_text = 'Review this requirement on the Documents tab and confirm or update documents as needed.';
-  }
-
+export function canonicalComplianceInlineNarrative(req) {
+  const whyShort = pickCanonicalWhyItMattersShort(req);
+  const ta = resolveRequirementAction(req, {});
+  const next =
+    ta.primary_action_handler !== 'none' && String(ta.primary_action_label || '').trim()
+      ? String(ta.primary_action_label).trim()
+      : 'Open Requirement details for full guidance.';
   return {
-    explanation_text,
-    why_it_matters,
-    why_it_matters_short: why_it_matters,
-    why_it_matters_long: null,
-    recommended_action_text,
+    why_it_matters: whyShort || 'Review this requirement on the Documents tab or open Requirement details for full context.',
+    recommended_action_text: `Next step: ${next}`,
   };
 }
 

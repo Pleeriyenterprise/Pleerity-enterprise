@@ -1,12 +1,18 @@
 """
 Today inbox projection: attach business_actions vs visibility_actions to unified task DTOs.
 
+Compliance-facing task rows originate from the same unified task / priority-action pipeline as Command Centre;
+requirement-backed cards must respect ``take_action`` (see ``requirement_action_resolver``). Portfolio KPIs
+and overdue semantics for counts live in ``project_requirement_row_client_runtime`` + score stats — do not
+re-derive compliance state in Today-only code paths.
+
 Keep this split aligned with docs/CLIENT_PORTAL_WORKFLOW_MATRIX.md (Today page).
 
 Business actions (build_business_actions_for_task):
     Domain CTAs only: navigate to real workflows or carry IDs for POSTs the UI performs elsewhere
-    (e.g. upload deep-link to /documents?…&focus=upload, create compliance job, view requirement/issue/job).
-    These may open flows that eventually change compliance/operations data; they are not “inbox-only”.
+    (e.g. upload deep-link from canonical ``take_action``, create compliance job, view requirement/issue/job).
+    Requirement-backed cards must not invent labels/routes when ``task.metadata.take_action`` exists — use
+    ``services.requirement_action_resolver.resolve_take_action_envelope`` contract (same as unified tasks).
 
 Visibility actions (build_visibility_actions_for_task):
     Snooze 1d / 7d, mark reviewed, dismiss — each maps to POST /api/today/items/{id}/snooze|mark-reviewed|dismiss
@@ -31,7 +37,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlencode
 
 from presentation.label_service import requirement_action_phrase, today_inbox_action_title
 from services.client_priority_stream import (
@@ -40,18 +45,12 @@ from services.client_priority_stream import (
     ACTION_WORK_ORDER_BREACHED,
     ACTION_WORK_ORDER_NEAR_BREACH,
 )
+from services.compliance_requirement_engine import resolve_engine_payload_from_code
+from services.requirement_action_resolver import resolve_take_action_envelope
 
 logger = logging.getLogger(__name__)
 
-
-def _documents_upload_path(property_id: Optional[str], requirement_id: Optional[str]) -> str:
-    q = {}
-    if property_id:
-        q["property_id"] = property_id
-    if requirement_id:
-        q["requirement_id"] = requirement_id
-    q["focus"] = "upload"
-    return f"/documents?{urlencode(q)}" if q else "/documents?focus=upload"
+PROVENANCE_OPERATIONS_TEMPLATE = "operations_template"
 
 
 def _parse_dt(value: Any) -> Optional[datetime]:
@@ -65,6 +64,122 @@ def _parse_dt(value: Any) -> Optional[datetime]:
         return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
     except Exception:
         return None
+
+
+def _intent_for_take_action_primary(task: Dict[str, Any], primary: Dict[str, Any]) -> str:
+    pat = str(task.get("primary_action_type") or task.get("action_context_type") or "").strip()
+    if pat:
+        return pat
+    route = str(primary.get("route") or "")
+    if "/documents" in route:
+        return "upload_evidence"
+    return "view_requirement"
+
+
+def _resolve_requirement_take_action_for_task(task: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str]]:
+    """
+    Prefer unified task ``metadata.take_action`` (canonical); else resolve from engine + row skeleton.
+    Returns (take_action dict, requirement_action_type or None).
+    """
+    meta = task.get("metadata") or {}
+    existing = meta.get("take_action")
+    if isinstance(existing, dict) and (
+        existing.get("primary") is not None or existing.get("suppressed") or existing.get("secondary") is not None
+    ):
+        return existing, str(meta.get("requirement_action_type") or "") or None
+    rid = str(task.get("source_entity_id") or task.get("source_id") or "").strip()
+    prop_id = task.get("property_id")
+    code = meta.get("requirement_code")
+    syn: Dict[str, Any] = {
+        "requirement_id": rid or None,
+        "property_id": prop_id,
+        "requirement_code": code,
+        "requirement_type": code,
+        "jurisdiction": meta.get("jurisdiction"),
+    }
+    eng = resolve_engine_payload_from_code(str(code or "").strip()) if code else {}
+    for k, v in (eng or {}).items():
+        if v is not None:
+            syn[k] = v
+    rm = meta.get("registry_metadata")
+    if isinstance(rm, dict) and rm:
+        syn["registry_metadata"] = {**(syn.get("registry_metadata") or {}), **rm}
+    env = resolve_take_action_envelope(
+        syn,
+        property_id=str(prop_id) if prop_id else None,
+        property_jurisdiction=meta.get("jurisdiction"),
+    )
+    ta = env.get("take_action") if isinstance(env.get("take_action"), dict) else {}
+    return ta, str(env.get("action_type") or "") or None
+
+
+def _business_actions_requirement(task: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Requirement-sourced Today CTAs from canonical take_action (+ optional compliance job affordance)."""
+    meta = task.get("metadata") or {}
+    rid = str(task.get("source_entity_id") or task.get("source_id") or "").strip()
+    prop_id = task.get("property_id")
+    take_action, _at = _resolve_requirement_take_action_for_task(task)
+    prov = take_action.get("provenance") if isinstance(take_action.get("provenance"), dict) else {}
+    contract = str(take_action.get("contract") or "requirement_take_action_v1")
+    supporting = list(take_action.get("supporting_external_links") or []) if isinstance(take_action.get("supporting_external_links"), list) else []
+
+    out: List[Dict[str, Any]] = []
+    pri = take_action.get("primary") if isinstance(take_action.get("primary"), dict) else None
+    if pri and pri.get("route"):
+        intent = _intent_for_take_action_primary(task, pri)
+        out.append(
+            {
+                "id": "take_action_primary",
+                "label": str(pri.get("label") or "").strip() or "Open",
+                "navigate": str(pri.get("route") or "").strip(),
+                "intent": intent,
+                "action_authority": "take_action",
+                "source_type": "requirement",
+                "contract": contract,
+                "provenance": {**prov, "bundle": "requirement_take_action"},
+                "supporting_external_links": supporting,
+            }
+        )
+    sec = take_action.get("secondary") if isinstance(take_action.get("secondary"), dict) else None
+    if sec and sec.get("route"):
+        sec_route = str(sec.get("route") or "")
+        out.append(
+            {
+                "id": "take_action_secondary",
+                "label": str(sec.get("label") or "").strip() or "Open",
+                "navigate": sec_route.strip(),
+                "intent": "upload_evidence" if "/documents" in sec_route else "view_requirement",
+                "action_authority": "take_action",
+                "source_type": "requirement",
+                "contract": contract,
+                "provenance": {**prov, "bundle": "requirement_take_action"},
+                "supporting_external_links": [],
+            }
+        )
+    ce = meta.get("compliance_execution_booking") or {}
+    eng = meta.get("compliance_engine") or {}
+    create_job = bool(eng.get("creates_compliance_job", eng.get("engine_creates_compliance_job", True)))
+    if ce.get("eligible") and create_job:
+        out.append(
+            {
+                "id": "create_compliance_work_order",
+                "label": "Create compliance job",
+                "requirement_id": rid,
+                "property_id": ce.get("property_id") or prop_id,
+                "requirement_code": ce.get("requirement_code"),
+                "compliance_purpose": ce.get("compliance_purpose") or "inspection",
+                "compliance_generated_from": ce.get("compliance_generated_from") or "requirement",
+                "intent": "create_compliance_job",
+                "action_authority": "operations_template",
+                "source_type": "requirement",
+                "provenance": {
+                    "primary_label": PROVENANCE_OPERATIONS_TEMPLATE,
+                    "contract": "compliance_execution_booking_v1",
+                    "bundle": "compliance_execution",
+                },
+            }
+        )
+    return out
 
 
 def build_visibility_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -117,42 +232,7 @@ def build_business_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]
     out: List[Dict[str, Any]] = []
 
     if source_type == "requirement" and source_entity_id:
-        rid = str(source_entity_id)
-        eng = meta.get("compliance_engine") or {}
-        fulfillment = (eng.get("fulfillment_mode") or eng.get("engine_fulfillment_mode") or "document").strip().lower()
-        req_docs = bool(eng.get("requires_document_evidence", eng.get("engine_requires_document_evidence", True)))
-        create_job = bool(eng.get("creates_compliance_job", eng.get("engine_creates_compliance_job", True)))
-        informational = bool(eng.get("engine_informational"))
-
-        if fulfillment == "document" and req_docs:
-            out.append(
-                {
-                    "id": "upload_certificate",
-                    "label": "Upload certificate",
-                    "navigate": _documents_upload_path(prop_id, rid),
-                }
-            )
-        ce = meta.get("compliance_execution_booking") or {}
-        if ce.get("eligible") and create_job:
-            out.append(
-                {
-                    "id": "create_compliance_work_order",
-                    "label": "Create compliance job",
-                    "requirement_id": rid,
-                    "property_id": ce.get("property_id") or prop_id,
-                    "requirement_code": ce.get("requirement_code"),
-                    "compliance_purpose": ce.get("compliance_purpose") or "inspection",
-                    "compliance_generated_from": ce.get("compliance_generated_from") or "requirement",
-                }
-            )
-        view_label = "Review obligation" if (fulfillment == "obligation" or informational) else "View requirement"
-        out.append(
-            {
-                "id": "view_requirement",
-                "label": view_label,
-                "navigate": f"/requirements?view_requirement={rid}",
-            }
-        )
+        out.extend(_business_actions_requirement(task))
 
     if source_type == "risk_signal" and source_entity_id:
         sid = str(source_entity_id)
@@ -161,6 +241,10 @@ def build_business_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]
                 "id": "review_risk_signal",
                 "label": "Review risk signal",
                 "navigate": f"/operations/risk-signals?signal_id={sid}",
+                "intent": "risk_follow_up",
+                "action_authority": "operations_template",
+                "source_type": "risk_signal",
+                "provenance": {"primary_label": PROVENANCE_OPERATIONS_TEMPLATE, "bundle": "operations"},
             }
         )
 
@@ -172,6 +256,10 @@ def build_business_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]
                 "label": "Create maintenance job",
                 "issue_id": iid,
                 "hint": "From issue detail you can open a work order when ready.",
+                "intent": "create_maintenance_job",
+                "action_authority": "operations_template",
+                "source_type": "issue",
+                "provenance": {"primary_label": PROVENANCE_OPERATIONS_TEMPLATE, "bundle": "operations"},
             }
         )
         out.append(
@@ -179,6 +267,10 @@ def build_business_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]
                 "id": "view_issue",
                 "label": "View issue",
                 "navigate": f"/operations/issues/{iid}",
+                "intent": "issue",
+                "action_authority": "operations_template",
+                "source_type": "issue",
+                "provenance": {"primary_label": PROVENANCE_OPERATIONS_TEMPLATE, "bundle": "operations"},
             }
         )
 
@@ -189,6 +281,10 @@ def build_business_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]
                 "id": "view_job",
                 "label": "View job",
                 "navigate": f"/operations/jobs/{wid}",
+                "intent": "work_order",
+                "action_authority": "operations_template",
+                "source_type": "work_order",
+                "provenance": {"primary_label": PROVENANCE_OPERATIONS_TEMPLATE, "bundle": "operations"},
             }
         )
 
@@ -199,6 +295,10 @@ def build_business_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]
                 "id": "view_approval",
                 "label": "View approval",
                 "navigate": f"/operations/approvals?invoice_id={inv}",
+                "intent": "review_approval",
+                "action_authority": "operations_template",
+                "source_type": "approval",
+                "provenance": {"primary_label": PROVENANCE_OPERATIONS_TEMPLATE, "bundle": "operations"},
             }
         )
 
@@ -209,6 +309,10 @@ def build_business_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]
                 "id": "open_primary",
                 "label": task.get("primary_action_label") or "Open",
                 "navigate": task.get("primary_action_url"),
+                "intent": "open_primary",
+                "action_authority": "operations_template",
+                "source_type": source_type or "priority_action",
+                "provenance": {"primary_label": PROVENANCE_OPERATIONS_TEMPLATE, "bundle": "unified_task_fallback"},
             }
         )
 
@@ -218,10 +322,12 @@ def build_business_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]
 # Lower = earlier in list (more “primary” workflow). view_* / review-only last.
 _BUSINESS_ACTION_ORDER: Dict[str, int] = {
     "create_compliance_work_order": 0,
-    "upload_certificate": 1,
-    "create_maintenance_job": 2,
-    "open_primary": 3,
-    "review_risk_signal": 4,
+    "take_action_primary": 1,
+    "take_action_secondary": 2,
+    "upload_certificate": 3,
+    "create_maintenance_job": 4,
+    "open_primary": 5,
+    "review_risk_signal": 6,
     "view_job": 8,
     "view_issue": 8,
     "view_approval": 8,

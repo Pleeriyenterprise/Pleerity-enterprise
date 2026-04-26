@@ -328,3 +328,59 @@ def test_not_required_hidden_archived_surface_gates():
         plan_types_lower=pt,
         published_registry_entries=None,
     )
+
+
+def test_project_requirement_row_uses_legacy_status_without_authority():
+    """Projection must match compliance_score: authority absent → legacy ``status`` (e.g. EXPIRED)."""
+    from services.requirement_client_runtime_surface import project_requirement_row_client_runtime
+
+    row = {
+        "requirement_id": "r-exp",
+        "property_id": "p1",
+        "requirement_type": "EPC",
+        "status": "EXPIRED",
+        "due_date": "2020-01-01T00:00:00+00:00",
+    }
+    out = project_requirement_row_client_runtime(row)
+    assert (out.get("status") or "").upper() == "EXPIRED"
+
+
+def test_compute_client_portal_requirement_stats_buckets():
+    from services.requirement_client_runtime_surface import compute_client_portal_requirement_stats
+
+    rows = [
+        {"status": "COMPLIANT"},
+        {"status": "VALID"},
+        {"status": "PENDING"},
+        {"status": "MISSING"},
+        {"status": "EXPIRING_SOON"},
+        {"status": "OVERDUE"},
+        {"status": "EXPIRED"},
+    ]
+    c = compute_client_portal_requirement_stats(rows)
+    assert c["total_requirements"] == 7
+    assert c["compliant"] == 2
+    assert c["pending"] == 1
+    assert c["missing_evidence"] == 2
+    assert c["expiring_soon"] == 1
+    assert c["overdue"] == 2
+
+
+def test_client_portal_surface_visible_excludes_hidden_overdue_from_portal_slice():
+    from services.requirement_client_runtime_surface import (
+        client_portal_surface_visible_row,
+        project_requirement_row_client_runtime,
+    )
+
+    rows = [
+        project_requirement_row_client_runtime(
+            {"requirement_id": "a", "property_id": "p1", "status": "OVERDUE", "client_surface_visible": True}
+        ),
+        project_requirement_row_client_runtime(
+            {"requirement_id": "b", "property_id": "p1", "status": "OVERDUE", "client_surface_visible": False}
+        ),
+    ]
+    portal = [r for r in rows if client_portal_surface_visible_row(r)]
+    overdue = sum(1 for r in portal if (r.get("status") or "") in ("OVERDUE", "EXPIRED"))
+    assert len(portal) == 1
+    assert overdue == 1

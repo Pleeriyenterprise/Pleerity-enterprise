@@ -22,6 +22,9 @@ export default function AdminComplianceRegistryPublishQueuePage() {
   const [syncPropertyId, setSyncPropertyId] = useState('');
   const [syncBusy, setSyncBusy] = useState(false);
   const [publishImpactByQueue, setPublishImpactByQueue] = useState({});
+  const [reviewLoadingId, setReviewLoadingId] = useState(null);
+  const [activeReview, setActiveReview] = useState(null);
+  const [reviewJurisdiction, setReviewJurisdiction] = useState('ENGLAND');
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -124,12 +127,18 @@ export default function AdminComplianceRegistryPublishQueuePage() {
       .finally(() => setBusyId(null));
   };
 
-  const reject = (queueId) => {
-    const reason = window.prompt('Rejection reason (optional)') || '';
+  const reject = (queueId, queueTitle, draftCount) => {
+    const reason = window.prompt(
+      `Reject queue ${queueId}\nTitle: ${queueTitle || '—'}\nDraft entries: ${draftCount || 0}\n\nRejection reason (required):`,
+    );
+    if (!reason || !reason.trim()) {
+      toast.error('Rejection reason is required.');
+      return;
+    }
     if (!canMutate) return;
     setBusyId(queueId);
     adminAPI
-      .rejectComplianceRegistryPublishQueue(queueId, { reason })
+      .rejectComplianceRegistryPublishQueue(queueId, { reason: reason.trim() })
       .then(() => {
         toast.success('Rejected');
         refresh();
@@ -139,6 +148,36 @@ export default function AdminComplianceRegistryPublishQueuePage() {
         toast.error(typeof d === 'string' ? d : 'Reject failed', { critical: true });
       })
       .finally(() => setBusyId(null));
+  };
+
+  const openReview = (row) => {
+    const qid = row?.queue_id;
+    if (!qid) return;
+    setReviewLoadingId(qid);
+    adminAPI
+      .getComplianceRegistryPublishQueueReview(qid)
+      .then((res) => {
+        setActiveReview({ queueId: qid, row, ...(res.data || {}) });
+      })
+      .catch((err) => {
+        const d = err?.response?.data?.detail;
+        toast.error(typeof d === 'string' ? d : 'Failed to load review', { critical: true });
+      })
+      .finally(() => setReviewLoadingId(null));
+  };
+
+  const approveWithReviewGate = (queueId) => {
+    const tok =
+      activeReview && activeReview.queueId === queueId ? activeReview.review_ack_token : null;
+    if (!tok) {
+      toast.error('Open preview before approval.');
+      return;
+    }
+    runTransition(
+      queueId,
+      (qid) => adminAPI.approveComplianceRegistryPublishQueue(qid, { review_ack_token: tok }),
+      'Approved',
+    );
   };
 
   const revertToLineVersion = (publishedLineVersion) => {
@@ -415,24 +454,28 @@ export default function AdminComplianceRegistryPublishQueuePage() {
                         )}
                         {canMutate && st === 'submitted' && (
                           <>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={disabled}
-                              onClick={() =>
-                                runTransition(qid, adminAPI.approveComplianceRegistryPublishQueue, 'Approved')
-                              }
-                            >
+                            <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => openReview(row)}>
+                              {reviewLoadingId === qid ? 'Loading…' : 'View / Preview'}
+                            </Button>
+                            <Button type="button" size="sm" disabled={disabled} onClick={() => approveWithReviewGate(qid)}>
                               Approve
                             </Button>
-                            <Button type="button" variant="destructive" size="sm" disabled={disabled} onClick={() => reject(qid)}>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              disabled={disabled}
+                              onClick={() => reject(qid, row.title, (row.draft_entry_ids || []).length)}
+                            >
                               Reject
                             </Button>
                           </>
                         )}
                         {canMutate && st === 'approved' && (
                           <>
+                            <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => openReview(row)}>
+                              {reviewLoadingId === qid ? 'Loading…' : 'View / Preview'}
+                            </Button>
                             <Button
                               type="button"
                               size="sm"
@@ -443,7 +486,13 @@ export default function AdminComplianceRegistryPublishQueuePage() {
                             >
                               Publish
                             </Button>
-                            <Button type="button" variant="destructive" size="sm" disabled={disabled} onClick={() => reject(qid)}>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              disabled={disabled}
+                              onClick={() => reject(qid, row.title, (row.draft_entry_ids || []).length)}
+                            >
                               Reject
                             </Button>
                           </>
@@ -455,6 +504,102 @@ export default function AdminComplianceRegistryPublishQueuePage() {
               </tbody>
             </table>
             {!items.length && <p className="p-4 text-gray-500 text-sm">No queue items yet.</p>}
+          </div>
+        )}
+        {activeReview && (
+          <div className="mt-6 border border-gray-200 rounded-lg p-4 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-gray-900">
+                Review before approval: <span className="font-mono">{activeReview.queueId}</span>
+              </h2>
+              <div className="flex items-center gap-2">
+                <select
+                  value={reviewJurisdiction}
+                  onChange={(e) => setReviewJurisdiction(e.target.value)}
+                  className="border border-gray-200 rounded px-2 py-1 text-xs bg-white"
+                >
+                  {['ENGLAND', 'SCOTLAND', 'WALES', 'NORTHERN_IRELAND'].map((j) => (
+                    <option key={j} value={j}>
+                      {j}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={busyId === activeReview.queueId}
+                  onClick={() => approveWithReviewGate(activeReview.queueId)}
+                >
+                  {busyId === activeReview.queueId ? 'Approving…' : 'Approve from reviewed preview'}
+                </Button>
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-3 text-xs">
+              <div className="rounded border border-gray-200 p-3">
+                <p className="uppercase tracking-wide text-gray-500 mb-1">Current live</p>
+                <p>Version: <span className="font-mono">{activeReview.current_live_published?.version ?? '—'}</span></p>
+                <p>Entry count: {activeReview.current_live_published?.entry_count ?? 0}</p>
+              </div>
+              <div className="rounded border border-gray-200 p-3">
+                <p className="uppercase tracking-wide text-gray-500 mb-1">Proposed</p>
+                <p>Touched entries: {(activeReview.touched_entries || []).length}</p>
+                <p>Post-approval count: {activeReview.proposed_published_after_approval?.entry_count ?? 0}</p>
+              </div>
+            </div>
+            <div className="rounded border border-gray-200 p-3 text-xs">
+              <p className="uppercase tracking-wide text-gray-500 mb-1">Warnings</p>
+              {(activeReview.warnings || []).length ? (
+                <ul className="list-disc pl-5 space-y-1">
+                  {(activeReview.warnings || []).map((w, idx) => (
+                    <li key={`${w.code || 'warn'}-${idx}`}>{w.message}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-600">No warnings.</p>
+              )}
+            </div>
+            <div className="rounded border border-gray-200 p-3 text-xs">
+              <p className="uppercase tracking-wide text-gray-500 mb-1">Client-facing preview ({reviewJurisdiction})</p>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {(activeReview.touched_entries || []).map((e) => {
+                  const cp = e.client_preview_by_jurisdiction?.[reviewJurisdiction] || {};
+                  return (
+                    <div key={e.entry_key} className="border border-gray-100 rounded p-2">
+                      <p className="font-medium">{cp.requirement_card?.name || e.entry_key}</p>
+                      <p><strong>Why short:</strong> {cp.why_it_matters_short || '—'}</p>
+                      <p><strong>Why long:</strong> {cp.why_it_matters_long || '—'}</p>
+                      <p><strong>CTA:</strong> {cp.cta?.primary_action_mode || '—'} {cp.cta?.cta_label_override ? `(${cp.cta.cta_label_override})` : ''}</p>
+                      <p><strong>Action links:</strong> {(cp.action_links || []).length}</p>
+                      <p><strong>Conditions:</strong> {e.conditions_summary || '—'}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="rounded border border-gray-200 p-3 text-xs">
+              <p className="uppercase tracking-wide text-gray-500 mb-1">Field-by-field diff</p>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {(activeReview.touched_entries || []).map((e) => (
+                  <div key={`${e.entry_key}-diff`} className="border border-gray-100 rounded p-2">
+                    <p className="font-mono">{e.entry_key}</p>
+                    {(e.field_diff_vs_current_live || []).length ? (
+                      <ul className="list-disc pl-5">
+                        {(e.field_diff_vs_current_live || []).map((d, idx) => (
+                          <li key={`${e.entry_key}-${idx}`}>
+                            <span className="font-mono">{d.path}</span>: {JSON.stringify(d.current)} → {JSON.stringify(d.proposed)}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-gray-600">No current-live diff.</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-gray-600">
+              <strong>Rematerialisation impact:</strong> {activeReview.rematerialisation?.detail || '—'}
+            </p>
           </div>
         )}
       </div>

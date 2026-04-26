@@ -149,10 +149,21 @@ async def get_value_insights(client_id: str) -> Dict[str, Any]:
     now = datetime.now(timezone.utc)
     period_start = now - timedelta(days=30)
 
-    total_req = await db.requirements.count_documents({"client_id": client_id})
-    compliant = await db.requirements.count_documents({"client_id": client_id, "status": "COMPLIANT"})
-    overdue = await db.requirements.count_documents({"client_id": client_id, "status": "OVERDUE"})
-    expiring = await db.requirements.count_documents({"client_id": client_id, "status": "EXPIRING_SOON"})
+    total_req = 0
+    compliant = 0
+    overdue = 0
+    expiring = 0
+    try:
+        from services.compliance_score import calculate_compliance_score
+
+        score_block = await calculate_compliance_score(client_id)
+        st = score_block.get("stats") or {}
+        total_req = int(st.get("total_requirements") or 0)
+        compliant = int(st.get("compliant") or 0)
+        overdue = int(st.get("overdue") or 0)
+        expiring = int(st.get("expiring_soon") or 0)
+    except Exception as e:
+        logger.warning("value_insights compliance_score failed client=%s: %s", client_id, e)
 
     doc_count = await db.documents.count_documents({"client_id": client_id})
     docs_period = await db.documents.count_documents(

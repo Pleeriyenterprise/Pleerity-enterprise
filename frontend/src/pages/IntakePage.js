@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { intakeAPI, publicAgreementsAPI } from '../api/client';
 import { Button } from '../components/ui/button';
@@ -43,6 +43,12 @@ import {
   canonicalIntakeEmail,
   isIntakeEmailFormatValid,
 } from '../utils/intakeEmail';
+import { getPropertyDisplayName } from '../utils/propertyDisplayName';
+import {
+  hashAgreementRender,
+  renderAgreementForDisplay,
+  validateAgreementRender,
+} from '../utils/agreementRender';
 
 // Plan limits - NEW PLAN STRUCTURE (must match backend plan_registry.py)
 const PLAN_LIMITS = {
@@ -383,6 +389,15 @@ const IntakePage = () => {
     }
   }, [step]);
 
+  const renderedAgreement = useMemo(
+    () => renderAgreementForDisplay(agreementCurrent),
+    [agreementCurrent],
+  );
+  const agreementRenderValidation = useMemo(
+    () => validateAgreementRender(renderedAgreement),
+    [renderedAgreement],
+  );
+
   useEffect(() => {
     if (step !== 5) return;
     let cancelled = false;
@@ -683,6 +698,12 @@ const IntakePage = () => {
       setError('Please confirm you have read and accept the service agreement before paying.');
       return;
     }
+    if (!agreementRenderValidation.valid) {
+      setError(
+        'The service agreement could not be safely rendered. Please refresh and try again or contact support.',
+      );
+      return;
+    }
     setLoading(true);
     setError('');
     setErrorDetail(null);
@@ -723,6 +744,15 @@ const IntakePage = () => {
         acceptance_text_snapshot: agreementCurrent.acceptance_text_required || '',
         accepted_by_name: (formData.full_name || '').trim(),
         accepted_by_email: canonicalIntakeEmail(formData.email) || (formData.email || '').trim(),
+        document_submission_method: formData.document_submission_method || '',
+        assisted_upload_consent_accepted:
+          formData.document_submission_method === 'EMAIL' && !!formData.email_upload_consent,
+        assisted_upload_consent_timestamp:
+          formData.document_submission_method === 'EMAIL' && formData.email_upload_consent
+            ? new Date().toISOString()
+            : null,
+        rendered_agreement_hash: hashAgreementRender(renderedAgreement),
+        rendered_agreement_snapshot: renderedAgreement,
       };
       const accRes = await publicAgreementsAPI.postAcceptance(acceptanceBody);
       const acceptance_id = accRes.data?.acceptance_id;
@@ -791,7 +821,8 @@ const IntakePage = () => {
         code === 'ACCEPTANCE_NOT_VALID_FOR_CHECKOUT' ||
         code === 'ACCEPTANCE_CLIENT_MISMATCH' ||
         code === 'AGREEMENT_VERSION_NOT_PUBLISHED' ||
-        code === 'AGREEMENT_TEMPLATE_INACTIVE'
+        code === 'AGREEMENT_TEMPLATE_INACTIVE' ||
+        code === 'ACCEPTANCE_RENDER_INVALID'
       ) {
         setServiceAgreementAccepted(false);
         setError(
@@ -1030,6 +1061,8 @@ const IntakePage = () => {
             agreementCurrent={agreementCurrent}
             agreementLoading={agreementLoading}
             agreementError={agreementFetchError}
+            renderedAgreement={renderedAgreement}
+            agreementRenderValidation={agreementRenderValidation}
             serviceAgreementAccepted={serviceAgreementAccepted}
             onServiceAgreementAcceptedChange={setServiceAgreementAccepted}
           />
@@ -1654,8 +1687,7 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
       <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Home className="w-4 h-4 text-gray-500" />
-          <span className="font-medium text-midnight-blue">Property {index + 1}</span>
-          {property.nickname && <span className="text-gray-500">- {property.nickname}</span>}
+          <span className="font-medium text-midnight-blue">{getPropertyDisplayName(property)}</span>
         </div>
         {total > 1 && (
           <button
@@ -2298,11 +2330,14 @@ const Step5Review = ({
   agreementCurrent,
   agreementLoading,
   agreementError,
+  renderedAgreement,
+  agreementRenderValidation,
   serviceAgreementAccepted,
   onServiceAgreementAcceptedChange,
 }) => {
   const selectedPlan = plans.find(p => p.plan_id === formData.billing_plan);
   const [stagedFiles, setStagedFiles] = useState([]);
+  const [showAgreementViewer, setShowAgreementViewer] = useState(false);
   const [requirementsPreview, setRequirementsPreview] = useState([]);
   const [requirementsPreviewLoading, setRequirementsPreviewLoading] = useState(false);
   const [requirementsPreviewError, setRequirementsPreviewError] = useState('');
@@ -2353,6 +2388,24 @@ const Step5Review = ({
     COMPANY: 'Property Company',
     AGENT: 'Letting Agent'
   };
+
+  const renderAgreementNodes = (section) => (
+    <div className="space-y-2">
+      {(section?.nodes || []).map((node, idx) => {
+        if (node?.type === 'subheading') {
+          return <p key={`${section.key}-sub-${idx}`} className="font-semibold text-gray-800">{node.text}</p>;
+        }
+        if (node?.type === 'bullet_list') {
+          return (
+            <ul key={`${section.key}-list-${idx}`} className="list-disc pl-6 space-y-1 text-sm leading-relaxed text-gray-700">
+              {(node.items || []).map((item, i) => <li key={`${section.key}-li-${i}`}>{item}</li>)}
+            </ul>
+          );
+        }
+        return <p key={`${section.key}-p-${idx}`} className="text-sm leading-relaxed text-gray-700">{node?.text || ''}</p>;
+      })}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -2456,9 +2509,7 @@ const Step5Review = ({
             <div key={index} className={`py-3 ${index > 0 ? 'pt-3' : ''}`}>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-medium text-midnight-blue">
-                    {prop.nickname || `Property ${index + 1}`}
-                  </p>
+                  <p className="font-medium text-midnight-blue">{getPropertyDisplayName(prop)}</p>
                   <p className="text-sm text-gray-600">{prop.address_line_1}, {prop.city}, {prop.postcode}</p>
                 </div>
                 <div className="flex gap-2">
@@ -2480,8 +2531,10 @@ const Step5Review = ({
 
       <Card>
         <div className="px-6 py-3 bg-gray-50 border-b">
-          <h3 className="font-semibold text-midnight-blue">Generated Compliance Summary (read-only)</h3>
-          <p className="text-xs text-gray-500 mt-1">Engine-generated from property facts. Requirements are not manually selectable here.</p>
+          <h3 className="font-semibold text-midnight-blue">Compliance profile summary</h3>
+          <p className="text-xs text-gray-500 mt-1">
+            Compliance requirements are generated automatically based on your property details and jurisdiction.
+          </p>
         </div>
         <CardContent className="pt-4 space-y-3">
           {requirementsPreviewLoading && (
@@ -2496,23 +2549,22 @@ const Step5Review = ({
           {!requirementsPreviewLoading && requirementsPreview.map((row, idx) => (
             <div key={idx} className="border rounded-lg p-3 bg-white">
               <div className="flex items-center justify-between gap-3">
-                <p className="font-medium text-midnight-blue">{row.property_nickname || `Property ${idx + 1}`}</p>
+                <p className="font-medium text-midnight-blue">
+                  {row.property_display_name || row.property_nickname || getPropertyDisplayName(formData.properties[idx] || {})}
+                </p>
                 <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
                   {row.jurisdiction || 'Unknown jurisdiction'}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Drivers: type={row.key_driver_facts?.property_type || 'n/a'}, hmo={String(row.key_driver_facts?.is_hmo)},
-                gas={row.key_driver_facts?.has_gas_supply === null ? 'unknown' : String(row.key_driver_facts?.has_gas_supply)},
-                tenancy={String(row.key_driver_facts?.tenancy_active)}, deposit={String(row.key_driver_facts?.deposit_taken)},
-                furnished={row.key_driver_facts?.furnished === null ? 'unknown' : String(row.key_driver_facts?.furnished)},
-                communal={String(row.key_driver_facts?.has_communal_areas)}, council={row.key_driver_facts?.local_authority || 'n/a'}
-              </p>
-              <p className="text-xs text-gray-600 mt-2">
-                Action types: {Object.entries(row.action_type_breakdown || {}).map(([k, v]) => `${k} ${v}`).join(' · ') || 'None'}
-              </p>
-              <p className="text-xs text-gray-600 mt-1">
-                Top requirements: {(row.top_generated_requirements || []).slice(0, 5).join(', ') || 'None'}
+              <p className="text-xs text-gray-600 mt-2">Based on the information provided, the platform will likely track obligations such as:</p>
+              <ul className="mt-1 space-y-1 text-xs text-gray-700 list-disc pl-5">
+                {(row.likely_obligations || row.top_generated_requirements || []).slice(0, 5).map((req, i) => (
+                  <li key={`${idx}-${i}`}>{req}</li>
+                ))}
+                {(!row.likely_obligations || row.likely_obligations.length === 0) && <li>Core compliance certificate requirements</li>}
+              </ul>
+              <p className="text-xs text-gray-500 mt-2">
+                Additional requirements may appear after onboarding review or document verification.
               </p>
               {row.assumptions?.has_gas_supply_unknown_assumed_true_for_planning && (
                 <p className="text-xs text-amber-700 mt-1">
@@ -2546,7 +2598,12 @@ const Step5Review = ({
             ) : (
               <>
                 <Mail className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-700">Documents will be emailed to Pleerity</span>
+                <span className="text-sm text-gray-700">
+                  You selected assisted document upload via email. You can send compliance documents to
+                  {' '}
+                  {branding?.supportEmail || branding?.email || 'support@pleerity.com'}
+                  . You can also upload documents directly after portal activation.
+                </span>
               </>
             )}
           </div>
@@ -2585,30 +2642,84 @@ const Step5Review = ({
           )}
           {!agreementLoading && agreementCurrent && (
             <>
-              <div className="border rounded-md max-h-72 overflow-y-auto p-4 bg-white text-sm text-gray-800 space-y-3">
+              {!agreementRenderValidation?.valid && (
+                <p className="text-sm text-red-700" data-testid="intake-agreement-render-invalid">
+                  The agreement content is not valid for payment yet. Refresh the page and try again.
+                </p>
+              )}
+              <div className="border rounded-md p-4 bg-white text-sm text-gray-800 space-y-3">
                 <div>
-                  <p className="font-semibold text-midnight-blue">{agreementCurrent.title}</p>
-                  {agreementCurrent.subtitle ? (
-                    <p className="text-xs text-gray-500 mt-1">{agreementCurrent.subtitle}</p>
+                  <p className="font-semibold text-midnight-blue">{renderedAgreement?.title || agreementCurrent.title}</p>
+                  {(renderedAgreement?.subtitle || agreementCurrent.subtitle) ? (
+                    <p className="text-xs text-gray-500 mt-1">{renderedAgreement?.subtitle || agreementCurrent.subtitle}</p>
                   ) : null}
+                  <p className="text-xs text-gray-500 mt-2">
+                    Version {agreementCurrent?.version_number || '1'}
+                    {agreementCurrent?.effective_from ? ` · Effective ${new Date(agreementCurrent.effective_from).toLocaleDateString()}` : ''}
+                    {agreementCurrent?.published_at ? ` · Published ${new Date(agreementCurrent.published_at).toLocaleDateString()}` : ''}
+                  </p>
                 </div>
-                {(agreementCurrent.content_blocks || []).map((block) => (
-                  <div key={block.key || block.label} className="space-y-1">
-                    {block.label ? <p className="text-xs font-medium text-gray-600">{block.label}</p> : null}
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed">{block.content || ''}</div>
+                {((renderedAgreement?.document_structure?.sections || []).slice(0, 2)).map((section) => (
+                  <div key={section.key || section.heading} className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">{section.heading}</p>
+                    {renderAgreementNodes(section)}
                   </div>
                 ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowAgreementViewer(true)}
+                  data-testid="view-full-agreement"
+                >
+                  View full agreement
+                </Button>
               </div>
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   className="mt-1 h-4 w-4 rounded border-gray-300 text-electric-teal focus:ring-electric-teal"
                   checked={serviceAgreementAccepted}
+                  disabled={!agreementRenderValidation?.valid}
                   onChange={(e) => onServiceAgreementAcceptedChange(e.target.checked)}
                   data-testid="intake-service-agreement-checkbox"
                 />
                 <span className="text-sm text-gray-700">{agreementCurrent.acceptance_text_required}</span>
               </label>
+              {showAgreementViewer && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                  <div className="bg-white w-full max-w-4xl h-[85vh] rounded-lg shadow-xl flex flex-col">
+                    <div className="px-6 py-4 border-b">
+                      <p className="font-semibold text-midnight-blue">{renderedAgreement?.title || agreementCurrent.title}</p>
+                      {(renderedAgreement?.subtitle || agreementCurrent.subtitle) ? (
+                        <p className="text-xs text-gray-500 mt-1">{renderedAgreement?.subtitle || agreementCurrent.subtitle}</p>
+                      ) : null}
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                      {(renderedAgreement?.document_structure?.sections || []).map((section) => (
+                        <section key={section.key || section.heading} className="space-y-2">
+                          <h4 className="text-sm font-semibold uppercase tracking-wide text-midnight-blue">{section.heading}</h4>
+                          {renderAgreementNodes(section)}
+                        </section>
+                      ))}
+                    </div>
+                    <div className="border-t px-6 py-4 bg-white sticky bottom-0">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-electric-teal focus:ring-electric-teal"
+                          checked={serviceAgreementAccepted}
+                          disabled={!agreementRenderValidation?.valid}
+                          onChange={(e) => onServiceAgreementAcceptedChange(e.target.checked)}
+                        />
+                        <span className="text-sm text-gray-700 flex-1">{agreementCurrent.acceptance_text_required}</span>
+                        <Button type="button" variant="outline" onClick={() => setShowAgreementViewer(false)}>
+                          Close
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </CardContent>

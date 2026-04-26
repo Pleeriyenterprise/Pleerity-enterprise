@@ -17,6 +17,17 @@ ACTION_JOB = "JOB"
 ACTION_MAINTENANCE = "MAINTENANCE"
 ACTION_OBLIGATION = "OBLIGATION"
 
+# Stable primary CTA intent for client/API parity (Requirements, Today, exports).
+INTENT_UPLOAD_EVIDENCE = "upload_evidence"
+INTENT_VIEW_GUIDANCE = "view_guidance"
+INTENT_MAINTENANCE = "maintenance"
+INTENT_BOOK_INSPECTION = "book_inspection"
+
+# Client contract: surfaces must not invent parallel requirement CTA wording when take_action is present.
+TAKE_ACTION_CONTRACT_VERSION = "requirement_take_action_v1"
+PROVENANCE_PUBLISHED_REGISTRY = "published_registry"
+PROVENANCE_ENGINE_DEFAULT = "engine_default"
+
 
 def _norm_code(req_or_code: Any) -> str:
     if isinstance(req_or_code, dict):
@@ -81,6 +92,33 @@ def _registry_why_it_matters(requirement: Dict[str, Any]) -> Dict[str, Optional[
     }
 
 
+def _primary_label_provenance(requirement: Dict[str, Any]) -> str:
+    meta = requirement.get("registry_metadata") if isinstance(requirement.get("registry_metadata"), dict) else {}
+    if str(meta.get("cta_label_override") or "").strip():
+        return PROVENANCE_PUBLISHED_REGISTRY
+    return PROVENANCE_ENGINE_DEFAULT
+
+
+def _supporting_links_provenance(requirement: Dict[str, Any]) -> str:
+    meta = requirement.get("registry_metadata") if isinstance(requirement.get("registry_metadata"), dict) else {}
+    links = meta.get("action_links_published")
+    if isinstance(links, list) and len(links) > 0:
+        return PROVENANCE_PUBLISHED_REGISTRY
+    return PROVENANCE_ENGINE_DEFAULT
+
+
+def _attach_take_action_contract_metadata(take_action: Dict[str, Any], requirement: Dict[str, Any]) -> None:
+    """Mutates take_action dict in place: provenance + contract for client surfaces (Today, lists, etc.)."""
+    if not isinstance(take_action, dict):
+        return
+    take_action["contract"] = TAKE_ACTION_CONTRACT_VERSION
+    take_action["provenance"] = {
+        "primary_label": _primary_label_provenance(requirement),
+        "supporting_links": _supporting_links_provenance(requirement),
+        "source_type": "requirement",
+    }
+
+
 def job_primary_label(requirement: Dict[str, Any]) -> str:
     code = _norm_code(requirement)
     if "eicr" in code or code == "electrical_safety":
@@ -123,7 +161,8 @@ def resolve_take_action_envelope(
     Single client-facing action contract for a requirement row (enriched or raw).
 
     Returns:
-      action_type, take_action: { primary: {label, route, kind, handler}, secondary?: {...} }
+      action_type, take_action: { primary: {label, route, kind, handler}, secondary?: {...},
+      contract, provenance }
     """
     pid = property_id or requirement.get("property_id")
     rid = requirement.get("requirement_id")
@@ -133,15 +172,17 @@ def resolve_take_action_envelope(
     meta = requirement.get("registry_metadata") if isinstance(requirement.get("registry_metadata"), dict) else {}
     if str(meta.get("primary_action_mode") or "").strip().lower() == "hidden":
         why_fields = _registry_why_it_matters(requirement)
+        ta_hidden = {
+            "primary": None,
+            "secondary": None,
+            "supporting_external_links": [],
+            "suppressed": True,
+        }
+        _attach_take_action_contract_metadata(ta_hidden, requirement)
         return {
             "action_type": ACTION_OBLIGATION,
             **why_fields,
-            "take_action": {
-                "primary": None,
-                "secondary": None,
-                "supporting_external_links": [],
-                "suppressed": True,
-            },
+            "take_action": ta_hidden,
         }
 
     cls = str(eng.get("compliance_requirement_class") or requirement.get("compliance_requirement_class") or "").upper()
@@ -157,32 +198,43 @@ def resolve_take_action_envelope(
         route = f"/properties/{pid}#compliance" if pid else "/requirements"
         supporting = _supporting_external_links(requirement, property_jurisdiction=property_jurisdiction)
         why_fields = _registry_why_it_matters(requirement)
+        ta_inf = {
+            "primary": {
+                "label": "View guidance",
+                "route": route,
+                "kind": "navigate",
+                "handler": "navigate",
+                "intent": INTENT_VIEW_GUIDANCE,
+            },
+            "secondary": None,
+            "supporting_external_links": supporting,
+        }
+        _attach_take_action_contract_metadata(ta_inf, requirement)
         return {
             "action_type": ACTION_OBLIGATION,
             **why_fields,
-            "take_action": {
-                "primary": {
-                    "label": "View guidance",
-                    "route": route,
-                    "kind": "navigate",
-                    "handler": "navigate",
-                },
-                "secondary": None,
-                "supporting_external_links": supporting,
-            },
+            "take_action": ta_inf,
         }
 
     if action_type == ACTION_MAINTENANCE:
         route = f"/operations/issues/new?property_id={pid}" if pid else "/operations/issues"
         why_fields = _registry_why_it_matters(requirement)
+        ta_maint = {
+            "primary": {
+                "label": "Log issue",
+                "route": route,
+                "kind": "navigate",
+                "handler": "navigate",
+                "intent": INTENT_MAINTENANCE,
+            },
+            "secondary": None,
+            "supporting_external_links": [],
+        }
+        _attach_take_action_contract_metadata(ta_maint, requirement)
         return {
             "action_type": ACTION_MAINTENANCE,
             **why_fields,
-            "take_action": {
-                "primary": {"label": "Log issue", "route": route, "kind": "navigate", "handler": "navigate"},
-                "secondary": None,
-                "supporting_external_links": [],
-            },
+            "take_action": ta_maint,
         }
 
     is_job = cls == "JOB" or ff == "job"
@@ -199,22 +251,26 @@ def resolve_take_action_envelope(
                 "kind": "navigate",
                 "handler": "navigate",
                 "external": False,
+                "intent": INTENT_UPLOAD_EVIDENCE,
             }
         supporting = _supporting_external_links(requirement, property_jurisdiction=property_jurisdiction)
         why_fields = _registry_why_it_matters(requirement)
+        ta_job = {
+            "primary": {
+                "label": job_primary_label(requirement),
+                "route": primary_route,
+                "kind": "navigate",
+                "handler": "navigate",
+                "intent": INTENT_BOOK_INSPECTION,
+            },
+            "secondary": sec_upload,
+            "supporting_external_links": supporting,
+        }
+        _attach_take_action_contract_metadata(ta_job, requirement)
         return {
             "action_type": ACTION_JOB,
             **why_fields,
-            "take_action": {
-                "primary": {
-                    "label": job_primary_label(requirement),
-                    "route": primary_route,
-                    "kind": "navigate",
-                    "handler": "navigate",
-                },
-                "secondary": sec_upload,
-                "supporting_external_links": supporting,
-            },
+            "take_action": ta_job,
         }
 
     doc_route = f"/documents?property_id={pid}&requirement_id={rid}" if (pid and rid) else (f"/documents?property_id={pid}" if pid else "/documents")
@@ -222,19 +278,22 @@ def resolve_take_action_envelope(
     why_fields = _registry_why_it_matters(requirement)
     cta = str(meta.get("cta_label_override") or "").strip()
     upload_label = cta if cta else "Upload document"
+    ta_doc = {
+        "primary": {
+            "label": upload_label,
+            "route": doc_route,
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": INTENT_UPLOAD_EVIDENCE,
+        },
+        "secondary": None,
+        "supporting_external_links": supporting,
+    }
+    _attach_take_action_contract_metadata(ta_doc, requirement)
     return {
         "action_type": ACTION_DOCUMENT,
         **why_fields,
-        "take_action": {
-            "primary": {
-                "label": upload_label,
-                "route": doc_route,
-                "kind": "navigate",
-                "handler": "navigate",
-            },
-            "secondary": None,
-            "supporting_external_links": supporting,
-        },
+        "take_action": ta_doc,
     }
 
 
@@ -263,6 +322,13 @@ def resolve_take_action_for_priority_action(
         "requirement_type": code,
         "jurisdiction": action_row.get("jurisdiction"),
     }
+    rm = action_row.get("registry_metadata")
+    if isinstance(rm, dict) and rm:
+        merged_rm = {**(synthetic.get("registry_metadata") or {}), **rm}
+        synthetic["registry_metadata"] = merged_rm
+    disp = action_row.get("display_label")
+    if disp and not synthetic.get("display_label"):
+        synthetic["display_label"] = disp
     for k, v in eng.items():
         if v is not None:
             synthetic[k] = v

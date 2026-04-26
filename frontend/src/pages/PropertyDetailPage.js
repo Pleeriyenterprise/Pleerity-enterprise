@@ -79,7 +79,7 @@ import {
 } from '../utils/portalRequirementAttention';
 import { resolveRiskSignalPrimaryKey } from '../utils/primaryActionResolver';
 import {
-  registryFallbackComplianceExplanation,
+  canonicalComplianceInlineNarrative,
   complianceWhatChangedLine,
   complianceObligationStatusLabel,
   complianceObligationPrimaryAction,
@@ -96,6 +96,7 @@ import {
   portalSecondaryButtonClass,
   portalDrawerPanelClass,
 } from '../components/client/ClientPortalPatterns';
+import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import {
   JURISDICTION_ACCOUNT_DEFAULT_NOTICE_TITLE,
@@ -221,6 +222,8 @@ export default function PropertyDetailPage() {
   const [notApplicableModal, setNotApplicableModal] = useState(null);
   const [notApplicableReason, setNotApplicableReason] = useState('');
   const [notApplicableSubmitting, setNotApplicableSubmitting] = useState(false);
+  /** Compliance matrix / cards: full requirement intelligence (GET /requirements/:id). */
+  const [requirementIntelRow, setRequirementIntelRow] = useState(null);
   // Tab-specific data
   const [workOrders, setWorkOrders] = useState([]);
   const [workOrdersLoading, setWorkOrdersLoading] = useState(false);
@@ -275,13 +278,10 @@ export default function PropertyDetailPage() {
   const [complianceStatusFilter, setComplianceStatusFilter] = useState('');
   const [complianceSearchQuery, setComplianceSearchQuery] = useState('');
   const [complianceExpandedReqId, setComplianceExpandedReqId] = useState(null);
-  /** Expanded obligation: API explanation when available, else registry (key matches expanded id). */
-  const [complianceExpandExplainByKey, setComplianceExpandExplainByKey] = useState({});
   const [complianceExplainability, setComplianceExplainability] = useState(null);
   const [complianceExplainabilityLoading, setComplianceExplainabilityLoading] = useState(false);
   const [priorityUrgentRaw, setPriorityUrgentRaw] = useState([]);
   const [urgentExplainOpenId, setUrgentExplainOpenId] = useState(null);
-  const [urgentExplainByReqId, setUrgentExplainByReqId] = useState({});
   const [operatingFeedItems, setOperatingFeedItems] = useState([]);
   const [operatingFeedLoading, setOperatingFeedLoading] = useState(false);
 
@@ -736,31 +736,6 @@ export default function PropertyDetailPage() {
       loadComplianceExplainability();
     }
   }, [propertyId, activeTab, loadComplianceExplainability]);
-
-  useEffect(() => {
-    if (!propertyId || !complianceExpandedReqId) return;
-    const reqRowId = (x) => x?.requirement_id || x?.id;
-    const r = requirements.find(
-      (x) => String(reqRowId(x) || x.requirement_code || '') === String(complianceExpandedReqId),
-    );
-    if (!r) return;
-    const key = String(complianceExpandedReqId);
-    const baseline = registryFallbackComplianceExplanation(r);
-    setComplianceExpandExplainByKey((m) => ({ ...m, [key]: baseline }));
-    const rid = reqRowId(r);
-    const params = rid
-      ? { requirement_id: rid }
-      : { requirement_code: r.requirement_code || r.requirement_type };
-    if (!params.requirement_id && !params.requirement_code) return;
-    clientAPI
-      .getRequirementExplanation(propertyId, params)
-      .then((res) => {
-        if (res.data?.why_it_matters) {
-          setComplianceExpandExplainByKey((prev) => ({ ...prev, [key]: res.data }));
-        }
-      })
-      .catch(() => {});
-  }, [propertyId, complianceExpandedReqId, requirements]);
 
   useEffect(() => {
     if (propertyId && activeTab === TAB_EVIDENCE) loadEvidence();
@@ -1748,7 +1723,7 @@ export default function PropertyDetailPage() {
                       const stdStatus = complianceObligationStatusLabel(r);
                       const primaryAct = complianceObligationPrimaryAction(r);
                       const explainOpen = urgentExplainOpenId === rid;
-                      const explainPayload = urgentExplainByReqId[rid];
+                      const explainPayload = canonicalComplianceInlineNarrative(r);
                       const docsHref = resolveDocumentsPath(propertyId, {
                         requirement_id: rowReqId(r),
                         ...(primaryAct.verb === 'upload' ? { focus: 'upload' } : {}),
@@ -1775,16 +1750,6 @@ export default function PropertyDetailPage() {
                                     return;
                                   }
                                   setUrgentExplainOpenId(rid);
-                                  const baseline = registryFallbackComplianceExplanation(r);
-                                  setUrgentExplainByReqId((m) => ({ ...m, [rid]: baseline }));
-                                  clientAPI
-                                    .getRequirementExplanation(propertyId, { requirement_id: rowReqId(r) })
-                                    .then((res) => {
-                                      if (res.data?.why_it_matters) {
-                                        setUrgentExplainByReqId((m) => ({ ...m, [rid]: res.data }));
-                                      }
-                                    })
-                                    .catch(() => {});
                                 }}
                               >
                                 <Info className="w-3.5 h-3.5 shrink-0" /> Why this matters{' '}
@@ -1804,6 +1769,11 @@ export default function PropertyDetailPage() {
                               >
                                 Show in table
                               </Button>
+                              {rowReqId(r) ? (
+                                <Button type="button" size="sm" variant="outline" className="min-h-9" onClick={() => setRequirementIntelRow(r)}>
+                                  Requirement details
+                                </Button>
+                              ) : null}
                               <Button size="sm" className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-9" onClick={() => navigate(docsHref)}>
                                 {primaryAct.label}
                               </Button>
@@ -1813,7 +1783,9 @@ export default function PropertyDetailPage() {
                             <div className="px-3 pb-3 pt-0 border-t border-amber-100 bg-amber-50/30 space-y-2">
                               <div>
                                 <p className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mt-2">Why this matters</p>
-                                <p className="text-sm text-gray-700 mt-1">{explainPayload.why_it_matters}</p>
+                                <p className="text-sm text-gray-700 mt-1" data-testid="compliance-inline-why-short">
+                                  {explainPayload.why_it_matters}
+                                </p>
                               </div>
                               <div>
                                 <p className="text-xs font-semibold text-midnight-blue uppercase tracking-wide">What changed</p>
@@ -1860,9 +1832,7 @@ export default function PropertyDetailPage() {
                         const primaryAct = complianceObligationPrimaryAction(r);
                         const complianceDomId = rowReqId(r) || `rc:${propertyId}:${normalizeRequirementCode(r.requirement_code || r.requirement_type || `t${idx}`)}`;
                         const isMissing = isRequirementMissingDocument(r);
-                        const regExplain = registryFallbackComplianceExplanation(r);
-                        const expandKey = String(rowReqId(r) || r.requirement_code || '');
-                        const explainPayload = complianceExpandExplainByKey[expandKey] || regExplain;
+                        const explainPayload = canonicalComplianceInlineNarrative(r);
                         const docsHref = resolveDocumentsPath(propertyId, {
                           requirement_id: rowReqId(r),
                           ...(primaryAct.verb === 'upload' ? { focus: 'upload' } : {}),
@@ -1915,6 +1885,20 @@ export default function PropertyDetailPage() {
                                       <MinusCircle className="w-3.5 h-3.5 mr-1" /> Not applicable
                                     </Button>
                                   )}
+                                  {rowReqId(r) ? (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-electric-teal min-h-9"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setRequirementIntelRow(r);
+                                      }}
+                                      data-testid={`property-compliance-requirement-intel-${rowReqId(r)}`}
+                                    >
+                                      Requirement details
+                                    </Button>
+                                  ) : null}
                                   <a href={`mailto:${SUPPORT_EMAIL}?subject=Support request: ${address}`} className="text-sm text-gray-500 hover:text-electric-teal px-1 py-1" onClick={(e) => e.stopPropagation()}>Request help</a>
                                 </div>
                               </td>
@@ -1926,7 +1910,9 @@ export default function PropertyDetailPage() {
                                     <p><span className="font-semibold text-midnight-blue">Requirement:</span> {rowTitle(r)}</p>
                                     <div>
                                       <p className="font-semibold text-midnight-blue">Why this matters</p>
-                                      <p className="text-gray-700 mt-1">{explainPayload.why_it_matters}</p>
+                                      <p className="text-gray-700 mt-1" data-testid="compliance-inline-why-short">
+                                        {explainPayload.why_it_matters}
+                                      </p>
                                     </div>
                                     <div>
                                       <p className="font-semibold text-midnight-blue">What changed</p>
@@ -1945,6 +1931,18 @@ export default function PropertyDetailPage() {
                                     <p><span className="font-semibold text-midnight-blue">Recommended action:</span> {explainPayload.recommended_action_text}</p>
                                     <div className="flex flex-wrap gap-2 pt-1">
                                       <Button size="sm" variant="outline" onClick={() => navigate(docsHref)}>{primaryAct.label}</Button>
+                                      {rowReqId(r) ? (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            setComplianceExpandedReqId(null);
+                                            setRequirementIntelRow(r);
+                                          }}
+                                        >
+                                          Requirement details
+                                        </Button>
+                                      ) : null}
                                       <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_EVIDENCE)}>Open Documents tab</Button>
                                       <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'COMPLIANCE' })); }}>View timeline</Button>
                                       <Button size="sm" variant="ghost" onClick={() => setComplianceExpandedReqId(null)}><X className="w-4 h-4" /> Close</Button>
@@ -1989,6 +1987,11 @@ export default function PropertyDetailPage() {
                           {primaryAct.label}
                         </Button>
                         <Button size="sm" variant="ghost" className="min-h-9" onClick={() => setComplianceExpandedReqId(complianceExpandedReqId === (rowReqId(r) || r.requirement_code) ? null : (rowReqId(r) || r.requirement_code))}>Details</Button>
+                        {rowReqId(r) ? (
+                          <Button size="sm" variant="ghost" className="text-electric-teal min-h-9" onClick={() => setRequirementIntelRow(r)}>
+                            Requirement details
+                          </Button>
+                        ) : null}
                         {isMissing && (r.requirement_code || r.requirement_type) ? (
                           <Button size="sm" variant="ghost" className="text-gray-600 min-h-9" onClick={() => { setNotApplicableModal({ requirement_code: r.requirement_code || r.requirement_type, title: rowTitle(r) }); setNotApplicableReason('not_applicable'); }}>
                             Not applicable
@@ -3655,6 +3658,26 @@ export default function PropertyDetailPage() {
         </div>
       )}
 
+      <RequirementIntelligenceModal
+        open={!!requirementIntelRow && !!rowReqId(requirementIntelRow)}
+        requirementId={requirementIntelRow ? String(rowReqId(requirementIntelRow)) : null}
+        seedRequirement={requirementIntelRow}
+        propertyLabel={property?.nickname || property?.address_line_1 || null}
+        onClose={() => setRequirementIntelRow(null)}
+        onNavigate={(path) => {
+          setRequirementIntelRow(null);
+          navigate(path);
+        }}
+        addressForMailto={address}
+        onMarkNotApplicable={(m) => {
+          setRequirementIntelRow(null);
+          setNotApplicableModal({
+            requirement_code: m.requirement_code || m.requirement_type,
+            title: rowTitle(m),
+          });
+          setNotApplicableReason('not_applicable');
+        }}
+      />
       <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
 
       {notApplicableModal && (

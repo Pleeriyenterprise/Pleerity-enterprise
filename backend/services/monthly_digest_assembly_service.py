@@ -22,7 +22,6 @@ from services.monthly_digest_snapshot_service import (
 )
 from utils.risk_bands import score_to_risk_level
 from utils.expiry_utils import get_effective_expiry_date
-from services.requirement_evidence_authority import authority_runtime_requirement_status
 
 from services.monthly_digest_limits import (
     DIGEST_EMAIL_TOP_PROPERTIES_AT_RISK,
@@ -100,13 +99,8 @@ def _applicable_requirement(r: Dict[str, Any]) -> bool:
 def _missing_evidence(r: Dict[str, Any]) -> bool:
     if not _applicable_requirement(r):
         return False
-    es = (r.get("evidence_state") or "").upper()
-    if es == "MISSING":
-        return True
     st = (r.get("status") or "").upper()
-    if st == "PENDING" and es in ("", "MISSING"):
-        return True
-    return False
+    return st in ("PENDING", "MISSING")
 
 
 def _days_remaining_or_overdue(due_val: Any, now: datetime) -> Tuple[Optional[int], str]:
@@ -193,6 +187,8 @@ async def assemble_monthly_digest_payload(
         requirements = [r for r in requirements if r.get("property_id") in pid_filter]
     from services.requirement_client_runtime_surface import (
         filter_requirement_rows_for_client_runtime_surfaces,
+        project_requirement_row_client_runtime,
+        client_portal_surface_visible_row,
     )
 
     requirements = await filter_requirement_rows_for_client_runtime_surfaces(
@@ -202,8 +198,10 @@ async def assemble_monthly_digest_payload(
         client_doc=client,
         properties=properties,
     )
-    requirements_total_count = len(requirements)
-    applicable = [r for r in requirements if _applicable_requirement(r)]
+    projected_requirements = [project_requirement_row_client_runtime(r) for r in requirements]
+    portal_requirements = [r for r in projected_requirements if client_portal_surface_visible_row(r)]
+    requirements_total_count = len(portal_requirements)
+    applicable = [r for r in portal_requirements if _applicable_requirement(r)]
 
     # Portfolio counts: same aggregates as compliance score / dashboard stats
     total_requirements = int(stats.get("total_requirements") or len(applicable))
@@ -292,7 +290,7 @@ async def assemble_monthly_digest_payload(
         pid = r.get("property_id")
         code = r.get("code") or r.get("requirement_type")
         label = requirement_label(code)
-        st = str(authority_runtime_requirement_status(r) or r.get("status") or "").upper()
+        st = str(r.get("status") or "").upper()
         ea = r.get("evidence_authority") or {}
         ev_raw = (ea.get("state") or r.get("evidence_state") or "—") if r.get("evidence_authority_synced_at") else (r.get("evidence_state") or "—")
         ev = str(ev_raw).upper()

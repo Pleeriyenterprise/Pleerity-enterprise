@@ -18,6 +18,7 @@ from services.compliance_score import (
     DEFAULT_REQUIREMENT_WEIGHT,
     REQUIREMENT_TYPE_WEIGHTS,
 )
+from services.provisioning import REQUIREMENT_GENERATION_SOURCE_DB_RULE
 
 
 @pytest.fixture(autouse=True)
@@ -61,7 +62,13 @@ def _make_db_mock(
         if "compliance_breakdown" not in q and default_property_score is not None:
             q["compliance_breakdown"] = dict(br)
         props_out.append(q)
-    reqs_out = [{**r, "client_id": client_id} if "client_id" not in r else r for r in requirements]
+    reqs_out = []
+    for r in requirements:
+        q = {**r, "client_id": client_id} if "client_id" not in r else dict(r)
+        # DB-rule rows skip catalog planner membership so unit tests are not dropped by empty planner mocks.
+        if "requirement_generation_source" not in q:
+            q["requirement_generation_source"] = REQUIREMENT_GENERATION_SOURCE_DB_RULE
+        reqs_out.append(q)
     docs_out = [{**d, "client_id": client_id} if "client_id" not in d else d for d in documents]
 
     async def _props_to_list(*_a, **_kw):

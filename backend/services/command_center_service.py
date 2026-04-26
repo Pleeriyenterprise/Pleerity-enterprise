@@ -18,6 +18,10 @@ _LEVEL_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 
 def _slim_task(t: Dict[str, Any]) -> Dict[str, Any]:
     metadata = t.get("metadata") if isinstance(t.get("metadata"), dict) else {}
+    jur = t.get("jurisdiction") or t.get("property_jurisdiction") or metadata.get("property_jurisdiction") or metadata.get(
+        "jurisdiction"
+    )
+    rid = t.get("requirement_id") or metadata.get("requirement_id") or metadata.get("linked_property_requirement_id")
     return {
         "id": t.get("id"),
         "task_id": t.get("id"),
@@ -29,7 +33,9 @@ def _slim_task(t: Dict[str, Any]) -> Dict[str, Any]:
         "source_entity_type": t.get("source_entity_type") or t.get("source_type"),
         "source_entity_id": t.get("source_entity_id") or t.get("source_id"),
         "property_id": t.get("property_id"),
-        "requirement_id": t.get("requirement_id"),
+        "requirement_id": rid,
+        "jurisdiction": jur,
+        "property_jurisdiction": t.get("property_jurisdiction") or jur,
         "work_order_id": t.get("work_order_id"),
         "property_label": t.get("property_label"),
         "priority_level": t.get("urgency_level"),
@@ -186,9 +192,15 @@ async def get_command_center_bundle(
             "message": cs.get("message"),
             "color": cs.get("color"),
             "properties_count": cs.get("properties_count"),
+            # Canonical portfolio requirement KPIs (portal-visible + project_requirement_row_client_runtime).
+            # Command Centre UI must use these fields only — no Math.max with other APIs.
+            "compliance_counts_authority": "calculate_compliance_score.stats",
             "requirements_overdue": stats.get("overdue"),
             "requirements_expiring_soon": stats.get("expiring_soon"),
             "requirements_pending": stats.get("pending"),
+            "requirements_missing_evidence": stats.get("missing_evidence"),
+            "requirements_total": stats.get("total_requirements"),
+            "properties_at_risk_count": stats.get("properties_at_risk_count"),
             "gap_engine": gap_engine_counts,
             "jurisdiction_compliance_notice": notice,
             "jurisdiction_required": jreq,

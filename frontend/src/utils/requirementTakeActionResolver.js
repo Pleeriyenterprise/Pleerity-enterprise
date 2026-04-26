@@ -13,15 +13,39 @@ export const REQUIREMENT_ACTION_TYPES = {
   OBLIGATION: 'OBLIGATION',
 };
 
-/** @param {Record<string, unknown>|undefined} requirement */
-function supportingExternalLinksFromRequirement(requirement) {
+/**
+ * External / published action links for display. Merges resolver supporting links, API action_links,
+ * and materialised published registry links (deduped by URL) so the Requirements page matches enrichment.
+ * @param {Record<string, unknown>|undefined} requirement
+ */
+export function mergeRequirementSupportingLinks(requirement) {
   if (!requirement || typeof requirement !== 'object') return [];
+  const out = [];
+  const seen = new Set();
+  const push = (arr) => {
+    if (!Array.isArray(arr)) return;
+    for (const x of arr) {
+      if (!x || typeof x !== 'object') continue;
+      const u = String(x.url || '').trim();
+      const key = u || `${String(x.label || '')}|${String(x.key || '')}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(x);
+    }
+  };
   const ta = requirement.take_action;
   if (ta && typeof ta === 'object' && Array.isArray(ta.supporting_external_links)) {
-    return ta.supporting_external_links;
+    push(ta.supporting_external_links);
   }
-  if (Array.isArray(requirement.action_links)) return requirement.action_links;
-  return [];
+  if (Array.isArray(requirement.action_links)) push(requirement.action_links);
+  const meta = requirement.registry_metadata && typeof requirement.registry_metadata === 'object' ? requirement.registry_metadata : null;
+  if (meta && Array.isArray(meta.action_links_published)) push(meta.action_links_published);
+  return out;
+}
+
+/** @param {Record<string, unknown>|undefined} requirement */
+function supportingExternalLinksFromRequirement(requirement) {
+  return mergeRequirementSupportingLinks(requirement);
 }
 
 export function inferRequirementActionType(requirement) {
@@ -64,6 +88,24 @@ function jobPrimaryLabel(requirement) {
  *   supporting_external_links: Array<{ key?: string, label: string, url: string, external?: boolean, kind?: string }>,
  * }}
  */
+/** True when API provided a complete primary CTA — UI should not substitute client-only labels/routes. */
+export function requirementUsesServerTakeActionPrimary(requirement) {
+  const ta = requirement?.take_action;
+  return !!(ta && typeof ta === 'object' && ta.primary && ta.primary.route);
+}
+
+function primaryIntentFromTakeActionPrimary(primary) {
+  if (!primary || typeof primary !== 'object') return null;
+  const ex = String(primary.intent || '').trim();
+  if (ex) return ex;
+  const r = String(primary.route || '');
+  if (r.includes('/documents')) return 'upload_evidence';
+  if (r.includes('/operations/issues/new')) return 'maintenance';
+  if (r.includes('#compliance')) return 'view_guidance';
+  if (/#req=/.test(r) || r.includes('/properties/')) return 'book_inspection';
+  return 'view_requirement';
+}
+
 export function resolveRequirementAction(requirement, _property = {}) {
   if (!requirement || typeof requirement !== 'object') {
     return {
@@ -71,6 +113,7 @@ export function resolveRequirementAction(requirement, _property = {}) {
       primary_action_label: 'View details',
       primary_action_handler: 'none',
       primary_route: null,
+      primary_intent: null,
       secondary_action: null,
       supporting_external_links: [],
     };
@@ -83,6 +126,7 @@ export function resolveRequirementAction(requirement, _property = {}) {
       primary_action_label: String(ta.primary.label || ''),
       primary_action_handler: ta.primary.handler === 'external' ? 'external' : 'navigate',
       primary_route: ta.primary.route ? String(ta.primary.route) : null,
+      primary_intent: primaryIntentFromTakeActionPrimary(ta.primary),
       secondary_action: sec
         ? {
             label: String(sec.label || ''),
@@ -93,6 +137,30 @@ export function resolveRequirementAction(requirement, _property = {}) {
         : null,
       supporting_external_links: supportingExternalLinksFromRequirement(requirement),
     };
+  }
+
+  if (requirement.take_action && typeof requirement.take_action === 'object' && requirement.take_action.suppressed) {
+    return {
+      actionType: REQUIREMENT_ACTION_TYPES.OBLIGATION,
+      primary_action_label: 'View details',
+      primary_action_handler: 'none',
+      primary_route: null,
+      primary_intent: 'suppressed',
+      secondary_action: null,
+      supporting_external_links: supportingExternalLinksFromRequirement(requirement),
+    };
+  }
+
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    requirement.take_action &&
+    typeof requirement.take_action === 'object' &&
+    !requirement.take_action.primary
+  ) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[requirementTakeActionResolver] take_action without primary — using client fallback; prefer API envelope from requirement_action_resolver.',
+    );
   }
 
   const pid = requirement.property_id;
@@ -116,6 +184,7 @@ export function resolveRequirementAction(requirement, _property = {}) {
       primary_action_label: 'View guidance',
       primary_action_handler: 'navigate',
       primary_route: pid ? `/properties/${pid}#compliance` : '/requirements',
+      primary_intent: 'view_guidance',
       secondary_action: null,
       supporting_external_links: supporting,
     };
@@ -128,6 +197,7 @@ export function resolveRequirementAction(requirement, _property = {}) {
       primary_action_label: 'Log issue',
       primary_action_handler: 'navigate',
       primary_route: pid ? `/operations/issues/new?property_id=${encodeURIComponent(String(pid))}` : '/operations/issues',
+      primary_intent: 'maintenance',
       secondary_action: null,
       supporting_external_links: supporting,
     };
@@ -152,6 +222,7 @@ export function resolveRequirementAction(requirement, _property = {}) {
       primary_action_label: jobPrimaryLabel(requirement),
       primary_action_handler: 'navigate',
       primary_route: primaryRoute,
+      primary_intent: 'book_inspection',
       secondary_action: secondary,
       supporting_external_links: supporting,
     };
@@ -168,6 +239,7 @@ export function resolveRequirementAction(requirement, _property = {}) {
     primary_action_label: 'Upload document',
     primary_action_handler: 'navigate',
     primary_route: docRoute,
+    primary_intent: 'upload_evidence',
     secondary_action: null,
     supporting_external_links: supporting,
   };

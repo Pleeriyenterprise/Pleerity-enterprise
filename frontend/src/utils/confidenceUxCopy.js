@@ -55,7 +55,10 @@ function todayTaskCanonicalActionTypesForConfidence(task) {
   const ba = Array.isArray(task.business_actions) ? task.business_actions : [];
   for (const a of ba) {
     const aid = String(a.id || '').toLowerCase();
-    if (aid === 'upload_certificate') types.add('upload_document');
+    const nav = String(a.navigate || '').toLowerCase();
+    if (aid === 'upload_certificate' || (aid === 'take_action_primary' && nav.includes('/documents'))) {
+      types.add('upload_document');
+    }
   }
 
   if (

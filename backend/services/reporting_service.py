@@ -15,7 +15,12 @@ import csv
 import io
 import logging
 from utils.expiry_utils import get_effective_expiry_date
-from services.requirement_evidence_authority import authority_runtime_requirement_status, authority_state
+from services.requirement_client_runtime_surface import (
+    filter_requirement_rows_for_client_runtime_surfaces,
+    client_portal_surface_visible_row,
+    project_requirement_row_client_runtime,
+    compute_client_portal_requirement_stats,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +68,6 @@ class ReportingService:
             {"client_id": client_id},
             {"_id": 0}
         ).to_list(10000)
-        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
-
         requirements = await filter_requirement_rows_for_client_runtime_surfaces(
             db,
             client_id=client_id,
@@ -72,21 +75,21 @@ class ReportingService:
             client_doc=client,
             properties=properties,
         )
-
-        def _runtime_status(req: Dict[str, Any]) -> str:
-            return str(authority_runtime_requirement_status(req) or req.get("status") or "PENDING").upper()
+        projected = [project_requirement_row_client_runtime(r) for r in requirements]
+        portal_reqs = [r for r in projected if client_portal_surface_visible_row(r)]
+        counts = compute_client_portal_requirement_stats(portal_reqs)
 
         # Calculate statistics
         total_properties = len(properties)
         green_count = sum(1 for p in properties if p.get("compliance_status") == "GREEN")
         amber_count = sum(1 for p in properties if p.get("compliance_status") == "AMBER")
         red_count = sum(1 for p in properties if p.get("compliance_status") == "RED")
-        
-        total_requirements = len(requirements)
-        compliant_count = sum(1 for r in requirements if _runtime_status(r) == "COMPLIANT")
-        pending_count = sum(1 for r in requirements if _runtime_status(r) == "PENDING")
-        overdue_count = sum(1 for r in requirements if _runtime_status(r) == "OVERDUE")
-        expiring_soon_count = sum(1 for r in requirements if _runtime_status(r) == "EXPIRING_SOON")
+
+        total_requirements = counts["total_requirements"]
+        compliant_count = counts["compliant"]
+        pending_count = counts["pending"]
+        overdue_count = counts["overdue"]
+        expiring_soon_count = counts["expiring_soon"]
         
         # Get expiring in next 30/60/90 days
         now = datetime.now(timezone.utc)
@@ -97,7 +100,7 @@ class ReportingService:
         expiring_30 = 0
         expiring_60 = 0
         expiring_90 = 0
-        for r in requirements:
+        for r in portal_reqs:
             eff = get_effective_expiry_date(r)
             if eff is None:
                 continue
@@ -143,15 +146,20 @@ class ReportingService:
             property_details = []
             client_doc = client or {}
             for prop in properties:
-                prop_reqs = [r for r in requirements if r.get("property_id") == prop["property_id"]]
+                prop_reqs = [
+                    r
+                    for r in portal_reqs
+                    if r.get("property_id") == prop["property_id"]
+                ]
                 _att = jurisdiction_attribution_for_property(prop, client_doc)
+                prop_counts = compute_client_portal_requirement_stats(prop_reqs)
                 property_details.append({
                     "address": f"{prop.get('address_line_1', '')}, {prop.get('city', '')} {prop.get('postcode', '')}",
                     "property_type": prop.get("property_type", "N/A"),
                     "compliance_status": prop.get("compliance_status", "UNKNOWN"),
-                    "total_requirements": len(prop_reqs),
-                    "compliant": sum(1 for r in prop_reqs if _runtime_status(r) == "COMPLIANT"),
-                    "overdue": sum(1 for r in prop_reqs if _runtime_status(r) == "OVERDUE"),
+                    "total_requirements": prop_counts["total_requirements"],
+                    "compliant": prop_counts["compliant"],
+                    "overdue": prop_counts["overdue"],
                     "effective_jurisdiction_label": _att.get("effective_jurisdiction_label"),
                     "jurisdiction_source": _att.get("jurisdiction_source"),
                 })
@@ -203,7 +211,6 @@ class ReportingService:
             ).to_list(1000)
         else:
             props_full = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
-        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 
         requirements = await filter_requirement_rows_for_client_runtime_surfaces(
             db,
@@ -235,9 +242,19 @@ class ReportingService:
         
         client_doc = client_row or {}
         for req in requirements:
+            proj = project_requirement_row_client_runtime(req)
+            if not client_portal_surface_visible_row(proj):
+                continue
             prop = prop_map.get(req.get("property_id"), {})
             docs = doc_map.get(req.get("requirement_id"), [])
             _att = jurisdiction_attribution_for_property(prop or {}, client_doc)
+            due_iso = proj.get("due_date")
+            due_out = "N/A"
+            if due_iso:
+                try:
+                    due_out = datetime.fromisoformat(str(due_iso).replace("Z", "+00:00")).date().isoformat()
+                except Exception:
+                    due_out = str(due_iso)[:10]
 
             report_data["requirements"].append({
                 "requirement_id": req.get("requirement_id"),
@@ -246,13 +263,9 @@ class ReportingService:
                 "jurisdiction_source": _att.get("jurisdiction_source"),
                 "requirement_type": req.get("requirement_type", "N/A"),
                 "description": req.get("description", "N/A"),
-                "status": _runtime_status(req),
-                "due_date": (
-                    get_effective_expiry_date(req).date().isoformat()
-                    if get_effective_expiry_date(req)
-                    else "N/A"
-                ),
-                "evidence_state": authority_state(req) or req.get("evidence_state") or "UNKNOWN",
+                "status": str(proj.get("status") or "PENDING").upper(),
+                "due_date": due_out,
+                "evidence_state": str(proj.get("evidence_state") or "UNKNOWN"),
                 "frequency_days": req.get("frequency_days", "N/A"),
                 "documents_count": len(docs),
                 "latest_document": docs[-1].get("file_name") if docs else "None",

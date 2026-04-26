@@ -569,5 +569,26 @@ def gaps_to_priority_actions(gaps: List[ComplianceGap], requirement: Dict[str, A
             "gap_surfaces": g.surfaces,
             "gap_policy": g.policy,
         }
+        # Gap engine recommended_* are diagnostic / legacy alignment only — client CTAs follow
+        # enriched requirement take_action (see client_priority_stream + unified_tasks_service).
+        row["diagnostic_gap_recommended_url"] = g.recommended_url
+        row["diagnostic_gap_recommended_action_label"] = g.recommended_action_label
+        row["recommended_client_authority"] = "gap_engine_diagnostic"
+        ta = requirement.get("take_action") if isinstance(requirement.get("take_action"), dict) else {}
+        pri = ta.get("primary") if isinstance(ta.get("primary"), dict) else None
+        if pri and pri.get("route"):
+            row["recommended_url"] = str(pri.get("route") or "").strip() or g.recommended_url
+        if pri and pri.get("label"):
+            row["recommended_action_label"] = str(pri.get("label") or "").strip() or g.recommended_action_label
+        if ta:
+            row["canonical_take_action"] = ta
+            row["recommended_client_authority"] = "canonical_take_action"
+        if requirement.get("action_type"):
+            row["canonical_requirement_action_type"] = requirement.get("action_type")
+        rm_req = requirement.get("registry_metadata")
+        if isinstance(rm_req, dict) and rm_req:
+            row["registry_metadata"] = rm_req
+        if requirement.get("display_label") is not None:
+            row["display_label"] = requirement.get("display_label")
         out.append(row)
     return out

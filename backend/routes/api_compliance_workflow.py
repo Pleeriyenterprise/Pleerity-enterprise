@@ -146,9 +146,16 @@ async def get_requirement_by_id(request: Request, requirement_id: str, user: Dic
     )
     if not req or not await _client_requirement_row_eligible(db, user, req):
         raise HTTPException(status_code=404, detail="Requirement not found")
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
     from services.requirement_truth import enrich_requirements_for_client
 
-    enriched, presentation = await enrich_requirements_for_client(db, user["client_id"], [req])
+    filtered = await filter_requirement_rows_for_client_runtime_surfaces(
+        db, client_id=user["client_id"], requirements=[req]
+    )
+    if not filtered:
+        raise HTTPException(status_code=404, detail="Requirement not found")
+    req_for_enrich = filtered[0]
+    enriched, presentation = await enrich_requirements_for_client(db, user["client_id"], [req_for_enrich])
     row = enriched[0] if enriched else req
     active = await find_active_compliance_job_for_requirement(
         client_id=user["client_id"],

@@ -149,6 +149,27 @@ def test_checkout_returns_409_when_acceptance_commercial_mismatch(client, mock_d
     assert detail.get("request_id")
 
 
+def test_checkout_returns_422_when_acceptance_render_invalid(client, mock_db):
+    """Checkout blocked when server-side acceptance render validation is invalid."""
+    with patch("routes.intake.database.get_db", return_value=mock_db):
+        with patch(
+            "routes.intake.validate_acceptance_for_checkout",
+            new_callable=AsyncMock,
+            return_value=(None, "ACCEPTANCE_RENDER_INVALID"),
+        ):
+            response = client.post(
+                "/api/intake/checkout",
+                params={"client_id": "test-client-checkout"},
+                headers={"origin": "https://example.com"},
+                json={"acceptance_id": "acc-test-1"},
+            )
+    assert response.status_code == 422
+    detail = response.json().get("detail")
+    assert isinstance(detail, dict)
+    assert detail.get("error_code") == "ACCEPTANCE_RENDER_INVALID"
+    assert detail.get("request_id")
+
+
 def test_checkout_returns_503_when_acceptance_checkout_link_fails(client, mock_db):
     """If Stripe session is created but acceptance row cannot be linked, client gets 503 and session is expired."""
     with patch("routes.intake.database.get_db", return_value=mock_db):

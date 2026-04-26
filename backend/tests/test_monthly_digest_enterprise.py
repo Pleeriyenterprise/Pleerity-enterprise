@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 from services.monthly_digest_assembly_service import reporting_period_for_previous_calendar_month
+from services.monthly_digest_assembly_service import _missing_evidence
 from services.monthly_digest_snapshot_service import build_fingerprint_map, compute_deltas, requirement_fingerprint
 from services.jobs import effective_digest_calendar_day
 from services.monthly_digest_pdf_service import build_monthly_digest_pdf_bytes
@@ -161,3 +162,9 @@ def test_compute_deltas_newly_overdue():
     assert d["score_delta"] == -10
     assert "x" in d["newly_overdue_ids"]
     assert d["documents_uploaded_delta_vs_prev_period"] == 2
+
+
+def test_missing_evidence_uses_projected_status_not_raw_evidence_state():
+    assert _missing_evidence({"status": "PENDING", "applicability": "REQUIRED"}) is True
+    assert _missing_evidence({"status": "MISSING", "applicability": "REQUIRED"}) is True
+    assert _missing_evidence({"status": "COMPLIANT", "evidence_state": "MISSING", "applicability": "REQUIRED"}) is False

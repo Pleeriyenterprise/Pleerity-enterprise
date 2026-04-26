@@ -696,6 +696,7 @@ async def preview_generated_requirements(body: IntakeRequirementsPreviewRequest)
     from services.compliance_registry_publish_service import fetch_active_published_registry_entries
     from services.compliance_requirement_registry import build_requirement_plan_for_property
     from services.requirement_action_resolver import infer_action_type
+    from presentation.property_display_name import get_property_display_name
 
     db = database.get_db()
     published = await fetch_active_published_registry_entries(db)
@@ -718,8 +719,11 @@ async def preview_generated_requirements(body: IntakeRequirementsPreviewRequest)
         summaries.append(
             {
                 "property_index": idx,
+                "property_display_name": get_property_display_name(p),
                 "property_nickname": p.get("nickname") or f"Property {idx + 1}",
                 "jurisdiction": jur,
+                "friendly_property_type": str(p.get("property_type") or "").replace("_", " ").title() or "Property",
+                "likely_obligations": [str(i.description) for i in plan[:6]],
                 "key_driver_facts": {
                     "property_type": p.get("property_type"),
                     "is_hmo": p.get("is_hmo"),
@@ -1376,6 +1380,7 @@ async def create_checkout(request: Request, client_id: str, checkout_body: Intak
                 "AGREEMENT_VERSION_NOT_PUBLISHED": status.HTTP_503_SERVICE_UNAVAILABLE,
                 "AGREEMENT_TEMPLATE_INACTIVE": status.HTTP_503_SERVICE_UNAVAILABLE,
                 "ACCEPTANCE_COMMERCIAL_MISMATCH": status.HTTP_409_CONFLICT,
+                "ACCEPTANCE_RENDER_INVALID": status.HTTP_422_UNPROCESSABLE_ENTITY,
             }
             st = status_map.get(acc_err, status.HTTP_400_BAD_REQUEST)
             raise HTTPException(

@@ -28,6 +28,7 @@ import {
   buildPortfolioVerdictBlock,
   buildPropertyPriorityRepresentatives,
   commandCenterWhyThisMattersLine,
+  commandCenterRequirementIntelContext,
   computePortfolioDriverMetrics,
   countPropertiesAtRisk,
   hasTruthyIso,
@@ -46,6 +47,8 @@ import {
   filterInboxTasksForTrackedRequirements,
   requirementMapFromList,
 } from '../utils/portalRequirementAttention';
+import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
+import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 
 const KPI_NO_DATA = 'No data yet';
 
@@ -80,6 +83,7 @@ export default function ClientCommandCenterPage() {
   const [portfolioSummary, setPortfolioSummary] = useState(null);
   const [workOrdersRaw, setWorkOrdersRaw] = useState(null);
   const [portalRequirementsForInbox, setPortalRequirementsForInbox] = useState([]);
+  const [requirementIntelModal, setRequirementIntelModal] = useState(null);
 
   const loadPortalRequirements = useCallback(() => {
     if (!isClientUser) return;
@@ -216,15 +220,17 @@ export default function ClientCommandCenterPage() {
   );
   const awaitingProofJobCount = useMemo(() => activeJobs.filter((wo) => isAwaitingProof(wo)).length, [activeJobs]);
 
-  const propertiesAtRisk = useMemo(() => countPropertiesAtRisk(portfolioSummary), [portfolioSummary]);
+  const propertiesAtRisk = useMemo(
+    () => countPropertiesAtRisk(portfolioSummary, summary),
+    [portfolioSummary, summary]
+  );
 
   const propertyLabelById = useMemo(() => {
     const m = new Map();
     for (const p of portfolioSummary?.properties || []) {
       const id = p.property_id;
       if (!id) continue;
-      const addr = [p.address_line_1, p.city, p.postcode].filter(Boolean).join(', ');
-      const lbl = String(p.nickname || p.name || addr || '').trim();
+      const lbl = getPropertyDisplayName(p);
       if (lbl) m.set(id, lbl);
     }
     return m;
@@ -590,6 +596,7 @@ export default function ClientCommandCenterPage() {
                   '/today',
                 );
                 const hub = buildCommandCenterPropertyRowHubLink(t, primaryResolved);
+                const intelCtx = commandCenterRequirementIntelContext(t, inboxRequirementById);
                 return (
                   <li
                     key={t.property_id || t.id || idx}
@@ -625,6 +632,24 @@ export default function ClientCommandCenterPage() {
                             <Link className="font-medium hover:text-midnight-blue hover:underline" to={hub.to}>
                               {hub.label}
                             </Link>
+                          ) : null}
+                          {intelCtx.canOpen ? (
+                            <button
+                              type="button"
+                              className="font-medium text-electric-teal hover:underline"
+                              data-testid="command-center-open-requirement-intel"
+                              onClick={() =>
+                                setRequirementIntelModal({
+                                  requirementId: intelCtx.requirementId,
+                                  seed: intelCtx.seed,
+                                  propertyLabel: t.property_label || null,
+                                })
+                              }
+                            >
+                              Requirement details
+                            </button>
+                          ) : intelCtx.fallbackHint ? (
+                            <span className="text-gray-500">{intelCtx.fallbackHint}</span>
                           ) : null}
                         </div>
                       </div>
@@ -849,6 +874,17 @@ export default function ClientCommandCenterPage() {
           )}
         </CardContent>
       </Card>
+      <RequirementIntelligenceModal
+        open={!!requirementIntelModal}
+        requirementId={requirementIntelModal?.requirementId || null}
+        seedRequirement={requirementIntelModal?.seed || null}
+        propertyLabel={requirementIntelModal?.propertyLabel || null}
+        onClose={() => setRequirementIntelModal(null)}
+        onNavigate={(path) => {
+          setRequirementIntelModal(null);
+          navigate(path);
+        }}
+      />
     </div>
   );
 }

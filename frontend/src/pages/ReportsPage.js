@@ -46,9 +46,10 @@ import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { presentPortalAnalyticsEvent } from '../utils/timelinePresent';
 import { cn } from '../lib/utils';
+import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 
 function reportPropertyOptionLabel(p) {
-  const base = [p.address_line_1, p.city].filter(Boolean).join(', ') || p.nickname || p.property_id;
+  const base = getPropertyDisplayName(p) || p.property_id;
   if (!p.effective_jurisdiction_label && !p.jurisdiction_source) return base;
   const j = p.effective_jurisdiction_label ? ` · ${p.effective_jurisdiction_label}` : '';
   const src = p.jurisdiction_source ? ` (Source: ${jurisdictionSourceLabel(p.jurisdiction_source)})` : '';

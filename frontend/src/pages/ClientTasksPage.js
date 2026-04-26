@@ -2,6 +2,11 @@
  * Client portal — Today (priorities inbox). Aggregated server-side tasks with sections,
  * urgency, deep links, and selective inline actions (risk → issue / work order).
  *
+ * Compliance KPI truth (overdue counts, score stats, requirement aggregates) lives in
+ * ``/client/compliance-score``, dashboard, and reports — not in this task inbox. Today lists
+ * **operational priorities** (unified tasks: requirements, jobs, risks, approvals) for actioning;
+ * do not treat task counts as canonical compliance score inputs.
+ *
  * Today model (keep aligned with docs/CLIENT_PORTAL_WORKFLOW_MATRIX.md and today_projection_service.py):
  *
  * - Business actions: server-provided `business_actions` (upload certificate → navigate to documents vault
@@ -77,8 +82,14 @@ import {
   businessActionNavigatePath,
   stripTechnicalParenTail,
 } from '../utils/todayWorkflowPolicy';
+import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import { todayRequirementWhyItMattersLine } from '../utils/todayRequirementWhyItMatters';
-import { alignTodayPayloadTaskSections, requirementMapFromList } from '../utils/portalRequirementAttention';
+import {
+  alignTodayPayloadTaskSections,
+  inboxTaskLinkedRequirementId,
+  requirementMapFromList,
+} from '../utils/portalRequirementAttention';
+import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All' },
@@ -184,6 +195,9 @@ function dedupeActionsByPrimaryPath(ordered) {
 
 function labelForTodayBusinessAction(act, task, workflow) {
   if (!act) return sanitizeTodayCtaLabel(task?.primary_action_label, task);
+  if (String(act.action_authority) === 'take_action') {
+    return String(act.label || '').trim();
+  }
   if (String(act.id) === 'upload_certificate' && workflow === 'compliance') {
     return 'Fix compliance issue';
   }
@@ -205,8 +219,7 @@ function labelForTodayBusinessAction(act, task, workflow) {
 
 function propertyOptionLabel(p) {
   if (!p) return 'Property';
-  const addr = [p.address_line_1, p.city, p.postcode].filter(Boolean).join(', ');
-  return (p.nickname || p.name || addr || '').trim() || 'Property';
+  return getPropertyDisplayName(p) || 'Property';
 }
 
 /** Mirrors `domain_labels.json` → `today_inbox_action_titles` (generic inbox titles to replace locally). */
@@ -308,6 +321,7 @@ function TaskCard({
   onPrimaryNavigate,
   onRunBusinessAction,
   onVisibilityTap,
+  onOpenRequirementIntel,
   overrideBusy,
   complianceBookingBusyId,
   showComplianceBooking,
@@ -328,9 +342,16 @@ function TaskCard({
   const maxSecondarySlots = workflow === 'issue_risk' && showRiskInline && sid ? 1 : 2;
   let secondaryActs = ordered.slice(1, 1 + maxSecondarySlots);
   if (complianceUi) {
-    const viewReq = ordered.find((a) => String(a.id) === 'view_requirement');
-    const pid = primaryAct ? String(primaryAct.id) : '';
-    secondaryActs = viewReq && pid !== 'view_requirement' ? [viewReq] : [];
+    const primaryId = primaryAct ? String(primaryAct.id) : '';
+    const secondaryCandidate = ordered.find(
+      (a) =>
+        a !== primaryAct &&
+        (String(a.id) === 'take_action_secondary' ||
+          String(a.id) === 'view_requirement' ||
+          String(a.intent) === 'view_requirement'),
+    );
+    secondaryActs =
+      secondaryCandidate && String(secondaryCandidate.id) !== primaryId ? [secondaryCandidate] : [];
   }
   const riskStartInline =
     workflow === 'issue_risk' && showRiskInline && sid && secondaryActs.length < maxSecondarySlots;
@@ -359,10 +380,11 @@ function TaskCard({
     ? clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA
     : continueWorkspaceCtaLabel(primaryWorkspacePath);
   const primaryBtnPath = primaryAct ? businessActionNavigatePath(primaryAct) : '';
+  const primaryPathNorm = String(primaryBtnPath || '')
+    .replace(/^https?:\/\/[^/]+/i, '')
+    .split('?')[0];
   const primaryTargetsDocumentsUpload =
-    (primaryAct && String(primaryAct.id) === 'upload_certificate') ||
-    (Boolean(primaryBtnPath) &&
-      String(primaryBtnPath).replace(/^https?:\/\/[^/]+/i, '').split('?')[0] === '/documents');
+    (primaryAct && String(primaryAct.id) === 'upload_certificate') || primaryPathNorm === '/documents';
   const suppressContinueInDocuments =
     complianceUi &&
     String(continueWorkspaceLabel || '').toLowerCase() === 'continue in documents' &&
@@ -433,6 +455,16 @@ function TaskCard({
               <p className="text-xs text-gray-600 leading-snug">
                 <span className="font-medium text-gray-800">Why it matters:</span> {requirementWhyLine}
               </p>
+            ) : null}
+            {complianceUi && inboxTaskLinkedRequirementId(task) && onOpenRequirementIntel ? (
+              <button
+                type="button"
+                className="text-left text-xs font-medium text-electric-teal hover:underline py-1"
+                onClick={() => onOpenRequirementIntel(task)}
+                data-testid="today-open-requirement-intel"
+              >
+                Requirement details
+              </button>
             ) : null}
             {hasLongContext && (
               <button
@@ -731,6 +763,7 @@ function SectionBlock({
   onPrimaryNavigate,
   onRunBusinessAction,
   onVisibilityTap,
+  onOpenRequirementIntel,
   overrideBusy,
   complianceBookingBusyId,
   showComplianceBooking,
@@ -792,6 +825,7 @@ function SectionBlock({
                 onPrimaryNavigate={onPrimaryNavigate}
                 onRunBusinessAction={onRunBusinessAction}
                 onVisibilityTap={onVisibilityTap}
+                onOpenRequirementIntel={onOpenRequirementIntel}
                 overrideBusy={overrideBusy}
                 complianceBookingBusyId={complianceBookingBusyId}
                 showComplianceBooking={showComplianceBooking}
@@ -941,6 +975,28 @@ export default function ClientTasksPage() {
   const inboxRequirementById = useMemo(
     () => requirementMapFromList(portalRequirementsForInbox),
     [portalRequirementsForInbox],
+  );
+
+  const [requirementIntelModal, setRequirementIntelModal] = useState(null);
+
+  const openRequirementIntelFromTodayTask = useCallback(
+    (task) => {
+      const rid = inboxTaskLinkedRequirementId(task);
+      if (!rid) return;
+      const seed =
+        inboxRequirementById.get(String(rid)) ||
+        ({
+          requirement_id: String(rid),
+          property_id: task.property_id,
+          display_label: task.title,
+        });
+      setRequirementIntelModal({
+        requirementId: String(rid),
+        seed,
+        propertyLabel: task.property_label || null,
+      });
+    },
+    [inboxRequirementById],
   );
 
   const sections = useMemo(
@@ -1463,6 +1519,17 @@ export default function ClientTasksPage() {
         </DialogContent>
       </Dialog>
 
+      <RequirementIntelligenceModal
+        open={!!requirementIntelModal}
+        requirementId={requirementIntelModal?.requirementId || null}
+        seedRequirement={requirementIntelModal?.seed || null}
+        propertyLabel={requirementIntelModal?.propertyLabel || null}
+        onClose={() => setRequirementIntelModal(null)}
+        onNavigate={(path) => {
+          setRequirementIntelModal(null);
+          navigate(path);
+        }}
+      />
       <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
 
       {!loading && !error && (
@@ -1486,6 +1553,7 @@ export default function ClientTasksPage() {
                     onPrimaryNavigate={onPrimaryNavigate}
                     onRunBusinessAction={runBusinessAction}
                     onVisibilityTap={runVisibilityTap}
+                    onOpenRequirementIntel={openRequirementIntelFromTodayTask}
                     overrideBusy={overrideBusyId}
                     complianceBookingBusyId={complianceBookingBusyId}
                     showComplianceBooking={showComplianceBooking}
@@ -1505,6 +1573,7 @@ export default function ClientTasksPage() {
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={runBusinessAction}
             onVisibilityTap={runVisibilityTap}
+            onOpenRequirementIntel={openRequirementIntelFromTodayTask}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
@@ -1526,6 +1595,7 @@ export default function ClientTasksPage() {
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={runBusinessAction}
             onVisibilityTap={runVisibilityTap}
+            onOpenRequirementIntel={openRequirementIntelFromTodayTask}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
@@ -1543,6 +1613,7 @@ export default function ClientTasksPage() {
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={runBusinessAction}
             onVisibilityTap={runVisibilityTap}
+            onOpenRequirementIntel={openRequirementIntelFromTodayTask}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
@@ -1598,6 +1669,7 @@ export default function ClientTasksPage() {
             onPrimaryNavigate={onPrimaryNavigate}
             onRunBusinessAction={runBusinessAction}
             onVisibilityTap={runVisibilityTap}
+            onOpenRequirementIntel={openRequirementIntelFromTodayTask}
             overrideBusy={overrideBusyId}
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}

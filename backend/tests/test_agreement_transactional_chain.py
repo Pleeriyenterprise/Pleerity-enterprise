@@ -32,6 +32,50 @@ def test_public_acceptance_403_when_intake_session_invalid():
     assert body.get("detail", {}).get("error_code") == "INTAKE_SESSION_INVALID"
 
 
+def test_public_acceptance_422_when_agreement_render_invalid():
+    with patch("routes.agreements_public.rate_limiter.check_rate_limit", new_callable=AsyncMock, return_value=(True, None)):
+        with patch(
+            "routes.agreements_public.create_acceptance",
+            new_callable=AsyncMock,
+            return_value=(None, "AGREEMENT_RENDER_INVALID"),
+        ):
+            client = TestClient(app)
+            r = client.post(
+                "/api/public/agreements/acceptance",
+                json={
+                    "client_id": "c1",
+                    "intake_session_id": "s1",
+                    "acceptance_text_snapshot": "I agree to the terms shown.",
+                    "accepted_by_name": "Jane",
+                    "accepted_by_email": "j@ex.com",
+                },
+            )
+    assert r.status_code == 422
+    body = r.json()
+    assert body.get("detail", {}).get("error_code") == "AGREEMENT_RENDER_INVALID"
+
+
+def test_public_current_includes_structured_document():
+    tpl = {"template_id": "t1", "code": "property_compliance_management_agreement", "name": "Agreement"}
+    ver = {
+        "version_id": "v1",
+        "version_number": 3,
+        "title": "Property Compliance Management Agreement",
+        "subtitle": "(Compliance Vault Pro Service)",
+        "content_blocks": [{"key": "scope", "label": "Service Scope", "content": "Scope text", "enabled": True, "order": 1}],
+        "published_at": "2026-01-01T00:00:00Z",
+        "effective_from": "2026-01-01T00:00:00Z",
+        "status": "published",
+    }
+    with patch("routes.agreements_public.get_current_published_bundle", new_callable=AsyncMock, return_value=(tpl, ver)):
+        client = TestClient(app)
+        r = client.get("/api/public/agreements/current")
+    assert r.status_code == 200
+    body = r.json()
+    assert body.get("document_structure")
+    assert body["document_structure"].get("sections")
+
+
 @pytest.mark.asyncio
 async def test_issue_agreement_idempotent_same_stripe_event_no_second_insert():
     """Duplicate Stripe event id does not insert a second issued row when first issuance succeeded."""

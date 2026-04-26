@@ -35,7 +35,7 @@ from services.requirement_code_registry import (
 )
 from services.compliance_requirement_engine import resolve_engine_payload_from_code
 from services.requirement_action_resolver import resolve_take_action_for_priority_action, resolve_take_action_envelope
-from services.requirement_evidence_authority import authority_runtime_requirement_status
+from services.requirement_client_runtime_surface import project_requirement_row_client_runtime
 
 logger = logging.getLogger(__name__)
 
@@ -165,13 +165,28 @@ def _primary_action_fields(
 
     if at in (ACTION_MISSING_DOCUMENT, ACTION_OVERDUE_COMPLIANCE, ACTION_CERT_EXPIRING_SOON) and source_type == "requirement":
         resolved = resolve_take_action_for_priority_action(a, compliance_engine=compliance_engine)
+        ta_canon = a.get("canonical_take_action") if isinstance(a.get("canonical_take_action"), dict) else {}
+        pri_c = ta_canon.get("primary") if isinstance(ta_canon.get("primary"), dict) else {}
+        sec_c = ta_canon.get("secondary") if isinstance(ta_canon.get("secondary"), dict) else {}
+        plabel = str(resolved.get("primary_action_label") or label)
+        purl = str(resolved.get("primary_action_url") or url)
+        if pri_c.get("label"):
+            plabel = str(pri_c.get("label") or plabel)
+        if pri_c.get("route"):
+            purl = str(pri_c.get("route") or purl)
+        slabel = resolved.get("secondary_action_label")
+        surl = resolved.get("secondary_action_url")
+        if sec_c.get("label"):
+            slabel = str(sec_c.get("label") or slabel)
+        if sec_c.get("route"):
+            surl = str(sec_c.get("route") or surl)
         return (
             str(resolved.get("primary_action_type") or "upload_evidence"),
-            str(resolved.get("primary_action_label") or label),
-            str(resolved.get("primary_action_url") or url),
+            plabel,
+            purl,
             False,
-            resolved.get("secondary_action_label"),
-            resolved.get("secondary_action_url"),
+            slabel,
+            surl,
         )
     if at in (ACTION_MISSING_DOCUMENT, ACTION_OVERDUE_COMPLIANCE, ACTION_CERT_EXPIRING_SOON):
         if compliance_engine and not compliance_engine.get("requires_document_evidence", True):
@@ -323,24 +338,38 @@ def _action_to_task(
         task_metadata["billing_milestone_type"] = "pending_invoice_approval"
 
     if is_req_stream and prop_id and related_rid:
-        eng = req_engine or {}
-        syn: Dict[str, Any] = {
-            "requirement_id": related_rid,
-            "property_id": prop_id,
-            "requirement_code": a.get("requirement_code"),
-            "requirement_type": a.get("requirement_code"),
-            "jurisdiction": a.get("jurisdiction"),
-        }
-        for k, v in eng.items():
-            if v is not None:
-                syn[k] = v
-        env_take = resolve_take_action_envelope(
-            syn,
-            property_id=prop_id,
-            property_jurisdiction=a.get("jurisdiction"),
-        )
-        task_metadata["take_action"] = env_take.get("take_action")
-        task_metadata["requirement_action_type"] = env_take.get("action_type")
+        task_metadata["requirement_id"] = related_rid
+        task_metadata["property_jurisdiction"] = a.get("jurisdiction")
+        if isinstance(a.get("registry_metadata"), dict) and a.get("registry_metadata"):
+            task_metadata["registry_metadata"] = dict(a["registry_metadata"])
+        if isinstance(a.get("canonical_take_action"), dict) and a.get("canonical_take_action"):
+            task_metadata["take_action"] = dict(a["canonical_take_action"])
+            if a.get("canonical_requirement_action_type"):
+                task_metadata["requirement_action_type"] = a.get("canonical_requirement_action_type")
+        else:
+            eng = req_engine or {}
+            syn: Dict[str, Any] = {
+                "requirement_id": related_rid,
+                "property_id": prop_id,
+                "requirement_code": a.get("requirement_code"),
+                "requirement_type": a.get("requirement_code"),
+                "jurisdiction": a.get("jurisdiction"),
+            }
+            for k, v in eng.items():
+                if v is not None:
+                    syn[k] = v
+            rm = a.get("registry_metadata")
+            if isinstance(rm, dict) and rm:
+                syn["registry_metadata"] = {**(syn.get("registry_metadata") or {}), **rm}
+            if a.get("display_label") is not None:
+                syn["display_label"] = a.get("display_label")
+            env_take = resolve_take_action_envelope(
+                syn,
+                property_id=prop_id,
+                property_jurisdiction=a.get("jurisdiction"),
+            )
+            task_metadata["take_action"] = env_take.get("take_action")
+            task_metadata["requirement_action_type"] = env_take.get("action_type")
 
     timing_label = None
     if overdue_days and overdue_days > 0:
@@ -356,7 +385,7 @@ def _action_to_task(
 
     task_metadata["timing_label"] = timing_label
 
-    return {
+    out_task: Dict[str, Any] = {
         "id": task_id,
         "source_type": source_type,
         "source_id": source_id,
@@ -389,6 +418,13 @@ def _action_to_task(
         "updated_at": freshness,
         "filter_tags": _filter_tags(source_type, action_type, overdue_days),
     }
+    if source_type == "requirement" and related_rid:
+        out_task["requirement_id"] = related_rid
+        jur = a.get("jurisdiction")
+        if jur:
+            out_task["jurisdiction"] = jur
+            out_task["property_jurisdiction"] = jur
+    return out_task
 
 
 def _filter_tags(source_type: str, action_type: str, overdue_days: Optional[int]) -> List[str]:
@@ -635,7 +671,8 @@ async def _recently_completed_tasks(client_id: str, limit: int = 15) -> List[Dic
     )
     reqs = []
     for r in raw_reqs:
-        st = authority_runtime_requirement_status(r) or r.get("status")
+        proj = project_requirement_row_client_runtime(r)
+        st = proj.get("status")
         if str(st or "").upper() in ("COMPLIANT", "VALID"):
             reqs.append({**r, "status": st})
         if len(reqs) >= limit:

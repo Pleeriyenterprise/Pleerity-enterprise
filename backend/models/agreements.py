@@ -60,7 +60,9 @@ class AgreementCurrentPublishedResponse(BaseModel):
     title: str
     subtitle: Optional[str] = None
     content_blocks: List[Dict[str, Any]] = Field(default_factory=list)
+    document_structure: Optional[Dict[str, Any]] = None
     published_at: Optional[str] = None
+    effective_from: Optional[str] = None
     acceptance_text_required: str
 
 
@@ -72,6 +74,11 @@ class AgreementAcceptanceCreateBody(BaseModel):
     acceptance_text_snapshot: str = Field(..., min_length=1)
     accepted_by_name: str = Field(..., min_length=1)
     accepted_by_email: str = Field(..., min_length=3)
+    document_submission_method: Optional[str] = None
+    assisted_upload_consent_accepted: Optional[bool] = None
+    assisted_upload_consent_timestamp: Optional[str] = None
+    rendered_agreement_hash: Optional[str] = None
+    rendered_agreement_snapshot: Optional[Dict[str, Any]] = None
 
 
 class IntakeCheckoutBody(BaseModel):

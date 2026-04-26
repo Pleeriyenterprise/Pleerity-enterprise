@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 
 import pytest
 
+from presentation.label_service import today_inbox_action_title
 from services.today_projection_service import (
     build_business_actions_for_task,
     cap_and_order_business_actions,
@@ -60,7 +61,7 @@ def test_derive_today_urgency_work_order_breach_without_due_is_due_soon():
 def test_cap_business_actions_max_two_and_primary():
     acts = [
         {"id": "view_requirement", "label": "View"},
-        {"id": "upload_certificate", "label": "Upload"},
+        {"id": "take_action_primary", "label": "Upload"},
         {"id": "create_compliance_work_order", "label": "Create job", "requirement_id": "r1"},
     ]
     capped = cap_and_order_business_actions(acts, max_actions=2)
@@ -71,6 +72,8 @@ def test_cap_business_actions_max_two_and_primary():
 
 
 def test_today_inbox_title_from_labels_for_work_order():
+    expected = today_inbox_action_title("work_order")
+    assert expected, "domain_labels.json must define today_inbox_action_titles.work_order for this test"
     task = {
         "source_type": "work_order",
         "source_entity_id": "wo1",
@@ -79,7 +82,7 @@ def test_today_inbox_title_from_labels_for_work_order():
     }
     title, flag = today_action_oriented_title(task)
     assert flag is True
-    assert title == "Keep this job moving forward"
+    assert title == expected
 
 
 def test_requirement_action_title_uses_phrase():

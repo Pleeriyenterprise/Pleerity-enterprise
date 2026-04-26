@@ -52,15 +52,15 @@ async def _resolved_jurisdiction_settings_for_client(db, client_id: str) -> Dict
     return {"default_jurisdiction": "Scotland", "enabled_jurisdictions": ["Scotland"]}
 
 
-def _client_surface_visible_requirement_row(row: Dict[str, Any]) -> bool:
-    """False only when explicitly hidden (system / reconciled internal rows)."""
-    return row.get("client_surface_visible") is not False
-
-
 def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> str:
-    """Compute property-level compliance status from requirements (same logic as jobs.check_compliance_status_changes).
-    OVERDUE/EXPIRED → RED; EXPIRING_SOON or PENDING (missing evidence) → AMBER; else GREEN.
-    Ensures Properties page aligns with Compliance Score dashboard."""
+    """Compute property-level compliance status from **projected** portal-visible requirement rows.
+
+    Uses the same effective status semantics as ``calculate_compliance_score`` (authority, else legacy
+    ``status``). OVERDUE/EXPIRED → RED; EXPIRING_SOON or PENDING with due within 30 days → AMBER;
+    PENDING without near-term due → AMBER (missing evidence attention); else GREEN.
+    Calendar-overdue while still ``PENDING`` is not treated as RED here so property cards match
+    score/header overdue counts (single source of truth).
+    """
     if not requirements:
         return "GREEN"
     now = datetime.now(timezone.utc)
@@ -68,8 +68,8 @@ def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> s
     has_expiring_soon = False
     has_pending = False
     for req in requirements:
-        status = req.get("status", "PENDING")
-        if status in ["OVERDUE", "EXPIRED"]:
+        status = (req.get("status") or "PENDING").strip().upper()
+        if status in ("OVERDUE", "EXPIRED"):
             has_overdue = True
         elif status == "EXPIRING_SOON":
             has_expiring_soon = True
@@ -82,9 +82,7 @@ def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> s
                     if due_date.tzinfo is None:
                         due_date = due_date.replace(tzinfo=timezone.utc)
                     days_until_due = (due_date - now).days
-                    if days_until_due < 0:
-                        has_overdue = True
-                    elif days_until_due <= 30:
+                    if days_until_due <= 30:
                         has_expiring_soon = True
                 except Exception:
                     pass
@@ -530,6 +528,8 @@ async def get_dashboard(request: Request):
         ).to_list(1000)
         from services.requirement_client_runtime_surface import (
             filter_requirement_rows_for_client_runtime_surfaces,
+            client_portal_surface_visible_row,
+            project_requirement_row_client_runtime,
         )
 
         requirements = await filter_requirement_rows_for_client_runtime_surfaces(
@@ -539,13 +539,14 @@ async def get_dashboard(request: Request):
             client_doc=client or {},
             properties=properties,
         )
-        visible_reqs = [r for r in requirements if _client_surface_visible_requirement_row(r)]
+        projected = [project_requirement_row_client_runtime(r) for r in requirements]
+        visible_reqs = [r for r in projected if client_portal_surface_visible_row(r)]
 
-        # Calculate compliance summary (portal-visible rows only; aligns with Requirements list)
+        # Calculate compliance summary (portal-visible rows only; aligns with /client/compliance-score stats)
         total_requirements = len(visible_reqs)
-        compliant = sum(1 for r in visible_reqs if r["status"] == "COMPLIANT")
-        overdue = sum(1 for r in visible_reqs if r["status"] == "OVERDUE")
-        expiring = sum(1 for r in visible_reqs if r["status"] == "EXPIRING_SOON")
+        compliant = sum(1 for r in visible_reqs if (r.get("status") or "") == "COMPLIANT")
+        overdue = sum(1 for r in visible_reqs if (r.get("status") or "") in ("OVERDUE", "EXPIRED"))
+        expiring = sum(1 for r in visible_reqs if (r.get("status") or "") == "EXPIRING_SOON")
 
         # Group requirements by property so Properties page status matches Compliance Score
         reqs_by_property = {}

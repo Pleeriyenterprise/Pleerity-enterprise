@@ -17,6 +17,7 @@ from typing import Optional
 import logging
 
 from utils.expiry_utils import get_computed_status, get_effective_expiry_date
+from services.requirement_client_runtime_surface import project_requirement_row_client_runtime
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"], dependencies=[Depends(client_route_guard)])
@@ -94,31 +95,32 @@ async def get_compliance_summary(request: Request):
         client_doc=client_doc,
         properties=properties,
     )
-    prop_by_id = {p["property_id"]: p for p in properties if p.get("property_id")}
     total_weighted_score = 0.0
     total_requirements = 0
     property_summaries = []
     for prop in properties:
         pid = prop["property_id"]
-        prop_reqs = [r for r in requirements if r.get("property_id") == pid]
-        pd = prop_by_id.get(pid)
+        prop_reqs = [
+            project_requirement_row_client_runtime(r)
+            for r in requirements
+            if r.get("property_id") == pid
+        ]
         overdue_count = sum(
             1
             for r in prop_reqs
-            if get_computed_status(r, property_doc=pd, client_doc=client_doc) in ("OVERDUE", "EXPIRED")
+            if (r.get("status") or "").upper().strip() in ("OVERDUE", "EXPIRED")
         )
         expiring_soon_count = sum(
             1
             for r in prop_reqs
-            if get_computed_status(r, property_doc=pd, client_doc=client_doc) == "EXPIRING_SOON"
+            if (r.get("status") or "").upper().strip() == "EXPIRING_SOON"
         )
         if not prop_reqs:
             property_score = 100
         else:
             points = []
             for r in prop_reqs:
-                cs = get_computed_status(r, property_doc=pd, client_doc=client_doc)
-                status_val = (cs or "PENDING").upper().strip()
+                status_val = (r.get("status") or "PENDING").upper().strip()
                 pt = REQUIREMENT_POINTS.get(status_val, REQUIREMENT_POINTS["PENDING"])
                 points.append(pt)
             property_score = round(sum(points) / len(points))
@@ -205,19 +207,19 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
         )
         from services.catalog_compliance import _days_to_expiry, _requirement_numeric_score
         matrix = []
-        for r in requirements:
-            due = get_effective_expiry_date(r)
-            due_raw = due.isoformat() if due and hasattr(due, "isoformat") else r.get("due_date")
+        for r_raw in requirements:
+            r = project_requirement_row_client_runtime(r_raw)
+            due_raw = r.get("due_date")
             days = _days_to_expiry(due_raw)
-            cs = get_computed_status(r, property_doc=prop_full, client_doc=client_doc)
+            cs = (r.get("status") or "PENDING")
             matrix.append({
                 "requirement_code": r.get("requirement_type"),
                 "title": r.get("description") or r.get("requirement_type"),
-                "status": cs or "PENDING",
+                "status": cs,
                 "numeric_score": _requirement_numeric_score(cs, due_raw),
                 "criticality": "MED",
                 "weight": 1,
-                "expiry_date": due.isoformat() if due and hasattr(due, "isoformat") else due_raw,
+                "expiry_date": due_raw,
                 "days_to_expiry": days,
                 "evidence_doc_id": None,
                 "requirement_id": r.get("requirement_id"),

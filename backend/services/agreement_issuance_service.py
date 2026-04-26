@@ -22,7 +22,8 @@ from models.agreements import (
 )
 from services.agreement_acceptance_service import mark_acceptance_payment_completed
 from services.agreement_catalog_service import get_system_document_settings
-from services.agreement_pdf import build_agreement_pdf_bytes
+from services.agreement_document_authority import compile_agreement_document
+from services.agreement_pdf import build_agreement_pdf_from_document
 from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
@@ -188,19 +189,39 @@ async def issue_agreement_for_subscription_payment(
         agreement_date_display=agreement_date_display,
     )
 
-    render_snapshot = {**render_ctx, "template_version_id": ver.get("version_id"), "template_id": acc.get("template_id")}
-
     issued_id = str(uuid.uuid4())
-    title = str(ver.get("title") or "Service Agreement")
-    subtitle = str(ver.get("subtitle") or "")
-    blocks: List[Dict[str, Any]] = list(ver.get("content_blocks") or [])
+    compiled = compile_agreement_document(
+        template_name="Property Compliance Management Agreement",
+        template_code=str(acc.get("template_code") or ""),
+        template_id=str(acc.get("template_id") or ""),
+        version_id=str(acc.get("template_version_id") or ""),
+        version_number=int(ver.get("version_number") or 1),
+        published_at=ver.get("published_at"),
+        effective_from=ver.get("effective_from"),
+        title=str(ver.get("title") or "Service Agreement"),
+        subtitle=str(ver.get("subtitle") or ""),
+        content_blocks=list(ver.get("content_blocks") or []),
+        render_context=render_ctx,
+    )
+    if not compiled.get("valid"):
+        return await _fail(
+            client_id=client_id,
+            acceptance_id=acceptance_id,
+            payment_reference=payment_reference,
+            stripe_event_id=idempotency_key,
+            reason=f"CANONICAL_RENDER_INVALID:{','.join(compiled.get('issues') or [])}",
+            template_version_id=template_version_id_from_metadata,
+        )
+    render_snapshot = {
+        **render_ctx,
+        "template_version_id": ver.get("version_id"),
+        "template_id": acc.get("template_id"),
+        "render_hash_sha256": compiled.get("render_hash_sha256"),
+    }
 
     try:
-        pdf_bytes = build_agreement_pdf_bytes(
-            title=title,
-            subtitle=subtitle,
-            content_blocks=blocks,
-            render_ctx=render_ctx,
+        pdf_bytes = build_agreement_pdf_from_document(
+            document_structure=compiled.get("document") or {},
             brand_primary=str(settings.get("brand_primary_color") or "#0B1D3A"),
             footer_text=str(settings.get("default_footer_text") or ""),
         )
@@ -250,6 +271,7 @@ async def issue_agreement_for_subscription_payment(
         "stripe_event_id": idempotency_key,
         "crn": crn,
         "render_data_snapshot": render_snapshot,
+        "render_document_structure": compiled.get("document") or {},
         "document_files": {
             "pdf_filename": filename,
             "pdf_gridfs_id": gridfs_id,
