@@ -2,6 +2,7 @@
 
 Endpoints:
 - POST /api/intake/submit - Submit completed intake wizard
+- POST /api/intake/agreement-preview - Checkout-grade agreement HTML (same pipeline as acceptance; Step 5)
 - POST /api/intake/checkout - Create Stripe checkout session (JSON body: { "acceptance_id": "<uuid>" } required)
 - GET /api/intake/onboarding-status/{client_id} - Get onboarding progress
 - GET /api/intake/councils - Search UK councils
@@ -18,8 +19,8 @@ INTAKE-LEVEL GATING (NON-NEGOTIABLE):
   3. Provisioning safeguards (defense in depth)
 """
 from fastapi import APIRouter, HTTPException, Request, status, UploadFile, File, Form, Body
-from pydantic import BaseModel, EmailStr
-from utils.rate_limiter import rate_limiter
+from pydantic import BaseModel, EmailStr, Field, model_validator
+from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from database import database
 from models import (
     IntakeFormData, IntakePropertyData, Client, Property, ServiceCode, 
@@ -46,6 +47,7 @@ from typing import Dict, List, Literal, Optional
 from utils.storage_paths import resolve_document_storage_path, resolve_intake_upload_dir
 
 from pymongo.errors import DuplicateKeyError
+from utils.request_ip import get_client_ip
 from utils.client_email import (
     INTAKE_EMAIL_ALREADY_EXISTS_MESSAGE,
     canonical_client_email,
@@ -55,6 +57,9 @@ from utils.client_email import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/intake", tags=["intake"])
+
+INTAKE_AGREEMENT_PREVIEW_RATE_ATTEMPTS = 60
+INTAKE_AGREEMENT_PREVIEW_RATE_WINDOW_MINUTES = 10
 
 # Document vault path for copying intake-uploaded files (same as documents route / intake_upload_migration)
 DOCUMENT_STORAGE_PATH = resolve_document_storage_path()
@@ -686,6 +691,21 @@ class IntakeRequirementsPreviewRequest(BaseModel):
     properties: List[IntakePropertyData]
 
 
+class IntakeAgreementPreviewBody(BaseModel):
+    """Checkout-grade agreement preview: either post-submit (client_id) or wizard payload (intake)."""
+
+    intake_session_id: str = Field(..., min_length=8)
+    client_id: Optional[str] = None
+    intake: Optional[IntakeFormData] = None
+
+    @model_validator(mode="after")
+    def require_intake_or_client(self) -> "IntakeAgreementPreviewBody":
+        cid = (self.client_id or "").strip()
+        if not cid and self.intake is None:
+            raise ValueError("intake is required when client_id is omitted")
+        return self
+
+
 @router.post("/requirements-preview")
 async def preview_generated_requirements(body: IntakeRequirementsPreviewRequest):
     """
@@ -743,6 +763,69 @@ async def preview_generated_requirements(body: IntakeRequirementsPreviewRequest)
             }
         )
     return {"properties": summaries}
+
+
+@router.post("/agreement-preview")
+async def intake_agreement_preview(request: Request, body: IntakeAgreementPreviewBody):
+    """
+    Authoritative agreement preview for intake Step 5 (same render pipeline as acceptance).
+
+    - Without ``client_id``: requires ``intake`` wizard payload bound to ``intake_session_id``.
+    - With ``client_id``: loads commercial snapshot from Mongo; ``intake_session_id`` must match the client row.
+    """
+    from services.agreement_preview_service import build_intake_agreement_preview
+
+    ip = get_client_ip(request)
+    allowed, rl_msg = await rate_limiter.check_rate_limit(
+        f"intake_agreement_preview:{ip or 'unknown'}",
+        INTAKE_AGREEMENT_PREVIEW_RATE_ATTEMPTS,
+        INTAKE_AGREEMENT_PREVIEW_RATE_WINDOW_MINUTES,
+    )
+    if not allowed:
+        log_rate_limit_event("intake_agreement_preview", ip or "", ip or "")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={"error_code": "RATE_LIMIT_EXCEEDED", "message": rl_msg or "Too many requests. Try again shortly."},
+        )
+
+    cid = (body.client_id or "").strip() or None
+    payload, err, v_errs = await build_intake_agreement_preview(
+        intake_session_id=body.intake_session_id,
+        client_id=cid,
+        intake=body.intake,
+    )
+    if err == "AGREEMENT_NOT_CONFIGURED":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error_code": err, "message": "No published agreement is available yet."},
+        )
+    if err == "CLIENT_NOT_FOUND":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"error_code": err})
+    if err == "INTAKE_SESSION_INVALID":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error_code": err,
+                "message": "Agreement preview does not match this registration session.",
+            },
+        )
+    if err == "INTAKE_BODY_REQUIRED":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error_code": err, "message": "intake payload is required when client_id is omitted."},
+        )
+    if err == "AGREEMENT_RENDER_INVALID":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error_code": err,
+                "message": "Agreement could not be rendered with the information provided.",
+                "validation_issues": v_errs or [],
+            },
+        )
+    if err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"error_code": err})
+    return payload
 
 
 @router.post("/submit")

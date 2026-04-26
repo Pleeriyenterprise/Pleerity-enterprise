@@ -4,6 +4,9 @@
  * Charts/analytics palette: compliant=success, expiring=warning, overdue=danger, trend=secondary, baseline=neutral grey.
  */
 
+/** Support email – prefer REACT_APP_SUPPORT_EMAIL for overrides. */
+export const SUPPORT_EMAIL = process.env.REACT_APP_SUPPORT_EMAIL || 'info@pleerityenterprise.co.uk';
+
 export const branding = {
   companyName: 'Pleerity Enterprise Ltd',
   productName: 'Compliance Vault Pro',
@@ -38,6 +41,10 @@ export const branding = {
   get ogImageUrlFallback() {
     return `${this.assetsBase}/pleerity-logo.png`;
   },
+  /** Customer-facing support / assisted-upload destination (same as SUPPORT_EMAIL). */
+  get supportEmail() {
+    return SUPPORT_EMAIL;
+  },
 };
 
 /** For use in img src (same as branding.logoUrl). */
@@ -48,9 +55,6 @@ export const BRAND_OG_IMAGE_URL = branding.ogImageUrlFallback;
 
 /** Site URL for canonical/og (no trailing slash). Use custom domain. */
 export const SITE_URL = 'https://pleerityenterprise.co.uk';
-
-/** Support email – prefer config.js REACT_APP for overrides. */
-export const SUPPORT_EMAIL = process.env.REACT_APP_SUPPORT_EMAIL || 'info@pleerityenterprise.co.uk';
 
 /** Schema/SEO logo URL (absolute). */
 export const SCHEMA_LOGO_URL = `${SITE_URL}/branding/pleerity-logo.png`;

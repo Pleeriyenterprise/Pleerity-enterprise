@@ -400,6 +400,7 @@ export const intakeAPI = {
   /** Same duplicate rule as submit; rate-limited. Returns { available, normalized_email, reason_code }. */
   checkEmailAvailability: (email) => apiClient.post('/intake/check-email', { email }),
   submit: (data) => apiClient.post('/intake/submit', data),
+  previewAgreement: (body) => apiClient.post('/intake/agreement-preview', body),
   previewRequirements: (properties) => apiClient.post('/intake/requirements-preview', { properties }),
   createCheckout: (clientId, body) => {
     const origin = window.location.origin;

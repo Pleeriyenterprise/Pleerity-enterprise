@@ -44,11 +44,7 @@ import {
   isIntakeEmailFormatValid,
 } from '../utils/intakeEmail';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
-import {
-  hashAgreementRender,
-  renderAgreementForDisplay,
-  validateAgreementRender,
-} from '../utils/agreementRender';
+import { renderAgreementForDisplay, validateAgreementRender } from '../utils/agreementRender';
 
 // Plan limits - NEW PLAN STRUCTURE (must match backend plan_registry.py)
 const PLAN_LIMITS = {
@@ -398,36 +394,57 @@ const IntakePage = () => {
     [renderedAgreement],
   );
 
+  const agreementFormFingerprint = useMemo(
+    () => JSON.stringify(buildIntakeSubmitPayload(formData, intakeSessionId, marketing)),
+    [formData, intakeSessionId, marketing],
+  );
+
   useEffect(() => {
     if (step !== 5) return;
     let cancelled = false;
+    let timer = null;
     setAgreementLoading(true);
     setAgreementFetchError('');
-    publicAgreementsAPI
-      .getCurrent()
-      .then((res) => {
-        if (!cancelled) setAgreementCurrent(res.data || null);
-      })
-      .catch((err) => {
+
+    const load = async () => {
+      try {
+        const intakePayload = buildIntakeSubmitPayload(formData, intakeSessionId, marketing);
+        const body = resumeClientId
+          ? { intake_session_id: intakeSessionId, client_id: resumeClientId }
+          : { intake_session_id: intakeSessionId, intake: intakePayload };
+        const res = await intakeAPI.previewAgreement(body);
+        if (!cancelled) {
+          setAgreementCurrent(res.data || null);
+          setServiceAgreementAccepted(false);
+          setAgreementFetchError('');
+        }
+      } catch (err) {
         if (!cancelled) {
           setAgreementCurrent(null);
           const d = err.response?.data?.detail;
+          const issues =
+            typeof d === 'object' && d && Array.isArray(d.validation_issues) && d.validation_issues.length
+              ? ` ${d.validation_issues.join('; ')}`
+              : '';
           const msg =
             typeof d === 'object' && d && d.message
-              ? d.message
+              ? `${d.message}${issues}`
               : typeof d === 'string'
                 ? d
-                : 'Could not load the service agreement. Please refresh and try again.';
+                : 'Could not load the service agreement preview. Please refresh and try again.';
           setAgreementFetchError(msg);
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setAgreementLoading(false);
-      });
+      }
+    };
+
+    timer = setTimeout(load, 400);
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
-  }, [step]);
+  }, [step, intakeSessionId, resumeClientId, agreementFormFingerprint]);
 
   // Step validation
   const validateStep = (stepNum) => {
@@ -694,14 +711,14 @@ const IntakePage = () => {
       );
       return;
     }
-    if (!serviceAgreementAccepted) {
-      setError('Please confirm you have read and accept the service agreement before paying.');
-      return;
-    }
     if (!agreementRenderValidation.valid) {
       setError(
         'The service agreement could not be safely rendered. Please refresh and try again or contact support.',
       );
+      return;
+    }
+    if (!serviceAgreementAccepted) {
+      setError('Please confirm you have read and accept the service agreement before paying.');
       return;
     }
     setLoading(true);
@@ -737,11 +754,30 @@ const IntakePage = () => {
           typeof window !== 'undefined' ? window.localStorage.getItem('customer_reference') : null;
       }
 
+      const authoritativePreview = await intakeAPI.previewAgreement({
+        intake_session_id: intakeSessionId,
+        client_id: clientId,
+      });
+      const pv = authoritativePreview.data;
+      if (!pv?.render_hash_sha256) {
+        setError(
+          'The service agreement could not be verified for payment. Please refresh and try again or contact support.',
+        );
+        return;
+      }
+      const renderedForAcceptance = renderAgreementForDisplay(pv);
+      if (!validateAgreementRender(renderedForAcceptance).valid) {
+        setError(
+          'The service agreement could not be safely rendered for payment. Please refresh and try again or contact support.',
+        );
+        return;
+      }
+
       const acceptanceBody = {
         client_id: clientId,
         intake_session_id: intakeSessionId,
-        template_code: agreementCurrent.template_code,
-        acceptance_text_snapshot: agreementCurrent.acceptance_text_required || '',
+        template_code: pv.template_code || agreementCurrent.template_code,
+        acceptance_text_snapshot: pv.acceptance_text_required || agreementCurrent.acceptance_text_required || '',
         accepted_by_name: (formData.full_name || '').trim(),
         accepted_by_email: canonicalIntakeEmail(formData.email) || (formData.email || '').trim(),
         document_submission_method: formData.document_submission_method || '',
@@ -751,8 +787,8 @@ const IntakePage = () => {
           formData.document_submission_method === 'EMAIL' && formData.email_upload_consent
             ? new Date().toISOString()
             : null,
-        rendered_agreement_hash: hashAgreementRender(renderedAgreement),
-        rendered_agreement_snapshot: renderedAgreement,
+        rendered_agreement_hash: pv.render_hash_sha256,
+        rendered_agreement_snapshot: renderedForAcceptance,
       };
       const accRes = await publicAgreementsAPI.postAcceptance(acceptanceBody);
       const acceptance_id = accRes.data?.acceptance_id;
@@ -2601,7 +2637,7 @@ const Step5Review = ({
                 <span className="text-sm text-gray-700">
                   You selected assisted document upload via email. You can send compliance documents to
                   {' '}
-                  {branding?.supportEmail || branding?.email || 'support@pleerity.com'}
+                  {branding.supportEmail}
                   . You can also upload documents directly after portal activation.
                 </span>
               </>

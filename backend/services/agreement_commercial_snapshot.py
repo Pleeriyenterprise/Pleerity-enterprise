@@ -9,9 +9,65 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
+from models.core import IntakeFormData
 from services.plan_registry import PlanCode, plan_registry
+from utils.client_email import canonical_client_email
 
 logger = logging.getLogger(__name__)
+
+
+def build_commercial_snapshot_from_intake_form(
+    data: IntakeFormData,
+    template_id: str,
+    template_version_id: str,
+) -> Dict[str, Any]:
+    """
+    Same commercial fields as ``build_commercial_snapshot`` but from wizard payload before/during intake.
+    Onboarding fee assumes not yet paid (new signup).
+    """
+    plan_str = data.billing_plan.value
+    try:
+        plan_code = PlanCode(plan_str)
+    except ValueError:
+        legacy_mapping = {
+            "PLAN_1": PlanCode.PLAN_1_SOLO,
+            "PLAN_2_5": PlanCode.PLAN_2_PORTFOLIO,
+            "PLAN_6_15": PlanCode.PLAN_3_PRO,
+        }
+        plan_code = legacy_mapping.get(plan_str, PlanCode.PLAN_1_SOLO)
+
+    plan_def = plan_registry.get_plan(plan_code)
+    plan_label = str(plan_def.get("name") or plan_code.value)
+
+    monthly_gbp = float(plan_def.get("monthly_price") or 0)
+    onboarding_gbp = float(plan_def.get("onboarding_fee") or 0)
+    monthly_minor = int(round(monthly_gbp * 100))
+    onboarding_minor = int(round(onboarding_gbp * 100))
+
+    props = list(getattr(data, "properties", None) or [])
+    client_address = ""
+    if props:
+        client_address = _format_address_from_property(props[0].model_dump() if hasattr(props[0], "model_dump") else props[0])
+
+    contact_email = canonical_client_email(str(getattr(data, "email", "") or ""))
+    full_name = (str(getattr(data, "full_name", "") or "")).strip()
+    company = (str(getattr(data, "company_name", "") or "")).strip() if getattr(data, "company_name", None) else ""
+
+    return {
+        "client_full_name": full_name,
+        "client_company_name": company,
+        "client_address": client_address,
+        "client_email": contact_email,
+        "client_phone": (str(getattr(data, "phone", "") or "").strip() or None),
+        "selected_plan_code": plan_code.value,
+        "plan_label": plan_label,
+        "billing_amount_minor": monthly_minor,
+        "billing_interval": "month",
+        "onboarding_fee_minor": onboarding_minor,
+        "currency": "GBP",
+        "agreement_template_id": template_id,
+        "agreement_template_version_id": template_version_id,
+    }
 
 
 def _format_address_from_property(prop: Dict[str, Any]) -> str:

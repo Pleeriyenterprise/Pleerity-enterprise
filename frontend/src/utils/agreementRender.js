@@ -1,3 +1,5 @@
+import { SUPPORT_EMAIL } from '../config/branding';
+
 const PLACEHOLDER_RE = /\{\{[^}]+\}\}/;
 const HTML_TAG_RE = /<[^>]+>/;
 
@@ -55,7 +57,7 @@ export function buildAgreementRenderContext({
     accepted_signatory_name: String(formData?.full_name || '').trim(),
     acceptance_timestamp: acceptanceTimestampIso || new Date().toISOString(),
     agreement_version: String(agreementCurrent?.version_number || ''),
-    support_email: supportEmail || 'support@pleerity.com',
+    support_email: supportEmail || SUPPORT_EMAIL,
   };
 }
 
@@ -78,16 +80,5 @@ export function validateAgreementRender(renderedAgreement) {
   if (values.every((v) => !String(v || '').trim())) return { valid: false, reason: 'empty_render' };
   if (values.some((v) => textHasUnsafeArtifacts(v))) return { valid: false, reason: 'unsafe_artifact' };
   return { valid: true, reason: null };
-}
-
-export function hashAgreementRender(renderedAgreement) {
-  const payload = JSON.stringify({
-    title: renderedAgreement?.title || '',
-    subtitle: renderedAgreement?.subtitle || '',
-    document_structure: renderedAgreement?.document_structure || {},
-  });
-  let h = 0;
-  for (let i = 0; i < payload.length; i += 1) h = (h * 31 + payload.charCodeAt(i)) >>> 0;
-  return `ui-${h.toString(16)}`;
 }
 

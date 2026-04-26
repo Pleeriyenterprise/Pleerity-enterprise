@@ -55,7 +55,7 @@ def test_public_acceptance_422_when_agreement_render_invalid():
     assert body.get("detail", {}).get("error_code") == "AGREEMENT_RENDER_INVALID"
 
 
-def test_public_current_includes_structured_document():
+def test_public_current_is_metadata_only_no_checkout_document():
     tpl = {"template_id": "t1", "code": "property_compliance_management_agreement", "name": "Agreement"}
     ver = {
         "version_id": "v1",
@@ -72,8 +72,8 @@ def test_public_current_includes_structured_document():
         r = client.get("/api/public/agreements/current")
     assert r.status_code == 200
     body = r.json()
-    assert body.get("document_structure")
-    assert body["document_structure"].get("sections")
+    assert body.get("document_structure") is None
+    assert body.get("content_blocks") == []
 
 
 @pytest.mark.asyncio

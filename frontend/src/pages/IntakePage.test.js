@@ -24,17 +24,6 @@ jest.mock('uuid', () => ({
 // Mock intake API
 jest.mock('../api/client', () => ({
   publicAgreementsAPI: {
-    getCurrent: jest.fn(() =>
-      Promise.resolve({
-        data: {
-          title: 'Test service agreement',
-          subtitle: '',
-          template_code: 'property_compliance_management_agreement',
-          acceptance_text_required: 'I have read and agree to the service agreement above.',
-          content_blocks: [{ key: 'sec1', label: 'Terms', content: 'Agreement body from API.' }],
-        },
-      })
-    ),
     postAcceptance: jest.fn(() =>
       Promise.resolve({ data: { acceptance_id: 'accept-test-1' } })
     ),
@@ -70,6 +59,39 @@ jest.mock('../api/client', () => ({
     createCheckout: jest.fn(() =>
       Promise.resolve({ data: { checkout_url: 'https://checkout.example.com' } })
     ),
+    previewAgreement: jest.fn(() =>
+      Promise.resolve({
+        data: {
+          title: 'Test service agreement',
+          subtitle: '',
+          template_code: 'property_compliance_management_agreement',
+          template_id: 't1',
+          template_version_id: 'v1',
+          version_number: 1,
+          published_at: null,
+          effective_from: null,
+          acceptance_text_required: 'I have read and agree to the service agreement above.',
+          render_hash_sha256: 'ab'.repeat(32),
+          document_structure: {
+            title: 'Test service agreement',
+            subtitle: '',
+            sections: [
+              {
+                key: 'sec1',
+                heading: 'Terms',
+                nodes: [
+                  {
+                    type: 'paragraph',
+                    text: 'This is the binding agreement body text for validation purposes.',
+                  },
+                ],
+              },
+            ],
+          },
+          content_blocks: [],
+        },
+      })
+    ),
   },
 }));
 
@@ -102,13 +124,35 @@ beforeEach(() => {
   intakeAPI.createCheckout.mockResolvedValue({
     data: { checkout_url: 'https://checkout.example.com' },
   });
-  publicAgreementsAPI.getCurrent.mockResolvedValue({
+  intakeAPI.previewAgreement.mockResolvedValue({
     data: {
       title: 'Test service agreement',
       subtitle: '',
       template_code: 'property_compliance_management_agreement',
+      template_id: 't1',
+      template_version_id: 'v1',
+      version_number: 1,
+      published_at: null,
+      effective_from: null,
       acceptance_text_required: 'I have read and agree to the service agreement above.',
-      content_blocks: [{ key: 'sec1', label: 'Terms', content: 'Agreement body from API.' }],
+      render_hash_sha256: 'ab'.repeat(32),
+      document_structure: {
+        title: 'Test service agreement',
+        subtitle: '',
+        sections: [
+          {
+            key: 'sec1',
+            heading: 'Terms',
+            nodes: [
+              {
+                type: 'paragraph',
+                text: 'This is the binding agreement body text for validation purposes.',
+              },
+            ],
+          },
+        ],
+      },
+      content_blocks: [],
     },
   });
   publicAgreementsAPI.postAcceptance.mockResolvedValue({
@@ -622,13 +666,30 @@ describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
   }, 15000);
 
   it('blocks payment when agreement render is invalid (unresolved placeholders)', async () => {
-    publicAgreementsAPI.getCurrent.mockResolvedValueOnce({
+    intakeAPI.previewAgreement.mockResolvedValueOnce({
       data: {
         title: 'Agreement {{unknown_title_key}}',
         subtitle: '',
         template_code: 'property_compliance_management_agreement',
+        template_id: 't1',
+        template_version_id: 'v1',
+        version_number: 1,
+        published_at: null,
+        effective_from: null,
         acceptance_text_required: 'I agree.',
-        content_blocks: [{ key: 'sec1', label: 'Terms', content: 'Body {{unknown_block_key}}' }],
+        render_hash_sha256: 'ef'.repeat(32),
+        document_structure: {
+          title: 'Agreement {{unknown_title_key}}',
+          subtitle: '',
+          sections: [
+            {
+              key: 'sec1',
+              heading: 'Terms',
+              nodes: [{ type: 'paragraph', text: 'Body text without placeholders.' }],
+            },
+          ],
+        },
+        content_blocks: [],
       },
     });
     render(
@@ -694,19 +755,24 @@ describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
   });
 
   it('opens full agreement viewer with metadata', async () => {
-    publicAgreementsAPI.getCurrent.mockResolvedValueOnce({
+    intakeAPI.previewAgreement.mockResolvedValueOnce({
       data: {
         title: 'Property Compliance Management Agreement',
         subtitle: '(Compliance Vault Pro Service)',
         template_code: 'property_compliance_management_agreement',
+        template_id: 't1',
+        template_version_id: 'v1',
         version_number: 4,
         effective_from: '2026-01-01T00:00:00Z',
         published_at: '2026-01-02T00:00:00Z',
         acceptance_text_required: 'I agree.',
+        render_hash_sha256: '12'.repeat(32),
         document_structure: {
           title: 'Property Compliance Management Agreement',
           subtitle: '(Compliance Vault Pro Service)',
-          sections: [{ key: 'scope', heading: 'Service Scope', nodes: [{ type: 'paragraph', text: 'Scope text.' }] }],
+          sections: [
+            { key: 'scope', heading: 'Service Scope', nodes: [{ type: 'paragraph', text: 'Scope text.' }] },
+          ],
         },
         content_blocks: [],
       },

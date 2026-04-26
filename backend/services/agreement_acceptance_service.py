@@ -19,39 +19,10 @@ from models.agreements import (
 from services.agreement_catalog_service import get_current_published_bundle, get_system_document_settings
 from services.agreement_commercial_snapshot import build_commercial_snapshot, commercial_snapshots_match
 from services.agreement_document_authority import compile_agreement_document
+from services.agreement_render_context import build_agreement_render_context, validate_checkout_grade_render_context
 from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
-
-
-def _build_render_context(
-    *,
-    snap: Dict[str, Any],
-    settings: Dict[str, Any],
-    accepted_by_name: str,
-    acceptance_timestamp: str,
-    version_number: int,
-) -> Dict[str, Any]:
-    return {
-        "provider_company_name": settings.get("provider_company_name") or "Pleerity Enterprise Ltd",
-        "client_full_name": snap.get("client_full_name") or "",
-        "client_company_name": snap.get("client_company_name") or "",
-        "client_email": snap.get("client_email") or "",
-        "client_address": snap.get("client_address") or "",
-        "plan_name": snap.get("plan_label") or snap.get("selected_plan_code") or "",
-        "billing_interval": snap.get("billing_interval") or "month",
-        "monthly_fee": f"£{int(snap.get('billing_amount_minor') or 0) / 100:.2f}",
-        "currency": snap.get("currency") or "GBP",
-        "onboarding_fee_line": (
-            f"£{int(snap.get('onboarding_fee_minor') or 0) / 100:.2f}"
-            if int(snap.get("onboarding_fee_minor") or 0) > 0
-            else "None"
-        ),
-        "accepted_signatory_name": accepted_by_name.strip()[:200],
-        "acceptance_timestamp": acceptance_timestamp,
-        "agreement_version": str(version_number or 1),
-        "support_email": settings.get("provider_email") or "",
-    }
 
 
 async def create_acceptance(
@@ -108,13 +79,26 @@ async def create_acceptance(
         "acceptance_text_shown": acceptance_text_snapshot.strip()[:4000],
         "service_code": "COMPLIANCE_VAULT_PRO",
     }
-    render_context = _build_render_context(
-        snap=snap,
+    render_context = build_agreement_render_context(
+        commercial_snapshot=snap,
         settings=settings,
-        accepted_by_name=accepted_by_name,
-        acceptance_timestamp=now_iso,
-        version_number=int(ver.get("version_number") or 1),
+        accepted_signatory_name=accepted_by_name,
+        acceptance_timestamp_display=now_iso,
+        agreement_version_number=int(ver.get("version_number") or 1),
     )
+    ok_ctx, ctx_issues = validate_checkout_grade_render_context(
+        render_context,
+        billing_amount_minor=int(snap.get("billing_amount_minor") or 0),
+        preview_mode=False,
+    )
+    if not ok_ctx:
+        logger.warning(
+            "Agreement acceptance blocked: invalid render context client_id=%s issues=%s",
+            client_id,
+            ctx_issues,
+        )
+        return None, "AGREEMENT_RENDER_INVALID"
+
     rendered_result = compile_agreement_document(
         template_name=str(tpl.get("name") or "Service Agreement"),
         template_code=str(tpl.get("code") or DEFAULT_TEMPLATE_CODE),
@@ -135,6 +119,20 @@ async def create_acceptance(
             rendered_result.get("issues"),
         )
         return None, "AGREEMENT_RENDER_INVALID"
+
+    server_hash = str(rendered_result.get("render_hash_sha256") or "").strip()
+    client_hash = (client_rendered_agreement_hash or "").strip()
+    if not client_hash:
+        logger.warning("Agreement acceptance blocked: missing client render hash client_id=%s", client_id)
+        return None, "AGREEMENT_RENDER_HASH_MISSING"
+    if client_hash != server_hash:
+        logger.warning(
+            "Agreement acceptance blocked: client hash mismatch client_id=%s client=%s server=%s",
+            client_id,
+            client_hash[:16],
+            server_hash[:16],
+        )
+        return None, "AGREEMENT_RENDER_HASH_MISMATCH"
 
     acceptance_id = str(uuid.uuid4())
     doc: Dict[str, Any] = {
@@ -163,9 +161,9 @@ async def create_acceptance(
         "agreement_render_validation": {
             "valid": True,
             "issues": [],
-            "render_hash_sha256": str(rendered_result.get("render_hash_sha256") or ""),
+            "render_hash_sha256": server_hash,
             "validated_at": now_iso,
-            "client_render_hash": (client_rendered_agreement_hash or "").strip()[:128] or None,
+            "client_render_hash": client_hash[:128],
         },
         "rendered_agreement_snapshot": rendered_result.get("document") or {},
         "client_rendered_agreement_snapshot_ref": (
@@ -231,6 +229,23 @@ async def validate_acceptance_for_checkout(
         return None, "AGREEMENT_TEMPLATE_INACTIVE"
 
     settings = await get_system_document_settings()
+    snap_for_render = acc.get("intake_snapshot") or {}
+    rc = build_agreement_render_context(
+        commercial_snapshot=snap_for_render,
+        settings=settings,
+        accepted_signatory_name=str(acc.get("accepted_by_name") or ""),
+        acceptance_timestamp_display=str(acc.get("accepted_at") or ""),
+        agreement_version_number=int(ver.get("version_number") or 1),
+    )
+    ok_chk, chk_issues = validate_checkout_grade_render_context(
+        rc,
+        billing_amount_minor=int(snap_for_render.get("billing_amount_minor") or 0),
+        preview_mode=False,
+    )
+    if not ok_chk:
+        logger.warning("Checkout render context validation failed acceptance_id=%s issues=%s", acceptance_id, chk_issues)
+        return None, "ACCEPTANCE_RENDER_INVALID"
+
     render_check = compile_agreement_document(
         template_name=str(tpl.get("name") or "Service Agreement"),
         template_code=str(tpl.get("code") or DEFAULT_TEMPLATE_CODE),
@@ -242,13 +257,7 @@ async def validate_acceptance_for_checkout(
         title=str(ver.get("title") or ""),
         subtitle=str(ver.get("subtitle") or ""),
         content_blocks=list(ver.get("content_blocks") or []),
-        render_context=_build_render_context(
-            snap=acc.get("intake_snapshot") or {},
-            settings=settings,
-            accepted_by_name=str(acc.get("accepted_by_name") or ""),
-            acceptance_timestamp=str(acc.get("accepted_at") or ""),
-            version_number=int(ver.get("version_number") or 1),
-        ),
+        render_context=rc,
     )
     if (not render_check.get("valid")) or str(render_check.get("render_hash_sha256") or "") != stored_hash:
         return None, "ACCEPTANCE_RENDER_INVALID"

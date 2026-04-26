@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request, status
 
 from models.agreements import AgreementAcceptanceCreateBody, AgreementCurrentPublishedResponse, DEFAULT_TEMPLATE_CODE
 from services.agreement_acceptance_service import create_acceptance
 from services.agreement_catalog_service import acceptance_text_default, get_current_published_bundle
-from services.agreement_document_authority import compile_agreement_document
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from utils.request_ip import get_client_ip
 
@@ -25,6 +23,12 @@ PUBLIC_AGREEMENT_ACCEPTANCE_RATE_WINDOW_MINUTES = 10
 
 @router.get("/current", response_model=AgreementCurrentPublishedResponse)
 async def get_current_published_agreement(template_code: str = DEFAULT_TEMPLATE_CODE):
+    """
+    Published template **metadata** for catalog/health checks.
+
+    Does **not** return a checkout-grade ``document_structure`` (no demo-filled placeholders).
+    Intake Step 5 must use ``POST /api/intake/agreement-preview`` for an authoritative preview.
+    """
     tpl, ver = await get_current_published_bundle(template_code)
     if not tpl or not ver:
         raise HTTPException(
@@ -32,34 +36,6 @@ async def get_current_published_agreement(template_code: str = DEFAULT_TEMPLATE_
             detail={"error_code": "AGREEMENT_NOT_CONFIGURED", "message": "No published agreement is available yet."},
         )
     template_name = str(tpl.get("name") or "Service Agreement")
-    preview = compile_agreement_document(
-        template_name=template_name,
-        template_code=str(tpl.get("code") or DEFAULT_TEMPLATE_CODE),
-        template_id=str(tpl.get("template_id") or ""),
-        version_id=str(ver.get("version_id") or ""),
-        version_number=int(ver.get("version_number") or 1),
-        published_at=ver.get("published_at"),
-        effective_from=ver.get("effective_from"),
-        title=str(ver.get("title") or ""),
-        subtitle=str(ver.get("subtitle") or ""),
-        content_blocks=list(ver.get("content_blocks") or []),
-        render_context={
-            "provider_company_name": "Pleerity Enterprise Ltd",
-            "client_full_name": "Client",
-            "client_company_name": "",
-            "client_email": "client@example.com",
-            "client_address": "Property address on file",
-            "plan_name": "Compliance Vault Pro",
-            "billing_interval": "month",
-            "monthly_fee": "£0.00",
-            "currency": "GBP",
-            "onboarding_fee_line": "None",
-            "accepted_signatory_name": "Client",
-            "acceptance_timestamp": "Acceptance timestamp",
-            "agreement_version": str(ver.get("version_number") or 1),
-            "support_email": "support@pleerity.com",
-        },
-    )
     return AgreementCurrentPublishedResponse(
         template_id=str(tpl.get("template_id")),
         template_code=str(tpl.get("code")),
@@ -67,8 +43,8 @@ async def get_current_published_agreement(template_code: str = DEFAULT_TEMPLATE_
         version_number=int(ver.get("version_number") or 1),
         title=str(ver.get("title") or ""),
         subtitle=ver.get("subtitle"),
-        content_blocks=list(ver.get("content_blocks") or []),
-        document_structure=preview.get("document"),
+        content_blocks=[],
+        document_structure=None,
         published_at=ver.get("published_at"),
         effective_from=ver.get("effective_from"),
         acceptance_text_required=acceptance_text_default(template_name),
@@ -126,6 +102,22 @@ async def post_agreement_acceptance(request: Request, body: AgreementAcceptanceC
             detail={
                 "error_code": err,
                 "message": "The service agreement could not be safely rendered. Please refresh and review the agreement again.",
+            },
+        )
+    if err == "AGREEMENT_RENDER_HASH_MISSING":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error_code": err,
+                "message": "Agreement render digest is required. Refresh the page and review the agreement again.",
+            },
+        )
+    if err == "AGREEMENT_RENDER_HASH_MISMATCH":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error_code": err,
+                "message": "The agreement shown no longer matches the server. Refresh and review the agreement again before paying.",
             },
         )
     if err:
