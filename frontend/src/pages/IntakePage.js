@@ -394,10 +394,12 @@ const IntakePage = () => {
     [renderedAgreement],
   );
 
-  const agreementFormFingerprint = useMemo(
-    () => JSON.stringify(buildIntakeSubmitPayload(formData, intakeSessionId, marketing)),
-    [formData, intakeSessionId, marketing],
-  );
+  const agreementPreviewRequestBody = useMemo(() => {
+    const intakePayload = buildIntakeSubmitPayload(formData, intakeSessionId, marketing);
+    return resumeClientId
+      ? { intake_session_id: intakeSessionId, client_id: resumeClientId }
+      : { intake_session_id: intakeSessionId, intake: intakePayload };
+  }, [formData, intakeSessionId, marketing, resumeClientId]);
 
   useEffect(() => {
     if (step !== 5) return;
@@ -408,11 +410,7 @@ const IntakePage = () => {
 
     const load = async () => {
       try {
-        const intakePayload = buildIntakeSubmitPayload(formData, intakeSessionId, marketing);
-        const body = resumeClientId
-          ? { intake_session_id: intakeSessionId, client_id: resumeClientId }
-          : { intake_session_id: intakeSessionId, intake: intakePayload };
-        const res = await intakeAPI.previewAgreement(body);
+        const res = await intakeAPI.previewAgreement(agreementPreviewRequestBody);
         if (!cancelled) {
           setAgreementCurrent(res.data || null);
           setServiceAgreementAccepted(false);
@@ -444,7 +442,7 @@ const IntakePage = () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [step, intakeSessionId, resumeClientId, agreementFormFingerprint]);
+  }, [step, agreementPreviewRequestBody]);
 
   // Step validation
   const validateStep = (stepNum) => {
