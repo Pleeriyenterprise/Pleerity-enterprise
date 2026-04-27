@@ -214,6 +214,7 @@ def test_audit_pack_zip_contains_manifest_and_checksums():
 
     with (
         patch.object(db_singleton, "get_db", return_value=mock_db),
+        patch.object(caps, "fetch_published_metadata", new=AsyncMock(return_value={})),
         patch.object(caps, "filter_requirement_rows_for_client_runtime_surfaces", new=AsyncMock(return_value=[req])),
         patch.object(
             caps,

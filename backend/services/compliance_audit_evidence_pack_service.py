@@ -25,6 +25,7 @@ from database import database
 from models import AuditAction, UserRole
 from services.branding_resolver_service import BrandingContext, resolve_branding
 from services.compliance_status_authority import classify_compliance_status
+from services.compliance_registry_publish_service import fetch_published_metadata
 from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 from services.requirement_evidence_authority import AUTHORITY_VERSION, EA_VERIFIED_CURRENT, authority_state
 from utils.audit import create_audit_log
@@ -37,6 +38,11 @@ CONTRACT_VERSION = "cvp_audit_evidence_pack_v2"
 EXPORT_VERSION = "2026.04"
 EVIDENCE_PACK_VERSION = "2.0.0"
 ROOT_DIR = "Audit_Evidence_Pack"
+NO_ACTIVE_EVIDENCE_MARKER_PATH = f"{ROOT_DIR}/03_COMPLIANCE_EVIDENCE/NO_ACTIVE_EVIDENCE_FOUND.json"
+EXPORT_RULES_VERSION = "audit_evidence_pack_rules_2026.04.1"
+COMPLIANCE_STATUS_RULES_VERSION = "compliance_status_authority_v1"
+RUNTIME_VISIBILITY_RULES_VERSION = "requirement_client_runtime_surface_v1"
+GENERATION_ENGINE_VERSION = "compliance_audit_evidence_pack_service_v2"
 
 
 def _actor_role(role: Optional[str]) -> Optional[UserRole]:
@@ -69,6 +75,38 @@ def _norm_ts(ts: Any) -> str:
     if hasattr(ts, "isoformat"):
         return ts.isoformat()
     return str(ts)
+
+
+def _iso_utc_or_none(value: Any) -> Optional[str]:
+    if value in (None, ""):
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        raw = str(value).strip()
+        if not raw:
+            return None
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        try:
+            dt = datetime.fromisoformat(raw)
+        except Exception:
+            return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.isoformat()
+
+
+def _build_export_identity(*, now_iso: str, pack_id: str, registry_version_used: str) -> Dict[str, str]:
+    return {
+        "export_id": f"exp_{uuid.uuid4().hex}",
+        "export_generated_at": now_iso,
+        "export_generation_id": pack_id,
+        "export_rules_version": EXPORT_RULES_VERSION,
+        "registry_version_used": str(registry_version_used),
+    }
 
 
 def _resolve_document_path_on_disk(client_id: str, doc: Dict[str, Any]) -> Optional[Path]:
@@ -131,19 +169,35 @@ def _obligation_bucket(requirement_type: str) -> str:
     return _safe_filename(rt.replace(" ", "_"), max_len=40)
 
 
-def _build_scope_statement_lines() -> List[str]:
+def _build_scope_statement_lines(*, generated_at: str, jurisdiction: str) -> List[str]:
     return [
-        "This Audit Evidence Pack contains governance evidence generated from Compliance Vault Pro records at generation time.",
-        "Included evidence is limited to published authoritative obligations visible to current runtime client surfaces.",
-        "Excluded, hidden, deprecated, or non-runtime-visible obligations are not treated as active compliance obligations.",
-        "Uploaded files and provider delivery telemetry may require independent verification for legal/regulatory proceedings.",
-        "Compliance outcomes depend on source data accuracy, document validity, and authoritative registry alignment.",
+        "Includes governance metadata, compliance evidence files, delivery proof, audit timeline, and exception reporting generated from Compliance Vault Pro records.",
+        "Excludes hidden, deprecated, unpublished, and non-runtime-visible obligations from active compliance counts and status outcomes.",
+        "Findings reflect records available in-system up to the generation boundary timestamp only; later updates are outside this export scope.",
+        f"Jurisdiction assumptions are based on the property profile captured at generation time ({jurisdiction or 'Unknown jurisdiction'}).",
+        "Evidence verification remains subject to independent review of source documents, issuing authorities, and external registries where applicable.",
+        f"Generation timestamp boundary (UTC): {generated_at}.",
     ]
 
 
-def _build_pack_overview_pdf_bytes(*, branding: Dict[str, Any], generated_at: str, metadata: Dict[str, Any]) -> bytes:
+def _build_pack_overview_pdf_bytes(
+    *,
+    branding: Dict[str, Any],
+    generated_at: str,
+    metadata: Dict[str, Any],
+    export_identity: Dict[str, str],
+    jurisdiction: str,
+) -> bytes:
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=20 * mm, bottomMargin=20 * mm, leftMargin=18 * mm, rightMargin=18 * mm)
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        pageCompression=0,
+    )
     styles = getSampleStyleSheet()
     title = ParagraphStyle("t", parent=styles["Title"], fontSize=20, textColor=colors.HexColor(branding.get("primary_color", "#0B1D3A")))
     body = ParagraphStyle("b", parent=styles["BodyText"], fontSize=10, leading=14)
@@ -152,9 +206,15 @@ def _build_pack_overview_pdf_bytes(*, branding: Dict[str, Any], generated_at: st
     st.append(Paragraph("Audit Evidence Pack Overview", title))
     st.append(Paragraph(f"Generated at (UTC): {generated_at}", body))
     st.append(Paragraph(f"Export version: {metadata.get('export_version')} • Evidence pack version: {metadata.get('evidence_pack_version')}", body))
+    st.append(Paragraph("Export Identity Metadata", h2))
+    st.append(Paragraph(f"Export ID: {export_identity.get('export_id')}", body))
+    st.append(Paragraph(f"Export Generated At (UTC): {export_identity.get('export_generated_at')}", body))
+    st.append(Paragraph(f"Export Generation ID: {export_identity.get('export_generation_id')}", body))
+    st.append(Paragraph(f"Export Rules Version: {export_identity.get('export_rules_version')}", body))
+    st.append(Paragraph(f"Registry Version Used: {export_identity.get('registry_version_used')}", body))
     st.append(Spacer(1, 5 * mm))
-    st.append(Paragraph("Scope and Limitations", h2))
-    for ln in _build_scope_statement_lines():
+    st.append(Paragraph("SCOPE AND LIMITATIONS", h2))
+    for ln in _build_scope_statement_lines(generated_at=generated_at, jurisdiction=jurisdiction):
         st.append(Paragraph(f"- {ln}", body))
     st.append(Spacer(1, 4 * mm))
     st.append(Paragraph("Branding and Provenance", h2))
@@ -174,9 +234,18 @@ def _build_compliance_summary_pdf_bytes(
     status_result: Any,
     generated_at: str,
     risk_summary: Dict[str, Any],
+    export_identity: Dict[str, str],
 ) -> bytes:
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=16 * mm, leftMargin=16 * mm, rightMargin=16 * mm)
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        topMargin=18 * mm,
+        bottomMargin=16 * mm,
+        leftMargin=16 * mm,
+        rightMargin=16 * mm,
+        pageCompression=0,
+    )
     styles = getSampleStyleSheet()
     c_primary = colors.HexColor(branding.get("primary_color", "#0B1D3A"))
     body = ParagraphStyle("body", parent=styles["BodyText"], fontSize=10, leading=14)
@@ -190,6 +259,10 @@ def _build_compliance_summary_pdf_bytes(
     st.append(Paragraph(f"Property: {addr or 'Property reference unavailable'}", body))
     st.append(Paragraph(f"Jurisdiction: {jurisdiction}", body))
     st.append(Paragraph(f"Generated at (UTC): {generated_at}", body))
+    st.append(Paragraph(f"Export ID: {export_identity.get('export_id')}", body))
+    st.append(Paragraph(f"Export Generation ID: {export_identity.get('export_generation_id')}", body))
+    st.append(Paragraph(f"Export Rules Version: {export_identity.get('export_rules_version')}", body))
+    st.append(Paragraph(f"Registry Version Used: {export_identity.get('registry_version_used')}", body))
     st.append(Spacer(1, 3 * mm))
     st.append(Paragraph(f"Overall Compliance Status: <b>{status_result.status}</b>", body))
     st.append(Spacer(1, 4 * mm))
@@ -227,8 +300,8 @@ def _build_compliance_summary_pdf_bytes(
     st.append(Paragraph(f"- Action-required obligations: {risk_summary.get('action_required_count', 0)}", body))
     st.append(Paragraph(f"- Mandatory obligations unresolved: {risk_summary.get('mandatory_unresolved_count', 0)}", body))
     st.append(Spacer(1, 3 * mm))
-    st.append(Paragraph("Evidence Scope Statement", heading))
-    for ln in _build_scope_statement_lines():
+    st.append(Paragraph("SCOPE AND LIMITATIONS", heading))
+    for ln in _build_scope_statement_lines(generated_at=generated_at, jurisdiction=jurisdiction):
         st.append(Paragraph(f"- {ln}", body))
     st.append(Spacer(1, 4 * mm))
     st.append(Paragraph("Footer", heading))
@@ -248,11 +321,66 @@ def _slug_for_filename(raw: str, max_len: int = 48) -> str:
     return s[:max_len]
 
 
+def _client_label_for_export_filename(client: Optional[Dict[str, Any]]) -> str:
+    if not client:
+        return ""
+    for key in ("company_name", "trading_name", "business_name", "full_name", "display_name", "name"):
+        val = client.get(key)
+        if val and str(val).strip():
+            return str(val).strip()
+    return ""
+
+
+def _property_label_for_export_filename(property_doc: Dict[str, Any]) -> str:
+    """Prefer postal address composite; then nickname; then property_id (never internal debug tokens)."""
+    parts = [
+        property_doc.get("address_line_1"),
+        property_doc.get("address_line_2"),
+        property_doc.get("city"),
+        property_doc.get("postcode"),
+    ]
+    addr = ", ".join(str(p).strip() for p in parts if p and str(p).strip())
+    if addr:
+        return addr
+    nick = str(property_doc.get("nickname") or "").strip()
+    if nick:
+        return nick
+    return str(property_doc.get("property_id") or "").strip()
+
+
+def _slug_audit_pack_segment(raw: str, *, neutral: str, max_len: int = 44) -> str:
+    """Sanitize a single filename segment; use neutral label when source text is unusable or UUID-like."""
+    s = re.sub(r"[^A-Za-z0-9]+", "-", str(raw or "").strip()).strip("-")
+    if not s:
+        return neutral
+    low = s.lower()
+    if low in {"", "unknown", "na", "n-a", "tbd", "tbc", "none"}:
+        return neutral
+    if re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", s):
+        return neutral
+    compact = s.replace("-", "")
+    if re.fullmatch(r"[0-9a-fA-F]{24,}", compact):
+        return neutral
+    return s[:max_len]
+
+
 async def _build_enterprise_filename(*, db: Any, client_id: str, property_doc: Dict[str, Any], generated_at: datetime) -> str:
-    client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "company_name": 1, "full_name": 1})
-    client_name = _slug_for_filename((client or {}).get("company_name") or (client or {}).get("full_name") or client_id, max_len=44)
-    property_ref_raw = property_doc.get("nickname") or property_doc.get("address_line_1") or property_doc.get("property_id") or "Property"
-    property_ref = _slug_for_filename(str(property_ref_raw), max_len=44)
+    client = await db.clients.find_one(
+        {"client_id": client_id},
+        {
+            "_id": 0,
+            "company_name": 1,
+            "full_name": 1,
+            "trading_name": 1,
+            "business_name": 1,
+            "display_name": 1,
+            "name": 1,
+        },
+    )
+    client_raw = _client_label_for_export_filename(client)
+    client_name = _slug_audit_pack_segment(client_raw, neutral="Client", max_len=44)
+    property_raw = _property_label_for_export_filename(property_doc)
+    property_ref = _slug_audit_pack_segment(property_raw, neutral="Property", max_len=44)
     date_part = generated_at.strftime("%Y-%m-%d")
     base = f"CVP_Audit_Evidence_Pack_{client_name}_{property_ref}_{date_part}"
     base = base[:150]
@@ -288,6 +416,9 @@ async def build_compliance_audit_pack(
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
     pack_id = f"cap_{uuid.uuid4().hex[:24]}"
+    published_meta = await fetch_published_metadata(db) or {}
+    registry_version_used = str(published_meta.get("version") or "unknown")
+    export_identity = _build_export_identity(now_iso=now_iso, pack_id=pack_id, registry_version_used=registry_version_used)
 
     all_reqs = await db.requirements.find({"property_id": property_id, "client_id": client_id}, {"_id": 0}).to_list(1000)
     client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
@@ -370,6 +501,7 @@ async def build_compliance_audit_pack(
     branding = branding_profile.to_report_dict()
 
     generation_metadata = {
+        **export_identity,
         "generated_at_utc": now_iso,
         "generated_by_user_id": initiated_by_user_id,
         "generated_by_role": initiated_by_role,
@@ -382,6 +514,11 @@ async def build_compliance_audit_pack(
         "timezone": "UTC",
         "generation_id": pack_id,
         "source_registry_version": str(AUTHORITY_VERSION),
+        "registry_version_used": registry_version_used,
+        "export_rules_version": EXPORT_RULES_VERSION,
+        "compliance_status_rules_version": COMPLIANCE_STATUS_RULES_VERSION,
+        "runtime_visibility_rules_version": RUNTIME_VISIBILITY_RULES_VERSION,
+        "generation_engine_version": GENERATION_ENGINE_VERSION,
         "contract_version": CONTRACT_VERSION,
         "branding_source": branding_profile.source,
         "branding_company_name": branding_profile.company_name,
@@ -397,13 +534,20 @@ async def build_compliance_audit_pack(
         "mandatory_unresolved_count": status_result.mandatory_missing_or_pending_count,
     }
 
-    overview_pdf = _build_pack_overview_pdf_bytes(branding=branding, generated_at=now_iso, metadata=generation_metadata)
+    overview_pdf = _build_pack_overview_pdf_bytes(
+        branding=branding,
+        generated_at=now_iso,
+        metadata=generation_metadata,
+        export_identity=export_identity,
+        jurisdiction=str(generation_metadata.get("jurisdiction") or ""),
+    )
     summary_pdf = _build_compliance_summary_pdf_bytes(
         branding=branding,
         property_doc=prop,
         status_result=status_result,
         generated_at=now_iso,
         risk_summary=risk_summary,
+        export_identity=export_identity,
     )
 
     property_profile = {
@@ -473,8 +617,49 @@ async def build_compliance_audit_pack(
                     "document_id": d.get("document_id"),
                     "requirement_id": rid,
                     "reason_for_exclusion": "verified_document_blob_missing_on_disk",
+                    "included_in_active_compliance": False,
                 }
             )
+
+    if excluded_ids:
+        excluded_docs = await db.documents.find(
+            {
+                "client_id": client_id,
+                "property_id": property_id,
+                "requirement_id": {"$in": excluded_ids},
+                "status": "VERIFIED",
+            },
+            {"_id": 0},
+        ).to_list(2000)
+        excluded_docs = _deterministic_sorted(excluded_docs, ("requirement_id", "document_id", "file_name"))
+        for d in excluded_docs:
+            exceptions_payload["excluded_evidence"].append(
+                {
+                    "document_id": d.get("document_id"),
+                    "requirement_id": str(d.get("requirement_id") or ""),
+                    "reason_for_exclusion": "requirement_hidden_or_non_runtime_visible",
+                    "included_in_active_compliance": False,
+                }
+            )
+
+    has_exported_compliance_evidence = any(
+        p.startswith(f"{ROOT_DIR}/03_COMPLIANCE_EVIDENCE/") and p != NO_ACTIVE_EVIDENCE_MARKER_PATH for p in file_payloads
+    )
+    if not has_exported_compliance_evidence:
+        marker_payload = {
+            "message": (
+                "No qualifying active evidence files were available at generation time for export under "
+                "03_COMPLIANCE_EVIDENCE."
+            ),
+            "generated_at": now_iso,
+            "property_id": property_id,
+            "requirements_reviewed_count": len(all_reqs),
+            "hidden_and_non_runtime_visible_exclusion": (
+                "Evidence tied to hidden, deprecated, or non-runtime-visible obligations is excluded from active "
+                "compliance counts and status outcomes in this Audit Evidence Pack."
+            ),
+        }
+        file_payloads[NO_ACTIVE_EVIDENCE_MARKER_PATH] = _json_bytes(marker_payload)
 
     file_payloads[f"{ROOT_DIR}/07_EXCEPTIONS/missing_or_pending_items.json"] = _json_bytes(exceptions_payload)
 
@@ -490,6 +675,7 @@ async def build_compliance_audit_pack(
                 "filename": p,
                 "size": len(b),
                 "checksum": sha,
+                "sha256": sha,
                 "generated_at": now_iso,
             }
         )
@@ -506,6 +692,7 @@ async def build_compliance_audit_pack(
     )
 
     manifest_core = {
+        **export_identity,
         "pack_id": pack_id,
         "contract_version": CONTRACT_VERSION,
         "generated_at": now_iso,
@@ -520,6 +707,54 @@ async def build_compliance_audit_pack(
         "excluded_non_runtime_visible_requirement_ids": excluded_ids,
         "files": sorted(manifest_entries, key=lambda x: x["filename"]),
     }
+
+    provenance_by_path: Dict[str, Dict[str, Any]] = {}
+    for d in docs_in_pack:
+        rid = str(d.get("requirement_id") or "")
+        req = next((r for r in active_reqs if str(r.get("requirement_id")) == rid), None)
+        bucket = _obligation_bucket((req or {}).get("requirement_type") or d.get("requirement_type") or "UNKNOWN")
+        fname = _safe_filename(d.get("file_name") or f"{d.get('document_id')}.bin", max_len=90)
+        zpath = f"{ROOT_DIR}/03_COMPLIANCE_EVIDENCE/{bucket}/{fname}"
+        provenance_by_path[zpath] = {
+            "source_document_id": str(d.get("document_id")) if d.get("document_id") is not None else None,
+            "uploaded_by_user_id": d.get("uploaded_by") or d.get("uploaded_by_user_id"),
+            "uploaded_at": _iso_utc_or_none(d.get("uploaded_at") or d.get("created_at")),
+            "verification_status": d.get("status"),
+            "verified_by_user_id": d.get("verified_by") or d.get("verified_by_user_id"),
+            "verified_at": _iso_utc_or_none(d.get("verified_at")),
+            "evidence_source_type": d.get("source_type") or d.get("document_source_type"),
+            "included_in_active_compliance": True,
+        }
+    if NO_ACTIVE_EVIDENCE_MARKER_PATH in file_payloads:
+        provenance_by_path[NO_ACTIVE_EVIDENCE_MARKER_PATH] = {
+            "source_document_id": None,
+            "uploaded_by_user_id": None,
+            "uploaded_at": None,
+            "verification_status": None,
+            "verified_by_user_id": None,
+            "verified_at": None,
+            "evidence_source_type": "no_active_evidence_marker",
+            "included_in_active_compliance": False,
+        }
+    for row in manifest_core["files"]:
+        entry = dict(row)
+        if str(entry.get("filename", "")).startswith(f"{ROOT_DIR}/03_COMPLIANCE_EVIDENCE/"):
+            prov = provenance_by_path.get(entry["filename"], {})
+            entry.update(
+                {
+                    "source_document_id": prov.get("source_document_id"),
+                    "uploaded_by_user_id": prov.get("uploaded_by_user_id"),
+                    "uploaded_at": prov.get("uploaded_at"),
+                    "verification_status": prov.get("verification_status"),
+                    "verified_by_user_id": prov.get("verified_by_user_id"),
+                    "verified_at": prov.get("verified_at"),
+                    "evidence_source_type": prov.get("evidence_source_type"),
+                    "included_in_active_compliance": bool(prov.get("included_in_active_compliance", False)),
+                }
+            )
+        row.clear()
+        row.update(entry)
+
     manifest_path = f"{ROOT_DIR}/06_GOVERNANCE/manifest.json"
     file_payloads[manifest_path] = _json_bytes(manifest_core)
 
@@ -536,6 +771,7 @@ async def build_compliance_audit_pack(
         zip_bytes,
         metadata={
             "pack_id": pack_id,
+            **export_identity,
             "client_id": client_id,
             "property_id": property_id,
             "content_type": "application/zip",
@@ -547,6 +783,7 @@ async def build_compliance_audit_pack(
     manifest_sha256 = _sha256_bytes(file_payloads[manifest_path])
     mongo_doc = {
         "pack_id": pack_id,
+        "export_identity": export_identity,
         "contract_version": CONTRACT_VERSION,
         "client_id": client_id,
         "property_id": property_id,
