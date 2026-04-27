@@ -285,6 +285,33 @@ def validate_registry_draft(doc: Dict[str, Any]) -> List[str]:
     gov["needs_review_fields"] = needs_review
     doc["governance"] = gov
 
+    er = doc.get("evidence_resolution") if isinstance(doc.get("evidence_resolution"), dict) else None
+    if er:
+        from services.compliance_evidence_record_service import ALL_EVIDENCE_MODES
+
+        modes = er.get("allowed_evidence_modes")
+        if modes is not None:
+            if not isinstance(modes, list) or not modes:
+                errs.append("evidence_resolution.allowed_evidence_modes must be a non-empty list when set")
+            else:
+                for i, m in enumerate(modes):
+                    tok = str(m or "").strip().upper()
+                    if tok not in ALL_EVIDENCE_MODES:
+                        errs.append(f"evidence_resolution.allowed_evidence_modes[{i}] is not a recognised mode")
+        prw = str(er.get("primary_resolution_workflow") or "").strip()
+        if prw and prw not in {
+            "GUIDED_EVIDENCE_RESOLUTION",
+            "LEGACY_DOCUMENT_UPLOAD",
+            "DIRECT_EVIDENCE_ACTION",
+        }:
+            errs.append(
+                "evidence_resolution.primary_resolution_workflow must be one of "
+                "GUIDED_EVIDENCE_RESOLUTION, DIRECT_EVIDENCE_ACTION, LEGACY_DOCUMENT_UPLOAD"
+            )
+        for k in ("allow_medium_non_document_satisfaction", "allow_low_non_document_satisfaction"):
+            if er.get(k) is not None and not isinstance(er.get(k), bool):
+                errs.append(f"evidence_resolution.{k} must be boolean when set")
+
     return errs
 
 
@@ -329,6 +356,7 @@ def merge_partial_draft(existing: Dict[str, Any], patch: Dict[str, Any]) -> Dict
         "action_behaviour",
         "governance",
         "baseline_alignment",
+        "evidence_resolution",
     ):
         if key in patch and isinstance(patch[key], dict):
             base = out.get(key)
@@ -483,24 +511,41 @@ def plan_types_for_draft_canonical(canonical_code: str) -> FrozenSet[str]:
     for bucket in ("ENGLAND_WALES", "SCOTLAND"):
         spec = get_rule(bucket, c)
         if spec and spec.storage_type:
+            # Domestic fire alarm / detection / testing evidence maps to SMOKE_HEAT_ALARMS published row only.
+            if c == "FIRE_DETECTION":
+                continue
             out.add(str(spec.storage_type).strip().lower())
     extra: Dict[str, FrozenSet[str]] = {
-        "LANDLORD_REGISTRATION": frozenset({"scotland_landlord_registration", "landlord_registration_ni"}),
+        # Scotland uses ``scotland_landlord_registration``; NI uses ``landlord_registration_ni`` under
+        # ``LANDLORD_REGISTRATION_NI`` so published rows can strict-gate by ``display_jurisdictions``.
+        "LANDLORD_REGISTRATION": frozenset({"scotland_landlord_registration", "landlord_registration"}),
         # Legacy + current row variants in live data.
         "OCCUPATION_CONTRACT": frozenset({"wales_occupation_contract", "occupation_contract"}),
         # Core registry uses hmo_fire_risk; catalog may surface a distinct evidence row.
         "HMO_FIRE_RISK": frozenset({"hmo_fire_risk_evidence"}),
+        # Single England-facing authority: both storage slugs attach to RIGHT_TO_RENT only.
         "RIGHT_TO_RENT": frozenset({"right_to_rent", "right_to_rent_checks"}),
-        "RIGHT_TO_RENT_CHECKS": frozenset({"right_to_rent", "right_to_rent_checks"}),
         "RENT_SMART_WALES": frozenset({"rent_smart_wales", "rent_smart_wales_registration"}),
         "RENT_SMART_WALES_REGISTRATION": frozenset({"rent_smart_wales", "rent_smart_wales_registration"}),
         "LANDLORD_REGISTRATION_NI": frozenset({"landlord_registration_ni"}),
         "PAT_TESTING": frozenset({"portable_appliance_test", "pat_testing"}),
         "PORTABLE_APPLIANCE": frozenset({"portable_appliance_test", "pat_testing"}),
         "HMO_LICENSING": frozenset({"hmo_license", "property_licence", "hmo_licensing"}),
-        "FIRE_DETECTION": frozenset({"fire_alarm", "fire_detection", "smoke_alarms", "co_alarms"}),
-        "SMOKE_HEAT_ALARMS": frozenset({"smoke_alarms", "co_alarms", "smoke_heat_alarms"}),
+        # SMOKE_HEAT_ALARMS: single published authority for domestic alarm + detection/testing evidence slugs.
+        "SMOKE_HEAT_ALARMS": frozenset(
+            {
+                "smoke_alarms",
+                "co_alarms",
+                "smoke_heat_alarms",
+                "fire_alarm",
+                "fire_detection",
+            }
+        ),
         "TENANCY_DEPOSIT_PROTECTION": frozenset({"deposit_pi", "tenancy_deposit_protection"}),
+        "TENANCY_AGREEMENT": frozenset({"tenancy_agreement"}),
+        "HOW_TO_RENT": frozenset({"how_to_rent"}),
+        # Matches ``CANONICAL_FIRE_RISK_ASSESSMENT`` / action-link registry spelling.
+        "FIRE_RISK_ASSESSMENT": frozenset({"fire_risk_assessment"}),
         # Often informational/system; currently no direct planner emission in some tenants.
         "FITNESS_FOR_HUMAN_HABITATION": frozenset({"fitness_for_human_habitation"}),
         "REPAIRING_STANDARD": frozenset({"repairing_standard"}),
@@ -639,6 +684,21 @@ def merge_draft_overlay_onto_plan_row(
             region,
             max_links=24,
         )
+
+    er = draft.get("evidence_resolution") if isinstance(draft.get("evidence_resolution"), dict) else None
+    if er:
+        modes = er.get("allowed_evidence_modes")
+        if isinstance(modes, list) and modes:
+            out["allowed_evidence_modes"] = [
+                str(x).strip().upper() for x in modes if str(x or "").strip()
+            ]
+        prw = str(er.get("primary_resolution_workflow") or "").strip()
+        if prw:
+            out["primary_resolution_workflow"] = prw
+        if er.get("allow_medium_non_document_satisfaction") is not None:
+            out["allow_medium_non_document_satisfaction"] = bool(er.get("allow_medium_non_document_satisfaction"))
+        if er.get("allow_low_non_document_satisfaction") is not None:
+            out["allow_low_non_document_satisfaction"] = bool(er.get("allow_low_non_document_satisfaction"))
     return out
 
 

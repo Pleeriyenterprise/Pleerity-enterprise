@@ -9,6 +9,7 @@ import { requirementWorkflowDisplayPair, humanEvidenceStateLabel } from '../../u
 import { formatRiskLabel } from '../../utils/riskLabel';
 import { resolveDocumentsPath } from '../../utils/clientPortalNavigation';
 import { SUPPORT_EMAIL } from '../../config';
+import { useGuidedEvidenceModal } from '../../context/GuidedEvidenceModalContext';
 
 function formatIntelDate(value) {
   if (value == null || value === '') return null;
@@ -72,6 +73,7 @@ export default function RequirementIntelligenceModal({
   onMarkNotApplicable,
   addressForMailto = null,
 }) {
+  const { openGuidedEvidence } = useGuidedEvidenceModal();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [payload, setPayload] = useState(null);
@@ -141,16 +143,25 @@ export default function RequirementIntelligenceModal({
     return humanEvidenceStateLabel(merged.evidence_state);
   }, [merged]);
 
+  const pid = merged?.property_id ? String(merged.property_id) : '';
+  const rid = merged?.requirement_id ? String(merged.requirement_id) : '';
+
   const primaryHandler = () => {
     if (resolved.primary_action_handler === 'external' && resolved.primary_route) {
       window.open(resolved.primary_route, '_blank', 'noopener,noreferrer');
       return;
     }
+    if (resolved.primary_action_handler === 'guided_evidence' && pid && rid) {
+      onClose();
+      openGuidedEvidence({
+        propertyId: pid,
+        requirement: merged || { requirement_id: rid },
+        initialEvidenceMode: resolved.guided_initial_evidence_mode || undefined,
+      });
+      return;
+    }
     if (resolved.primary_route) onNavigate(resolved.primary_route);
   };
-
-  const pid = merged?.property_id ? String(merged.property_id) : '';
-  const rid = merged?.requirement_id ? String(merged.requirement_id) : '';
   const docsView = pid && rid ? resolveDocumentsPath(pid, { requirement_id: rid }) : pid ? resolveDocumentsPath(pid) : '/documents';
   const docsUpload =
     pid && rid ? resolveDocumentsPath(pid, { requirement_id: rid, focus: 'upload' }) : docsView;
@@ -385,7 +396,17 @@ export default function RequirementIntelligenceModal({
                   type="button"
                   className="w-full sm:w-auto min-h-11 bg-midnight-blue hover:bg-midnight-blue/90 text-white"
                   onClick={primaryHandler}
-                  disabled={!resolved.primary_route && resolved.primary_action_handler !== 'external'}
+                  disabled={
+                    resolved.primary_action_handler === 'guided_evidence_error' ||
+                    (!resolved.primary_route &&
+                      resolved.primary_action_handler !== 'external' &&
+                      resolved.primary_action_handler !== 'guided_evidence')
+                  }
+                  title={
+                    resolved.primary_action_handler === 'guided_evidence_error'
+                      ? 'Guided resolution is unavailable: property or requirement context is missing. Use other actions below or contact support.'
+                      : undefined
+                  }
                   data-testid="requirement-intel-primary-cta"
                 >
                   {primaryLabel}

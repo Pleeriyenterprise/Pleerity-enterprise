@@ -242,6 +242,54 @@ def test_requirement_rules_row_still_rejects_explicit_wrong_jurisdiction():
     )
 
 
+def test_published_mode_excludes_non_published_non_legacy_row():
+    prop = _england_prop()
+    client = {"default_jurisdiction": "England"}
+    pt = _plan_types(prop, client)
+    row = {
+        "property_id": prop["property_id"],
+        "requirement_id": "legacy-a",
+        "requirement_type": "gas_safety",
+        "jurisdiction": "England",
+        "applicability": "REQUIRED",
+        "status": "PENDING",
+        "client_surface_visible": True,
+        "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
+    }
+    assert not requirement_row_passes_client_runtime_surface_gates(
+        row,
+        property_doc=prop,
+        client_doc=client,
+        plan_types_lower=pt,
+        published_registry_entries={},
+    )
+
+
+def test_published_mode_allows_legacy_readonly_row():
+    prop = _england_prop()
+    client = {"default_jurisdiction": "England"}
+    pt = _plan_types(prop, client)
+    row = {
+        "property_id": prop["property_id"],
+        "requirement_id": "legacy-b",
+        "requirement_type": "gas_safety",
+        "jurisdiction": "England",
+        "applicability": "REQUIRED",
+        "status": "PENDING",
+        "client_surface_visible": True,
+        "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
+        "legacy_requirement_state": "unmapped_readonly",
+        "legacy_readonly_visible": True,
+    }
+    assert requirement_row_passes_client_runtime_surface_gates(
+        row,
+        property_doc=prop,
+        client_doc=client,
+        plan_types_lower=pt,
+        published_registry_entries={},
+    )
+
+
 def test_draft_only_registry_metadata_excluded():
     prop = _england_prop()
     client = {"default_jurisdiction": "England"}

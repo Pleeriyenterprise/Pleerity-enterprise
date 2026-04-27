@@ -7,7 +7,7 @@ import os
 import io
 import logging
 from datetime import datetime, timezone
-from typing import Optional, List, Dict
+from typing import Any, Dict, List, Optional
 from database import database
 from models import AuditAction
 from utils.audit import create_audit_log
@@ -231,6 +231,21 @@ class CompliancePackService:
 
         # Get related documents
         req_ids = [r.get("requirement_id") for r in requirements]
+        from services.compliance_status_authority import evidence_governance_summary_for_row
+
+        ev_rows = await db.compliance_evidence_records.find(
+            {
+                "client_id": client_id,
+                "property_id": property_id,
+                "requirement_id": {"$in": [x for x in req_ids if x]},
+                "archived": {"$ne": True},
+            },
+            {"_id": 0},
+        ).to_list(500)
+        ev_by_rid: Dict[str, List[Dict[str, Any]]] = {}
+        for erow in ev_rows:
+            rid = str(erow.get("requirement_id") or "")
+            ev_by_rid.setdefault(rid, []).append(erow)
         documents = await db.documents.find(
             {"requirement_id": {"$in": req_ids}, "status": "VERIFIED"},
             {"_id": 0}
@@ -247,6 +262,8 @@ class CompliancePackService:
         compliant_count = sum(1 for r in requirements if r.get('status') == 'COMPLIANT')
         expiring_count = sum(1 for r in requirements if r.get('status') == 'EXPIRING_SOON')
         overdue_count = sum(1 for r in requirements if r.get('status') == 'OVERDUE')
+
+        status_result = classify_compliance_status(requirements)
 
         # Generate PDF
         buffer = io.BytesIO()
@@ -270,7 +287,7 @@ class CompliancePackService:
 
         if tenant_view:
             story.append(Paragraph("Property safety summary", self.styles['SectionHeader']))
-            if overdue_count == 0 and expiring_count == 0:
+            if status_result.status == "COMPLIANT":
                 story.append(Paragraph(
                     "<b>Current status:</b> Your property safety checks look up to date from what we hold on file.",
                     self.styles['Normal']
@@ -281,24 +298,34 @@ class CompliancePackService:
                     "If something changes, your landlord is responsible for keeping records current.",
                     self.styles['CertificateDetail']
                 ))
+            elif status_result.status == "PARTIALLY COMPLIANT":
+                story.append(Paragraph(
+                    "<b>Current status:</b> Some safety checks will need renewal soon.",
+                    self.styles['Normal']
+                ))
+                story.append(Spacer(1, 3 * mm))
+                mean_txt = (
+                    "One or more checks are coming up for renewal. "
+                    "Your landlord is expected to arrange this in good time."
+                )
+                story.append(Paragraph(f"<b>What this means:</b> {mean_txt}", self.styles['CertificateDetail']))
+                story.append(Spacer(1, 2 * mm))
+                story.append(Paragraph(
+                    "<b>What you can do:</b><br/>"
+                    "• Contact your landlord if you are worried or need an update<br/>"
+                    "• Report a concern through your tenant portal if something in the home feels unsafe",
+                    self.styles['CertificateDetail']
+                ))
             else:
                 status_line = (
                     "<b>Current status:</b> Some safety checks need attention."
-                    if overdue_count > 0
-                    else "<b>Current status:</b> Some safety checks will need renewal soon."
                 )
                 story.append(Paragraph(status_line, self.styles['Normal']))
                 story.append(Spacer(1, 3 * mm))
-                if overdue_count > 0:
-                    mean_txt = (
-                        "Some safety checks are overdue or pending on our records. "
-                        "Renewing them is your landlord's responsibility."
-                    )
-                else:
-                    mean_txt = (
-                        "One or more checks are coming up for renewal. "
-                        "Your landlord is expected to arrange this in good time."
-                    )
+                mean_txt = (
+                    "Some safety checks are overdue or pending on our records. "
+                    "Renewing them is your landlord's responsibility."
+                )
                 story.append(Paragraph(f"<b>What this means:</b> {mean_txt}", self.styles['CertificateDetail']))
                 story.append(Spacer(1, 2 * mm))
                 story.append(Paragraph(
@@ -327,7 +354,6 @@ class CompliancePackService:
         # Compliance Status Summary
         story.append(Spacer(1, 10*mm))
 
-        status_result = classify_compliance_status(requirements)
         overall_status = status_result.status if not tenant_view else (
             "Up to date" if status_result.status == "COMPLIANT"
             else "Some renewals due soon" if status_result.status == "PARTIALLY COMPLIANT"
@@ -389,6 +415,23 @@ class CompliancePackService:
                     f"Documents: {', '.join(doc_names)}",
                     self.styles['CertificateDetail']
                 ))
+
+            gov = evidence_governance_summary_for_row(req)
+            story.append(Paragraph(
+                (
+                    f"Evidence mode (authority): {gov.get('primary_evidence_mode') or '—'}; "
+                    f"confidence: {gov.get('evidence_confidence_level') or '—'}; "
+                    f"verification: {gov.get('non_document_verification_status') or '—'}; "
+                    f"last update: {gov.get('last_evidence_update') or '—'}; "
+                    f"unresolved/missing: {'yes' if gov.get('unresolved_or_missing_evidence') else 'no'}"
+                ),
+                self.styles['CertificateDetail'],
+            ))
+            rid_key = str(req.get("requirement_id") or "")
+            extra_ev = ev_by_rid.get(rid_key) or []
+            if extra_ev:
+                modes = ", ".join(sorted({str(x.get('evidence_mode') or '') for x in extra_ev if x.get('evidence_mode')}))
+                story.append(Paragraph(f"Compliance evidence records on file: {modes}", self.styles['CertificateDetail']))
             
             story.append(Spacer(1, 5*mm))
         

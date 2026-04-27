@@ -153,7 +153,7 @@ export default function AdminComplianceRegistryPreviewPage() {
       <div className="p-6 max-w-7xl">
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <Link to="/admin/compliance/registry" className="text-sm text-electric-teal hover:underline">
-            ← Requirement Registry (drafts)
+            ← Policy Registry (drafts)
           </Link>
           <Link to="/admin/compliance/registry/publish-queue" className="text-sm text-electric-teal hover:underline">
             Publish queue

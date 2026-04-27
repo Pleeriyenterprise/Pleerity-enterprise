@@ -163,11 +163,131 @@ def _pick_primary_evidence_doc(docs: List[Dict[str, Any]]) -> Optional[Dict[str,
     return None
 
 
+def _apply_evidence_governance_extensions(
+    requirement: Dict[str, Any],
+    blob: Dict[str, Any],
+    mirror: Dict[str, Any],
+    *,
+    primary: Optional[Dict[str, Any]],
+    property_doc: Optional[Dict[str, Any]],
+    now: datetime,
+    evidence_records: List[Dict[str, Any]],
+    evidence_policy: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    After document-centric authority is computed, optionally promote verified non-document evidence
+    or attach governance metadata for reporting. Document-verified-current always wins.
+    """
+    from services.compliance_evidence_record_service import (
+        EVIDENCE_MODE_DOCUMENT_UPLOAD as EM_DOC,
+        active_sorted_evidence_candidates,
+        non_document_record_satisfies_policy,
+    )
+    from services.compliance_expiry_policy import resolve_expiring_soon_days_for_requirement
+    from services.compliance_status_authority import is_critical_safety_or_legal_obligation
+
+    b = dict(blob)
+    m = dict(mirror)
+    state = str(b.get("state") or "")
+    eff_doc_id = b.get("effective_verified_document_id")
+
+    def _fill_document_governance() -> None:
+        pst = (primary.get("status") or "").upper() if primary else ""
+        if state == EA_VERIFIED_CURRENT and eff_doc_id and pst == DocumentStatus.VERIFIED.value:
+            b["primary_evidence_mode"] = EM_DOC
+            b["evidence_confidence_level"] = "HIGH"
+            b["non_document_verification_status"] = None
+            b["primary_evidence_record_id"] = None
+        elif primary:
+            b["primary_evidence_mode"] = EM_DOC
+            b["evidence_confidence_level"] = "MEDIUM" if pst != DocumentStatus.VERIFIED.value else "HIGH"
+            b["non_document_verification_status"] = None
+            b["primary_evidence_record_id"] = None
+        else:
+            b["primary_evidence_mode"] = None
+            b["evidence_confidence_level"] = None
+            b["non_document_verification_status"] = None
+            b["primary_evidence_record_id"] = None
+
+    if state == EA_VERIFIED_CURRENT and eff_doc_id:
+        _fill_document_governance()
+        return b, m
+
+    is_critical = is_critical_safety_or_legal_obligation(requirement)
+    candidates = active_sorted_evidence_candidates(evidence_records)
+    best = None
+    for rec in candidates:
+        if non_document_record_satisfies_policy(
+            record=rec,
+            requirement=requirement,
+            policy=evidence_policy,
+            is_critical_obligation=is_critical,
+        ):
+            best = rec
+            break
+
+    if best:
+        payload = best.get("evidence_payload") if isinstance(best.get("evidence_payload"), dict) else {}
+        eff_expiry = _parse_dt(payload.get("valid_until")) or _parse_dt(payload.get("expiry_date"))
+        b["state"] = EA_VERIFIED_CURRENT
+        b["state_reason"] = "verified_non_document_evidence"
+        b["effective_verified_document_id"] = None
+        if eff_expiry:
+            b["effective_expiry_date"] = eff_expiry.isoformat()
+            b["effective_expiry_is_null"] = False
+            b["expiry_source"] = "NON_DOCUMENT_EVIDENCE"
+        else:
+            b["effective_expiry_date"] = None
+            b["effective_expiry_is_null"] = True
+            b["expiry_source"] = "NONE"
+        va = _parse_dt(best.get("verified_at"))
+        b["evidence_last_verified_at"] = va.isoformat() if va else b.get("evidence_last_verified_at")
+        b["primary_evidence_mode"] = str(best.get("evidence_mode"))
+        b["evidence_confidence_level"] = str(best.get("evidence_confidence_level"))
+        b["non_document_verification_status"] = str(best.get("verification_status"))
+        b["primary_evidence_record_id"] = best.get("evidence_record_id")
+
+        mirror_status = RequirementStatus.COMPLIANT.value
+        mirror_due: Optional[str] = None
+        if eff_expiry:
+            days = (eff_expiry - now).days
+            window = resolve_expiring_soon_days_for_requirement(requirement, property_doc, None)
+            if days < 0:
+                mirror_status = RequirementStatus.OVERDUE.value
+            elif days <= window:
+                mirror_status = RequirementStatus.EXPIRING_SOON.value
+            else:
+                mirror_status = RequirementStatus.COMPLIANT.value
+            mirror_due = eff_expiry.isoformat()
+        else:
+            mirror_status = RequirementStatus.COMPLIANT.value
+            mirror_due = m.get("due_date") or requirement.get("due_date")
+        m["status"] = mirror_status
+        m["due_date"] = mirror_due
+        m["evidence_state"] = EA_VERIFIED_CURRENT
+        return b, m
+
+    _fill_document_governance()
+    if candidates:
+        pend = [x for x in candidates if str(x.get("verification_status") or "").upper() == "PENDING_REVIEW"]
+        if pend:
+            b["pending_non_document_evidence_count"] = len(pend)
+        top = candidates[0]
+        if not primary:
+            b["primary_evidence_mode"] = str(top.get("evidence_mode"))
+            b["evidence_confidence_level"] = str(top.get("evidence_confidence_level"))
+            b["non_document_verification_status"] = str(top.get("verification_status"))
+            b["primary_evidence_record_id"] = top.get("evidence_record_id")
+    return b, m
+
+
 def _compute_authority(
     requirement: Dict[str, Any],
     documents: List[Dict[str, Any]],
     *,
     property_doc: Optional[Dict[str, Any]],
+    evidence_records: Optional[List[Dict[str, Any]]] = None,
+    evidence_policy: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Returns (evidence_authority_blob, legacy_mirror_updates_for_requirement).
@@ -388,7 +508,22 @@ def _compute_authority(
     if eff_expiry and expiry_src == "VERIFIED_DOCUMENT":
         mirror["confirmed_expiry_date"] = eff_expiry.isoformat()
 
-    return blob, mirror
+    policy = evidence_policy
+    if policy is None:
+        from services.compliance_evidence_record_service import effective_evidence_resolution
+
+        policy = effective_evidence_resolution(requirement)
+    recs = evidence_records if evidence_records is not None else []
+    return _apply_evidence_governance_extensions(
+        requirement,
+        blob,
+        mirror,
+        primary=primary,
+        property_doc=property_doc,
+        now=now,
+        evidence_records=recs,
+        evidence_policy=policy,
+    )
 
 
 async def sync_requirement_evidence_authority(
@@ -418,7 +553,22 @@ async def sync_requirement_evidence_authority(
         {"_id": 0},
     ).to_list(200)
 
-    blob, mirror = _compute_authority(requirement, docs, property_doc=property_doc)
+    from services.compliance_evidence_record_service import (
+        effective_evidence_resolution,
+        load_records_for_requirement_sync,
+    )
+
+    evidence_records = await load_records_for_requirement_sync(
+        db, requirement_id, str(requirement.get("client_id") or "")
+    )
+    evidence_policy = effective_evidence_resolution(requirement)
+    blob, mirror = _compute_authority(
+        requirement,
+        docs,
+        property_doc=property_doc,
+        evidence_records=evidence_records,
+        evidence_policy=evidence_policy,
+    )
     now = datetime.now(timezone.utc).isoformat()
     await db.requirements.update_one(
         {"requirement_id": requirement_id},
@@ -632,7 +782,15 @@ def preview_authority(
     documents: List[Dict[str, Any]],
     *,
     property_doc: Optional[Dict[str, Any]] = None,
+    evidence_records: Optional[List[Dict[str, Any]]] = None,
+    evidence_policy: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Test / admin helper: compute authority blob + legacy mirror without persisting."""
-    blob, mirror = _compute_authority(requirement, documents, property_doc=property_doc)
+    blob, mirror = _compute_authority(
+        requirement,
+        documents,
+        property_doc=property_doc,
+        evidence_records=evidence_records,
+        evidence_policy=evidence_policy,
+    )
     return {"evidence_authority": blob, "mirror": mirror}

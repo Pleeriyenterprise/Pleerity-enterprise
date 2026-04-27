@@ -632,6 +632,22 @@ const ReportsPage = () => {
         <p className="text-sm text-gray-600 mb-6 leading-relaxed" data-testid="reports-operating-helper">
           Use reports to review and share compliance status.
         </p>
+        <Card className="mb-6 border border-blue-100 bg-blue-50/40" data-testid="reports-choose-guide">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Choose the right report</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ul className="text-sm text-gray-700 space-y-1">
+              <li><strong>Council / tribunal / lender / insurer:</strong> Audit Evidence Pack</li>
+              <li><strong>Internal compliance review:</strong> Compliance Reports</li>
+              <li><strong>CSV or external-system data:</strong> Regulatory/System Exports</li>
+              <li><strong>Recurring monitoring:</strong> Scheduled Reports</li>
+            </ul>
+          </CardContent>
+        </Card>
+        <h2 className="text-lg font-semibold text-midnight-blue mb-3" data-testid="reports-section-audit-evidence-packs">
+          Audit Evidence Packs
+        </h2>
         {hasReportsPdf && (
           <Card className="mb-6 border border-teal-100 bg-teal-50/40" data-testid="reports-audit-evidence-pack-cta">
             <CardHeader className="pb-2">
@@ -665,6 +681,9 @@ const ReportsPage = () => {
             />
           </div>
         )}
+        <h2 className="text-lg font-semibold text-midnight-blue mb-3" data-testid="reports-section-compliance-reports">
+          Compliance Reports
+        </h2>
         <Card className="mb-6 border border-gray-200" data-testid="portal-analytics-summary-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -720,6 +739,9 @@ const ReportsPage = () => {
             )}
           </CardContent>
         </Card>
+        <h2 className="text-lg font-semibold text-midnight-blue mb-3" data-testid="reports-section-scheduled-reports">
+          Scheduled Reports
+        </h2>
         {/* Monthly Digests - last 6 with View and Download PDF */}
         <Card className="mb-6" data-testid="digests-card">
           <CardHeader>
@@ -838,15 +860,20 @@ const ReportsPage = () => {
             )}
           </CardContent>
         </Card>
-        {hasAuditLogExport && (
+        <h2 className="text-lg font-semibold text-midnight-blue mb-3" data-testid="reports-section-regulatory-system-exports">
+          Regulatory/System Exports
+        </h2>
+        {hasAuditLogExport ? (
           <Card className="mb-6 border border-gray-200" data-testid="evidence-pack-zip-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Package className="w-5 h-5 text-electric-teal" />
-                Compliance evidence pack (ZIP)
+                Regulatory/System Export (CSV ZIP)
               </CardTitle>
               <p className="text-sm text-gray-500 mt-1">
-                Download a ZIP containing CSV exports of properties, requirements, document metadata, compliance score history, and jobs, plus a JSON manifest. For regulators, lenders, or your own archive. Limited to five exports per 24 hours. Optionally restrict rows to a UTC date range (properties CSV always lists your full portfolio for context).
+                Structured CSV + JSON ZIP export for system handoff, accountant workflows, regulator data requests, or migration support.
+                This export is not the governed Audit Evidence Pack used for evidentiary/legal review.
+                Limited to five exports per 24 hours. Optionally restrict rows to a UTC date range (properties CSV always lists your full portfolio for context).
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -921,6 +948,14 @@ const ReportsPage = () => {
                   ))}
                 </ul>
               )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="mb-6 border border-gray-200" data-testid="reports-regulatory-export-gate-note">
+            <CardContent className="pt-6">
+              <p className="text-sm text-gray-600">
+                Regulatory/System Exports require the regulatory export entitlement. Audit Evidence Pack remains available via Reports when PDF reports are enabled.
+              </p>
             </CardContent>
           </Card>
         )}

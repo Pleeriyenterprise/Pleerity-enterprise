@@ -22,6 +22,7 @@ from services.requirement_evidence_authority import (
     sync_for_documents_touching,
     sync_requirement_evidence_authority,
 )
+from services.compliance_evidence_record_service import safe_upsert_document_upload_evidence_for_linked_document
 from services.work_order_execution_constants import (
     COMPLIANCE_PROOF_NOT_SUBMITTED,
     COMPLIANCE_PROOF_SUBMITTED,
@@ -667,6 +668,16 @@ async def bulk_upload_documents(
                                 {"$set": bulk_match_payload},
                             )
                         if matched_requirement:
+                            await safe_upsert_document_upload_evidence_for_linked_document(
+                                db,
+                                client_id=user["client_id"],
+                                property_id=property_id,
+                                requirement_id=matched_requirement,
+                                document_id=document.document_id,
+                                actor_user_id=user.get("portal_user_id"),
+                                filename=file.filename,
+                                context="bulk_upload",
+                            )
                             await sync_requirement_evidence_authority(db, matched_requirement)
                 except Exception as e:
                     logger.warning(f"AI analysis failed for {file.filename}: {e}")
@@ -1011,6 +1022,16 @@ async def upload_zip_archive(
                                         {"$set": bulk_match_payload},
                                     )
                                 if matched_requirement:
+                                    await safe_upsert_document_upload_evidence_for_linked_document(
+                                        db,
+                                        client_id=user["client_id"],
+                                        property_id=property_id,
+                                        requirement_id=matched_requirement,
+                                        document_id=document.document_id,
+                                        actor_user_id=user.get("portal_user_id"),
+                                        filename=filename,
+                                        context="zip_upload",
+                                    )
                                     await sync_requirement_evidence_authority(db, matched_requirement)
                         except Exception as e:
                             logger.warning(f"AI analysis failed for {filename}: {e}")
@@ -1308,6 +1329,16 @@ async def perform_client_document_upload(
 
     await db.documents.insert_one(doc)
     if requirement_id:
+        await safe_upsert_document_upload_evidence_for_linked_document(
+            db,
+            client_id=user["client_id"],
+            property_id=property_id,
+            requirement_id=requirement_id,
+            document_id=document.document_id,
+            actor_user_id=user.get("portal_user_id"),
+            filename=file.filename,
+            context="client_upload",
+        )
         await sync_requirement_evidence_authority(db, requirement_id)
 
     asyncio.create_task(
@@ -1631,6 +1662,16 @@ async def admin_upload_document(
             doc["manual_review_flag"] = True
 
         await db.documents.insert_one(doc)
+        await safe_upsert_document_upload_evidence_for_linked_document(
+            db,
+            client_id=client_id,
+            property_id=property_id,
+            requirement_id=requirement_id,
+            document_id=document.document_id,
+            actor_user_id=user.get("portal_user_id"),
+            filename=file.filename,
+            context="admin_upload",
+        )
         await sync_requirement_evidence_authority(db, requirement_id)
         
         # Do not mark requirement as satisfied on upload; user/admin confirms via apply-extraction or modal

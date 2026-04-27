@@ -24,6 +24,7 @@ import {
   resolvePropertyPath,
 } from '../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../utils/ctaRegistry';
+import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import {
@@ -167,6 +168,7 @@ function formatTaskDigestActivityLine(row) {
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
+  const { openGuidedEvidence } = useGuidedEvidenceModal();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, logout } = useAuth();
   const { hasFeature } = useEntitlements();
@@ -2026,7 +2028,16 @@ const ClientDashboard = () => {
                               type="button"
                               className="text-left text-midnight-blue hover:underline font-medium min-w-0 break-words"
                               onClick={() => {
-                                const url = resolveTaskCta(t, 'primary').route || t.primary_action_url || t.cta_url;
+                                const cta = resolveTaskCta(t, 'primary');
+                                if (cta.guidedEvidence) {
+                                  openGuidedEvidence({
+                                    propertyId: cta.guidedEvidence.propertyId,
+                                    requirementId: cta.guidedEvidence.requirementId,
+                                    initialEvidenceMode: cta.guidedEvidence.initialEvidenceMode || undefined,
+                                  });
+                                  return;
+                                }
+                                const url = cta.route || t.primary_action_url || t.cta_url;
                                 if (url && url.startsWith('/')) {
                                   const target = resolveClientPortalPath(url, '/today');
                                   recordClientPortalInteraction('command_center_urgent_task', { task_id: t.id, target });

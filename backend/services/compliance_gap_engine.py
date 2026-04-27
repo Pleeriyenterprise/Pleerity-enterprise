@@ -578,6 +578,8 @@ def gaps_to_priority_actions(gaps: List[ComplianceGap], requirement: Dict[str, A
         pri = ta.get("primary") if isinstance(ta.get("primary"), dict) else None
         if pri and pri.get("route"):
             row["recommended_url"] = str(pri.get("route") or "").strip() or g.recommended_url
+        elif pri and pri.get("kind") == "guided_evidence_resolution":
+            row["recommended_url"] = ""
         if pri and pri.get("label"):
             row["recommended_action_label"] = str(pri.get("label") or "").strip() or g.recommended_action_label
         if ta:

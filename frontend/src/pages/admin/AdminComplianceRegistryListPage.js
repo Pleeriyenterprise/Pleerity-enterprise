@@ -207,8 +207,12 @@ export default function AdminComplianceRegistryListPage() {
   return (
     <UnifiedAdminLayout>
       <div className="p-6 max-w-6xl">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Requirement Registry</h1>
-        <p className="text-sm font-medium text-gray-700 mb-3">Governed compliance definition — draft / review / publish to live registry snapshot</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Compliance Policy Registry</h1>
+        <p className="text-sm font-medium text-gray-700 mb-3">
+          Authoritative policy surface: canonical requirement, jurisdiction, applicability, evidence modes, primary resolution
+          workflow, criticality, scoring weight, confidence rules, renewal cadence, client visibility, audit/report inclusion, and
+          publish status — draft, review, and publish to the live registry snapshot.
+        </p>
 
         <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-4 mb-4 text-sm text-amber-950">
           <p className="mb-2">

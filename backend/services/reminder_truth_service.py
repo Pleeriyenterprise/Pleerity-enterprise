@@ -17,6 +17,7 @@ REASON_ALREADY_RESOLVED = "ALREADY_RESOLVED"
 REASON_NO_LONGER_DUE = "NO_LONGER_DUE"
 REASON_COOLDOWN_ACTIVE = "COOLDOWN_ACTIVE"
 REASON_ZERO_PENDING_ITEMS = "ZERO_PENDING_ITEMS"
+REASON_NOT_CLIENT_VISIBLE = "NOT_CLIENT_VISIBLE"
 
 DEFAULT_REMINDER_COOLDOWN_HOURS_BY_TYPE = {
     "DAILY_COMPLIANCE_EXPIRY_EMAIL": 24,
@@ -188,6 +189,44 @@ async def evaluate_requirement_for_daily_reminder(
         }
 
     gap_ctx = _gap_engine_context_for_reminder(current)
+    from services.requirement_client_runtime_surface import requirement_row_eligible_on_client_runtime_surfaces
+    runtime_visible = await requirement_row_eligible_on_client_runtime_surfaces(
+        db,
+        client_id=str(current.get("client_id") or requirement.get("client_id") or ""),
+        row=current,
+    )
+    if not runtime_visible:
+        await db.reminder_item_state.update_one(
+            state_key,
+            {
+                "$set": {
+                    **state_key,
+                    "suppressed_at": now.isoformat(),
+                    "suppression_reason": REASON_NOT_CLIENT_VISIBLE,
+                    "last_evaluated_at": now.isoformat(),
+                    "last_underlying_state": {"status": current.get("status"), "visibility": "runtime_excluded"},
+                    "updated_at": now.isoformat(),
+                },
+                "$setOnInsert": {"created_at": now.isoformat()},
+            },
+            upsert=True,
+        )
+        await _log_evaluation(
+            db,
+            reminder_type=reminder_type,
+            state_key=state_key,
+            decision="evaluated_suppressed",
+            suppression_reason=REASON_NOT_CLIENT_VISIBLE,
+            underlying_state={"status": current.get("status"), "visibility": "runtime_excluded", "gap_engine": gap_ctx},
+        )
+        return {
+            "eligible": False,
+            "suppression_reason": REASON_NOT_CLIENT_VISIBLE,
+            "classification": None,
+            "state_key": state_key,
+            "current_requirement": current,
+            "gap_engine": gap_ctx,
+        }
 
     status = str(
         authority_runtime_requirement_status(current)

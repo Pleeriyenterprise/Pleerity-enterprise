@@ -73,7 +73,7 @@ const navSections = [
     label: 'Compliance Engine',
     icon: Shield,
     items: [
-      { href: '/admin/compliance/registry', label: 'Requirement Registry', icon: ListChecks },
+      { href: '/admin/compliance/registry', label: 'Policy Registry', icon: ListChecks },
       { href: '/admin/compliance/registry/preview', label: 'Registry Preview & Simulation', icon: GitCompare },
       { href: '/admin/compliance/registry/publish-queue', label: 'Registry Publish Queue', icon: Rocket },
       { href: '/admin/ops/action-links', label: 'Action Links', icon: Link2 },
@@ -154,7 +154,7 @@ const navSections = [
       { href: '/admin/privacy/consent', label: 'Privacy & Consent', icon: Cookie },
       { href: '/admin/ops/feature-controls', label: 'Feature Controls', icon: Zap },
       { href: '/admin/control-centre', label: 'Platform status', icon: Gauge, ownerOrAdminOnly: true },
-      { href: '/admin/dashboard', label: 'Automation Rules', icon: Settings, tabTarget: 'rules' },
+      { href: '/admin/dashboard', label: 'Legacy Mongo rules (read-only)', icon: Settings, tabTarget: 'rules' },
       { href: '/admin/dashboard', label: 'Email Templates', icon: Mail, tabTarget: 'templates' },
       { href: '/admin/dashboard', label: 'Email Delivery', icon: Mail, tabTarget: 'emailDelivery' },
       { href: '/admin/automation', label: 'Automation Control Centre', icon: Zap },

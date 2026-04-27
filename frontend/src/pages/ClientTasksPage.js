@@ -90,6 +90,7 @@ import {
   requirementMapFromList,
 } from '../utils/portalRequirementAttention';
 import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
+import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All' },
@@ -287,6 +288,7 @@ function actionLabel(act) {
 
 function primaryClickBusinessOutcome(task) {
   const t = task?.primary_action_type;
+  if (t === 'guided_evidence_resolution') return 'guided_evidence_opened';
   if (t === 'upload_evidence') return 'document_flow_opened';
   if (t === 'risk_follow_up') return 'risk_signal_review_opened';
   if (t === 'work_order') return 'work_order_detail_opened';
@@ -851,6 +853,7 @@ function SectionBlock({
 export default function ClientTasksPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { openGuidedEvidence } = useGuidedEvidenceModal();
   const { hasFeature } = useEntitlements();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -1060,6 +1063,25 @@ export default function ClientTasksPage() {
         action_id: act.id,
       });
     }
+    if (
+      task &&
+      (act?.kind === 'guided_evidence_resolution' ||
+        act?.kind === 'direct_evidence_action' ||
+        act?.intent === 'guided_evidence_resolution' ||
+        act?.intent === 'direct_evidence_action')
+    ) {
+      const pid = act.property_id || task.property_id;
+      const rid = act.requirement_id || task.metadata?.requirement_id;
+      if (pid && rid) {
+        openGuidedEvidence({
+          propertyId: String(pid),
+          requirementId: String(rid),
+          onSubmitted: load,
+          initialEvidenceMode: act.evidence_mode || undefined,
+        });
+        return;
+      }
+    }
     const tid = task?.id;
     if (act.id === 'create_compliance_work_order' && act.requirement_id) {
       setComplianceBookingBusyId(tid);
@@ -1159,6 +1181,15 @@ export default function ClientTasksPage() {
       });
     }
     const cta = resolveTaskCta(task, which);
+    if (which === 'primary' && cta.guidedEvidence) {
+      openGuidedEvidence({
+        propertyId: cta.guidedEvidence.propertyId,
+        requirementId: cta.guidedEvidence.requirementId,
+        onSubmitted: load,
+        initialEvidenceMode: cta.guidedEvidence.initialEvidenceMode || undefined,
+      });
+      return;
+    }
     const url = cta.route || (which === 'secondary' ? '/today' : '/dashboard');
     if (which === 'secondary') {
       emitTodayAnalytics('today_secondary_nav_clicked', {

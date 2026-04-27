@@ -8,6 +8,12 @@ from datetime import datetime, timezone
 from typing import Optional
 import logging
 
+from services.legacy_requirement_rules_gate import (
+    assert_legacy_rule_mutations_allowed,
+    build_requirement_rules_conflict_summary,
+    legacy_maintenance_enabled_in_environment,
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin/rules", tags=["Admin - Rules"])
@@ -144,6 +150,28 @@ async def list_rules(
         )
 
 
+@router.get("/conflict-summary")
+async def rules_conflict_summary(request: Request):
+    """Read-only: overlaps between governed published rules and legacy ungoverned rows (+ supplemental inventory)."""
+    await admin_route_guard(request)
+    db = database.get_db()
+    try:
+        return await build_requirement_rules_conflict_summary(db)
+    except Exception as e:
+        logger.error(f"Conflict summary error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to build requirement rules conflict summary",
+        )
+
+
+@router.get("/maintenance-status")
+async def legacy_rules_maintenance_status(request: Request):
+    """Expose whether infra enabled emergency legacy mutations (OWNER + confirmation header still required)."""
+    await admin_route_guard(request)
+    return {"legacy_maintenance_environment_enabled": legacy_maintenance_enabled_in_environment()}
+
+
 @router.get("/categories")
 async def get_categories(request: Request):
     """Get available rule categories."""
@@ -195,6 +223,7 @@ async def get_rule(request: Request, rule_id: str):
 async def create_rule(request: Request):
     """Create a new requirement rule."""
     user = await admin_route_guard(request)
+    assert_legacy_rule_mutations_allowed(request, user)
     db = database.get_db()
     
     try:
@@ -268,6 +297,7 @@ async def create_rule(request: Request):
 async def update_rule(request: Request, rule_id: str):
     """Update an existing requirement rule."""
     user = await admin_route_guard(request)
+    assert_legacy_rule_mutations_allowed(request, user)
     db = database.get_db()
     
     try:
@@ -348,6 +378,7 @@ async def update_rule(request: Request, rule_id: str):
 async def delete_rule(request: Request, rule_id: str):
     """Soft-delete a requirement rule (sets is_active to False)."""
     user = await admin_route_guard(request)
+    assert_legacy_rule_mutations_allowed(request, user)
     db = database.get_db()
     
     try:
@@ -407,6 +438,7 @@ async def delete_rule(request: Request, rule_id: str):
 async def seed_default_rules(request: Request):
     """Seed the database with default UK compliance rules."""
     user = await admin_route_guard(request)
+    assert_legacy_rule_mutations_allowed(request, user)
     db = database.get_db()
     
     try:

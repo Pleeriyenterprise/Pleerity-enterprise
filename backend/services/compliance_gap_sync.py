@@ -39,6 +39,20 @@ async def sync_compliance_gaps_for_requirement(
     cid = requirement.get("client_id")
     if not rid or not cid:
         return {"rows": [], "errors": []}
+    from services.requirement_client_runtime_surface import requirement_row_eligible_on_client_runtime_surfaces
+    runtime_visible = await requirement_row_eligible_on_client_runtime_surfaces(
+        db,
+        client_id=str(cid),
+        row=requirement,
+        property_doc=property_doc,
+    )
+    if not runtime_visible:
+        now = datetime.now(timezone.utc).isoformat()
+        await db.compliance_gaps.update_many(
+            {"requirement_id": str(rid), "client_id": str(cid), "status": "open"},
+            {"$set": {"status": "resolved", "resolved_at": now, "updated_at": now, "resolved_reason": "runtime_excluded"}},
+        )
+        return {"rows": [], "errors": []}
 
     sync_errors: List[Dict[str, Any]] = []
     gaps = infer_compliance_gaps_for_requirement(requirement, property_doc=property_doc)

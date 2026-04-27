@@ -169,7 +169,8 @@ def _primary_action_fields(
         pri_c = ta_canon.get("primary") if isinstance(ta_canon.get("primary"), dict) else {}
         sec_c = ta_canon.get("secondary") if isinstance(ta_canon.get("secondary"), dict) else {}
         plabel = str(resolved.get("primary_action_label") or label)
-        purl = str(resolved.get("primary_action_url") or url)
+        raw_purl = resolved.get("primary_action_url")
+        purl = str(url) if raw_purl is None else str(raw_purl)
         if pri_c.get("label"):
             plabel = str(pri_c.get("label") or plabel)
         if pri_c.get("route"):

@@ -26,7 +26,7 @@ def _warn() -> None:
         "services.compliance_audit_pack_service is deprecated; use "
         "services.compliance_audit_evidence_pack_service instead.",
         DeprecationWarning,
-        stacklevel=2,
+        stacklevel=3,
     )
 
 

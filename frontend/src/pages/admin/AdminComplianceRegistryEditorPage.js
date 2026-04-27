@@ -367,7 +367,7 @@ export default function AdminComplianceRegistryEditorPage() {
       <div className="p-6 max-w-5xl">
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <Link to="/admin/compliance/registry" className="text-sm text-electric-teal hover:underline">
-            ← Requirement Registry
+            ← Policy Registry
           </Link>
           <Link to="/admin/compliance/registry/preview" className="text-sm text-electric-teal hover:underline">
             Preview &amp; simulation

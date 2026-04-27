@@ -1,15 +1,17 @@
 import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, Wrench, Zap } from 'lucide-react';
+import { AlertCircle, Eye, RefreshCw, Upload, Wrench, Zap } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
 import { clientAPI } from '../../api/client';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { requirementLabel, requirementDocumentUploadLabel } from '../../domain/presentDomain';
+import { requirementLabel } from '../../domain/presentDomain';
 import { getEvidenceStatus } from '../../utils/evidenceStatus';
 import { humanRiskType, humanSeverity, humanAction } from '../../utils/riskPresentation';
 import { buildEntityRoute, resolveClientPortalPath, resolveDocumentsPath } from '../../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../../utils/ctaRegistry';
+import { useGuidedEvidenceModal } from '../../context/GuidedEvidenceModalContext';
+import { resolveRequirementAction } from '../../utils/requirementTakeActionResolver';
 import { resolveRiskSignalPrimaryKey } from '../../utils/primaryActionResolver';
 import { PORTAL_COPY } from '../../utils/clientPortalCopy';
 import { cn } from '../../lib/utils';
@@ -90,8 +92,10 @@ export default function PropertyOperatingHub({
   onOpenNotApplicable,
   onCreateWoFromRiskDescription,
   onPlanRestrictedJobError,
+  onRefreshAfterEvidence,
 }) {
   const navigate = useNavigate();
+  const { openGuidedEvidence } = useGuidedEvidenceModal();
   const {
     compliance: TAB_COMPLIANCE,
     maintenance: TAB_MAINTENANCE,
@@ -136,23 +140,41 @@ export default function PropertyOperatingHub({
               <ul className="divide-y divide-gray-100">
                 {priorityActions.actions.map((action) => {
                   const cta = resolveTaskCta(action, 'primary');
+                  const label =
+                    (action.metadata?.take_action?.primary?.label
+                      ? String(action.metadata.take_action.primary.label)
+                      : null) ||
+                    action.primary_action_label ||
+                    PORTAL_COPY.viewDetails;
                   return (
                     <li key={action.task_id || action.id} className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-midnight-blue">{action.title}</p>
                         {action.description ? <p className="text-xs text-gray-600 mt-1 line-clamp-3">{action.description}</p> : null}
                       </div>
-                      {cta.route ? (
+                      {cta.guidedEvidence ? (
+                        <Button
+                          type="button"
+                          className={cn(portalPrimaryButtonClass, 'inline-flex w-full sm:w-auto justify-center shrink-0')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openGuidedEvidence({
+                              propertyId: cta.guidedEvidence.propertyId,
+                              requirementId: cta.guidedEvidence.requirementId,
+                              onSubmitted: onRefreshAfterEvidence,
+                              initialEvidenceMode: cta.guidedEvidence.initialEvidenceMode || undefined,
+                            });
+                          }}
+                        >
+                          {label}
+                        </Button>
+                      ) : cta.route ? (
                         <Link
                           to={resolveClientPortalPath(cta.route, propertyId ? `/properties/${propertyId}` : '/properties')}
                           className={cn(portalPrimaryButtonClass, 'inline-flex w-full sm:w-auto justify-center no-underline shrink-0')}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {(action.metadata?.take_action?.primary?.label
-                            ? String(action.metadata.take_action.primary.label)
-                            : null) ||
-                            action.primary_action_label ||
-                            PORTAL_COPY.viewDetails}
+                          {label}
                         </Link>
                       ) : (
                         <span className="text-xs text-gray-500">No route — open Compliance or Jobs & issues.</span>
@@ -329,15 +351,33 @@ export default function PropertyOperatingHub({
         ) : (
           <ul className="space-y-3">
             {hubPrioritizedRequirements.map((r) => {
-              const st = (r.status || '').toUpperCase();
               const statusUi = getEvidenceStatus(r.status, r);
               const Icon = statusUi.icon;
               const linked = !!r.evidence_doc_id;
               const due = rowExpiry(r);
               const est = r.date_source === 'SYSTEM_ESTIMATED';
               const needsDocument = isRequirementMissingDocument(r);
-              const primaryLabel = PORTAL_COPY.fixComplianceIssue;
-              const reqHref = buildEntityRoute({ requirement_id: rowReqId(r), property_id: propertyId, mode: 'requirement' }, '');
+              const rid = rowReqId(r);
+              const ta = resolveRequirementAction(r, {});
+              const docsHref = resolveDocumentsPath(propertyId, rid ? { requirement_id: rid } : {});
+              const reqHref = buildEntityRoute({ requirement_id: rid, property_id: propertyId, mode: 'requirement' }, '');
+              const primaryClick = () => {
+                if (ta.primary_action_handler === 'guided_evidence_error') return;
+                if (ta.primary_action_handler === 'external' && ta.primary_route) {
+                  window.open(ta.primary_route, '_blank', 'noopener,noreferrer');
+                  return;
+                }
+                if (ta.primary_action_handler === 'guided_evidence') {
+                  openGuidedEvidence({
+                    propertyId,
+                    requirement: r,
+                    onSubmitted: onRefreshAfterEvidence,
+                    initialEvidenceMode: ta.guided_initial_evidence_mode || undefined,
+                  });
+                  return;
+                }
+                navigate(ta.primary_route || docsHref);
+              };
               return (
                 <li key={rowReqId(r) || r.requirement_code} className="rounded-xl border border-gray-200 bg-white p-4 min-w-0 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -371,10 +411,35 @@ export default function PropertyOperatingHub({
                     <Button
                       type="button"
                       className={cn(portalPrimaryButtonClass, 'w-full sm:w-auto justify-center')}
-                      onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: rowReqId(r) }))}
+                      disabled={ta.primary_action_handler === 'guided_evidence_error'}
+                      title={
+                        ta.primary_action_handler === 'guided_evidence_error'
+                          ? 'Guided resolution unavailable — missing property or requirement context.'
+                          : undefined
+                      }
+                      onClick={primaryClick}
                     >
-                      {primaryLabel}
+                      {ta.primary_intent === 'upload_evidence' && ta.primary_action_handler === 'navigate' ? (
+                        <Upload className="w-3.5 h-3.5 mr-1 shrink-0 inline" aria-hidden />
+                      ) : null}
+                      {ta.actionType === 'JOB' ? <RefreshCw className="w-3.5 h-3.5 mr-1 shrink-0 inline" aria-hidden /> : null}
+                      {ta.actionType === 'OBLIGATION' ? <Eye className="w-3.5 h-3.5 mr-1 shrink-0 inline" aria-hidden /> : null}
+                      {ta.primary_action_label}
                     </Button>
+                    {ta.secondary_action?.route ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn(portalSecondaryButtonClass, 'w-full sm:w-auto justify-center')}
+                        onClick={() =>
+                          ta.secondary_action.external
+                            ? window.open(ta.secondary_action.route, '_blank', 'noopener,noreferrer')
+                            : navigate(ta.secondary_action.route)
+                        }
+                      >
+                        {ta.secondary_action.label}
+                      </Button>
+                    ) : null}
                     {reqHref ? (
                       <Link to={reqHref} className={cn(portalSecondaryButtonClass, 'inline-flex w-full sm:w-auto justify-center no-underline items-center')}>
                         View details

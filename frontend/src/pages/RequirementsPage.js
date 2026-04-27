@@ -37,6 +37,7 @@ import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import { REQUIREMENTS_PAGE_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
 import { resolveRequirementAction } from '../utils/requirementTakeActionResolver';
+import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
 
 const NOT_REQUIRED_REASONS = [
@@ -48,6 +49,7 @@ const NOT_REQUIRED_REASONS = [
 
 const RequirementsPage = () => {
   const navigate = useNavigate();
+  const { openGuidedEvidence } = useGuidedEvidenceModal();
   const { hasFeature } = useEntitlements();
   const [searchParams] = useSearchParams();
   const highlightParam = searchParams.get('highlight');
@@ -401,7 +403,17 @@ const RequirementsPage = () => {
             )}
             {(() => {
               const ta = takeActionResolved;
+              const primaryError = ta.primary_action_handler === 'guided_evidence_error';
               const onPrimary = () => {
+                if (primaryError) return;
+                if (ta.primary_action_handler === 'guided_evidence') {
+                  openGuidedEvidence({
+                    propertyId: req.property_id,
+                    requirement: req,
+                    initialEvidenceMode: ta.guided_initial_evidence_mode || undefined,
+                  });
+                  return;
+                }
                 if (!ta.primary_route) {
                   openViewRequirementModal(req);
                   return;
@@ -416,7 +428,17 @@ const RequirementsPage = () => {
                 <Button
                   className="w-full min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90 text-midnight-blue font-semibold"
                   onClick={onPrimary}
-                  data-testid={`fix-compliance-${req.requirement_id}`}
+                  disabled={primaryError}
+                  title={
+                    primaryError
+                      ? 'This obligation is configured for guided resolution but required property or requirement context is missing. Use supporting links or contact support if this persists.'
+                      : undefined
+                  }
+                  data-testid={
+                    ta.primary_action_handler === 'guided_evidence'
+                      ? `requirements-guided-open-${req.requirement_id}`
+                      : `fix-compliance-${req.requirement_id}`
+                  }
                 >
                   {ta.primary_action_label}
                   <ChevronRight className="w-4 h-4 ml-1 shrink-0" />

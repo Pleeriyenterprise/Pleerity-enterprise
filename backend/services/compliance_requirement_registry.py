@@ -68,6 +68,10 @@ def published_registry_entry_eligible_for_runtime(entry: Dict[str, Any]) -> bool
     gov = entry.get("governance") if isinstance(entry.get("governance"), dict) else {}
     if gov.get("archived") is True or gov.get("materialization_excluded") is True:
         return False
+    # Domestic alarm / detection evidence is unified under SMOKE_HEAT_ALARMS; do not surface legacy FIRE_DETECTION rows.
+    cc = str(entry.get("canonical_code") or "").strip().upper()
+    if cc == "FIRE_DETECTION":
+        return False
     return True
 
 
@@ -128,6 +132,10 @@ class RequirementPlanItem:
     why_it_matters_by_jurisdiction: Optional[Dict[str, Any]] = None
     primary_action_mode: Optional[str] = None
     cta_label_override: Optional[str] = None
+    allowed_evidence_modes: Tuple[str, ...] = field(default_factory=tuple)
+    primary_resolution_workflow: Optional[str] = None
+    allow_medium_non_document_satisfaction: bool = False
+    allow_low_non_document_satisfaction: bool = False
 
 
 def _norm_pt(property_doc: Dict) -> str:
@@ -249,6 +257,22 @@ def apply_published_registry_entries_to_plan(
                 cta_label_override=(
                     str(m.get("cta_label_override") or "").strip() or None
                 ),
+                allowed_evidence_modes=tuple(
+                    str(x).strip().upper()
+                    for x in (m.get("allowed_evidence_modes") or [])
+                    if str(x or "").strip()
+                )
+                if isinstance(m.get("allowed_evidence_modes"), list)
+                else item.allowed_evidence_modes,
+                primary_resolution_workflow=(
+                    str(m.get("primary_resolution_workflow") or "").strip() or item.primary_resolution_workflow
+                ),
+                allow_medium_non_document_satisfaction=bool(m.get("allow_medium_non_document_satisfaction"))
+                if m.get("allow_medium_non_document_satisfaction") is not None
+                else item.allow_medium_non_document_satisfaction,
+                allow_low_non_document_satisfaction=bool(m.get("allow_low_non_document_satisfaction"))
+                if m.get("allow_low_non_document_satisfaction") is not None
+                else item.allow_low_non_document_satisfaction,
             )
         )
     return merged

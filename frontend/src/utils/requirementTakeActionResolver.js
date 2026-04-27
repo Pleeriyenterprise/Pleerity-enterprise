@@ -82,8 +82,9 @@ function jobPrimaryLabel(requirement) {
  * @returns {{
  *   actionType: string,
  *   primary_action_label: string,
- *   primary_action_handler: 'navigate' | 'external' | 'none',
+ *   primary_action_handler: 'navigate' | 'external' | 'none' | 'guided_evidence' | 'guided_evidence_error',
  *   primary_route: string | null,
+ *   guided_initial_evidence_mode: string | null,
  *   secondary_action: null | { label: string, handler: 'navigate' | 'external', route: string, external: boolean },
  *   supporting_external_links: Array<{ key?: string, label: string, url: string, external?: boolean, kind?: string }>,
  * }}
@@ -91,7 +92,19 @@ function jobPrimaryLabel(requirement) {
 /** True when API provided a complete primary CTA — UI should not substitute client-only labels/routes. */
 export function requirementUsesServerTakeActionPrimary(requirement) {
   const ta = requirement?.take_action;
-  return !!(ta && typeof ta === 'object' && ta.primary && ta.primary.route);
+  const p = ta?.primary;
+  return !!(
+    ta &&
+    typeof ta === 'object' &&
+    p &&
+    (p.route || p.kind === 'guided_evidence_resolution' || p.kind === 'direct_evidence_action')
+  );
+}
+
+function guidedPrimaryLooksIncomplete(primary) {
+  const pid = primary?.property_id ?? primary?.propertyId;
+  const rid = primary?.requirement_id ?? primary?.requirementId;
+  return !(String(pid || '').trim() && String(rid || '').trim());
 }
 
 function primaryIntentFromTakeActionPrimary(primary) {
@@ -121,12 +134,40 @@ export function resolveRequirementAction(requirement, _property = {}) {
   if (requirement.take_action && typeof requirement.take_action === 'object' && requirement.take_action.primary) {
     const ta = requirement.take_action;
     const sec = ta.secondary || null;
+    const prim = ta.primary;
+    const isServerUnavailable =
+      prim.handler === 'guided_evidence_unavailable' || prim.metadata_incomplete === true;
+    const isDirectEvidence =
+      prim.kind === 'direct_evidence_action' || prim.handler === 'direct_evidence';
+    const isGuidedShape =
+      prim.kind === 'guided_evidence_resolution' ||
+      prim.handler === 'guided_evidence' ||
+      isDirectEvidence;
+    const isClientBrokenGuided = isGuidedShape && !isServerUnavailable && guidedPrimaryLooksIncomplete(prim);
+    if (isClientBrokenGuided && process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[requirementTakeActionResolver] evidence modal primary missing property_id or requirement_id — showing safe error CTA (no silent document fallback).',
+      );
+    }
+    const opensEvidenceModal = isGuidedShape && !isServerUnavailable && !isClientBrokenGuided;
+    const isGuidedError = isServerUnavailable || isClientBrokenGuided;
+    const guidedInitial =
+      prim.evidence_mode && isDirectEvidence ? String(prim.evidence_mode) : null;
     return {
       actionType: inferRequirementActionType(requirement),
       primary_action_label: String(ta.primary.label || ''),
-      primary_action_handler: ta.primary.handler === 'external' ? 'external' : 'navigate',
-      primary_route: ta.primary.route ? String(ta.primary.route) : null,
+      primary_action_handler:
+        prim.handler === 'external'
+          ? 'external'
+          : isGuidedError
+            ? 'guided_evidence_error'
+            : opensEvidenceModal
+              ? 'guided_evidence'
+              : 'navigate',
+      primary_route: ta.primary.route != null && ta.primary.route !== '' ? String(ta.primary.route) : null,
       primary_intent: primaryIntentFromTakeActionPrimary(ta.primary),
+      guided_initial_evidence_mode: guidedInitial,
       secondary_action: sec
         ? {
             label: String(sec.label || ''),
@@ -253,6 +294,12 @@ export function resolveRequirementAction(requirement, _property = {}) {
 export function resolveInboxTaskTakeActionRoute(task, which = 'primary') {
   const ta = task?.metadata?.take_action;
   if (!ta || typeof ta !== 'object') return null;
+  if (
+    which === 'primary' &&
+    (ta.primary?.kind === 'guided_evidence_resolution' || ta.primary?.kind === 'direct_evidence_action')
+  ) {
+    return null;
+  }
   if (which === 'primary' && ta.primary?.route) return String(ta.primary.route);
   if (which === 'secondary' && ta.secondary?.route) return String(ta.secondary.route);
   return null;

@@ -237,6 +237,16 @@ def normalise_registry_draft_for_storage(doc: Dict[str, Any]) -> List[str]:
         ab["primary_action_mode"] = pam
         doc["action_behaviour"] = ab
 
+    er = doc.get("evidence_resolution") if isinstance(doc.get("evidence_resolution"), dict) else None
+    if er:
+        modes = er.get("allowed_evidence_modes")
+        if isinstance(modes, list):
+            er["allowed_evidence_modes"] = [str(x).strip().upper() for x in modes if str(x or "").strip()]
+        prw = str(er.get("primary_resolution_workflow") or "").strip()
+        if prw:
+            er["primary_resolution_workflow"] = prw.replace(" ", "_")
+        doc["evidence_resolution"] = er
+
     links = doc.get("action_links")
     if isinstance(links, list):
         for i, raw in enumerate(links):

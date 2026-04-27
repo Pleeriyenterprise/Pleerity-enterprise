@@ -146,6 +146,8 @@ const ComplianceScorePage = () => {
     }
   };
 
+  // TODO: Score drivers use document-first synthetic actions (UPLOAD/VIEW/CONFIRM) until each driver is
+  // hydrated with canonical `take_action` from requirements; only then can guided/direct evidence CTAs align here.
   const navigateDriverAction = (driver, action) => {
     if (!driver?.property_id || !driver?.requirement_id) return;
     const task = {

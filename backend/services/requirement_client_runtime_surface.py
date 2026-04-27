@@ -38,7 +38,7 @@ CLIENT_RUNTIME_REQUIREMENT_SURFACE_INVARIANT = (
 )
 
 _ALIAS_FAMILY_BY_CANONICAL: Dict[str, str] = {
-    # True alias family: same fire-detection obligation represented by legacy slugs.
+    # Domestic alarm / smoke / CO / fire alarm & detection testing evidence (single client-facing family).
     "fire_detection": "fire_detection_alias_family",
     "fire_alarm": "fire_detection_alias_family",
     "smoke_alarms": "fire_detection_alias_family",
@@ -182,6 +182,8 @@ def _runtime_source_for_row(
     published_registry_entries: Optional[Dict[str, Any]],
     baseline_plan_types_lower: Set[str],
 ) -> str:
+    if _legacy_readonly_visible(row):
+        return "legacy_readonly"
     rt = _norm_requirement_type(row)
     baseline = rt in baseline_plan_types_lower
     overlay = _published_overlay_exists_for_row(
@@ -256,6 +258,10 @@ def _build_canonical_runtime_row(
     out["cta_label"] = str(((row.get("take_action") or {}).get("primary") or {}).get("label") or "").strip() or None
     out["cta_url"] = ((row.get("take_action") or {}).get("primary") or {}).get("url")
     out["source"] = source
+    out["legacy_requirement_state"] = row.get("legacy_requirement_state")
+    out["legacy_readonly_visible"] = bool(row.get("legacy_readonly_visible"))
+    out["legacy_review_required"] = bool(row.get("legacy_review_required"))
+    out["legacy_canonical_requirement_code"] = row.get("legacy_canonical_requirement_code")
     out["trigger_explanation"] = {
         "jurisdiction_basis": out.get("jurisdiction_basis"),
         "property_jurisdiction": out.get("property_jurisdiction"),
@@ -345,6 +351,13 @@ def _registry_draft_or_unpublished_materialization(row: Dict[str, Any]) -> bool:
     return rps in ("draft", "draft_only", "unpublished")
 
 
+def _legacy_readonly_visible(row: Dict[str, Any]) -> bool:
+    state = str(row.get("legacy_requirement_state") or "").strip().lower()
+    if state in ("mapped_readonly", "unmapped_readonly"):
+        return True
+    return row.get("legacy_readonly_visible") is True
+
+
 def _explicit_row_jurisdiction_mismatches_property(
     row: Dict[str, Any],
     property_doc: Dict[str, Any],
@@ -396,6 +409,15 @@ def requirement_row_passes_client_runtime_surface_gates(
 
     if _needs_catalog_planner_membership(row):
         if rtype not in plan_types_lower:
+            return False
+    if published_registry_entries is not None:
+        has_published_overlay = _published_overlay_exists_for_row(
+            row,
+            property_doc=property_doc,
+            client_doc=client_doc,
+            published_registry_entries=published_registry_entries,
+        )
+        if not has_published_overlay and not _legacy_readonly_visible(row):
             return False
 
     return True

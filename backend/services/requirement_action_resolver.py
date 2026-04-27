@@ -3,14 +3,28 @@ Unified Take Action model for client surfaces: one primary action per requiremen
 separated from maintenance flows and aligned with compliance_requirement_class / action_type.
 
 Keep in sync with frontend/src/utils/requirementTakeActionResolver.js (labels and routes).
+
+JOB-class rows: envelope stays primary "book inspection / property + hash" plus optional secondary
+upload — multi-mode guided evidence resolution is intentionally not layered onto JOB workflows until
+product policy explicitly requires it (existing job envelopes unchanged).
 """
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 from services.compliance_requirement_engine import resolve_engine_payload_from_code, resolve_engine_payload_from_requirement_row
 from presentation.label_service import requirement_label
 from services.requirement_action_links import format_client_external_link, get_client_action_links_for_requirement_row
+from services.compliance_evidence_record_service import (
+    EVIDENCE_MODE_CONTRACTOR_CONFIRMATION,
+    EVIDENCE_MODE_DOCUMENT_UPLOAD,
+    EVIDENCE_MODE_INSPECTION_CHECKLIST,
+    EVIDENCE_MODE_STRUCTURED_DECLARATION,
+    effective_evidence_resolution,
+)
 
 ACTION_DOCUMENT = "DOCUMENT"
 ACTION_JOB = "JOB"
@@ -22,6 +36,9 @@ INTENT_UPLOAD_EVIDENCE = "upload_evidence"
 INTENT_VIEW_GUIDANCE = "view_guidance"
 INTENT_MAINTENANCE = "maintenance"
 INTENT_BOOK_INSPECTION = "book_inspection"
+INTENT_GUIDED_EVIDENCE = "guided_evidence_resolution"
+INTENT_GUIDED_EVIDENCE_UNAVAILABLE = "guided_evidence_unavailable"
+INTENT_DIRECT_EVIDENCE = "direct_evidence_action"
 
 # Client contract: surfaces must not invent parallel requirement CTA wording when take_action is present.
 TAKE_ACTION_CONTRACT_VERSION = "requirement_take_action_v1"
@@ -119,6 +136,51 @@ def _attach_take_action_contract_metadata(take_action: Dict[str, Any], requireme
     }
 
 
+def _ordered_unique_evidence_modes(modes: List[str]) -> List[str]:
+    seen: set[str] = set()
+    out: List[str] = []
+    for m in modes or []:
+        u = str(m or "").strip().upper()
+        if not u or u in seen:
+            continue
+        seen.add(u)
+        out.append(u)
+    return out
+
+
+def _single_non_document_cta_label(mode: str) -> str:
+    m = str(mode or "").strip().upper()
+    if m == EVIDENCE_MODE_STRUCTURED_DECLARATION:
+        return "Submit compliance declaration"
+    if m == EVIDENCE_MODE_CONTRACTOR_CONFIRMATION:
+        return "Add contractor confirmation"
+    if m == EVIDENCE_MODE_INSPECTION_CHECKLIST:
+        return "Complete inspection checklist"
+    return "Add compliance evidence"
+
+
+def _document_upload_primary_label(requirement: Dict[str, Any], meta: Dict[str, Any], fallback: str) -> str:
+    """cta_label_override applies only to document-upload primary (backward compatible)."""
+    cta = str(meta.get("cta_label_override") or "").strip()
+    if cta:
+        return cta
+    code = _norm_code(requirement)
+    if "gas" in code or code in ("cp12", "gas_safety", "gas_safety_certificate"):
+        return "Upload Gas Safety Certificate"
+    if "eicr" in code or "electrical_safety" in code or "electrical_installation" in code:
+        return "Upload EICR Certificate"
+    if "hmo" in code and "licen" in code:
+        return "Upload HMO Licence"
+    return fallback
+
+
+def _guided_multi_mode_primary_label(policy: Dict[str, Any]) -> str:
+    s = str(policy.get("guided_primary_cta_label") or "").strip()
+    if s:
+        return s
+    return "Add compliance evidence"
+
+
 def job_primary_label(requirement: Dict[str, Any]) -> str:
     code = _norm_code(requirement)
     if "eicr" in code or code == "electrical_safety":
@@ -170,7 +232,7 @@ def resolve_take_action_envelope(
     eng = _engine(requirement)
     action_type = infer_action_type(requirement)
     meta = requirement.get("registry_metadata") if isinstance(requirement.get("registry_metadata"), dict) else {}
-    if str(meta.get("primary_action_mode") or "").strip().lower() == "hidden":
+    if str(meta.get("primary_action_mode") or "").strip().lower() == "hidden" or requirement.get("client_surface_visible") is False:
         why_fields = _registry_why_it_matters(requirement)
         ta_hidden = {
             "primary": None,
@@ -237,6 +299,8 @@ def resolve_take_action_envelope(
             "take_action": ta_maint,
         }
 
+    # TODO (product): JOB + multi-evidence — keep existing job envelope; do not force guided modal
+    # until policy requires it. See module docstring.
     is_job = cls == "JOB" or ff == "job"
     needs_doc = eng.get("requires_document_evidence", True) is not False
 
@@ -278,9 +342,131 @@ def resolve_take_action_envelope(
     why_fields = _registry_why_it_matters(requirement)
     cta = str(meta.get("cta_label_override") or "").strip()
     upload_label = cta if cta else "Upload document"
+
+    policy = effective_evidence_resolution(requirement)
+    modes = [str(m or "").strip().upper() for m in (policy.get("allowed_evidence_modes") or []) if m]
+    ordered_modes = _ordered_unique_evidence_modes(modes)
+    non_doc_modes = [m for m in modes if m != EVIDENCE_MODE_DOCUMENT_UPLOAD]
+    has_doc_mode = EVIDENCE_MODE_DOCUMENT_UPLOAD in set(modes)
+
+    if non_doc_modes and not (pid and rid):
+        logger.warning(
+            "resolve_take_action_envelope: non-document evidence modes configured but property_id "
+            "or requirement_id missing (code=%s); refusing silent primary fallback to document upload",
+            code or "(none)",
+        )
+        ta_gbroken: Dict[str, Any] = {
+            "primary": {
+                "label": "Guided resolution unavailable",
+                "route": None,
+                "kind": "guided_evidence_resolution",
+                "handler": "guided_evidence_unavailable",
+                "intent": INTENT_GUIDED_EVIDENCE_UNAVAILABLE,
+                "metadata_incomplete": True,
+            },
+            "secondary": (
+                {
+                    "label": upload_label,
+                    "route": doc_route,
+                    "kind": "navigate",
+                    "handler": "navigate",
+                    "external": False,
+                    "intent": INTENT_UPLOAD_EVIDENCE,
+                }
+                if has_doc_mode
+                else None
+            ),
+            "supporting_external_links": supporting,
+        }
+        _attach_take_action_contract_metadata(ta_gbroken, requirement)
+        return {
+            "action_type": ACTION_DOCUMENT,
+            **why_fields,
+            "take_action": ta_gbroken,
+        }
+
+    # Single allowed mode: DOCUMENT_UPLOAD — direct upload CTA (registry cta_label_override may refine label).
+    if len(ordered_modes) == 1 and ordered_modes[0] == EVIDENCE_MODE_DOCUMENT_UPLOAD:
+        doc_primary = _document_upload_primary_label(requirement, meta, upload_label)
+        ta_doc_only: Dict[str, Any] = {
+            "primary": {
+                "label": doc_primary,
+                "route": doc_route,
+                "kind": "navigate",
+                "handler": "navigate",
+                "intent": INTENT_UPLOAD_EVIDENCE,
+            },
+            "secondary": None,
+            "supporting_external_links": supporting,
+        }
+        _attach_take_action_contract_metadata(ta_doc_only, requirement)
+        return {
+            "action_type": ACTION_DOCUMENT,
+            **why_fields,
+            "take_action": ta_doc_only,
+        }
+
+    # Single allowed non-document mode — one direct CTA (opens selector pre-focused; no per-mode buttons on cards).
+    if len(ordered_modes) == 1 and ordered_modes[0] != EVIDENCE_MODE_DOCUMENT_UPLOAD and pid and rid:
+        only_mode = ordered_modes[0]
+        ta_direct: Dict[str, Any] = {
+            "primary": {
+                "label": _single_non_document_cta_label(only_mode),
+                "route": None,
+                "kind": "direct_evidence_action",
+                "handler": "direct_evidence",
+                "intent": INTENT_DIRECT_EVIDENCE,
+                "property_id": str(pid),
+                "requirement_id": str(rid),
+                "evidence_mode": only_mode,
+            },
+            "secondary": None,
+            "supporting_external_links": supporting,
+        }
+        _attach_take_action_contract_metadata(ta_direct, requirement)
+        return {
+            "action_type": ACTION_DOCUMENT,
+            **why_fields,
+            "take_action": ta_direct,
+        }
+
+    # Multiple allowed evidence modes — one guided primary CTA; optional document secondary.
+    if len(ordered_modes) >= 2 and pid and rid and non_doc_modes:
+        guided_label = _guided_multi_mode_primary_label(policy)
+        ta_guided: Dict[str, Any] = {
+            "primary": {
+                "label": guided_label,
+                "route": None,
+                "kind": "guided_evidence_resolution",
+                "handler": "guided_evidence",
+                "intent": INTENT_GUIDED_EVIDENCE,
+                "property_id": str(pid),
+                "requirement_id": str(rid),
+            },
+            "secondary": (
+                {
+                    "label": upload_label,
+                    "route": doc_route,
+                    "kind": "navigate",
+                    "handler": "navigate",
+                    "external": False,
+                    "intent": INTENT_UPLOAD_EVIDENCE,
+                }
+                if has_doc_mode
+                else None
+            ),
+            "supporting_external_links": supporting,
+        }
+        _attach_take_action_contract_metadata(ta_guided, requirement)
+        return {
+            "action_type": ACTION_DOCUMENT,
+            **why_fields,
+            "take_action": ta_guided,
+        }
+
     ta_doc = {
         "primary": {
-            "label": upload_label,
+            "label": _document_upload_primary_label(requirement, meta, upload_label),
             "route": doc_route,
             "kind": "navigate",
             "handler": "navigate",
@@ -347,13 +533,21 @@ def resolve_take_action_for_priority_action(
         primary_type = "view_requirement"
     elif at == ACTION_JOB:
         primary_type = "work_order"
+    elif isinstance(pri, dict) and pri.get("kind") in ("guided_evidence_resolution", "direct_evidence_action"):
+        primary_type = "guided_evidence_resolution"
     else:
         primary_type = "upload_evidence"
+
+    if primary_type == "guided_evidence_resolution":
+        primary_action_url = ""
+    else:
+        raw_route = pri.get("route") if isinstance(pri, dict) else None
+        primary_action_url = str(raw_route or "").strip() or "/dashboard"
 
     out: Dict[str, Any] = {
         "primary_action_type": primary_type,
         "primary_action_label": pri.get("label") or "View",
-        "primary_action_url": pri.get("route") or "/dashboard",
+        "primary_action_url": primary_action_url,
         "why_it_matters_short": env.get("why_it_matters_short"),
         "why_it_matters_long": env.get("why_it_matters_long"),
     }

@@ -34,9 +34,17 @@ jest.mock('../components/client/RequirementIntelligenceModal', () => {
   };
 });
 
+const mockOpenGuidedEvidence = jest.fn();
+jest.mock('../context/GuidedEvidenceModalContext', () => ({
+  useGuidedEvidenceModal: () => ({
+    openGuidedEvidence: (...args) => mockOpenGuidedEvidence(...args),
+  }),
+}));
+
 describe('ClientCommandCenterPage requirement intel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockOpenGuidedEvidence.mockClear();
     clientAPI.getCommandCenter.mockResolvedValue({
       data: {
         urgent_actions: [
@@ -95,5 +103,63 @@ describe('ClientCommandCenterPage requirement intel', () => {
     const btn = await screen.findByTestId('command-center-open-requirement-intel');
     fireEvent.click(btn);
     expect(await screen.findByTestId('view-requirement-modal')).toBeInTheDocument();
+  });
+
+  it('calls openGuidedEvidence when urgent priority primary action is guided_evidence_resolution', async () => {
+    const guidedBundle = {
+      data: {
+        urgent_actions: [
+          {
+            id: 'requirement:req-cc-1',
+            source_type: 'requirement',
+            source_id: 'req-cc-1',
+            property_id: 'p-cc-1',
+            requirement_id: 'req-cc-1',
+            jurisdiction: 'England',
+            property_label: 'Laurel Gardens',
+            title: 'Gas safety',
+            primary_action_type: 'guided_evidence_resolution',
+            primary_action_label: 'Add compliance evidence',
+            primary_action_url: '',
+            metadata: {
+              action_type: 'missing_document',
+              take_action: {
+                primary: {
+                  kind: 'guided_evidence_resolution',
+                  property_id: 'p-cc-1',
+                  requirement_id: 'req-cc-1',
+                  label: 'Add compliance evidence',
+                },
+              },
+            },
+          },
+        ],
+        upcoming_risks: [],
+        compliance_status_summary: {
+          score: 70,
+          grade: 'C',
+          message: 'Action needed',
+          color: 'amber',
+        },
+      },
+    };
+    // All fetches need the same payload (Strict Mode / duplicate effect may call twice).
+    clientAPI.getCommandCenter.mockResolvedValue(guidedBundle);
+    render(
+      <MemoryRouter>
+        <ClientCommandCenterPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId('command-center-loading')).not.toBeInTheDocument();
+    });
+    const btn = await screen.findByRole('button', { name: /Add compliance evidence/i });
+    fireEvent.click(btn);
+    expect(mockOpenGuidedEvidence).toHaveBeenCalledWith(
+      expect.objectContaining({
+        propertyId: 'p-cc-1',
+        requirementId: 'req-cc-1',
+      }),
+    );
   });
 });

@@ -142,3 +142,73 @@ def test_today_cap_order_prefers_compliance_job_then_take_action_primary():
     assert capped[0]["id"] == "create_compliance_work_order"
     assert capped[1]["id"] == "take_action_primary"
     assert capped[0].get("primary") is True
+
+
+def test_today_emits_direct_evidence_take_action_primary_with_evidence_mode():
+    ta = {
+        "primary": {
+            "label": "Submit compliance declaration",
+            "route": None,
+            "kind": "direct_evidence_action",
+            "handler": "direct_evidence",
+            "intent": "direct_evidence_action",
+            "property_id": "p1",
+            "requirement_id": "r1",
+            "evidence_mode": "STRUCTURED_DECLARATION",
+        },
+        "secondary": None,
+        "supporting_external_links": [],
+        "contract": "requirement_take_action_v1",
+        "provenance": {},
+    }
+    task = _task_requirement(rid="r1", pid="p1", code="declaration_only", take_action=ta)
+    raw = build_business_actions_for_task(task)
+    prim = next(a for a in raw if a.get("id") == "take_action_primary")
+    assert prim.get("kind") == "direct_evidence_action"
+    assert prim.get("evidence_mode") == "STRUCTURED_DECLARATION"
+    assert prim.get("navigate") == ""
+
+
+def test_today_emits_guided_take_action_primary_without_navigate_url():
+    ta = {
+        "primary": {
+            "label": "Resolve requirement",
+            "route": None,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "p1",
+            "requirement_id": "r1",
+        },
+        "secondary": {
+            "label": "Upload document",
+            "route": "/documents?property_id=p1&requirement_id=r1",
+            "kind": "navigate",
+            "handler": "navigate",
+        },
+        "supporting_external_links": [],
+        "contract": "requirement_take_action_v1",
+        "provenance": {},
+    }
+    task = _task_requirement(rid="r1", pid="p1", code="smoke_heat_alarms", take_action=ta)
+    raw = build_business_actions_for_task(task)
+    prim = next(a for a in raw if a.get("id") == "take_action_primary")
+    assert prim.get("kind") == "guided_evidence_resolution"
+    assert prim.get("navigate") == ""
+    assert prim.get("requirement_id") == "r1"
+
+
+def test_unified_primary_fields_for_guided_resolution():
+    a = {
+        "action_type": "missing_document",
+        "related_property_id": "p1",
+        "related_requirement_id": "r1",
+        "requirement_code": "smoke_heat_alarms",
+        "jurisdiction": "England",
+        "registry_metadata": {},
+    }
+    eng = {"compliance_requirement_class": "DOCUMENT", "fulfillment_mode": "document"}
+    pri_type, label, url, *_ = _primary_action_fields(a, "requirement", compliance_engine=eng)
+    assert pri_type == "guided_evidence_resolution"
+    assert url == ""
+    assert "Resolve" in label or "evidence" in label.lower()

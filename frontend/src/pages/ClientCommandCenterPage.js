@@ -14,6 +14,7 @@ import ErrorBanner from '../components/ErrorBanner';
 import { AlertCircle, Gauge, Sparkles, Building2, Wrench, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { recordClientPortalInteraction, resolveClientPortalPath } from '../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../utils/ctaRegistry';
+import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { workOrderStatusLabel } from '../domain/presentDomain';
 import {
   workOrderKindClientLabel,
@@ -73,6 +74,7 @@ function verdictBannerClasses(tone) {
 export default function ClientCommandCenterPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { openGuidedEvidence } = useGuidedEvidenceModal();
   const { hasFeature } = useEntitlements();
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
   const predictiveEnabled = hasFeature('predictive_maintenance');
@@ -365,7 +367,16 @@ export default function ClientCommandCenterPage() {
   });
 
   const onUrgentClick = (t) => {
-    const url = resolveTaskCta(t, 'primary').route || t.primary_action_url || t.cta_url;
+    const cta = resolveTaskCta(t, 'primary');
+    if (cta.guidedEvidence) {
+      openGuidedEvidence({
+        propertyId: cta.guidedEvidence.propertyId,
+        requirementId: cta.guidedEvidence.requirementId,
+        initialEvidenceMode: cta.guidedEvidence.initialEvidenceMode || undefined,
+      });
+      return;
+    }
+    const url = cta.route || t.primary_action_url || t.cta_url;
     if (url && url.startsWith('/')) {
       const target = resolveClientPortalPath(url, '/today');
       recordClientPortalInteraction('command_center_urgent_task', { task_id: t.id, target });
@@ -591,10 +602,10 @@ export default function ClientCommandCenterPage() {
                   'Property';
                 const whyMatters = commandCenterWhyThisMattersLine(t);
                 const cta = sanitizeCommandCenterCtaLabel(t.primary_action_label, t);
-                const primaryResolved = resolveClientPortalPath(
-                  resolveTaskCta(t, 'primary').route || '/today',
-                  '/today',
-                );
+                const taskCta = resolveTaskCta(t, 'primary');
+                const primaryResolved = taskCta.guidedEvidence
+                  ? `/properties/${encodeURIComponent(String(t.property_id || taskCta.guidedEvidence.propertyId || ''))}`
+                  : resolveClientPortalPath(taskCta.route || '/today', '/today');
                 const hub = buildCommandCenterPropertyRowHubLink(t, primaryResolved);
                 const intelCtx = commandCenterRequirementIntelContext(t, inboxRequirementById);
                 return (

@@ -7,6 +7,10 @@ from services.compliance_pack import compliance_pack_service
 
 def test_compliance_pack_uses_authoritative_status_labels():
     mock_db = MagicMock()
+    mock_db.compliance_evidence_records = MagicMock()
+    mock_db.compliance_evidence_records.find = MagicMock(
+        return_value=MagicMock(to_list=AsyncMock(return_value=[]))
+    )
     property_doc = {
         "property_id": "p1",
         "client_id": "c1",

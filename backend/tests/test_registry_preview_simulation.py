@@ -12,7 +12,23 @@ from services.compliance_registry_admin_service import (
 def test_plan_types_includes_wales_scotland_aliases():
     assert "gas_safety" in plan_types_for_draft_canonical("GAS_SAFETY")
     assert "scotland_landlord_registration" in plan_types_for_draft_canonical("LANDLORD_REGISTRATION")
+    assert "landlord_registration_ni" not in plan_types_for_draft_canonical("LANDLORD_REGISTRATION")
+    assert "landlord_registration_ni" in plan_types_for_draft_canonical("LANDLORD_REGISTRATION_NI")
     assert "wales_occupation_contract" in plan_types_for_draft_canonical("OCCUPATION_CONTRACT")
+    assert "tenancy_agreement" in plan_types_for_draft_canonical("TENANCY_AGREEMENT")
+    assert "how_to_rent" in plan_types_for_draft_canonical("HOW_TO_RENT")
+    assert "fire_risk_assessment" in plan_types_for_draft_canonical("FIRE_RISK_ASSESSMENT")
+
+
+def test_plan_types_unify_domestic_alarm_slugs_under_smoke_heat_only():
+    assert not plan_types_for_draft_canonical("FIRE_DETECTION")
+    sh = plan_types_for_draft_canonical("SMOKE_HEAT_ALARMS")
+    for slug in ("smoke_alarms", "co_alarms", "smoke_heat_alarms", "fire_alarm", "fire_detection"):
+        assert slug in sh
+
+
+def test_right_to_rent_checks_canonical_not_in_plan_type_extras():
+    assert not plan_types_for_draft_canonical("RIGHT_TO_RENT_CHECKS")
 
 
 def test_preview_response_includes_coverage_metadata():

@@ -71,6 +71,21 @@ def _registry_metadata(item: RequirementPlanItem, existing_meta: Optional[Dict[s
         meta["cta_label_override"] = cta
     else:
         meta.pop("cta_label_override", None)
+    modes = getattr(item, "allowed_evidence_modes", ()) or ()
+    if modes:
+        meta["evidence_resolution"] = {
+            "allowed_evidence_modes": list(modes),
+            "primary_resolution_workflow": getattr(item, "primary_resolution_workflow", None)
+            or "GUIDED_EVIDENCE_RESOLUTION",
+            "allow_medium_non_document_satisfaction": bool(
+                getattr(item, "allow_medium_non_document_satisfaction", False)
+            ),
+            "allow_low_non_document_satisfaction": bool(
+                getattr(item, "allow_low_non_document_satisfaction", False)
+            ),
+        }
+    else:
+        meta.pop("evidence_resolution", None)
     return meta
 
 

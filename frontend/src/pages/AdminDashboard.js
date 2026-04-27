@@ -3247,8 +3247,21 @@ const AdminsManagement = () => {
   );
 };
 
-// Rules Management Component
+// Rules Management Component — legacy Mongo requirement_rules viewer (published policy lives in Compliance Policy Registry).
 const RulesManagement = () => {
+  const { isOwner } = useAuth();
+  const ownerSession = typeof isOwner === 'function' ? isOwner() : false;
+  const [legacyMaintenanceEnv, setLegacyMaintenanceEnv] = useState(false);
+  const [legacyDangerAcknowledged, setLegacyDangerAcknowledged] = useState(false);
+  const [conflictSummary, setConflictSummary] = useState(null);
+
+  const legacyMutationHeaders =
+    legacyMaintenanceEnv && legacyDangerAcknowledged && ownerSession
+      ? { 'X-Legacy-Requirement-Rules-Maintenance': '1' }
+      : {};
+
+  const canMutateLegacy = Boolean(ownerSession && legacyMaintenanceEnv && legacyDangerAcknowledged);
+
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
@@ -3272,6 +3285,18 @@ const RulesManagement = () => {
   useEffect(() => {
     fetchRules();
     fetchCategories();
+    (async () => {
+      try {
+        const [m, c] = await Promise.all([
+          api.get('/admin/rules/maintenance-status').catch(() => ({ data: {} })),
+          api.get('/admin/rules/conflict-summary').catch(() => ({ data: null })),
+        ]);
+        setLegacyMaintenanceEnv(!!m.data?.legacy_maintenance_environment_enabled);
+        setConflictSummary(c.data);
+      } catch {
+        setConflictSummary(null);
+      }
+    })();
   }, []);
 
   const fetchRules = async () => {
@@ -3297,23 +3322,31 @@ const RulesManagement = () => {
   };
 
   const seedDefaultRules = async () => {
+    if (!canMutateLegacy) {
+      toast.error('Legacy mutations are disabled. Owner + server maintenance mode + acknowledgement required.');
+      return;
+    }
     try {
-      const response = await api.post('/admin/rules/seed');
+      const response = await api.post('/admin/rules/seed', {}, { headers: legacyMutationHeaders });
       toast.success(`${response.data.created} rules created, ${response.data.skipped} skipped`);
       fetchRules();
     } catch (error) {
-      toast.error('Failed to seed rules');
+      toast.error(error.response?.data?.detail || 'Failed to seed rules');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canMutateLegacy) {
+      toast.error('Legacy mutations are disabled. Owner + server maintenance mode + acknowledgement required.');
+      return;
+    }
     try {
       if (editingRule) {
-        await api.put(`/admin/rules/${editingRule.rule_id}`, formData);
+        await api.put(`/admin/rules/${editingRule.rule_id}`, formData, { headers: legacyMutationHeaders });
         toast.success('Rule updated successfully');
       } else {
-        await api.post('/admin/rules', formData);
+        await api.post('/admin/rules', formData, { headers: legacyMutationHeaders });
         toast.success('Rule created successfully');
       }
       setShowCreateForm(false);
@@ -3326,6 +3359,14 @@ const RulesManagement = () => {
   };
 
   const handleEdit = (rule) => {
+    if (!canMutateLegacy) {
+      toast.error('Legacy edits require Owner maintenance mode.');
+      return;
+    }
+    if (rule.governed) {
+      toast.error('Governed rows are maintained via Compliance Policy Registry publish.');
+      return;
+    }
     setFormData({
       rule_type: rule.rule_type,
       name: rule.name,
@@ -3344,13 +3385,17 @@ const RulesManagement = () => {
   };
 
   const handleDelete = async (ruleId) => {
+    if (!canMutateLegacy) {
+      toast.error('Legacy mutations are disabled.');
+      return;
+    }
     if (!window.confirm('Are you sure you want to deactivate this rule?')) return;
     try {
-      await api.delete(`/admin/rules/${ruleId}`);
+      await api.delete(`/admin/rules/${ruleId}`, { headers: legacyMutationHeaders });
       toast.success('Rule deactivated');
       fetchRules();
     } catch (error) {
-      toast.error('Failed to delete rule');
+      toast.error(error.response?.data?.detail || 'Failed to delete rule');
     }
   };
 
@@ -3399,19 +3444,113 @@ const RulesManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-midnight-blue">Requirement Rules ({rules.length})</h2>
+      <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-950">
+        <p className="font-semibold text-amber-900 flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5 shrink-0" aria-hidden />
+          Legacy requirement rules (read-only)
+        </p>
+        <p className="mt-2 text-amber-900/90">
+          This is a legacy requirement-rules view. Client-facing compliance obligations are governed by the published
+          Compliance Policy Registry. Editing legacy rules may create conflicts and should not be used for normal
+          compliance policy changes.
+        </p>
+        <p className="mt-2">
+          <Link to="/admin/compliance/registry" className="font-medium text-electric-teal hover:underline">
+            Open Compliance Engine → Policy Registry
+          </Link>{' '}
+          for canonical requirements, jurisdiction, applicability, evidence modes, primary resolution workflow,
+          criticality, scoring policy, client visibility, and publish status.
+        </p>
+      </div>
+
+      {conflictSummary ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm">
+          <p className="font-semibold text-midnight-blue">Conflict & supplemental summary (read-only)</p>
+          <ul className="mt-2 list-disc pl-5 text-gray-700 space-y-1">
+            <li>
+              Governed published rows:{' '}
+              <span className="font-mono">{conflictSummary.governed_published_count ?? 0}</span>
+            </li>
+            <li>
+              Legacy ungoverned rows in Mongo:{' '}
+              <span className="font-mono">{conflictSummary.ungoverned_row_count ?? 0}</span>
+            </li>
+            <li>
+              Same rule_type in both governed and ungoverned (data conflict):{' '}
+              <span className="font-mono">{conflictSummary.overlap_count ?? 0}</span>
+            </li>
+            <li>
+              Active ungoverned supplemental rules:{' '}
+              <span className="font-mono">{conflictSummary.ungoverned_active_supplemental_count ?? 0}</span>
+            </li>
+            <li>
+              Distinct active ungoverned rule_types (may block first governed publish for that type):{' '}
+              <span className="font-mono">{(conflictSummary.distinct_active_ungoverned_rule_types || []).length}</span>
+            </li>
+          </ul>
+          {(conflictSummary.overlap_governed_and_ungoverned || []).length > 0 ? (
+            <p className="mt-2 text-xs text-red-800">
+              Overlaps: {(conflictSummary.overlap_governed_and_ungoverned || [])
+                .slice(0, 6)
+                .map((r) => r.rule_type)
+                .join(', ')}
+              {(conflictSummary.overlap_governed_and_ungoverned || []).length > 6 ? ' …' : ''}
+            </p>
+          ) : null}
+          <p className="mt-2 text-xs text-gray-500">{conflictSummary.publish_block_note}</p>
+        </div>
+      ) : null}
+
+      {ownerSession && legacyMaintenanceEnv ? (
+        <div className="rounded-lg border border-red-200 bg-red-50/60 p-4 text-sm">
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={legacyDangerAcknowledged}
+              onChange={(e) => setLegacyDangerAcknowledged(e.target.checked)}
+            />
+            <span className="text-red-950">
+              <span className="font-semibold">Dangerous legacy maintenance</span> — I am ROLE_OWNER and infra has enabled
+              LEGACY_REQUIREMENT_RULES_MAINTENANCE. I understand mutations may conflict with the Policy Registry and provisioning.
+            </span>
+          </label>
+        </div>
+      ) : null}
+      {ownerSession && !legacyMaintenanceEnv ? (
+        <p className="text-xs text-gray-600">
+          Emergency legacy edits require server env LEGACY_REQUIREMENT_RULES_MAINTENANCE=true plus Owner acknowledgement
+          (disabled here because the environment flag is off).
+        </p>
+      ) : null}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-midnight-blue">Legacy requirement rules ({rules.length})</h2>
+          <p className="text-xs text-gray-500 mt-1">Read-only snapshot of MongoDB requirement_rules (includes governed copies).</p>
+        </div>
         <div className="flex gap-3">
           <button
+            type="button"
             onClick={seedDefaultRules}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            disabled={!canMutateLegacy}
+            title={!canMutateLegacy ? 'Disabled for normal ops — Policy Registry is authoritative.' : ''}
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <RefreshCw className="w-4 h-4" />
             Seed Default Rules
           </button>
           <button
-            onClick={() => { resetForm(); setEditingRule(null); setShowCreateForm(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 transition-colors"
+            type="button"
+            onClick={() => {
+              if (!canMutateLegacy) return;
+              resetForm();
+              setEditingRule(null);
+              setShowCreateForm(true);
+            }}
+            disabled={!canMutateLegacy}
+            title={!canMutateLegacy ? 'Disabled for normal ops — Policy Registry is authoritative.' : ''}
+            className="flex items-center gap-2 px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4" />
             Add Rule
@@ -3622,7 +3761,12 @@ const RulesManagement = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {rule.governed ? (
+                        <span className="text-xs bg-purple-100 text-purple-900 px-2 py-0.5 rounded border border-purple-200">
+                          Governed registry
+                        </span>
+                      ) : null}
                       {rule.is_active ? (
                         <CheckCircle className="w-4 h-4 text-green-500" />
                       ) : (
@@ -3636,15 +3780,21 @@ const RulesManagement = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <button
+                        type="button"
                         onClick={() => handleEdit(rule)}
-                        className="text-electric-teal hover:text-teal-700"
+                        disabled={!canMutateLegacy || rule.governed}
+                        title={rule.governed ? 'Edit in Policy Registry' : !canMutateLegacy ? 'Owner maintenance only' : 'Edit'}
+                        className="text-electric-teal hover:text-teal-700 disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       {rule.is_active && (
                         <button
+                          type="button"
                           onClick={() => handleDelete(rule.rule_id)}
-                          className="text-red-500 hover:text-red-700"
+                          disabled={!canMutateLegacy || rule.governed}
+                          title={rule.governed ? 'Managed by registry' : !canMutateLegacy ? 'Owner maintenance only' : 'Deactivate'}
+                          className="text-red-500 hover:text-red-700 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -3661,12 +3811,14 @@ const RulesManagement = () => {
       {rules.length === 0 && (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
           <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600 mb-4">No rules configured yet</p>
+          <p className="text-gray-600 mb-4">No legacy requirement rules in MongoDB yet.</p>
           <button
+            type="button"
             onClick={seedDefaultRules}
-            className="px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600"
+            disabled={!canMutateLegacy}
+            className="px-4 py-2 bg-electric-teal text-white rounded-lg hover:bg-teal-600 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Load UK Default Rules
+            Load UK Default Rules (Owner maintenance only)
           </button>
         </div>
       )}
@@ -5456,7 +5608,7 @@ const AdminDashboard = () => {
     { id: 'jobs', label: 'Jobs', icon: Clock },
     { id: 'clients', label: 'Clients', icon: Users },
     { id: 'admins', label: 'Admins', icon: UserCog },
-    { id: 'rules', label: 'Rules', icon: BookOpen },
+    { id: 'rules', label: 'Legacy rules', icon: BookOpen },
     { id: 'templates', label: 'Templates', icon: Mail },
     { id: 'emailDelivery', label: 'Email delivery', icon: Mail },
     { id: 'audit', label: 'System Audit Logs', icon: FileText },

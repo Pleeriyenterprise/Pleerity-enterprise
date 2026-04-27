@@ -78,9 +78,11 @@ export function complianceObligationStatusLabel(r) {
 export function complianceObligationPrimaryAction(r) {
   const ta = resolveRequirementAction(r, {});
   let verb = 'upload';
-  if (ta.actionType === 'JOB') verb = 'book';
+  if (ta.primary_action_handler === 'guided_evidence') verb = 'resolve';
+  if (ta.primary_action_handler === 'guided_evidence_error') verb = 'unavailable';
+  else if (ta.actionType === 'JOB') verb = 'book';
   else if (ta.actionType === 'OBLIGATION') verb = 'review';
-  return { verb, label: ta.primary_action_label };
+  return { verb, label: ta.primary_action_label, secondary: ta.secondary_action || null, ta };
 }
 
 function summarizeRequirementCounts(reqs) {
@@ -106,6 +108,7 @@ export function compliancePriorityRecommendedNext(requirements, urgentOrdered, r
     const act = complianceObligationPrimaryAction(first);
     const title = rowTitle(first) || 'this requirement';
     if (act.verb === 'upload') return `${act.label} for ${title}.`;
+    if (act.verb === 'resolve') return `${act.label} for ${title}.`;
     if (act.verb === 'renew') return `Renew documents for ${title}.`;
     return `Review ${title} on the Documents tab.`;
   }

@@ -252,3 +252,48 @@ async def test_true_alias_family_rows_are_deduped_with_precedence_and_legal_dist
         assert r.get("canonical_code")
         assert r.get("source") in {"baseline", "published", "both"}
         assert r.get("property_jurisdiction") == "England"
+
+
+@pytest.mark.asyncio
+async def test_smoke_alarms_and_fire_alarm_alias_family_collapses_to_one_row():
+    props = [_england_residential("p-eng")]
+    rows = [
+        {
+            "requirement_id": "sm-a",
+            "client_id": "c1",
+            "property_id": "p-eng",
+            "requirement_type": "smoke_alarms",
+            "requirement_code": "smoke_alarms",
+            "jurisdiction": "England",
+            "applicability": "REQUIRED",
+            "status": "PENDING",
+            "client_surface_visible": True,
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
+            "updated_at": "2026-01-01T00:00:00Z",
+        },
+        {
+            "requirement_id": "fa-b",
+            "client_id": "c1",
+            "property_id": "p-eng",
+            "requirement_type": "fire_alarm",
+            "requirement_code": "fire_alarm",
+            "jurisdiction": "England",
+            "applicability": "REQUIRED",
+            "status": "PENDING",
+            "client_surface_visible": True,
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
+            "updated_at": "2026-01-02T00:00:00Z",
+        },
+    ]
+    db = _FakeDB(props)
+    out = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id="c1",
+        requirements=rows,
+        client_doc={"default_jurisdiction": "England"},
+        properties=props,
+        published_registry_entries=None,
+    )
+    ids = {r["requirement_id"] for r in out}
+    assert len(ids) == 1
+    assert ids == {"fa-b"}

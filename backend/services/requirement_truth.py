@@ -303,6 +303,10 @@ def enrich_requirement_dict(
             meta["why_it_matters_short_published"] = witm.get("why_it_matters_short")
         if witm.get("why_it_matters_long"):
             meta["why_it_matters_long_published"] = witm.get("why_it_matters_long")
+        er_pub = published_entry.get("evidence_resolution")
+        if isinstance(er_pub, dict) and er_pub:
+            prior_er = meta.get("evidence_resolution") if isinstance(meta.get("evidence_resolution"), dict) else {}
+            meta["evidence_resolution"] = {**prior_er, **er_pub}
         out["registry_metadata"] = meta
 
     app = _status_upper(out.get("applicability"))

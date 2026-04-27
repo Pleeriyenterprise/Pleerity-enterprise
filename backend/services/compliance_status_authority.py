@@ -46,6 +46,14 @@ def _is_critical(row: Dict[str, Any]) -> bool:
     return rtype in CRITICAL_REQUIREMENT_TYPES
 
 
+def is_critical_safety_or_legal_obligation(row: Dict[str, Any]) -> bool:
+    """
+    Public hook for evidence governance: critical obligations cannot be fully satisfied from
+    LOW-confidence non-document evidence alone (see compliance_evidence_record_service).
+    """
+    return _is_critical(row)
+
+
 @dataclass(frozen=True)
 class ComplianceStatusResult:
     status: str
@@ -57,6 +65,32 @@ class ComplianceStatusResult:
     critical_missing_or_pending_count: int
     expiring_soon_count: int
     reasons: List[str]
+
+
+def evidence_governance_summary_for_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Reporting / exports: stable projection of evidence mode + verification + confidence + activity.
+    """
+    ea = row.get("evidence_authority") if isinstance(row.get("evidence_authority"), dict) else {}
+    last = ea.get("evidence_last_updated_at") or row.get("updated_at")
+    return {
+        "primary_evidence_mode": ea.get("primary_evidence_mode"),
+        "evidence_confidence_level": ea.get("evidence_confidence_level"),
+        "non_document_verification_status": ea.get("non_document_verification_status"),
+        "primary_evidence_record_id": ea.get("primary_evidence_record_id"),
+        "last_evidence_update": last,
+        "authority_state": ea.get("state"),
+        "unresolved_or_missing_evidence": str(ea.get("state") or "").upper()
+        in {
+            "MISSING",
+            "UPLOADED_UNCONFIRMED",
+            "EXTRACTION_COMPLETE_PENDING_CONFIRMATION",
+            "PENDING_ADMIN_REVIEW",
+            "MISMATCH_FLAGGED",
+            "REJECTED",
+            "VERIFIED_EXPIRED",
+        },
+    }
 
 
 def classify_compliance_status(requirements: Iterable[Dict[str, Any]]) -> ComplianceStatusResult:

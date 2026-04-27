@@ -64,6 +64,10 @@ def test_enterprise_pack_deterministic_structure_and_governance():
     }
 
     mock_db = MagicMock()
+    mock_db.compliance_evidence_records = MagicMock()
+    mock_db.compliance_evidence_records.find = MagicMock(
+        return_value=MagicMock(to_list=AsyncMock(return_value=[]))
+    )
     mock_db.properties.find_one = AsyncMock(side_effect=_find_one_side_effect)
     mock_db.clients.find_one = AsyncMock(side_effect=_find_one_side_effect)
     mock_db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[req_active, req_hidden])))
@@ -295,6 +299,10 @@ def _find_marker_pack_side_effect(filter_q, *_args, **_kwargs):
 
 def test_no_active_evidence_marker_when_nothing_exported_under_03():
     mock_db = MagicMock()
+    mock_db.compliance_evidence_records = MagicMock()
+    mock_db.compliance_evidence_records.find = MagicMock(
+        return_value=MagicMock(to_list=AsyncMock(return_value=[]))
+    )
     mock_db.properties.find_one = AsyncMock(side_effect=_find_marker_pack_side_effect)
     mock_db.clients.find_one = AsyncMock(side_effect=_find_marker_pack_side_effect)
     mock_db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))

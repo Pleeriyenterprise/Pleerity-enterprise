@@ -50,4 +50,79 @@ describe('requirementTakeActionResolver', () => {
     expect(links).toHaveLength(2);
     expect(links.map((x) => x.url)).toEqual(['https://example.com/a', 'https://example.com/b']);
   });
+
+  it('treats guided_evidence_resolution primary as server-authoritative without route', () => {
+    const req = {
+      take_action: {
+        primary: {
+          label: 'Resolve requirement',
+          route: null,
+          kind: 'guided_evidence_resolution',
+          handler: 'guided_evidence',
+          intent: 'guided_evidence_resolution',
+          property_id: 'p1',
+          requirement_id: 'r1',
+        },
+        secondary: {
+          label: 'Upload CP12',
+          route: '/documents?property_id=p1&requirement_id=r1',
+          handler: 'navigate',
+          external: false,
+        },
+        supporting_external_links: [],
+      },
+      compliance_requirement_class: 'DOCUMENT',
+    };
+    expect(requirementUsesServerTakeActionPrimary(req)).toBe(true);
+    const out = resolveRequirementAction(req, {});
+    expect(out.primary_action_handler).toBe('guided_evidence');
+    expect(out.primary_route).toBeNull();
+    expect(out.secondary_action?.route).toContain('/documents');
+  });
+
+  it('maps guided_evidence_unavailable to guided_evidence_error handler', () => {
+    const req = {
+      take_action: {
+        primary: {
+          label: 'Guided resolution unavailable',
+          route: null,
+          kind: 'guided_evidence_resolution',
+          handler: 'guided_evidence_unavailable',
+          intent: 'guided_evidence_unavailable',
+          metadata_incomplete: true,
+        },
+        secondary: {
+          label: 'Upload document',
+          route: '/documents',
+          handler: 'navigate',
+          external: false,
+        },
+        supporting_external_links: [],
+      },
+      compliance_requirement_class: 'DOCUMENT',
+    };
+    const out = resolveRequirementAction(req, {});
+    expect(out.primary_action_handler).toBe('guided_evidence_error');
+    expect(out.secondary_action?.route).toContain('/documents');
+  });
+
+  it('document-only take_action keeps direct upload handler', () => {
+    const req = {
+      take_action: {
+        primary: {
+          label: 'Upload Gas Safety record',
+          route: '/documents?property_id=p1&requirement_id=r1',
+          kind: 'navigate',
+          handler: 'navigate',
+          intent: 'upload_evidence',
+        },
+        secondary: null,
+        supporting_external_links: [],
+      },
+      compliance_requirement_class: 'DOCUMENT',
+    };
+    const out = resolveRequirementAction(req, {});
+    expect(out.primary_action_handler).toBe('navigate');
+    expect(out.secondary_action).toBeNull();
+  });
 });

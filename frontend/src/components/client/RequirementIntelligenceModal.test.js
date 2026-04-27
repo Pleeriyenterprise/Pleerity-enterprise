@@ -4,6 +4,7 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import RequirementIntelligenceModal from './RequirementIntelligenceModal';
+import { GuidedEvidenceModalProvider } from '../../context/GuidedEvidenceModalContext';
 import { clientAPI } from '../../api/client';
 
 jest.mock('../../api/client', () => ({
@@ -14,6 +15,7 @@ jest.mock('../../api/client', () => ({
 
 describe('RequirementIntelligenceModal', () => {
   const noop = () => {};
+  const wrap = (ui) => <GuidedEvidenceModalProvider>{ui}</GuidedEvidenceModalProvider>;
 
   it('renders published why_it_matters, published links, canonical primary CTA, and human workflow labels', async () => {
     clientAPI.getRequirementWorkflow.mockResolvedValue({
@@ -45,13 +47,15 @@ describe('RequirementIntelligenceModal', () => {
     });
 
     render(
-      <RequirementIntelligenceModal
-        open
-        requirementId="req-1"
-        seedRequirement={null}
-        onClose={noop}
-        onNavigate={noop}
-      />,
+      wrap(
+        <RequirementIntelligenceModal
+          open
+          requirementId="req-1"
+          seedRequirement={null}
+          onClose={noop}
+          onNavigate={noop}
+        />,
+      ),
     );
 
     await waitFor(() => {
@@ -99,7 +103,7 @@ describe('RequirementIntelligenceModal', () => {
     });
 
     render(
-      <RequirementIntelligenceModal open requirementId="req-2" seedRequirement={null} onClose={noop} onNavigate={noop} />,
+      wrap(<RequirementIntelligenceModal open requirementId="req-2" seedRequirement={null} onClose={noop} onNavigate={noop} />),
     );
 
     await waitFor(() => {

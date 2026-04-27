@@ -67,6 +67,9 @@ def _parse_dt(value: Any) -> Optional[datetime]:
 
 
 def _intent_for_take_action_primary(task: Dict[str, Any], primary: Dict[str, Any]) -> str:
+    ex = str(primary.get("intent") or "").strip()
+    if ex:
+        return ex
     pat = str(task.get("primary_action_type") or task.get("action_context_type") or "").strip()
     if pat:
         return pat
@@ -140,6 +143,32 @@ def _business_actions_requirement(task: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "supporting_external_links": supporting,
             }
         )
+    elif (
+        pri
+        and pri.get("kind") in ("guided_evidence_resolution", "direct_evidence_action")
+        and pri.get("property_id")
+        and pri.get("requirement_id")
+    ):
+        intent = _intent_for_take_action_primary(task, pri)
+        kind = str(pri.get("kind") or "").strip() or "guided_evidence_resolution"
+        row: Dict[str, Any] = {
+            "id": "take_action_primary",
+            "label": str(pri.get("label") or "").strip() or "Open",
+            "navigate": "",
+            "kind": kind,
+            "property_id": str(pri.get("property_id") or "").strip(),
+            "requirement_id": str(pri.get("requirement_id") or "").strip(),
+            "intent": intent,
+            "action_authority": "take_action",
+            "source_type": "requirement",
+            "contract": contract,
+            "provenance": {**prov, "bundle": "requirement_take_action"},
+            "supporting_external_links": supporting,
+        }
+        em = pri.get("evidence_mode")
+        if em:
+            row["evidence_mode"] = str(em).strip()
+        out.append(row)
     sec = take_action.get("secondary") if isinstance(take_action.get("secondary"), dict) else None
     if sec and sec.get("route"):
         sec_route = str(sec.get("route") or "")

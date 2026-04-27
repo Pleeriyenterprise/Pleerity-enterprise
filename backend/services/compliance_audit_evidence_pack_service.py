@@ -466,6 +466,18 @@ async def build_compliance_audit_pack(
     ).to_list(2000)
     docs_in_pack = _deterministic_sorted(docs_in_pack, ("requirement_id", "document_id", "file_name"))
 
+    evidence_in_pack = await db.compliance_evidence_records.find(
+        {
+            "client_id": client_id,
+            "property_id": property_id,
+            "requirement_id": {"$in": active_req_ids},
+            "included_in_active_compliance": True,
+            "archived": {"$ne": True},
+        },
+        {"_id": 0},
+    ).to_list(2000)
+    evidence_in_pack = _deterministic_sorted(evidence_in_pack, ("requirement_id", "evidence_record_id"))
+
     raw_events = await db.audit_logs.find(
         {"client_id": client_id, "$or": [{"resource_id": property_id}, {"metadata.property_id": property_id}]},
         {"_id": 0},
@@ -642,6 +654,17 @@ async def build_compliance_audit_pack(
                 }
             )
 
+    for ev in evidence_in_pack:
+        rid = str(ev.get("requirement_id") or "")
+        req = next((r for r in active_reqs if str(r.get("requirement_id")) == rid), None)
+        if not req:
+            continue
+        bucket = _obligation_bucket((req or {}).get("requirement_type") or "UNKNOWN")
+        mode_slug = str(ev.get("evidence_mode") or "evidence").strip().lower()
+        fname = _safe_filename(f"{mode_slug}_{ev.get('evidence_record_id')}.json", max_len=120)
+        zpath = f"{ROOT_DIR}/03_COMPLIANCE_EVIDENCE/{bucket}/{fname}"
+        file_payloads[zpath] = _json_bytes({k: v for k, v in ev.items() if k != "_id"})
+
     has_exported_compliance_evidence = any(
         p.startswith(f"{ROOT_DIR}/03_COMPLIANCE_EVIDENCE/") and p != NO_ACTIVE_EVIDENCE_MARKER_PATH for p in file_payloads
     )
@@ -723,7 +746,30 @@ async def build_compliance_audit_pack(
             "verified_by_user_id": d.get("verified_by") or d.get("verified_by_user_id"),
             "verified_at": _iso_utc_or_none(d.get("verified_at")),
             "evidence_source_type": d.get("source_type") or d.get("document_source_type"),
+            "evidence_mode": "DOCUMENT_UPLOAD",
+            "evidence_confidence_level": None,
             "included_in_active_compliance": True,
+        }
+    for ev in evidence_in_pack:
+        rid = str(ev.get("requirement_id") or "")
+        req = next((r for r in active_reqs if str(r.get("requirement_id")) == rid), None)
+        if not req:
+            continue
+        bucket = _obligation_bucket((req or {}).get("requirement_type") or "UNKNOWN")
+        mode_slug = str(ev.get("evidence_mode") or "evidence").strip().lower()
+        fname = _safe_filename(f"{mode_slug}_{ev.get('evidence_record_id')}.json", max_len=120)
+        zpath = f"{ROOT_DIR}/03_COMPLIANCE_EVIDENCE/{bucket}/{fname}"
+        provenance_by_path[zpath] = {
+            "source_document_id": None,
+            "uploaded_by_user_id": ev.get("created_by_user_id"),
+            "uploaded_at": _iso_utc_or_none(ev.get("created_at")),
+            "verification_status": ev.get("verification_status"),
+            "verified_by_user_id": ev.get("verified_by_user_id"),
+            "verified_at": _iso_utc_or_none(ev.get("verified_at")),
+            "evidence_source_type": "compliance_evidence_record",
+            "evidence_mode": ev.get("evidence_mode"),
+            "evidence_confidence_level": ev.get("evidence_confidence_level"),
+            "included_in_active_compliance": bool(ev.get("included_in_active_compliance", True)),
         }
     if NO_ACTIVE_EVIDENCE_MARKER_PATH in file_payloads:
         provenance_by_path[NO_ACTIVE_EVIDENCE_MARKER_PATH] = {
@@ -749,6 +795,8 @@ async def build_compliance_audit_pack(
                     "verified_by_user_id": prov.get("verified_by_user_id"),
                     "verified_at": prov.get("verified_at"),
                     "evidence_source_type": prov.get("evidence_source_type"),
+                    "evidence_mode": prov.get("evidence_mode"),
+                    "evidence_confidence_level": prov.get("evidence_confidence_level"),
                     "included_in_active_compliance": bool(prov.get("included_in_active_compliance", False)),
                 }
             )

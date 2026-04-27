@@ -188,6 +188,10 @@ def test_audit_pack_zip_contains_manifest_and_checksums():
         },
     }
     mock_db = MagicMock()
+    mock_db.compliance_evidence_records = MagicMock()
+    mock_db.compliance_evidence_records.find = MagicMock(
+        return_value=MagicMock(to_list=AsyncMock(return_value=[]))
+    )
     mock_db.properties.find_one = AsyncMock(return_value={"property_id": "p1", "client_id": "c1"})
     mock_db.clients.find_one = AsyncMock(return_value={"client_id": "c1"})
     mock_db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[req])))

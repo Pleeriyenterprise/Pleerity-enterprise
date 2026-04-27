@@ -556,6 +556,18 @@ async def admin_link_document_requirement(request: Request, document_id: str, bo
         {"document_id": document_id},
         {"$set": {"requirement_id": body.requirement_id, "manual_review_flag": False}},
     )
+    from services.compliance_evidence_record_service import safe_upsert_document_upload_evidence_for_linked_document
+
+    await safe_upsert_document_upload_evidence_for_linked_document(
+        db,
+        client_id=str(doc.get("client_id") or ""),
+        property_id=str(req.get("property_id") or doc.get("property_id") or ""),
+        requirement_id=body.requirement_id,
+        document_id=document_id,
+        actor_user_id=user.get("portal_user_id"),
+        filename=doc.get("file_name"),
+        context="admin_link_requirement",
+    )
     await sync_requirement_evidence_authority(db, body.requirement_id, property_id_hint=req.get("property_id"))
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,
@@ -728,6 +740,18 @@ async def admin_resolve_evidence_match(
         await db.documents.update_one(
             {"document_id": document_id},
             {"$set": {"requirement_id": rid, "manual_review_flag": True}},
+        )
+        from services.compliance_evidence_record_service import safe_upsert_document_upload_evidence_for_linked_document
+
+        await safe_upsert_document_upload_evidence_for_linked_document(
+            db,
+            client_id=str(cid or ""),
+            property_id=str(req.get("property_id") or doc.get("property_id") or ""),
+            requirement_id=rid,
+            document_id=document_id,
+            actor_user_id=user.get("portal_user_id"),
+            filename=doc.get("file_name"),
+            context="admin_relink_requirement",
         )
         if prior_rid and str(prior_rid) != rid:
             await sync_requirement_evidence_authority(db, str(prior_rid), property_id_hint=doc.get("property_id"))
