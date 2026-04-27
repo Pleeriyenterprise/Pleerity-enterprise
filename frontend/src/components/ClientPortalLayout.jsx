@@ -37,7 +37,6 @@ import {
   ListTodo,
   Inbox,
   Gauge,
-  Mail,
 } from 'lucide-react';
 import { resolveNotificationTarget } from '../utils/notificationDeepLink';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
@@ -56,7 +55,8 @@ const OPERATIONS_CHILDREN = [
   { path: '/operations/approvals', label: 'Approvals', icon: ClipboardCheck, feature: 'invoicing' },
 ];
 
-const PORTAL_TABS = [
+/** Top-level client portal nav tabs (feature-gated entries may be filtered at render). Exported for tests. */
+export const PORTAL_TABS = [
   { path: '/today', label: 'Today', icon: ListTodo },
   { path: '/command-center', label: 'Command center', icon: Gauge },
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -67,7 +67,6 @@ const PORTAL_TABS = [
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { type: 'group', label: 'Operations', icon: Wrench, children: OPERATIONS_CHILDREN },
   { path: '/tenants', label: 'Tenants', icon: Users, feature: 'tenant_portal' },
-  { path: '/compliance/tenant-delivery', label: 'Tenant delivery', icon: Mail, feature: 'tenant_portal' },
   { path: '/settings/billing', label: 'Billing', icon: CreditCard, feature: 'invoicing' },
   { path: '/settings', label: 'Settings', icon: Settings, end: true },
 ];

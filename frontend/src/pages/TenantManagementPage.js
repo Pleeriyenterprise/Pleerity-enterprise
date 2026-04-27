@@ -31,7 +31,11 @@ import {
   FileCheck
 } from 'lucide-react';
 
-const TenantManagementPage = () => {
+/**
+ * @param {{ section?: 'list' | 'messages' | 'certificate-requests' }} props
+ * When `section` is set, only that block is shown (used under /tenants layout). Omit for full legacy view (unused in router).
+ */
+const TenantManagementPage = ({ section } = {}) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [tenants, setTenants] = useState([]);
@@ -253,9 +257,14 @@ const TenantManagementPage = () => {
     );
   }
 
+  const showList = !section || section === 'list';
+  const showMessages = !section || section === 'messages';
+  const showCertificateRequests = !section || section === 'certificate-requests';
+  const useShellLayout = Boolean(section);
+
   return (
-    <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="tenant-management-page">
-      {/* Header */}
+    <div className={cn(!useShellLayout && portalPageRoot, !useShellLayout && 'bg-gray-50')} data-testid="tenant-management-page">
+      {!useShellLayout && (
       <header className="bg-midnight-blue text-white py-4">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
@@ -283,26 +292,40 @@ const TenantManagementPage = () => {
           </div>
         </div>
       </header>
+      )}
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Info Banner */}
+      <main className={cn(useShellLayout ? '' : 'max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8')}>
+        {showList && useShellLayout && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <h2 className="text-lg font-semibold text-midnight-blue">Tenant list</h2>
+            <Button onClick={() => setShowInviteModal(true)} className="bg-electric-teal hover:bg-teal-600 w-fit" data-testid="invite-tenant-btn">
+              <UserPlus className="w-4 h-4 mr-2" />
+              Invite tenant
+            </Button>
+          </div>
+        )}
+
+        {showList && (
         <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-xl p-6 mb-8 border border-teal-200">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-white rounded-lg shadow-sm">
               <Shield className="w-6 h-6 text-electric-teal" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-midnight-blue">About Tenant Access</h2>
+              <h2 className="text-lg font-bold text-midnight-blue">About tenant access</h2>
               <p className="text-gray-600 mt-1">
                 Tenants can view compliance status of assigned properties (GREEN/AMBER/RED), see certificate expiry dates, 
-                and <strong>contact you</strong> or <strong>request certificate updates</strong> from this portal. 
-                Messages and requests appear above; you receive an email and can update request status here.
+                and <strong>contact you</strong> or <strong>request certificate updates</strong> from this portal.{' '}
+                {useShellLayout
+                  ? 'Use the Tenants tabs above to open messages, certificate requests, or compliance delivery.'
+                  : 'Messages and requests appear below; you receive an email and can update request status here.'}
               </p>
             </div>
           </div>
         </div>
+        )}
 
-        {/* Stats */}
+        {showList && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
           <Card>
             <CardContent className="p-4 text-center">
@@ -327,8 +350,13 @@ const TenantManagementPage = () => {
             </CardContent>
           </Card>
         </div>
+        )}
 
-        {/* Messages from tenants */}
+        {showMessages && (
+        <>
+          {useShellLayout && (
+            <h2 className="text-lg font-semibold text-midnight-blue mb-4">Tenant requests</h2>
+          )}
         <Card className="mb-8" data-testid="tenant-messages-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -360,8 +388,14 @@ const TenantManagementPage = () => {
             )}
           </CardContent>
         </Card>
+        </>
+        )}
 
-        {/* Certificate requests */}
+        {showCertificateRequests && (
+        <>
+          {useShellLayout && (
+            <h2 className="text-lg font-semibold text-midnight-blue mb-4">Certificate requests</h2>
+          )}
         <Card className="mb-8" data-testid="tenant-requests-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -436,8 +470,10 @@ const TenantManagementPage = () => {
             )}
           </CardContent>
         </Card>
+        </>
+        )}
 
-        {/* Tenants List */}
+        {showList && (
         <Card data-testid="tenants-list-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -634,6 +670,7 @@ const TenantManagementPage = () => {
             )}
           </CardContent>
         </Card>
+        )}
       </main>
 
       {/* Invite Modal */}

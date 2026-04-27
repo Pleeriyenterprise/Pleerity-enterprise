@@ -11,6 +11,7 @@ from typing import Optional, List, Dict
 from database import database
 from models import AuditAction
 from utils.audit import create_audit_log
+from services.compliance_status_authority import classify_compliance_status
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -326,17 +327,12 @@ class CompliancePackService:
         # Compliance Status Summary
         story.append(Spacer(1, 10*mm))
 
-        if tenant_view:
-            if overdue_count == 0 and expiring_count == 0:
-                overall_status = "Up to date"
-            elif overdue_count == 0:
-                overall_status = "Some renewals due soon"
-            else:
-                overall_status = "Some checks need attention"
-        else:
-            overall_status = "FULLY COMPLIANT" if overdue_count == 0 and expiring_count == 0 else (
-                "ATTENTION NEEDED" if overdue_count == 0 else "ACTION REQUIRED"
-            )
+        status_result = classify_compliance_status(requirements)
+        overall_status = status_result.status if not tenant_view else (
+            "Up to date" if status_result.status == "COMPLIANT"
+            else "Some renewals due soon" if status_result.status == "PARTIALLY COMPLIANT"
+            else "Some checks need attention"
+        )
         
         status_table_data = [
             ["Overall Status", overall_status],

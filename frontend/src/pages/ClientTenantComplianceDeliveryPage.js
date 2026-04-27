@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
+import { UpgradeRequired } from '../components/UpgradePrompt';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Label } from '../components/ui/label';
@@ -15,7 +16,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { toast } from '@/utils/portalNotifications';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
-import { ArrowLeft, Package, Send, Download, RefreshCw, Info } from 'lucide-react';
+import { Send, RefreshCw, Info } from 'lucide-react';
 
 function statusBadge(ui) {
   if (!ui) return null;
@@ -29,9 +30,16 @@ function statusBadge(ui) {
   return null;
 }
 
+/**
+ * Tenant email compliance pack delivery and provider delivery proof (under /tenants/delivery).
+ * Governed audit evidence ZIP generation lives under Reports → /reports/audit-pack.
+ */
 export default function ClientTenantComplianceDeliveryPage() {
-  const { hasFeature, entitlementsLoadFailed } = useEntitlements();
+  const { hasFeature, entitlementsLoadFailed, loading: entitlementsLoading } = useEntitlements();
   const navHasFeature = (k) => entitlementsLoadFailed || hasFeature(k);
+  const hasTenantPortal = navHasFeature('tenant_portal');
+  const canSendPack = hasTenantPortal && navHasFeature('reports_pdf');
+
   const [searchParams, setSearchParams] = useSearchParams();
   const propertyId = searchParams.get('property_id') || '';
 
@@ -41,13 +49,10 @@ export default function ClientTenantComplianceDeliveryPage() {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [generatingPack, setGeneratingPack] = useState(false);
   const [tenantId, setTenantId] = useState('');
 
-  const canUse = navHasFeature('tenant_portal') && navHasFeature('reports_pdf');
-
   const load = useCallback(async () => {
-    if (!canUse) {
+    if (!hasTenantPortal) {
       setLoading(false);
       return;
     }
@@ -69,7 +74,7 @@ export default function ClientTenantComplianceDeliveryPage() {
     } finally {
       setLoading(false);
     }
-  }, [canUse, propertyId]);
+  }, [hasTenantPortal, propertyId]);
 
   useEffect(() => {
     load();
@@ -109,79 +114,61 @@ export default function ClientTenantComplianceDeliveryPage() {
     }
   };
 
-  const generateAuditPack = async () => {
-    if (!propertyId) {
-      toast.error('Select a property first');
-      return;
-    }
-    setGeneratingPack(true);
-    try {
-      const gen = await api.post('/client/compliance/audit-pack/generate', { property_id: propertyId });
-      const packId = gen.data.pack_id;
-      const res = await api.get(`/client/compliance/audit-pack/${packId}/download`, { responseType: 'blob' });
-      const blob = new Blob([res.data], { type: 'application/zip' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${packId}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success('Audit pack downloaded');
-    } catch (e) {
-      toast.error(e.response?.data?.detail?.message || e.response?.data?.detail || 'Audit pack failed');
-    } finally {
-      setGeneratingPack(false);
-    }
-  };
-
-  if (!canUse) {
+  if (entitlementsLoading) {
     return (
-      <div className={portalPageRoot}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Tenant delivery & audit pack</CardTitle>
-            <CardDescription>Requires tenant portal and PDF reports on your plan.</CardDescription>
-          </CardHeader>
-        </Card>
+      <div className={portalPageRoot} data-testid="tenant-delivery-loading">
+        <PortalLoadingPanel message="Loading…" />
+      </div>
+    );
+  }
+
+  if (!hasTenantPortal) {
+    return (
+      <div className={portalPageRoot} data-testid="tenant-delivery-gate">
+        <UpgradeRequired feature="tenant_portal" showBackToDashboard variant="card" />
       </div>
     );
   }
 
   return (
-    <div className={portalPageRoot}>
-      <div className="mb-6 flex items-center gap-3">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/tenants">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Tenants
-          </Link>
-        </Button>
+    <div className={portalPageRoot} data-testid="tenant-delivery-page">
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Tenant delivery & audit pack</h1>
-          <p className="text-sm text-slate-600">Send the governed compliance PDF to a tenant and export a single audit-ready ZIP for a property.</p>
+          <h2 className="text-lg font-semibold text-midnight-blue">Send compliance pack</h2>
+          <p className="text-sm text-slate-600 mt-1 max-w-2xl">
+            Email a governed compliance pack to a tenant on this property. Delivery and open or bounce signals come from
+            the email provider when available — operational telemetry for your records, not proof of receipt.
+          </p>
         </div>
+        <Button variant="outline" size="sm" asChild className="w-fit shrink-0">
+          <Link to="/reports/audit-pack">Audit evidence pack (Reports)</Link>
+        </Button>
       </div>
 
       {notice && (
         <Alert className="mb-4 border-amber-200 bg-amber-50">
           <Info className="h-4 w-4" />
-          <AlertTitle>Provider evidence only</AlertTitle>
+          <AlertTitle>Provider delivery signals</AlertTitle>
           <AlertDescription>{notice}</AlertDescription>
         </Alert>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-1 max-w-2xl">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Send className="h-5 w-5 text-electric-teal" />
-              Send compliance pack
+              Send compliance pack by email
             </CardTitle>
-            <CardDescription>Uses governed email delivery with immutable delivery records.</CardDescription>
+            <CardDescription>Choose a property and tenant, then send the pack. Immutable delivery records are retained.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {!canSendPack && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                Sending packs requires <strong>PDF reports</strong> on your plan (same as the governed email payload). You
+                can still review delivery history below for properties you select.
+              </div>
+            )}
             <div>
               <Label>Property</Label>
               <Select value={propertyId || undefined} onValueChange={onPropertyChange}>
@@ -212,34 +199,14 @@ export default function ClientTenantComplianceDeliveryPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={sendPack} disabled={sending || !propertyId || !tenantId} className="w-full sm:w-auto">
-              {sending ? 'Sending…' : 'Send pack'}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-electric-teal" />
-              Governed audit pack
-            </CardTitle>
-            <CardDescription>One ZIP: summary PDF, authority-filtered certificates, timeline, delivery index, manifest + checksums.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={generateAuditPack} disabled={generatingPack || !propertyId} variant="secondary">
-              {generatingPack ? 'Building…' : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Generate & download
-                </>
-              )}
+            <Button onClick={sendPack} disabled={sending || !canSendPack || !propertyId || !tenantId} className="w-full sm:w-auto">
+              {sending ? 'Sending…' : 'Send compliance pack'}
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="mt-6">
+      <Card className="mt-6" id="delivery-history" data-testid="tenant-delivery-history">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Delivery history</CardTitle>

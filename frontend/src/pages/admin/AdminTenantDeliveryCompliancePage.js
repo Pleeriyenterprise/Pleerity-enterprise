@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import api from '../../api/client';
+import api, { filenameFromContentDisposition } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -92,7 +92,7 @@ export default function AdminTenantDeliveryCompliancePage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${packId}.zip`;
+      a.download = filenameFromContentDisposition(res.headers, `${packId}.zip`);
       document.body.appendChild(a);
       a.click();
       a.remove();

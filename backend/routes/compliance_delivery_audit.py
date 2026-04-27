@@ -18,7 +18,7 @@ from utils.request_ip import get_client_ip
 
 from services.plan_registry import plan_registry
 from services import tenant_delivery_proof_service as td_proof
-from services import compliance_audit_pack_service as audit_pack
+from services import compliance_audit_evidence_pack_service as audit_pack
 
 logger = logging.getLogger(__name__)
 

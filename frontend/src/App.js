@@ -112,6 +112,7 @@ import PropertyCreatePage from './pages/PropertyCreatePage';
 import DocumentsPage from './pages/DocumentsPage';
 import BulkUploadPage from './pages/BulkUploadPage';
 import ReportsPage from './pages/ReportsPage';
+import ReportsAuditPackPage from './pages/ReportsAuditPackPage';
 import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
 import ClientNotificationInboxPage from './pages/ClientNotificationInboxPage';
 import CalendarPage from './pages/CalendarPage';
@@ -209,13 +210,22 @@ import CookieBanner from './components/CookieBanner';
 import ErrorBoundary from './components/ErrorBoundary';
 import DebugPanel from './components/DebugPanel';
 import ClientPortal from './components/ClientPortal';
+import TenantsLayout from './components/TenantsLayout';
+import ReportsLayout from './components/ReportsLayout';
 import SettingsLayout from './components/SettingsLayout';
 import HelpPage from './pages/HelpPage';
 import PropertyDetailPage from './pages/PropertyDetailPage';
+import { complianceTenantDeliveryRedirectTarget } from './utils/portalIaRedirects';
 
 function RedirectToProperty() {
   const { propertyId } = useParams();
   return <Navigate to={propertyId ? `/properties/${propertyId}` : '/properties'} replace />;
+}
+
+/** Legacy IA: /compliance/tenant-delivery → /tenants/delivery (preserve query e.g. property_id). */
+function ComplianceTenantDeliveryRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={complianceTenantDeliveryRedirectTarget(search)} replace />;
 }
 
 /** Scroll window to top when the route (pathname) changes, so new pages start from the top. */
@@ -365,7 +375,17 @@ function App() {
             <Route path="/audit-log" element={<ClientPortal><ClientAuditLogPage /></ClientPortal>} />
             <Route path="/documents/bulk-upload" element={<ClientPortal><BulkUploadPage /></ClientPortal>} />
             <Route path="/calendar" element={<ClientPortal><CalendarPage /></ClientPortal>} />
-            <Route path="/reports" element={<ClientPortal><ReportsPage /></ClientPortal>} />
+            <Route path="/reports" element={<ClientPortal><ReportsLayout /></ClientPortal>}>
+              <Route index element={<ReportsPage />} />
+              <Route
+                path="audit-pack"
+                element={
+                  <EntitlementProtectedRoute requiredFeature="reports_pdf">
+                    <ReportsAuditPackPage />
+                  </EntitlementProtectedRoute>
+                }
+              />
+            </Route>
             <Route path="/compliance-score" element={<ClientPortal><ComplianceScorePage /></ClientPortal>} />
             <Route path="/assistant" element={<ClientPortal><AssistantPage /></ClientPortal>} />
             <Route path="/help" element={<ClientPortal><HelpPage /></ClientPortal>} />
@@ -385,17 +405,22 @@ function App() {
               <Route path="properties/:propertyId" element={<TenantPropertyDetailPage />} />
               <Route path="settings" element={<TenantSettingsPage />} />
             </Route>
-            <Route path="/tenants" element={<ClientPortal><EntitlementProtectedRoute requiredFeature="tenant_portal"><TenantManagementPage /></EntitlementProtectedRoute></ClientPortal>} />
             <Route
-              path="/compliance/tenant-delivery"
+              path="/tenants"
               element={
                 <ClientPortal>
                   <EntitlementProtectedRoute requiredFeature="tenant_portal">
-                    <ClientTenantComplianceDeliveryPage />
+                    <TenantsLayout />
                   </EntitlementProtectedRoute>
                 </ClientPortal>
               }
-            />
+            >
+              <Route index element={<TenantManagementPage section="list" />} />
+              <Route path="messages" element={<TenantManagementPage section="messages" />} />
+              <Route path="certificate-requests" element={<TenantManagementPage section="certificate-requests" />} />
+              <Route path="delivery" element={<ClientTenantComplianceDeliveryPage />} />
+            </Route>
+            <Route path="/compliance/tenant-delivery" element={<ClientPortal><ComplianceTenantDeliveryRedirect /></ClientPortal>} />
             <Route path="/integrations" element={<ClientPortal><EntitlementProtectedRoute requiredFeature="webhooks"><IntegrationsPage /></EntitlementProtectedRoute></ClientPortal>} />
             <Route path="/orders/:orderId/provide-info" element={<ClientPortal><ClientProvideInfoPage /></ClientPortal>} />
             <Route path="/orders" element={<ClientPortal><ClientOrdersPage /></ClientPortal>} />
@@ -433,6 +458,7 @@ function App() {
             <Route path="/app/reports" element={<Navigate to="/reports" replace />} />
             <Route path="/app/tenant" element={<Navigate to="/tenant" replace />} />
             <Route path="/app/tenants" element={<Navigate to="/tenants" replace />} />
+            <Route path="/app/compliance/tenant-delivery" element={<ClientPortal><ComplianceTenantDeliveryRedirect /></ClientPortal>} />
             <Route path="/app/properties/import" element={<Navigate to="/properties/import" replace />} />
             <Route path="/app/integrations" element={<Navigate to="/integrations" replace />} />
             <Route path="/app/billing" element={<Navigate to="/settings/billing" replace />} />

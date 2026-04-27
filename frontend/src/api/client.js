@@ -373,6 +373,25 @@ export function openBlobApiResponse(res, { download = false, fallbackFilename = 
   }
 }
 
+/** Parse a safe filename from Content-Disposition. Returns fallback when missing/invalid. */
+export function filenameFromContentDisposition(headers, fallbackFilename = 'download') {
+  const cd = headers?.['content-disposition'] || headers?.['Content-Disposition'] || '';
+  if (!cd || typeof cd !== 'string') return fallbackFilename;
+  const matchStar = cd.match(/filename\*=UTF-8''([^;]+)/i);
+  if (matchStar?.[1]) {
+    try {
+      const decoded = decodeURIComponent(matchStar[1]).replace(/[/\\]/g, '_').trim();
+      return decoded || fallbackFilename;
+    } catch {
+      /* ignore */
+    }
+  }
+  const match = cd.match(/filename="?([^";]+)"?/i);
+  if (!match?.[1]) return fallbackFilename;
+  const clean = String(match[1]).replace(/[/\\]/g, '_').trim();
+  return clean || fallbackFilename;
+}
+
 // API methods
 export const authAPI = {
   login: (data) => apiClient.post('/auth/login', data),

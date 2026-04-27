@@ -6,7 +6,8 @@ Tier-gated by plan_registry `audit_log_export`. Idempotent per (client_id, scope
 **Product note:** For tribunal-grade **property-scoped** audit exports (compliance summary PDF,
 authority-filtered certificates, audit timeline slice, tenant delivery proof index, manifest +
 SHA-256), use the governed **audit pack** flow: ``POST /api/client/compliance/audit-pack/generate``
-and ``services.compliance_audit_pack_service``. This job remains for portfolio CSV / operational
+and ``services.compliance_audit_evidence_pack_service``. Legacy
+``services.compliance_audit_pack_service`` is a deprecated compatibility wrapper. This job remains for portfolio CSV / operational
 evidence extracts and must not be treated as the same contract as the audit pack.
 """
 from __future__ import annotations

@@ -3,7 +3,8 @@
  * `/login/client` with an optional internal `next` path — not the generic `/login` role chooser.
  */
 
-const CLIENT_PATH_PREFIXES = [
+/** Prefixes for client JWT portal shell (401 → return to same URL after login). Nested paths such as /tenants/delivery and /reports/audit-pack match via startsWith(`${prefix}/`). */
+export const CLIENT_PATH_PREFIXES = [
   '/app',
   '/dashboard',
   '/today',

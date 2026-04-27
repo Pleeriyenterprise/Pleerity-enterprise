@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api, { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
@@ -86,6 +86,7 @@ const ReportsPage = () => {
   const [downloadingDigestId, setDownloadingDigestId] = useState(null);
 
   const hasReportsAccess = hasFeature('reports_pdf') || hasFeature('reports_csv');
+  const hasReportsPdf = hasFeature('reports_pdf');
   const hasScheduledReportsAccess = hasFeature('scheduled_reports');
   const hasAuditLogExport = hasFeature('audit_log_export');
   const [evidencePackJobs, setEvidencePackJobs] = useState([]);
@@ -631,6 +632,22 @@ const ReportsPage = () => {
         <p className="text-sm text-gray-600 mb-6 leading-relaxed" data-testid="reports-operating-helper">
           Use reports to review and share compliance status.
         </p>
+        {hasReportsPdf && (
+          <Card className="mb-6 border border-teal-100 bg-teal-50/40" data-testid="reports-audit-evidence-pack-cta">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Audit evidence pack (property ZIP)</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-gray-700 max-w-2xl">
+                Build a governed audit evidence ZIP for one property (summary, certificates, timeline, manifest). This is
+                for evidence and regulators — not tenant email delivery.
+              </p>
+              <Button asChild className="bg-electric-teal hover:bg-teal-600 shrink-0 w-full sm:w-auto">
+                <Link to="/reports/audit-pack">Open audit evidence pack</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
         {upgradeRequiredDetail && (
           <div className="mb-6" data-testid="reports-upgrade-required">
             <UpgradeRequired upgradeDetail={upgradeRequiredDetail} showBackToDashboard />
