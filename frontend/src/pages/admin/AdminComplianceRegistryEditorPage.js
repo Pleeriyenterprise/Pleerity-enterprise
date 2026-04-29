@@ -163,6 +163,27 @@ function JurisdictionCheckboxes({ label, help, regionDefs, selected, onChange, d
   );
 }
 
+function toggleStringInList(list, value) {
+  const tok = String(value || '').trim();
+  if (!tok) return Array.isArray(list) ? list : [];
+  const cur = new Set((Array.isArray(list) ? list : []).map((x) => String(x || '').trim()).filter(Boolean));
+  if (cur.has(tok)) cur.delete(tok);
+  else cur.add(tok);
+  return Array.from(cur);
+}
+
+function predictClientCtaBehaviour(er = {}) {
+  const modes = Array.isArray(er.allowed_evidence_modes)
+    ? er.allowed_evidence_modes.map((x) => String(x || '').trim().toUpperCase()).filter(Boolean)
+    : [];
+  const hasDoc = modes.includes('DOCUMENT_UPLOAD');
+  const nonDoc = modes.filter((m) => m !== 'DOCUMENT_UPLOAD');
+  if (!modes.length || (modes.length === 1 && hasDoc)) return 'Direct upload';
+  if (nonDoc.length === 1 && modes.length === 1) return 'Direct evidence action';
+  if (nonDoc.length >= 1 && modes.length >= 2) return 'Guided evidence selector';
+  return 'Direct upload';
+}
+
 export default function AdminComplianceRegistryEditorPage() {
   const { entryId } = useParams();
   const { isOwner, isAdmin } = useAuth();
@@ -250,6 +271,9 @@ export default function AdminComplianceRegistryEditorPage() {
   const setGovernance = (k, v) => {
     setDraft((prev) => ({ ...prev, governance: { ...prev.governance, [k]: v } }));
   };
+  const setEvidenceResolution = (k, v) => {
+    setDraft((prev) => ({ ...prev, evidence_resolution: { ...(prev.evidence_resolution || {}), [k]: v } }));
+  };
 
   const handleConditionsBuilderChange = (next) => {
     setDraft((prev) => ({ ...prev, conditions: next }));
@@ -302,6 +326,7 @@ export default function AdminComplianceRegistryEditorPage() {
       why_it_matters_short: draft.why_it_matters_short || '',
       why_it_matters_long: draft.why_it_matters_long || '',
       why_it_matters_by_jurisdiction: whyByJurisdiction && typeof whyByJurisdiction === 'object' ? whyByJurisdiction : {},
+      evidence_resolution: draft.evidence_resolution || {},
       governance: draft.governance,
     };
     setSaving(true);
@@ -361,6 +386,12 @@ export default function AdminComplianceRegistryEditorPage() {
   const broadWarning = displayRegionsCoverAllUK(displayRegs);
   const effJur = buildEffectiveJurisdictionsSummary(draft);
   const scopeReadable = formatScopeKeyLabel(draft.scope_key);
+  const evidenceResolution = draft.evidence_resolution || {};
+  const evidenceModes = Array.isArray(evidenceResolution.allowed_evidence_modes)
+    ? evidenceResolution.allowed_evidence_modes
+    : [];
+  const isCustomEvidencePolicy = Boolean(draft.evidence_resolution && Object.keys(draft.evidence_resolution || {}).length > 0);
+  const defaultVsCustomLabel = isCustomEvidencePolicy ? 'Custom evidence policy' : 'Using default evidence policy';
 
   return (
     <UnifiedAdminLayout>
@@ -450,12 +481,33 @@ export default function AdminComplianceRegistryEditorPage() {
                 '—'}
             </li>
             <li>
+              <span className="font-medium">Evidence policy:</span> {defaultVsCustomLabel}
+            </li>
+            <li>
+              <span className="font-medium">Allowed evidence methods:</span>{' '}
+              {evidenceModes.length ? evidenceModes.join(', ') : 'Defaults from backend policy'}
+            </li>
+            <li>
+              <span className="font-medium">Resolution workflow:</span>{' '}
+              {evidenceResolution.primary_resolution_workflow || 'Defaults from backend policy'}
+            </li>
+            <li>
+              <span className="font-medium">Expected client CTA behaviour:</span> {predictClientCtaBehaviour(evidenceResolution)}
+            </li>
+            <li>
               <span className="font-medium">Why it matters (short):</span>{' '}
               {(draft.why_it_matters_short || '').slice(0, 160)}
               {(draft.why_it_matters_short || '').length > 160 ? '…' : ''}
             </li>
           </ul>
         </Section>
+
+        {draft.classification?.criticality === 'HIGH' && evidenceResolution.allow_low_non_document_satisfaction ? (
+          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 mb-4 text-xs text-amber-950">
+            <strong>Warning:</strong> Critical requirement allows low-confidence non-document satisfaction. This is allowed but
+            will be flagged for review in governance checks.
+          </div>
+        ) : null}
 
         <Section title="Identity">
           <Field label="Name" value={draft.identity?.name || ''} onChange={(v) => setIdentity('name', v)} disabled={!canMutate} />
@@ -662,6 +714,137 @@ export default function AdminComplianceRegistryEditorPage() {
             onChange={(v) => setActionBehaviour('cta_label_override', v)}
             disabled={!canMutate}
           />
+        </Section>
+
+        <Section title="Evidence Resolution Policy">
+          <p className="text-xs text-gray-600 mb-2">Choose how users may prove this obligation has been met.</p>
+          <p className="text-xs text-slate-700 mb-2">
+            <strong>{defaultVsCustomLabel}</strong>
+          </p>
+          <div className="mb-3">
+            <span className="text-xs text-gray-500 block mb-1">Allowed evidence methods</span>
+            <p className="text-[11px] text-slate-600 mb-2">Only selected methods will be available to users.</p>
+            <div className="flex flex-wrap gap-3">
+              {(opts.evidence_modes || []).map((m) => {
+                const checked = evidenceModes.includes(m.value);
+                return (
+                  <label key={m.value} className="inline-flex items-center gap-2 text-sm text-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={!canMutate}
+                      onChange={() =>
+                        setEvidenceResolution(
+                          'allowed_evidence_modes',
+                          toggleStringInList(evidenceResolution.allowed_evidence_modes, m.value),
+                        )
+                      }
+                    />
+                    {m.label} <span className="text-xs text-gray-400 font-mono">({m.value})</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+          <ControlledEnumSelect
+            label="Primary resolution workflow"
+            help="Controls whether users see direct upload, direct evidence action, or guided evidence selector."
+            value={evidenceResolution.primary_resolution_workflow || ''}
+            options={opts.evidence_resolution_workflows || []}
+            onChange={(v) => setEvidenceResolution('primary_resolution_workflow', v)}
+            disabled={!canMutate}
+            unknownValue={evidenceResolution.primary_resolution_workflow}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="flex items-center gap-2 text-sm text-gray-800">
+              <input
+                type="checkbox"
+                checked={Boolean(evidenceResolution.allow_medium_non_document_satisfaction)}
+                onChange={(e) => setEvidenceResolution('allow_medium_non_document_satisfaction', e.target.checked)}
+                disabled={!canMutate}
+              />
+              allow_medium_non_document_satisfaction
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-800">
+              <input
+                type="checkbox"
+                checked={Boolean(evidenceResolution.allow_low_non_document_satisfaction)}
+                onChange={(e) => setEvidenceResolution('allow_low_non_document_satisfaction', e.target.checked)}
+                disabled={!canMutate}
+              />
+              allow_low_non_document_satisfaction
+            </label>
+          </div>
+          <p className="text-[11px] text-slate-600 mt-1 mb-3">
+            Confidence rules: Controls whether non-document evidence can satisfy this obligation before or after review.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="flex items-center gap-2 text-sm text-gray-800">
+              <input
+                type="checkbox"
+                checked={Boolean(evidenceResolution.supporting_upload_required)}
+                onChange={(e) => setEvidenceResolution('supporting_upload_required', e.target.checked)}
+                disabled={!canMutate}
+              />
+              supporting_upload_required
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-800">
+              <input
+                type="checkbox"
+                checked={Boolean(evidenceResolution.supporting_upload_recommended)}
+                onChange={(e) => setEvidenceResolution('supporting_upload_recommended', e.target.checked)}
+                disabled={!canMutate}
+              />
+              supporting_upload_recommended
+            </label>
+          </div>
+          <div className="mt-2 mb-3">
+            <span className="text-xs text-gray-500 block mb-1">Allowed supporting upload types</span>
+            <p className="text-[11px] text-slate-600 mb-2">
+              Supporting files such as photos, invoices, or contractor receipts may strengthen evidence quality.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {(opts.allowed_upload_types || []).map((u) => {
+                const chosen = Array.isArray(evidenceResolution.allowed_upload_types)
+                  ? evidenceResolution.allowed_upload_types
+                  : [];
+                const checked = chosen.includes(u.value);
+                return (
+                  <label key={u.value} className="inline-flex items-center gap-2 text-sm text-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={!canMutate}
+                      onChange={() =>
+                        setEvidenceResolution(
+                          'allowed_upload_types',
+                          toggleStringInList(evidenceResolution.allowed_upload_types, u.value),
+                        )
+                      }
+                    />
+                    {u.label}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="flex items-center gap-2 text-sm text-gray-800">
+              <input
+                type="checkbox"
+                checked={Boolean(evidenceResolution.verification_required)}
+                onChange={(e) => setEvidenceResolution('verification_required', e.target.checked)}
+                disabled={!canMutate}
+              />
+              verification_required
+            </label>
+            <Field
+              label="reviewer_role_required (optional metadata)"
+              value={evidenceResolution.reviewer_role_required || ''}
+              onChange={(v) => setEvidenceResolution('reviewer_role_required', v)}
+              disabled={!canMutate}
+            />
+          </div>
         </Section>
 
         <Section title="Action links (governed; preview below)">

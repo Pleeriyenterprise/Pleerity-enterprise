@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Tuple
 
 # Shown only in pre-acceptance preview compiles — never a fake ISO timestamp.
@@ -50,21 +51,36 @@ def build_agreement_render_context(
     st = settings or {}
     monthly_minor = int(snap.get("billing_amount_minor") or 0)
     onboarding_minor = int(snap.get("onboarding_fee_minor") or 0)
+    ts_raw = (acceptance_timestamp_display or "").strip()
+    is_preview = ts_raw == PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER
+    ts_utc = _normalize_iso_utc(ts_raw) if not is_preview else ""
+    ts_display = PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER if is_preview else _format_human_utc(ts_utc)
+    client_full_name = str(snap.get("client_full_name") or "").strip()
+    client_company_name = str(snap.get("client_company_name") or "").strip()
+    parties_statement = _build_parties_statement(
+        provider_company_name=str(st.get("provider_company_name") or "Pleerity Enterprise Ltd"),
+        client_full_name=client_full_name,
+        client_company_name=client_company_name,
+    )
     return {
         "provider_company_name": st.get("provider_company_name") or "Pleerity Enterprise Ltd",
-        "client_full_name": str(snap.get("client_full_name") or "").strip(),
-        "client_company_name": str(snap.get("client_company_name") or "").strip(),
+        "client_full_name": client_full_name,
+        "client_company_name": client_company_name,
+        "parties_statement": parties_statement,
         "client_email": str(snap.get("client_email") or "").strip(),
         "client_address": str(snap.get("client_address") or "").strip(),
+        "client_address_raw": str(snap.get("client_address_raw") or "").strip(),
+        "client_postcode": str(snap.get("client_postcode") or "").strip().upper(),
         "plan_name": str(snap.get("plan_label") or snap.get("selected_plan_code") or "").strip(),
         "billing_interval": str(snap.get("billing_interval") or "month").strip() or "month",
         "monthly_fee": f"£{monthly_minor / 100:.2f}",
         "currency": str(snap.get("currency") or "GBP").strip() or "GBP",
         "onboarding_fee_line": (
-            f"£{onboarding_minor / 100:.2f}" if onboarding_minor > 0 else "None"
+            f"One-time onboarding fee: £{onboarding_minor / 100:.2f}" if onboarding_minor > 0 else "One-time onboarding fee: None"
         ),
         "accepted_signatory_name": (accepted_signatory_name or "").strip()[:200],
-        "acceptance_timestamp": (acceptance_timestamp_display or "").strip(),
+        "acceptance_timestamp": ts_display,
+        "acceptance_timestamp_utc": ts_utc,
         "agreement_version": str(int(agreement_version_number or 1)),
         "support_email": canonical_support_email(st),
     }
@@ -91,6 +107,8 @@ def validate_checkout_grade_render_context(
     monthly_fee = str(ctx.get("monthly_fee") or "").strip()
     support = str(ctx.get("support_email") or "").strip().lower()
     ts = str(ctx.get("acceptance_timestamp") or "").strip()
+    ts_utc = str(ctx.get("acceptance_timestamp_utc") or "").strip()
+    postcode = str(ctx.get("client_postcode") or "").strip().upper()
 
     if not name:
         errors.append("missing_client_full_name")
@@ -129,8 +147,17 @@ def validate_checkout_grade_render_context(
             errors.append("missing_acceptance_timestamp")
         elif ts == PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER:
             errors.append("forbidden_preview_timestamp_in_acceptance_render")
-        elif not _iso_start.match(ts):
-            errors.append("acceptance_timestamp_not_iso")
+        if not ts_utc:
+            errors.append("missing_acceptance_timestamp_utc")
+        elif not _iso_start.match(ts_utc) or not ts_utc.endswith("Z"):
+            errors.append("acceptance_timestamp_utc_not_normalized")
+        elif "UTC" not in ts:
+            errors.append("acceptance_timestamp_display_must_include_utc")
+
+    if postcode and not _looks_like_uk_postcode(postcode):
+        errors.append("client_postcode_malformed_or_truncated")
+    if _address_looks_truncated(addr):
+        errors.append("client_address_malformed_or_truncated")
 
     if support and support == _FORBIDDEN_SUPPORT_LOWER:
         errors.append("forbidden_legacy_support_email")
@@ -138,3 +165,99 @@ def validate_checkout_grade_render_context(
         errors.append("support_email_must_match_canonical_unless_env_override")
 
     return (len(errors) == 0, errors)
+
+
+def validate_accepted_artifact_text(
+    *,
+    canonical_text: str,
+    render_context: Dict[str, Any],
+) -> Tuple[bool, List[str]]:
+    """Final legal-grade checks for accepted artifact text only."""
+    txt = str(canonical_text or "")
+    errs: List[str] = []
+    if not txt.strip():
+        errs.append("accepted_artifact_empty")
+        return False, errs
+    if PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER in txt:
+        errs.append("accepted_artifact_contains_preview_timestamp_placeholder")
+    if "{{" in txt or "}}" in txt:
+        errs.append("accepted_artifact_contains_unresolved_placeholder")
+    if "where applicable" in txt.lower():
+        errs.append("accepted_artifact_contains_forbidden_conditional_phrase")
+    if "billed on a month basis" in txt.lower():
+        errs.append("accepted_artifact_contains_weak_billing_wording")
+    if "applicable onboarding or setup fees" in txt.lower():
+        errs.append("accepted_artifact_contains_weak_onboarding_wording")
+    if re.search(r"[ \t]{2,}", txt):
+        errs.append("accepted_artifact_contains_duplicate_whitespace")
+    if not str(render_context.get("client_full_name") or "").strip():
+        errs.append("accepted_artifact_missing_client_name")
+    if not str(render_context.get("acceptance_timestamp_utc") or "").strip():
+        errs.append("accepted_artifact_missing_acceptance_timestamp_utc")
+    if "UTC" not in str(render_context.get("acceptance_timestamp") or ""):
+        errs.append("accepted_artifact_missing_human_utc_timestamp")
+    return (len(errs) == 0, errs)
+
+
+def _normalize_iso_utc(v: str) -> str:
+    s = str(v or "").strip()
+    if not s:
+        return ""
+    s2 = s.replace("+00:00", "Z")
+    if s2.endswith("Z"):
+        s2 = s2[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(s2)
+        dt_utc = dt.astimezone(timezone.utc)
+        return dt_utc.isoformat().replace("+00:00", "Z")
+    except Exception:
+        return ""
+
+
+def _format_human_utc(iso_utc: str) -> str:
+    s = _normalize_iso_utc(iso_utc)
+    if not s:
+        return ""
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00")).astimezone(timezone.utc)
+        return dt.strftime("%d %B %Y at %H:%M UTC")
+    except Exception:
+        return ""
+
+
+def _looks_like_uk_postcode(v: str) -> bool:
+    p = str(v or "").strip().upper()
+    if not p:
+        return False
+    rx = re.compile(r"^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$")
+    return rx.match(p) is not None
+
+
+def _address_looks_truncated(v: str) -> bool:
+    s = str(v or "").strip()
+    if not s:
+        return True
+    # Common truncation patterns seen in malformed legal artifacts, e.g. "Chelsea, SW."
+    if re.search(r",\s*[A-Z]{1,3}\.?$", s):
+        return True
+    return False
+
+
+def _build_parties_statement(
+    *,
+    provider_company_name: str,
+    client_full_name: str,
+    client_company_name: str,
+) -> str:
+    p = (provider_company_name or "Pleerity Enterprise Ltd").strip()
+    c = (client_full_name or "").strip()
+    co = (client_company_name or "").strip()
+    if co:
+        return (
+            f'This Property Compliance Management Agreement ("Agreement") is entered into between '
+            f'{p} ("Provider") and {c} ("Client"), operating as {co}.'
+        )
+    return (
+        f'This Property Compliance Management Agreement ("Agreement") is entered into between '
+        f'{p} ("Provider") and {c} ("Client").'
+    )

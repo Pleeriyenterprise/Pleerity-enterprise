@@ -32,9 +32,7 @@ DEFAULT_BLOCKS: list[dict[str, Any]] = [
         "order": 1,
         "enabled": True,
         "content": (
-            "This Property Compliance Management Agreement (\"Agreement\") is entered into between "
-            "{{provider_company_name}} (\"Provider\") and {{client_full_name}} (\"Client\"), including any associated "
-            "business entity identified as {{client_company_name}} where applicable. Primary client contact email: "
+            "{{parties_statement}} Primary client contact email: "
             "{{client_email}}. Primary property or correspondence address: {{client_address}}."
         ),
     },
@@ -92,8 +90,8 @@ DEFAULT_BLOCKS: list[dict[str, Any]] = [
         "order": 4,
         "enabled": True,
         "content": (
-            "The Client has selected the {{plan_name}} plan billed on a {{billing_interval}} basis at "
-            "{{monthly_fee}} {{currency}}. Applicable onboarding or setup fees: {{onboarding_fee_line}}. "
+            "The Client has selected the {{plan_name}} plan billed on a monthly basis at "
+            "{{monthly_fee}} {{currency}}. {{onboarding_fee_line}}. "
             "Recurring subscription charges may continue automatically unless cancelled in accordance with billing terms."
         ),
     },
@@ -190,7 +188,14 @@ async def ensure_default_agreement_assets() -> None:
             else None
         )
         current_keys = {str((b or {}).get("key") or "") for b in (current_ver or {}).get("content_blocks") or []}
-        needs_upgrade = "compliance_limitation" not in current_keys
+        current_blocks = (current_ver or {}).get("content_blocks") or []
+        current_blob = " ".join(str((b or {}).get("content") or "") for b in current_blocks).lower()
+        needs_upgrade = (
+            "compliance_limitation" not in current_keys
+            or "where applicable" in current_blob
+            or "applicable onboarding or setup fees" in current_blob
+            or "billed on a {{billing_interval}} basis" in current_blob
+        )
         if needs_upgrade:
             new_version_id = str(uuid.uuid4())
             now = _utc()

@@ -6,6 +6,7 @@ import pytest
 from services.compliance_evidence_record_service import (
     ALL_EVIDENCE_MODES,
     assign_confidence_for_new_record,
+    checklist_schema_for_mode,
     create_compliance_evidence_record,
     effective_evidence_resolution,
     evidence_mode_allowed_for_requirement,
@@ -27,6 +28,7 @@ def test_effective_evidence_resolution_smoke_heat_defaults_multi_mode():
     pol = effective_evidence_resolution(req)
     assert "STRUCTURED_DECLARATION" in pol["allowed_evidence_modes"]
     assert "DOCUMENT_UPLOAD" in pol["allowed_evidence_modes"]
+    assert "allowed_upload_types" in pol
 
 
 def test_evidence_mode_allowed_enforced():
@@ -203,6 +205,27 @@ async def test_create_evidence_record_rejects_hidden_requirement():
 
 def test_all_evidence_modes_constant_contains_phase1():
     assert "INSPECTION_CHECKLIST" in ALL_EVIDENCE_MODES
+
+
+def test_checklist_schema_fallback_for_mode():
+    req = {"requirement_type": "smoke_heat_alarms", "registry_metadata": {}}
+    schema = checklist_schema_for_mode(req, "INSPECTION_CHECKLIST")
+    assert schema["fallback_used"] is True
+    assert len(schema["items"]) >= 1
+
+
+def test_create_evidence_record_rejects_future_contractor_completion_date():
+    with pytest.raises(ValueError, match="date_cannot_be_in_future"):
+        from services.compliance_evidence_record_service import _validate_payload_for_mode
+
+        _validate_payload_for_mode(
+            "CONTRACTOR_CONFIRMATION",
+            {
+                "contractor_name": "A",
+                "completion_date": "2999-01-01",
+                "work_summary": "Work summary with enough detail",
+            },
+        )
 
 
 @pytest.mark.asyncio

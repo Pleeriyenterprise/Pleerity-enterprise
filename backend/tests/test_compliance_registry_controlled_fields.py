@@ -5,6 +5,7 @@ from copy import deepcopy
 
 from services.compliance_registry_admin_service import merge_partial_draft, validate_registry_draft
 from services.compliance_registry_controlled_vocab import (
+    controlled_field_options_payload,
     normalise_action_link_kind,
     normalise_registry_draft_for_storage,
 )
@@ -106,3 +107,11 @@ def test_normalize_admin_action_link_rejects_unknown_kind():
     item, err = normalize_admin_action_link_item(raw, generate_key_if_missing=False)
     assert item is None
     assert err and "kind" in err.lower()
+
+
+def test_controlled_options_include_evidence_resolution_controls():
+    payload = controlled_field_options_payload()
+    assert "evidence_modes" in payload
+    assert "evidence_resolution_workflows" in payload
+    assert "allowed_upload_types" in payload
+    assert any(x["value"] == "DOCUMENT_UPLOAD" for x in payload["evidence_modes"])

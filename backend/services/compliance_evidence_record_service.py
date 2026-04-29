@@ -35,6 +35,12 @@ VERIFICATION_NOT_REQUIRED = "NOT_REQUIRED"
 CONFIDENCE_HIGH = "HIGH"
 CONFIDENCE_MEDIUM = "MEDIUM"
 CONFIDENCE_LOW = "LOW"
+DEFAULT_ALLOWED_SUPPORTING_UPLOAD_TYPES = [
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+]
 
 # Product defaults until registry publishes explicit evidence_resolution (policy data, not UI).
 DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE: Dict[str, Dict[str, Any]] = {
@@ -102,7 +108,15 @@ def normalize_evidence_resolution_dict(er: Dict[str, Any]) -> Dict[str, Any]:
         or "GUIDED_EVIDENCE_RESOLUTION",
         "allow_medium_non_document_satisfaction": bool(er.get("allow_medium_non_document_satisfaction")),
         "allow_low_non_document_satisfaction": bool(er.get("allow_low_non_document_satisfaction")),
+        "supporting_upload_required": bool(er.get("supporting_upload_required")),
+        "supporting_upload_recommended": bool(er.get("supporting_upload_recommended")),
+        "allowed_upload_types": _norm_upload_types(er.get("allowed_upload_types")),
+        "checklist_schema_by_mode": _norm_checklist_schema_by_mode(er.get("checklist_schema_by_mode")),
+        "verification_required": bool(er.get("verification_required")),
     }
+    rrr = str(er.get("reviewer_role_required") or "").strip()
+    if rrr:
+        out["reviewer_role_required"] = rrr
     gpl = str(er.get("guided_primary_cta_label") or "").strip()
     if gpl:
         out["guided_primary_cta_label"] = gpl
@@ -158,6 +172,52 @@ def guided_method_ui_rows_for_modes(modes: Sequence[str]) -> List[Dict[str, Any]
     return rows
 
 
+def _norm_upload_types(raw: Any) -> List[str]:
+    out: List[str] = []
+    if isinstance(raw, list):
+        for item in raw:
+            tok = str(item or "").strip().lower()
+            if tok:
+                out.append(tok)
+    if out:
+        return out
+    return list(DEFAULT_ALLOWED_SUPPORTING_UPLOAD_TYPES)
+
+
+def _norm_checklist_schema_by_mode(raw: Any) -> Dict[str, List[Dict[str, Any]]]:
+    out: Dict[str, List[Dict[str, Any]]] = {}
+    if not isinstance(raw, dict):
+        return out
+    for mode, rows in raw.items():
+        mode_tok = str(mode or "").strip().upper()
+        if mode_tok not in ALL_EVIDENCE_MODES:
+            continue
+        if not isinstance(rows, list):
+            continue
+        normal_rows: List[Dict[str, Any]] = []
+        for idx, r in enumerate(rows):
+            if not isinstance(r, dict):
+                continue
+            qid = str(r.get("id") or f"{mode_tok.lower()}_{idx+1}").strip()
+            label = str(r.get("label") or "").strip()
+            answer_type = str(r.get("answer_type") or "YES_NO").strip().upper()
+            if not label:
+                continue
+            if answer_type not in {"YES_NO", "PASS_FAIL", "TEXT", "NUMERIC", "OBSERVATION"}:
+                answer_type = "YES_NO"
+            normal_rows.append(
+                {
+                    "id": qid,
+                    "label": label,
+                    "answer_type": answer_type,
+                    "required": bool(r.get("required")),
+                }
+            )
+        if normal_rows:
+            out[mode_tok] = normal_rows
+    return out
+
+
 def effective_evidence_resolution(requirement: Dict[str, Any]) -> Dict[str, Any]:
     meta = requirement.get("registry_metadata") if isinstance(requirement.get("registry_metadata"), dict) else {}
     er = meta.get("evidence_resolution")
@@ -174,6 +234,45 @@ def effective_evidence_resolution(requirement: Dict[str, Any]) -> Dict[str, Any]
             "allow_low_non_document_satisfaction": False,
         }
     )
+
+
+def checklist_schema_for_mode(requirement: Dict[str, Any], mode: str) -> Dict[str, Any]:
+    policy = effective_evidence_resolution(requirement)
+    mode_tok = str(mode or "").strip().upper()
+    by_mode = policy.get("checklist_schema_by_mode") if isinstance(policy.get("checklist_schema_by_mode"), dict) else {}
+    schema = by_mode.get(mode_tok) if isinstance(by_mode.get(mode_tok), list) else None
+    if schema:
+        return {"items": schema, "fallback_used": False}
+    return {
+        "items": _default_checklist_schema_for_requirement(
+            str(requirement.get("requirement_type") or "").strip().lower(),
+            mode_tok,
+        ),
+        "fallback_used": True,
+    }
+
+
+def _default_checklist_schema_for_requirement(requirement_type: str, mode: str) -> List[Dict[str, Any]]:
+    if mode == EVIDENCE_MODE_INSPECTION_CHECKLIST and requirement_type == "smoke_heat_alarms":
+        return [
+            {"id": "alarm_present", "label": "Alarm present in required location", "answer_type": "PASS_FAIL", "required": True},
+            {"id": "alarm_tested", "label": "Alarm tested and operating", "answer_type": "PASS_FAIL", "required": True},
+            {"id": "test_count", "label": "Number of alarms tested", "answer_type": "NUMERIC", "required": False},
+            {"id": "observations", "label": "Observations", "answer_type": "OBSERVATION", "required": False},
+        ]
+    if mode == EVIDENCE_MODE_INSPECTION_CHECKLIST:
+        return [
+            {"id": "check_passed", "label": "Inspection checklist passed", "answer_type": "PASS_FAIL", "required": True},
+            {"id": "notes", "label": "Inspection notes", "answer_type": "TEXT", "required": False},
+            {"id": "observations", "label": "Observations", "answer_type": "OBSERVATION", "required": False},
+        ]
+    if mode == EVIDENCE_MODE_STRUCTURED_DECLARATION:
+        return [
+            {"id": "declaration_confirmed", "label": "I confirm this declaration is accurate", "answer_type": "YES_NO", "required": True},
+            {"id": "supporting_summary", "label": "Supporting details", "answer_type": "TEXT", "required": False},
+            {"id": "observations", "label": "Observations", "answer_type": "OBSERVATION", "required": False},
+        ]
+    return []
 
 
 def evidence_mode_allowed_for_requirement(requirement: Dict[str, Any], mode: str) -> bool:
@@ -388,16 +487,62 @@ def _validate_payload_for_mode(mode: str, payload: Dict[str, Any]) -> None:
         if not isinstance(payload.get("structured_fields"), dict):
             raise ValueError("structured_fields_object_required")
     elif mode == EVIDENCE_MODE_CONTRACTOR_CONFIRMATION:
-        for k in ("contractor_name", "contractor_company", "completion_date", "work_summary"):
+        for k in ("contractor_name", "completion_date", "work_summary"):
             if not str(payload.get(k) or "").strip():
                 raise ValueError(f"{k}_required")
+        summary = str(payload.get("work_summary") or "").strip()
+        if len(summary) < 8:
+            raise ValueError("work_summary_too_short")
+        payload["completion_date"] = _normalize_iso_date(payload.get("completion_date"), reject_future=True)
     elif mode == EVIDENCE_MODE_INSPECTION_CHECKLIST:
-        if not str(payload.get("inspection_date") or "").strip():
+        raw_date = str(payload.get("inspection_date") or "").strip()
+        if not raw_date:
             raise ValueError("inspection_date_required")
+        payload["inspection_date"] = _normalize_iso_date(raw_date, reject_future=False)
         if not isinstance(payload.get("checklist_answers"), dict) or not payload.get("checklist_answers"):
             raise ValueError("checklist_answers_required")
         if not str(payload.get("responsible_person") or "").strip():
             raise ValueError("responsible_person_required")
+        _validate_checklist_answers(payload.get("checklist_answers") or {})
+
+
+def _validate_checklist_answers(answers: Dict[str, Any]) -> None:
+    for key, val in answers.items():
+        item_key = str(key or "").strip()
+        if not item_key:
+            raise ValueError("checklist_answer_key_invalid")
+        if isinstance(val, bool):
+            continue
+        if isinstance(val, (int, float)):
+            continue
+        if isinstance(val, str):
+            continue
+        if isinstance(val, dict):
+            ans = val.get("answer")
+            if isinstance(ans, (bool, int, float, str)):
+                continue
+        raise ValueError("checklist_answer_value_invalid")
+
+
+def _normalize_iso_date(value: Any, *, reject_future: bool) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        raise ValueError("date_required")
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError as e:
+        try:
+            dt = datetime.fromisoformat(f"{raw}T00:00:00+00:00")
+        except ValueError:
+            raise ValueError("invalid_date_format") from e
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    today = datetime.now(timezone.utc).date()
+    if reject_future and dt.date() > today:
+        raise ValueError("date_cannot_be_in_future")
+    return dt.date().isoformat()
 
 
 async def apply_verification_decision(

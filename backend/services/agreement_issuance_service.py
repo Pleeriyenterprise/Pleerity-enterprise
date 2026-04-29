@@ -20,10 +20,15 @@ from models.agreements import (
     GRIDFS_AGREEMENT_BUCKET,
     IssuedAgreementOutcome,
 )
-from services.agreement_acceptance_service import mark_acceptance_payment_completed
+from services.agreement_acceptance_service import _validate_acceptance_integrity, mark_acceptance_payment_completed
 from services.agreement_catalog_service import get_system_document_settings
 from services.agreement_document_authority import compile_agreement_document
 from services.agreement_pdf import build_agreement_pdf_from_document
+from services.agreement_render_context import (
+    build_agreement_render_context,
+    validate_accepted_artifact_text,
+    validate_checkout_grade_render_context,
+)
 from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
@@ -32,46 +37,6 @@ logger = logging.getLogger(__name__)
 def _money_gbp(minor: int) -> str:
     v = int(minor or 0)
     return f"£{v / 100:.2f}"
-
-
-def _build_render_context(
-    *,
-    version_doc: Dict[str, Any],
-    acceptance_doc: Dict[str, Any],
-    intake_snapshot: Dict[str, Any],
-    settings: Dict[str, Any],
-    crn: str,
-    payment_reference: str,
-    agreement_date_display: str,
-) -> Dict[str, Any]:
-    minor = int(intake_snapshot.get("billing_amount_minor") or 0)
-    ob = int(intake_snapshot.get("onboarding_fee_minor") or 0)
-    ob_line = "None (already satisfied or not applicable)." if ob <= 0 else _money_gbp(ob)
-
-    return {
-        "provider_company_name": settings.get("provider_company_name") or "Pleerity Enterprise Ltd",
-        "provider_address": settings.get("provider_address") or "",
-        "provider_email": settings.get("provider_email") or "",
-        "provider_phone": settings.get("provider_phone") or "",
-        "provider_signature_image_url": settings.get("provider_signature_image_url") or "",
-        "provider_logo_image_url": settings.get("provider_logo_image_url") or "",
-        "client_full_name": intake_snapshot.get("client_full_name") or "",
-        "client_company_name": intake_snapshot.get("client_company_name") or "",
-        "client_address": intake_snapshot.get("client_address") or "",
-        "client_email": intake_snapshot.get("client_email") or "",
-        "client_phone": intake_snapshot.get("client_phone") or "",
-        "client_crn": crn,
-        "plan_name": intake_snapshot.get("plan_label") or intake_snapshot.get("selected_plan_code") or "",
-        "monthly_fee": _money_gbp(minor),
-        "billing_interval": intake_snapshot.get("billing_interval") or "month",
-        "currency": intake_snapshot.get("currency") or "GBP",
-        "onboarding_fee_line": ob_line,
-        "agreement_date": agreement_date_display,
-        "agreement_version": str(version_doc.get("version_number") or 1),
-        "accepted_signatory_name": acceptance_doc.get("accepted_by_name") or "",
-        "acceptance_timestamp": acceptance_doc.get("accepted_at") or "",
-        "payment_reference": payment_reference,
-    }
 
 
 async def _store_pdf_gridfs(
@@ -152,6 +117,16 @@ async def issue_agreement_for_subscription_payment(
             reason="METADATA_VERSION_MISMATCH",
             template_version_id=template_version_id_from_metadata,
         )
+    ok_int, int_reason = await _validate_acceptance_integrity(db, acc=acc, expected_client_id=client_id)
+    if not ok_int:
+        return await _fail(
+            client_id=client_id,
+            acceptance_id=acceptance_id,
+            payment_reference=payment_reference,
+            stripe_event_id=idempotency_key,
+            reason=int_reason or "ACCEPTANCE_INTEGRITY_INVALID",
+            template_version_id=template_version_id_from_metadata,
+        )
 
     ver = await db[COL_AGREEMENT_TEMPLATE_VERSIONS].find_one({"version_id": acc.get("template_version_id")}, {"_id": 0})
     if not ver or ver.get("status") != "published":
@@ -179,15 +154,36 @@ async def issue_agreement_for_subscription_payment(
     now = datetime.now(timezone.utc)
     agreement_date_display = now.strftime("%d %B %Y")
 
-    render_ctx = _build_render_context(
-        version_doc=ver,
-        acceptance_doc=acc,
-        intake_snapshot=intake_snapshot,
+    render_ctx = build_agreement_render_context(
+        commercial_snapshot=intake_snapshot,
         settings=settings,
-        crn=crn,
-        payment_reference=payment_reference,
-        agreement_date_display=agreement_date_display,
+        accepted_signatory_name=str(acc.get("accepted_by_name") or ""),
+        acceptance_timestamp_display=str(acc.get("accepted_at") or ""),
+        agreement_version_number=int(ver.get("version_number") or 1),
     )
+    render_ctx["provider_address"] = settings.get("provider_address") or ""
+    render_ctx["provider_email"] = settings.get("provider_email") or ""
+    render_ctx["provider_phone"] = settings.get("provider_phone") or ""
+    render_ctx["provider_signature_image_url"] = settings.get("provider_signature_image_url") or ""
+    render_ctx["provider_logo_image_url"] = settings.get("provider_logo_image_url") or ""
+    render_ctx["client_phone"] = intake_snapshot.get("client_phone") or ""
+    render_ctx["client_crn"] = crn
+    render_ctx["agreement_date"] = agreement_date_display
+    render_ctx["payment_reference"] = payment_reference
+    ok_ctx, ctx_issues = validate_checkout_grade_render_context(
+        render_ctx,
+        billing_amount_minor=int(intake_snapshot.get("billing_amount_minor") or 0),
+        preview_mode=False,
+    )
+    if not ok_ctx:
+        return await _fail(
+            client_id=client_id,
+            acceptance_id=acceptance_id,
+            payment_reference=payment_reference,
+            stripe_event_id=idempotency_key,
+            reason=f"CANONICAL_RENDER_CONTEXT_INVALID:{','.join(ctx_issues or [])}",
+            template_version_id=template_version_id_from_metadata,
+        )
 
     issued_id = str(uuid.uuid4())
     compiled = compile_agreement_document(
@@ -210,6 +206,30 @@ async def issue_agreement_for_subscription_payment(
             payment_reference=payment_reference,
             stripe_event_id=idempotency_key,
             reason=f"CANONICAL_RENDER_INVALID:{','.join(compiled.get('issues') or [])}",
+            template_version_id=template_version_id_from_metadata,
+        )
+    accepted_hash = str((acc.get("agreement_render_validation") or {}).get("render_hash_sha256") or "").strip()
+    compiled_hash = str(compiled.get("render_hash_sha256") or "").strip()
+    if accepted_hash and compiled_hash != accepted_hash:
+        return await _fail(
+            client_id=client_id,
+            acceptance_id=acceptance_id,
+            payment_reference=payment_reference,
+            stripe_event_id=idempotency_key,
+            reason="ACCEPTED_RENDER_HASH_MISMATCH",
+            template_version_id=template_version_id_from_metadata,
+        )
+    ok_art, art_issues = validate_accepted_artifact_text(
+        canonical_text=str(compiled.get("canonical_text") or ""),
+        render_context=render_ctx,
+    )
+    if not ok_art:
+        return await _fail(
+            client_id=client_id,
+            acceptance_id=acceptance_id,
+            payment_reference=payment_reference,
+            stripe_event_id=idempotency_key,
+            reason=f"CANONICAL_RENDER_LEGAL_INVALID:{','.join(art_issues or [])}",
             template_version_id=template_version_id_from_metadata,
         )
     render_snapshot = {

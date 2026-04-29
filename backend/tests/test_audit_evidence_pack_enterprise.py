@@ -66,7 +66,26 @@ def test_enterprise_pack_deterministic_structure_and_governance():
     mock_db = MagicMock()
     mock_db.compliance_evidence_records = MagicMock()
     mock_db.compliance_evidence_records.find = MagicMock(
-        return_value=MagicMock(to_list=AsyncMock(return_value=[]))
+        return_value=MagicMock(
+            to_list=AsyncMock(
+                return_value=[
+                    {
+                        "evidence_record_id": "cer-1",
+                        "requirement_id": "r1",
+                        "client_id": "c1",
+                        "property_id": "p1",
+                        "evidence_mode": "INSPECTION_CHECKLIST",
+                        "created_at": "2026-01-02T10:30:00+00:00",
+                        "created_by_user_id": "uploader-1",
+                        "verification_status": "PENDING_REVIEW",
+                        "evidence_confidence_level": "MEDIUM",
+                        "included_in_active_compliance": True,
+                        "linked_document_ids": ["doc-support-1"],
+                        "evidence_payload": {"inspection_date": "2026-01-01"},
+                    }
+                ]
+            )
+        )
     )
     mock_db.properties.find_one = AsyncMock(side_effect=_find_one_side_effect)
     mock_db.clients.find_one = AsyncMock(side_effect=_find_one_side_effect)
@@ -94,6 +113,24 @@ def test_enterprise_pack_deterministic_structure_and_governance():
                                 "verified_by_user_id": "verifier-1",
                                 "verified_at": datetime(2026, 1, 3, 11, 45, tzinfo=timezone.utc),
                                 "source_type": "upload",
+                            }
+                        ]
+                    )
+                ),
+                MagicMock(
+                    to_list=AsyncMock(
+                        return_value=[
+                            {
+                                "document_id": "doc-support-1",
+                                "client_id": "c1",
+                                "property_id": "p1",
+                                "requirement_id": "r1",
+                                "status": "UPLOADED",
+                                "file_name": "Supporting Photo.jpg",
+                                "file_path": evidence_path,
+                                "uploaded_by_user_id": "uploader-1",
+                                "uploaded_at": datetime(2026, 1, 2, 9, 0, tzinfo=timezone.utc),
+                                "source_type": "supporting_evidence_attachment",
                             }
                         ]
                     )
@@ -230,6 +267,7 @@ def test_enterprise_pack_deterministic_structure_and_governance():
             for x in manifest["files"]
             if x["filename"].startswith("Audit_Evidence_Pack/03_COMPLIANCE_EVIDENCE/")
             and not x["filename"].endswith("NO_ACTIVE_EVIDENCE_FOUND.json")
+            and "supporting_" not in x["filename"]
         )
         for key in (
             "source_document_id",
@@ -249,6 +287,15 @@ def test_enterprise_pack_deterministic_structure_and_governance():
         assert evidence_entry["uploaded_at"].endswith("+00:00")
         assert evidence_entry["verified_at"].endswith("+00:00")
         assert evidence_entry["sha256"] == evidence_entry["checksum"]
+
+        supporting_entry = next(
+            x
+            for x in manifest["files"]
+            if x["filename"].startswith("Audit_Evidence_Pack/03_COMPLIANCE_EVIDENCE/")
+            and "supporting_" in x["filename"]
+        )
+        assert supporting_entry["source_document_id"] == "doc-support-1"
+        assert supporting_entry["evidence_source_type"] == "supporting_evidence_attachment"
 
         excluded_evidence = exceptions["excluded_evidence"]
         assert all("included_in_active_compliance" in row for row in excluded_evidence)

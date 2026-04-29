@@ -24,6 +24,7 @@ from services.compliance_registry_conditions import (
     validate_registry_conditions,
 )
 from services.compliance_registry_controlled_vocab import (
+    REGISTRY_ALLOWED_UPLOAD_TYPE_SET,
     REGISTRY_IDENTITY_CATEGORY_SET,
     REGISTRY_UK_DISPLAY_REGION_SET,
     normalise_registry_draft_for_storage,
@@ -290,14 +291,19 @@ def validate_registry_draft(doc: Dict[str, Any]) -> List[str]:
         from services.compliance_evidence_record_service import ALL_EVIDENCE_MODES
 
         modes = er.get("allowed_evidence_modes")
-        if modes is not None:
-            if not isinstance(modes, list) or not modes:
-                errs.append("evidence_resolution.allowed_evidence_modes must be a non-empty list when set")
-            else:
-                for i, m in enumerate(modes):
-                    tok = str(m or "").strip().upper()
-                    if tok not in ALL_EVIDENCE_MODES:
-                        errs.append(f"evidence_resolution.allowed_evidence_modes[{i}] is not a recognised mode")
+        if modes is None:
+            modes_norm = ["DOCUMENT_UPLOAD"]
+        elif not isinstance(modes, list) or not modes:
+            errs.append("evidence_resolution.allowed_evidence_modes must be a non-empty list")
+            modes_norm: List[str] = []
+        else:
+            modes_norm = []
+            for i, m in enumerate(modes):
+                tok = str(m or "").strip().upper()
+                if tok not in ALL_EVIDENCE_MODES:
+                    errs.append(f"evidence_resolution.allowed_evidence_modes[{i}] is not a recognised mode")
+                elif tok not in modes_norm:
+                    modes_norm.append(tok)
         prw = str(er.get("primary_resolution_workflow") or "").strip()
         if prw and prw not in {
             "GUIDED_EVIDENCE_RESOLUTION",
@@ -308,9 +314,54 @@ def validate_registry_draft(doc: Dict[str, Any]) -> List[str]:
                 "evidence_resolution.primary_resolution_workflow must be one of "
                 "GUIDED_EVIDENCE_RESOLUTION, DIRECT_EVIDENCE_ACTION, LEGACY_DOCUMENT_UPLOAD"
             )
+        if prw == "LEGACY_DOCUMENT_UPLOAD" and "DOCUMENT_UPLOAD" not in set(modes_norm):
+            errs.append(
+                "evidence_resolution.primary_resolution_workflow=LEGACY_DOCUMENT_UPLOAD requires "
+                "DOCUMENT_UPLOAD in allowed_evidence_modes"
+            )
+        non_doc_modes = [m for m in modes_norm if m != "DOCUMENT_UPLOAD"]
+        if prw == "GUIDED_EVIDENCE_RESOLUTION" and modes_norm:
+            if len(modes_norm) < 2 and not (len(non_doc_modes) == 1 and len(modes_norm) == 1):
+                errs.append(
+                    "evidence_resolution.primary_resolution_workflow=GUIDED_EVIDENCE_RESOLUTION requires "
+                    "at least two modes, or exactly one non-document mode"
+                )
         for k in ("allow_medium_non_document_satisfaction", "allow_low_non_document_satisfaction"):
             if er.get(k) is not None and not isinstance(er.get(k), bool):
                 errs.append(f"evidence_resolution.{k} must be boolean when set")
+        for k in ("supporting_upload_required", "supporting_upload_recommended"):
+            if er.get(k) is not None and not isinstance(er.get(k), bool):
+                errs.append(f"evidence_resolution.{k} must be boolean when set")
+        aut = er.get("allowed_upload_types")
+        if aut is not None:
+            if not isinstance(aut, list) or not all(str(x or "").strip() for x in aut):
+                errs.append("evidence_resolution.allowed_upload_types must be a non-empty list of mime types/extensions when set")
+            else:
+                for i, raw in enumerate(aut):
+                    tok = str(raw or "").strip().lower()
+                    if tok not in REGISTRY_ALLOWED_UPLOAD_TYPE_SET:
+                        errs.append(
+                            "evidence_resolution.allowed_upload_types[%s] must be one of: %s"
+                            % (i, ", ".join(sorted(REGISTRY_ALLOWED_UPLOAD_TYPE_SET)))
+                        )
+        cs = er.get("checklist_schema_by_mode")
+        if cs is not None and not isinstance(cs, dict):
+            errs.append("evidence_resolution.checklist_schema_by_mode must be an object when set")
+        if er.get("supporting_upload_required") is True and not non_doc_modes:
+            errs.append(
+                "evidence_resolution.supporting_upload_required requires at least one non-document "
+                "mode in allowed_evidence_modes"
+            )
+        if er.get("verification_required") is not None and not isinstance(er.get("verification_required"), bool):
+            errs.append("evidence_resolution.verification_required must be boolean when set")
+        if er.get("reviewer_role_required") is not None and not str(er.get("reviewer_role_required") or "").strip():
+            errs.append("evidence_resolution.reviewer_role_required must be a non-empty string when set")
+        if crit == "HIGH" and bool(er.get("allow_low_non_document_satisfaction")):
+            if "evidence_resolution.low_confidence_critical_warning" not in needs_review:
+                needs_review.append("evidence_resolution.low_confidence_critical_warning")
+        else:
+            needs_review = [x for x in needs_review if x != "evidence_resolution.low_confidence_critical_warning"]
+        gov["needs_review_fields"] = needs_review
 
     return errs
 
@@ -699,6 +750,21 @@ def merge_draft_overlay_onto_plan_row(
             out["allow_medium_non_document_satisfaction"] = bool(er.get("allow_medium_non_document_satisfaction"))
         if er.get("allow_low_non_document_satisfaction") is not None:
             out["allow_low_non_document_satisfaction"] = bool(er.get("allow_low_non_document_satisfaction"))
+        if er.get("supporting_upload_required") is not None:
+            out["supporting_upload_required"] = bool(er.get("supporting_upload_required"))
+        if er.get("supporting_upload_recommended") is not None:
+            out["supporting_upload_recommended"] = bool(er.get("supporting_upload_recommended"))
+        aut = er.get("allowed_upload_types")
+        if isinstance(aut, list) and aut:
+            out["allowed_upload_types"] = [str(x).strip().lower() for x in aut if str(x or "").strip()]
+        cs = er.get("checklist_schema_by_mode")
+        if isinstance(cs, dict) and cs:
+            out["checklist_schema_by_mode"] = cs
+        if er.get("verification_required") is not None:
+            out["verification_required"] = bool(er.get("verification_required"))
+        rrr = str(er.get("reviewer_role_required") or "").strip()
+        if rrr:
+            out["reviewer_role_required"] = rrr
     return out
 
 

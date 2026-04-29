@@ -36,6 +36,14 @@ def test_build_plan_applies_published_overlay_to_gas_safety():
             "why_it_matters_short": "Short explanation",
             "why_it_matters_long": "Long explanation",
             "why_it_matters_by_jurisdiction": {"SCOTLAND": {"short": "Scotland short"}},
+            "evidence_resolution": {
+                "allowed_evidence_modes": ["DOCUMENT_UPLOAD", "STRUCTURED_DECLARATION"],
+                "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+                "supporting_upload_required": True,
+                "allowed_upload_types": ["application/pdf"],
+                "verification_required": True,
+                "reviewer_role_required": "ROLE_OWNER",
+            },
         }
     }
     plan = build_requirement_plan_for_property(prop, client, published_registry_entries=pub)
@@ -44,6 +52,11 @@ def test_build_plan_applies_published_overlay_to_gas_safety():
     assert g.description == "Published gas label"
     assert g.why_it_matters_short == "Short explanation"
     assert g.why_it_matters_long == "Long explanation"
+    assert "STRUCTURED_DECLARATION" in g.allowed_evidence_modes
+    assert g.supporting_upload_required is True
+    assert "application/pdf" in g.allowed_upload_types
+    assert g.verification_required is True
+    assert g.reviewer_role_required == "ROLE_OWNER"
 
 
 def test_build_plan_skips_published_overlay_when_registry_conditions_fail():

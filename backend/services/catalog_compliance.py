@@ -240,6 +240,28 @@ async def get_property_compliance_detail(
             "requirement_id": row.get("requirement_id"),
             "canonical_code": row.get("canonical_code"),
             "property_id": property_id,
+            # Canonical requirement CTA contract (shared with /client/properties/{id}/requirements).
+            "take_action": row.get("take_action"),
+            "allowed_evidence_modes": (
+                (row.get("registry_metadata") or {}).get("evidence_resolution", {}).get("allowed_evidence_modes")
+                if isinstance(row.get("registry_metadata"), dict)
+                else None
+            ),
+            "primary_action_kind": (
+                ((row.get("take_action") or {}).get("primary") or {}).get("kind")
+                if isinstance(row.get("take_action"), dict)
+                else None
+            ),
+            "primary_action_intent": (
+                ((row.get("take_action") or {}).get("primary") or {}).get("intent")
+                if isinstance(row.get("take_action"), dict)
+                else None
+            ),
+            "evidence_resolution": (
+                (row.get("registry_metadata") or {}).get("evidence_resolution")
+                if isinstance(row.get("registry_metadata"), dict)
+                else None
+            ),
         })
 
     if weight_sum <= 0:

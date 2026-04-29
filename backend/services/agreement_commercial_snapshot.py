@@ -46,8 +46,13 @@ def build_commercial_snapshot_from_intake_form(
 
     props = list(getattr(data, "properties", None) or [])
     client_address = ""
+    client_address_raw = ""
+    client_postcode = ""
     if props:
-        client_address = _format_address_from_property(props[0].model_dump() if hasattr(props[0], "model_dump") else props[0])
+        p0 = props[0].model_dump() if hasattr(props[0], "model_dump") else props[0]
+        client_address = _format_address_from_property(p0)
+        client_address_raw = _raw_address_from_property(p0)
+        client_postcode = _normalize_uk_postcode(p0.get("postcode"))
 
     contact_email = canonical_client_email(str(getattr(data, "email", "") or ""))
     full_name = (str(getattr(data, "full_name", "") or "")).strip()
@@ -57,6 +62,8 @@ def build_commercial_snapshot_from_intake_form(
         "client_full_name": full_name,
         "client_company_name": company,
         "client_address": client_address,
+        "client_address_raw": client_address_raw,
+        "client_postcode": client_postcode,
         "client_email": contact_email,
         "client_phone": (str(getattr(data, "phone", "") or "").strip() or None),
         "selected_plan_code": plan_code.value,
@@ -74,7 +81,7 @@ def _format_address_from_property(prop: Dict[str, Any]) -> str:
     parts: List[str] = []
     a1 = (prop.get("address_line_1") or "").strip()
     a2 = (prop.get("address_line_2") or "").strip()
-    pc = (prop.get("postcode") or "").strip()
+    pc = _normalize_uk_postcode(prop.get("postcode"))
     city = (prop.get("city") or prop.get("town") or "").strip()
     if a1:
         parts.append(a1)
@@ -85,6 +92,25 @@ def _format_address_from_property(prop: Dict[str, Any]) -> str:
     if pc:
         parts.append(pc)
     return ", ".join(parts) if parts else ""
+
+
+def _raw_address_from_property(prop: Dict[str, Any]) -> str:
+    parts: List[str] = []
+    for key in ("address_line_1", "address_line_2", "city", "town", "postcode"):
+        val = str(prop.get(key) or "").strip()
+        if val:
+            parts.append(val)
+    return "\n".join(parts) if parts else ""
+
+
+def _normalize_uk_postcode(v: Any) -> str:
+    s = str(v or "").strip().upper()
+    if not s:
+        return ""
+    s = " ".join(s.split())
+    if len(s.replace(" ", "")) > 3 and " " not in s:
+        s = s[:-3] + " " + s[-3:]
+    return s
 
 
 async def build_commercial_snapshot(
@@ -130,8 +156,12 @@ async def build_commercial_snapshot(
         .to_list(50)
     )
     client_address = ""
+    client_address_raw = ""
+    client_postcode = ""
     if props:
         client_address = _format_address_from_property(props[0])
+        client_address_raw = _raw_address_from_property(props[0])
+        client_postcode = _normalize_uk_postcode(props[0].get("postcode"))
 
     contact_email = (client.get("contact_email") or client.get("email") or "").strip()
     full_name = (client.get("full_name") or "").strip()
@@ -141,6 +171,8 @@ async def build_commercial_snapshot(
         "client_full_name": full_name,
         "client_company_name": company,
         "client_address": client_address,
+        "client_address_raw": client_address_raw,
+        "client_postcode": client_postcode,
         "client_email": contact_email,
         "client_phone": (client.get("phone") or "").strip() or None,
         "selected_plan_code": plan_code.value,
@@ -163,6 +195,8 @@ def commercial_snapshots_match(
         "client_full_name",
         "client_company_name",
         "client_address",
+        "client_address_raw",
+        "client_postcode",
         "client_email",
         "selected_plan_code",
         "plan_label",

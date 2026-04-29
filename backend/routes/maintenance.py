@@ -15,6 +15,8 @@ from services import contractor_service
 from services import contractor_evidence_service
 from services import work_order_schedule_service as wo_schedule
 from services.work_order_schedule_constants import SCHEDULE_ACTOR_ADMIN
+from services.compliance_workflow_service import maintenance_has_completion_evidence, work_order_has_proof_document
+from services.ops_compliance_feature_flags import COMPLIANCE_ENGINE, get_effective_flags
 from services.risk_signal_regen_queue import get_regen_queue_summary
 from utils.audit import create_audit_log
 from models import AuditAction
@@ -51,6 +53,32 @@ class WorkOrderUpdateBody(BaseModel):
     resolution_outcome: Optional[str] = None
     cost_estimate_min: Optional[float] = None
     cost_estimate_max: Optional[float] = None
+    operational_exception: Optional[str] = None
+    contractor_notes: Optional[str] = None
+    completion_notes: Optional[str] = None
+    action_reason: Optional[str] = Field(None, max_length=2000)
+
+
+class AdminActionReasonBody(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=2000)
+
+
+def _admin_actor(request: Request) -> str:
+    user = getattr(request.state, "user", None) or {}
+    return user.get("portal_user_id") or user.get("email") or user.get("user_id") or "admin"
+
+
+async def _append_decision_log(work_order_id: str, actor: str, message: str) -> None:
+    msg = (message or "").strip()
+    if not msg:
+        return
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc).isoformat()
+    await database.get_db().work_orders.update_one(
+        {"work_order_id": work_order_id},
+        {"$push": {"decision_log": {"$each": [{"message": msg[:2000], "actor": actor, "timestamp": now}], "$slice": -200}}},
+    )
 
 
 @router.post("/work-orders", dependencies=[Depends(require_owner_or_admin)])
@@ -232,8 +260,24 @@ async def recommend_contractors(request: Request, work_order_id: str, limit: int
 async def update_work_order(request: Request, work_order_id: str, body: WorkOrderUpdateBody):
     """Update work order status and/or assign contractor. Owner or Admin only."""
     await admin_route_guard(request)
-    user = getattr(request.state, "user", None) or {}
-    assigned_by = (body.contractor_id and (user.get("email") or user.get("portal_user_id") or user.get("user_id"))) or None
+    actor_id = _admin_actor(request)
+    if (body.operational_exception or "").strip().upper() == maintenance_service.OPERATIONAL_EXCEPTION_NO_ACCESS and not (
+        body.action_reason and body.action_reason.strip()
+    ):
+        raise HTTPException(status_code=400, detail="reason is required when marking no access")
+    if body.status is not None:
+        wo_before = await maintenance_service.get_work_order(work_order_id)
+        if not wo_before:
+            raise HTTPException(status_code=404, detail="Work order not found")
+        cur = (wo_before.get("status") or "").strip().upper()
+        new_st = (body.status or "").strip().upper()
+        if new_st != cur:
+            ar = (body.action_reason or "").strip()
+            if len(ar) < 3:
+                raise HTTPException(
+                    status_code=400,
+                    detail="action_reason is required (minimum 3 characters) when changing work order status",
+                )
     try:
         doc = await maintenance_service.update_work_order(
             work_order_id,
@@ -242,13 +286,43 @@ async def update_work_order(request: Request, work_order_id: str, body: WorkOrde
             resolution_outcome=body.resolution_outcome,
             cost_estimate_min=body.cost_estimate_min,
             cost_estimate_max=body.cost_estimate_max,
-            assigned_by=assigned_by,
+            operational_exception=body.operational_exception,
+            contractor_notes=body.contractor_notes,
+            completion_notes=body.completion_notes,
+            assigned_by=actor_id,
             allow_direct_contractor_assignment=True,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not doc:
         raise HTTPException(status_code=404, detail="Work order not found")
+    if body.action_reason and body.action_reason.strip():
+        await _append_decision_log(work_order_id, actor_id, f"Admin action reason: {body.action_reason.strip()}")
+    if any(
+        v is not None
+        for v in (
+            body.status,
+            body.contractor_id,
+            body.operational_exception,
+            body.resolution_outcome,
+            body.cost_estimate_min,
+            body.cost_estimate_max,
+        )
+    ):
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=actor_id,
+            client_id=doc.get("client_id"),
+            resource_type="work_order",
+            resource_id=work_order_id,
+            metadata={
+                "event": "admin_work_order_update",
+                "status": body.status,
+                "contractor_id": body.contractor_id,
+                "operational_exception": body.operational_exception,
+                "reason": (body.action_reason or "").strip() or None,
+            },
+        )
     return doc
 
 
@@ -311,7 +385,7 @@ async def admin_schedule_reschedule_request(request: Request, work_order_id: str
     await admin_route_guard(request)
     actor_id, role = _admin_schedule_actor(request)
     try:
-        return await wo_schedule.request_reschedule(
+        result = await wo_schedule.request_reschedule(
             work_order_id,
             actor_type=SCHEDULE_ACTOR_ADMIN,
             actor_id=actor_id,
@@ -319,10 +393,144 @@ async def admin_schedule_reschedule_request(request: Request, work_order_id: str
             reason=body.reason,
             admin=True,
         )
+        if body.reason and body.reason.strip():
+            await _append_decision_log(work_order_id, actor_id or "admin", f"Reschedule requested: {body.reason.strip()}")
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=actor_id or "admin",
+            client_id=(result or {}).get("client_id"),
+            resource_type="work_order",
+            resource_id=work_order_id,
+            metadata={"event": "admin_schedule_reschedule_requested", "reason": (body.reason or "").strip() or None},
+        )
+        return result
     except LookupError:
         raise HTTPException(status_code=404, detail="Work order not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/work-orders/{work_order_id}/mark-no-access", dependencies=[Depends(require_owner_or_admin)])
+async def admin_mark_no_access(request: Request, work_order_id: str, body: AdminActionReasonBody):
+    await admin_route_guard(request)
+    actor_id = _admin_actor(request)
+    reason = body.reason.strip()
+    try:
+        doc = await maintenance_service.update_work_order(
+            work_order_id,
+            operational_exception=maintenance_service.OPERATIONAL_EXCEPTION_NO_ACCESS,
+            assigned_by=actor_id,
+            contractor_notes=reason,
+            allow_direct_contractor_assignment=True,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not doc:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    await _append_decision_log(work_order_id, actor_id, f"No access recorded: {reason}")
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=actor_id,
+        client_id=doc.get("client_id"),
+        resource_type="work_order",
+        resource_id=work_order_id,
+        metadata={"event": "admin_mark_no_access", "reason": reason},
+    )
+    return doc
+
+
+@router.post("/work-orders/{work_order_id}/verify", dependencies=[Depends(require_owner_or_admin)])
+async def admin_verify_work_order(request: Request, work_order_id: str, body: Optional[AdminActionReasonBody] = None):
+    await admin_route_guard(request)
+    actor_id = _admin_actor(request)
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    kind = (wo.get("work_order_kind") or "").strip().upper()
+    if kind != maintenance_service.WORK_ORDER_KIND_COMPLIANCE:
+        raise HTTPException(
+            status_code=400,
+            detail="Verify applies to compliance jobs only. Use close flow for maintenance jobs.",
+        )
+    flags = await get_effective_flags(str(wo.get("client_id") or "").strip())
+    if not flags.get(COMPLIANCE_ENGINE):
+        raise HTTPException(status_code=403, detail="Compliance jobs require the compliance engine for this account")
+    if not work_order_has_proof_document(wo):
+        raise HTTPException(status_code=400, detail="Link a proof document before verification")
+    try:
+        doc = await maintenance_service.update_work_order(
+            work_order_id,
+            status=maintenance_service.STATUS_VERIFIED,
+            assigned_by=actor_id,
+            allow_direct_contractor_assignment=True,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not doc:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    reason = (body.reason.strip() if body and body.reason else "")
+    if reason:
+        await _append_decision_log(work_order_id, actor_id, f"Admin verify reason: {reason}")
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=actor_id,
+        client_id=doc.get("client_id"),
+        resource_type="work_order",
+        resource_id=work_order_id,
+        metadata={"event": "admin_verify_work_order", "reason": reason or None},
+    )
+    return doc
+
+
+@router.post("/work-orders/{work_order_id}/close", dependencies=[Depends(require_owner_or_admin)])
+async def admin_close_work_order(request: Request, work_order_id: str, body: Optional[AdminActionReasonBody] = None):
+    await admin_route_guard(request)
+    actor_id = _admin_actor(request)
+    wo = await maintenance_service.get_work_order(work_order_id)
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    kind = (wo.get("work_order_kind") or "").strip().upper()
+    status_upper = (wo.get("status") or "").strip().upper()
+    try:
+        if kind == maintenance_service.WORK_ORDER_KIND_COMPLIANCE:
+            raise HTTPException(status_code=400, detail="Use verify for compliance jobs")
+        if status_upper == maintenance_service.STATUS_COMPLETED:
+            if not maintenance_has_completion_evidence(wo):
+                raise HTTPException(status_code=400, detail="Attach completion proof before closing the job")
+            doc = await maintenance_service.update_work_order(
+                work_order_id,
+                status=maintenance_service.STATUS_VERIFIED,
+                assigned_by=actor_id,
+                allow_direct_contractor_assignment=True,
+            )
+        elif status_upper == maintenance_service.STATUS_VERIFIED:
+            doc = await maintenance_service.update_work_order(
+                work_order_id,
+                status=maintenance_service.STATUS_CLOSED,
+                assigned_by=actor_id,
+                allow_direct_contractor_assignment=True,
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Mark work complete and attach proof, or close from a verified job",
+            )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not doc:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    reason = (body.reason.strip() if body and body.reason else "")
+    if reason:
+        await _append_decision_log(work_order_id, actor_id, f"Admin close reason: {reason}")
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=actor_id,
+        client_id=doc.get("client_id"),
+        resource_type="work_order",
+        resource_id=work_order_id,
+        metadata={"event": "admin_close_work_order", "reason": reason or None},
+    )
+    return doc
 
 
 @router.post("/work-orders/{work_order_id}/schedule/cancel", dependencies=[Depends(require_owner_or_admin)])

@@ -18,8 +18,12 @@ from models.agreements import (
 )
 from services.agreement_catalog_service import get_current_published_bundle, get_system_document_settings
 from services.agreement_commercial_snapshot import build_commercial_snapshot, commercial_snapshots_match
-from services.agreement_document_authority import compile_agreement_document
-from services.agreement_render_context import build_agreement_render_context, validate_checkout_grade_render_context
+from services.agreement_document_authority import compile_agreement_document, hash_document_structure_sha256
+from services.agreement_render_context import (
+    build_agreement_render_context,
+    validate_accepted_artifact_text,
+    validate_checkout_grade_render_context,
+)
 from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
@@ -119,6 +123,17 @@ async def create_acceptance(
             rendered_result.get("issues"),
         )
         return None, "AGREEMENT_RENDER_INVALID"
+    ok_render, render_issues = validate_accepted_artifact_text(
+        canonical_text=str(rendered_result.get("canonical_text") or ""),
+        render_context=render_context,
+    )
+    if not ok_render:
+        logger.warning(
+            "Agreement acceptance blocked due to legal-grade render validation client_id=%s issues=%s",
+            client_id,
+            render_issues,
+        )
+        return None, "AGREEMENT_RENDER_INVALID"
 
     server_hash = str(rendered_result.get("render_hash_sha256") or "").strip()
     client_hash = (client_rendered_agreement_hash or "").strip()
@@ -160,8 +175,10 @@ async def create_acceptance(
         ),
         "agreement_render_validation": {
             "valid": True,
-            "issues": [],
+            "issues": list(render_issues or []),
             "render_hash_sha256": server_hash,
+            "agreement_hash_sha256": server_hash,
+            "rendered_snapshot_hash_sha256": hash_document_structure_sha256(rendered_result.get("document") or {}),
             "validated_at": now_iso,
             "client_render_hash": client_hash[:128],
         },
@@ -173,6 +190,17 @@ async def create_acceptance(
         ),
         "payment_status_at_acceptance": "pending",
         "stripe_checkout_session_id": None,
+        "acceptance_governance_metadata": {
+            "agreement_version": int(ver.get("version_number") or 1),
+            "accepted_at_utc": now_iso,
+            "render_hash_sha256": server_hash,
+            "agreement_hash_sha256": server_hash,
+            "rendered_snapshot_hash_sha256": hash_document_structure_sha256(rendered_result.get("document") or {}),
+            "acceptance_session_id": stored_session or provided_session,
+            "acceptance_actor_id": client_id,
+            "acceptance_client_id": client_id,
+            "source_ip": (ip_address or "")[:120] or None,
+        },
         "created_at": now_iso,
         "updated_at": now_iso,
     }
@@ -219,6 +247,13 @@ async def validate_acceptance_for_checkout(
     stored_hash = str(render_validation.get("render_hash_sha256") or "").strip()
     if not stored_hash:
         return None, "ACCEPTANCE_RENDER_INVALID"
+    ok_int, int_reason = await _validate_acceptance_integrity(
+        db,
+        acc=acc,
+        expected_client_id=client_id,
+    )
+    if not ok_int:
+        return None, int_reason or "ACCEPTANCE_INTEGRITY_INVALID"
 
     ver = await db[COL_AGREEMENT_TEMPLATE_VERSIONS].find_one({"version_id": acc.get("template_version_id")}, {"_id": 0})
     if not ver or ver.get("status") != "published":
@@ -261,6 +296,13 @@ async def validate_acceptance_for_checkout(
     )
     if (not render_check.get("valid")) or str(render_check.get("render_hash_sha256") or "") != stored_hash:
         return None, "ACCEPTANCE_RENDER_INVALID"
+    ok_art, art_issues = validate_accepted_artifact_text(
+        canonical_text=str(render_check.get("canonical_text") or ""),
+        render_context=rc,
+    )
+    if not ok_art:
+        logger.warning("Checkout legal-grade render validation failed acceptance_id=%s issues=%s", acceptance_id, art_issues)
+        return None, "ACCEPTANCE_RENDER_INVALID"
 
     snap_accepted = acc.get("intake_snapshot") or {}
     current = await build_commercial_snapshot(
@@ -283,6 +325,56 @@ async def validate_acceptance_for_checkout(
         return None, "ACCEPTANCE_COMMERCIAL_MISMATCH"
 
     return acc, None
+
+
+async def _validate_acceptance_integrity(
+    db,
+    *,
+    acc: Dict[str, Any],
+    expected_client_id: str,
+) -> Tuple[bool, Optional[str]]:
+    """Detect tampering/drift on accepted artifact snapshot and governance hashes."""
+    acceptance_id = str(acc.get("acceptance_id") or "")
+    render_validation = acc.get("agreement_render_validation") or {}
+    governance = acc.get("acceptance_governance_metadata") or {}
+
+    stored_render_hash = str(render_validation.get("render_hash_sha256") or "").strip()
+    gov_render_hash = str(governance.get("render_hash_sha256") or "").strip()
+    gov_agreement_hash = str(governance.get("agreement_hash_sha256") or "").strip()
+    stored_accepted_at = str(acc.get("accepted_at") or "").strip()
+    gov_accepted_at = str(governance.get("accepted_at_utc") or "").strip()
+    snap_hash_stored = str(render_validation.get("rendered_snapshot_hash_sha256") or "").strip()
+    snap_hash_gov = str(governance.get("rendered_snapshot_hash_sha256") or "").strip()
+    current_snapshot = acc.get("rendered_agreement_snapshot") if isinstance(acc.get("rendered_agreement_snapshot"), dict) else {}
+    current_snapshot_hash = hash_document_structure_sha256(current_snapshot)
+
+    signals = []
+    if gov_accepted_at and stored_accepted_at and gov_accepted_at != stored_accepted_at:
+        signals.append("ACCEPTED_AT_UTC_MISMATCH")
+    if gov_render_hash and stored_render_hash and gov_render_hash != stored_render_hash:
+        signals.append("GOVERNANCE_RENDER_HASH_MISMATCH")
+    if gov_agreement_hash and stored_render_hash and gov_agreement_hash != stored_render_hash:
+        signals.append("GOVERNANCE_AGREEMENT_HASH_MISMATCH")
+    if snap_hash_stored and current_snapshot_hash and snap_hash_stored != current_snapshot_hash:
+        signals.append("RENDERED_SNAPSHOT_HASH_MISMATCH")
+    if snap_hash_gov and current_snapshot_hash and snap_hash_gov != current_snapshot_hash:
+        signals.append("GOVERNANCE_SNAPSHOT_HASH_MISMATCH")
+
+    if signals:
+        await create_audit_log(
+            action=AuditAction.AGREEMENT_CHECKOUT_BLOCKED_MISMATCH,
+            actor_role="SYSTEM",
+            client_id=expected_client_id,
+            resource_type="agreement_acceptance",
+            resource_id=acceptance_id,
+            metadata={
+                "integrity_failure": True,
+                "reason_code": "ACCEPTANCE_INTEGRITY_INVALID",
+                "signals": signals,
+            },
+        )
+        return False, "ACCEPTANCE_INTEGRITY_INVALID"
+    return True, None
 
 
 async def mark_acceptance_checkout_started(acceptance_id: str, stripe_checkout_session_id: str) -> None:

@@ -65,6 +65,30 @@ REGISTRY_PRIMARY_ACTION_MODE_SET: Set[str] = set(REGISTRY_PRIMARY_ACTION_MODES)
 REGISTRY_ACTION_LINK_KINDS: Tuple[str, ...] = ("official", "directory", "partner")
 REGISTRY_ACTION_LINK_KIND_SET: Set[str] = set(REGISTRY_ACTION_LINK_KINDS)
 
+# --- Evidence resolution policy controls (registry draft) ---
+REGISTRY_EVIDENCE_MODES: Tuple[str, ...] = (
+    "DOCUMENT_UPLOAD",
+    "STRUCTURED_DECLARATION",
+    "CONTRACTOR_CONFIRMATION",
+    "INSPECTION_CHECKLIST",
+)
+REGISTRY_EVIDENCE_MODE_SET: Set[str] = set(REGISTRY_EVIDENCE_MODES)
+
+REGISTRY_EVIDENCE_WORKFLOWS: Tuple[str, ...] = (
+    "LEGACY_DOCUMENT_UPLOAD",
+    "DIRECT_EVIDENCE_ACTION",
+    "GUIDED_EVIDENCE_RESOLUTION",
+)
+REGISTRY_EVIDENCE_WORKFLOW_SET: Set[str] = set(REGISTRY_EVIDENCE_WORKFLOWS)
+
+REGISTRY_ALLOWED_UPLOAD_TYPES: Tuple[str, ...] = (
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+)
+REGISTRY_ALLOWED_UPLOAD_TYPE_SET: Set[str] = set(REGISTRY_ALLOWED_UPLOAD_TYPES)
+
 _ACTION_LINK_KIND_LEGACY: Dict[str, str] = {
     "guidance": "official",
     "form": "official",
@@ -301,6 +325,15 @@ def controlled_field_options_payload() -> Dict[str, Any]:
         ],
         "action_link_kinds": [
             {"value": k, "label": k.title()} for k in REGISTRY_ACTION_LINK_KINDS
+        ],
+        "evidence_modes": [
+            {"value": m, "label": m.replace("_", " ").title()} for m in REGISTRY_EVIDENCE_MODES
+        ],
+        "evidence_resolution_workflows": [
+            {"value": w, "label": w.replace("_", " ").title()} for w in REGISTRY_EVIDENCE_WORKFLOWS
+        ],
+        "allowed_upload_types": [
+            {"value": t, "label": t} for t in REGISTRY_ALLOWED_UPLOAD_TYPES
         ],
         "notes": (
             "Stored values are canonical system tokens. The editor loads this payload from the API; "

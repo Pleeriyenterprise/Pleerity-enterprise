@@ -89,7 +89,15 @@ describe('RequirementsPage guided evidence modal', () => {
     jest.spyOn(clientApiModule.clientAPI, 'getRequirementEvidenceResolution').mockResolvedValue({
       data: {
         allowed_evidence_modes: ['STRUCTURED_DECLARATION', 'DOCUMENT_UPLOAD'],
-        guided_methods: [{ evidence_mode: 'STRUCTURED_DECLARATION', label: 'Structured declaration' }],
+        guided_methods: [
+          {
+            evidence_mode: 'STRUCTURED_DECLARATION',
+            label: 'Structured declaration',
+            checklist_schema: [
+              { id: 'decl_ok', label: 'Declaration confirmed', answer_type: 'YES_NO', required: true },
+            ],
+          },
+        ],
         primary_client_cta: 'Add compliance evidence',
       },
     });
@@ -121,5 +129,10 @@ describe('RequirementsPage guided evidence modal', () => {
     await waitFor(() => {
       expect(screen.getByTestId('guided-evidence-mode-STRUCTURED_DECLARATION')).toBeInTheDocument();
     });
+    fireEvent.click(screen.getByTestId('guided-evidence-mode-STRUCTURED_DECLARATION'));
+    expect(screen.getByText('Declaration confirmed')).toBeInTheDocument();
+    expect(screen.getByText('Supporting evidence uploads')).toBeInTheDocument();
+    expect(screen.queryByText('Structured fields (JSON object)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Checklist answers (JSON object)')).not.toBeInTheDocument();
   });
 });

@@ -477,6 +477,27 @@ async def build_compliance_audit_pack(
         {"_id": 0},
     ).to_list(2000)
     evidence_in_pack = _deterministic_sorted(evidence_in_pack, ("requirement_id", "evidence_record_id"))
+    supporting_doc_ids: List[str] = []
+    for ev in evidence_in_pack:
+        for did in ev.get("linked_document_ids") or []:
+            tok = str(did or "").strip()
+            if tok:
+                supporting_doc_ids.append(tok)
+    supporting_doc_ids = sorted(set(supporting_doc_ids))
+    supporting_docs_by_id: Dict[str, Dict[str, Any]] = {}
+    if supporting_doc_ids:
+        supporting_docs = await db.documents.find(
+            {
+                "client_id": client_id,
+                "property_id": property_id,
+                "document_id": {"$in": supporting_doc_ids},
+            },
+            {"_id": 0},
+        ).to_list(2000)
+        for d in supporting_docs:
+            did = str(d.get("document_id") or "")
+            if did:
+                supporting_docs_by_id[did] = d
 
     raw_events = await db.audit_logs.find(
         {"client_id": client_id, "$or": [{"resource_id": property_id}, {"metadata.property_id": property_id}]},
@@ -664,6 +685,17 @@ async def build_compliance_audit_pack(
         fname = _safe_filename(f"{mode_slug}_{ev.get('evidence_record_id')}.json", max_len=120)
         zpath = f"{ROOT_DIR}/03_COMPLIANCE_EVIDENCE/{bucket}/{fname}"
         file_payloads[zpath] = _json_bytes({k: v for k, v in ev.items() if k != "_id"})
+        for did in ev.get("linked_document_ids") or []:
+            did_tok = str(did or "").strip()
+            linked_doc = supporting_docs_by_id.get(did_tok)
+            if not linked_doc:
+                continue
+            doc_path = _resolve_document_path_on_disk(client_id, linked_doc)
+            if not (doc_path and doc_path.is_file()):
+                continue
+            sfname = _safe_filename(linked_doc.get("file_name") or linked_doc.get("filename") or f"{did_tok}.bin", max_len=90)
+            spath = f"{ROOT_DIR}/03_COMPLIANCE_EVIDENCE/{bucket}/supporting_{sfname}"
+            file_payloads[spath] = doc_path.read_bytes()
 
     has_exported_compliance_evidence = any(
         p.startswith(f"{ROOT_DIR}/03_COMPLIANCE_EVIDENCE/") and p != NO_ACTIVE_EVIDENCE_MARKER_PATH for p in file_payloads
@@ -771,6 +803,25 @@ async def build_compliance_audit_pack(
             "evidence_confidence_level": ev.get("evidence_confidence_level"),
             "included_in_active_compliance": bool(ev.get("included_in_active_compliance", True)),
         }
+        for did in ev.get("linked_document_ids") or []:
+            did_tok = str(did or "").strip()
+            linked_doc = supporting_docs_by_id.get(did_tok)
+            if not linked_doc:
+                continue
+            sfname = _safe_filename(linked_doc.get("file_name") or linked_doc.get("filename") or f"{did_tok}.bin", max_len=90)
+            spath = f"{ROOT_DIR}/03_COMPLIANCE_EVIDENCE/{bucket}/supporting_{sfname}"
+            provenance_by_path[spath] = {
+                "source_document_id": did_tok,
+                "uploaded_by_user_id": linked_doc.get("uploaded_by") or linked_doc.get("uploaded_by_user_id"),
+                "uploaded_at": _iso_utc_or_none(linked_doc.get("uploaded_at") or linked_doc.get("created_at")),
+                "verification_status": linked_doc.get("status"),
+                "verified_by_user_id": linked_doc.get("verified_by") or linked_doc.get("verified_by_user_id"),
+                "verified_at": _iso_utc_or_none(linked_doc.get("verified_at")),
+                "evidence_source_type": "supporting_evidence_attachment",
+                "evidence_mode": ev.get("evidence_mode"),
+                "evidence_confidence_level": ev.get("evidence_confidence_level"),
+                "included_in_active_compliance": bool(ev.get("included_in_active_compliance", True)),
+            }
     if NO_ACTIVE_EVIDENCE_MARKER_PATH in file_payloads:
         provenance_by_path[NO_ACTIVE_EVIDENCE_MARKER_PATH] = {
             "source_document_id": None,

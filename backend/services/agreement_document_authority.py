@@ -141,3 +141,31 @@ def compile_agreement_document(
         "render_hash_sha256": render_hash,
     }
 
+
+def canonical_text_from_document_structure(document_structure: Dict[str, Any]) -> str:
+    """Stable text projection for an already-rendered document structure."""
+    doc = document_structure if isinstance(document_structure, dict) else {}
+    lines: List[str] = []
+    lines.append(_clean_text(doc.get("title") or ""))
+    lines.append(_clean_text(doc.get("subtitle") or ""))
+    for s in doc.get("sections") or []:
+        if not isinstance(s, dict):
+            continue
+        lines.append(_clean_text(s.get("heading") or ""))
+        for n in s.get("nodes") or []:
+            if not isinstance(n, dict):
+                continue
+            if str(n.get("type") or "").lower() == "bullet_list":
+                for item in n.get("items") or []:
+                    lines.append(f"- {_clean_text(item)}")
+            else:
+                lines.append(_clean_text(n.get("text") or ""))
+    return "\n".join([l for l in lines if l]).strip()
+
+
+def hash_document_structure_sha256(document_structure: Dict[str, Any]) -> str:
+    txt = canonical_text_from_document_structure(document_structure)
+    if not txt:
+        return ""
+    return hashlib.sha256(txt.encode("utf-8")).hexdigest()
+

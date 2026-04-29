@@ -51,6 +51,12 @@ export default function AdminWorkOrderDetailPage() {
   const [contractorExplainData, setContractorExplainData] = useState(null);
   const [contractorExplainLoading, setContractorExplainLoading] = useState(false);
   const [contractorEvidenceLoadingKey, setContractorEvidenceLoadingKey] = useState(null);
+  const [noAccessReason, setNoAccessReason] = useState('');
+  const [rescheduleReason, setRescheduleReason] = useState('');
+  const [reschedulePreferredWindow, setReschedulePreferredWindow] = useState('');
+  const [closeReason, setCloseReason] = useState('');
+  const [verifyReason, setVerifyReason] = useState('');
+  const [actionBusy, setActionBusy] = useState('');
 
   const loadWo = useCallback(() => {
     if (!workOrderId) return;
@@ -81,9 +87,23 @@ export default function AdminWorkOrderDetailPage() {
   }, []);
 
   const handleStatusChange = (status) => {
-    if (!workOrderId) return;
+    if (!workOrderId || !wo) return;
+    const prev = String(wo.status || '').toUpperCase();
+    const next = String(status || '').toUpperCase();
+    if (next === prev) return;
+    if (!window.confirm(
+      `Override persisted status from ${prev} to ${next}? This affects workflow state; prefer lifecycle actions where possible.`,
+    )) {
+      return;
+    }
+    const reason = window.prompt('Audit reason for this status change (required, min 3 characters):');
+    const trimmed = (reason || '').trim();
+    if (trimmed.length < 3) {
+      toast.error('A reason of at least 3 characters is required for status override.');
+      return;
+    }
     setUpdating(true);
-    adminAPI.updateWorkOrder(workOrderId, { status })
+    adminAPI.updateWorkOrder(workOrderId, { status, action_reason: trimmed })
       .then(() => { toast.success('Status updated'); loadWo(); })
       .catch((err) => toast.error(err?.response?.data?.detail || 'Update failed'))
       .finally(() => setUpdating(false));
@@ -126,6 +146,19 @@ export default function AdminWorkOrderDetailPage() {
     }
   };
 
+  const runJobAction = async (key, call, successText) => {
+    setActionBusy(key);
+    try {
+      await call();
+      toast.success(successText);
+      await loadWo();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Action failed');
+    } finally {
+      setActionBusy('');
+    }
+  };
+
   if (loading && !wo) {
     return (
       <UnifiedAdminLayout>
@@ -154,6 +187,19 @@ export default function AdminWorkOrderDetailPage() {
   const intervention = adminInterventionRequired(canonicalJobStatus, wo.operational_exception);
   const adminProgress = adminSimplifiedProgressFromWorkOrder(wo);
   const kindUpper = String(wo.work_order_kind || 'MAINTENANCE').toUpperCase();
+  const statusUpper = String(wo.status || '').toUpperCase();
+  const verifyDisabledReason =
+    kindUpper !== 'COMPLIANCE'
+      ? 'Verify is for compliance jobs only.'
+      : !wo.evidence_keys?.some((k) => String(k || '').startsWith('document:'))
+        ? 'Link a proof document before verification.'
+        : '';
+  const closeDisabledReason =
+    kindUpper === 'COMPLIANCE'
+      ? 'Use Verify for compliance jobs.'
+      : statusUpper !== 'COMPLETED' && statusUpper !== 'VERIFIED'
+        ? 'Close allowed only from COMPLETED or VERIFIED states.'
+        : '';
 
   return (
     <UnifiedAdminLayout>
@@ -376,11 +422,122 @@ export default function AdminWorkOrderDetailPage() {
 
         <Card className="mb-6">
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4" /> Scheduling</CardTitle></CardHeader>
-          <CardContent className="text-sm space-y-1">
+          <CardContent className="text-sm space-y-3">
             <p><span className="font-medium text-gray-700">Schedule status:</span> {wo.schedule_status || '—'}</p>
             <p><span className="font-medium text-gray-700">Scheduled at:</span> {formatDate(wo.scheduled_at)}</p>
             <p><span className="font-medium text-gray-700">Timezone:</span> {wo.scheduled_timezone || '—'}</p>
             <p><span className="font-medium text-gray-700">Scheduled by:</span> {wo.scheduled_by || '—'}</p>
+            <div className="border-t border-gray-100 pt-3 space-y-2">
+              <p className="text-xs font-medium text-gray-500">Reschedule workflow</p>
+              <p className="text-xs text-gray-600">
+                This records a reschedule request via the schedule service (same as client/contractor flow). It does not set a new visit time; use schedule propose/confirm for a concrete slot.
+              </p>
+              <textarea
+                value={rescheduleReason}
+                onChange={(e) => setRescheduleReason(e.target.value)}
+                placeholder="Reason for reschedule request (required)"
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs min-h-[4rem]"
+              />
+              <textarea
+                value={reschedulePreferredWindow}
+                onChange={(e) => setReschedulePreferredWindow(e.target.value)}
+                placeholder="Optional: preferred date/time or window (appended to the reason text only)"
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs min-h-[3rem]"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={actionBusy === 'reschedule' || !rescheduleReason.trim()}
+                onClick={() => {
+                  const base = rescheduleReason.trim();
+                  const pref = reschedulePreferredWindow.trim();
+                  const reason = pref ? `${base}\n\nPreferred window: ${pref}` : base;
+                  return runJobAction(
+                    'reschedule',
+                    () => adminAPI.adminWorkOrderRescheduleRequest(workOrderId, { reason }),
+                    'Reschedule request submitted',
+                  );
+                }}
+              >
+                {actionBusy === 'reschedule' ? 'Submitting…' : 'Request reschedule'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader><CardTitle className="text-base">Operational controls</CardTitle></CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-gray-500">No access handling</p>
+              <textarea
+                value={noAccessReason}
+                onChange={(e) => setNoAccessReason(e.target.value)}
+                placeholder="Reason/note (required)"
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs min-h-[4rem]"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={actionBusy === 'no_access' || !noAccessReason.trim()}
+                onClick={() =>
+                  runJobAction(
+                    'no_access',
+                    () => adminAPI.adminWorkOrderMarkNoAccess(workOrderId, { reason: noAccessReason.trim() }),
+                    'No access recorded',
+                  )
+                }
+              >
+                {actionBusy === 'no_access' ? 'Saving…' : 'Mark no access'}
+              </Button>
+            </div>
+            <div className="border-t border-gray-100 pt-3 space-y-2">
+              <p className="text-xs font-medium text-gray-500">Verify / close</p>
+              <textarea
+                value={verifyReason}
+                onChange={(e) => setVerifyReason(e.target.value)}
+                placeholder="Verification note (optional)"
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs min-h-[3rem]"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={actionBusy === 'verify' || Boolean(verifyDisabledReason)}
+                title={verifyDisabledReason || 'Verify job'}
+                onClick={() =>
+                  runJobAction(
+                    'verify',
+                    () => adminAPI.adminWorkOrderVerify(workOrderId, verifyReason.trim() ? { reason: verifyReason.trim() } : {}),
+                    'Job verified',
+                  )
+                }
+              >
+                {actionBusy === 'verify' ? 'Verifying…' : 'Verify job'}
+              </Button>
+              {verifyDisabledReason ? <p className="text-xs text-amber-700">{verifyDisabledReason}</p> : null}
+              <textarea
+                value={closeReason}
+                onChange={(e) => setCloseReason(e.target.value)}
+                placeholder="Close note (optional)"
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs min-h-[3rem]"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={actionBusy === 'close' || Boolean(closeDisabledReason)}
+                title={closeDisabledReason || 'Close job'}
+                onClick={() =>
+                  runJobAction(
+                    'close',
+                    () => adminAPI.adminWorkOrderClose(workOrderId, closeReason.trim() ? { reason: closeReason.trim() } : {}),
+                    'Close transition completed',
+                  )
+                }
+              >
+                {actionBusy === 'close' ? 'Closing…' : 'Close job'}
+              </Button>
+              {closeDisabledReason ? <p className="text-xs text-amber-700">{closeDisabledReason}</p> : null}
+            </div>
           </CardContent>
         </Card>
 
@@ -451,6 +608,18 @@ export default function AdminWorkOrderDetailPage() {
               {wo.accepted_at ? <li><span className="font-medium text-gray-600">Accepted:</span> {formatDate(wo.accepted_at)}</li> : null}
               {wo.completed_at ? <li><span className="font-medium text-gray-600">Completed:</span> {formatDate(wo.completed_at)}</li> : null}
             </ul>
+            {(wo.decision_log || []).length ? (
+              <div className="mt-3 border-t border-gray-100 pt-3">
+                <p className="text-xs font-medium text-gray-500 mb-2">Status/decision history</p>
+                <ul className="space-y-1 text-xs text-gray-700 max-h-48 overflow-y-auto">
+                  {(wo.decision_log || []).slice().reverse().map((row, idx) => (
+                    <li key={`${row.timestamp || 't'}-${idx}`}>
+                      [{formatDate(row.timestamp)}] {row.actor || 'system'} — {row.message || '—'}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 

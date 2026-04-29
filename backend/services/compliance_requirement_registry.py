@@ -136,6 +136,13 @@ class RequirementPlanItem:
     primary_resolution_workflow: Optional[str] = None
     allow_medium_non_document_satisfaction: bool = False
     allow_low_non_document_satisfaction: bool = False
+    supporting_upload_required: bool = False
+    supporting_upload_recommended: bool = False
+    allowed_upload_types: Tuple[str, ...] = field(default_factory=tuple)
+    checklist_schema_by_mode: Optional[Dict[str, Any]] = None
+    guided_primary_cta_label: Optional[str] = None
+    verification_required: bool = False
+    reviewer_role_required: Optional[str] = None
 
 
 def _norm_pt(property_doc: Dict) -> str:
@@ -273,6 +280,33 @@ def apply_published_registry_entries_to_plan(
                 allow_low_non_document_satisfaction=bool(m.get("allow_low_non_document_satisfaction"))
                 if m.get("allow_low_non_document_satisfaction") is not None
                 else item.allow_low_non_document_satisfaction,
+                supporting_upload_required=bool(m.get("supporting_upload_required"))
+                if m.get("supporting_upload_required") is not None
+                else item.supporting_upload_required,
+                supporting_upload_recommended=bool(m.get("supporting_upload_recommended"))
+                if m.get("supporting_upload_recommended") is not None
+                else item.supporting_upload_recommended,
+                allowed_upload_types=tuple(
+                    str(x).strip().lower()
+                    for x in (m.get("allowed_upload_types") or [])
+                    if str(x or "").strip()
+                )
+                if isinstance(m.get("allowed_upload_types"), list)
+                else item.allowed_upload_types,
+                checklist_schema_by_mode=(
+                    m.get("checklist_schema_by_mode")
+                    if isinstance(m.get("checklist_schema_by_mode"), dict)
+                    else item.checklist_schema_by_mode
+                ),
+                guided_primary_cta_label=(
+                    str(m.get("guided_primary_cta_label") or "").strip() or item.guided_primary_cta_label
+                ),
+                verification_required=bool(m.get("verification_required"))
+                if m.get("verification_required") is not None
+                else item.verification_required,
+                reviewer_role_required=(
+                    str(m.get("reviewer_role_required") or "").strip() or item.reviewer_role_required
+                ),
             )
         )
     return merged

@@ -1464,6 +1464,7 @@ async def create_checkout(request: Request, client_id: str, checkout_body: Intak
                 "AGREEMENT_TEMPLATE_INACTIVE": status.HTTP_503_SERVICE_UNAVAILABLE,
                 "ACCEPTANCE_COMMERCIAL_MISMATCH": status.HTTP_409_CONFLICT,
                 "ACCEPTANCE_RENDER_INVALID": status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "ACCEPTANCE_INTEGRITY_INVALID": status.HTTP_409_CONFLICT,
             }
             st = status_map.get(acc_err, status.HTTP_400_BAD_REQUEST)
             raise HTTPException(

@@ -22,30 +22,43 @@ export default function ComplianceEvidenceResolveModal({
   const [info, setInfo] = useState(null);
   const [selectedMode, setSelectedMode] = useState('');
   const [declStatement, setDeclStatement] = useState('');
-  const [declFieldsJson, setDeclFieldsJson] = useState('{}');
+  const [declFields, setDeclFields] = useState({});
   const [cName, setCName] = useState('');
   const [cCompany, setCCompany] = useState('');
+  const [cEmail, setCEmail] = useState('');
+  const [cPhone, setCPhone] = useState('');
+  const [cTradeType, setCTradeType] = useState('');
+  const [cAccreditation, setCAccreditation] = useState('');
   const [cDate, setCDate] = useState('');
   const [cSummary, setCSummary] = useState('');
   const [inspDate, setInspDate] = useState('');
   const [inspPerson, setInspPerson] = useState('');
-  const [inspAnswersJson, setInspAnswersJson] = useState('{}');
+  const [inspAnswers, setInspAnswers] = useState({});
   const [inspNotes, setInspNotes] = useState('');
+  const [supportingFiles, setSupportingFiles] = useState([]);
+  const [supportingUploads, setSupportingUploads] = useState([]);
+  const [supportingUploading, setSupportingUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const resetLocal = useCallback(() => {
     setInfo(null);
     setSelectedMode('');
     setDeclStatement('');
-    setDeclFieldsJson('{}');
+    setDeclFields({});
     setCName('');
     setCCompany('');
+    setCEmail('');
+    setCPhone('');
+    setCTradeType('');
+    setCAccreditation('');
     setCDate('');
     setCSummary('');
     setInspDate('');
     setInspPerson('');
-    setInspAnswersJson('{}');
+    setInspAnswers({});
     setInspNotes('');
+    setSupportingFiles([]);
+    setSupportingUploads([]);
   }, []);
 
   useEffect(() => {
@@ -82,40 +95,105 @@ export default function ComplianceEvidenceResolveModal({
   const modes = (info?.allowed_evidence_modes || []).filter((m) => m && m !== 'DOCUMENT_UPLOAD');
   const cta = info?.primary_client_cta || 'Add compliance evidence';
   const modalTitle = String(info?.modal_title || 'Add compliance evidence').trim() || 'Add compliance evidence';
+  const selectedMethod = (info?.guided_methods || []).find((x) => x.evidence_mode === selectedMode) || null;
+  const selectedChecklistSchema = Array.isArray(selectedMethod?.checklist_schema) ? selectedMethod.checklist_schema : [];
+
+  const setChecklistAnswer = (mode, id, patch) => {
+    const targetSetter = mode === 'STRUCTURED_DECLARATION' ? setDeclFields : setInspAnswers;
+    targetSetter((prev) => {
+      const prior = prev?.[id] && typeof prev[id] === 'object' ? prev[id] : {};
+      return { ...prev, [id]: { ...prior, ...patch } };
+    });
+  };
+
+  const toChecklistPayload = (source, schema) => {
+    const out = {};
+    (schema || []).forEach((row) => {
+      const key = String(row?.id || '').trim();
+      if (!key) return;
+      const answerType = String(row?.answer_type || 'YES_NO').toUpperCase();
+      const raw = source?.[key] || {};
+      let answer = raw.answer;
+      if ((answerType === 'YES_NO' || answerType === 'PASS_FAIL') && typeof answer === 'string') {
+        if (answer === 'YES' || answer === 'PASS') answer = true;
+        else if (answer === 'NO' || answer === 'FAIL') answer = false;
+      }
+      if (answerType === 'NUMERIC' && answer !== '' && answer != null) {
+        const n = Number(answer);
+        answer = Number.isFinite(n) ? n : null;
+      }
+      out[key] = {
+        answer: answer ?? null,
+        notes: raw.notes || null,
+        observation: raw.observation || null,
+      };
+    });
+    return out;
+  };
+
+  const uploadSupportingFiles = async () => {
+    if (!propertyId || supportingFiles.length === 0) return;
+    setSupportingUploading(true);
+    try {
+      const uploaded = [];
+      for (const file of supportingFiles) {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('property_id', propertyId);
+        fd.append('source', 'supporting_evidence_attachment');
+        fd.append('notes', `Supporting evidence attachment for ${rid}`);
+        const res = await clientAPI.uploadComplianceSupportingAttachment(fd);
+        if (res?.data?.document_id) {
+          uploaded.push({
+            document_id: res.data.document_id,
+            filename: file.name,
+            content_type: file.type || '',
+          });
+        }
+      }
+      setSupportingUploads((prev) => [...prev, ...uploaded]);
+      setSupportingFiles([]);
+      if (uploaded.length > 0) {
+        toast.success(`Uploaded ${uploaded.length} supporting file${uploaded.length === 1 ? '' : 's'}.`);
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Could not upload supporting files');
+    } finally {
+      setSupportingUploading(false);
+    }
+  };
 
   const submit = async () => {
     if (!propertyId || !rid || !selectedMode) return;
     let body = { evidence_mode: selectedMode };
-    try {
-      if (selectedMode === 'STRUCTURED_DECLARATION') {
-        const structured_fields = JSON.parse(declFieldsJson || '{}');
-        body.structured_declaration = {
-          declaration_statement: declStatement,
-          structured_fields,
-        };
-      } else if (selectedMode === 'CONTRACTOR_CONFIRMATION') {
-        body.contractor_confirmation = {
-          contractor_name: cName,
-          contractor_company: cCompany,
-          completion_date: cDate,
-          work_summary: cSummary,
-        };
-      } else if (selectedMode === 'INSPECTION_CHECKLIST') {
-        const checklist_answers = JSON.parse(inspAnswersJson || '{}');
-        body.inspection_checklist = {
-          inspection_date: inspDate,
-          checklist_answers,
-          responsible_person: inspPerson,
-          optional_notes: inspNotes || null,
-        };
-      } else {
-        toast.error('Select an evidence method.');
-        return;
-      }
-    } catch {
-      toast.error('Invalid JSON in structured fields or checklist answers.');
+    if (selectedMode === 'STRUCTURED_DECLARATION') {
+      body.structured_declaration = {
+        declaration_statement: declStatement,
+        structured_fields: toChecklistPayload(declFields, selectedChecklistSchema),
+      };
+    } else if (selectedMode === 'CONTRACTOR_CONFIRMATION') {
+      body.contractor_confirmation = {
+        contractor_name: cName,
+        completion_date: cDate,
+        work_summary: cSummary,
+        company_name: cCompany || null,
+        contractor_email: cEmail || null,
+        contractor_phone: cPhone || null,
+        trade_type: cTradeType || null,
+        accreditation_number: cAccreditation || null,
+      };
+    } else if (selectedMode === 'INSPECTION_CHECKLIST') {
+      body.inspection_checklist = {
+        inspection_date: inspDate,
+        checklist_answers: toChecklistPayload(inspAnswers, selectedChecklistSchema),
+        responsible_person: inspPerson,
+        optional_notes: inspNotes || null,
+      };
+    } else {
+      toast.error('Select an evidence method.');
       return;
     }
+    body.supporting_attachment_document_ids = supportingUploads.map((x) => x.document_id);
     setSaving(true);
     try {
       await clientAPI.postComplianceEvidence(propertyId, rid, body);
@@ -181,11 +259,10 @@ export default function ComplianceEvidenceResolveModal({
                   value={declStatement}
                   onChange={(e) => setDeclStatement(e.target.value)}
                 />
-                <Label>Structured fields (JSON object)</Label>
-                <textarea
-                  className="w-full min-h-[80px] border rounded-md p-2 font-mono text-xs"
-                  value={declFieldsJson}
-                  onChange={(e) => setDeclFieldsJson(e.target.value)}
+                <ChecklistEditor
+                  schema={selectedChecklistSchema}
+                  values={declFields}
+                  onChange={(id, patch) => setChecklistAnswer('STRUCTURED_DECLARATION', id, patch)}
                 />
               </div>
             ) : null}
@@ -193,10 +270,18 @@ export default function ComplianceEvidenceResolveModal({
               <div className="space-y-2">
                 <Label>Contractor name</Label>
                 <input className="w-full border rounded-md p-2 text-sm" value={cName} onChange={(e) => setCName(e.target.value)} />
-                <Label>Company</Label>
+                <Label>Company (optional)</Label>
                 <input className="w-full border rounded-md p-2 text-sm" value={cCompany} onChange={(e) => setCCompany(e.target.value)} />
+                <Label>Contractor email (optional)</Label>
+                <input className="w-full border rounded-md p-2 text-sm" value={cEmail} onChange={(e) => setCEmail(e.target.value)} />
+                <Label>Contractor phone (optional)</Label>
+                <input className="w-full border rounded-md p-2 text-sm" value={cPhone} onChange={(e) => setCPhone(e.target.value)} />
+                <Label>Trade type (optional)</Label>
+                <input className="w-full border rounded-md p-2 text-sm" value={cTradeType} onChange={(e) => setCTradeType(e.target.value)} />
+                <Label>Accreditation number (optional)</Label>
+                <input className="w-full border rounded-md p-2 text-sm" value={cAccreditation} onChange={(e) => setCAccreditation(e.target.value)} />
                 <Label>Completion date</Label>
-                <input className="w-full border rounded-md p-2 text-sm" value={cDate} onChange={(e) => setCDate(e.target.value)} />
+                <input type="date" className="w-full border rounded-md p-2 text-sm" value={cDate} onChange={(e) => setCDate(e.target.value)} />
                 <Label>Work / evidence summary</Label>
                 <textarea className="w-full min-h-[80px] border rounded-md p-2 text-sm" value={cSummary} onChange={(e) => setCSummary(e.target.value)} />
               </div>
@@ -204,19 +289,42 @@ export default function ComplianceEvidenceResolveModal({
             {selectedMode === 'INSPECTION_CHECKLIST' ? (
               <div className="space-y-2">
                 <Label>Inspection date</Label>
-                <input className="w-full border rounded-md p-2 text-sm" value={inspDate} onChange={(e) => setInspDate(e.target.value)} />
+                <input type="date" className="w-full border rounded-md p-2 text-sm" value={inspDate} onChange={(e) => setInspDate(e.target.value)} />
                 <Label>Responsible person</Label>
                 <input className="w-full border rounded-md p-2 text-sm" value={inspPerson} onChange={(e) => setInspPerson(e.target.value)} />
-                <Label>Checklist answers (JSON object)</Label>
-                <textarea
-                  className="w-full min-h-[80px] border rounded-md p-2 font-mono text-xs"
-                  value={inspAnswersJson}
-                  onChange={(e) => setInspAnswersJson(e.target.value)}
+                <ChecklistEditor
+                  schema={selectedChecklistSchema}
+                  values={inspAnswers}
+                  onChange={(id, patch) => setChecklistAnswer('INSPECTION_CHECKLIST', id, patch)}
                 />
                 <Label>Optional notes</Label>
                 <textarea className="w-full min-h-[60px] border rounded-md p-2 text-sm" value={inspNotes} onChange={(e) => setInspNotes(e.target.value)} />
               </div>
             ) : null}
+            <div className="space-y-2 border-t pt-3">
+              <p className="text-sm font-medium text-midnight-blue">Supporting evidence uploads</p>
+              <p className="text-xs text-gray-600">
+                Supporting files improve verification confidence and are linked to this evidence record.
+              </p>
+              <input
+                type="file"
+                multiple
+                onChange={(e) => setSupportingFiles(Array.from(e.target.files || []))}
+                className="text-sm"
+              />
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={uploadSupportingFiles} disabled={supportingUploading || supportingFiles.length === 0}>
+                  {supportingUploading ? 'Uploading…' : 'Upload supporting files'}
+                </Button>
+              </div>
+              {supportingUploads.length > 0 ? (
+                <ul className="text-xs text-gray-700 space-y-1">
+                  {supportingUploads.map((u) => (
+                    <li key={u.document_id}>Attached: {u.filename || u.document_id}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           </div>
         )}
         <DialogFooter className="gap-2 sm:gap-0">
@@ -234,5 +342,63 @@ export default function ComplianceEvidenceResolveModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ChecklistEditor({ schema, values, onChange }) {
+  if (!Array.isArray(schema) || schema.length === 0) {
+    return <p className="text-xs text-gray-500">No checklist schema configured.</p>;
+  }
+  return (
+    <div className="space-y-3 rounded-md border p-3">
+      {schema.map((row) => {
+        const id = String(row?.id || '');
+        const type = String(row?.answer_type || 'YES_NO').toUpperCase();
+        const value = values?.[id] || {};
+        return (
+          <div key={id} className="space-y-1">
+            <Label>{row.label}</Label>
+            {(type === 'YES_NO' || type === 'PASS_FAIL') ? (
+              <select
+                className="w-full border rounded-md p-2 text-sm"
+                value={value.answer ?? ''}
+                onChange={(e) => onChange(id, { answer: e.target.value })}
+              >
+                <option value="">Select</option>
+                <option value={type === 'YES_NO' ? 'YES' : 'PASS'}>{type === 'YES_NO' ? 'Yes' : 'Pass'}</option>
+                <option value={type === 'YES_NO' ? 'NO' : 'FAIL'}>{type === 'YES_NO' ? 'No' : 'Fail'}</option>
+              </select>
+            ) : null}
+            {type === 'TEXT' || type === 'OBSERVATION' ? (
+              <textarea
+                className="w-full border rounded-md p-2 text-sm min-h-[60px]"
+                value={value.answer ?? ''}
+                onChange={(e) => onChange(id, { answer: e.target.value })}
+              />
+            ) : null}
+            {type === 'NUMERIC' ? (
+              <input
+                type="number"
+                className="w-full border rounded-md p-2 text-sm"
+                value={value.answer ?? ''}
+                onChange={(e) => onChange(id, { answer: e.target.value })}
+              />
+            ) : null}
+            <input
+              className="w-full border rounded-md p-2 text-xs"
+              placeholder="Optional note"
+              value={value.notes ?? ''}
+              onChange={(e) => onChange(id, { notes: e.target.value })}
+            />
+            <input
+              className="w-full border rounded-md p-2 text-xs"
+              placeholder="Observation"
+              value={value.observation ?? ''}
+              onChange={(e) => onChange(id, { observation: e.target.value })}
+            />
+          </div>
+        );
+      })}
+    </div>
   );
 }
