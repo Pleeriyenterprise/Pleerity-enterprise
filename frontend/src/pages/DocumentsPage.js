@@ -36,6 +36,11 @@ import {
 } from 'lucide-react';
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { normalizeRequirementCode, documentListStatusLabel } from '../domain/presentDomain';
+import {
+  clientFacingVerificationLabel,
+  effectiveAssuranceTier,
+  effectiveEvidenceReviewState,
+} from '../utils/evidenceReviewUi';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
 
 function isExtractionReviewPending(reviewStatus) {
@@ -697,23 +702,27 @@ const DocumentsPage = () => {
     });
   };
 
-  const getStatusBadge = (status) => {
-    const key = (status || '').toUpperCase();
+  const getStatusBadge = (doc) => {
+    const key = effectiveEvidenceReviewState(doc);
     const badges = {
       PENDING: { icon: Clock, color: 'bg-yellow-100 text-yellow-800', label: 'Awaiting verification' },
       UPLOADED: { icon: Clock, color: 'bg-blue-100 text-blue-800', label: 'Uploaded' },
-      VERIFIED: { icon: CheckCircle, color: 'bg-green-100 text-green-800', label: 'Confirmed' },
+      VERIFIED: { icon: CheckCircle, color: 'bg-green-100 text-green-800', label: 'Verified' },
+      ACCEPTED_UNVERIFIED: { icon: Shield, color: 'bg-teal-100 text-teal-800', label: 'Accepted (unverified)' },
+      UNDER_REVIEW: { icon: Clock, color: 'bg-indigo-100 text-indigo-800', label: 'Under review' },
+      NEEDS_INFORMATION: { icon: AlertTriangle, color: 'bg-amber-100 text-amber-800', label: 'Needs information' },
+      SUPERSEDED: { icon: XCircle, color: 'bg-gray-100 text-gray-700', label: 'Superseded' },
       REJECTED: { icon: XCircle, color: 'bg-red-100 text-red-800', label: 'Rejected' },
       EXPIRED: { icon: XCircle, color: 'bg-red-100 text-red-800', label: 'Expired' },
     };
     const badge = badges[key] || {
       icon: Clock,
       color: 'bg-gray-100 text-gray-700',
-      label: documentListStatusLabel(status),
+      label: documentListStatusLabel(doc?.status),
     };
     const Icon = badge.icon;
     return (
-      <span data-testid={`doc-status-${status?.toLowerCase()}`} className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}>
+      <span data-testid={`doc-status-${String(key || '').toLowerCase()}`} className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}>
         <Icon className="w-3 h-3" />
         {badge.label}
       </span>
@@ -1215,7 +1224,11 @@ const DocumentsPage = () => {
                               <span className="font-medium text-midnight-blue">
                                 {doc.file_name || doc.original_filename || 'Document'}
                               </span>
-                              {getStatusBadge(doc.status)}
+                              {getStatusBadge(doc)}
+                              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
+                                {clientFacingVerificationLabel(doc)}
+                                {effectiveAssuranceTier(doc) === 'EXTERNALLY_VERIFIED' ? <Award className="w-3 h-3" /> : null}
+                              </span>
                               {(doc.extraction_id || doc.ai_extraction || extractingDocumentId === doc.document_id) && getExtractionStatusBadge(doc, extractingDocumentId)}
                             </div>
                             {doc.property_id && (

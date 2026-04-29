@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
@@ -29,7 +29,6 @@ import {
   Menu,
   Bell,
   Inbox,
-  Search,
   HelpCircle,
   PenTool,
   Target,
@@ -50,6 +49,7 @@ import {
 import { cn } from '../../lib/utils';
 import { BRAND_LOGO_URL } from '../../config/branding';
 import SessionIdleGuard from '../SessionIdleGuard';
+import AdminClientSupportSearch from './AdminClientSupportSearch';
 
 /**
  * UnifiedAdminLayout - Enterprise-grade admin console with consolidated navigation
@@ -326,13 +326,6 @@ const UnifiedAdminLayout = ({ children }) => {
   const [expandedSections, setExpandedSections] = useState(['dashboard', 'compliance', 'crm']);
   const [badges, setBadges] = useState({ leads: 0, postal: 0, incidents: 0 });
   const [openP0P1Count, setOpenP0P1Count] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const searchBoxRef = useRef(null);
-  const searchTimerRef = useRef(null);
-
   const visibleSections = (() => {
     let sections = navSections;
     if (isSupport?.()) sections = navSections.filter((s) => SECTIONS_FOR_SUPPORT.includes(s.id));
@@ -375,51 +368,6 @@ const UnifiedAdminLayout = ({ children }) => {
     const interval = setInterval(fetchBadges, 60000);
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    const onDocClick = (event) => {
-      if (searchBoxRef.current && !searchBoxRef.current.contains(event.target)) {
-        setSearchOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, []);
-
-  const runGlobalSearch = useCallback(async (value) => {
-    const q = (value || '').trim();
-    if (q.length < 2) {
-      setSearchResults([]);
-      setSearchOpen(false);
-      return;
-    }
-    setSearchLoading(true);
-    try {
-      const res = await adminAPI.globalSearch(q, 8);
-      setSearchResults(res.data?.results || []);
-      setSearchOpen(true);
-    } catch (err) {
-      console.error('Admin global search failed:', err);
-      setSearchResults([]);
-      setSearchOpen(false);
-    } finally {
-      setSearchLoading(false);
-    }
-  }, []);
-
-  const onSearchChange = (event) => {
-    const value = event.target.value;
-    setSearchQuery(value);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => runGlobalSearch(value), 250);
-  };
-
-  const onSearchSelect = (result) => {
-    setSearchQuery('');
-    setSearchResults([]);
-    setSearchOpen(false);
-    navigate(`/admin/clients/${result.client_id}`);
-  };
 
   const handleLogout = () => {
     logout();
@@ -509,51 +457,8 @@ const UnifiedAdminLayout = ({ children }) => {
                 <Menu className="w-5 h-5" />
               </button>
               
-              {/* Quick Search */}
-              <div ref={searchBoxRef} className="hidden md:block relative">
-                <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg w-72">
-                  <Search className="w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={onSearchChange}
-                    placeholder="Search CRN, email, name, phone..."
-                    className="bg-transparent border-none outline-none text-sm w-full"
-                  />
-                  {searchLoading ? (
-                    <span className="text-xs text-gray-500">...</span>
-                  ) : (
-                    <kbd className="text-xs text-gray-400 bg-white px-1.5 py-0.5 rounded border">⌘K</kbd>
-                  )}
-                </div>
-                {searchOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-[32rem] bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
-                    {(searchResults || []).length === 0 ? (
-                      <div className="px-4 py-3 text-sm text-gray-500">No matching clients found.</div>
-                    ) : (
-                      <div className="max-h-80 overflow-y-auto">
-                        {searchResults.map((item) => (
-                          <button
-                            key={item.client_id}
-                            onClick={() => onSearchSelect(item)}
-                            className="w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-gray-50 last:border-0"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="text-sm font-medium text-midnight-blue truncate">{item.name || item.full_name || 'Unknown'}</div>
-                                <div className="text-xs text-gray-600 truncate">{item.email || '-'}</div>
-                              </div>
-                              <div className="text-right text-xs text-gray-600">
-                                <div>{item.crn || item.customer_reference || '-'}</div>
-                                <div>{item.plan || '-'} / {item.status || '-'}</div>
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+              <div className="hidden md:block relative w-72 shrink-0">
+                <AdminClientSupportSearch variant="header" limit={8} />
               </div>
             </div>
 

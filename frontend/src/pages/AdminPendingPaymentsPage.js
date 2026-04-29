@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   RefreshCw,
   Send,
@@ -40,6 +41,7 @@ import {
 import { toast } from '@/utils/portalNotifications';
 import api, { adminAPI } from '../api/client';
 import AccountEnvironmentBadge from '../components/admin/AccountEnvironmentBadge';
+import AdminClientSupportSearch from '../components/admin/AdminClientSupportSearch';
 import { useStepUpApi } from '../hooks/useStepUpApi';
 
 const BUCKETS = [
@@ -107,6 +109,10 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteCheck, setDeleteCheck] = useState({ allowed: false, blockers: [] });
   const [deleteCheckLoading, setDeleteCheckLoading] = useState(false);
+
+  const [retryProvOpen, setRetryProvOpen] = useState(false);
+  const [retryProvTarget, setRetryProvTarget] = useState(null);
+  const [retryProvReason, setRetryProvReason] = useState('');
 
   const fetchPendingPayments = useCallback(async (q, b) => {
     setLoading(true);
@@ -261,12 +267,27 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
     }
   };
 
-  const runRetryProvisioning = async (jobId, clientId) => {
+  const openRetryProvisioning = (jobId, clientId) => {
     if (!jobId) return;
-    setRowBusy(clientId);
+    setRetryProvTarget({ jobId, clientId });
+    setRetryProvReason('');
+    setRetryProvOpen(true);
+  };
+
+  const confirmRetryProvisioning = async () => {
+    const trimmed = retryProvReason.trim();
+    if (trimmed.length < 10) {
+      toast.error('Enter a reason (at least 10 characters) for the audit log.');
+      return;
+    }
+    if (!retryProvTarget?.jobId) return;
+    setRowBusy(retryProvTarget.clientId);
     try {
-      await adminAPI.retryProvisioningJob(jobId);
+      await adminAPI.retryProvisioningJob(retryProvTarget.jobId, { reason: trimmed });
       toast.success('Provisioning retry triggered');
+      setRetryProvOpen(false);
+      setRetryProvTarget(null);
+      setRetryProvReason('');
       await fetchPendingPayments(searchQuery, bucket);
     } catch (error) {
       toast.error(errMessage(error));
@@ -311,6 +332,18 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-muted/30" data-testid="pending-payments-canonical-search">
+            <p className="text-sm font-medium text-midnight-blue mb-1">Find any customer</p>
+            <p className="text-xs text-muted-foreground mb-3">
+              Opens Client Control Panel. (The field below only filters rows in this pending-payments table.)
+            </p>
+            <AdminClientSupportSearch
+              variant="panel"
+              limit={12}
+              onSelectRow={(row) => navigate(row.primary_support_url || `/admin/clients/${row.client_id}`)}
+            />
+          </div>
+
           <Tabs value={bucket} onValueChange={setBucket} className="mb-4">
             <TabsList className="flex flex-wrap h-auto gap-1 p-1">
               {BUCKETS.map((t) => (
@@ -326,10 +359,11 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search by CRN, email, or name..."
+                placeholder="Filter table rows by CRN, email, or name…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 pr-3 py-2 w-full border rounded-md text-sm"
+                aria-label="Filter pending payments table"
               />
             </div>
             <Button onClick={() => fetchPendingPayments(searchQuery, bucket)} variant="outline" disabled={loading}>
@@ -489,8 +523,8 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
                                 ) : null}
                                 <DropdownMenuSeparator />
                                 {prov.job_id ? (
-                                  <DropdownMenuItem onClick={() => runRetryProvisioning(prov.job_id, item.client_id)}>
-                                    Retry provisioning job
+                                  <DropdownMenuItem onClick={() => openRetryProvisioning(prov.job_id, item.client_id)}>
+                                    Retry provisioning job…
                                   </DropdownMenuItem>
                                 ) : null}
                                 <DropdownMenuItem
@@ -559,6 +593,38 @@ const AdminPendingPaymentsPage = ({ embedded = false }) => {
               Cancel
             </Button>
             <Button onClick={submitArchive}>Archive</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={retryProvOpen} onOpenChange={setRetryProvOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="retry-provisioning-dialog">
+          <DialogHeader>
+            <DialogTitle>Retry provisioning job</DialogTitle>
+            <DialogDescription>
+              Re-runs the provisioning runner for this job. This can create portal artefacts or send emails depending on job
+              state. A reason is stored on the audit log.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label htmlFor="retry-prov-reason" className="text-sm font-medium">
+              Reason (minimum 10 characters)
+            </label>
+            <textarea
+              id="retry-prov-reason"
+              data-testid="retry-provisioning-reason"
+              className="w-full border rounded-md px-3 py-2 text-sm min-h-[88px]"
+              value={retryProvReason}
+              onChange={(e) => setRetryProvReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRetryProvOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" data-testid="retry-provisioning-confirm" onClick={() => confirmRetryProvisioning()}>
+              Confirm retry
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

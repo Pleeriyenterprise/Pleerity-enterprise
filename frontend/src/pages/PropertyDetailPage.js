@@ -85,6 +85,11 @@ import {
   compliancePriorityRecommendedNext,
 } from '../utils/complianceObligationPresent';
 import { resolveRequirementAction } from '../utils/requirementTakeActionResolver';
+import {
+  clientFacingVerificationLabel,
+  effectiveEvidenceReviewState,
+  isPositiveEvidenceState,
+} from '../utils/evidenceReviewUi';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { toast } from '@/utils/portalNotifications';
 import { buildEntityRoute, buildSafeQueryPath, resolveClientPortalPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
@@ -152,7 +157,7 @@ function resolveContractorDisplayName(contractorId, nameFromWorkOrders, director
 /**
  * Obligations missing a linked document — same filter and order as Compliance → Missing documents.
  */
-function PropertyDocumentsMissingRequirementList({
+export function PropertyDocumentsMissingRequirementList({
   items,
   propertyId,
   navigate,
@@ -209,9 +214,16 @@ function PropertyDocumentsMissingRequirementList({
                 <Button
                   type="button"
                   className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-10"
-                  onClick={() => navigate(resolveDocumentsPath(propertyId, uploadQuery))}
+                  onClick={() => {
+                    if (ta.primary_action_handler === 'external' && ta.primary_route) {
+                      window.open(ta.primary_route, '_blank', 'noopener,noreferrer');
+                      return;
+                    }
+                    const route = ta.primary_route;
+                    if (route) navigate(route);
+                  }}
                 >
-                  {ta.primary_action_label || requirementDocumentUploadLabel(code)}
+                  {ta.primary_action_label}
                 </Button>
               )}
               {ta.secondary_action?.route ? (
@@ -1011,8 +1023,16 @@ export default function PropertyDetailPage() {
   const rowReqId = (r) => r.requirement_id || r.id;
 
   const evidenceDocStatusLabel = (doc) => {
+    const reviewState = effectiveEvidenceReviewState(doc);
+    if (reviewState === 'VERIFIED') return 'Verified';
+    if (reviewState === 'ACCEPTED_UNVERIFIED') return 'Accepted (unverified)';
+    if (reviewState === 'REJECTED') return 'Rejected';
+    if (reviewState === 'EXPIRED') return 'Expired';
+    if (reviewState === 'NEEDS_INFORMATION') return 'Needs information';
+    if (reviewState === 'UNDER_REVIEW') return 'Under review';
+    if (reviewState === 'SUPERSEDED') return 'Superseded';
     const s = (doc?.status || '').toUpperCase();
-    if (s === 'VERIFIED') return 'Confirmed';
+    if (s === 'VERIFIED') return 'Accepted (unverified)';
     if (s === 'REJECTED') return 'Rejected';
     if (s === 'EXPIRED') return 'Expired';
     const hasExtraction = doc?.extraction_id || (doc?.ai_extraction?.status === 'completed' && doc?.ai_extraction?.data);
@@ -1038,7 +1058,7 @@ export default function PropertyDetailPage() {
 
   const isPendingConfirmation = (doc) => {
     const hasExtraction = doc?.extraction_id || (doc?.ai_extraction?.status === 'completed' && doc?.ai_extraction?.data);
-    return !!hasExtraction && (doc?.status || '').toUpperCase() !== 'VERIFIED';
+    return !!hasExtraction && !isPositiveEvidenceState(doc);
   };
 
   const complianceImpactLabel = (r) => {
@@ -2964,7 +2984,10 @@ export default function PropertyDetailPage() {
                                 <td className="p-3 text-gray-600">{doc.document_type ? documentTypeLabel(doc.document_type) : '—'}</td>
                                 <td className="p-3 text-gray-600">{doc.requirement_id || '—'}</td>
                                 <td className="p-3">
-                                  <span className="inline-flex px-2 py-1 rounded border text-xs bg-gray-100 text-gray-700 border-gray-200">{evidenceDocStatusLabel(doc)}</span>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="inline-flex px-2 py-1 rounded border text-xs bg-gray-100 text-gray-700 border-gray-200">{evidenceDocStatusLabel(doc)}</span>
+                                    <span className="text-[11px] text-gray-500">{clientFacingVerificationLabel(doc)}</span>
+                                  </div>
                                 </td>
                                 <td className="p-3 text-gray-600">{doc.uploaded_by || '—'}</td>
                                 <td className="p-3 text-gray-600">{doc.uploaded_at ? formatDate(doc.uploaded_at) : '—'}</td>
@@ -2989,7 +3012,7 @@ export default function PropertyDetailPage() {
                       {evidenceData.documents.map((doc) => (
                         <Card key={doc.document_id} className="border border-gray-200 p-3">
                           <div className="font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</div>
-                          <div className="text-xs text-gray-600 mt-1">Type: {doc.document_type ? documentTypeLabel(doc.document_type) : '—'} · {evidenceDocStatusLabel(doc)} · {doc.uploaded_at ? formatDate(doc.uploaded_at) : '—'}</div>
+                          <div className="text-xs text-gray-600 mt-1">Type: {doc.document_type ? documentTypeLabel(doc.document_type) : '—'} · {evidenceDocStatusLabel(doc)} · {clientFacingVerificationLabel(doc)} · {doc.uploaded_at ? formatDate(doc.uploaded_at) : '—'}</div>
                           <div className="flex flex-wrap gap-1 mt-2">
                             <Button variant="outline" size="sm" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}>View</Button>
                             <Button variant="outline" size="sm" onClick={() => handleEvidenceDocumentDownload(doc)}>Download</Button>

@@ -199,6 +199,7 @@ import AdminRiskDashboardPage from './pages/admin/AdminRiskDashboardPage';
 import AdminWorkOrderDetailPage from './pages/admin/AdminWorkOrderDetailPage';
 import AdminReportingPage from './pages/AdminReportingPage';
 import AdminClientControlPanelPage from './pages/AdminClientControlPanelPage';
+import AdminUnresolvedEvidenceQueuePage from './pages/AdminUnresolvedEvidenceQueuePage';
 import AdminExtractionQueuePage from './pages/AdminExtractionQueuePage';
 import AdminTeamPage from './pages/AdminTeamPage';
 import AdminPromptManagerPage from './pages/AdminPromptManagerPage';
@@ -677,6 +678,14 @@ function App() {
             <Route path="/admin/content/feedback" element={<ProtectedRoute requireAdmin><AdminInsightsFeedbackPage /></ProtectedRoute>} />
             <Route path="/admin/postal-tracking" element={<ProtectedRoute requireAdmin><AdminPostalTrackingPage /></ProtectedRoute>} />
             <Route path="/admin/clients/:clientId" element={<ProtectedRoute requireAdmin><AdminClientControlPanelPage /></ProtectedRoute>} />
+            <Route
+              path="/admin/documents/unresolved-queue"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminUnresolvedEvidenceQueuePage />
+                </ProtectedRoute>
+              }
+            />
             <Route 
               path="/admin/privacy/consent" 
               element={
