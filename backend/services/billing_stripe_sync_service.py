@@ -20,6 +20,10 @@ from services.billing_period_utils import (
     period_start_from_stripe_unix,
 )
 from services.plan_registry import plan_registry
+from services.billing_reconciliation_service import (
+    clear_billing_reconciliation_needed,
+    mark_billing_reconciliation_needed,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +221,20 @@ async def persist_subscription_billing_from_stripe(
     if new_plan_code:
         clients_set["billing_plan"] = new_plan_code.value
 
-    await db.clients.update_one({"client_id": client_id}, {"$set": clients_set})
+    try:
+        await db.clients.update_one({"client_id": client_id}, {"$set": clients_set})
+    except Exception as clients_err:
+        await mark_billing_reconciliation_needed(
+            client_id=client_id,
+            reason="clients_update_failed_after_billing_sync",
+            context={
+                "event_source": event_source,
+                "stripe_subscription_id": stripe_subscription_id,
+                "error": str(clients_err)[:500],
+            },
+        )
+        raise
+    await clear_billing_reconciliation_needed(client_id=client_id, reason="billing_sync_completed")
     try:
         from services.client_lifecycle_service import persist_operational_client_lifecycle_if_needed
 

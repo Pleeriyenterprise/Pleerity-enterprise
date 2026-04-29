@@ -181,6 +181,70 @@ def _order_row(order: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _enrich_admin_payment_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    """Attach support-facing availability/status/reason fields for admin UI rendering."""
+    source = str(row.get("source") or "").strip().lower()
+    payment_status = str(row.get("payment_status") or "").strip().upper()
+    ref = str(row.get("invoice_number") or row.get("order_reference") or "").strip()
+    order_id = str(row.get("order_id") or "").strip()
+    has_pdf = bool(row.get("pdf_available"))
+    hosted_invoice_url = str(row.get("hosted_invoice_url") or "").strip() or None
+    stripe_invoice_id = str(row.get("stripe_invoice_id") or "").strip() or None
+    retry_state_label = str(row.get("retry_state_label") or "").strip() or None
+    next_retry_at_utc = row.get("next_retry_at_utc")
+    grace_period_ends_at_utc = row.get("grace_period_ends_at_utc")
+
+    download_available = False
+    download_unavailable_reason = None
+    resend_available = False
+    resend_unavailable_reason = None
+
+    if source == "subscription":
+        sub_ref = ref or str(row.get("stripe_checkout_session_id") or "").strip()
+        if not sub_ref:
+            download_unavailable_reason = "Missing subscription invoice reference."
+            resend_unavailable_reason = "Missing subscription invoice reference."
+        elif not has_pdf:
+            download_unavailable_reason = "Receipt PDF is not available yet."
+            resend_unavailable_reason = "Receipt email requires a stored receipt PDF."
+        else:
+            download_available = True
+            resend_available = True
+    else:
+        if not order_id:
+            download_unavailable_reason = "Missing order reference."
+            resend_unavailable_reason = "Missing order reference."
+        else:
+            resend_available = True
+            if has_pdf:
+                download_available = True
+            else:
+                download_unavailable_reason = "Receipt PDF is not available yet."
+
+    failed_attempt_marker = payment_status in {"FAILED", "PAST_DUE", "UNPAID", "OPEN"}
+    failed_attempt_reason = (
+        "Payment requires support follow-up."
+        if failed_attempt_marker
+        else None
+    )
+
+    row["download_available"] = download_available
+    row["download_unavailable_reason"] = download_unavailable_reason
+    row["resend_available"] = resend_available
+    row["resend_unavailable_reason"] = resend_unavailable_reason
+    row["payment_reference_display"] = ref or order_id or "—"
+    row["stripe_reference_display"] = stripe_invoice_id or hosted_invoice_url or None
+    row["failed_attempt_marker"] = failed_attempt_marker
+    row["failed_attempt_reason"] = failed_attempt_reason
+    row["can_open_hosted_invoice"] = bool(hosted_invoice_url)
+    row["hosted_invoice_unavailable_reason"] = None if hosted_invoice_url else "Hosted invoice is not available for this row."
+    row["retry_state_label"] = retry_state_label or ("Payment retry in progress" if failed_attempt_marker else "No retry in progress")
+    row["next_retry_at_utc"] = next_retry_at_utc
+    row["grace_period_ends_at_utc"] = grace_period_ends_at_utc
+    row["billing_anomaly_flags"] = row.get("billing_anomaly_flags") or []
+    return row
+
+
 async def list_receipts_for_client(
     client_id: str,
     *,
@@ -197,6 +261,18 @@ async def list_receipts_for_client(
     client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
     if not client:
         return [], {}
+    billing = await db.client_billing.find_one(
+        {"client_id": client_id},
+        {
+            "_id": 0,
+            "stripe_next_payment_attempt_at": 1,
+            "grace_period_ends_at": 1,
+            "open_invoice_status": 1,
+            "billing_anomaly_flags": 1,
+            "billing_sync_state": 1,
+            "billing_last_synced_at": 1,
+        },
+    ) or {}
 
     emails = _client_email_set(client)
     rows: List[Dict[str, Any]] = []
@@ -212,7 +288,7 @@ async def list_receipts_for_client(
         subs = await cur.to_list(500)
         seen_inv = {d.get("invoice_number") for d in subs if d.get("invoice_number")}
         for d in subs:
-            rows.append(_subscription_row(d))
+            rows.append(_enrich_admin_payment_row(_subscription_row(d)))
         # Pinned last receipt on client if not in ledger (same as portal fallback)
         pin_inv = client.get("last_subscription_invoice_number")
         pin_gid = client.get("last_subscription_receipt_gridfs_id")
@@ -228,7 +304,7 @@ async def list_receipts_for_client(
                 "currency": "gbp",
                 "payment_status": "PAID",
             }
-            rows.append(_subscription_row(synthetic_doc, synthetic=True))
+            rows.append(_enrich_admin_payment_row(_subscription_row(synthetic_doc, synthetic=True)))
 
     if type_filter in ("all", "subscription", "subscription_renewal"):
         rcur = (
@@ -239,7 +315,7 @@ async def list_receipts_for_client(
         )
         renewals = await rcur.to_list(500)
         for d in renewals:
-            rows.append(_renewal_row(d))
+            rows.append(_enrich_admin_payment_row(_renewal_row(d)))
 
     # --- Orders (paid / post-payment) ---
     if type_filter in ("all", "order", "intake_order", "one_off_order", "cvp_order"):
@@ -273,7 +349,7 @@ async def list_receipts_for_client(
                 continue
             if type_filter == "order" and row["source"] != "order":
                 continue
-            rows.append(row)
+            rows.append(_enrich_admin_payment_row(row))
 
     # --- Filters ---
     def _parse_status(s: Optional[str]) -> Optional[str]:
@@ -308,6 +384,24 @@ async def list_receipts_for_client(
         key=lambda x: x.get("date_issued") or "",
         reverse=True,
     )
+    for row in rows:
+        if row.get("source") != "subscription":
+            continue
+        if row.get("failed_attempt_marker"):
+            row["next_retry_at_utc"] = row.get("next_retry_at_utc") or _dt_iso(billing.get("stripe_next_payment_attempt_at"))
+            row["grace_period_ends_at_utc"] = row.get("grace_period_ends_at_utc") or _dt_iso(billing.get("grace_period_ends_at"))
+            row["retry_state_label"] = row.get("retry_state_label") or (
+                "Awaiting retry"
+                if (billing.get("open_invoice_status") or "").lower() in {"open", "past_due", "unpaid"}
+                else "Action required"
+            )
+        row["billing_anomaly_flags"] = row.get("billing_anomaly_flags") or (billing.get("billing_anomaly_flags") or [])
+        row["stripe_sync_state_label"] = (
+            "Up to date"
+            if (billing.get("billing_sync_state") or "").lower() == "ok"
+            else "Review sync status"
+        )
+        row["stripe_sync_updated_at_utc"] = _dt_iso(billing.get("billing_last_synced_at"))
     rows = rows[:limit]
 
     meta = {

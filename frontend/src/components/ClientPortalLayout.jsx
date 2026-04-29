@@ -310,6 +310,16 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
     window.location.href = '/login/admin?impersonation_expired=1';
   };
 
+  const impersonationRemainingText = (() => {
+    const expiresAt = impersonation?.expires_at;
+    if (!expiresAt) return 'Session expiry not provided.';
+    const ms = new Date(expiresAt).getTime() - Date.now();
+    if (Number.isNaN(ms)) return 'Session expiry unavailable.';
+    if (ms <= 0) return 'Session has expired. Exit impersonation now.';
+    const mins = Math.ceil(ms / 60000);
+    return `${mins} minute${mins === 1 ? '' : 's'} remaining`;
+  })();
+
   return (
     <SessionIdleGuard>
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -601,15 +611,24 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
       {impersonation?.active && (
         <div className="bg-amber-100 border-y border-amber-300 px-3 sm:px-4 py-2">
           <div className="max-w-7xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-amber-900 min-w-0 break-words">
-              You are viewing this account as user{impersonation.client_name ? `: ${impersonation.client_name}` : ''}. Actions are audited.
-            </p>
+            <div className="min-w-0 break-words space-y-0.5">
+              <p className="text-sm text-amber-900">
+                You are viewing this account as user{impersonation.client_name ? `: ${impersonation.client_name}` : ''}. Actions are audited.
+              </p>
+              <p className="text-xs text-amber-950">
+                {impersonation.client_id ? `Client ID: ${impersonation.client_id}` : null}
+                {impersonation.target_email_masked ? ` · User: ${impersonation.target_email_masked}` : null}
+              </p>
+              <p className="text-xs text-amber-950">
+                <span className="font-semibold">Impersonation active.</span> {impersonationRemainingText}
+              </p>
+            </div>
             <button
               type="button"
               onClick={handleStopImpersonation}
               className="shrink-0 px-3 py-2.5 sm:py-1.5 rounded-md text-sm font-medium bg-amber-900 text-white hover:bg-amber-950 min-h-[44px] sm:min-h-0"
             >
-              Stop impersonation
+              Exit impersonation
             </button>
           </div>
         </div>

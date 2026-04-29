@@ -1585,13 +1585,19 @@ class JobScheduler:
 
         grace_sent = 0
         grace_docs = await self.db.client_billing.find(
-            {"billing_lifecycle_state": "grace_period"},
+            {
+                "billing_lifecycle_state": "grace_period",
+                "subscription_status": {"$nin": ["CANCELED", "CANCELLED", "UNPAID", "INCOMPLETE_EXPIRED"]},
+                "cancel_at_period_end": {"$ne": True},
+            },
             {"_id": 0},
         ).to_list(500)
         gdays = grace_period_days()
         for b in grace_docs:
             client_id = b.get("client_id")
             if not client_id:
+                continue
+            if str(b.get("subscription_status") or "").upper() in ("CANCELED", "CANCELLED", "UNPAID", "INCOMPLETE_EXPIRED"):
                 continue
             pfail = b.get("payment_failed_at")
             if not pfail:

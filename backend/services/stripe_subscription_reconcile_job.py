@@ -12,6 +12,7 @@ from typing import Any, Dict
 from database import database
 from services.billing_stripe_sync_service import sync_client_billing_from_stripe_subscription_id
 from services.subscription_lifecycle_service import sync_subscription_lifecycle
+from services.billing_reconciliation_service import clear_billing_reconciliation_needed
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,14 @@ async def reconcile_all_stripe_subscriptions() -> Dict[str, Any]:
     db = database.get_db()
     cursor = (
         db.client_billing.find(
-            {"stripe_subscription_id": {"$exists": True, "$nin": [None, ""]}},
+            {
+                "stripe_subscription_id": {"$exists": True, "$nin": [None, ""]},
+                "$or": [
+                    {"billing_reconciliation_needed": True},
+                    {"billing_sync_state": {"$ne": "ok"}},
+                    {"billing_sync_state": {"$exists": False}},
+                ],
+            },
             {"_id": 0, "client_id": 1, "stripe_subscription_id": 1},
         )
         .sort([("billing_last_synced_at", 1), ("updated_at", 1)])
@@ -53,6 +61,7 @@ async def reconcile_all_stripe_subscriptions() -> Dict[str, Any]:
                 increment_entitlements_version=0,
             )
             await sync_subscription_lifecycle(cid, bump_version=False)
+            await clear_billing_reconciliation_needed(client_id=cid, reason="scheduled_reconcile_completed")
             ok += 1
         except Exception as ex:
             err += 1

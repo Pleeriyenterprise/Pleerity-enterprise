@@ -34,6 +34,7 @@ from database import database
 from services.plan_registry import plan_registry, PlanCode, EntitlementStatus
 from services.billing_period_utils import (
     billing_period_from_stripe_invoice_dict,
+    coerce_any_timestamp_to_utc_datetime,
     period_end_from_stripe_subscription_dict,
     period_start_from_stripe_subscription_dict,
     period_start_from_stripe_unix,
@@ -51,6 +52,11 @@ from services.subscription_lifecycle_service import (
 )
 from services.security_monitoring_service import record_security_event
 from utils.audit import create_audit_log
+from services.billing_audit_normalization import normalized_billing_audit_metadata
+from services.billing_reconciliation_service import (
+    clear_billing_reconciliation_needed,
+    mark_billing_reconciliation_needed,
+)
 from models import AuditAction, ProvisioningJob, ProvisioningJobStatus, UserRole
 
 logger = logging.getLogger(__name__)
@@ -326,6 +332,16 @@ class StripeWebhookService:
                     "event_id": event_id,
                     "event_type": event_type,
                     "error": str(e),
+                    **normalized_billing_audit_metadata(
+                        machine_event_type="billing.webhook.failed",
+                        human_label="Stripe webhook processing failed",
+                        severity="high",
+                        actor_type="system",
+                        stripe_invoice_id=(event.get("data", {}).get("object", {}) or {}).get("id"),
+                        support_explanation="Stripe webhook failed and should be retried.",
+                        occurred_at=datetime.now(timezone.utc),
+                        correlation_id=event_id,
+                    ),
                 }
             )
             
@@ -867,6 +883,19 @@ class StripeWebhookService:
                 "entitlement_status": entitlement_status.value,
                 "provisioning_triggered": provisioning_triggered,
                 "onboarding_fee_paid": onboarding_fee_paid,
+                **normalized_billing_audit_metadata(
+                    machine_event_type="billing.webhook.checkout_completed",
+                    human_label="Subscription checkout completed",
+                    severity="info",
+                    actor_type="system",
+                    client_id=client_id,
+                    stripe_customer_id=str(stripe_customer_id or ""),
+                    stripe_subscription_id=str(stripe_subscription_id or ""),
+                    stripe_checkout_session_id=str(checkout_session_id or ""),
+                    support_explanation="Stripe checkout completion updated billing and entitlement state.",
+                    occurred_at=datetime.now(timezone.utc),
+                    correlation_id=(event or {}).get("id"),
+                ),
             }
         )
 
@@ -1207,6 +1236,34 @@ class StripeWebhookService:
             "provisioning_triggered": provisioning_triggered,
         }
     
+    @staticmethod
+    def _subscription_price_fingerprint(subscription: Dict[str, Any]) -> str:
+        items = (subscription or {}).get("items") or {}
+        data = items.get("data") if isinstance(items, dict) else None
+        if not isinstance(data, list):
+            return "no_price"
+        price_ids: List[str] = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            price = item.get("price")
+            pid = None
+            if isinstance(price, dict):
+                pid = price.get("id")
+            elif isinstance(price, str):
+                pid = price
+            if pid:
+                price_ids.append(str(pid).strip())
+        clean = sorted({p for p in price_ids if p})
+        return "|".join(clean) if clean else "no_price"
+
+    def _subscription_transition_key(self, subscription: Dict[str, Any]) -> str:
+        stripe_subscription_id = (subscription.get("id") or "").strip()
+        sub_status = str(subscription.get("status") or "").strip().lower()
+        sub_period_end = subscription.get("current_period_end")
+        price_fp = self._subscription_price_fingerprint(subscription)
+        return f"sub_change:{stripe_subscription_id}:{sub_status}:{sub_period_end}:{price_fp}"
+
     async def _handle_subscription_change(self, subscription: Dict, event: Dict) -> Dict:
         """
         Handle customer.subscription.created / updated.
@@ -1217,6 +1274,7 @@ class StripeWebhookService:
         stripe_customer_id = subscription.get("customer")
         stripe_subscription_id = subscription.get("id")
         event_type = (event or {}).get("type", "customer.subscription.updated")
+        transition_key = self._subscription_transition_key(subscription)
         logger.info(
             "HANDLER_START event.type=%s stripe_customer_id=%s subscription_id=%s checkout_session_id=(n/a) metadata.client_id=(from_billing) metadata.plan_code=(from_items) computed_client_id=(lookup)",
             event_type, stripe_customer_id, stripe_subscription_id,
@@ -1275,6 +1333,20 @@ class StripeWebhookService:
                 stripe_subscription_id,
             )
             return {"handled": False, "reason": "no_billing_record"}
+        claim = await self._claim_transition_guard(
+            client_id=client_id,
+            transition_key=transition_key,
+            event=event,
+            skip_if_seen=True,
+        )
+        if not claim.get("claimed"):
+            logger.info(
+                "Skipping duplicate/stale subscription change transition client_id=%s key=%s reason=%s",
+                client_id,
+                transition_key,
+                claim.get("reason"),
+            )
+            return {"handled": True, "client_id": client_id, "subscription_id": stripe_subscription_id, "duplicate_transition": True}
 
         old_plan = billing.get("current_plan_code")
         old_status = billing.get("subscription_status")
@@ -1440,6 +1512,20 @@ class StripeWebhookService:
         
         client_id = billing.get("client_id")
         old_plan = billing.get("current_plan_code")
+        claim = await self._claim_transition_guard(
+            client_id=client_id,
+            transition_key=f"sub_deleted:{stripe_subscription_id}",
+            event=event,
+            skip_if_seen=True,
+        )
+        if not claim.get("claimed"):
+            logger.info(
+                "Skipping duplicate/stale subscription deleted transition client_id=%s sub=%s reason=%s",
+                client_id,
+                stripe_subscription_id,
+                claim.get("reason"),
+            )
+            return {"handled": True, "client_id": client_id, "subscription_id": stripe_subscription_id, "duplicate_transition": True}
         
         # Update to DISABLED - DO NOT DELETE DATA
         now_del = datetime.now(timezone.utc)
@@ -1450,6 +1536,9 @@ class StripeWebhookService:
                     "subscription_status": "CANCELED",
                     "entitlement_status": EntitlementStatus.DISABLED.value,
                     "canonical_entitlement_state": "CANCELLED",
+                    "billing_local_change_pending": False,
+                    "billing_local_change_type": "subscription_cancel",
+                    "billing_sync_state": "ok",
                     "updated_at": now_del,
                 },
                 "$unset": {
@@ -1475,6 +1564,11 @@ class StripeWebhookService:
         try:
             await sync_subscription_lifecycle(client_id, bump_version=False)
         except Exception as lc_err:
+            await mark_billing_reconciliation_needed(
+                client_id=client_id,
+                reason="subscription_deleted_lifecycle_sync_failed",
+                context={"error": str(lc_err)[:500]},
+            )
             logger.warning("sync_subscription_lifecycle after subscription deleted failed: %s", lc_err)
         
         # Reconcile: revoke all paid-feature state (scheduled reports, SMS, tenant portal, white-label)
@@ -1533,6 +1627,7 @@ class StripeWebhookService:
                 "entitlement_status": EntitlementStatus.DISABLED.value,
             }
         )
+        await clear_billing_reconciliation_needed(client_id=client_id, reason="subscription_deleted_synced")
         
         logger.info(
             "HANDLER_END event.type=customer.subscription.deleted client_id=%s db_updated=subscription_status=CANCELED entitlement_status=DISABLED",
@@ -1577,7 +1672,30 @@ class StripeWebhookService:
             return {"handled": False, "reason": "no_billing_record"}
 
         client_id = billing.get("client_id")
+        inv_id = (invoice.get("id") or "").strip()
+        if inv_id:
+            claim = await self._claim_transition_guard(
+                client_id=client_id,
+                transition_key=f"invoice_paid:{inv_id}",
+                event=event,
+                skip_if_seen=True,
+            )
+            if not claim.get("claimed"):
+                logger.info(
+                    "Skipping duplicate/stale invoice paid transition client_id=%s invoice_id=%s reason=%s",
+                    client_id,
+                    inv_id,
+                    claim.get("reason"),
+                )
+                return {"handled": True, "client_id": client_id, "subscription_id": subscription_id, "duplicate_transition": True}
         old_status = billing.get("subscription_status")
+        if str(old_status or "").upper() in ("CANCELED", "CANCELLED"):
+            logger.info(
+                "Ignoring invoice paid for cancelled subscription client_id=%s subscription_id=%s",
+                client_id,
+                subscription_id,
+            )
+            return {"handled": True, "client_id": client_id, "subscription_id": subscription_id, "ignored_cancelled": True}
         had_dunning = bool(billing.get("payment_failed_at") or billing.get("grace_period_ends_at"))
 
         try:
@@ -1657,6 +1775,11 @@ class StripeWebhookService:
         try:
             await sync_subscription_lifecycle(client_id, bump_version=False)
         except Exception as lc_err:
+            await mark_billing_reconciliation_needed(
+                client_id=client_id,
+                reason="invoice_paid_lifecycle_sync_failed",
+                context={"error": str(lc_err)[:500], "invoice_id": invoice.get("id")},
+            )
             logger.warning("sync_subscription_lifecycle after invoice.paid failed: %s", lc_err)
 
         pay_set = _extract_successful_invoice_payment_fields(invoice)
@@ -1961,9 +2084,49 @@ class StripeWebhookService:
             {"_id": 0}
         )
         if not billing:
-            logger.warning(f"No billing record for customer {stripe_customer_id}")
+            billing = await db.client_billing.find_one(
+                {"stripe_subscription_id": subscription_id},
+                {"_id": 0}
+            )
+        if not billing:
+            logger.warning(
+                "No billing record for payment_failed customer=%s subscription=%s",
+                stripe_customer_id,
+                subscription_id,
+            )
             return {"handled": False, "reason": "no_billing_record"}
         client_id = billing.get("client_id")
+        if str(billing.get("subscription_status") or "").upper() in ("CANCELED", "CANCELLED"):
+            logger.info(
+                "Ignoring payment_failed for cancelled subscription client_id=%s subscription_id=%s",
+                client_id,
+                subscription_id,
+            )
+            return {"handled": True, "client_id": client_id, "subscription_id": subscription_id, "ignored_cancelled": True}
+        inv_id = (invoice.get("id") or "").strip()
+        if inv_id:
+            paid_invoice_id = (billing.get("last_payment_stripe_invoice_id") or "").strip()
+            if paid_invoice_id and paid_invoice_id == inv_id:
+                logger.info(
+                    "Ignoring out-of-order payment_failed for already-paid invoice client_id=%s invoice_id=%s",
+                    client_id,
+                    inv_id,
+                )
+                return {"handled": True, "client_id": client_id, "subscription_id": subscription_id, "stale_transition": True}
+            claim = await self._claim_transition_guard(
+                client_id=client_id,
+                transition_key=f"invoice_failed:{inv_id}",
+                event=event,
+                skip_if_seen=True,
+            )
+            if not claim.get("claimed"):
+                logger.info(
+                    "Skipping duplicate/stale payment_failed transition client_id=%s invoice_id=%s reason=%s",
+                    client_id,
+                    inv_id,
+                    claim.get("reason"),
+                )
+                return {"handled": True, "client_id": client_id, "subscription_id": subscription_id, "duplicate_transition": True}
         
         # Fetch current subscription status from Stripe
         subscription = stripe.Subscription.retrieve(subscription_id)
@@ -1994,11 +2157,9 @@ class StripeWebhookService:
             **grace_extra,
         }
         npt = invoice.get("next_payment_attempt")
-        try:
-            if npt:
-                billing_set["stripe_next_payment_attempt_at"] = datetime.fromtimestamp(int(npt), tz=timezone.utc)
-        except (TypeError, ValueError, OSError):
-            pass
+        npt_dt = coerce_any_timestamp_to_utc_datetime(npt)
+        if npt_dt:
+            billing_set["stripe_next_payment_attempt_at"] = npt_dt
         lf = invoice.get("last_finalization_error")
         if isinstance(lf, dict) and lf.get("message"):
             billing_set["last_invoice_failure_message"] = str(lf.get("message"))[:2000]
@@ -2033,6 +2194,11 @@ class StripeWebhookService:
         try:
             await sync_subscription_lifecycle(client_id, bump_version=False)
         except Exception as lc_err:
+            await mark_billing_reconciliation_needed(
+                client_id=client_id,
+                reason="payment_failed_lifecycle_sync_failed",
+                context={"error": str(lc_err)[:500], "invoice_id": invoice.get("id")},
+            )
             logger.warning("sync_subscription_lifecycle after payment_failed failed: %s", lc_err)
 
         billing_final = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0, "entitlement_status": 1})
@@ -2048,10 +2214,9 @@ class StripeWebhookService:
             from utils.public_app_url import get_public_app_url
             base_url = get_public_app_url(for_email_links=False)
             retry_date = None
-            if invoice.get("next_payment_attempt"):
-                retry_date = datetime.fromtimestamp(
-                    invoice.get("next_payment_attempt"), tz=timezone.utc
-                ).strftime("%B %d, %Y")
+            retry_dt = coerce_any_timestamp_to_utc_datetime(invoice.get("next_payment_attempt"))
+            if retry_dt:
+                retry_date = retry_dt.strftime("%B %d, %Y")
             event_id = (event or {}).get("id", "")
             idempotency_key = f"{event_id}_PAYMENT_FAILED" if event_id else None
             from services.notification_orchestrator import notification_orchestrator
@@ -2135,6 +2300,75 @@ class StripeWebhookService:
     # =========================================================================
     # Helpers
     # =========================================================================
+
+    @staticmethod
+    def _transition_guard_field(transition_key: str) -> str:
+        safe = "".join(ch if ch.isalnum() or ch in ("_", "-", ":") else "_" for ch in str(transition_key))
+        return f"transition_guards.{safe}"
+
+    async def _claim_transition_guard(
+        self,
+        *,
+        client_id: str,
+        transition_key: str,
+        event: Dict,
+        skip_if_seen: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Transition-level replay guard on client_billing document.
+
+        Used for sibling-event dedupe and out-of-order safety for identical business transitions.
+        """
+        db = database.get_db()
+        event_id = (event or {}).get("id")
+        event_type = (event or {}).get("type")
+        event_created_raw = (event or {}).get("created")
+        event_created_dt = coerce_any_timestamp_to_utc_datetime(event_created_raw) or datetime.now(timezone.utc)
+        field = self._transition_guard_field(transition_key)
+        payload = {
+            "transition_key": transition_key,
+            "last_event_id": event_id,
+            "last_event_type": event_type,
+            "last_event_created": event_created_dt,
+            "updated_at": datetime.now(timezone.utc),
+        }
+
+        # First-writer wins atomically when key is absent.
+        claimed_absent = await db.client_billing.update_one(
+            {"client_id": client_id, field: {"$exists": False}},
+            {"$set": {field: payload}},
+        )
+        if getattr(claimed_absent, "modified_count", 0):
+            return {"claimed": True, "reason": "claimed_absent"}
+
+        projection = {"_id": 0, field: 1}
+        row = await db.client_billing.find_one({"client_id": client_id}, projection) or {}
+        guard = row.get("transition_guards", {}).get(field.split(".", 1)[1]) if isinstance(row.get("transition_guards"), dict) else None
+        if not isinstance(guard, dict):
+            return {"claimed": False, "reason": "guard_unreadable"}
+
+        prev_id = (guard.get("last_event_id") or "").strip()
+        prev_created = coerce_any_timestamp_to_utc_datetime(guard.get("last_event_created"))
+        if prev_id and event_id and prev_id == event_id:
+            return {"claimed": False, "reason": "same_event_id"}
+        if prev_created and event_created_dt < prev_created:
+            return {"claimed": False, "reason": "older_event"}
+        if skip_if_seen and prev_created and event_created_dt <= prev_created:
+            return {"claimed": False, "reason": "already_seen_transition"}
+
+        # CAS-style update: only claim if state still matches what we read.
+        match_filter: Dict[str, Any] = {"client_id": client_id}
+        if prev_created:
+            match_filter[f"{field}.last_event_created"] = prev_created
+        if prev_id:
+            match_filter[f"{field}.last_event_id"] = prev_id
+        claimed_newer = await db.client_billing.update_one(
+            match_filter,
+            {"$set": {field: payload}},
+        )
+        if getattr(claimed_newer, "modified_count", 0):
+            return {"claimed": True, "reason": "claimed_newer_event"}
+        return {"claimed": False, "reason": "race_lost"}
     
     async def _insert_payment(
         self,

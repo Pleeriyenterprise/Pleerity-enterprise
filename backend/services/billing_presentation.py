@@ -49,6 +49,34 @@ def billing_status_display(
     return "Active"
 
 
+def lifecycle_status_label(
+    *,
+    has_subscription: bool,
+    cancel_at_period_end: bool,
+    billing_lifecycle_state: Optional[str],
+) -> str:
+    if not has_subscription:
+        return "No active subscription"
+    if cancel_at_period_end:
+        return "Cancelling at period end"
+    lc = (billing_lifecycle_state or "active").lower()
+    if lc == "grace_period":
+        return "Payment retry (grace period)"
+    if lc == "limited":
+        return "Restricted — payment overdue"
+    if lc == "past_due":
+        return "Payment past due"
+    if lc == "expired":
+        return "Subscription expired"
+    if lc == "cancelled":
+        return "Subscription cancelled"
+    if lc == "renewing":
+        return "Active — renewal soon"
+    if lc == "cancel_at_period_end":
+        return "Cancelling at period end"
+    return "Active"
+
+
 def renewal_customer_copy(
     *,
     has_subscription: bool,
@@ -253,6 +281,11 @@ def build_client_billing_payload(
         "billing_status_display": billing_status_display(
             has_subscription=has_subscription,
             subscription_status=subscription_status,
+            billing_lifecycle_state=billing_lifecycle_state,
+        ),
+        "lifecycle_status_label": lifecycle_status_label(
+            has_subscription=has_subscription,
+            cancel_at_period_end=cancel_at_period_end,
             billing_lifecycle_state=billing_lifecycle_state,
         ),
         "subscription_status": _upper(subscription_status) or None,

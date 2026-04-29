@@ -16,6 +16,10 @@ from database import database
 from services.entitlement_access import compute_canonical_entitlement_state
 from services.plan_registry import EntitlementStatus, plan_registry
 from services.billing_period_utils import normalize_stored_period_end_for_api, period_end_from_stripe_unix
+from services.billing_reconciliation_service import (
+    clear_billing_reconciliation_needed,
+    mark_billing_reconciliation_needed,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +43,7 @@ class BillingLifecycleState(str, Enum):
     RENEWING = "renewing"
     PAST_DUE = "past_due"
     GRACE_PERIOD = "grace_period"
+    CANCEL_AT_PERIOD_END = "cancel_at_period_end"
     LIMITED = "limited"
     CANCELLED = "cancelled"
     EXPIRED = "expired"
@@ -77,6 +82,8 @@ def compute_billing_lifecycle_state(
         return BillingLifecycleState.EXPIRED.value
 
     if st in ("ACTIVE", "TRIALING"):
+        if cancel_at_period_end:
+            return BillingLifecycleState.CANCEL_AT_PERIOD_END.value
         if cpe:
             delta = cpe - now
             if timedelta(0) < delta <= timedelta(days=7):
@@ -112,6 +119,9 @@ def compute_entitlement_for_lifecycle(
 
     if lc == BillingLifecycleState.GRACE_PERIOD.value:
         return EntitlementStatus.LIMITED
+
+    if lc == BillingLifecycleState.CANCEL_AT_PERIOD_END.value:
+        return EntitlementStatus.ENABLED
 
     if lc == BillingLifecycleState.LIMITED.value:
         return EntitlementStatus.DISABLED
@@ -181,22 +191,39 @@ async def sync_subscription_lifecycle(client_id: str, bump_version: bool = True)
                 {"client_id": client_id},
                 {"$set": {"canonical_entitlement_state": canon_wanted, "updated_at": now}},
             )
-            await db.clients.update_one(
-                {"client_id": client_id},
-                {
-                    "$set": {
-                        "billing_lifecycle_state": lifecycle,
-                        "subscription_status": sub_for_client,
-                        "canonical_entitlement_state": canon_wanted,
-                    }
-                },
-            )
+            try:
+                await db.clients.update_one(
+                    {"client_id": client_id},
+                    {
+                        "$set": {
+                            "billing_lifecycle_state": lifecycle,
+                            "subscription_status": sub_for_client,
+                            "canonical_entitlement_state": canon_wanted,
+                        }
+                    },
+                )
+            except Exception as clients_err:
+                await mark_billing_reconciliation_needed(
+                    client_id=client_id,
+                    reason="clients_update_failed_after_lifecycle_sync",
+                    context={"error": str(clients_err)[:500]},
+                )
+                raise
         else:
-            await db.clients.update_one(
-                {"client_id": client_id},
-                {"$set": {"billing_lifecycle_state": lifecycle, "subscription_status": sub_for_client}},
-            )
+            try:
+                await db.clients.update_one(
+                    {"client_id": client_id},
+                    {"$set": {"billing_lifecycle_state": lifecycle, "subscription_status": sub_for_client}},
+                )
+            except Exception as clients_err:
+                await mark_billing_reconciliation_needed(
+                    client_id=client_id,
+                    reason="clients_update_failed_after_lifecycle_sync",
+                    context={"error": str(clients_err)[:500]},
+                )
+                raise
         await _persist_client_lifecycle_after_subscription_sync(db, client_id)
+        await clear_billing_reconciliation_needed(client_id=client_id, reason="lifecycle_synced")
         return {
             "updated": False,
             "billing_lifecycle_state": lifecycle,
@@ -220,18 +247,26 @@ async def sync_subscription_lifecycle(client_id: str, bump_version: bool = True)
     billing_after = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0, "entitlements_version": 1})
     ent_ver = (billing_after or {}).get("entitlements_version", 1)
 
-    await db.clients.update_one(
-        {"client_id": client_id},
-        {
-            "$set": {
-                "billing_lifecycle_state": lifecycle,
-                "entitlement_status": target_ent,
-                "canonical_entitlement_state": canonical,
-                "entitlements_version": ent_ver,
-                "subscription_status": sub_for_client,
-            }
-        },
-    )
+    try:
+        await db.clients.update_one(
+            {"client_id": client_id},
+            {
+                "$set": {
+                    "billing_lifecycle_state": lifecycle,
+                    "entitlement_status": target_ent,
+                    "canonical_entitlement_state": canonical,
+                    "entitlements_version": ent_ver,
+                    "subscription_status": sub_for_client,
+                }
+            },
+        )
+    except Exception as clients_err:
+        await mark_billing_reconciliation_needed(
+            client_id=client_id,
+            reason="clients_update_failed_after_lifecycle_sync",
+            context={"error": str(clients_err)[:500]},
+        )
+        raise
 
     logger.info(
         "sync_subscription_lifecycle client_id=%s lifecycle=%s entitlement=%s (was %s/%s)",
@@ -242,6 +277,7 @@ async def sync_subscription_lifecycle(client_id: str, bump_version: bool = True)
         prev_ent,
     )
     await _persist_client_lifecycle_after_subscription_sync(db, client_id)
+    await clear_billing_reconciliation_needed(client_id=client_id, reason="lifecycle_synced")
     return {
         "updated": True,
         "billing_lifecycle_state": lifecycle,

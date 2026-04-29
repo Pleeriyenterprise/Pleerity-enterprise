@@ -266,6 +266,7 @@ function nextRenewalEndPhrase(bs) {
 
 /** Portal API returns billing_status_display / plan_status_display (no internal lifecycle strings). */
 function billingStatusLabel(bs) {
+  if (bs?.lifecycle_status_label) return bs.lifecycle_status_label;
   return bs?.billing_status_display || (bs?.has_subscription ? '—' : 'No active subscription');
 }
 

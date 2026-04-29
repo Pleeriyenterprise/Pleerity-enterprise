@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 
 from services.billing_period_utils import (
+    coerce_any_timestamp_to_utc_datetime,
     coerce_stored_period_end_to_datetime,
     normalize_stored_period_end_for_api,
     period_end_from_stripe_subscription_dict,
@@ -82,3 +83,13 @@ def test_subscription_dict_prefers_top_level_when_present():
         "items": {"data": [{"current_period_end": item_end, "current_period_start": item_end - 86400}]},
     }
     assert int(period_end_from_stripe_subscription_dict(sub).timestamp()) == top_end
+
+
+def test_coerce_any_timestamp_to_utc_datetime_handles_unix_iso_and_naive():
+    unix_ts = 1715792400
+    out_unix = coerce_any_timestamp_to_utc_datetime(unix_ts)
+    assert out_unix is not None and out_unix.tzinfo == timezone.utc
+    out_iso = coerce_any_timestamp_to_utc_datetime("2026-04-15T12:00:00Z")
+    assert out_iso is not None and out_iso.tzinfo == timezone.utc
+    out_naive = coerce_any_timestamp_to_utc_datetime(datetime(2026, 4, 15, 12, 0, 0))
+    assert out_naive is not None and out_naive.tzinfo == timezone.utc

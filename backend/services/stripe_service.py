@@ -25,6 +25,7 @@ from services.billing_period_utils import (
 )
 from services.billing_stripe_sync_service import stripe_subscription_to_dict
 from services.billing_presentation import build_client_billing_payload
+from services.billing_presentation import lifecycle_status_label
 from services.billing_line_normalization import normalize_stripe_invoice_lines
 from services.plan_registry import (
     plan_registry, PlanCode, EntitlementStatus,
@@ -32,6 +33,8 @@ from services.plan_registry import (
 )
 from utils.audit import create_audit_log
 from models import AuditAction
+from services.subscription_lifecycle_service import sync_subscription_lifecycle
+from services.billing_reconciliation_service import mark_billing_reconciliation_needed
 
 logger = logging.getLogger(__name__)
 
@@ -597,6 +600,11 @@ class StripeService:
             "last_invoice_failure_message": billing.get("last_invoice_failure_message"),
             "stripe_webhook_last_received_at": _billing_timestamp_iso(billing.get("stripe_webhook_last_received_at")),
             "stripe_webhook_last_event_type": billing.get("stripe_webhook_last_event_type"),
+                "lifecycle_status_label": lifecycle_status_label(
+                    has_subscription=True,
+                    cancel_at_period_end=bool(billing.get("cancel_at_period_end", False)),
+                    billing_lifecycle_state=lifecycle_out,
+                ),
         }
     
     async def cancel_subscription(
@@ -650,7 +658,27 @@ class StripeService:
                 cancel_update["$unset"] = {"current_period_end": ""}
 
             # Update local record (Stripe response is source of truth for period end)
-            await db.client_billing.update_one({"client_id": client_id}, cancel_update)
+            await db.client_billing.update_one(
+                {"client_id": client_id},
+                {
+                    **cancel_update,
+                    "$set": {
+                        **cancel_set,
+                        "billing_sync_state": "pending_webhook_confirmation",
+                        "billing_local_change_pending": True,
+                        "billing_local_change_type": "subscription_cancel",
+                    },
+                },
+            )
+            try:
+                await sync_subscription_lifecycle(client_id, bump_version=False)
+            except Exception as sync_err:
+                await mark_billing_reconciliation_needed(
+                    client_id=client_id,
+                    reason="cancel_lifecycle_sync_failed",
+                    context={"error": str(sync_err)[:500], "cancel_immediately": bool(cancel_immediately)},
+                )
+                raise
             
             # Audit log
             await create_audit_log(
@@ -662,6 +690,17 @@ class StripeService:
                     "immediate": cancel_immediately,
                     "subscription_id": subscription_id,
                 }
+            )
+            await create_audit_log(
+                action=AuditAction.ADMIN_ACTION,
+                actor_role="SYSTEM",
+                client_id=client_id,
+                metadata={
+                    "action_type": "BILLING_EMAIL_TRIGGER_HOOK",
+                    "trigger_key": "subscription_cancellation_confirmation",
+                    "cancel_immediately": bool(cancel_immediately),
+                    "source": "stripe_service.cancel_subscription",
+                },
             )
             
             logger.info(f"Subscription cancellation requested for client {client_id}, immediate={cancel_immediately}")

@@ -10,6 +10,7 @@ Previously tests under Pleerity-enterprise/tests/ used requests + REACT_APP_BACK
 """
 from __future__ import annotations
 
+import asyncio
 import os
 import uuid
 from datetime import datetime, timezone
@@ -21,6 +22,7 @@ from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 
 from services.billing_presentation import build_client_billing_payload
+from services.stripe_webhook_service import stripe_webhook_service
 
 # Documented contract for operators / Stripe dashboard configuration.
 STRIPE_WEBHOOK_PATH_PRIMARY = "/api/webhook/stripe"
@@ -508,6 +510,309 @@ def test_invoice_paid_renewal_email_context_duplicate_idempotency(
     assert "£19.00" in (c0.get("amount_display") or "")
     assert c0.get("billing_period_display")
     assert sync_db.cvp_subscription_renewal_receipts.count_documents({"client_id": iter26_ids["client_id"]}) == 1
+
+
+def test_duplicate_webhook_delivery_same_event_id_is_idempotent(
+    client, sync_db, iter26_ids, cleanup_iter26, no_notifications
+):
+    _seed_client_and_billing(sync_db, iter26_ids)
+    inv_id = f"in_iter26_dup_{uuid.uuid4().hex[:8]}"
+    evt_id = _evt()
+    paid_at = int(datetime.now(timezone.utc).timestamp())
+    body = {
+        "id": evt_id,
+        "type": "invoice.paid",
+        "data": {
+            "object": {
+                "id": inv_id,
+                "customer": iter26_ids["cus"],
+                "subscription": iter26_ids["sub"],
+                "amount_paid": 1900,
+                "currency": "gbp",
+                "status": "paid",
+                "billing_reason": "subscription_cycle",
+                "status_transitions": {"paid_at": paid_at},
+            }
+        },
+    }
+    sub_d = _fake_subscription_dict(
+        subscription_id=iter26_ids["sub"], customer_id=iter26_ids["cus"], status="active"
+    )
+    inv_obj = MagicMock()
+    inv_obj.to_dict = lambda: {"id": inv_id, "lines": {"data": []}, "status_transitions": {"paid_at": paid_at}}
+    with (
+        patch("services.stripe_webhook_service.retrieve_stripe_subscription_dict", return_value=sub_d),
+        patch("services.stripe_webhook_service.stripe.Invoice.retrieve", return_value=inv_obj),
+    ):
+        r1 = client.post(STRIPE_WEBHOOK_PATH_PRIMARY, json=body)
+        r2 = client.post(STRIPE_WEBHOOK_PATH_PRIMARY, json=body)
+    assert r1.status_code == 200 and r2.status_code == 200
+    assert sync_db.stripe_events.count_documents({"event_id": evt_id}) == 1
+    assert sync_db.payments.count_documents({"stripe_event_id": f"stripe_invoice:{inv_id}:paid"}) == 1
+
+
+def test_sibling_invoice_events_do_not_duplicate_transition_side_effects(
+    client, sync_db, iter26_ids, cleanup_iter26, no_notifications
+):
+    _seed_client_and_billing(sync_db, iter26_ids)
+    inv_id = f"in_iter26_sib_{uuid.uuid4().hex[:8]}"
+    paid_at = int(datetime.now(timezone.utc).timestamp())
+    sub_d = _fake_subscription_dict(
+        subscription_id=iter26_ids["sub"], customer_id=iter26_ids["cus"], status="active"
+    )
+    inv_obj = MagicMock()
+    inv_obj.to_dict = lambda: {"id": inv_id, "lines": {"data": []}, "status_transitions": {"paid_at": paid_at}}
+    body_paid = {
+        "id": _evt(),
+        "type": "invoice.paid",
+        "data": {"object": {"id": inv_id, "customer": iter26_ids["cus"], "subscription": iter26_ids["sub"], "amount_paid": 1900, "currency": "gbp", "status": "paid", "billing_reason": "subscription_cycle", "status_transitions": {"paid_at": paid_at}}},
+    }
+    body_sibling = {
+        "id": _evt(),
+        "type": "invoice.payment_succeeded",
+        "data": {"object": {"id": inv_id, "customer": iter26_ids["cus"], "subscription": iter26_ids["sub"], "amount_paid": 1900, "currency": "gbp", "status": "paid", "billing_reason": "subscription_cycle", "status_transitions": {"paid_at": paid_at}}},
+    }
+    with (
+        patch("services.stripe_webhook_service.retrieve_stripe_subscription_dict", return_value=sub_d),
+        patch("services.stripe_webhook_service.stripe.Invoice.retrieve", return_value=inv_obj),
+    ):
+        r1 = client.post(STRIPE_WEBHOOK_PATH_PRIMARY, json=body_paid)
+        r2 = client.post(STRIPE_WEBHOOK_PATH_PRIMARY, json=body_sibling)
+    assert r1.status_code == 200 and r2.status_code == 200
+    assert sync_db.payments.count_documents({"stripe_event_id": f"stripe_invoice:{inv_id}:paid"}) == 1
+    assert sync_db.cvp_subscription_renewal_receipts.count_documents({"_id": inv_id}) == 1
+
+
+def test_out_of_order_payment_failed_after_paid_is_ignored_for_same_invoice(
+    client, sync_db, iter26_ids, cleanup_iter26, no_notifications
+):
+    _seed_client_and_billing(sync_db, iter26_ids)
+    inv_id = f"in_iter26_ooo_{uuid.uuid4().hex[:8]}"
+    paid_at = int(datetime.now(timezone.utc).timestamp())
+    sub_d = _fake_subscription_dict(
+        subscription_id=iter26_ids["sub"], customer_id=iter26_ids["cus"], status="active"
+    )
+    inv_obj = MagicMock()
+    inv_obj.to_dict = lambda: {"id": inv_id, "lines": {"data": []}, "status_transitions": {"paid_at": paid_at}}
+    with (
+        patch("services.stripe_webhook_service.retrieve_stripe_subscription_dict", return_value=sub_d),
+        patch("services.stripe_webhook_service.stripe.Invoice.retrieve", return_value=inv_obj),
+    ):
+        rp = client.post(
+            STRIPE_WEBHOOK_PATH_PRIMARY,
+            json={
+                "id": _evt(),
+                "type": "invoice.paid",
+                "data": {"object": {"id": inv_id, "customer": iter26_ids["cus"], "subscription": iter26_ids["sub"], "amount_paid": 1900, "currency": "gbp", "status": "paid", "billing_reason": "subscription_cycle", "status_transitions": {"paid_at": paid_at}}},
+            },
+        )
+    assert rp.status_code == 200
+    with patch(
+        "services.stripe_webhook_service.stripe.Subscription.retrieve",
+        return_value={"id": iter26_ids["sub"], "status": "past_due", "customer": iter26_ids["cus"]},
+    ):
+        rf = client.post(
+            STRIPE_WEBHOOK_PATH_PRIMARY,
+            json={
+                "id": _evt(),
+                "type": "invoice.payment_failed",
+                "data": {"object": {"id": inv_id, "customer": iter26_ids["cus"], "subscription": iter26_ids["sub"], "amount_due": 1900, "currency": "gbp", "status": "open"}},
+            },
+        )
+    assert rf.status_code == 200
+    row = sync_db.client_billing.find_one({"client_id": iter26_ids["client_id"]}, {"_id": 0})
+    assert row.get("subscription_status") == "ACTIVE"
+    assert not row.get("open_invoice_id")
+
+
+def test_payment_failed_reconciles_by_subscription_when_customer_lookup_missing(
+    client, sync_db, iter26_ids, cleanup_iter26, no_notifications
+):
+    _seed_client_and_billing(sync_db, iter26_ids)
+    with patch(
+        "services.stripe_webhook_service.stripe.Subscription.retrieve",
+        return_value={"id": iter26_ids["sub"], "status": "past_due", "customer": iter26_ids["cus"]},
+    ):
+        r = client.post(
+            STRIPE_WEBHOOK_PATH_PRIMARY,
+            json={
+                "id": _evt(),
+                "type": "invoice.payment_failed",
+                "data": {
+                    "object": {
+                        "id": f"in_iter26_recon_{uuid.uuid4().hex[:8]}",
+                        "customer": "cus_non_matching",
+                        "subscription": iter26_ids["sub"],
+                        "amount_due": 1900,
+                        "currency": "gbp",
+                        "status": "open",
+                    }
+                },
+            },
+        )
+    assert r.status_code == 200
+    row = sync_db.client_billing.find_one({"client_id": iter26_ids["client_id"]}, {"_id": 0})
+    assert row.get("subscription_status") == "PAST_DUE"
+
+
+@pytest.mark.asyncio
+async def test_transition_guard_concurrent_duplicate_claimed_once(
+    client, sync_db, iter26_ids, cleanup_iter26, no_notifications
+):
+    class _AsyncCollectionAdapter:
+        def __init__(self, collection):
+            self._collection = collection
+
+        async def update_one(self, *args, **kwargs):
+            return self._collection.update_one(*args, **kwargs)
+
+        async def find_one(self, *args, **kwargs):
+            return self._collection.find_one(*args, **kwargs)
+
+    class _AsyncDbAdapter:
+        def __init__(self, db):
+            self.client_billing = _AsyncCollectionAdapter(db.client_billing)
+
+    _seed_client_and_billing(sync_db, iter26_ids)
+    db_adapter = _AsyncDbAdapter(sync_db)
+    transition_key = f"invoice_paid:{iter26_ids['sub']}:in_concurrent_case"
+    event_created = datetime.now(timezone.utc)
+
+    with patch("services.stripe_webhook_service.database.get_db", return_value=db_adapter):
+        r1, r2 = await asyncio.gather(
+            stripe_webhook_service._claim_transition_guard(
+                client_id=iter26_ids["client_id"],
+                transition_key=transition_key,
+                event_id=_evt("evt_iter26_concurrent"),
+                event_type="invoice.paid",
+                event_created=event_created,
+                skip_if_seen=True,
+            ),
+            stripe_webhook_service._claim_transition_guard(
+                client_id=iter26_ids["client_id"],
+                transition_key=transition_key,
+                event_id=_evt("evt_iter26_concurrent"),
+                event_type="invoice.paid",
+                event_created=event_created,
+                skip_if_seen=True,
+            ),
+        )
+
+    claimed_count = int(bool(r1.get("claimed"))) + int(bool(r2.get("claimed")))
+    assert claimed_count == 1
+
+
+@pytest.mark.asyncio
+async def test_subscription_transition_key_allows_same_status_period_plan_change(
+    client, sync_db, iter26_ids, cleanup_iter26, no_notifications
+):
+    class _AsyncCollectionAdapter:
+        def __init__(self, collection):
+            self._collection = collection
+
+        async def update_one(self, *args, **kwargs):
+            return self._collection.update_one(*args, **kwargs)
+
+        async def find_one(self, *args, **kwargs):
+            return self._collection.find_one(*args, **kwargs)
+
+    class _AsyncDbAdapter:
+        def __init__(self, db):
+            self.client_billing = _AsyncCollectionAdapter(db.client_billing)
+
+    _seed_client_and_billing(sync_db, iter26_ids)
+    db_adapter = _AsyncDbAdapter(sync_db)
+    sub_plan_a = {
+        "id": iter26_ids["sub"],
+        "status": "active",
+        "current_period_end": 1893456000,
+        "items": {"data": [{"price": {"id": "price_plan_a"}}]},
+    }
+    sub_plan_b = {
+        "id": iter26_ids["sub"],
+        "status": "active",
+        "current_period_end": 1893456000,
+        "items": {"data": [{"price": {"id": "price_plan_b"}}]},
+    }
+    key_a = stripe_webhook_service._subscription_transition_key(sub_plan_a)
+    key_b = stripe_webhook_service._subscription_transition_key(sub_plan_b)
+    assert key_a != key_b
+
+    with patch("services.stripe_webhook_service.database.get_db", return_value=db_adapter):
+        first = await stripe_webhook_service._claim_transition_guard(
+            client_id=iter26_ids["client_id"],
+            transition_key=key_a,
+            event_id=_evt("evt_iter26_plan"),
+            event_type="customer.subscription.updated",
+            event_created=datetime.now(timezone.utc),
+            skip_if_seen=True,
+        )
+        second = await stripe_webhook_service._claim_transition_guard(
+            client_id=iter26_ids["client_id"],
+            transition_key=key_b,
+            event_id=_evt("evt_iter26_plan"),
+            event_type="customer.subscription.updated",
+            event_created=datetime.now(timezone.utc),
+            skip_if_seen=True,
+        )
+    assert first.get("claimed") is True
+    assert second.get("claimed") is True
+
+
+@pytest.mark.asyncio
+async def test_transition_guard_skips_stale_older_and_accepts_newer_event(
+    client, sync_db, iter26_ids, cleanup_iter26, no_notifications
+):
+    class _AsyncCollectionAdapter:
+        def __init__(self, collection):
+            self._collection = collection
+
+        async def update_one(self, *args, **kwargs):
+            return self._collection.update_one(*args, **kwargs)
+
+        async def find_one(self, *args, **kwargs):
+            return self._collection.find_one(*args, **kwargs)
+
+    class _AsyncDbAdapter:
+        def __init__(self, db):
+            self.client_billing = _AsyncCollectionAdapter(db.client_billing)
+
+    _seed_client_and_billing(sync_db, iter26_ids)
+    db_adapter = _AsyncDbAdapter(sync_db)
+    transition_key = f"subscription_change:{iter26_ids['sub']}:ordering"
+    base = datetime.now(timezone.utc)
+    older = datetime.fromtimestamp(base.timestamp() - 300, tz=timezone.utc)
+    newer = datetime.fromtimestamp(base.timestamp() + 300, tz=timezone.utc)
+
+    with patch("services.stripe_webhook_service.database.get_db", return_value=db_adapter):
+        first = await stripe_webhook_service._claim_transition_guard(
+            client_id=iter26_ids["client_id"],
+            transition_key=transition_key,
+            event_id=_evt("evt_iter26_first"),
+            event_type="customer.subscription.updated",
+            event_created=base,
+            skip_if_seen=True,
+        )
+        stale = await stripe_webhook_service._claim_transition_guard(
+            client_id=iter26_ids["client_id"],
+            transition_key=transition_key,
+            event_id=_evt("evt_iter26_old"),
+            event_type="customer.subscription.updated",
+            event_created=older,
+            skip_if_seen=True,
+        )
+        latest = await stripe_webhook_service._claim_transition_guard(
+            client_id=iter26_ids["client_id"],
+            transition_key=transition_key,
+            event_id=_evt("evt_iter26_new"),
+            event_type="customer.subscription.updated",
+            event_created=newer,
+            skip_if_seen=True,
+        )
+    assert first.get("claimed") is True
+    assert stale.get("claimed") is False
+    assert stale.get("reason") == "older_event"
+    assert latest.get("claimed") is True
 
 
 def test_admin_list_receipts_includes_subscription_renewals(client, sync_db, iter26_ids, cleanup_iter26):

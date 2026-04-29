@@ -144,3 +144,38 @@ def billing_period_from_stripe_invoice_dict(inv_d: Dict[str, Any]) -> Tuple[Opti
         if sdt and edt:
             return sdt, edt
     return None, None
+
+
+def coerce_any_timestamp_to_utc_datetime(value: Any) -> Optional[datetime]:
+    """
+    Normalize mixed timestamp inputs to timezone-aware UTC datetime.
+
+    Accepts:
+    - datetime (naive treated as UTC)
+    - unix epoch int/float
+    - numeric strings (unix epoch)
+    - ISO datetime strings
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.fromtimestamp(int(value), tz=timezone.utc)
+        except (TypeError, ValueError, OSError, OverflowError):
+            return None
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return None
+        try:
+            return datetime.fromtimestamp(int(float(s)), tz=timezone.utc)
+        except (TypeError, ValueError, OSError, OverflowError):
+            pass
+        try:
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            return None
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+    return None
