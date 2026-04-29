@@ -336,7 +336,7 @@ const AdminClientControlPanelPage = () => {
     };
   }, [clientId]);
 
-  const identity = data?.identity || {};
+  const identity = data?.identity;
   const account = data?.account_state || {};
   const billing = data?.subscription_billing || {};
   const compliance = data?.compliance_overview || {};
@@ -540,9 +540,9 @@ const AdminClientControlPanelPage = () => {
         JSON.stringify({
           active: true,
           client_id: clientId,
-          client_name: res?.data?.client?.name || identity.name || null,
+          client_name: res?.data?.client?.name || identity?.name || null,
           target_email_masked: res?.data?.client?.target_email_masked || maskEmail(res?.data?.user?.email),
-          company_name: res?.data?.client?.company_name || identity.company_name || null,
+          company_name: res?.data?.client?.company_name || identity?.company_name || null,
           started_at: new Date().toISOString(),
           expires_at: res?.data?.expires_at || null,
           admin_portal_user_id: user?.portal_user_id || null,
@@ -571,10 +571,10 @@ const AdminClientControlPanelPage = () => {
   const supportSafeFailureReason = latestFailure?.failure_reason ? 'Issuance failed. Review logs for technical details.' : 'No failure reason recorded.';
   const impersonationPreview = useMemo(
     () => ({
-      clientId: identity.client_id || clientId,
-      clientName: identity.name || '—',
-      companyName: identity.company_name || null,
-      maskedEmail: maskEmail(identity.email),
+      clientId: identity?.client_id || clientId,
+      clientName: identity?.name || '—',
+      companyName: identity?.company_name || null,
+      maskedEmail: maskEmail(identity?.email),
     }),
     [identity, clientId],
   );
@@ -917,12 +917,12 @@ const AdminClientControlPanelPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
         <div>
           <p className="text-xs font-medium text-gray-500 mb-1">Identity</p>
-          <Row label="Name" value={identity.name} />
-          <Row label="CRN" value={identity.crn} />
-          <Row label="Email" value={identity.email} />
-          <Row label="Phone" value={identity.phone} />
-          <Row label="Plan" value={identity.plan} />
-          <Row label="Subscription status" value={identity.status} />
+          <Row label="Name" value={identity?.name} />
+          <Row label="CRN" value={identity?.crn} />
+          <Row label="Email" value={identity?.email} />
+          <Row label="Phone" value={identity?.phone} />
+          <Row label="Plan" value={identity?.plan} />
+          <Row label="Subscription status" value={identity?.status} />
         </div>
         <div>
           <p className="text-xs font-medium text-gray-500 mb-1">Account</p>
@@ -1497,7 +1497,7 @@ const AdminClientControlPanelPage = () => {
           <Row label="Risk level" value={compliance.risk_level || 'Not yet recorded'} />
           <Row label="Compliance score" value={compliance.compliance_score ?? '—'} />
           <Row label="Entitlement (billing)" value={billing.canonical_entitlement_state || '—'} />
-          <Row label="Subscription status" value={billing.status || identity.status || '—'} />
+          <Row label="Subscription status" value={billing.status || identity?.status || '—'} />
         </div>
       </CollapsibleBlock>
       <CollapsibleBlock title="Command centre task activity" subtitle="Client portal Tasks inbox (read-only)." defaultOpen={false}>
