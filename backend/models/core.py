@@ -987,6 +987,19 @@ class Document(BaseModel):
     reviewed_match_at: Optional[datetime] = None
     # Pre-engine rows or intake staging (see services.evidence_document_taxonomy)
     evidence_match_legacy_state: Optional[str] = None
+    # Evidence Review V2 (additive; legacy DocumentStatus remains authoritative for pre-migration readers)
+    evidence_review_state: Optional[str] = None
+    assurance_tier: Optional[str] = None
+    validation_report_id: Optional[str] = None
+    latest_validation_snapshot: Optional[Dict[str, Any]] = None
+    review_required: Optional[bool] = None
+    review_notes_required: Optional[bool] = None
+    review_decision_at: Optional[str] = None
+    review_decision_by: Optional[str] = None
+    external_verification_reference: Optional[str] = None
+    external_verification_method: Optional[str] = None
+    # Phase 2 AI reviewer assistance payload (advisory only, no authority shift)
+    ai_assistance: Optional[Dict[str, Any]] = None
 
 class AuditLog(BaseModel):
     model_config = ConfigDict(extra="ignore")

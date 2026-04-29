@@ -20,6 +20,7 @@ from database import database
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
 from utils.risk_bands import score_to_grade_color_message, risk_level_to_grade_color_message
+from services.evidence_review_scoring_adapter import evidence_review_contributes_positive_credit
 from services.compliance_rules_registry import (
     build_jurisdiction_compliance_notice,
     build_portfolio_jurisdiction_attestation,
@@ -223,7 +224,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         missing_evidence = _counts["missing_evidence"]
         documents = await db.documents.find(
             {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "requirement_id": 1, "status": 1}
+            {"_id": 0, "property_id": 1, "requirement_id": 1, "status": 1, "evidence_review_state": 1, "assurance_tier": 1},
         ).to_list(1000)
         req_ids_with_verified = set()
         req_ids_with_any_doc = set()
@@ -232,7 +233,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             if not rid or rid not in portal_req_ids:
                 continue
             req_ids_with_any_doc.add(rid)
-            if d.get("status") == "VERIFIED":
+            if evidence_review_contributes_positive_credit(d):
                 req_ids_with_verified.add(rid)
         verified_coverage = (len(req_ids_with_verified) / total_reqs * 100) if total_reqs > 0 else 0
         total_coverage = (len(req_ids_with_any_doc) / total_reqs * 100) if total_reqs > 0 else 0
@@ -286,7 +287,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "overdue": overdue,
             "critical_overdue": critical_overdue_count,
             "documents_uploaded": len(documents),
-            "documents_verified": len([d for d in documents if d.get("status") == "VERIFIED"]),
+            "documents_verified": len([d for d in documents if evidence_review_contributes_positive_credit(d)]),
             "verified_coverage_percent": round(verified_coverage, 1),
             "total_coverage_percent": round(total_coverage, 1),
             "document_coverage_percent": round(total_coverage, 1),
@@ -647,7 +648,9 @@ async def _calculate_compliance_score_legacy_from_db(client_id: str) -> Dict[str
             {"property_id": {"$in": property_ids}},
             {"_id": 0}
         ).to_list(500)
-        verified_documents = [d for d in documents if d.get("status") == "VERIFIED"]
+        verified_documents = [
+            d for d in documents if evidence_review_contributes_positive_credit(d)
+        ]
         now = datetime.now(timezone.utc)
         
         # ============================================

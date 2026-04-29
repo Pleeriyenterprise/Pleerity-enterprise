@@ -12,14 +12,18 @@ from pydantic import BaseModel, Field
 
 from database import database
 from middleware import client_route_guard
+from models import AuditAction
 from services.compliance_evidence_record_service import (
     ALL_EVIDENCE_MODES,
     apply_verification_decision,
+    checklist_schema_for_mode,
     create_compliance_evidence_record,
     effective_evidence_resolution,
     guided_method_ui_rows_for_modes,
 )
 from services.requirement_evidence_authority import sync_requirement_evidence_authority
+from utils.audit import create_audit_log
+from utils.request_ip import get_client_ip
 
 router = APIRouter(prefix="/api/client", tags=["client-compliance-evidence"])
 
@@ -35,9 +39,13 @@ class StructuredDeclarationBody(BaseModel):
 
 class ContractorConfirmationBody(BaseModel):
     contractor_name: str
-    contractor_company: str
     completion_date: str
     work_summary: str
+    contractor_email: Optional[str] = None
+    contractor_phone: Optional[str] = None
+    company_name: Optional[str] = None
+    trade_type: Optional[str] = None
+    accreditation_number: Optional[str] = None
     optional_attachment_document_id: Optional[str] = None
 
 
@@ -54,6 +62,7 @@ class CreateEvidenceRequest(BaseModel):
     structured_declaration: Optional[StructuredDeclarationBody] = None
     contractor_confirmation: Optional[ContractorConfirmationBody] = None
     inspection_checklist: Optional[InspectionChecklistBody] = None
+    supporting_attachment_document_ids: Optional[List[str]] = None
 
 
 class VerifyEvidenceRequest(BaseModel):
@@ -63,6 +72,42 @@ class VerifyEvidenceRequest(BaseModel):
 def _admin_like(role: str) -> bool:
     r = (role or "").strip().upper()
     return r in {"ROLE_CLIENT_ADMIN", "ROLE_OWNER", "ROLE_PROPERTY_MANAGER"}
+
+
+async def _reject_with_attachment_audit(
+    *,
+    reason_code: str,
+    client_id: str,
+    user_id: str,
+    property_id: str,
+    requirement_id: str,
+    evidence_mode: str,
+    attachment_id: Optional[str],
+    request: Request,
+) -> None:
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user_id,
+        client_id=client_id,
+        resource_type="compliance_evidence_submission",
+        resource_id=requirement_id,
+        metadata={
+            "action_type": "GUIDED_EVIDENCE_ATTACHMENT_VALIDATION_REJECTED",
+            "reason_code": reason_code,
+            "property_id": property_id,
+            "requirement_id": requirement_id,
+            "evidence_mode": evidence_mode,
+            "attachment_id": attachment_id,
+        },
+        ip_address=get_client_ip(request),
+    )
+    raise HTTPException(
+        status_code=400,
+        detail={
+            "code": "SUPPORTING_ATTACHMENT_INVALID",
+            "message": "One or more supporting uploads are invalid for this requirement.",
+        },
+    )
 
 
 @router.get("/properties/{property_id}/requirements/{requirement_id}/evidence-resolution")
@@ -85,6 +130,11 @@ async def get_evidence_resolution(
     policy = effective_evidence_resolution(req)
     modes = list(policy.get("allowed_evidence_modes") or [])
     methods = guided_method_ui_rows_for_modes(modes)
+    for row in methods:
+        mode = str(row.get("evidence_mode") or "")
+        schema = checklist_schema_for_mode(req, mode)
+        row["checklist_schema"] = schema.get("items") or []
+        row["checklist_schema_fallback_used"] = bool(schema.get("fallback_used"))
     guided_label = str(policy.get("guided_primary_cta_label") or "").strip() or "Add compliance evidence"
     return {
         "requirement_id": requirement_id,
@@ -94,6 +144,9 @@ async def get_evidence_resolution(
         "primary_resolution_workflow": policy.get("primary_resolution_workflow"),
         "allowed_evidence_modes": modes,
         "guided_methods": methods,
+        "supporting_upload_required": bool(policy.get("supporting_upload_required")),
+        "supporting_upload_recommended": bool(policy.get("supporting_upload_recommended")),
+        "allowed_upload_types": list(policy.get("allowed_upload_types") or []),
         "policy": policy,
     }
 
@@ -137,9 +190,13 @@ async def post_compliance_evidence(
         cc = body.contractor_confirmation
         payload = {
             "contractor_name": cc.contractor_name,
-            "contractor_company": cc.contractor_company,
             "completion_date": cc.completion_date,
             "work_summary": cc.work_summary,
+            "contractor_email": cc.contractor_email,
+            "contractor_phone": cc.contractor_phone,
+            "company_name": cc.company_name,
+            "trade_type": cc.trade_type,
+            "accreditation_number": cc.accreditation_number,
             "optional_attachment_document_id": cc.optional_attachment_document_id,
         }
     elif mode == "INSPECTION_CHECKLIST":
@@ -160,6 +217,59 @@ async def post_compliance_evidence(
     att = payload.get("optional_attachment_document_id")
     if att:
         linked.append(str(att))
+    for x in body.supporting_attachment_document_ids or []:
+        tok = str(x or "").strip()
+        if tok:
+            linked.append(tok)
+    linked = list(dict.fromkeys(linked))
+
+    policy = effective_evidence_resolution(req)
+    if policy.get("supporting_upload_required") and not linked:
+        await _reject_with_attachment_audit(
+            reason_code="supporting_upload_required",
+            client_id=str(client_id),
+            user_id=str(uid),
+            property_id=property_id,
+            requirement_id=requirement_id,
+            evidence_mode=mode,
+            attachment_id=None,
+            request=request,
+        )
+    allowed_upload_types = set(
+        str(x).strip().lower() for x in (policy.get("allowed_upload_types") or []) if str(x).strip()
+    )
+    if linked:
+        docs = await db.documents.find(
+            {"document_id": {"$in": linked}, "client_id": client_id},
+            {"_id": 0, "document_id": 1, "content_type": 1},
+        ).to_list(200)
+        by_id = {str(d.get("document_id")): d for d in docs if d.get("document_id")}
+        for lid in linked:
+            doc = by_id.get(str(lid))
+            if not doc:
+                await _reject_with_attachment_audit(
+                    reason_code="supporting_attachment_not_found",
+                    client_id=str(client_id),
+                    user_id=str(uid),
+                    property_id=property_id,
+                    requirement_id=requirement_id,
+                    evidence_mode=mode,
+                    attachment_id=str(lid),
+                    request=request,
+                )
+            if allowed_upload_types:
+                ctype = str(doc.get("content_type") or "").strip().lower()
+                if ctype and ctype not in allowed_upload_types:
+                    await _reject_with_attachment_audit(
+                        reason_code="unsupported_supporting_upload_type",
+                        client_id=str(client_id),
+                        user_id=str(uid),
+                        property_id=property_id,
+                        requirement_id=requirement_id,
+                        evidence_mode=mode,
+                        attachment_id=str(lid),
+                        request=request,
+                    )
 
     try:
         rec = await create_compliance_evidence_record(

@@ -35,6 +35,7 @@ from services.evidence_document_match_engine import (
     match_evaluation_to_persisted_document_fields,
     document_blocks_verified_satisfaction,
 )
+from services.evidence_review_migration import apply_v2_defaults_to_new_upload
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -422,6 +423,8 @@ class VerifyDocumentBody(BaseModel):
 
     evidence_mismatch_override: bool = False
     evidence_mismatch_override_reason: Optional[str] = None
+    # Evidence Review V2: when validation_status=FAIL, require a non-empty reason to record supervised override
+    validation_override_reason: Optional[str] = None
 
 
 # Document storage directory (configurable via DATA_DIR or DOCUMENT_STORAGE_PATH)
@@ -600,6 +603,7 @@ async def bulk_upload_documents(
                 
                 doc = document.model_dump()
                 doc["uploaded_at"] = doc["uploaded_at"].isoformat()
+                apply_v2_defaults_to_new_upload(doc)
                 
                 await db.documents.insert_one(doc)
                 
@@ -955,6 +959,7 @@ async def upload_zip_archive(
                         
                         doc = document.model_dump()
                         doc["uploaded_at"] = doc["uploaded_at"].isoformat()
+                        apply_v2_defaults_to_new_upload(doc)
                         
                         await db.documents.insert_one(doc)
                         
@@ -1327,6 +1332,7 @@ async def perform_client_document_upload(
             detail=structured_error("EVIDENCE_SCOPE_INVALID", str(ve)),
         ) from ve
 
+    apply_v2_defaults_to_new_upload(doc)
     await db.documents.insert_one(doc)
     if requirement_id:
         await safe_upsert_document_upload_evidence_for_linked_document(
@@ -1661,6 +1667,7 @@ async def admin_upload_document(
         if admin_mev.get("manual_review_flag_suggested"):
             doc["manual_review_flag"] = True
 
+        apply_v2_defaults_to_new_upload(doc)
         await db.documents.insert_one(doc)
         await safe_upsert_document_upload_evidence_for_linked_document(
             db,
@@ -1941,6 +1948,20 @@ async def verify_document(
             )
         
         old_status = document["status"]
+
+        from services.evidence_review_config import is_feature_evidence_review_v2
+
+        if is_feature_evidence_review_v2():
+            from services.evidence_review_verify import execute_verify_document_v2
+
+            return await execute_verify_document_v2(
+                db,
+                document_id=document_id,
+                document=document,
+                user=user,
+                old_status=old_status,
+                validation_override_reason=body.validation_override_reason if body else None,
+            )
         
         # Update document status
         await db.documents.update_one(
@@ -2737,6 +2758,17 @@ async def list_documents(request: Request, property_id: str = None, requirement_
             query,
             {"_id": 0, "file_path": 0}  # Don't expose file path
         ).sort("uploaded_at", -1).to_list(100)
+        from services.evidence_review_migration import effective_assurance_tier, effective_evidence_review_state
+        for d in documents:
+            d["evidence_review_state"] = effective_evidence_review_state(d)
+            d["assurance_tier"] = effective_assurance_tier(d)
+            d.setdefault("latest_validation_snapshot", None)
+            d.setdefault("review_required", None)
+            d.setdefault("review_decision_at", None)
+            d.setdefault("review_decision_by", None)
+            d.setdefault("external_verification_method", None)
+            d.setdefault("external_verification_reference", None)
+            d.setdefault("ai_assistance", None)
         
         return {
             "documents": documents,

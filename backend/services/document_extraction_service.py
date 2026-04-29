@@ -9,7 +9,7 @@ import os
 import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
 from models import AuditAction
@@ -65,6 +65,46 @@ def _extract_text_from_file(file_path: str, mime_type: str) -> str:
             except UnicodeDecodeError:
                 continue
         return ""
+
+
+def _extract_text_with_ocr_fallback(file_path: str, mime_type: str) -> Tuple[str, str]:
+    """
+    Returns (text, extraction_source): pdf_text|plain_text|ocr|none.
+    Best-effort OCR fallback for scanned PDFs and images.
+    """
+    text = _extract_text_from_file(file_path, mime_type)
+    if text and text.strip():
+        src = "pdf_text" if (mime_type or "").lower() == "application/pdf" or str(file_path).lower().endswith(".pdf") else "plain_text"
+        return text, src
+    # OCR fallback (optional deps)
+    try:
+        from PIL import Image  # type: ignore
+        import pytesseract  # type: ignore
+    except Exception:
+        return "", "none"
+
+    try:
+        ext = str(file_path).lower()
+        ocr_chunks: List[str] = []
+        if ext.endswith(".pdf"):
+            try:
+                from pdf2image import convert_from_path  # type: ignore
+                pages = convert_from_path(file_path, first_page=1, last_page=5)
+                for im in pages:
+                    ocr_chunks.append(pytesseract.image_to_string(im))
+            except Exception as e:
+                logger.warning("OCR PDF fallback failed: %s", e)
+                return "", "none"
+        else:
+            im = Image.open(file_path)
+            ocr_chunks.append(pytesseract.image_to_string(im))
+        text2 = "\n".join([c for c in ocr_chunks if c]).strip()[:TEXT_CAP]
+        if text2:
+            return text2, "ocr"
+        return "", "none"
+    except Exception as e:
+        logger.warning("OCR fallback failed: %s", e)
+        return "", "none"
     except Exception as e:
         logger.warning("Text extraction failed for %s: %s", file_path, e)
         return ""
@@ -179,9 +219,17 @@ async def run_extraction_job(extraction_id: str) -> None:
         return
     file_name = doc.get("file_name") or "document"
     mime_type = doc.get("mime_type") or ""
-    text = _extract_text_from_file(file_path, mime_type)
+    text, extraction_source = _extract_text_with_ocr_fallback(file_path, mime_type)
     if not text.strip():
-        await _set_failed(db, extraction_id, document_id, client_id, "NO_TEXT", "Could not extract text from file")
+        await _set_failed(
+            db,
+            extraction_id,
+            document_id,
+            client_id,
+            "NO_TEXT_OCR_FAILED",
+            "Could not extract readable text from file (including OCR fallback).",
+            audit_extra={"ocr_attempted": True},
+        )
         return
     # Call AI (sync) in thread to not block
     result = await asyncio.to_thread(
@@ -244,11 +292,65 @@ async def run_extraction_job(extraction_id: str) -> None:
         "overall_confidence": overall,
         "notes": extracted.get("notes"),
     }
+    requirement = None
+    if record.get("document_id"):
+        dreq = await db.documents.find_one({"document_id": document_id}, {"_id": 0, "requirement_id": 1, "property_id": 1})
+        rid = (dreq or {}).get("requirement_id")
+        if rid:
+            requirement = await db.requirements.find_one({"requirement_id": rid}, {"_id": 0})
+    prop = None
+    pid = (record.get("property_id") or (requirement or {}).get("property_id"))
+    if pid:
+        prop = await db.properties.find_one({"property_id": pid}, {"_id": 0})
+    from services.ai_reviewer_assistance import (
+        _normalize_req_code,
+        build_reviewer_assistance_signals,
+        detect_anomalies_for_extraction,
+        normalize_extracted_fields_by_requirement,
+    )
+    req_code = _normalize_req_code(requirement, extracted.get("doc_type"))
+    extracted_fields = normalize_extracted_fields_by_requirement(extracted, req_code)
+    ai_flags, extraction_warnings = build_reviewer_assistance_signals(
+        extracted_fields=extracted_fields,
+        property_doc=prop,
+        requirement_code=req_code,
+        extraction_confidence=overall,
+    )
+    anomaly_flags, anomaly_risk_score = await detect_anomalies_for_extraction(
+        db,
+        document=await db.documents.find_one({"document_id": document_id}, {"_id": 0}) or {"document_id": document_id},
+        extracted_fields=extracted_fields,
+        extraction_confidence=overall,
+        extraction_source=extraction_source,
+    )
+    ai_assistance = {
+        "extracted_fields": extracted_fields,
+        "original_extracted_fields": dict(extracted_fields),
+        "extraction_confidence": overall,
+        "extraction_source": extraction_source,
+        "extraction_timestamp": now.isoformat(),
+        "ai_flags": ai_flags,
+        "extraction_warnings": extraction_warnings,
+        "anomaly_flags": anomaly_flags,
+        "anomaly_risk_score": anomaly_risk_score,
+        "requirement_code_hint": req_code,
+        "field_reviews": {},
+        "reviewer_overrides": [],
+    }
+
     await db.extracted_documents.update_one(
         {"extraction_id": extraction_id},
         {
             "$set": {
                 "extracted": extracted_for_storage,
+                "extracted_fields": extracted_fields,
+                "extraction_confidence": overall,
+                "extraction_source": extraction_source,
+                "extraction_timestamp": now.isoformat(),
+                "ai_flags": ai_flags,
+                "extraction_warnings": extraction_warnings,
+                "anomaly_flags": anomaly_flags,
+                "anomaly_risk_score": anomaly_risk_score,
                 "mapping_suggestion": mapping_suggestion,
                 "status": status,
                 "errors": None,
@@ -263,7 +365,12 @@ async def run_extraction_job(extraction_id: str) -> None:
     )
     await db.documents.update_one(
         {"document_id": document_id},
-        {"$set": {"extraction_status": status}},
+        {
+            "$set": {
+                "extraction_status": status,
+                "ai_assistance": ai_assistance,
+            }
+        },
     )
     await create_audit_log(
         action=audit_action,
@@ -276,6 +383,10 @@ async def run_extraction_job(extraction_id: str) -> None:
             "status": status,
             "overall_confidence": overall,
             "has_expiry_date": bool(expiry_date),
+            "extraction_source": extraction_source,
+            "ai_flags": ai_flags,
+            "extraction_warnings": extraction_warnings,
+            "anomaly_risk_score": anomaly_risk_score,
         },
     )
     logger.info("Extraction %s completed for document %s: %s", extraction_id, document_id, status)

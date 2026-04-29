@@ -53,6 +53,10 @@ async def test_pending_verification_list_endpoint_shape_and_filtering():
     clients_cursor.to_list = AsyncMock(return_value=[])
     db.clients = MagicMock()
     db.clients.find = MagicMock(return_value=clients_cursor)
+    req_cursor = MagicMock()
+    req_cursor.to_list = AsyncMock(return_value=[])
+    db.requirements = MagicMock()
+    db.requirements.find = MagicMock(return_value=req_cursor)
 
     with patch("routes.admin.admin_route_guard", new_callable=AsyncMock), patch(
         "routes.admin.database.get_db", return_value=db

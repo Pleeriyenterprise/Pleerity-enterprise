@@ -27,7 +27,10 @@ from datetime import datetime, timezone, date
 from typing import Any, Dict, List, Optional, Tuple
 
 from models import DocumentStatus, RequirementStatus
+from models.evidence_review import EvidenceReviewState
 from services.evidence_document_match_engine import document_blocks_verified_satisfaction
+from services.evidence_review_config import is_feature_evidence_review_v2
+from services.evidence_review_migration import effective_evidence_review_state
 
 logger = logging.getLogger(__name__)
 
@@ -378,7 +381,18 @@ def _compute_authority(
         state = EA_REJECTED
         state_reason = "evidence_rejected"
         eff_doc_id = primary.get("document_id")
-    elif (primary.get("status") or "").upper() == DocumentStatus.VERIFIED.value and not evidence_match_blocks_satisfaction:
+    elif (
+        (primary.get("status") or "").upper() == DocumentStatus.VERIFIED.value
+        and not evidence_match_blocks_satisfaction
+        and (
+            not is_feature_evidence_review_v2()
+            or effective_evidence_review_state(primary)
+            in (
+                EvidenceReviewState.ACCEPTED_UNVERIFIED.value,
+                EvidenceReviewState.VERIFIED.value,
+            )
+        )
+    ):
         eff_doc_id = primary.get("document_id")
         eff_expiry = _doc_expiry(primary)
         eff_issue = _doc_issue(primary)
