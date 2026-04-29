@@ -34,6 +34,14 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { toast } from '@/utils/portalNotifications';
 import api from '../api/client';
 import AdminPendingPaymentsPage from './AdminPendingPaymentsPage';
+import AdminPaymentHistoryTable from '../components/admin/AdminPaymentHistoryTable';
+import AdminClientSupportSearch from '../components/admin/AdminClientSupportSearch';
+import {
+  getGovernanceConfirmationWording,
+  getGovernanceEscalationGuidance,
+  getGovernanceRiskBadgeClass,
+  getGovernanceWarning,
+} from '../utils/adminActionGovernance';
 
 const MIN_VALID_DATE_MS = 946684800000;
 
@@ -46,6 +54,7 @@ function formatAdminDate(isoOrDate) {
 
 /** Mirrors tenant BillingPage labels; `sl` = API `subscription_lifecycle` object */
 function humanLifecycleLabel(sl) {
+  if (sl?.lifecycle_status_label) return sl.lifecycle_status_label;
   if (!sl?.has_subscription) return 'No active subscription';
   if (sl.cancel_at_period_end) return 'Cancelling at period end';
   const lc = (sl.billing_lifecycle_state || 'active').toLowerCase();
@@ -62,11 +71,6 @@ const AdminBillingPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get('tab') || 'overview';
-  
-  // Search state
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searching, setSearching] = useState(false);
   
   // Selected client state (only when on overview tab)
   const [selectedClientId, setSelectedClientId] = useState(searchParams.get('client') || null);
@@ -95,11 +99,26 @@ const AdminBillingPage = () => {
 
   const [lifecycleJobRunning, setLifecycleJobRunning] = useState(false);
   const [lastLifecycleJobResult, setLastLifecycleJobResult] = useState(null);
+
+  const getRequiredReason = useCallback((actionId, actionLabel) => {
+    const reason = window.prompt(
+      `${actionLabel}\n${getGovernanceConfirmationWording(actionId)}\n\nEnter support reason (minimum 10 characters):`,
+      '',
+    );
+    if (reason == null) return null;
+    const trimmed = reason.trim();
+    if (trimmed.length < 10) {
+      toast.error('Reason must be at least 10 characters');
+      return null;
+    }
+    return trimmed;
+  }, []);
   const [stripeReconcileRunning, setStripeReconcileRunning] = useState(false);
 
   // Receipts & invoices (canonical ledger + orders)
   const [receipts, setReceipts] = useState([]);
   const [receiptsLoading, setReceiptsLoading] = useState(false);
+  const [receiptsError, setReceiptsError] = useState('');
   const [receiptTypeFilter, setReceiptTypeFilter] = useState('all');
   const [receiptStatusFilter, setReceiptStatusFilter] = useState('');
   const [receiptDateFrom, setReceiptDateFrom] = useState('');
@@ -132,6 +151,7 @@ const AdminBillingPage = () => {
       return;
     }
     setReceiptsLoading(true);
+    setReceiptsError('');
     try {
       const params = new URLSearchParams();
       params.set('type', receiptTypeFilter || 'all');
@@ -142,7 +162,9 @@ const AdminBillingPage = () => {
       setReceipts(response.data.receipts || []);
     } catch (error) {
       console.error('Receipts fetch error:', error);
-      toast.error(error.response?.data?.detail || 'Failed to load receipts');
+      const msg = error.response?.data?.detail || 'Failed to load payment history';
+      setReceiptsError(typeof msg === 'string' ? msg : 'Failed to load payment history');
+      toast.error(msg);
       setReceipts([]);
     } finally {
       setReceiptsLoading(false);
@@ -163,24 +185,6 @@ const AdminBillingPage = () => {
       setStatistics(response.data);
     } catch (error) {
       console.error('Failed to fetch statistics:', error);
-    }
-  };
-
-  const handleSearch = async (query) => {
-    if (!query || query.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    
-    setSearching(true);
-    try {
-      const response = await api.get(`/admin/billing/clients/search?q=${encodeURIComponent(query)}`);
-      setSearchResults(response.data.clients || []);
-    } catch (error) {
-      console.error('Search error:', error);
-      toast.error('Search failed');
-    } finally {
-      setSearching(false);
     }
   };
 
@@ -241,9 +245,11 @@ const AdminBillingPage = () => {
   };
 
   const handleRunStripeSubscriptionReconcile = async () => {
+    const reason = getRequiredReason('run_stripe_reconcile_batch', 'Run Stripe reconcile batch');
+    if (!reason) return;
     setStripeReconcileRunning(true);
     try {
-      const response = await api.post('/admin/billing/jobs/stripe-subscription-reconcile');
+      const response = await api.post('/admin/billing/jobs/stripe-subscription-reconcile', { reason });
       const d = response.data || {};
       toast.success('Stripe subscription reconcile finished', {
         description: `Reconciled: ${d.reconciled ?? '—'} · Errors: ${d.errors ?? '—'} · Attempted: ${d.attempted ?? '—'}`,
@@ -261,10 +267,12 @@ const AdminBillingPage = () => {
   };
 
   const handleRunSubscriptionLifecycleJob = async () => {
+    const reason = getRequiredReason('run_subscription_lifecycle_batch', 'Run subscription lifecycle batch');
+    if (!reason) return;
     setLifecycleJobRunning(true);
     setLastLifecycleJobResult(null);
     try {
-      const response = await api.post('/admin/billing/jobs/subscription-lifecycle');
+      const response = await api.post('/admin/billing/jobs/subscription-lifecycle', { reason });
       const d = response.data || {};
       setLastLifecycleJobResult(d);
       const m = d.outcome_metrics || {};
@@ -330,11 +338,14 @@ const AdminBillingPage = () => {
       toast.error('Select a different plan to change');
       return;
     }
+    const reason = getRequiredReason('change_plan', 'Change plan');
+    if (!reason) return;
     setChangingPlan(true);
     try {
       const response = await api.post(`/admin/billing/clients/${selectedClientId}/change-plan`, {
         plan_code: changePlanCode,
         apply_at_period_end: applyAtPeriodEnd,
+        reason,
       });
       if (response.data.success) {
         toast.success('Plan change applied', {
@@ -353,10 +364,12 @@ const AdminBillingPage = () => {
 
   const handleForceProvision = async () => {
     if (!selectedClientId) return;
+    const reason = getRequiredReason('force_provision', 'Force provision');
+    if (!reason) return;
     
     setProvisioning(true);
     try {
-      const response = await api.post(`/admin/billing/clients/${selectedClientId}/force-provision`);
+      const response = await api.post(`/admin/billing/clients/${selectedClientId}/force-provision`, { reason });
       
       if (response.data.success) {
         toast.success('Provisioning complete', {
@@ -410,18 +423,8 @@ const AdminBillingPage = () => {
     toast.success('Copied to clipboard');
   };
 
-  const receiptSourceLabel = (detail) => {
-    const m = {
-      subscription_checkout: 'CVP subscription',
-      intake_order: 'Intake order',
-      one_off_order: 'One-off service',
-      cvp_order: 'CVP order',
-    };
-    return m[detail] || detail || '—';
-  };
-
   const handleReceiptDownload = async (row) => {
-    if (!selectedClientId || !row.pdf_available) return;
+    if (!selectedClientId || !row.download_available) return;
     const key = row.receipt_key || '';
     setReceiptActionKey(`dl-${key}`);
     try {
@@ -452,7 +455,7 @@ const AdminBillingPage = () => {
   };
 
   const handleReceiptResend = async (row) => {
-    if (!selectedClientId) return;
+    if (!selectedClientId || !row.resend_available) return;
     const key = row.receipt_key || '';
     setReceiptActionKey(`rs-${key}`);
     try {
@@ -572,70 +575,14 @@ const AdminBillingPage = () => {
             {/* Search */}
             <Card data-testid="search-panel">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Find Client</CardTitle>
-                <CardDescription>Search by email, CRN, ID, or postcode</CardDescription>
+                <CardTitle className="text-base">Find customer</CardTitle>
+                <CardDescription>
+                  Canonical admin search (same as header and dashboard). Selecting a customer opens their Client Control Panel;
+                  use Billing from there when you need receipts or sync actions.
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    type="text"
-                    placeholder="Enter search term..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      handleSearch(e.target.value);
-                    }}
-                    className="pl-10"
-                    data-testid="search-input"
-                  />
-                </div>
-                
-                {/* Search Results */}
-                {searchResults.length > 0 && (
-                  <div className="mt-4 space-y-2 max-h-96 overflow-y-auto" data-testid="search-results">
-                    {searchResults.map((client) => (
-                      <button
-                        key={client.client_id}
-                        onClick={() => setSelectedClientId(client.client_id)}
-                        className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                          selectedClientId === client.client_id
-                            ? 'border-electric-teal bg-teal-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                        data-testid={`client-result-${client.client_id}`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900 text-sm">{client.contact_name || client.company_name || 'Unknown'}</p>
-                            <p className="text-xs text-gray-500">{client.contact_email}</p>
-                            {client.crn && <p className="text-xs text-gray-400">CRN: {client.crn}</p>}
-                            {client.billing_lifecycle_state === 'grace_period' && (
-                              <p className="text-xs text-amber-700 font-medium mt-0.5">Grace period (payment retry)</p>
-                            )}
-                          </div>
-                          <div className="flex flex-col items-end gap-1 shrink-0">
-                            {getEntitlementBadge(client.entitlement_status)}
-                            {client.billing_lifecycle_state &&
-                              client.billing_lifecycle_state !== 'active' &&
-                              client.billing_lifecycle_state !== 'renewing' && (
-                                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-700 uppercase">
-                                  {client.billing_lifecycle_state.replace(/_/g, ' ')}
-                                </span>
-                              )}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                
-                {searching && (
-                  <div className="mt-4 text-center text-gray-500 text-sm">
-                    <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
-                    Searching...
-                  </div>
-                )}
+                <AdminClientSupportSearch variant="panel" limit={15} initialQuery={searchParams.get('q') || ''} />
               </CardContent>
             </Card>
 
@@ -835,6 +782,10 @@ const AdminBillingPage = () => {
                     <CardDescription>Summary fields for support — Stripe remains the billing authority.</CardDescription>
                   </CardHeader>
                   <CardContent>
+                    <div className="rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700 mb-3">
+                      Recovery path: compare Stripe and local state here, then use one safe sync/reconcile action. If
+                      mismatch remains after refresh, this is <span className="font-semibold">Engineering escalation required</span>.
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div>
                         <p className="text-gray-500">Next billing / period end</p>
@@ -847,13 +798,13 @@ const AdminBillingPage = () => {
                         </p>
                       </div>
                       <div>
-                        <p className="text-gray-500">Billing sync state</p>
+                        <p className="text-gray-500">Last updated from Stripe</p>
                         <p className="font-mono text-xs">
                           {billingSnapshot.billing_sync_state || billingSnapshot.subscription_lifecycle?.billing_sync_state || '—'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-gray-500">Last billing sync (API)</p>
+                        <p className="text-gray-500">Stripe update timestamp</p>
                         <p className="font-medium text-xs">
                           {formatAdminDate(
                             billingSnapshot.billing_last_synced_at ||
@@ -886,7 +837,7 @@ const AdminBillingPage = () => {
                         </p>
                       </div>
                       <div>
-                        <p className="text-gray-500">Canonical entitlement</p>
+                        <p className="text-gray-500">Access state</p>
                         <p className="font-mono text-xs">
                           {billingSnapshot.canonical_entitlement_state ||
                             billingSnapshot.subscription_lifecycle?.canonical_entitlement_state ||
@@ -946,6 +897,11 @@ const AdminBillingPage = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3 text-sm">
+                      {billingSnapshot.billing_reconciliation_needed ? (
+                        <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+                          Reconciliation required: {billingSnapshot.billing_reconciliation_reason || 'Needs review'}
+                        </div>
+                      ) : null}
                       {(() => {
                         const sl = billingSnapshot.subscription_lifecycle;
                         const subStripe = String(
@@ -955,7 +911,7 @@ const AdminBillingPage = () => {
                           <>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
-                                <p className="text-gray-500">Summary</p>
+                                <p className="text-gray-500">Lifecycle status</p>
                                 <p className="font-medium text-midnight-blue">{humanLifecycleLabel(sl)}</p>
                               </div>
                               <div>
@@ -973,7 +929,7 @@ const AdminBillingPage = () => {
                                 <div className="mt-1">{getEntitlementBadge(sl.entitlement_status || '—')}</div>
                               </div>
                               <div>
-                                <p className="text-gray-500">canonical_entitlement_state</p>
+                                <p className="text-gray-500">Access state</p>
                                 <p className="font-mono text-xs">{sl.canonical_entitlement_state || '—'}</p>
                               </div>
                               <div>
@@ -983,11 +939,19 @@ const AdminBillingPage = () => {
                                 </p>
                               </div>
                               <div>
-                                <p className="text-gray-500">billing_sync_state</p>
+                                <p className="text-gray-500">Last updated from Stripe</p>
                                 <p className="font-mono text-xs">{sl.billing_sync_state || '—'}</p>
                               </div>
                               <div>
-                                <p className="text-gray-500">billing_last_synced_at</p>
+                                <p className="text-gray-500">Reconciliation needed</p>
+                                <p className="font-medium">{billingSnapshot.billing_reconciliation_needed ? 'Yes' : 'No'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Reconciliation reason</p>
+                                <p className="font-mono text-xs">{billingSnapshot.billing_reconciliation_reason || '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Stripe update timestamp</p>
                                 <p className="font-medium text-xs">{formatAdminDate(sl.billing_last_synced_at) || '—'}</p>
                               </div>
                               <div>
@@ -1280,91 +1244,14 @@ const AdminBillingPage = () => {
                       </Button>
                     </div>
 
-                    {receiptsLoading && receipts.length === 0 ? (
-                      <div className="flex items-center gap-2 text-sm text-gray-500 py-6 justify-center">
-                        <Loader2 className="w-5 h-5 animate-spin text-electric-teal" />
-                        Loading receipts…
-                      </div>
-                    ) : receipts.length === 0 ? (
-                      <p className="text-sm text-gray-600 py-6 text-center border border-dashed rounded-md bg-gray-50/50">
-                        No receipts available for this client yet.
-                      </p>
-                    ) : (
-                      <div className="overflow-x-auto border rounded-md">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="bg-gray-50 text-left border-b">
-                              <th className="p-2 font-medium">Invoice #</th>
-                              <th className="p-2 font-medium">Reference</th>
-                              <th className="p-2 font-medium">Issued</th>
-                              <th className="p-2 font-medium">Amount</th>
-                              <th className="p-2 font-medium">Status</th>
-                              <th className="p-2 font-medium">Payment</th>
-                              <th className="p-2 font-medium">Source</th>
-                              <th className="p-2 font-medium">PDF / Email</th>
-                              <th className="p-2 font-medium text-right">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {receipts.map((row) => {
-                              const rk = row.receipt_key || '';
-                              const busyDl = receiptActionKey === `dl-${rk}`;
-                              const busyRs = receiptActionKey === `rs-${rk}`;
-                              const issued = row.date_issued
-                                ? new Date(row.date_issued).toLocaleDateString()
-                                : '—';
-                              return (
-                                <tr key={rk} className="border-b last:border-0 hover:bg-gray-50/80">
-                                  <td className="p-2 font-mono text-xs">{row.invoice_number || '—'}</td>
-                                  <td className="p-2 font-mono text-xs max-w-[140px] truncate" title={row.order_reference}>
-                                    {row.order_reference || '—'}
-                                  </td>
-                                  <td className="p-2 whitespace-nowrap">{issued}</td>
-                                  <td className="p-2">{row.amount_display || '—'}</td>
-                                  <td className="p-2">{row.payment_status || '—'}</td>
-                                  <td className="p-2 text-xs">{row.payment_method || '—'}</td>
-                                  <td className="p-2 text-xs">{receiptSourceLabel(row.source_detail)}</td>
-                                  <td className="p-2 text-xs">
-                                    <span className={row.pdf_available ? 'text-green-700' : 'text-amber-700'}>
-                                      PDF: {row.pdf_available ? 'yes' : 'no'}
-                                    </span>
-                                    <br />
-                                    <span className="text-gray-600">
-                                      Emailed: {row.email_sent_at ? new Date(row.email_sent_at).toLocaleString() : '—'}
-                                    </span>
-                                  </td>
-                                  <td className="p-2 text-right whitespace-nowrap">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 px-2"
-                                      disabled={!row.pdf_available || busyDl}
-                                      onClick={() => handleReceiptDownload(row)}
-                                      data-testid={`receipt-download-${rk}`}
-                                    >
-                                      {busyDl ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 px-2"
-                                      disabled={busyRs}
-                                      onClick={() => handleReceiptResend(row)}
-                                      title="Resend confirmation email with receipt when available"
-                                      data-testid={`receipt-resend-${rk}`}
-                                    >
-                                      {busyRs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                    </Button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                    <AdminPaymentHistoryTable
+                      rows={receipts}
+                      loading={receiptsLoading}
+                      error={receiptsError}
+                      actionKey={receiptActionKey}
+                      onDownload={handleReceiptDownload}
+                      onResend={handleReceiptResend}
+                    />
                   </CardContent>
                 </Card>
 
@@ -1374,6 +1261,13 @@ const AdminBillingPage = () => {
                     <CardTitle className="text-base">Admin Actions</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+                      <span className="font-semibold">High-impact operation</span> - run one recovery action at a time,
+                      verify snapshot updates, then escalate if inconsistency persists.
+                    </div>
+                    <div className="rounded-md border border-gray-200 bg-gray-50 p-2 text-xs text-gray-700">
+                      {getGovernanceEscalationGuidance('run_subscription_lifecycle_batch')}
+                    </div>
                     {/* Sync Button */}
                     <Button
                       onClick={handleSync}
@@ -1405,6 +1299,9 @@ const AdminBillingPage = () => {
                         <Play className="w-4 h-4 mr-2" />
                       )}
                       Run subscription lifecycle job
+                      <span className={`ml-auto rounded border px-2 py-0.5 text-[10px] ${getGovernanceRiskBadgeClass('run_subscription_lifecycle_batch')}`}>
+                        Governed
+                      </span>
                     </Button>
 
                     <Button
@@ -1422,6 +1319,9 @@ const AdminBillingPage = () => {
                         <RefreshCw className="w-4 h-4 mr-2" />
                       )}
                       Run Stripe subscription reconcile batch
+                      <span className={`ml-auto rounded border px-2 py-0.5 text-[10px] ${getGovernanceRiskBadgeClass('run_stripe_reconcile_batch')}`}>
+                        Governed
+                      </span>
                     </Button>
                     {lastLifecycleJobResult?.outcome_metrics && (
                       <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 space-y-1">
@@ -1497,10 +1397,14 @@ const AdminBillingPage = () => {
                         <Play className="w-4 h-4 mr-2" />
                       )}
                       Re-run Provisioning
+                      <span className={`ml-auto rounded border px-2 py-0.5 text-[10px] ${getGovernanceRiskBadgeClass('force_provision')}`}>
+                        Governed
+                      </span>
                       {billingSnapshot.entitlement_status !== 'ENABLED' && (
                         <span className="ml-auto text-xs text-gray-400">(Requires ENABLED)</span>
                       )}
                     </Button>
+                    <p className="text-[11px] text-gray-600">{getGovernanceWarning('force_provision')}</p>
 
                     {/* Send Message */}
                     <Button

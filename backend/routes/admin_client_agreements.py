@@ -10,7 +10,10 @@ from pydantic import BaseModel, Field
 from database import database
 from middleware import admin_route_guard
 from models.agreements import COL_AGREEMENT_ACCEPTANCES, COL_ISSUED_AGREEMENTS, DEFAULT_TEMPLATE_CODE
+from models import AuditAction
 from services.agreement_issuance_service import issue_agreement_for_subscription_payment_retry, load_issued_pdf_bytes
+from services.admin_action_governance import ensure_action_reason, normalized_admin_action_metadata
+from utils.audit import create_audit_log
 
 router = APIRouter(prefix="/api/admin/clients", tags=["admin-client-agreements"])
 
@@ -18,6 +21,7 @@ router = APIRouter(prefix="/api/admin/clients", tags=["admin-client-agreements"]
 class AgreementRetryIssueBody(BaseModel):
     acceptance_id: str = Field(..., min_length=1)
     payment_reference: str = Field(..., min_length=1)
+    reason: str = Field(..., min_length=10, max_length=2000)
 
 
 @router.get("/{client_id}/agreements/summary")
@@ -56,6 +60,11 @@ async def get_client_agreements_summary(client_id: str, current_user: dict = Dep
         }
 
     latest_failure = next((i for i in issued if i.get("outcome") == "issuance_failed"), None)
+    retry_eligible = bool(
+        latest_failure
+        and str(latest_failure.get("acceptance_id") or "").strip()
+        and str(latest_failure.get("payment_reference") or "").strip()
+    )
 
     return {
         "client_id": client_id,
@@ -64,6 +73,7 @@ async def get_client_agreements_summary(client_id: str, current_user: dict = Dep
         "acceptances": acceptances,
         "issued_agreements": [issued_public_row(x) for x in issued],
         "latest_issuance_failure": latest_failure,
+        "retry_eligible": retry_eligible,
     }
 
 
@@ -86,7 +96,8 @@ async def download_issued_agreement_pdf(
 
 @router.post("/{client_id}/agreements/retry-issue")
 async def retry_agreement_issue(client_id: str, body: AgreementRetryIssueBody, current_user: dict = Depends(admin_route_guard)):
-    _ = current_user
+    actor_id = current_user.get("portal_user_id") or current_user.get("email") or current_user.get("user_id") or "admin"
+    support_reason = ensure_action_reason("retry_agreement_issuance", body.reason)
     db = database.get_db()
     client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "customer_reference": 1})
     if not client:
@@ -105,4 +116,17 @@ async def retry_agreement_issue(client_id: str, body: AgreementRetryIssueBody, c
     )
     if not ok:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"error": err})
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=actor_id,
+        client_id=client_id,
+        resource_type="agreement",
+        resource_id=str((doc or {}).get("issued_id") or body.acceptance_id),
+        metadata={
+            "event": "admin_retry_agreement_issue",
+            **normalized_admin_action_metadata("retry_agreement_issuance", support_reason),
+            "acceptance_id": body.acceptance_id,
+            "payment_reference": body.payment_reference.strip(),
+        },
+    )
     return {"ok": True, "issued": doc}

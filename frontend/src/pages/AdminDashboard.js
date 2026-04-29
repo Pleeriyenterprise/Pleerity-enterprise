@@ -4,10 +4,17 @@ import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-do
 import api, { adminAPI, parseApiError, parseStructuredApiDetail } from '../api/client';
 import { useStepUpApi } from '../hooks/useStepUpApi';
 import { toast } from '@/utils/portalNotifications';
+import {
+  assuranceTierLabel,
+  effectiveAssuranceTier,
+  effectiveEvidenceReviewState,
+  reviewStateLabel,
+} from '../utils/evidenceReviewUi';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { presentScoreChangeReason } from '../utils/timelinePresent';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import AccountEnvironmentBadge from '../components/admin/AccountEnvironmentBadge';
+import AdminClientSupportSearch from '../components/admin/AdminClientSupportSearch';
 import {
   accountEnvironmentActionNote,
   clientOrgPermanentDeleteHint,
@@ -15,6 +22,12 @@ import {
   NON_PRODUCTION_ACCOUNT_LABEL,
   PRODUCTION_ACCOUNT_LABEL,
 } from '../utils/adminAccountClassification';
+import {
+  formatAuditTimestampUtc,
+  getAuditEventLabel,
+  getAuditEventSeverity,
+  getAuditSeverityBadgeClass,
+} from '../utils/adminAuditLabels';
 import { 
   LayoutDashboard, 
   Users, 
@@ -102,172 +115,6 @@ function adminEnterpriseLifecycleBadgeClass(derived) {
   if (d === 'LEAD') return 'bg-violet-100 text-violet-900';
   return 'bg-sky-100 text-sky-900';
 }
-
-// Global Search Component
-function globalSearchInactiveLabel(client) {
-  const st = (client.client_lifecycle_status || '').toUpperCase();
-  if (client.is_deleted || st === 'ARCHIVED' || st === 'PURGE_ELIGIBLE') return 'Archived';
-  if (st === 'SUSPENDED') return 'Suspended';
-  return null;
-}
-
-const GlobalSearch = ({ onSelectClient }) => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const [includeArchived, setIncludeArchived] = useState(false);
-  const searchRef = useRef(null);
-  const debounceTimer = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSearch = useCallback(async (searchTerm) => {
-    if (!searchTerm || searchTerm.length < 2) {
-      setResults([]);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        q: searchTerm,
-        limit: '10',
-        ...(includeArchived ? { include_archived: 'true' } : {}),
-      });
-      const response = await api.get(`/admin/search?${params.toString()}`);
-      setResults(response.data.results || []);
-      setIsOpen(true);
-    } catch (error) {
-      console.error('Search error:', error);
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [includeArchived]);
-
-  const handleInputChange = (e) => {
-    const value = e.target.value;
-    setQuery(value);
-
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
-    debounceTimer.current = setTimeout(() => {
-      handleSearch(value);
-    }, 300);
-  };
-
-  const toggleIncludeArchived = (checked) => {
-    setIncludeArchived(checked);
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
-    if (query.trim().length >= 2) {
-      debounceTimer.current = setTimeout(() => handleSearch(query.trim()), 150);
-    }
-  };
-
-  const handleSelectResult = (client) => {
-    setQuery('');
-    setResults([]);
-    setIsOpen(false);
-    onSelectClient(client);
-  };
-
-  return (
-    <div ref={searchRef} className="relative" data-testid="global-search">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          value={query}
-          onChange={handleInputChange}
-          placeholder="Search by CRN, email, name, postcode..."
-          className="w-64 pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-electric-teal focus:border-transparent"
-          data-testid="global-search-input"
-        />
-        {loading && (
-          <RefreshCw className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
-        )}
-      </div>
-      <label className="flex items-center gap-2 mt-1.5 text-[11px] text-white/75 cursor-pointer select-none max-w-64">
-        <input
-          type="checkbox"
-          checked={includeArchived}
-          onChange={(e) => toggleIncludeArchived(e.target.checked)}
-          className="rounded border-white/40 bg-white/10 text-electric-teal focus:ring-electric-teal"
-          data-testid="global-search-include-archived"
-        />
-        Include archived &amp; suspended
-      </label>
-
-      {isOpen && results.length > 0 && (
-        <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden" data-testid="search-results">
-          <div className="p-2 text-xs text-gray-500 border-b border-gray-100">
-            {results.length} result{results.length !== 1 ? 's' : ''} found
-            {!includeArchived ? <span className="block text-[10px] text-gray-400 mt-0.5">Archived / suspended hidden — enable above to find them</span> : null}
-          </div>
-          <div className="max-h-80 overflow-y-auto">
-            {results.map((client) => {
-              const inactiveLabel = includeArchived ? globalSearchInactiveLabel(client) : null;
-              return (
-              <button
-                key={client.client_id}
-                onClick={() => handleSelectResult(client)}
-                className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
-                data-testid={`search-result-${client.client_id}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-midnight-blue flex flex-wrap items-center gap-1.5">
-                      {client.full_name}
-                      <AccountEnvironmentBadge doc={client} />
-                      {inactiveLabel ? (
-                        <span className="text-[10px] font-normal px-1.5 py-0 rounded bg-slate-200 text-slate-700">
-                          {inactiveLabel}
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="text-sm text-gray-500">{client.email}</p>
-                  </div>
-                  <div className="text-right">
-                    {client.customer_reference && (
-                      <span className="inline-block px-2 py-1 bg-electric-teal/10 text-electric-teal text-xs font-mono rounded">
-                        {client.customer_reference}
-                      </span>
-                    )}
-                    {client.matched_via === 'postcode' && (
-                      <p className="text-xs text-gray-400 mt-1">via {client.matched_postcode}</p>
-                    )}
-                  </div>
-                </div>
-              </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {isOpen && query.length >= 2 && results.length === 0 && !loading && (
-        <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 p-4 text-center text-gray-500 text-sm">
-          <p>No results found</p>
-          {!includeArchived ? (
-            <p className="text-[11px] text-gray-400 mt-2">Try &quot;Include archived &amp; suspended&quot; if this is a dormant account.</p>
-          ) : null}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // Client Detail Modal Component
 const ClientDetailModal = ({ clientId, onClose }) => {
@@ -2351,22 +2198,37 @@ const AuditLogs = () => {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Severity</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp (UTC)</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {(logs ?? []).filter(Boolean).map((log, idx) => (
+                {(logs ?? []).filter(Boolean).map((log, idx) => {
+                  const raw = log?.action ?? '';
+                  const sev = getAuditEventSeverity(raw);
+                  return (
                   <tr key={log?.log_id ?? idx} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex text-[10px] font-semibold uppercase px-2 py-0.5 rounded ${getAuditSeverityBadgeClass(sev)}`}>
+                        {sev}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {log?.timestamp ? new Date(log.timestamp).toLocaleString() : '—'}
+                      {log?.timestamp ? formatAuditTimestampUtc(log.timestamp) : '—'}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getActionColor(log?.action)}`}>
-                        {getActionIcon(log?.action)}
-                        {log?.action ?? '—'}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getActionColor(log?.action)}`}>
+                          {getActionIcon(log?.action)}
+                          {getAuditEventLabel(raw)}
+                        </span>
+                        <details className="text-xs text-gray-600">
+                          <summary className="cursor-pointer text-electric-teal select-none">Raw event type</summary>
+                          <span className="font-mono break-all">{raw || '—'}</span>
+                        </details>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {log?.metadata && typeof log.metadata === 'object' && !Array.isArray(log.metadata)
@@ -2376,7 +2238,8 @@ const AuditLogs = () => {
                         : '—'}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -4671,7 +4534,7 @@ const StatisticsDashboard = ({ onNavigateToTab }) => {
 // Dashboard Overview
 const EMPTY_STATS = { stats: {}, compliance_overview: {}, recent_activity: [] };
 
-const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
+export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
   const navigate = useNavigate();
   const [stats, setStats] = useState(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
@@ -4692,6 +4555,17 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
   const [resolveMatchReason, setResolveMatchReason] = useState('');
   const [resolveRelinkId, setResolveRelinkId] = useState('');
   const [resolveSubmitting, setResolveSubmitting] = useState(false);
+  const [aiReviewDoc, setAiReviewDoc] = useState(null);
+  const [aiReviewPayload, setAiReviewPayload] = useState(null);
+  const [aiReviewLoading, setAiReviewLoading] = useState(false);
+  const [verificationHelpers, setVerificationHelpers] = useState([]);
+  const [verificationMethod, setVerificationMethod] = useState('MANUAL_CONFIRMATION');
+  const [verificationReference, setVerificationReference] = useState('');
+  const [verificationNotes, setVerificationNotes] = useState('');
+  const [verificationSubmitting, setVerificationSubmitting] = useState(false);
+  const [aiFieldOverrideValue, setAiFieldOverrideValue] = useState('');
+  const [aiFieldOverrideReason, setAiFieldOverrideReason] = useState('');
+  const [aiFieldSubmitting, setAiFieldSubmitting] = useState(false);
   const [backfillBusy, setBackfillBusy] = useState(false);
   const [priorityActions, setPriorityActions] = useState({ actions: [], total: 0 });
   const [priorityActionsClientId, setPriorityActionsClientId] = useState('');
@@ -4827,9 +4701,15 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
 
   const handleBackfillEvidenceMatch = async () => {
     if (!window.confirm('Run evidence-match backfill on up to 50 documents missing match_outcome? This is audited.')) return;
+    const reason = window.prompt('Enter support reason for evidence-match backfill (minimum 10 characters):', '');
+    const trimmedReason = (reason || '').trim();
+    if (!trimmedReason || trimmedReason.length < 10) {
+      toast.error('Reason must be at least 10 characters');
+      return;
+    }
     setBackfillBusy(true);
     try {
-      const { data } = await adminAPI.backfillEvidenceMatch({ limit: 50, dry_run: false });
+      const { data } = await adminAPI.backfillEvidenceMatch({ limit: 50, dry_run: false, reason: trimmedReason });
       toast.success(`Backfill complete: updated ${data?.updated ?? 0} (scanned ${data?.scanned ?? 0})`);
       fetchPendingVerification();
     } catch (e) {
@@ -4860,6 +4740,90 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
       toast.error(e.response?.data?.detail || 'Failed to reject document');
     } finally {
       setRejectSubmitting(false);
+    }
+  };
+
+  const handleOpenAiReview = async (doc) => {
+    if (!doc?.document_id) return;
+    setAiReviewDoc(doc);
+    setAiReviewPayload(null);
+    setAiReviewLoading(true);
+    setAiFieldOverrideValue('');
+    setAiFieldOverrideReason('');
+    setVerificationReference('');
+    setVerificationNotes('');
+    setVerificationMethod('MANUAL_CONFIRMATION');
+    setVerificationHelpers([]);
+    try {
+      const [aiRes, helperRes] = await Promise.all([
+        adminAPI.getDocumentAiAssistance(doc.document_id),
+        adminAPI.getDocumentVerificationHelpers(doc.document_id),
+      ]);
+      setAiReviewPayload(aiRes?.data?.ai_assistance || {});
+      const helpers = Array.isArray(helperRes?.data?.helpers) ? helperRes.data.helpers : [];
+      setVerificationHelpers(helpers);
+      if (helpers[0]?.suggested_method) setVerificationMethod(helpers[0].suggested_method);
+    } catch (e) {
+      toast.error(parseApiError(e, 'Failed to load AI extraction review details'));
+      setAiReviewDoc(null);
+    } finally {
+      setAiReviewLoading(false);
+    }
+  };
+
+  const handleRecordExternalVerification = async () => {
+    if (!aiReviewDoc?.document_id) return;
+    if (!verificationMethod.trim()) {
+      toast.error('Select verification method');
+      return;
+    }
+    setVerificationSubmitting(true);
+    try {
+      await adminAPI.recordDocumentExternalVerification(aiReviewDoc.document_id, {
+        verification_method: verificationMethod.trim(),
+        verification_reference: verificationReference.trim() || null,
+        verification_notes: verificationNotes.trim() || null,
+      });
+      toast.success('External verification recorded (reviewer action, audited)');
+      fetchPendingVerification();
+      fetchStats();
+      const aiRes = await adminAPI.getDocumentAiAssistance(aiReviewDoc.document_id);
+      setAiReviewPayload(aiRes?.data?.ai_assistance || {});
+    } catch (e) {
+      toast.error(parseApiError(e, 'Failed to record external verification'));
+    } finally {
+      setVerificationSubmitting(false);
+    }
+  };
+
+  const handleApplyAiFieldAction = async (fieldName, action, overrideValue = null) => {
+    if (!aiReviewDoc?.document_id || !fieldName) return;
+    if (action === 'OVERRIDE' && !aiFieldOverrideReason.trim()) {
+      toast.error('Override reason is required');
+      return;
+    }
+    setAiFieldSubmitting(true);
+    try {
+      const body = {
+        field_name: fieldName,
+        action,
+        notes: action === 'OVERRIDE' ? `Override for ${fieldName}` : `Field ${action.toLowerCase()}: ${fieldName}`,
+      };
+      if (action === 'OVERRIDE') {
+        body.override_value = overrideValue;
+        body.override_reason = aiFieldOverrideReason.trim();
+      }
+      await adminAPI.applyDocumentAiFieldAction(aiReviewDoc.document_id, body);
+      const res = await adminAPI.getDocumentAiAssistance(aiReviewDoc.document_id);
+      setAiReviewPayload(res?.data?.ai_assistance || {});
+      toast.success(`Field action recorded (${action})`);
+      setAiFieldOverrideValue('');
+      setAiFieldOverrideReason('');
+      fetchPendingVerification();
+    } catch (e) {
+      toast.error(parseApiError(e, 'Failed to apply field action'));
+    } finally {
+      setAiFieldSubmitting(false);
     }
   };
 
@@ -4993,6 +4957,14 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-midnight-blue">Dashboard Overview</h2>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4" data-testid="admin-dashboard-support-search">
+        <h3 className="text-sm font-semibold text-midnight-blue mb-2">Find a customer</h3>
+        <p className="text-xs text-gray-500 mb-3">
+          Same search as the admin header and billing — opens the Client Control Panel for the selected account.
+        </p>
+        <AdminClientSupportSearch variant="panel" showIncludeArchived limit={12} />
+      </div>
 
       {Array.isArray(stats?.operational_alerts) && stats.operational_alerts.length > 0 && (
         <div
@@ -5240,13 +5212,18 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
                   <th className="py-2 pr-4">Satisfies</th>
                   <th className="py-2 pr-4">Mismatch reason</th>
                   <th className="py-2 pr-4">Legacy</th>
+                  <th className="py-2 pr-4">Review state</th>
+                  <th className="py-2 pr-4">Assurance</th>
+                  <th className="py-2 pr-4">Validation</th>
+                  <th className="py-2 pr-4">AI warnings</th>
+                  <th className="py-2 pr-4">Anomaly risk</th>
                   <th className="py-2 pr-4">Uploaded at</th>
                   <th className="py-2 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {(pendingList.documents ?? []).length === 0 ? (
-                  <tr><td colSpan={14} className="py-4 text-gray-500 text-center">No documents matching filters.</td></tr>
+                  <tr><td colSpan={19} className="py-4 text-gray-500 text-center">No documents matching filters.</td></tr>
                 ) : (
                   (pendingList.documents ?? []).filter(Boolean).map((doc, idx) => (
                     <tr
@@ -5302,6 +5279,54 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
                           '—'
                         )}
                       </td>
+                      <td className="py-2 pr-4 text-xs">
+                        {reviewStateLabel(effectiveEvidenceReviewState(doc))}
+                      </td>
+                      <td className="py-2 pr-4 text-xs">
+                        {assuranceTierLabel(effectiveAssuranceTier(doc))}
+                      </td>
+                      <td className="py-2 pr-4 text-xs max-w-[220px]">
+                        {(() => {
+                          const snap = doc?.latest_validation_snapshot || {};
+                          const status = String(snap.validation_status || '').toUpperCase();
+                          const warnings = Array.isArray(snap.warnings) ? snap.warnings : [];
+                          const failures = Array.isArray(snap.failures) ? snap.failures : [];
+                          if (!status && warnings.length === 0 && failures.length === 0) return '—';
+                          const summary = `${status || 'UNKNOWN'} · ${warnings.length} warning(s), ${failures.length} failure(s)`;
+                          const details = [
+                            warnings.length ? `Warnings: ${warnings.join(', ')}` : '',
+                            failures.length ? `Failures: ${failures.join(', ')}` : '',
+                          ].filter(Boolean).join(' | ');
+                          return (
+                            <span title={details || summary}>
+                              {summary}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td className="py-2 pr-4 text-xs max-w-[220px]">
+                        {(() => {
+                          const ai = doc?.ai_assistance || {};
+                          const warns = Array.isArray(ai.extraction_warnings) ? ai.extraction_warnings : [];
+                          const flags = Array.isArray(ai.ai_flags) ? ai.ai_flags : [];
+                          if (warns.length === 0 && flags.length === 0) return '—';
+                          const summary = `${warns.length} warning(s), ${flags.length} flag(s)`;
+                          const details = [
+                            warns.length ? `Warnings: ${warns.join(', ')}` : '',
+                            flags.length ? `Flags: ${flags.join(', ')}` : '',
+                          ].filter(Boolean).join(' | ');
+                          return <span title={details || summary}>{summary}</span>;
+                        })()}
+                      </td>
+                      <td className="py-2 pr-4 text-xs">
+                        {(() => {
+                          const ai = doc?.ai_assistance || {};
+                          const risk = Number(ai.anomaly_risk_score);
+                          if (Number.isNaN(risk)) return '—';
+                          const label = risk >= 0.65 ? 'High' : risk >= 0.35 ? 'Medium' : 'Low';
+                          return <span title={`Risk score: ${risk.toFixed(2)}`}>{`${label} (${risk.toFixed(2)})`}</span>;
+                        })()}
+                      </td>
                       <td className="py-2 pr-4 text-gray-600">{doc?.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : '—'}</td>
                       <td className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2 flex-wrap">
@@ -5324,6 +5349,14 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
                           >
                             <Download className="w-3.5 h-3.5" />
                             Download
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAiReview(doc)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded"
+                            data-testid={`ai-review-doc-${doc?.document_id}`}
+                          >
+                            AI review
                           </button>
                           <button
                             type="button"
@@ -5372,6 +5405,223 @@ const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
           </div>
         )}
       </div>
+
+      {aiReviewDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-labelledby="ai-review-title">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl p-6 max-h-[90vh] overflow-auto">
+            <h2 id="ai-review-title" className="text-lg font-semibold text-midnight-blue mb-2">AI extraction field review</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Document {aiReviewDoc.document_id}. Reviewer actions are individually audited. No auto-approval is performed.
+            </p>
+            {aiReviewLoading ? (
+              <div className="py-6 text-sm text-gray-500">Loading AI assistance details...</div>
+            ) : (
+              <>
+                <div className="mb-4 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div>Extraction source: {aiReviewPayload?.extraction_source || '—'}</div>
+                  <div>Confidence: {aiReviewPayload?.extraction_confidence != null ? Number(aiReviewPayload.extraction_confidence).toFixed(2) : '—'}</div>
+                  <div>Anomaly risk: {aiReviewPayload?.anomaly_risk_score != null ? Number(aiReviewPayload.anomaly_risk_score).toFixed(2) : '—'}</div>
+                </div>
+
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-2">Extraction fields</h3>
+                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-gray-50">
+                        <tr className="text-left text-gray-600">
+                          <th className="px-3 py-2">Field</th>
+                          <th className="px-3 py-2">Original extracted value</th>
+                          <th className="px-3 py-2">Current reviewer value</th>
+                          <th className="px-3 py-2">Status</th>
+                          <th className="px-3 py-2">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const original = aiReviewPayload?.original_extracted_fields || {};
+                          const current = aiReviewPayload?.extracted_fields || {};
+                          const reviews = aiReviewPayload?.field_reviews || {};
+                          const keys = Array.from(new Set([...Object.keys(original), ...Object.keys(current), ...Object.keys(reviews)])).sort();
+                          if (!keys.length) {
+                            return <tr><td colSpan={5} className="px-3 py-3 text-gray-500">No extracted fields available.</td></tr>;
+                          }
+                          return keys.map((key) => {
+                            const rv = reviews[key] || {};
+                            const status = rv.status || 'PENDING';
+                            const originalVal = original[key];
+                            const currentVal = current[key];
+                            return (
+                              <tr key={key} className="border-t border-gray-100">
+                                <td className="px-3 py-2 font-mono">{key}</td>
+                                <td className="px-3 py-2">{originalVal == null ? '—' : JSON.stringify(originalVal)}</td>
+                                <td className="px-3 py-2">{currentVal == null ? '—' : JSON.stringify(currentVal)}</td>
+                                <td className="px-3 py-2">{status}</td>
+                                <td className="px-3 py-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <button
+                                      type="button"
+                                      className="px-2 py-1 rounded bg-green-100 text-green-700"
+                                      disabled={aiFieldSubmitting}
+                                      onClick={() => handleApplyAiFieldAction(key, 'ACCEPT')}
+                                    >
+                                      Accept
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="px-2 py-1 rounded bg-red-100 text-red-700"
+                                      disabled={aiFieldSubmitting}
+                                      onClick={() => handleApplyAiFieldAction(key, 'REJECT')}
+                                    >
+                                      Reject
+                                    </button>
+                                    <input
+                                      type="text"
+                                      placeholder="Override value"
+                                      value={aiFieldOverrideValue}
+                                      onChange={(e) => setAiFieldOverrideValue(e.target.value)}
+                                      className="border border-gray-300 rounded px-2 py-1"
+                                    />
+                                    <button
+                                      type="button"
+                                      className="px-2 py-1 rounded bg-amber-100 text-amber-800"
+                                      disabled={aiFieldSubmitting}
+                                      onClick={() => handleApplyAiFieldAction(key, 'OVERRIDE', aiFieldOverrideValue)}
+                                    >
+                                      Override
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          });
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Override reason (required for override actions)</label>
+                    <textarea
+                      value={aiFieldOverrideReason}
+                      onChange={(e) => setAiFieldOverrideReason(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs min-h-[64px]"
+                      placeholder="Explain why manual override is required"
+                      data-testid="ai-override-reason"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-2">Anomaly drilldown</h3>
+                  {Array.isArray(aiReviewPayload?.anomaly_flags) && aiReviewPayload.anomaly_flags.length > 0 ? (
+                    <div className="space-y-2">
+                      {aiReviewPayload.anomaly_flags.map((f, idx) => (
+                        <details key={`${f?.code || 'flag'}-${idx}`} className="border border-gray-200 rounded-lg p-2">
+                          <summary className="cursor-pointer text-xs font-medium">
+                            {f?.code || 'UNKNOWN_FLAG'} · {f?.severity || 'unknown'}
+                          </summary>
+                          <pre className="mt-2 text-[11px] text-gray-700 whitespace-pre-wrap">{JSON.stringify(f?.details || {}, null, 2)}</pre>
+                        </details>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500">No anomaly flags.</p>
+                  )}
+                </div>
+
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-2">External verification helpers</h3>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Official sources only. Opening helpers does not verify evidence or auto-approve compliance.
+                  </p>
+                  {verificationHelpers.length > 0 ? (
+                    <div className="space-y-2 mb-3">
+                      {verificationHelpers.map((h, idx) => (
+                        <div key={`${h?.helper_type || 'helper'}-${idx}`} className="border border-gray-200 rounded-lg p-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-xs font-medium text-gray-800">{h?.official_source || h?.helper_type}</div>
+                            <a
+                              href={h?.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-indigo-700 underline"
+                            >
+                              Open official source
+                            </a>
+                          </div>
+                          {h?.extracted_hints && (
+                            <pre className="mt-2 text-[11px] text-gray-700 whitespace-pre-wrap">{JSON.stringify(h.extracted_hints, null, 2)}</pre>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 mb-3">No external helper sources configured for this requirement type.</p>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label className="text-xs">
+                      <span className="block text-gray-700 mb-1">Verification method</span>
+                      <select
+                        value={verificationMethod}
+                        onChange={(e) => setVerificationMethod(e.target.value)}
+                        className="w-full border border-gray-300 rounded px-2 py-1"
+                        data-testid="external-verification-method"
+                      >
+                        <option value="EPC_REGISTER_CHECK">EPC_REGISTER_CHECK</option>
+                        <option value="GAS_SAFE_LOOKUP">GAS_SAFE_LOOKUP</option>
+                        <option value="NICEIC_LOOKUP">NICEIC_LOOKUP</option>
+                        <option value="NAPIT_LOOKUP">NAPIT_LOOKUP</option>
+                        <option value="MANUAL_CONFIRMATION">MANUAL_CONFIRMATION</option>
+                      </select>
+                    </label>
+                    <label className="text-xs">
+                      <span className="block text-gray-700 mb-1">Verification reference</span>
+                      <input
+                        type="text"
+                        value={verificationReference}
+                        onChange={(e) => setVerificationReference(e.target.value)}
+                        className="w-full border border-gray-300 rounded px-2 py-1"
+                        placeholder="Reference ID / lookup note"
+                        data-testid="external-verification-reference"
+                      />
+                    </label>
+                  </div>
+                  <label className="text-xs block mt-3">
+                    <span className="block text-gray-700 mb-1">Verification notes</span>
+                    <textarea
+                      value={verificationNotes}
+                      onChange={(e) => setVerificationNotes(e.target.value)}
+                      className="w-full border border-gray-300 rounded px-2 py-1 min-h-[64px]"
+                      placeholder="What did you confirm in the official register?"
+                      data-testid="external-verification-notes"
+                    />
+                  </label>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={handleRecordExternalVerification}
+                      disabled={verificationSubmitting}
+                      className="px-3 py-2 rounded bg-blue-700 text-white text-xs disabled:opacity-50"
+                      data-testid="mark-externally-verified"
+                    >
+                      Mark externally verified (reviewer action)
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => { setAiReviewDoc(null); setAiReviewPayload(null); }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reject document modal */}
       {rejectModalDoc && (

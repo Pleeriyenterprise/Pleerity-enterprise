@@ -54,6 +54,13 @@ from utils.client_email import (
     classify_clients_duplicate_key_error,
 )
 from utils.storage_paths import resolve_data_dir
+from services.billing_presentation import lifecycle_status_label
+from services.admin_client_support_search import run_admin_client_support_search
+from services.admin_action_governance import (
+    enforce_step_up_if_required,
+    ensure_action_reason,
+    normalized_admin_action_metadata,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +103,12 @@ def _portal_lifecycle_http(exc: ValueError) -> HTTPException:
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=key)
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(admin_route_guard)])
 LEGACY_JOBS_ENDPOINT_SUNSET = "2026-06-30T00:00:00Z"
+
+
+class SupportDangerousActionReasonBody(BaseModel):
+    """Reason captured for audited high-impact admin actions (support tooling)."""
+
+    reason: str = Field(..., min_length=10, max_length=2000)
 
 
 async def _enforce_admin_job_run_rate(portal_user_id: str) -> None:
@@ -356,9 +369,19 @@ async def list_pending_verification_documents(
                 "manual_review_flag": 1,
                 "requirement_evidence_mismatch": 1,
                 "evidence_match_legacy_state": 1,
+                "evidence_review_state": 1,
+                "assurance_tier": 1,
+                "latest_validation_snapshot": 1,
+                "review_required": 1,
+                "review_decision_at": 1,
+                "review_decision_by": 1,
+                "external_verification_method": 1,
+                "external_verification_reference": 1,
+                "ai_assistance": 1,
             },
         ).sort("uploaded_at", 1).skip(skip).limit(limit)
         items = await cursor.to_list(limit)
+        from services.evidence_review_migration import effective_assurance_tier, effective_evidence_review_state
         # Enrich with client display name and CRN for admin table
         client_ids = list({d.get("client_id") for d in items if d.get("client_id")})
         clients_map = {}
@@ -369,8 +392,8 @@ async def list_pending_verification_documents(
             )
             for c in await clients_cursor.to_list(len(client_ids)):
                 clients_map[c["client_id"]] = {
-                    "client_name": c.get("full_name") or "—",
-                    "crn": c.get("customer_reference") or "—",
+                        "client_name": c.get("full_name") or "-",
+                        "crn": c.get("customer_reference") or "-",
                 }
         req_ids = list({d.get("requirement_id") for d in items if d.get("requirement_id")})
         req_map: Dict[str, Dict[str, Any]] = {}
@@ -385,8 +408,17 @@ async def list_pending_verification_documents(
                     req_map[str(rid)] = r
         for d in items:
             info = clients_map.get(d.get("client_id"), {})
-            d["client_name"] = info.get("client_name", "—")
-            d["crn"] = info.get("crn", "—")
+            d["client_name"] = info.get("client_name", "-")
+            d["crn"] = info.get("crn", "-")
+            d["evidence_review_state"] = effective_evidence_review_state(d)
+            d["assurance_tier"] = effective_assurance_tier(d)
+            d.setdefault("latest_validation_snapshot", None)
+            d.setdefault("review_required", None)
+            d.setdefault("review_decision_at", None)
+            d.setdefault("review_decision_by", None)
+            d.setdefault("external_verification_method", None)
+            d.setdefault("external_verification_reference", None)
+            d.setdefault("ai_assistance", None)
             rr = req_map.get(str(d.get("requirement_id") or ""))
             if rr:
                 d["requirement_label"] = (rr.get("description") or rr.get("requirement_type") or rr.get("requirement_code") or d.get("requirement_id"))
@@ -441,8 +473,28 @@ async def list_unresolved_evidence_documents(
             "intake_session_id": 1,
             "manual_review_flag": 1,
             "uploaded_at": 1,
+            "evidence_review_state": 1,
+            "assurance_tier": 1,
+            "latest_validation_snapshot": 1,
+            "review_required": 1,
+            "review_decision_at": 1,
+            "review_decision_by": 1,
+            "external_verification_method": 1,
+            "external_verification_reference": 1,
+            "ai_assistance": 1,
         },
     ).sort("uploaded_at", -1).skip(skip).limit(limit).to_list(limit)
+    from services.evidence_review_migration import effective_assurance_tier, effective_evidence_review_state
+    for r in rows:
+        r["evidence_review_state"] = effective_evidence_review_state(r)
+        r["assurance_tier"] = effective_assurance_tier(r)
+        r.setdefault("latest_validation_snapshot", None)
+        r.setdefault("review_required", None)
+        r.setdefault("review_decision_at", None)
+        r.setdefault("review_decision_by", None)
+        r.setdefault("external_verification_method", None)
+        r.setdefault("external_verification_reference", None)
+        r.setdefault("ai_assistance", None)
     return {
         "documents": rows,
         "total": total,
@@ -781,6 +833,7 @@ async def admin_resolve_evidence_match(
 class AdminEvidenceMatchBackfillBody(BaseModel):
     limit: int = Field(50, ge=1, le=500)
     dry_run: bool = False
+    reason: str = Field(..., min_length=10, max_length=2000)
 
 
 @router.post(
@@ -793,6 +846,7 @@ async def admin_backfill_evidence_match(request: Request, body: AdminEvidenceMat
     unclassified (never silently as strong match). Re-syncs affected requirement authority.
     """
     user = await admin_route_guard(request)
+    support_reason = ensure_action_reason("backfill_evidence_match_batch", body.reason)
     db = database.get_db()
     from services.evidence_document_match_engine import persist_document_evidence_match_after_extraction
     from services.evidence_document_taxonomy import (
@@ -863,12 +917,59 @@ async def admin_backfill_evidence_match(request: Request, body: AdminEvidenceMat
         resource_id="batch",
         metadata={
             "action_type": "EVIDENCE_MATCH_BACKFILL",
+            **normalized_admin_action_metadata(
+                "backfill_evidence_match_batch",
+                support_reason,
+                {"requested_limit": body.limit, "dry_run": body.dry_run},
+            ),
             "updated": updated,
             "dry_run": body.dry_run,
             "limit": body.limit,
         },
     )
     return {"updated": updated, "dry_run": body.dry_run, "preview": preview[:25], "scanned": len(rows)}
+
+
+class AdminEvidenceReviewBackfillBody(BaseModel):
+    limit: int = Field(500, ge=1, le=5000)
+    dry_run: bool = True
+    force: bool = False
+
+
+@router.post(
+    "/documents/backfill-evidence-review-v2",
+    dependencies=[Depends(require_owner_or_admin)],
+)
+async def admin_backfill_evidence_review_v2(request: Request, body: AdminEvidenceReviewBackfillBody):
+    """Backfill evidence_review_state + assurance_tier from legacy status mapping (safe/idempotent)."""
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    from services.evidence_review_backfill import scan_evidence_review_backfill
+
+    result = await scan_evidence_review_backfill(
+        db,
+        limit=body.limit,
+        force=body.force,
+        dry_run=body.dry_run,
+    )
+
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user.get("portal_user_id"),
+        client_id=None,
+        resource_type="document",
+        resource_id="batch",
+        metadata={
+            "action_type": "EVIDENCE_REVIEW_V2_BACKFILL",
+            "dry_run": body.dry_run,
+            "force": body.force,
+            "limit": body.limit,
+            "scanned": result.get("scanned"),
+            "updated": result.get("updated"),
+            "planned_updates": result.get("planned_updates"),
+        },
+    )
+    return result
 
 
 @router.get("/requirements/authority-drift", dependencies=[Depends(require_owner_or_admin)])
@@ -1130,129 +1231,32 @@ async def global_search(
     
     if not q or len(q.strip()) < 2:
         return {"results": [], "query": q, "total": 0, "include_archived": include_archived}
-    
+
     search_term = q.strip()
-    visibility_match = {} if include_archived else default_active_client_match()
 
-    def _with_visibility(query: Dict[str, Any]) -> Dict[str, Any]:
-        if not visibility_match:
-            return query
-        return {"$and": [query, visibility_match]}
-
-    search_projection = {
-        "_id": 0,
-        "client_id": 1,
-        "customer_reference": 1,
-        "full_name": 1,
-        "email": 1,
-        "company_name": 1,
-        "subscription_status": 1,
-        "onboarding_status": 1,
-        "billing_plan": 1,
-        "phone": 1,
-        "created_at": 1,
-        "client_lifecycle_status": 1,
-        "is_deleted": 1,
-        "is_test_like": 1,
-    }
-    
     try:
-        # Build search conditions:
-        # - CRN, email, name, company, phone on clients
-        # - order_reference on orders
-        # - postcode via properties
-        search_regex = {"$regex": search_term, "$options": "i"}
-        
-        # Search clients
-        client_query = {
-            "$or": [
-                {"customer_reference": search_regex},
-                {"email": search_regex},
-                {"full_name": search_regex},
-                {"company_name": search_regex},
-                {"phone": search_regex},
-            ]
-        }
-        
-        clients_cursor = db.clients.find(
-            _with_visibility(client_query),
-            search_projection,
-        ).limit(limit)
-        
-        clients = await clients_cursor.to_list(limit)
+        normalized_results = await run_admin_client_support_search(
+            db,
+            search_term=search_term,
+            limit=limit,
+            include_archived=include_archived,
+        )
 
-        # Search by order reference and map to clients
-        order_hits = await db.orders.find(
-            {"order_reference": search_regex},
-            {"_id": 0, "client_id": 1, "order_reference": 1}
-        ).limit(50).to_list(50)
-        order_client_ids = list({o.get("client_id") for o in order_hits if o.get("client_id")})
-        existing_client_ids = [c["client_id"] for c in clients]
-        order_new_ids = [cid for cid in order_client_ids if cid not in existing_client_ids]
-        if order_new_ids:
-            order_clients = await db.clients.find(
-                _with_visibility({"client_id": {"$in": order_new_ids}}),
-                search_projection,
-            ).to_list(limit)
-            for c in order_clients:
-                match_order = next((o for o in order_hits if o.get("client_id") == c.get("client_id")), None)
-                c["matched_via"] = "order_reference"
-                c["matched_order_reference"] = match_order.get("order_reference") if match_order else None
-            clients.extend(order_clients)
-        
-        # Also search by postcode in properties and return linked clients
-        postcode_search = search_term.upper().replace(" ", "")
-        properties_with_postcode = await db.properties.find(
-            {"postcode": {"$regex": postcode_search, "$options": "i"}},
-            {"_id": 0, "client_id": 1, "postcode": 1, "address_line_1": 1}
-        ).to_list(50)
-        
-        # Get unique client IDs from postcode search
-        postcode_client_ids = list(set(p["client_id"] for p in properties_with_postcode))
-        existing_client_ids = [c["client_id"] for c in clients]
-        
-        # Fetch additional clients found via postcode
-        new_client_ids = [cid for cid in postcode_client_ids if cid not in existing_client_ids]
-        if new_client_ids:
-            additional_clients = await db.clients.find(
-                _with_visibility({"client_id": {"$in": new_client_ids}}),
-                search_projection,
-            ).to_list(limit)
-            
-            # Mark these as found via postcode
-            for c in additional_clients:
-                matched_props = [p for p in properties_with_postcode if p["client_id"] == c["client_id"]]
-                c["matched_via"] = "postcode"
-                c["matched_postcode"] = matched_props[0]["postcode"] if matched_props else None
-            
-            clients.extend(additional_clients)
-        
-        # Log the search for audit trail
         await create_audit_log(
             action=AuditAction.ADMIN_SEARCH_PERFORMED,
             actor_id=user.get("portal_user_id"),
             actor_role=UserRole.ROLE_ADMIN,
             metadata={
                 "search_query": search_term,
-                "results_count": len(clients),
+                "results_count": len(normalized_results),
                 "include_archived": include_archived,
-            }
+            },
         )
-        
-        normalized_results = []
-        for c in clients[:limit]:
-            normalized_results.append({
-                **c,
-                "name": c.get("full_name"),
-                "crn": c.get("customer_reference"),
-                "plan": c.get("billing_plan"),
-                "status": c.get("subscription_status"),
-            })
 
         return {
             "results": normalized_results,
             "query": search_term,
-            "total": len(clients),
+            "total": len(normalized_results),
             "include_archived": include_archived,
         }
         
@@ -4600,7 +4604,11 @@ async def admin_trigger_provision(request: Request, client_id: str):
 
 
 @router.post("/provisioning-jobs/{job_id}/retry")
-async def retry_provisioning_job(request: Request, job_id: str):
+async def retry_provisioning_job(
+    request: Request,
+    job_id: str,
+    body: SupportDangerousActionReasonBody = Body(...),
+):
     """Retry a failed or stuck provisioning job (admin only). Runs the job runner once."""
     user = await admin_route_guard(request)
     await _enforce_admin_job_run_rate(user["portal_user_id"])
@@ -4612,8 +4620,14 @@ async def retry_provisioning_job(request: Request, job_id: str):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
+            actor_id=user.get("portal_user_id"),
             client_id=job.get("client_id"),
-            metadata={"action": "provisioning_job_retry", "job_id": job_id, "runner_returned": ok}
+            metadata={
+                "action": "provisioning_job_retry",
+                "job_id": job_id,
+                "runner_returned": ok,
+                "support_reason": body.reason,
+            },
         )
         return {"message": "Retry triggered", "job_id": job_id, "status": job.get("status")}
     except HTTPException:
@@ -4921,6 +4935,40 @@ async def get_client_control_panel(request: Request, client_id: str):
             primary_user = portal_users[0]
 
         billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+
+        sub_status: Dict[str, Any] = {}
+        try:
+            from services.stripe_service import StripeService
+
+            sub_status = await StripeService().get_subscription_status(client_id, client_facing=False) or {}
+        except Exception:
+            sub_status = {}
+
+        wh_at = sub_status.get("stripe_webhook_last_received_at")
+        wh_type = sub_status.get("stripe_webhook_last_event_type")
+        if not wh_at and billing:
+            wh_at = _iso_or_none(billing.get("stripe_webhook_last_received_at"))
+        if not wh_type and billing:
+            wh_type = billing.get("stripe_webhook_last_event_type")
+
+        stripe_customer_id = sub_status.get("stripe_customer_id") or client.get("stripe_customer_id") or (
+            billing.get("stripe_customer_id") if billing else None
+        )
+        stripe_subscription_id = sub_status.get("stripe_subscription_id") or (
+            billing.get("stripe_subscription_id") if billing else None
+        )
+        billing_last_synced_at = sub_status.get("billing_last_synced_at") or _iso_or_none(
+            (billing or {}).get("billing_last_synced_at")
+        )
+        billing_sync_state = sub_status.get("billing_sync_state") or (
+            (billing or {}).get("billing_sync_state") if billing else None
+        )
+        lifecycle_from_sub = sub_status.get("lifecycle_status_label")
+
+        unresolved_evidence_document_count = await db.documents.count_documents(
+            {"client_id": client_id, "evidence_scope_type": "UNRESOLVED"}
+        )
+
         properties_count = await db.properties.count_documents({"client_id": client_id})
         missing_docs = await db.requirements.count_documents({"client_id": client_id, "status": "PENDING"})
         overdue_items = await db.requirements.count_documents({"client_id": client_id, "status": "OVERDUE"})
@@ -5012,6 +5060,7 @@ async def get_client_control_panel(request: Request, client_id: str):
             "identity": {
                 "client_id": client_id,
                 "name": client.get("full_name"),
+                "company_name": client.get("company_name"),
                 "crn": client.get("customer_reference"),
                 "email": client.get("email") or (primary_user or {}).get("auth_email"),
                 "phone": client.get("phone"),
@@ -5029,13 +5078,42 @@ async def get_client_control_panel(request: Request, client_id: str):
             "subscription_billing": {
                 "plan": client.get("billing_plan"),
                 "status": client.get("subscription_status"),
+                "billing_lifecycle_state": (billing or {}).get("billing_lifecycle_state"),
+                "cancel_at_period_end": bool((billing or {}).get("cancel_at_period_end")),
+                "lifecycle_status_label": lifecycle_from_sub
+                or lifecycle_status_label(
+                    has_subscription=bool((billing or {}).get("stripe_subscription_id")),
+                    cancel_at_period_end=bool((billing or {}).get("cancel_at_period_end")),
+                    billing_lifecycle_state=(billing or {}).get("billing_lifecycle_state"),
+                ),
                 "canonical_entitlement_state": (billing or {}).get("canonical_entitlement_state")
                 or client.get("canonical_entitlement_state"),
+                "stripe_customer_id": stripe_customer_id,
+                "stripe_subscription_id": stripe_subscription_id,
+                "stripe_webhook_last_received_at": wh_at,
+                "stripe_webhook_last_event_type": wh_type,
+                "billing_last_synced_at": billing_last_synced_at,
+                "billing_sync_state": billing_sync_state,
                 "last_payment": _iso_or_none((billing or {}).get("last_payment_at"))
                 or _iso_or_none(client.get("last_payment_date")),
                 "next_billing_date": _iso_or_none_billing_period((billing or {}).get("current_period_end")),
                 "open_invoice_status": (billing or {}).get("open_invoice_status"),
                 "stripe_next_payment_attempt_at": _iso_or_none((billing or {}).get("stripe_next_payment_attempt_at")),
+                "retry_state_label": (
+                    "Awaiting retry"
+                    if str((billing or {}).get("open_invoice_status") or "").lower() in {"open", "past_due", "unpaid"}
+                    else "No retry in progress"
+                ),
+                "next_retry_at_utc": _iso_or_none((billing or {}).get("stripe_next_payment_attempt_at")),
+                "grace_period_ends_at_utc": _iso_or_none((billing or {}).get("grace_period_ends_at")),
+                "billing_anomaly_flags": [],
+                "stripe_sync_state_label": (
+                    "Up to date" if str(billing_sync_state or "").lower() == "ok" else "Needs review"
+                ),
+                "stripe_sync_updated_at_utc": billing_last_synced_at,
+                "billing_reconciliation_needed": bool((billing or {}).get("billing_reconciliation_needed")),
+                "billing_reconciliation_reason": (billing or {}).get("billing_reconciliation_reason"),
+                "billing_reconciliation_marked_at": _iso_or_none((billing or {}).get("billing_reconciliation_marked_at")),
                 "receipts": receipts,
                 "receipts_meta": receipts_meta,
             },
@@ -5045,6 +5123,7 @@ async def get_client_control_panel(request: Request, client_id: str):
                 "risk_level": compliance_risk_level,
                 "missing_documents": missing_docs,
                 "overdue_items": overdue_items,
+                "unresolved_evidence_document_count": unresolved_evidence_document_count,
             },
             "operations": {
                 "issues": issues_count,
@@ -5266,9 +5345,14 @@ async def admin_action_client_monthly_digest(
 
 
 @router.post("/clients/{client_id}/actions/unlock-account")
-async def admin_action_unlock_account(request: Request, client_id: str):
+async def admin_action_unlock_account(
+    request: Request,
+    client_id: str,
+    body: SupportDangerousActionReasonBody = Body(...),
+):
     """Unlock client portal users by re-enabling account and clearing lock flags."""
     admin = await admin_route_guard(request)
+    support_reason = ensure_action_reason("unlock_account", body.reason)
     db = database.get_db()
     users = await db.portal_users.find(
         {"client_id": client_id},
@@ -5295,6 +5379,7 @@ async def admin_action_unlock_account(request: Request, client_id: str):
         client_id=client_id,
         metadata={
             "action_type": "unlock_account",
+            **normalized_admin_action_metadata("unlock_account", support_reason),
             "affected_users": len(portal_user_ids),
         },
     )
@@ -5302,17 +5387,24 @@ async def admin_action_unlock_account(request: Request, client_id: str):
 
 
 @router.post("/clients/{client_id}/impersonation/start", dependencies=[Depends(require_owner_or_admin)])
-async def admin_start_impersonation(request: Request, client_id: str, ttl_minutes: int = Query(30, ge=5, le=120)):
+async def admin_start_impersonation(
+    request: Request,
+    client_id: str,
+    ttl_minutes: int = Query(30, ge=5, le=120),
+    body: SupportDangerousActionReasonBody = Body(...),
+):
     """
     Start audited admin impersonation for a client portal user.
     Returns short-lived client token with explicit impersonation claims.
     """
     admin = await admin_route_guard(request)
+    support_reason = ensure_action_reason("start_impersonation", body.reason)
+    await enforce_step_up_if_required("start_impersonation", request, admin, require_recent_step_up)
     db = database.get_db()
 
     client = await db.clients.find_one(
         {"client_id": client_id},
-        {"_id": 0, "client_id": 1, "full_name": 1, "onboarding_status": 1},
+        {"_id": 0, "client_id": 1, "full_name": 1, "company_name": 1, "onboarding_status": 1},
     )
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -5359,8 +5451,10 @@ async def admin_start_impersonation(request: Request, client_id: str, ttl_minute
         resource_id=target.get("portal_user_id"),
         metadata={
             "action_type": "impersonation_start",
+            **normalized_admin_action_metadata("start_impersonation", support_reason),
             "ttl_minutes": ttl_minutes,
             "target_role": target.get("role"),
+            "target_client_id": client_id,
             "target_email_masked": ((target.get("auth_email") or "")[:3] + "***"),
         },
     )
@@ -5378,6 +5472,8 @@ async def admin_start_impersonation(request: Request, client_id: str, ttl_minute
         "client": {
             "client_id": client_id,
             "name": client.get("full_name"),
+            "company_name": client.get("company_name"),
+            "target_email_masked": ((target.get("auth_email") or "")[:3] + "***"),
         },
     }
 

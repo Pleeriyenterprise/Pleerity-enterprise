@@ -10,9 +10,24 @@ import {
   NON_PRODUCTION_ACCOUNT_LABEL,
   PRODUCTION_ACCOUNT_LABEL,
 } from '../utils/adminAccountClassification';
-import api, { adminAPI } from '../api/client';
+import api, { adminAPI, openBlobApiResponse } from '../api/client';
+import AdminPaymentHistoryTable from '../components/admin/AdminPaymentHistoryTable';
 import { useAuth } from '../contexts/AuthContext';
 import { useStepUpApi } from '../hooks/useStepUpApi';
+import {
+  formatAuditTimestampUtc,
+  getAuditEventLabel,
+  getAuditEventSeverity,
+  getAuditSeverityBadgeClass,
+} from '../utils/adminAuditLabels';
+import {
+  getGovernanceConfirmationWording,
+  getGovernanceEscalationGuidance,
+  getGovernanceRiskBadgeClass,
+  getGovernanceWarning,
+} from '../utils/adminActionGovernance';
+
+const MIN_DANGEROUS_ACTION_REASON = 10;
 
 const SectionCard = ({ title, children, actions = null, subdued = false }) => (
   <section
@@ -42,10 +57,54 @@ const Row = ({ label, value }) => (
 const MIN_VALID_DATE_MS = 946684800000;
 
 const fmtDate = (value) => {
-  if (value == null || value === '') return 'Not yet recorded';
+  if (value == null || value === '') return 'No billing timestamp available yet';
   const t = new Date(value).getTime();
-  if (Number.isNaN(t) || t < MIN_VALID_DATE_MS) return 'Not yet recorded';
+  if (Number.isNaN(t) || t < MIN_VALID_DATE_MS) return 'No billing timestamp available yet';
   return new Date(value).toLocaleString('en-GB');
+};
+
+const maskEmail = (value) => {
+  const v = String(value || '').trim();
+  if (!v.includes('@')) return v || '—';
+  const [local, domain] = v.split('@');
+  const keep = local.slice(0, Math.min(3, local.length));
+  return `${keep}${local.length > 3 ? '***' : '*'}@${domain}`;
+};
+
+const pickIncidentObject = (row) => {
+  const md = row?.metadata || {};
+  if (md.job_id) return `job:${md.job_id}`;
+  if (md.document_id) return `document:${md.document_id}`;
+  if (md.payment_id) return `payment:${md.payment_id}`;
+  if (md.acceptance_id) return `agreement:${md.acceptance_id}`;
+  if (md.requirement_id) return `requirement:${md.requirement_id}`;
+  if (md.property_id) return `property:${md.property_id}`;
+  if (row?.action) return row.action;
+  return 'client';
+};
+
+const supportExplanationForEvent = (row) => {
+  const action = String(row?.action || '').toUpperCase();
+  const md = row?.metadata || {};
+  if (action.includes('NOTIFICATION_BLOCKED')) {
+    return 'Delivery was blocked by policy. Check billing/compliance state before retrying.';
+  }
+  if (action.includes('PROVISIONING')) {
+    return 'Provisioning lifecycle event. Confirm onboarding and identity state before re-running jobs.';
+  }
+  if (action.includes('COMPLIANCE') || action.includes('REQUIREMENT')) {
+    return 'Compliance or requirement state changed. Use diagnostics to confirm whether this is expected.';
+  }
+  if (action.includes('PASSWORD') || action.includes('ACTIVATION') || action.includes('INVITE')) {
+    return 'Access/onboarding communication event. Confirm customer received latest setup guidance.';
+  }
+  if (md.action_type === 'impersonation_start') {
+    return 'High-impact support session started. Confirm reason and client identity.';
+  }
+  if (action.includes('BILLING') || action.includes('PAYMENT')) {
+    return 'Billing event recorded. Compare Stripe state with local lifecycle before taking action.';
+  }
+  return 'Recorded operational event. Expand raw details when deeper diagnostics are required.';
 };
 
 function CollapsibleBlock({ title, subtitle, defaultOpen = false, children, className = '' }) {
@@ -162,7 +221,7 @@ const ACTION_HEALTH_DEFS = [
   },
   {
     key: 'run_client_job',
-    label: 'Run system update',
+    label: 'Refresh billing status',
     actionTypes: ['run_client_job', 'recalculate_compliance'],
     auditActions: ['ADMIN_ACTION'],
     expectedEffect: 'Runs the approved scoped job for this client (currently compliance recalculation).',
@@ -203,7 +262,19 @@ const AdminClientControlPanelPage = () => {
   const [isBusy, setIsBusy] = useState(false);
   const [taskActivity, setTaskActivity] = useState(null);
   const [taskActivityLoading, setTaskActivityLoading] = useState(false);
+  const [paymentHistoryError, setPaymentHistoryError] = useState('');
   const [lastActionRunAt, setLastActionRunAt] = useState({});
+  const [agreements, setAgreements] = useState(null);
+  const [agreementsLoading, setAgreementsLoading] = useState(false);
+  const [complianceExplain, setComplianceExplain] = useState(null);
+  const [complianceExplainLoading, setComplianceExplainLoading] = useState(false);
+  const [runtimePropertyId, setRuntimePropertyId] = useState('');
+  const [runtimeExplain, setRuntimeExplain] = useState(null);
+  const [runtimeExplainLoading, setRuntimeExplainLoading] = useState(false);
+  const [retryIssuanceLoading, setRetryIssuanceLoading] = useState(false);
+  const [impersonationOpen, setImpersonationOpen] = useState(false);
+  const [impersonationReason, setImpersonationReason] = useState('');
+  const [impersonationConfirmed, setImpersonationConfirmed] = useState(false);
 
   const loadPanel = useCallback(async () => {
     if (!clientId) return;
@@ -211,9 +282,11 @@ const AdminClientControlPanelPage = () => {
     try {
       const res = await adminAPI.getClientControlPanel(clientId);
       setData(res.data || null);
+      setPaymentHistoryError('');
     } catch (err) {
       const msg = err?.response?.data?.detail || 'Failed to load client control panel';
       toast.error(typeof msg === 'string' ? msg : 'Failed to load client control panel');
+      setPaymentHistoryError('Failed to load payment history');
       setData(null);
     } finally {
       setLoading(false);
@@ -243,6 +316,26 @@ const AdminClientControlPanelPage = () => {
     loadTaskActivity();
   }, [loadTaskActivity]);
 
+  useEffect(() => {
+    if (!clientId) return;
+    let cancelled = false;
+    const loadAgreements = async () => {
+      setAgreementsLoading(true);
+      try {
+        const res = await adminAPI.getClientAgreementsSummary(clientId);
+        if (!cancelled) setAgreements(res.data || null);
+      } catch {
+        if (!cancelled) setAgreements(null);
+      } finally {
+        if (!cancelled) setAgreementsLoading(false);
+      }
+    };
+    loadAgreements();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId]);
+
   const identity = data?.identity || {};
   const account = data?.account_state || {};
   const billing = data?.subscription_billing || {};
@@ -263,6 +356,92 @@ const AdminClientControlPanelPage = () => {
       toast.error(typeof msg === 'string' ? msg : `${label} failed`);
     } finally {
       setIsBusy(false);
+    }
+  };
+
+  const getRequiredReason = (actionId, label) => {
+    const reason = window.prompt(
+      `${label}\n${getGovernanceConfirmationWording(actionId)}\n\nEnter support reason (minimum 10 characters):`,
+      '',
+    );
+    if (reason == null) return null;
+    const trimmed = reason.trim();
+    if (trimmed.length < MIN_DANGEROUS_ACTION_REASON) {
+      toast.error(`Enter a reason (at least ${MIN_DANGEROUS_ACTION_REASON} characters) for the audit log.`);
+      return null;
+    }
+    return trimmed;
+  };
+
+  const loadComplianceExplain = async () => {
+    if (!clientId) return;
+    setComplianceExplainLoading(true);
+    try {
+      const res = await adminAPI.getComplianceTruthExplain(clientId);
+      setComplianceExplain(res.data || null);
+      toast.success('Loaded compliance diagnostics');
+    } catch (err) {
+      const msg = err?.response?.data?.detail;
+      toast.error(typeof msg === 'string' ? msg : 'Failed to load compliance diagnostics');
+    } finally {
+      setComplianceExplainLoading(false);
+    }
+  };
+
+  const loadRuntimeExplain = async () => {
+    if (!clientId || !runtimePropertyId.trim()) {
+      toast.error('Enter a property ID first');
+      return;
+    }
+    setRuntimeExplainLoading(true);
+    try {
+      const res = await adminAPI.getRuntimeRequirementsExplain(clientId, runtimePropertyId.trim());
+      setRuntimeExplain(res.data || null);
+      toast.success('Loaded runtime requirement explain');
+    } catch (err) {
+      const msg = err?.response?.data?.detail;
+      toast.error(typeof msg === 'string' ? msg : 'Failed to load runtime explain');
+    } finally {
+      setRuntimeExplainLoading(false);
+    }
+  };
+
+  const downloadAgreementPdf = async (issuedId) => {
+    if (!clientId || !issuedId) return;
+    try {
+      const res = await adminAPI.downloadClientIssuedAgreementPdf(clientId, issuedId);
+      openBlobApiResponse(res, { download: true, fallbackFilename: `agreement_${issuedId}.pdf` });
+      toast.success('Agreement PDF downloaded');
+    } catch (err) {
+      const msg = err?.response?.data?.detail;
+      toast.error(typeof msg === 'string' ? msg : 'Failed to download agreement PDF');
+    }
+  };
+
+  const retryAgreementIssue = async (acceptanceId, paymentReference) => {
+    if (!clientId || !acceptanceId || !paymentReference) return;
+    const proceed = window.confirm(
+      'Retrying agreement issuance may regenerate delivery artifacts.\n\nContinue?'
+    );
+    if (!proceed) return;
+    const reason = getRequiredReason('retry_agreement_issuance', 'Retry agreement issuance');
+    if (!reason) return;
+    setRetryIssuanceLoading(true);
+    try {
+      await adminAPI.retryClientAgreementIssue(clientId, {
+        acceptance_id: acceptanceId,
+        payment_reference: paymentReference,
+        reason,
+      });
+      toast.success('Agreement issuance retry submitted');
+      const res = await adminAPI.getClientAgreementsSummary(clientId);
+      setAgreements(res.data || null);
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : detail?.error;
+      toast.error(msg || 'Failed to retry agreement issuance');
+    } finally {
+      setRetryIssuanceLoading(false);
     }
   };
 
@@ -323,8 +502,17 @@ const AdminClientControlPanelPage = () => {
     }
   };
 
-  const startImpersonation = async () => {
+  const startImpersonation = async (reason, confirmed) => {
     if (!clientId) return;
+    const trimmed = String(reason || '').trim();
+    if (trimmed.length < MIN_DANGEROUS_ACTION_REASON) {
+      toast.error(`Enter a reason (at least ${MIN_DANGEROUS_ACTION_REASON} characters) for the audit log.`);
+      return;
+    }
+    if (!confirmed) {
+      toast.error('Confirm customer identity before starting impersonation.');
+      return;
+    }
     setIsBusy(true);
     try {
       const currentToken = localStorage.getItem('auth_token');
@@ -337,7 +525,9 @@ const AdminClientControlPanelPage = () => {
       sessionStorage.setItem('impersonation_admin_token', currentToken);
       sessionStorage.setItem('impersonation_admin_user', currentUser);
 
-      const res = await adminAPI.startClientImpersonation(clientId, 30);
+      const res = await stepUp.request((headers) =>
+        adminAPI.startClientImpersonation(clientId, 30, { reason: trimmed }, { headers }),
+      );
       const newToken = res?.data?.access_token;
       const newUser = res?.data?.user;
       if (!newToken || !newUser) {
@@ -351,6 +541,8 @@ const AdminClientControlPanelPage = () => {
           active: true,
           client_id: clientId,
           client_name: res?.data?.client?.name || identity.name || null,
+          target_email_masked: res?.data?.client?.target_email_masked || maskEmail(res?.data?.user?.email),
+          company_name: res?.data?.client?.company_name || identity.company_name || null,
           started_at: new Date().toISOString(),
           expires_at: res?.data?.expires_at || null,
           admin_portal_user_id: user?.portal_user_id || null,
@@ -362,32 +554,97 @@ const AdminClientControlPanelPage = () => {
       toast.error(typeof msg === 'string' ? msg : 'Unable to start impersonation');
     } finally {
       setIsBusy(false);
+      setImpersonationOpen(false);
+      setImpersonationReason('');
+      setImpersonationConfirmed(false);
     }
   };
 
   const receiptRows = billing?.receipts || [];
   const receiptsMeta = billing?.receipts_meta || {};
+  const latestAcceptance = (agreements?.acceptances || [])[0] || null;
+  const latestIssued = (agreements?.issued_agreements || [])[0] || null;
+  const latestFailure = agreements?.latest_issuance_failure || null;
+  const retryAcceptanceId = String(latestFailure?.acceptance_id || '').trim();
+  const retryPaymentRef = String(latestFailure?.payment_reference || '').trim();
+  const retryAvailable = Boolean(agreements?.retry_eligible && retryAcceptanceId && retryPaymentRef);
+  const supportSafeFailureReason = latestFailure?.failure_reason ? 'Issuance failed. Review logs for technical details.' : 'No failure reason recorded.';
+  const impersonationPreview = useMemo(
+    () => ({
+      clientId: identity.client_id || clientId,
+      clientName: identity.name || '—',
+      companyName: identity.company_name || null,
+      maskedEmail: maskEmail(identity.email),
+    }),
+    [identity, clientId],
+  );
   const activityRows = useMemo(() => {
     const timeline = data?.activity_timeline || {};
     const rows = [];
     (timeline.payments || []).forEach((p) => rows.push({
       type: 'payment',
       at: p.created_at,
+      rawAction: null,
       text: `${p.status || 'PAYMENT'} ${p.amount ? `(${p.amount})` : ''}`.trim(),
     }));
     (timeline.login_events || []).forEach((e) => rows.push({
       type: 'login',
       at: e.timestamp,
-      text: e.action || 'LOGIN_EVENT',
+      rawAction: e.action,
+      text: getAuditEventLabel(e.action),
     }));
     (timeline.system_actions || []).forEach((e) => rows.push({
       type: 'system',
       at: e.timestamp,
-      text: e.action || 'SYSTEM_ACTION',
+      rawAction: e.action,
+      text: getAuditEventLabel(e.action),
     }));
     return rows
       .sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime())
       .slice(0, 30);
+  }, [data]);
+
+  const operationalIncidentTimeline = useMemo(() => {
+    const rows = [];
+    const timeline = data?.activity_timeline || {};
+    (timeline.system_actions || []).forEach((row) => {
+      const action = String(row?.action || '').toUpperCase();
+      const isMajor =
+        action.includes('BILLING') ||
+        action.includes('PAYMENT') ||
+        action.includes('PROVISION') ||
+        action.includes('AGREEMENT') ||
+        action.includes('COMPLIANCE') ||
+        action.includes('REQUIREMENT') ||
+        action.includes('ENTITLEMENT') ||
+        action.includes('NOTIFICATION');
+      if (!isMajor) return;
+      rows.push({
+        at: row?.timestamp,
+        action,
+        label: getAuditEventLabel(action),
+        severity: getAuditEventSeverity(action),
+        object: pickIncidentObject(row),
+        explanation: supportExplanationForEvent(row),
+      });
+    });
+    (timeline.payments || []).forEach((row) => {
+      rows.push({
+        at: row?.created_at,
+        action: 'PAYMENT_EVENT',
+        label: `Payment ${String(row?.status || 'recorded').toLowerCase()}`,
+        severity: String(row?.status || '').toUpperCase().includes('FAIL') ? 'high' : 'low',
+        object: row?.payment_id || 'payment',
+        explanation:
+          String(row?.status || '').toUpperCase().includes('FAIL')
+            ? 'Payment failed. Validate retry and webhook sync state before changing access.'
+            : 'Payment event recorded. Confirm local billing and entitlement state has converged.',
+      });
+    });
+    return rows
+      .filter((r) => Boolean(r.at))
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+      .slice(0, 40);
   }, [data]);
 
   const actionHealthRows = useMemo(() => {
@@ -418,7 +675,7 @@ const AdminClientControlPanelPage = () => {
   }, [data, lastActionRunAt]);
 
   const handleReceiptDownload = async (r) => {
-    if (!clientId || !r?.pdf_available) return;
+    if (!clientId || !r?.download_available) return;
     try {
       let path;
       if (r.source === 'subscription') {
@@ -527,9 +784,19 @@ const AdminClientControlPanelPage = () => {
     </div>
   );
 
-  const primaryActionsBlock = !loading && data && (
+  const operationalActionsBlock = !loading && data && (
     <div className="rounded-xl bg-white border border-gray-200 p-4 space-y-4 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Actions</p>
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-700">Operational actions</h2>
+      <span className="inline-flex text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-blue-100 text-blue-900">
+        High-impact operation
+      </span>
+      <p className="text-xs text-gray-600">
+        These buttons call the server immediately and are written to audit logs where applicable.
+      </p>
+      <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
+        Run these only after checking diagnostics. If state is still inconsistent after one safe retry, this is an
+        <span className="font-semibold"> Engineering escalation required</span> incident.
+      </div>
       <div>
         <p className="text-xs text-gray-500 mb-2">Primary</p>
         <div className="flex flex-wrap gap-2">
@@ -547,7 +814,7 @@ const AdminClientControlPanelPage = () => {
             onClick={() => runAction('Run system update', () => adminAPI.runClientJob(clientId))}
             className="px-4 py-2.5 text-sm font-semibold rounded-lg bg-teal-700 text-white shadow-sm hover:opacity-95 disabled:opacity-50"
           >
-            Run system update
+            Refresh billing status
           </button>
         </div>
       </div>
@@ -590,27 +857,58 @@ const AdminClientControlPanelPage = () => {
           </button>
         </div>
       </div>
-      <div className="pt-3 border-t border-dashed border-amber-200/80">
-        <p className="text-xs text-amber-900/80 mb-2">Sensitive — extra care</p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={isBusy || loading}
-            onClick={() => runAction('Unlock account', () => adminAPI.unlockClientAccount(clientId))}
-            className="px-3 py-2 text-sm rounded-lg bg-amber-50 text-amber-950 border border-amber-300 hover:bg-amber-100 disabled:opacity-50"
-          >
-            Unlock account
-          </button>
-          <button
-            type="button"
-            disabled={isBusy || loading}
-            onClick={startImpersonation}
-            className="px-3 py-2 text-sm rounded-lg bg-indigo-50 text-indigo-950 border border-indigo-300 hover:bg-indigo-100 disabled:opacity-50"
-          >
-            View as user
-          </button>
-        </div>
+    </div>
+  );
+
+  const highImpactActionsBlock = !loading && data && (
+    <div className="rounded-xl border-2 border-amber-300/80 bg-amber-50/40 p-4 space-y-3 shadow-sm">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-amber-950">High-impact actions</h2>
+      <div className="flex flex-wrap gap-2">
+        <span className="inline-flex text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-amber-200 text-amber-950">
+          High-impact operation
+        </span>
+        <span className="inline-flex text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-purple-200 text-purple-950">
+          Owner-only operation
+        </span>
       </div>
+      <p className="text-xs text-amber-950/90">
+        These actions materially change access or sessions. Confirm impact with your lead before use; every run should have a ticket or incident reference in the reason where your team requires it.
+      </p>
+      <div className="rounded-md border border-amber-300 bg-amber-100 p-2 text-xs text-amber-950">
+        <span className="font-semibold">Owner-only operation</span> guidance: if account identity is unclear, stop and
+        escalate before running high-impact actions.
+      </div>
+      <p className="text-xs text-amber-900">{getGovernanceEscalationGuidance('start_impersonation')}</p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={isBusy || loading}
+          onClick={() => {
+            const reason = getRequiredReason('unlock_account', 'Unlock account');
+            if (!reason) return;
+            runAction('Unlock account', () => adminAPI.unlockClientAccount(clientId, { reason }));
+          }}
+          className="px-3 py-2 text-sm rounded-lg bg-amber-50 text-amber-950 border border-amber-300 hover:bg-amber-100 disabled:opacity-50"
+        >
+          Unlock account
+          <span className={`ml-2 rounded border px-1.5 py-0.5 text-[10px] ${getGovernanceRiskBadgeClass('unlock_account')}`}>
+            governed
+          </span>
+        </button>
+        <button
+          type="button"
+          disabled={isBusy || loading}
+          onClick={() => {
+            setImpersonationReason('');
+            setImpersonationConfirmed(false);
+            setImpersonationOpen(true);
+          }}
+          className="px-3 py-2 text-sm rounded-lg bg-indigo-50 text-indigo-950 border border-indigo-300 hover:bg-indigo-100 disabled:opacity-50"
+        >
+          View as user…
+        </button>
+      </div>
+      <p className="text-xs text-amber-900">{getGovernanceWarning('unlock_account')}</p>
     </div>
   );
 
@@ -710,8 +1008,58 @@ const AdminClientControlPanelPage = () => {
     </CollapsibleBlock>
   );
 
+  const readOnlyDiagnosticsSection = !loading && data && (
+    <div className="space-y-4">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600">Read-only diagnostics</h2>
+      <p className="text-xs text-gray-600 -mt-2">
+        Snapshot fields and collapsible summaries below do not execute changes until you use an action section.
+      </p>
+      <div className="rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
+        <span className="font-semibold">Read-only diagnostic</span> - if customer-visible state conflicts with this
+        snapshot after refresh, escalate.
+      </div>
+      {statusSummaryCard}
+      <SectionCard title="Onboarding incident milestones" subdued>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
+            Intake submitted: {account.onboarding_stage ? 'Yes' : 'Unknown'}
+          </div>
+          <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
+            Payment completed: {billing.last_payment ? 'Yes' : 'Not recorded'}
+          </div>
+          <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
+            Agreement accepted: {latestAcceptance ? 'Yes' : 'No'}
+          </div>
+          <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
+            Provisioning complete: {String(account.onboarding_stage || '').toUpperCase() === 'PROVISIONED' ? 'Yes' : 'No/Unknown'}
+          </div>
+        </div>
+      </SectionCard>
+      {identityAccountCard}
+      {overviewMetricsCollapsible}
+      {overviewProgressCollapsible}
+    </div>
+  );
+
   const complianceTab = !loading && data && (
     <div className="space-y-4 max-w-4xl">
+      <p className="text-xs text-gray-600">
+        Counts and scores are read-only snapshots. “Explain” payloads below are support/internal diagnostics only — not
+        customer-facing wording.
+      </p>
+      {Number(compliance.unresolved_evidence_document_count) > 0 ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
+          {compliance.unresolved_evidence_document_count} document(s) in the UNRESOLVED evidence ownership queue for this
+          client.{' '}
+          <Link
+            to={`/admin/documents/unresolved-queue?client_id=${encodeURIComponent(clientId)}`}
+            className="font-semibold text-electric-teal hover:underline"
+          >
+            Open UNRESOLVED queue
+          </Link>
+          .
+        </div>
+      ) : null}
       <SectionCard title="Compliance overview">
         <Row label="Properties count" value={compliance.properties_count} />
         <Row label="Compliance score" value={compliance.compliance_score ?? '—'} />
@@ -768,6 +1116,92 @@ const AdminClientControlPanelPage = () => {
           </ul>
         </SectionCard>
       </div>
+      <CollapsibleBlock
+        title="Compliance diagnostics"
+        subtitle="Support/internal diagnostics only (read-only; never client-facing)."
+        defaultOpen={false}
+      >
+        <div className="space-y-3">
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
+            <span className="font-semibold">Read-only diagnostic</span> - Engineering escalation may be required when
+            explain outputs do not match customer-visible state.
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={complianceExplainLoading}
+              onClick={loadComplianceExplain}
+              className="px-3 py-2 text-sm rounded-lg bg-gray-100 text-gray-900 border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {complianceExplainLoading ? 'Loading diagnostics…' : 'Load client compliance explain'}
+            </button>
+          </div>
+          {complianceExplain ? (
+            <div className="space-y-2">
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-900">
+                <div className="font-semibold mb-1">Support summary</div>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>
+                    {Number(compliance.overdue_items || 0) > 0
+                      ? `This score may be lower because ${compliance.overdue_items} required item(s) are overdue.`
+                      : 'No overdue mandatory items are visible from this snapshot.'}
+                  </li>
+                  <li>
+                    {Number(compliance.missing_documents || 0) > 0
+                      ? `This score may be affected because ${compliance.missing_documents} required document(s) are missing or pending.`
+                      : 'No missing-document count is currently reported.'}
+                  </li>
+                  <li>
+                    {runtimeExplain
+                      ? 'Runtime requirement visibility data loaded. Hidden requirements usually indicate jurisdiction or applicability mismatch.'
+                      : 'Load runtime requirement explain for property-level hidden/visible requirement causes.'}
+                  </li>
+                </ul>
+              </div>
+              <details>
+                <summary className="cursor-pointer text-xs text-electric-teal">Raw compliance explain JSON</summary>
+                <pre className="mt-1 text-[11px] bg-slate-50 border border-slate-200 rounded p-2 overflow-auto max-h-56">
+                  {JSON.stringify(complianceExplain, null, 2)}
+                </pre>
+              </details>
+            </div>
+          ) : null}
+          <div className="pt-2 border-t border-gray-100 space-y-2">
+            <div className="text-xs font-medium text-gray-600">Runtime requirement visibility explain</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={runtimePropertyId}
+                onChange={(e) => setRuntimePropertyId(e.target.value)}
+                placeholder="Property ID"
+                className="px-3 py-2 text-sm border border-gray-300 rounded-md min-w-[14rem]"
+              />
+              <button
+                type="button"
+                disabled={runtimeExplainLoading}
+                onClick={loadRuntimeExplain}
+                className="px-3 py-2 text-sm rounded-lg bg-white text-gray-800 border border-gray-300 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {runtimeExplainLoading ? 'Loading…' : 'Load runtime explain'}
+              </button>
+            </div>
+            {runtimeExplain ? (
+              <div className="space-y-1">
+                <div className="rounded-md border border-sky-200 bg-sky-50 p-2 text-xs text-sky-900">
+                  Support summary: This requirement is hidden when property/runtime conditions do not match active
+                  jurisdiction and applicability rules in the current registry publish.
+                </div>
+                <details>
+                  <summary className="cursor-pointer text-xs text-electric-teal">Raw runtime explain JSON</summary>
+                  <pre className="mt-1 text-[11px] bg-slate-50 border border-slate-200 rounded p-2 overflow-auto max-h-56">
+                    {JSON.stringify(runtimeExplain, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </CollapsibleBlock>
     </div>
   );
 
@@ -809,11 +1243,58 @@ const AdminClientControlPanelPage = () => {
 
   const billingTab = !loading && data && (
     <div className="space-y-4 max-w-4xl">
+      <p className="text-xs text-gray-600">
+        Same Stripe identifiers and sync signals as Admin Billing Centre (read-only here). For sync jobs, webhooks, and
+        invoice tools, open{' '}
+        <Link to={`/admin/billing?client=${encodeURIComponent(clientId)}`} className="text-electric-teal font-medium hover:underline">
+          Admin Billing Centre
+        </Link>
+        .
+      </p>
+      <div className="rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
+        If Stripe state and local state still differ after one sync path, mark as
+        <span className="font-semibold"> Engineering escalation required</span>.
+      </div>
       <SectionCard title="Billing & subscription">
+        {billing.billing_reconciliation_needed ? (
+          <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+            Reconciliation required: {billing.billing_reconciliation_reason || 'Needs review'}
+          </div>
+        ) : null}
         <Row label="Plan" value={billing.plan} />
         <Row label="Subscription status" value={billing.status} />
+        <Row label="Lifecycle status" value={billing.lifecycle_status_label || '—'} />
+        <Row label="Stripe customer ID" value={billing.stripe_customer_id || '—'} />
+        <Row label="Stripe subscription ID" value={billing.stripe_subscription_id || '—'} />
+        <Row
+          label="Last webhook received (UTC)"
+          value={
+            billing.stripe_webhook_last_received_at
+              ? formatAuditTimestampUtc(billing.stripe_webhook_last_received_at)
+              : 'No webhook activity recorded yet.'
+          }
+        />
+        <Row
+          label="Last webhook event type"
+          value={
+            billing.stripe_webhook_last_event_type ||
+            (billing.stripe_webhook_last_received_at ? '—' : 'No webhook activity recorded yet.')
+          }
+        />
+        <Row
+          label="Last billing sync (UTC)"
+          value={
+            billing.billing_last_synced_at || billing.stripe_sync_updated_at_utc
+              ? formatAuditTimestampUtc(billing.billing_last_synced_at || billing.stripe_sync_updated_at_utc)
+              : '—'
+          }
+        />
+        {billing.billing_sync_state != null && billing.billing_sync_state !== '' ? (
+          <Row label="Billing sync state" value={String(billing.billing_sync_state)} />
+        ) : null}
+        <Row label="Stripe sync summary" value={billing.stripe_sync_state_label || '—'} />
         {billing.canonical_entitlement_state ? (
-          <Row label="Entitlement state" value={billing.canonical_entitlement_state} />
+          <Row label="Access state" value={billing.canonical_entitlement_state} />
         ) : null}
         <Row label="Last payment" value={fmtDate(billing.last_payment)} />
         <Row label="Next billing date" value={fmtDate(billing.next_billing_date)} />
@@ -821,51 +1302,121 @@ const AdminClientControlPanelPage = () => {
         {billing.stripe_next_payment_attempt_at ? (
           <Row label="Next payment attempt (Stripe)" value={fmtDate(billing.stripe_next_payment_attempt_at)} />
         ) : null}
+        <Row label="Retry / dunning" value={billing.retry_state_label || '—'} />
+        <Row
+          label="Grace period ends (UTC)"
+          value={
+            billing.grace_period_ends_at_utc ? formatAuditTimestampUtc(billing.grace_period_ends_at_utc) : '—'
+          }
+        />
+        <Row
+          label="Next retry (UTC)"
+          value={billing.next_retry_at_utc ? formatAuditTimestampUtc(billing.next_retry_at_utc) : '—'}
+        />
+        {billing.billing_reconciliation_needed ? (
+          <Row label="Reconciliation required" value="Yes" />
+        ) : (
+          <Row label="Reconciliation required" value="No" />
+        )}
       </SectionCard>
       <CollapsibleBlock
         title="Payment history & receipts"
         subtitle={`${receiptRows.length} in view (total ${receiptsMeta.total ?? receiptRows.length})`}
         defaultOpen={false}
       >
-        <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
-          {receiptRows.slice(0, 12).map((r) => (
-            <div key={r.receipt_key} className="flex items-center justify-between text-sm border border-gray-100 rounded-lg p-2 gap-2">
-              <div className="min-w-0">
-                <div className="font-medium truncate">{r.invoice_number || r.order_reference || r.receipt_key}</div>
-                <div className="text-xs text-gray-600">
-                  {r.amount_display || '—'} / {fmtDate(r.date_issued)}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {r.pdf_available ? (
-                  <button
-                    type="button"
-                    className="text-xs text-electric-teal hover:underline"
-                    onClick={() => handleReceiptDownload(r)}
-                  >
-                    Download
-                  </button>
-                ) : (
-                  <span className="text-xs text-gray-400">No PDF</span>
-                )}
-                <button
-                  type="button"
-                  className="text-xs text-gray-700 hover:underline"
-                  onClick={() =>
-                    runAction('Resend receipt', () =>
-                      adminAPI.resendClientReceipt(clientId, {
-                        source: r.source,
-                        ref: r.source === 'subscription' ? (r.invoice_number || r.stripe_checkout_session_id) : r.order_id,
-                      })
-                    )
-                  }
-                >
-                  Resend
-                </button>
-              </div>
-            </div>
-          ))}
+        <AdminPaymentHistoryTable
+          rows={receiptRows}
+          loading={loading}
+          error={paymentHistoryError}
+          compact
+          onDownload={handleReceiptDownload}
+          onResend={(r) =>
+            runAction('Resend receipt', () =>
+              adminAPI.resendClientReceipt(clientId, {
+                source: r.source,
+                ref: r.source === 'subscription' ? (r.invoice_number || r.stripe_checkout_session_id) : r.order_id,
+              })
+            )
+          }
+        />
+        <div className="mt-2 text-right">
+          <Link to={`/admin/billing?client=${clientId}`} className="text-xs text-electric-teal hover:underline">
+            Open full Admin Billing Centre
+          </Link>
         </div>
+      </CollapsibleBlock>
+      <CollapsibleBlock
+        title="Agreement acceptance & issuance"
+        subtitle="Agreement support operations (internal)."
+        defaultOpen={false}
+      >
+        {agreementsLoading ? (
+          <div className="text-sm text-gray-500">Loading agreement status…</div>
+        ) : !agreements ? (
+          <div className="text-sm text-gray-500">No agreement summary available for this client.</div>
+        ) : (
+          <div className="space-y-3">
+            <Row label="Agreement accepted" value={latestAcceptance ? 'Yes' : 'No'} />
+            <Row label="Accepted at" value={fmtDate(latestAcceptance?.accepted_at)} />
+            <Row
+              label="Agreement version"
+              value={latestAcceptance?.template_version_id || latestIssued?.template_version_id || '—'}
+            />
+            <Row label="Issued state" value={latestIssued?.outcome === 'issued' ? 'Issued' : 'Not issued'} />
+            <Row label="Last issuance attempt" value={fmtDate(latestIssued?.issued_at || latestFailure?.issued_at)} />
+            <Row label="Issuance failure state" value={latestFailure ? 'Failure recorded' : 'No failure recorded'} />
+            {latestFailure ? (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+                Latest issuance failure: {supportSafeFailureReason}
+              </div>
+            ) : null}
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
+              Retrying agreement issuance may regenerate delivery artifacts.
+            </div>
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+              If retry remains unsuccessful, escalate with acceptance/payment references and latest issuance state.
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={!retryAvailable || retryIssuanceLoading}
+                title={
+                  retryAvailable
+                    ? 'Retry issuance using the latest failed acceptance/payment reference.'
+                    : 'Retry is available only when a failed issuance has acceptance and payment reference.'
+                }
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+                onClick={() => retryAgreementIssue(retryAcceptanceId, retryPaymentRef)}
+              >
+                {retryIssuanceLoading ? 'Retrying…' : 'Retry issuance'}
+              </button>
+            </div>
+            <div className="space-y-2">
+              {(agreements.issued_agreements || []).length === 0 ? (
+                <div className="text-sm text-gray-500">No issued agreements found for this client.</div>
+              ) : null}
+              {(agreements.issued_agreements || []).slice(0, 5).map((row) => (
+                <div key={row.issued_id} className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2">
+                  <div className="text-xs text-gray-700">
+                    <div className="font-medium">{row.issued_id}</div>
+                    <div>Outcome: {row.outcome || '—'} · Issued: {fmtDate(row.issued_at)}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={!row.pdf_download_path}
+                      title={row.pdf_download_path ? 'Download issued PDF' : 'PDF unavailable for this issuance outcome.'}
+                      className="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                      onClick={() => row.pdf_download_path && downloadAgreementPdf(row.issued_id)}
+                    >
+                      Download PDF
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </CollapsibleBlock>
     </div>
   );
@@ -873,19 +1424,70 @@ const AdminClientControlPanelPage = () => {
   const activityAuditTab = !loading && data && (
     <div className="space-y-4 max-w-4xl">
       <p className="text-xs text-gray-500">
-        Support visibility: expand a section when you need depth. Nothing here runs actions by itself.
+        Read-only timeline from stored events. Expand a row to see the raw machine action name. Timestamps below are UTC.
       </p>
+      <CollapsibleBlock
+        title="Operational incident timeline"
+        subtitle="Billing, provisioning, agreement, lifecycle, and compliance events from existing audit/activity payloads."
+        defaultOpen={false}
+      >
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700 mb-2">
+          <span className="font-semibold">Engineering escalation required</span> when this timeline conflicts with live
+          Stripe/provider state or when causality remains unclear.
+        </div>
+        <div className="max-h-80 overflow-y-auto mt-2">
+          {!operationalIncidentTimeline.length ? (
+            <div className="text-sm text-gray-500">No major operational events in the loaded window.</div>
+          ) : (
+            operationalIncidentTimeline.map((ev, idx) => (
+              <div key={`${ev.action}-${idx}`} className="py-2 border-b border-gray-100 last:border-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${getAuditSeverityBadgeClass(
+                      ev.severity,
+                    )}`}
+                  >
+                    {ev.severity}
+                  </span>
+                  <span className="text-xs text-gray-500">{formatAuditTimestampUtc(ev.at)}</span>
+                </div>
+                <div className="text-sm text-gray-900">{ev.label}</div>
+                <div className="text-xs text-gray-700">Affected object: {ev.object}</div>
+                <div className="text-xs text-gray-600">{ev.explanation}</div>
+              </div>
+            ))
+          )}
+        </div>
+      </CollapsibleBlock>
       <CollapsibleBlock title="Activity timeline" subtitle="Payments, logins, and recent system actions." defaultOpen={false}>
         <div className="max-h-72 overflow-y-auto mt-2">
           {activityRows.length === 0 ? (
             <div className="text-sm text-gray-500">No activity found.</div>
           ) : (
-            activityRows.map((ev, idx) => (
-              <div key={`${ev.type}-${idx}`} className="py-2 border-b border-gray-100 last:border-0">
-                <div className="text-xs text-gray-500">{fmtDate(ev.at)}</div>
-                <div className="text-sm text-gray-900">{ev.text}</div>
-              </div>
-            ))
+            activityRows.map((ev, idx) => {
+              const sev = ev.rawAction != null ? getAuditEventSeverity(ev.rawAction) : 'info';
+              return (
+                <div key={`${ev.type}-${idx}`} className="py-2 border-b border-gray-100 last:border-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${getAuditSeverityBadgeClass(
+                        sev,
+                      )}`}
+                    >
+                      {sev}
+                    </span>
+                    <div className="text-xs text-gray-500">{formatAuditTimestampUtc(ev.at)}</div>
+                  </div>
+                  <div className="text-sm text-gray-900">{ev.text}</div>
+                  {ev.rawAction != null ? (
+                    <details className="mt-1 text-xs text-gray-600">
+                      <summary className="cursor-pointer select-none text-electric-teal">Raw event details</summary>
+                      <div className="mt-1 font-mono text-[11px] break-all">Type: {ev.rawAction}</div>
+                    </details>
+                  ) : null}
+                </div>
+              );
+            })
           )}
         </div>
       </CollapsibleBlock>
@@ -952,17 +1554,30 @@ const AdminClientControlPanelPage = () => {
           {!(operationalSnapshot.recent_audit_highlights || []).length ? (
             <p className="text-gray-500 text-xs">No audit rows in sample window.</p>
           ) : (
-            operationalSnapshot.recent_audit_highlights.map((ev, idx) => (
-              <div key={`${ev.action}-${idx}`} className="border-b border-gray-50 pb-2 last:border-0">
-                <div className="text-xs text-gray-500">{fmtDate(ev.timestamp)}</div>
-                <div className="text-gray-900 font-mono text-xs">{ev.action || '—'}</div>
-                {ev.metadata_preview && Object.keys(ev.metadata_preview).length > 0 && (
-                  <pre className="text-[10px] text-gray-600 mt-1 whitespace-pre-wrap break-words max-h-16 overflow-hidden">
-                    {JSON.stringify(ev.metadata_preview)}
-                  </pre>
-                )}
-              </div>
-            ))
+            operationalSnapshot.recent_audit_highlights.map((ev, idx) => {
+              const raw = ev.action || '';
+              const sev = getAuditEventSeverity(raw);
+              return (
+                <div key={`${raw}-${idx}`} className="border-b border-gray-50 pb-2 last:border-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${getAuditSeverityBadgeClass(sev)}`}>
+                      {sev}
+                    </span>
+                    <div className="text-xs text-gray-500">{formatAuditTimestampUtc(ev.timestamp)}</div>
+                  </div>
+                  <div className="text-sm text-gray-900">{getAuditEventLabel(raw)}</div>
+                  <details className="mt-1 text-xs text-gray-600">
+                    <summary className="cursor-pointer select-none text-electric-teal">Raw event details</summary>
+                    <div className="mt-1 font-mono text-[11px] break-all">Type: {raw || '—'}</div>
+                    {ev.metadata_preview && Object.keys(ev.metadata_preview).length > 0 && (
+                      <pre className="text-[10px] text-gray-600 mt-1 whitespace-pre-wrap break-words max-h-24 overflow-auto">
+                        {JSON.stringify(ev.metadata_preview)}
+                      </pre>
+                    )}
+                  </details>
+                </div>
+              );
+            })
           )}
         </div>
       </CollapsibleBlock>
@@ -974,11 +1589,9 @@ const AdminClientControlPanelPage = () => {
     if (activeTab === 'overview') {
       return (
         <div className="space-y-4 max-w-5xl">
-          {statusSummaryCard}
-          {primaryActionsBlock}
-          {identityAccountCard}
-          {overviewMetricsCollapsible}
-          {overviewProgressCollapsible}
+          {readOnlyDiagnosticsSection}
+          {operationalActionsBlock}
+          {highImpactActionsBlock}
         </div>
       );
     }
@@ -998,8 +1611,8 @@ const AdminClientControlPanelPage = () => {
             {!loading && data?.identity ? <AccountEnvironmentBadge doc={data.identity} showLiveBadge /> : null}
           </div>
           <p className="text-sm text-gray-600 max-w-3xl">
-            One place for identity, billing, compliance, and operations. Use tabs to focus; nothing here changes backend
-            behaviour.
+            One place for identity, billing, compliance, and operations. Read-only tabs and collapsibles show snapshots only;
+            operational and high-impact sections run server actions when you click a button.
           </p>
         </div>
 
@@ -1030,6 +1643,100 @@ const AdminClientControlPanelPage = () => {
         )}
       </div>
       {stepUp.modal}
+      {impersonationOpen ? (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
+          onClick={() => {
+            if (!isBusy) {
+              setImpersonationOpen(false);
+              setImpersonationReason('');
+              setImpersonationConfirmed(false);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !isBusy) {
+              setImpersonationOpen(false);
+              setImpersonationReason('');
+              setImpersonationConfirmed(false);
+            }
+          }}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="impersonation-dialog-title"
+            className="bg-white rounded-xl shadow-xl max-w-md w-full p-5 space-y-4 border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <h2 id="impersonation-dialog-title" className="text-lg font-semibold text-midnight-blue">
+              Start impersonation session
+            </h2>
+            <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-900">
+              <span className="font-semibold">Warning:</span> You are about to access this customer's account.
+            </div>
+            <p className="text-sm text-gray-700">
+              You will open the client portal as this user in this browser. Your admin token is stored in session storage
+              until you end impersonation. Use only for verified support or incident work.
+            </p>
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700 space-y-1">
+              <div><span className="font-semibold">Client:</span> {impersonationPreview.clientName}</div>
+              <div><span className="font-semibold">Client ID:</span> {impersonationPreview.clientId}</div>
+              <div><span className="font-semibold">User email:</span> {impersonationPreview.maskedEmail}</div>
+              {impersonationPreview.companyName ? (
+                <div><span className="font-semibold">Company:</span> {impersonationPreview.companyName}</div>
+              ) : null}
+            </div>
+            <div>
+              <label htmlFor="impersonation-reason" className="text-xs font-medium text-gray-700">
+                Reason for audit log (minimum {MIN_DANGEROUS_ACTION_REASON} characters)
+              </label>
+              <textarea
+                id="impersonation-reason"
+                data-testid="impersonation-reason-input"
+                className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[88px]"
+                value={impersonationReason}
+                onChange={(e) => setImpersonationReason(e.target.value)}
+              />
+            </div>
+            <label className="flex items-start gap-2 text-xs text-gray-700">
+              <input
+                type="checkbox"
+                data-testid="impersonation-confirm-checkbox"
+                checked={impersonationConfirmed}
+                onChange={(e) => setImpersonationConfirmed(Boolean(e.target.checked))}
+              />
+              <span>I confirm I have verified this is the correct customer and I understand this session is audited.</span>
+            </label>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                className="px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50"
+                disabled={isBusy}
+                onClick={() => {
+                  if (!isBusy) {
+                    setImpersonationOpen(false);
+                    setImpersonationReason('');
+                    setImpersonationConfirmed(false);
+                  }
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-3 py-2 text-sm rounded-lg bg-indigo-700 text-white hover:bg-indigo-800 disabled:opacity-50"
+                disabled={isBusy || !impersonationConfirmed || impersonationReason.trim().length < MIN_DANGEROUS_ACTION_REASON}
+                data-testid="impersonation-confirm"
+                onClick={() => startImpersonation(impersonationReason, impersonationConfirmed)}
+              >
+                {isBusy ? 'Starting…' : 'Confirm and start'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </UnifiedAdminLayout>
   );
 };

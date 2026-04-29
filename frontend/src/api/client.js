@@ -514,6 +514,10 @@ export const clientAPI = {
     apiClient.get(
       `/client/properties/${encodeURIComponent(propertyId)}/requirements/${encodeURIComponent(requirementId)}/evidence-resolution`,
     ),
+  uploadComplianceSupportingAttachment: (formData) =>
+    apiClient.post('/documents/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   postComplianceEvidence: (propertyId, requirementId, body) =>
     apiClient.post(
       `/client/properties/${encodeURIComponent(propertyId)}/requirements/${encodeURIComponent(requirementId)}/compliance-evidence`,
@@ -755,6 +759,7 @@ export const clientAPI = {
 
 export const adminAPI = {
   getDashboard: () => apiClient.get('/admin/dashboard'),
+  /** Canonical admin customer discovery (support + billing); backed by GET /admin/search. */
   globalSearch: (q, limit = 20, includeArchived = false) =>
     apiClient.get('/admin/search', { params: { q, limit, include_archived: includeArchived || undefined } }),
   getPendingVerificationDocuments: (hours = 0, clientId = null, limit = 50, skip = 0) =>
@@ -762,6 +767,14 @@ export const adminAPI = {
   /** Admin document verify (optional evidence mismatch override for audited resolution). */
   verifyDocument: (documentId, body = {}) =>
     apiClient.post(`/documents/verify/${encodeURIComponent(documentId)}`, body),
+  getDocumentAiAssistance: (documentId) =>
+    apiClient.get(`/documents/${encodeURIComponent(documentId)}/review/ai-assistance`),
+  getDocumentVerificationHelpers: (documentId) =>
+    apiClient.get(`/documents/${encodeURIComponent(documentId)}/review/verification-helpers`),
+  recordDocumentExternalVerification: (documentId, body = {}) =>
+    apiClient.post(`/documents/${encodeURIComponent(documentId)}/review/record-external-verification`, body),
+  applyDocumentAiFieldAction: (documentId, body = {}) =>
+    apiClient.post(`/documents/${encodeURIComponent(documentId)}/review/ai-extraction/field-action`, body),
   resolveEvidenceMatch: (documentId, body) =>
     apiClient.post(`/admin/documents/${encodeURIComponent(documentId)}/resolve-evidence-match`, body),
   backfillEvidenceMatch: (body = {}) => apiClient.post('/admin/documents/backfill-evidence-match', body ?? {}),
@@ -806,19 +819,44 @@ export const adminAPI = {
     ),
   portalUserSetTestLike: (portalUserId, body, config = {}) =>
     apiClient.post(`/admin/users/${encodeURIComponent(portalUserId)}/test-like`, body, config),
-  retryProvisioningJob: (jobId) => apiClient.post(`/admin/provisioning-jobs/${jobId}/retry`),
+  retryProvisioningJob: (jobId, body) => apiClient.post(`/admin/provisioning-jobs/${jobId}/retry`, body),
+  listUnresolvedEvidenceDocuments: (params = {}) =>
+    apiClient.get('/admin/documents/unresolved', { params }),
   getClientControlPanel: (clientId) => apiClient.get(`/admin/clients/${clientId}/control-panel`),
+  getClientAgreementsSummary: (clientId) => apiClient.get(`/admin/clients/${clientId}/agreements/summary`),
+  downloadClientIssuedAgreementPdf: (clientId, issuedId) =>
+    apiClient.get(`/admin/clients/${clientId}/agreements/issued/${encodeURIComponent(issuedId)}/pdf`, {
+      responseType: 'blob',
+    }),
+  retryClientAgreementIssue: (clientId, body) =>
+    apiClient.post(`/admin/clients/${clientId}/agreements/retry-issue`, body),
   getClientComplianceActivity: (clientId, params = {}) =>
     apiClient.get(`/admin/clients/${clientId}/compliance-activity`, { params }),
+  getComplianceTruthExplain: (clientId) =>
+    apiClient.get(`/admin/compliance-truth/clients/${encodeURIComponent(clientId)}/explain`),
+  getComplianceTruthMigrationReport: (clientId, limit = 10000) =>
+    apiClient.get(
+      `/admin/compliance-truth/clients/${encodeURIComponent(clientId)}/published-registry-migration-report`,
+      { params: { limit } },
+    ),
+  getRuntimeRequirementsExplain: (clientId, propertyId) =>
+    apiClient.get('/admin/compliance/registry/runtime-requirements/explain', {
+      params: { client_id: clientId, property_id: propertyId },
+    }),
+  validatePropertyComplianceScore: (propertyId, fix = false) =>
+    apiClient.post(`/admin/properties/${encodeURIComponent(propertyId)}/validate-compliance-score`, { fix }),
   getClientCommandCentreTaskActivity: (clientId, params = {}) =>
     apiClient.get(`/admin/clients/${clientId}/command-centre-task-activity`, { params }),
   resendActivationEmail: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/resend-activation-email`),
   resendDashboardEmail: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/resend-dashboard-email`),
   recalculateCompliance: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/recalculate-compliance`),
   runClientJob: (clientId, job = 'compliance_recalc_client') => apiClient.post(`/admin/clients/${clientId}/actions/run-job`, { job }),
-  unlockClientAccount: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/unlock-account`),
-  startClientImpersonation: (clientId, ttlMinutes = 30) =>
-    apiClient.post(`/admin/clients/${clientId}/impersonation/start`, null, { params: { ttl_minutes: ttlMinutes } }),
+  unlockClientAccount: (clientId, body) => apiClient.post(`/admin/clients/${clientId}/actions/unlock-account`, body),
+  startClientImpersonation: (clientId, ttlMinutes = 30, body, config = {}) =>
+    apiClient.post(`/admin/clients/${clientId}/impersonation/start`, body, {
+      ...config,
+      params: { ...(config.params || {}), ttl_minutes: ttlMinutes },
+    }),
   getClientReceipts: (clientId, params = {}) => apiClient.get(`/admin/billing/clients/${clientId}/receipts`, { params }),
   resendClientReceipt: (clientId, body) => apiClient.post(`/admin/billing/clients/${clientId}/receipts/resend`, body),
   getAuditLogs: (params = {}) =>
@@ -992,6 +1030,14 @@ export const adminAPI = {
   getRecommendContractors: (workOrderId, params = {}) => apiClient.get(`/admin/ops/work-orders/${workOrderId}/recommend-contractors`, { params }),
   createWorkOrder: (body) => apiClient.post('/admin/ops/work-orders', body),
   updateWorkOrder: (workOrderId, body) => apiClient.patch(`/admin/ops/work-orders/${workOrderId}`, body),
+  adminWorkOrderMarkNoAccess: (workOrderId, body) =>
+    apiClient.post(`/admin/ops/work-orders/${workOrderId}/mark-no-access`, body),
+  adminWorkOrderRescheduleRequest: (workOrderId, body) =>
+    apiClient.post(`/admin/ops/work-orders/${workOrderId}/schedule/reschedule-request`, body),
+  adminWorkOrderVerify: (workOrderId, body = {}) =>
+    apiClient.post(`/admin/ops/work-orders/${workOrderId}/verify`, body),
+  adminWorkOrderClose: (workOrderId, body = {}) =>
+    apiClient.post(`/admin/ops/work-orders/${workOrderId}/close`, body),
   // Predictive insights (admin: per client; client: own)
   getClientPredictiveInsights: (clientId, params = {}) => apiClient.get(`/admin/ops/clients/${clientId}/predictive-insights`, { params }),
   // Risk signals (admin dashboard)

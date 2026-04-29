@@ -26,7 +26,7 @@ import os
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Request, status, Depends, Query
+from fastapi import APIRouter, HTTPException, Request, status, Depends, Query, Body
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from database import database
@@ -39,8 +39,14 @@ from services.billing_period_utils import (
     period_start_from_stripe_subscription_dict,
 )
 from services.billing_stripe_sync_service import stripe_subscription_to_dict
+from services.billing_stripe_sync_service import persist_subscription_billing_from_stripe
+from services.subscription_lifecycle_service import sync_subscription_lifecycle
+from services.billing_reconciliation_service import mark_billing_reconciliation_needed
 from services.provisioning import provisioning_service
 from services.stripe_service import StripeService
+from services.billing_audit_normalization import normalized_billing_audit_metadata
+from services.admin_client_support_search import run_admin_client_support_search
+from services.admin_action_governance import ensure_action_reason, normalized_admin_action_metadata
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/billing", tags=["admin-billing"], dependencies=[Depends(admin_route_guard)])
@@ -92,6 +98,11 @@ class ChangePlanRequest(BaseModel):
     """Request to change a client's subscription plan (admin support flow)."""
     plan_code: str  # PLAN_1_SOLO | PLAN_2_PORTFOLIO | PLAN_3_PRO
     apply_at_period_end: bool = True  # If True, new price applies at next billing; if False, prorate immediately
+    reason: str = Field(..., min_length=10, max_length=2000)
+
+
+class SupportGovernedActionReasonBody(BaseModel):
+    reason: str = Field(..., min_length=10, max_length=2000)
 
 
 class AdminReceiptResendBody(BaseModel):
@@ -105,107 +116,45 @@ class AdminReceiptResendBody(BaseModel):
 # =============================================================================
 
 @router.get("/clients/search")
-async def search_billing_clients(request: Request, q: str = "", limit: int = 20):
+async def search_billing_clients(
+    request: Request,
+    q: str = "",
+    limit: int = 20,
+    include_archived: bool = Query(False, description="Include archived/suspended clients (same as /api/admin/search)"),
+):
     """
-    Search clients for billing management.
-    
-    Search by: email, CRN, client_id, property address/postcode
+    Search clients for billing management — delegates to canonical admin support search
+    (GET /api/admin/search) implementation for consistent behaviour.
     """
-    admin = await admin_route_guard(request)
+    await admin_route_guard(request)
     db = database.get_db()
-    
-    if not q or len(q) < 2:
-        return {"clients": [], "total": 0, "query": q}
-    
+
+    if not q or len(q.strip()) < 2:
+        return {"clients": [], "total": 0, "query": q, "search_source": "admin_support_search"}
+
     try:
-        # Build search query (clients collection: email, full_name, customer_reference)
-        search_query = {
-            "$or": [
-                {"email": {"$regex": q, "$options": "i"}},
-                {"customer_reference": {"$regex": q, "$options": "i"}},
-                {"client_id": {"$regex": q, "$options": "i"}},
-                {"company_name": {"$regex": q, "$options": "i"}},
-                {"full_name": {"$regex": q, "$options": "i"}},
-            ]
-        }
-        
-        # Search clients
-        clients = await db.clients.find(
-            search_query,
-            {
-                "_id": 0,
-                "client_id": 1,
-                "email": 1,
-                "full_name": 1,
-                "company_name": 1,
-                "customer_reference": 1,
-                "billing_plan": 1,
-                "subscription_status": 1,
-                "entitlement_status": 1,
-                "billing_lifecycle_state": 1,
-                "stripe_customer_id": 1,
-                "created_at": 1,
-            }
-        ).limit(limit).to_list(limit)
-        
-        # Also search by property address/postcode
-        if len(clients) < limit:
-            properties = await db.properties.find(
-                {
-                    "$or": [
-                        {"address": {"$regex": q, "$options": "i"}},
-                        {"postcode": {"$regex": q, "$options": "i"}},
-                    ]
-                },
-                {"_id": 0, "client_id": 1}
-            ).limit(limit).to_list(limit)
-            
-            property_client_ids = list(set(p["client_id"] for p in properties))
-            existing_client_ids = [c["client_id"] for c in clients]
-            new_client_ids = [cid for cid in property_client_ids if cid not in existing_client_ids]
-            
-            if new_client_ids:
-                additional_clients = await db.clients.find(
-                    {"client_id": {"$in": new_client_ids}},
-                    {
-                        "_id": 0,
-                        "client_id": 1,
-                        "email": 1,
-                        "full_name": 1,
-                        "company_name": 1,
-                        "customer_reference": 1,
-                        "billing_plan": 1,
-                        "subscription_status": 1,
-                        "entitlement_status": 1,
-                        "billing_lifecycle_state": 1,
-                        "stripe_customer_id": 1,
-                        "created_at": 1,
-                    }
-                ).limit(limit - len(clients)).to_list(limit - len(clients))
-                
-                clients.extend(additional_clients)
-        
-        # Expose customer_reference as crn for frontend compatibility
-        for client in clients:
-            client["crn"] = client.get("customer_reference")
-        # Add plan names
-        for client in clients:
+        rows = await run_admin_client_support_search(
+            db,
+            search_term=q.strip(),
+            limit=limit,
+            include_archived=include_archived,
+        )
+        for client in rows:
             plan_code = client.get("billing_plan", "PLAN_1_SOLO")
             plan_def = plan_registry.get_plan_by_code_string(plan_code)
-            client["plan_name"] = plan_def.get("name") if plan_def else plan_code
             client["max_properties"] = plan_def.get("max_properties", 2) if plan_def else 2
-        
         return {
-            "clients": clients,
-            "total": len(clients),
-            "query": q,
+            "clients": rows,
+            "total": len(rows),
+            "query": q.strip(),
+            "search_source": "admin_support_search",
         }
-        
+
     except Exception as e:
         logger.error(f"Search billing clients error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Search failed"
+            detail="Search failed",
         )
 
 
@@ -346,6 +295,22 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
         snapshot["subscription_lifecycle"] = sub_status
         snapshot["billing_last_synced_at"] = sub_status.get("billing_last_synced_at")
         snapshot["billing_sync_state"] = sub_status.get("billing_sync_state")
+        snapshot["retry_state_label"] = (
+            "Awaiting retry"
+            if (sub_status.get("open_invoice_status") or "").lower() in {"open", "past_due", "unpaid"}
+            else "No retry in progress"
+        )
+        snapshot["next_retry_at_utc"] = sub_status.get("stripe_next_payment_attempt_at")
+        snapshot["grace_period_ends_at_utc"] = sub_status.get("grace_period_ends_at")
+        snapshot["stripe_sync_state_label"] = (
+            "Up to date"
+            if (sub_status.get("billing_sync_state") or "").lower() == "ok"
+            else "Needs review"
+        )
+        snapshot["stripe_sync_updated_at_utc"] = sub_status.get("billing_last_synced_at")
+        snapshot["billing_reconciliation_needed"] = bool((billing or {}).get("billing_reconciliation_needed"))
+        snapshot["billing_reconciliation_reason"] = (billing or {}).get("billing_reconciliation_reason")
+        snapshot["billing_reconciliation_marked_at"] = (billing or {}).get("billing_reconciliation_marked_at")
 
         if sub_status.get("has_subscription"):
             cpe_iso = sub_status.get("current_period_end")
@@ -370,6 +335,7 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             if ss:
                 snapshot["stripe_subscription_status"] = ss
             snapshot["canonical_entitlement_state"] = sub_status.get("canonical_entitlement_state")
+            snapshot["lifecycle_status_label"] = sub_status.get("lifecycle_status_label")
             snapshot["last_payment_at"] = sub_status.get("last_payment_at")
             snapshot["last_payment_amount_pence"] = sub_status.get("last_payment_amount_pence")
             snapshot["last_payment_status"] = sub_status.get("last_payment_status")
@@ -415,7 +381,7 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
                 {
                     "code": "entitlement_limited",
                     "severity": "high",
-                    "message": "Entitlement is LIMITED — often payment or compliance-related.",
+                    "message": "Account access is limited - usually due to payment or compliance state.",
                 }
             )
         elif es == "DISABLED":
@@ -423,7 +389,7 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
                 {
                     "code": "entitlement_disabled",
                     "severity": "high",
-                    "message": "Entitlement is DISABLED — subscription or billing inactive.",
+                    "message": "Account access is disabled - subscription or billing is inactive.",
                 }
             )
         ob = client.get("onboarding_status")
@@ -440,7 +406,7 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
                 {
                     "code": "payment_failed_recorded",
                     "severity": "high",
-                    "message": "Payment failure recorded on billing record — review Stripe and client payment method.",
+                    "message": "Payment failure recorded - review payment method and outstanding invoice.",
                 }
             )
         pwd_ok = (
@@ -502,6 +468,7 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
                 )
 
         snapshot["billing_attention_items"] = attention
+        snapshot["billing_anomaly_flags"] = [i.get("code") for i in attention] if attention else []
         
         return snapshot
         
@@ -587,6 +554,17 @@ async def download_admin_subscription_receipt(request: Request, client_id: str, 
             "channel": "admin_billing",
             "stripe_session_id": str(doc.get("_id")),
             "path": str(request.url.path),
+            **normalized_billing_audit_metadata(
+                machine_event_type="billing.receipt.downloaded",
+                human_label="Receipt downloaded",
+                severity="info",
+                actor_type="admin",
+                actor_id=admin.get("portal_user_id"),
+                client_id=client_id,
+                stripe_checkout_session_id=str(doc.get("_id") or ""),
+                support_explanation="Support downloaded a stored receipt PDF for a client.",
+                occurred_at=datetime.now(timezone.utc),
+            ),
         },
     )
     return Response(
@@ -954,8 +932,38 @@ async def sync_client_billing(request: Request, client_id: str):
                 "stripe_customer_id": stripe_customer_id,
                 "stripe_subscription_id": active_subscription.id if active_subscription else None,
                 "lifecycle_sync": lifecycle_sync,
+            **normalized_billing_audit_metadata(
+                machine_event_type="billing.sync.completed",
+                human_label="Billing sync completed",
+                severity="info",
+                actor_type="admin",
+                actor_id=admin.get("portal_user_id"),
+                client_id=client_id,
+                stripe_customer_id=stripe_customer_id,
+                stripe_subscription_id=active_subscription.id if active_subscription else None,
+                support_explanation="Support requested a manual Stripe sync for this client.",
+                occurred_at=datetime.now(timezone.utc),
+            ),
             }
         )
+        try:
+            from services.notification_orchestrator import notification_orchestrator
+
+            await notification_orchestrator.send(
+                template_key="ADMIN_MANUAL",
+                client_id=client_id,
+                context={
+                    "subject": "Your subscription plan was updated",
+                    "body": (
+                        f"Your plan has been changed from {current_plan_code.value} to {new_plan_code.value}. "
+                        + ("The new plan will apply at the end of your current billing period." if body.apply_at_period_end else "The new plan is now active.")
+                    ),
+                },
+                idempotency_key=f"admin_plan_change_{client_id}_{new_plan_code.value}_{int(bool(body.apply_at_period_end))}",
+                event_type="admin.billing.plan_change_confirmation",
+            )
+        except Exception as notify_err:
+            logger.warning("change-plan confirmation notification hook failed for %s: %s", client_id, notify_err)
         
         return {
             "success": True,
@@ -1044,6 +1052,17 @@ async def create_billing_portal_link(request: Request, client_id: str):
                 "action_type": "BILLING_PORTAL_LINK_CREATED",
                 "stripe_customer_id": stripe_customer_id,
                 "portal_url_created": True,
+            **normalized_billing_audit_metadata(
+                machine_event_type="billing.portal_link.created",
+                human_label="Billing portal link created",
+                severity="info",
+                actor_type="admin",
+                actor_id=admin.get("portal_user_id"),
+                client_id=client_id,
+                stripe_customer_id=stripe_customer_id,
+                support_explanation="Support generated a Stripe billing portal link.",
+                occurred_at=datetime.now(timezone.utc),
+            ),
             }
         )
         
@@ -1084,6 +1103,7 @@ async def change_client_plan(request: Request, client_id: str, body: ChangePlanR
     proration (recommended for downgrades). Updates Stripe then syncs app state.
     """
     admin = await admin_route_guard(request)
+    support_reason = ensure_action_reason("change_plan", body.reason)
     db = database.get_db()
 
     try:
@@ -1184,7 +1204,7 @@ async def change_client_plan(request: Request, client_id: str, body: ChangePlanR
         _upd_pe = period_end_from_stripe_subscription_dict(_upd_d)
 
         # When apply_at_period_end is True, Stripe applies the new price at period end; do not change
-        # app plan/entitlement now or the client would lose features immediately.
+        # app plan now.
         if body.apply_at_period_end:
             # Only update period metadata; leave current_plan_code and entitlement unchanged
             billing_update = {
@@ -1203,47 +1223,40 @@ async def change_client_plan(request: Request, client_id: str, body: ChangePlanR
                 {"$set": billing_update, "$setOnInsert": {"created_at": datetime.now(timezone.utc)}},
                 upsert=True,
             )
-            # Do not update clients.billing_plan or entitlement_status
+            # Do not update clients.billing_plan now; lifecycle sync will compute entitlement/status.
             after_state = {
                 "subscription_status": new_status,
-                "entitlement_status": "ENABLED",  # unchanged until period end
+                "entitlement_status": (billing or {}).get("entitlement_status") or "ENABLED",
                 "current_plan_code": current_plan_code.value,
                 "scheduled_plan_at_period_end": new_plan_code.value,
             }
         else:
-            billing_update = {
-                "client_id": client_id,
-                "stripe_customer_id": stripe_customer_id,
-                "updated_at": datetime.now(timezone.utc),
-                "stripe_subscription_id": stripe_subscription_id,
-                "current_plan_code": derived_plan.value,
-                "subscription_status": new_status,
-                "entitlement_status": new_entitlement.value,
-                "cancel_at_period_end": updated_sub.cancel_at_period_end,
-            }
-            if _upd_ps:
-                billing_update["current_period_start"] = _upd_ps
-            if _upd_pe:
-                billing_update["current_period_end"] = _upd_pe
-            await db.client_billing.update_one(
-                {"client_id": client_id},
-                {"$set": billing_update, "$setOnInsert": {"created_at": datetime.now(timezone.utc)}},
-                upsert=True,
-            )
-            await db.clients.update_one(
-                {"client_id": client_id},
-                {"$set": {
-                    "stripe_customer_id": stripe_customer_id,
-                    "billing_plan": derived_plan.value,
-                    "subscription_status": "ACTIVE" if new_status in ("ACTIVE", "TRIALING") else new_status,
-                    "entitlement_status": new_entitlement.value,
-                }},
+            await persist_subscription_billing_from_stripe(
+                client_id,
+                updated_sub,
+                event_source="admin_change_plan",
+                update_plan=True,
+                increment_entitlements_version=1,
             )
             after_state = {
                 "subscription_status": new_status,
                 "entitlement_status": new_entitlement.value,
                 "current_plan_code": derived_plan.value,
             }
+
+        try:
+            await sync_subscription_lifecycle(client_id, bump_version=False)
+        except Exception as sync_err:
+            await mark_billing_reconciliation_needed(
+                client_id=client_id,
+                reason="admin_change_plan_lifecycle_sync_failed",
+                context={
+                    "error": str(sync_err)[:500],
+                    "apply_at_period_end": bool(body.apply_at_period_end),
+                    "target_plan": new_plan_code.value,
+                },
+            )
+            raise
 
         # Audit log
         await create_audit_log(
@@ -1253,10 +1266,58 @@ async def change_client_plan(request: Request, client_id: str, body: ChangePlanR
             client_id=client_id,
             metadata={
                 "action_type": "BILLING_PLAN_CHANGED",
+                **normalized_admin_action_metadata("change_plan", support_reason),
                 "previous_plan": current_plan_code.value,
                 "new_plan": new_plan_code.value,
                 "apply_at_period_end": body.apply_at_period_end,
                 "stripe_subscription_id": stripe_subscription_id,
+                **normalized_billing_audit_metadata(
+                    machine_event_type="billing.plan.changed",
+                    human_label="Subscription plan changed",
+                    severity="warning",
+                    actor_type="admin",
+                    actor_id=admin.get("portal_user_id"),
+                    client_id=client_id,
+                    stripe_customer_id=stripe_customer_id,
+                    stripe_subscription_id=stripe_subscription_id,
+                    support_explanation="Support changed the client's plan through admin billing controls.",
+                    occurred_at=datetime.now(timezone.utc),
+                ),
+            },
+        )
+        try:
+            from services.plan_reconciliation_service import reconcile_plan_change
+
+            await reconcile_plan_change(
+                client_id=client_id,
+                old_plan=current_plan_code.value,
+                new_plan=new_plan_code.value,
+                reason="admin_change_plan",
+                subscription_status=new_status,
+            )
+        except Exception as reconcile_err:
+            await mark_billing_reconciliation_needed(
+                client_id=client_id,
+                reason="admin_change_plan_reconcile_failed",
+                context={"error": str(reconcile_err)[:500]},
+            )
+            logger.warning("change-plan reconcile failed for %s: %s", client_id, reconcile_err)
+
+        plan_rank = {"PLAN_1_SOLO": 1, "PLAN_2_PORTFOLIO": 2, "PLAN_3_PRO": 3}
+        from_rank = plan_rank.get(current_plan_code.value, 0)
+        to_rank = plan_rank.get(new_plan_code.value, 0)
+        plan_change_type = "upgrade" if to_rank > from_rank else "downgrade"
+
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role=UserRole.SYSTEM,
+            client_id=client_id,
+            metadata={
+                "action_type": "BILLING_EMAIL_TRIGGER_HOOK",
+                "trigger_key": "subscription_plan_change_confirmation",
+                "plan_change_type": plan_change_type,
+                "apply_at_period_end": bool(body.apply_at_period_end),
+                "source": "admin_billing.change_client_plan",
             },
         )
 
@@ -1464,7 +1525,11 @@ async def set_test_client_provisioned(request: Request, client_id: str, body: Te
 
 
 @router.post("/clients/{client_id}/force-provision")
-async def force_provision_client(request: Request, client_id: str):
+async def force_provision_client(
+    request: Request,
+    client_id: str,
+    body: SupportGovernedActionReasonBody = Body(...),
+):
     """
     Re-run provisioning pipeline for a client.
     
@@ -1472,6 +1537,7 @@ async def force_provision_client(request: Request, client_id: str):
     Idempotent and safe to rerun.
     """
     admin = await admin_route_guard(request)
+    support_reason = ensure_action_reason("force_provision", body.reason)
     db = database.get_db()
     
     try:
@@ -1507,6 +1573,7 @@ async def force_provision_client(request: Request, client_id: str):
             client_id=client_id,
             metadata={
                 "action_type": "FORCE_PROVISIONING",
+                **normalized_admin_action_metadata("force_provision", support_reason),
                 "success": success,
                 "message": message,
                 "previous_onboarding_status": client.get("onboarding_status"),
@@ -1821,9 +1888,10 @@ async def _run_subscription_lifecycle_batch_job() -> Dict[str, Any]:
 
 
 @router.post("/jobs/subscription-lifecycle")
-async def trigger_subscription_lifecycle_job(request: Request):
+async def trigger_subscription_lifecycle_job(request: Request, body: SupportGovernedActionReasonBody = Body(...)):
     """Manually run the subscription lifecycle batch job (`process_subscription_lifecycle_and_reminders`)."""
     admin = await admin_route_guard(request)
+    support_reason = ensure_action_reason("run_subscription_lifecycle_batch", body.reason)
 
     try:
         result = await _run_subscription_lifecycle_batch_job()
@@ -1836,6 +1904,7 @@ async def trigger_subscription_lifecycle_job(request: Request):
             actor_id=admin.get("portal_user_id"),
             metadata={
                 "action_type": "JOB_TRIGGERED",
+                **normalized_admin_action_metadata("run_subscription_lifecycle_batch", support_reason),
                 "job_name": "subscription_lifecycle",
                 "items_processed": count,
                 "outcome_metrics": metrics,
@@ -1902,9 +1971,10 @@ async def trigger_renewal_reminders(request: Request):
 
 
 @router.post("/jobs/stripe-subscription-reconcile")
-async def trigger_stripe_subscription_reconcile_job(request: Request):
+async def trigger_stripe_subscription_reconcile_job(request: Request, body: SupportGovernedActionReasonBody = Body(...)):
     """Run the Stripe subscription reconcile batch (same as scheduled `stripe_subscription_reconcile`)."""
     admin = await admin_route_guard(request)
+    support_reason = ensure_action_reason("run_stripe_reconcile_batch", body.reason)
     try:
         from services.jobs import run_stripe_subscription_reconcile
 
@@ -1915,6 +1985,7 @@ async def trigger_stripe_subscription_reconcile_job(request: Request):
             actor_id=admin.get("portal_user_id"),
             metadata={
                 "action_type": "JOB_TRIGGERED",
+                **normalized_admin_action_metadata("run_stripe_reconcile_batch", support_reason),
                 "job_name": "stripe_subscription_reconcile",
                 "result": result,
             },
