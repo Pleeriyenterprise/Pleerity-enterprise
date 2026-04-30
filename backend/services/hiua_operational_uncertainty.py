@@ -48,6 +48,15 @@ def _gap_to_requirement_like(gap: Dict[str, Any]) -> Dict[str, Any]:
         "is_mandatory": gap.get("is_mandatory"),
         "policy_criticality": gap.get("policy_criticality"),
     }
+    if gap.get("pipeline_applicability_state") is not None:
+        row["pipeline_applicability_state"] = gap.get("pipeline_applicability_state")
+    if gap.get("effective_applicability_state") is not None:
+        row["effective_applicability_state"] = gap.get("effective_applicability_state")
+    if gap.get("applicability_resolution_source") is not None:
+        row["applicability_resolution_source"] = gap.get("applicability_resolution_source")
+    prov = gap.get("applicability_provenance")
+    if isinstance(prov, dict) and prov:
+        row["applicability_provenance"] = prov
     if gap.get("requirement_code_normalized"):
         row["requirement_code_normalized"] = gap.get("requirement_code_normalized")
     ea = gap.get("evidence_authority")

@@ -37,8 +37,33 @@ def test_resolve_policy_facts_uses_requirement_row_authority_then_fallbacks():
     )
     assert out["requirement_code_normalized"] == "gas_safety"
     assert out["applicability_state"] == "REQUIRED"
+    assert out["pipeline_applicability_state"] == "REQUIRED"
+    assert out["effective_applicability_state"] == "REQUIRED"
     assert out["is_mandatory"] is True
     assert out["policy_criticality"] == "HIGH"
     assert out["mandatory_source"] == "requirement_row"
     assert out["criticality_source"] == "requirement_row"
     assert out["evidence_state_normalized"] == "VERIFIED_EXPIRED"
+
+
+def test_resolve_policy_facts_uses_effective_when_provenance_present():
+    from services.applicability_provenance_constants import OPERATOR_OVERRIDE
+
+    out = resolve_policy_facts(
+        {
+            "requirement_code_normalized": "gas_safety",
+            "pipeline_applicability_state": "UNKNOWN",
+            "effective_applicability_state": "REQUIRED",
+            "applicability_resolution_source": OPERATOR_OVERRIDE,
+            "applicability_state": "REQUIRED",
+            "is_mandatory": True,
+            "policy_criticality": "HIGH",
+            "evidence_authority": {"state": "MISSING"},
+        },
+        registry_metadata={"applicability_state": "NOT_REQUIRED"},
+        catalog_defaults={"applicability_state": "NOT_REQUIRED"},
+    )
+    assert out["applicability_state"] == "REQUIRED"
+    assert out["effective_applicability_state"] == "REQUIRED"
+    assert out["pipeline_applicability_state"] == "UNKNOWN"
+    assert out["applicability_resolution_source"] == OPERATOR_OVERRIDE

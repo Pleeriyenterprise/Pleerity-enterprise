@@ -5,8 +5,8 @@ All endpoints require admin auth; feature-flag changes require Owner or Admin an
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any, Literal
 from database import database
 from middleware import admin_route_guard, require_owner_or_admin
 from models import AuditAction
@@ -24,6 +24,81 @@ class FeatureFlagUpdate(BaseModel):
 
 class FeatureFlagsBulkUpdate(BaseModel):
     updates: List[FeatureFlagUpdate]
+
+
+class ApplicabilityOperatorCommandBody(BaseModel):
+    command: Literal["MARK_REQUIRED", "MARK_NOT_REQUIRED", "REVOKE_OVERRIDE"]
+    resolution_reason_code: str = Field(..., min_length=1)
+    notes: Optional[str] = None
+
+
+@router.post(
+    "/clients/{client_id}/requirements/{requirement_id}/applicability-operator",
+    dependencies=[Depends(require_owner_or_admin)],
+)
+async def post_applicability_operator_command(
+    request: Request,
+    client_id: str,
+    requirement_id: str,
+    body: ApplicabilityOperatorCommandBody,
+):
+    """
+    Internal admin: operator applicability override (PR4). Tenant-scoped; audited; no client API.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    from services.applicability_operator_actions import ApplicabilityOperatorActionError, execute_applicability_operator_command
+
+    actor = {
+        "type": "user",
+        "id": str(user.get("portal_user_id") or user.get("id") or user.get("sub") or "").strip(),
+        "email": user.get("email"),
+    }
+    if not actor["id"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Authenticated admin user id is required")
+    try:
+        return await execute_applicability_operator_command(
+            db,
+            client_id=client_id,
+            requirement_id=requirement_id,
+            command=body.command,
+            resolution_reason_code=body.resolution_reason_code,
+            actor=actor,
+            notes=body.notes,
+        )
+    except ApplicabilityOperatorActionError as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e)) from e
+
+
+@router.get("/clients/{client_id}/applicability-resolution-queue")
+async def get_applicability_resolution_queue(
+    request: Request,
+    client_id: str,
+    limit: int = Query(50, ge=1, le=100),
+    cursor: Optional[str] = Query(
+        None,
+        description="Pagination: pass next_cursor (requirement_id) from the previous response",
+    ),
+):
+    """
+    Internal admin: queue of high-impact requirements with **pipeline** applicability UNKNOWN,
+    showing pipeline / effective / resolution_source plus deterministic root-cause codes.
+    Each item includes ``operator_action_wiring`` (PR4 POST path, per-command availability, and
+    ``resolution_reason_code_options`` aligned with ``execute_applicability_operator_command``).
+    """
+    await admin_route_guard(request)
+    db = database.get_db()
+    client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "client_id": 1})
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+    from services.applicability_resolution_queue import list_applicability_resolution_queue_page
+
+    return await list_applicability_resolution_queue_page(
+        db,
+        client_id=client_id,
+        limit=limit,
+        after_requirement_id=cursor,
+    )
 
 
 @router.get("/clients/{client_id}/feature-flags")

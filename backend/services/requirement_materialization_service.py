@@ -19,6 +19,11 @@ from services.compliance_requirement_registry import (
     build_requirement_plan_for_property,
 )
 from services.compliance_registry_publish_service import fetch_active_published_registry_entries
+from services.applicability_provenance_pipeline import (
+    apply_provenance_and_audit_after_requirement_patch,
+    maybe_audit_applicability_transition,
+    merge_provenance_into_requirement_patch,
+)
 from services.policy_field_normalizer import resolve_policy_facts
 from services.portfolio_risk_policy import POLICY_CLASSIFICATION_VERSION
 from services.requirement_action_resolver import infer_action_type
@@ -190,7 +195,6 @@ async def materialize_requirements_for_property(
             "requires_job": _requires_job_for_class(item.compliance_requirement_class),
             "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_REGISTRY,
             "registry_metadata": meta,
-            "applicability_state": policy_facts["applicability_state"],
             "is_mandatory": policy_facts["is_mandatory"],
             "policy_criticality": policy_facts["policy_criticality"],
             "evidence_state_normalized": normalized_evidence_state_for_policy(existing or {}),
@@ -208,6 +212,17 @@ async def materialize_requirements_for_property(
                 patch["applicability"] = "UNKNOWN"
                 patch["status"] = RequirementStatus.PENDING.value
                 patch["not_required_reason"] = None
+            prov_patch = await apply_provenance_and_audit_after_requirement_patch(
+                db,
+                client_id=client_id,
+                property_id=property_id,
+                requirement_id=str(rid),
+                before=dict(existing),
+                pipeline_applicability_state=str(policy_facts["applicability_state"]),
+                event_type="MATERIALIZATION_PIPELINE_APPLICABILITY",
+                actor={"type": "system", "id": "requirement_materialization"},
+            )
+            patch.update(prov_patch)
             await db.requirements.update_one({"requirement_id": rid}, {"$set": patch})
         else:
             due = now + timedelta(days=int(item.warning_days))
@@ -249,12 +264,22 @@ async def materialize_requirements_for_property(
                 catalog_defaults=_policy_defaults_for_plan_item(item),
             )
             doc["requirement_code_normalized"] = doc_policy_facts["requirement_code_normalized"]
-            doc["applicability_state"] = doc_policy_facts["applicability_state"]
             doc["is_mandatory"] = doc_policy_facts["is_mandatory"]
             doc["policy_criticality"] = doc_policy_facts["policy_criticality"]
             doc["evidence_state_normalized"] = normalized_evidence_state_for_policy(doc)
             doc["policy_classification_version"] = POLICY_CLASSIFICATION_VERSION
             doc["action_type"] = infer_action_type(doc)
+            prov_patch = await apply_provenance_and_audit_after_requirement_patch(
+                db,
+                client_id=client_id,
+                property_id=property_id,
+                requirement_id=str(doc.get("requirement_id") or ""),
+                before={},
+                pipeline_applicability_state=str(doc_policy_facts["applicability_state"]),
+                event_type="MATERIALIZATION_PIPELINE_APPLICABILITY",
+                actor={"type": "system", "id": "requirement_materialization"},
+            )
+            doc.update(prov_patch)
             await db.requirements.insert_one(doc)
         upserted += 1
 
@@ -279,24 +304,36 @@ async def materialize_requirements_for_property(
             st = (row.get("status") or "").upper()
             if st in ("COMPLIANT", "VERIFIED"):
                 continue
-            await db.requirements.update_one(
-                {"requirement_id": row.get("requirement_id")},
-                {
-                    "$set": {
-                        "applicability": "NOT_REQUIRED",
-                        "status": RequirementStatus.NOT_REQUIRED.value,
-                        "is_tracked": False,
-                        "client_surface_visible": False,
-                        "requires_document": False,
-                        "requires_job": False,
-                        "updated_at": now.isoformat(),
-                        "registry_metadata": {
-                            **(row.get("registry_metadata") or {}),
-                            "reconciled_obsolete": True,
-                            "reconciled_at": now.isoformat(),
-                        },
-                    }
+            rid_obs = row.get("requirement_id")
+            prov_obs = merge_provenance_into_requirement_patch(dict(row), "NOT_REQUIRED")
+            set_body = {
+                "applicability": "NOT_REQUIRED",
+                "status": RequirementStatus.NOT_REQUIRED.value,
+                "is_tracked": False,
+                "client_surface_visible": False,
+                "requires_document": False,
+                "requires_job": False,
+                "updated_at": now.isoformat(),
+                "registry_metadata": {
+                    **(row.get("registry_metadata") or {}),
+                    "reconciled_obsolete": True,
+                    "reconciled_at": now.isoformat(),
                 },
+            }
+            set_body.update(prov_obs)
+            await db.requirements.update_one(
+                {"requirement_id": rid_obs},
+                {"$set": set_body},
+            )
+            await maybe_audit_applicability_transition(
+                db,
+                client_id=str(row.get("client_id") or client_id),
+                property_id=str(row.get("property_id") or property_id),
+                requirement_id=str(rid_obs or ""),
+                before=dict(row),
+                after_patch=prov_obs,
+                event_type="MATERIALIZATION_RECONCILE_OBSOLETE_APPLICABILITY",
+                actor={"type": "system", "id": "requirement_materialization"},
             )
             reconciled += 1
 

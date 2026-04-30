@@ -54,6 +54,7 @@ async def test_requirement_policy_backfill_tenant_scoped_and_checkpointed():
         }
     ]
     db = MagicMock()
+    db.applicability_resolution_audit = MagicMock(insert_one=AsyncMock())
     db.compliance_policy_backfill_checkpoints.find_one = AsyncMock(return_value=None)
     db.compliance_policy_backfill_checkpoints.update_one = AsyncMock()
     db.compliance_policy_backfill_dead_letters.insert_one = AsyncMock()

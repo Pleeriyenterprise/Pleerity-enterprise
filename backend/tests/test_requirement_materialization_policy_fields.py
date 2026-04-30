@@ -9,6 +9,7 @@ from services.requirement_materialization_service import materialize_requirement
 @pytest.mark.asyncio
 async def test_materialize_writes_normalized_policy_fields_on_insert():
     db = MagicMock()
+    db.applicability_resolution_audit = MagicMock(insert_one=AsyncMock())
     db.properties.find_one = AsyncMock(
         return_value={
             "property_id": "p1",
@@ -47,6 +48,8 @@ async def test_materialize_writes_normalized_policy_fields_on_insert():
     doc = args[0]
     assert doc["requirement_code_normalized"] == "gas_safety"
     assert doc["applicability_state"] == "UNKNOWN"
+    assert doc.get("pipeline_applicability_state") == "UNKNOWN"
+    assert doc.get("effective_applicability_state") == "UNKNOWN"
     assert doc["is_mandatory"] is True
     assert doc["policy_criticality"] == "MEDIUM"
     assert doc["evidence_state_normalized"] == "MISSING"

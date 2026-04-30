@@ -306,6 +306,26 @@ class Database:
                     [("client_id", 1), ("policy_classification_version", 1)],
                     name="idx_requirements_client_policy_version",
                 )
+                await self.db.requirements.create_index(
+                    [("client_id", 1), ("pipeline_applicability_state", 1)],
+                    name="idx_requirements_client_pipeline_applicability",
+                )
+                await self.db.requirements.create_index(
+                    [("client_id", 1), ("effective_applicability_state", 1)],
+                    name="idx_requirements_client_effective_applicability",
+                )
+                await self.db.requirements.create_index(
+                    [("client_id", 1), ("applicability_resolution_source", 1)],
+                    name="idx_requirements_client_applicability_resolution_source",
+                )
+                await self.db.requirements.create_index(
+                    [("client_id", 1), ("operator_override_active", 1)],
+                    name="idx_requirements_client_operator_override_active",
+                )
+                await self.db.requirements.create_index(
+                    [("client_id", 1), ("pipeline_applicability_state", 1), ("requirement_id", 1)],
+                    name="idx_requirements_client_pipeline_req_id",
+                )
             except Exception:
                 pass
             try:
@@ -333,6 +353,22 @@ class Database:
                     "client_id",
                     unique=True,
                     name="idx_portfolio_risk_override_latch_client",
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.applicability_resolution_audit.create_index(
+                    [("client_id", 1), ("created_at", -1)],
+                    name="idx_applicability_resolution_audit_client_created",
+                )
+                await self.db.applicability_resolution_audit.create_index(
+                    [("client_id", 1), ("requirement_id", 1), ("created_at", -1)],
+                    name="idx_applicability_resolution_audit_client_req_created",
+                )
+                await self.db.applicability_resolution_audit.create_index(
+                    [("client_id", 1), ("property_id", 1), ("created_at", -1)],
+                    name="idx_applicability_resolution_audit_client_prop_created",
+                    sparse=True,
                 )
             except Exception:
                 pass

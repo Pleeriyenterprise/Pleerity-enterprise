@@ -17,6 +17,11 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Dict, Optional, Tuple
 
+from services.applicability_provenance_pipeline import (
+    applicability_provenance_signature,
+    maybe_audit_applicability_transition,
+    merge_provenance_into_requirement_patch,
+)
 from services.compliance_gap_engine import infer_compliance_gaps_for_requirement
 from services.policy_field_normalizer import resolve_policy_facts
 from services.portfolio_risk_policy import POLICY_CLASSIFICATION_VERSION
@@ -164,31 +169,34 @@ async def _fetch_requirement_batch(
     return await cur.to_list(batch_size)
 
 
-def _normalized_requirement_policy_patch(requirement: Dict[str, Any]) -> Dict[str, Any]:
+def _requirement_policy_facts_and_core_patch(requirement: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     reg = requirement.get("registry_metadata") if isinstance(requirement.get("registry_metadata"), dict) else {}
     facts = resolve_policy_facts(
         requirement,
         registry_metadata=reg,
         catalog_defaults=_policy_defaults_for_requirement(requirement),
     )
-    return {
+    core = {
         "requirement_code_normalized": facts["requirement_code_normalized"],
-        "applicability_state": facts["applicability_state"],
         "is_mandatory": bool(facts["is_mandatory"]),
         "policy_criticality": facts["policy_criticality"],
         "evidence_state_normalized": normalized_evidence_state_for_policy(requirement),
         "policy_classification_version": POLICY_CLASSIFICATION_VERSION,
         "policy_last_resolved_at": _utc_iso(),
     }
+    return facts, core
 
 
-def _same_policy_fields(requirement: Dict[str, Any], patch: Dict[str, Any]) -> bool:
-    for k, v in patch.items():
+def _requirement_policy_backfill_write_needed(
+    requirement: Dict[str, Any], core: Dict[str, Any], prov: Dict[str, Any]
+) -> bool:
+    merged = {**requirement, **prov}
+    for k, v in core.items():
         if k in ("policy_last_resolved_at",):
             continue
         if requirement.get(k) != v:
-            return False
-    return True
+            return True
+    return applicability_provenance_signature(requirement) != applicability_provenance_signature(merged)
 
 
 async def run_tenant_requirement_policy_backfill(
@@ -242,18 +250,31 @@ async def run_tenant_requirement_policy_backfill(
             processed += 1
             last_requirement_id = rid
             try:
-                patch = _normalized_requirement_policy_patch(req)
-                if not _same_policy_fields(req, patch):
-                    await rl.tick()
-                    await _retry(
-                        lambda: db.requirements.update_one(
-                            {"client_id": client_id, "requirement_id": rid},
-                            {"$set": patch},
-                        ),
-                        max_retries=max_retries,
-                        backoff_seconds=backoff_seconds,
-                    )
-                    updated += 1
+                facts, core = _requirement_policy_facts_and_core_patch(req)
+                prov = merge_provenance_into_requirement_patch(req, str(facts["applicability_state"]))
+                patch = {**core, **prov}
+                if not _requirement_policy_backfill_write_needed(req, core, prov):
+                    continue
+                await rl.tick()
+                await _retry(
+                    lambda: db.requirements.update_one(
+                        {"client_id": client_id, "requirement_id": rid},
+                        {"$set": patch},
+                    ),
+                    max_retries=max_retries,
+                    backoff_seconds=backoff_seconds,
+                )
+                await maybe_audit_applicability_transition(
+                    db,
+                    client_id=client_id,
+                    property_id=req.get("property_id"),
+                    requirement_id=rid,
+                    before=dict(req),
+                    after_patch=prov,
+                    event_type="POLICY_BACKFILL_PIPELINE_APPLICABILITY",
+                    actor={"type": "system", "id": "compliance_policy_backfill"},
+                )
+                updated += 1
             except Exception as e:
                 failed += 1
                 await _dead_letter(

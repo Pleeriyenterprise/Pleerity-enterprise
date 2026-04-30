@@ -5,9 +5,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from services.applicability_effective_resolver import resolve_applicability_read_model
+from services.applicability_provenance_constants import PIPELINE
+from services.applicability_state_parse import APPLICABILITY_VALUES, normalize_applicability_state
 
 POLICY_CRITICALITY_VALUES = frozenset({"LOW", "MEDIUM", "HIGH", "CRITICAL"})
-APPLICABILITY_VALUES = frozenset({"REQUIRED", "NOT_REQUIRED", "UNKNOWN"})
 
 
 def normalize_requirement_code(requirement_row: Dict[str, Any]) -> str:
@@ -18,18 +20,6 @@ def normalize_requirement_code(requirement_row: Dict[str, Any]) -> str:
         or ""
     )
     return str(code).strip().lower()
-
-
-def normalize_applicability_state(requirement_row: Dict[str, Any]) -> str:
-    raw = requirement_row.get("applicability_state")
-    if raw is None:
-        raw = requirement_row.get("applicability")
-    if raw is None and str(requirement_row.get("status") or "").strip().upper() == "NOT_REQUIRED":
-        return "NOT_REQUIRED"
-    st = str(raw or "").strip().upper()
-    if st in APPLICABILITY_VALUES:
-        return st
-    return "UNKNOWN"
 
 
 def normalize_policy_criticality(raw: Any) -> str:
@@ -65,6 +55,11 @@ def resolve_policy_facts(
     1) normalized requirement row fields (authoritative)
     2) registry metadata fallback
     3) catalog defaults fallback
+
+    When stored applicability provenance exists (PR1+), ``applicability_state`` follows
+    **effective** applicability (operator + selector); registry/catalog are not re-merged
+    for applicability (pipeline truth is already materialised). Diagnostics may use
+    ``pipeline_applicability_state`` from this result.
     """
     req = requirement_row if isinstance(requirement_row, dict) else {}
     reg = registry_metadata if isinstance(registry_metadata, dict) else {}
@@ -74,13 +69,23 @@ def resolve_policy_facts(
     if not req_code:
         req_code = normalize_requirement_code(req)
 
-    applicability_state = normalize_applicability_state(req)
-    if applicability_state == "UNKNOWN":
-        applicability_state = str(reg.get("applicability_state") or "").strip().upper() or "UNKNOWN"
-        if applicability_state not in APPLICABILITY_VALUES:
-            applicability_state = str(cat.get("applicability_state") or "").strip().upper() or "UNKNOWN"
+    read = resolve_applicability_read_model(req)
+    if read["has_provenance_storage"]:
+        applicability_state = read["effective_applicability_state"]
+        pipe_out = read["pipeline_applicability_state"]
+        eff_out = read["effective_applicability_state"]
+        src_out = read["applicability_resolution_source"]
+    else:
+        applicability_state = normalize_applicability_state(req)
+        if applicability_state == "UNKNOWN":
+            applicability_state = str(reg.get("applicability_state") or "").strip().upper() or "UNKNOWN"
             if applicability_state not in APPLICABILITY_VALUES:
-                applicability_state = "UNKNOWN"
+                applicability_state = str(cat.get("applicability_state") or "").strip().upper() or "UNKNOWN"
+                if applicability_state not in APPLICABILITY_VALUES:
+                    applicability_state = "UNKNOWN"
+        pipe_out = applicability_state
+        eff_out = applicability_state
+        src_out = PIPELINE
 
     if req.get("is_mandatory") is not None:
         is_mandatory = bool(req.get("is_mandatory"))
@@ -112,6 +117,9 @@ def resolve_policy_facts(
     return {
         "requirement_code_normalized": req_code,
         "applicability_state": applicability_state,
+        "pipeline_applicability_state": pipe_out,
+        "effective_applicability_state": eff_out,
+        "applicability_resolution_source": src_out,
         "is_mandatory": is_mandatory,
         "policy_criticality": policy_criticality,
         "evidence_state_normalized": evidence_state,

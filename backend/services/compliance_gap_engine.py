@@ -169,6 +169,9 @@ class ComplianceGap:
             # Operational snapshots (non-canonical authority): copied at gap emit time.
             "requirement_code_normalized": policy_facts.get("requirement_code_normalized"),
             "applicability_state": policy_facts.get("applicability_state"),
+            "pipeline_applicability_state": policy_facts.get("pipeline_applicability_state"),
+            "effective_applicability_state": policy_facts.get("effective_applicability_state"),
+            "applicability_resolution_source": policy_facts.get("applicability_resolution_source"),
             "is_mandatory": bool(policy_facts.get("is_mandatory")),
             "policy_criticality": policy_facts.get("policy_criticality"),
             "evidence_state_normalized": policy_facts.get("evidence_state_normalized"),

@@ -45,6 +45,17 @@ def test_hiua_false_when_applicability_required():
     assert derive_hiua_signal_for_open_gap(g) is False
 
 
+def test_hiua_false_when_gap_snapshot_effective_required_operator_path():
+    """PR5: stale applicability_state on gap must not mask effective REQUIRED."""
+    g = _gap_gas_unknown_missing(
+        applicability_state="UNKNOWN",
+        pipeline_applicability_state="UNKNOWN",
+        effective_applicability_state="REQUIRED",
+        applicability_resolution_source="OPERATOR_OVERRIDE",
+    )
+    assert derive_hiua_signal_for_open_gap(g) is False
+
+
 def test_hiua_false_low_impact_code():
     g = _gap_gas_unknown_missing(requirement_code="epc")
     assert derive_hiua_signal_for_open_gap(g) is False

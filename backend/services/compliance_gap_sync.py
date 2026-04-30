@@ -30,7 +30,8 @@ async def sync_compliance_gaps_for_requirement(
     then run operational bridge (idempotent issues / audit).
 
     ``audit_lifecycle``: when False, skip COMPLIANCE_GAP_OPENED / COMPLIANCE_GAP_RESOLVED logs
-    (e.g. bulk backfill with a single summary audit).
+    (e.g. bulk backfill with a single summary audit, or PR4 applicability operator follow-up where
+    applicability resolution audit already records the command).
 
     ``run_operational_bridge``: when False, skip issue bridge (writes to compliance_gaps only).
 
