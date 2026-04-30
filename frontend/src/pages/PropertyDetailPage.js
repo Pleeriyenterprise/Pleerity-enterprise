@@ -116,6 +116,10 @@ import {
 import { propertyPageJurisdictionBanners } from '../utils/jurisdictionUiPolicy';
 import PropertyOperatingHub from '../components/property/PropertyOperatingHub';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
+import {
+  headlineScoreDisplayForDashboard,
+  headlineScoreShowsOutOf100,
+} from '../utils/scoringHeadlineDisplay';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -1359,10 +1363,21 @@ export default function PropertyDetailPage() {
             {complianceDetail ? (
               <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
                 <p className="text-sm text-midnight-blue">
-                  <span className="font-semibold">{(complianceDetail.score ?? complianceDetail.property_score) ?? '—'}/100</span>
+                  <span className="font-semibold">
+                    {headlineScoreDisplayForDashboard(complianceDetail.score, complianceDetail.score_status)}
+                    {headlineScoreShowsOutOf100(complianceDetail.score, complianceDetail.score_status) ? '/100' : ''}
+                  </span>
                   <span className="text-gray-500"> · </span>
                   <span>{formatRiskLabel(complianceDetail.risk_level)}</span>
                 </p>
+                {complianceDetail.score_status && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    Score status: {complianceDetail.score_status}
+                    {complianceDetail.last_calculated_at
+                      ? ` · Last calculated: ${new Date(complianceDetail.last_calculated_at).toLocaleString()}`
+                      : ''}
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">Compliance snapshot for this property — not legal advice.</p>
                 <div className="flex flex-wrap gap-2 mt-2">
                   <Button
@@ -1577,7 +1592,11 @@ export default function PropertyDetailPage() {
           {complianceDetail && (
             <>
               <div className="mb-4 flex flex-wrap gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
-                <span className="font-medium text-midnight-blue">Compliance score: {(complianceDetail.score != null ? complianceDetail.score : complianceDetail.property_score) ?? '—'}/100</span>
+                <span className="font-medium text-midnight-blue">
+                  Compliance score:{' '}
+                  {headlineScoreDisplayForDashboard(complianceDetail.score, complianceDetail.score_status)}
+                  {headlineScoreShowsOutOf100(complianceDetail.score, complianceDetail.score_status) ? '/100' : ''}
+                </span>
                 <span className="font-medium text-midnight-blue">Risk level: {formatRiskLabel(complianceDetail.risk_level)}</span>
                 {complianceDetail.risk_index != null && complianceDetail.risk_index > 0 && (
                   <span className="text-gray-600">Risk index: {complianceDetail.risk_index}</span>
@@ -1650,34 +1669,54 @@ export default function PropertyDetailPage() {
                 <div className="space-y-4">
                   <div className="flex flex-wrap gap-3 text-sm">
                     <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
-                      Score: <strong>{complianceExplainability.score ?? '—'}/100</strong>
+                      Score (persisted):{' '}
+                      <strong>
+                        {(() => {
+                          const auth = complianceExplainability?.authoritative;
+                          const exp = auth || complianceExplainability;
+                          const st = exp?.score_status ?? complianceExplainability?.score_status;
+                          const lbl = headlineScoreDisplayForDashboard(exp?.score, st);
+                          const suffix = headlineScoreShowsOutOf100(exp?.score, st) ? '/100' : '';
+                          return `${lbl}${suffix}`;
+                        })()}
+                      </strong>
                     </span>
                     <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
-                      Portfolio jurisdiction:{' '}
-                      <strong>{complianceExplainability.effective_jurisdiction_label ?? '—'}</strong>
+                      Portfolio jurisdiction (live preview):{' '}
+                      <strong>
+                        {(complianceExplainability?.operational_preview?.live_engine_snapshot || {}).effective_jurisdiction_label ??
+                          complianceExplainability.effective_jurisdiction_label ??
+                          '—'}
+                      </strong>
                     </span>
                     <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
                       Scoring rules:{' '}
                       <strong>
                         {String(
-                          complianceExplainability.scoring_jurisdiction_bucket ??
-                            complianceExplainability.jurisdiction ??
+                          (complianceExplainability?.authoritative || complianceExplainability)?.scoring_jurisdiction_bucket ??
+                            (complianceExplainability?.authoritative || complianceExplainability)?.jurisdiction ??
+                            (complianceExplainability?.operational_preview?.live_engine_snapshot || {}).scoring_jurisdiction_bucket ??
+                            (complianceExplainability?.operational_preview?.live_engine_snapshot || {}).jurisdiction ??
                             'ENGLAND_WALES',
                         ).replace(/_/g, ' ')}
                       </strong>
                     </span>
                     <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
-                      Points: <strong>{Number(complianceExplainability.earned_points || 0).toFixed(1)} / {Number(complianceExplainability.applicable_points || 0).toFixed(1)}</strong>
+                      Points:{' '}
+                      <strong>
+                        {Number((complianceExplainability?.authoritative || complianceExplainability)?.earned_points || 0).toFixed(1)} /{' '}
+                        {Number((complianceExplainability?.authoritative || complianceExplainability)?.applicable_points || 0).toFixed(1)}
+                      </strong>
                     </span>
                   </div>
 
-                  {complianceExplainability.bucket_breakdown && (
+                  {(complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-sm">
                       {[
-                        ['Legal core', complianceExplainability.bucket_breakdown?.legal_core?.percent],
-                        ['Documentation', complianceExplainability.bucket_breakdown?.documentation_completeness?.percent],
-                        ['Operational', complianceExplainability.bucket_breakdown?.operational_responsiveness?.percent],
-                        ['Recency', complianceExplainability.bucket_breakdown?.recency_maintenance_confidence?.percent],
+                        ['Legal core', (complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown?.legal_core?.percent],
+                        ['Documentation', (complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown?.documentation_completeness?.percent],
+                        ['Operational', (complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown?.operational_responsiveness?.percent],
+                        ['Recency', (complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown?.recency_maintenance_confidence?.percent],
                       ].map(([label, pct]) => (
                         <div key={label} className="rounded border border-gray-200 p-2 bg-white">
                           <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
@@ -1687,11 +1726,12 @@ export default function PropertyDetailPage() {
                     </div>
                   )}
 
-                  {Array.isArray(complianceExplainability.top_next_actions) && complianceExplainability.top_next_actions.length > 0 && (
+                  {Array.isArray((complianceExplainability?.authoritative || complianceExplainability)?.top_next_actions) &&
+                    (complianceExplainability?.authoritative || complianceExplainability).top_next_actions.length > 0 && (
                     <div>
                       <p className="text-sm font-medium text-midnight-blue mb-1">Suggested score impact (reference)</p>
                       <ul className="space-y-1 text-sm text-gray-700">
-                        {complianceExplainability.top_next_actions.slice(0, 5).map((a, idx) => (
+                        {(complianceExplainability?.authoritative || complianceExplainability).top_next_actions.slice(0, 5).map((a, idx) => (
                           <li key={`${a.requirement_code || 'req'}-${idx}`} className="flex items-center justify-between gap-2">
                             <span>• {a.action}</span>
                             <span className="text-xs text-gray-500">+{Number(a.impact_points || 0).toFixed(1)} pts</span>

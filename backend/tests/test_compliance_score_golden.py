@@ -218,20 +218,21 @@ class TestCaseD_UnknownRequirementTypeDefaultWeight:
 
 
 class TestCaseE_NoPropertiesOrNoRequirements:
-    """Case E: No properties / no requirements → score = 100 with defined message (not null)."""
+    """Case E: No properties / no persisted scores → unavailable or reconciliation (never fake 100)."""
 
     @pytest.mark.asyncio
-    async def test_no_properties_returns_100_with_message(self):
+    async def test_no_properties_returns_unavailable_not_100(self):
         db = _make_db_mock([], [], [])
         with patch("services.compliance_score.database.get_db", return_value=db):
             result = await calculate_compliance_score("c1")
-        assert result.get("score") == 100
+        assert result.get("score") is None
+        assert result.get("score_status") == "unavailable"
         assert result.get("message") == "No properties to evaluate"
-        assert result.get("grade") == "A"
+        assert result.get("grade") is None
         assert result.get("breakdown") == {}
 
     @pytest.mark.asyncio
-    async def test_no_requirements_returns_100_with_message(self):
+    async def test_no_persisted_scores_returns_reconciliation_not_100(self):
         properties = [{"property_id": "p1", "client_id": "c1", "is_hmo": False}]
         db = _make_db_mock(
             properties,
@@ -242,6 +243,6 @@ class TestCaseE_NoPropertiesOrNoRequirements:
         )
         with patch("services.compliance_score.database.get_db", return_value=db):
             result = await calculate_compliance_score("c1")
-        assert result.get("score") == 100
-        assert result.get("message") == "No requirements to evaluate"
-        assert result.get("grade") == "A"
+        assert result.get("score") is None
+        assert result.get("score_status") == "reconciliation_required"
+        assert result.get("grade") is None

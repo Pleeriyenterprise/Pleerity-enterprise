@@ -28,9 +28,14 @@ def test_human_summary_multiline():
     assert "•" in s
 
 
-def test_property_matches_none_property_doc_legacy():
+def test_property_matches_none_true_when_no_rules():
+    assert property_matches_registry_conditions(None, {}) is True
+    assert property_matches_registry_conditions(None, {"logic": "ALL", "rules": []}) is True
+
+
+def test_property_matches_none_fails_closed_when_rules_require_evaluation():
     cond = {"logic": "ALL", "rules": [{"field": "has_gas_supply", "op": "false"}]}
-    assert property_matches_registry_conditions(None, cond) is True
+    assert property_matches_registry_conditions(None, cond) is False
 
 
 def test_property_matches_has_gas_true_false():

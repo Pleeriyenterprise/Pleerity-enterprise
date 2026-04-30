@@ -123,6 +123,11 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
             ("Requirements — pending / missing evidence", str(rb.get("pending", 0))),
             ("Overall compliance rate", f"{summary.get('compliance_rate', 0)}%"),
         ]
+        ch = summary.get("compliance_score_headline") or {}
+        if isinstance(ch, dict) and (ch.get("compliance_score_display") or ch.get("score_status")):
+            kv.append(("Portfolio CVP score (headline)", str(ch.get("compliance_score_display") or "N/A")))
+            kv.append(("CVP score status", str(ch.get("score_status") or "—")))
+            kv.append(("CVP last calculated", str(ch.get("last_calculated_at") or "—")))
         parts.append(key_value_table_html(kv))
         red_props = [p for p in properties if str(p.get("compliance_status", "")).upper() == "RED"]
         amb_props = [p for p in properties if str(p.get("compliance_status", "")).upper() == "AMBER"]
@@ -229,9 +234,14 @@ def build_scheduled_report_digest_text(model: Dict[str, Any]) -> str:
                 f"- Due soon: {rb.get('expiring_soon', 0)}",
                 f"- Pending: {rb.get('pending', 0)}",
                 f"- Compliance rate: {summary.get('compliance_rate', 0)}%",
-                "",
             ]
         )
+        ch = summary.get("compliance_score_headline") or {}
+        if isinstance(ch, dict) and (ch.get("compliance_score_display") or ch.get("score_status")):
+            lines.append(f"- Portfolio CVP headline: {ch.get('compliance_score_display') or 'N/A'}")
+            lines.append(f"- CVP score status: {ch.get('score_status') or '—'}")
+            lines.append(f"- CVP last calculated: {ch.get('last_calculated_at') or '—'}")
+        lines.append("")
     rows = list(model.get("report_rows") or [])
     if rows:
         counts, overdue_top, expiring_top = _aggregate_requirement_rows(rows)

@@ -19,7 +19,10 @@ from services.compliance_requirement_registry import (
     build_requirement_plan_for_property,
 )
 from services.compliance_registry_publish_service import fetch_active_published_registry_entries
+from services.policy_field_normalizer import resolve_policy_facts
+from services.portfolio_risk_policy import POLICY_CLASSIFICATION_VERSION
 from services.requirement_action_resolver import infer_action_type
+from services.requirement_evidence_authority import normalized_evidence_state_for_policy
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,15 @@ def _effective_client_surface_visible(item: RequirementPlanItem) -> bool:
     if item.client_surface_visible_override is None:
         return _client_surface_visible_for_class(item.compliance_requirement_class)
     return bool(item.client_surface_visible_override)
+
+
+def _policy_defaults_for_plan_item(item: RequirementPlanItem) -> Dict[str, Any]:
+    cls = str(item.compliance_requirement_class or "").upper()
+    is_mandatory = cls in ("DOCUMENT", "JOB", "OBLIGATION")
+    return {
+        "is_mandatory": is_mandatory,
+        "policy_criticality": "MEDIUM",
+    }
 
 
 def _registry_metadata(item: RequirementPlanItem, existing_meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -73,7 +85,7 @@ def _registry_metadata(item: RequirementPlanItem, existing_meta: Optional[Dict[s
         meta.pop("cta_label_override", None)
     modes = getattr(item, "allowed_evidence_modes", ()) or ()
     if modes:
-        meta["evidence_resolution"] = {
+        er: Dict[str, Any] = {
             "allowed_evidence_modes": list(modes),
             "primary_resolution_workflow": getattr(item, "primary_resolution_workflow", None)
             or "GUIDED_EVIDENCE_RESOLUTION",
@@ -84,6 +96,22 @@ def _registry_metadata(item: RequirementPlanItem, existing_meta: Optional[Dict[s
                 getattr(item, "allow_low_non_document_satisfaction", False)
             ),
         }
+        er["supporting_upload_required"] = bool(getattr(item, "supporting_upload_required", False))
+        er["supporting_upload_recommended"] = bool(getattr(item, "supporting_upload_recommended", False))
+        aut = getattr(item, "allowed_upload_types", ()) or ()
+        if aut:
+            er["allowed_upload_types"] = [str(x).strip().lower() for x in aut if str(x or "").strip()]
+        csm = getattr(item, "checklist_schema_by_mode", None)
+        if isinstance(csm, dict) and csm:
+            er["checklist_schema_by_mode"] = csm
+        gpl = str(getattr(item, "guided_primary_cta_label", "") or "").strip()
+        if gpl:
+            er["guided_primary_cta_label"] = gpl
+        er["verification_required"] = bool(getattr(item, "verification_required", False))
+        rrr = str(getattr(item, "reviewer_role_required", "") or "").strip()
+        if rrr:
+            er["reviewer_role_required"] = rrr
+        meta["evidence_resolution"] = er
     else:
         meta.pop("evidence_resolution", None)
     return meta
@@ -133,11 +161,28 @@ async def materialize_requirements_for_property(
         )
         csv = _effective_client_surface_visible(item)
         meta = _registry_metadata(item, (existing or {}).get("registry_metadata"))
+        policy_facts = resolve_policy_facts(
+            {
+                **(existing or {}),
+                "requirement_code": item.requirement_code,
+                "requirement_type": item.requirement_type,
+                "applicability_state": (existing or {}).get("applicability_state"),
+                "applicability": (existing or {}).get("applicability"),
+                "status": (existing or {}).get("status") or RequirementStatus.PENDING.value,
+                "is_mandatory": (existing or {}).get("is_mandatory"),
+                "policy_criticality": (existing or {}).get("policy_criticality"),
+                "evidence_state": (existing or {}).get("evidence_state"),
+                "evidence_authority": (existing or {}).get("evidence_authority"),
+            },
+            registry_metadata=meta,
+            catalog_defaults=_policy_defaults_for_plan_item(item),
+        )
         patch: Dict[str, Any] = {
             "jurisdiction": item.portfolio_jurisdiction_label,
             "description": item.description,
             "frequency_days": item.frequency_days,
             "requirement_code": item.requirement_code,
+            "requirement_code_normalized": policy_facts["requirement_code_normalized"],
             "compliance_requirement_class": item.compliance_requirement_class,
             "is_tracked": item.is_tracked,
             "client_surface_visible": csv,
@@ -145,6 +190,11 @@ async def materialize_requirements_for_property(
             "requires_job": _requires_job_for_class(item.compliance_requirement_class),
             "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_REGISTRY,
             "registry_metadata": meta,
+            "applicability_state": policy_facts["applicability_state"],
+            "is_mandatory": policy_facts["is_mandatory"],
+            "policy_criticality": policy_facts["policy_criticality"],
+            "evidence_state_normalized": normalized_evidence_state_for_policy(existing or {}),
+            "policy_classification_version": POLICY_CLASSIFICATION_VERSION,
             "updated_at": now.isoformat(),
         }
         patch["action_type"] = infer_action_type({**(existing or {}), **patch})
@@ -186,6 +236,24 @@ async def materialize_requirements_for_property(
             doc["date_source"] = "SYSTEM_ESTIMATED"
             doc["evidence_state"] = "MISSING"
             doc["confidence_state"] = "ESTIMATED"
+            doc_policy_facts = resolve_policy_facts(
+                {
+                    **doc,
+                    "requirement_code": item.requirement_code,
+                    "requirement_type": item.requirement_type,
+                    "applicability_state": doc.get("applicability_state"),
+                    "applicability": doc.get("applicability"),
+                    "status": doc.get("status"),
+                },
+                registry_metadata=meta,
+                catalog_defaults=_policy_defaults_for_plan_item(item),
+            )
+            doc["requirement_code_normalized"] = doc_policy_facts["requirement_code_normalized"]
+            doc["applicability_state"] = doc_policy_facts["applicability_state"]
+            doc["is_mandatory"] = doc_policy_facts["is_mandatory"]
+            doc["policy_criticality"] = doc_policy_facts["policy_criticality"]
+            doc["evidence_state_normalized"] = normalized_evidence_state_for_policy(doc)
+            doc["policy_classification_version"] = POLICY_CLASSIFICATION_VERSION
             doc["action_type"] = infer_action_type(doc)
             await db.requirements.insert_one(doc)
         upserted += 1

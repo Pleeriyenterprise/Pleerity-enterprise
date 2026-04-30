@@ -46,38 +46,49 @@ class TestUploadVerifyUpdatesRequirementAndScore:
                 )
                 db.documents.insert_one = AsyncMock()
                 db.requirements.update_one = AsyncMock()
-                with patch("routes.documents.regenerate_requirement_due_date", new_callable=AsyncMock) as regen:
-                    with patch("services.provisioning.provisioning_service") as prov:
-                        prov._update_property_compliance = AsyncMock()
-                        with patch("builtins.open", MagicMock()), \
-                             patch("routes.documents.Path") as path_cls:
-                            path_cls.return_value.parent.mkdir = MagicMock()
-                            path_cls.return_value.__str__ = lambda _: "/tmp/f"
-                            file = MagicMock(spec=UploadFile)
-                            file.filename = "cert.pdf"
-                            file.read = AsyncMock(return_value=b"x")
-                            file.content_type = "application/pdf"
-                            with patch("routes.documents.create_audit_log", new_callable=AsyncMock), \
-                                 patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock):
-                                try:
-                                    await upload_document(
-                                        req,
-                                        file=file,
-                                        property_id="p1",
-                                        requirement_id="r1",
-                                        work_order_id=None,
-                                        document_type=None,
-                                        notes=None,
-                                        source=None,
-                                        document_metadata=None,
-                                        evidence_scope_type="PROPERTY",
-                                    )
-                                except Exception as e:
-                                    if "client_route_guard" in str(e) or "state" in str(e):
-                                        pytest.skip("Request state setup skipped")
-                                    raise
-                regen.assert_not_called()
-                prov._update_property_compliance.assert_called_once_with("p1")
+                _ev_list_cur = MagicMock()
+                _ev_list_cur.to_list = AsyncMock(return_value=[])
+                db.compliance_evidence_records = MagicMock()
+                db.compliance_evidence_records.find = MagicMock(return_value=_ev_list_cur)
+                db.compliance_evidence_records.find_one = AsyncMock(return_value=None)
+                db.compliance_evidence_records.insert_one = AsyncMock()
+                with patch(
+                    "services.requirement_client_runtime_surface.requirement_row_eligible_on_client_runtime_surfaces",
+                    new_callable=AsyncMock,
+                    return_value=True,
+                ):
+                    with patch("routes.documents.regenerate_requirement_due_date", new_callable=AsyncMock) as regen:
+                        with patch("services.provisioning.provisioning_service") as prov:
+                            prov._update_property_compliance = AsyncMock()
+                            with patch("builtins.open", MagicMock()), \
+                                 patch("routes.documents.Path") as path_cls:
+                                path_cls.return_value.parent.mkdir = MagicMock()
+                                path_cls.return_value.__str__ = lambda _: "/tmp/f"
+                                file = MagicMock(spec=UploadFile)
+                                file.filename = "cert.pdf"
+                                file.read = AsyncMock(return_value=b"x")
+                                file.content_type = "application/pdf"
+                                with patch("routes.documents.create_audit_log", new_callable=AsyncMock), \
+                                     patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock):
+                                    try:
+                                        await upload_document(
+                                            req,
+                                            file=file,
+                                            property_id="p1",
+                                            requirement_id="r1",
+                                            work_order_id=None,
+                                            document_type=None,
+                                            notes=None,
+                                            source=None,
+                                            document_metadata=None,
+                                            evidence_scope_type="PROPERTY",
+                                        )
+                                    except Exception as e:
+                                        if "client_route_guard" in str(e) or "state" in str(e):
+                                            pytest.skip("Request state setup skipped")
+                                        raise
+                                    regen.assert_not_called()
+                                    prov._update_property_compliance.assert_called_once_with("p1")
 
 
 class TestDeleteRevertsRequirementAndScore:
@@ -112,6 +123,10 @@ class TestDeleteRevertsRequirementAndScore:
             }
         )
         db.requirements.update_one = AsyncMock()
+        _ev_cur = MagicMock()
+        _ev_cur.to_list = AsyncMock(return_value=[])
+        db.compliance_evidence_records = MagicMock()
+        db.compliance_evidence_records.find = MagicMock(return_value=_ev_cur)
         req = MagicMock()
         with patch("routes.documents.client_route_guard", new_callable=AsyncMock) as guard:
             guard.return_value = {"portal_user_id": "u1", "client_id": "c1"}
@@ -148,23 +163,46 @@ class TestAdminActionsBehaveIdentically:
                 db = MagicMock()
                 get_db.return_value = db
                 db.properties.find_one = AsyncMock(return_value={"property_id": "p1", "client_id": "c1"})
-                db.requirements.find_one = AsyncMock(return_value={"requirement_id": "r1", "client_id": "c1", "frequency_days": 365})
+                db.clients.find_one = AsyncMock(return_value={"client_id": "c1"})
+                db.requirements.find_one = AsyncMock(
+                    return_value={
+                        "requirement_id": "r1",
+                        "client_id": "c1",
+                        "property_id": "p1",
+                        "frequency_days": 365,
+                    }
+                )
                 db.documents.insert_one = AsyncMock()
                 db.requirements.update_one = AsyncMock()
                 db.properties.update_one = AsyncMock()
-                with patch("routes.documents.regenerate_requirement_due_date", new_callable=AsyncMock):
-                    with patch("services.provisioning.provisioning_service") as prov:
-                        prov._update_property_compliance = AsyncMock()
-                        with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock):
-                            with patch("builtins.open", MagicMock()), \
-                                 patch("routes.documents.Path") as path_cls:
-                                path_cls.return_value.parent.mkdir = MagicMock()
-                                path_cls.return_value.__str__ = lambda _: "/tmp/f"
-                                file = MagicMock()
-                                file.filename = "cert.pdf"
-                                file.read = AsyncMock(return_value=b"x")
-                                file.content_type = "application/pdf"
-                                await admin_upload_document(
-                                    MagicMock(), file=file, client_id="c1", property_id="p1", requirement_id="r1"
-                                )
-                            prov._update_property_compliance.assert_called_once_with("p1")
+                _admin_docs_cur = MagicMock()
+                _admin_docs_cur.to_list = AsyncMock(return_value=[])
+                db.documents.find = MagicMock(return_value=_admin_docs_cur)
+                _admin_ev_cur = MagicMock()
+                _admin_ev_cur.to_list = AsyncMock(return_value=[])
+                db.compliance_evidence_records = MagicMock()
+                db.compliance_evidence_records.find = MagicMock(return_value=_admin_ev_cur)
+                db.compliance_evidence_records.find_one = AsyncMock(return_value=None)
+                db.compliance_evidence_records.insert_one = AsyncMock()
+                with patch(
+                    "services.requirement_client_runtime_surface.requirement_row_eligible_on_client_runtime_surfaces",
+                    new_callable=AsyncMock,
+                    return_value=True,
+                ):
+                    with patch("routes.documents.regenerate_requirement_due_date", new_callable=AsyncMock):
+                        with patch("services.provisioning.provisioning_service") as prov:
+                            prov._update_property_compliance = AsyncMock()
+                            with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock):
+                                with patch("routes.documents.create_audit_log", new_callable=AsyncMock):
+                                    with patch("builtins.open", MagicMock()), \
+                                         patch("routes.documents.Path") as path_cls:
+                                        path_cls.return_value.parent.mkdir = MagicMock()
+                                        path_cls.return_value.__str__ = lambda _: "/tmp/f"
+                                        file = MagicMock()
+                                        file.filename = "cert.pdf"
+                                        file.read = AsyncMock(return_value=b"x")
+                                        file.content_type = "application/pdf"
+                                        await admin_upload_document(
+                                            MagicMock(), file=file, client_id="c1", property_id="p1", requirement_id="r1"
+                                        )
+                                        prov._update_property_compliance.assert_called_once_with("p1")

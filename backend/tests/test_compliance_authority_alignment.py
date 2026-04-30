@@ -108,6 +108,7 @@ async def test_catalog_portfolio_view_does_not_replace_headline_score():
 
     assert result.get("score") == 88
     view = result.get("catalog_portfolio_view") or {}
+    assert view.get("score_authority") == "non_authoritative_requirement_matrix"
     assert view.get("portfolio_score") == 12
     assert view.get("risk_level") == "Critical Risk"
 

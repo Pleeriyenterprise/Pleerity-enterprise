@@ -39,6 +39,10 @@ import { cn } from '../lib/utils';
 import { complianceRequirementStatusLabel } from '../domain/presentDomain';
 import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
 import { getTrackedRequirementsForProperty } from '../utils/portalRequirementAttention';
+import {
+  headlineScoreDisplayForDashboard,
+  headlineScoreShowsOutOf100,
+} from '../utils/scoringHeadlineDisplay';
 
 function scoreDriverStatusLabel(raw) {
   const s = String(raw || '').trim().toUpperCase();
@@ -104,7 +108,10 @@ const ComplianceScorePage = () => {
     }
     setExportingCsv(true);
     try {
-      const res = await api.get('/reports/score-drivers.csv', { responseType: 'blob' });
+      const res = await api.get('/reports/score-drivers.csv', {
+        responseType: 'blob',
+        params: { scoring_metadata: true },
+      });
       const disposition = res.headers['content-disposition'];
       const filename = disposition?.match(/filename="?([^";\n]+)"?/)?.[1] || `score_drivers_${new Date().toISOString().slice(0, 10)}.csv`;
       const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -199,12 +206,9 @@ const ComplianceScorePage = () => {
     return { compliant, expiring, overdue };
   };
 
+  /** Authoritative persisted score from ``property_breakdown`` only (no dashboard property fallback). */
   const resolvePropertyRowScore = (row) => {
     if (row?.score != null && row.score !== '') return Number(row.score);
-    const pid = row?.property_id;
-    if (pid == null) return null;
-    const prop = properties.find((p) => p.property_id === pid);
-    if (prop?.compliance_score != null && prop.compliance_score !== '') return Number(prop.compliance_score);
     return null;
   };
 
@@ -320,13 +324,17 @@ const ComplianceScorePage = () => {
                   scoreData?.color === 'red' ? 'border-red-500 bg-red-100' : 'border-gray-300 bg-gray-100'
                 }`}>
                   <div className="text-center">
-                    <p className={`text-4xl font-bold ${colorClass}`}>{scoreData?.score ?? 0}</p>
-                    <p className="text-sm text-gray-500">/100</p>
+                    <p className={`text-4xl font-bold ${colorClass}`}>
+                      {headlineScoreDisplayForDashboard(scoreData?.score, scoreData?.score_status)}
+                    </p>
+                    {headlineScoreShowsOutOf100(scoreData?.score, scoreData?.score_status) ? (
+                      <p className="text-sm text-gray-500">/100</p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="min-w-0 w-full sm:flex-1">
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
-                    <span className={`text-3xl font-bold ${colorClass}`}>Grade {scoreData?.grade}</span>
+                    <span className={`text-3xl font-bold ${colorClass}`}>Grade {scoreData?.grade ?? '—'}</span>
                     <Target className={`w-6 h-6 ${colorClass}`} />
                     {scoreData?.score_last_calculated_at && (
                       <Tooltip>
@@ -372,6 +380,24 @@ const ComplianceScorePage = () => {
                     )}
                   </div>
                   <p className="text-lg text-gray-700">{scoreData?.message}</p>
+                  {scoreData?.score_status && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      Score status: {scoreData.score_status}
+                      {(scoreData.last_calculated_at || scoreData.portfolio_last_calculated_at) && (
+                        <>
+                          {' '}
+                          · Last calculated:{' '}
+                          {new Date(scoreData.last_calculated_at || scoreData.portfolio_last_calculated_at).toLocaleString()}
+                        </>
+                      )}
+                    </p>
+                  )}
+                  {scoreData?.score_status_message &&
+                    (scoreData.score_status === 'partial' || scoreData.score_status === 'stale') && (
+                      <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mt-2">
+                        {scoreData.score_status_message}
+                      </p>
+                    )}
                   <p className="text-sm text-gray-600 mt-1">
                     Informational indicator based on portal records. Not legal advice.
                   </p>
@@ -907,7 +933,7 @@ const ComplianceScorePage = () => {
                           propertyColor === 'amber' ? 'text-amber-600' :
                           propertyColor === 'red' ? 'text-red-600' : 'text-gray-500'
                         }`}>
-                          {score != null ? score : '—'}
+                          {headlineScoreDisplayForDashboard(row.score, row.score_status)}
                         </div>
                         <div className="flex items-center gap-2">
                           <button

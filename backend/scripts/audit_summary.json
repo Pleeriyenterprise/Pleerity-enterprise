@@ -1,0 +1,328 @@
+{
+  "mode": "dry_run",
+  "scanned": 378,
+  "changed": 378,
+  "operational_cleanup": {},
+  "state_counts": {
+    "active": 306,
+    "hidden_deprecated": 72
+  },
+  "grouped_counts": [
+    {
+      "legacy_state": "active",
+      "requirement_type": "eicr",
+      "canonical_code": "eicr",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 37
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "epc",
+      "canonical_code": "epc",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 37
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "fire_alarm",
+      "canonical_code": "fire_detection",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 37
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "gas_safety",
+      "canonical_code": "gas_safety",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 37
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "legionella",
+      "canonical_code": "legionella",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 37
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "portable_appliance_test",
+      "canonical_code": "portable_appliance_test",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 37
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 21
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 16
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "hmo_fire_risk_evidence",
+      "canonical_code": "hmo_fire_risk_evidence",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 16
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "hmo_license",
+      "canonical_code": "hmo_license",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 16
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "published_match": false,
+      "mapped_match": false,
+      "count": 16
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "published_match": false,
+      "mapped_match": false,
+      "count": 16
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "tenancy_agreement",
+      "canonical_code": "tenancy_agreement",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 7
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "landlord_registration_ni",
+      "canonical_code": "landlord_registration_ni",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 6
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "deposit_pi",
+      "canonical_code": "deposit_pi",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 5
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "co_alarms",
+      "canonical_code": "co_alarms",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 4
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "smoke_alarms",
+      "canonical_code": "smoke_alarms",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 4
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "how_to_rent",
+      "canonical_code": "how_to_rent",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 3
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "right_to_rent",
+      "canonical_code": "right_to_rent",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 3
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "scotland_landlord_registration",
+      "canonical_code": "scotland_landlord_registration",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 3
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "how_to_rent",
+      "canonical_code": "how_to_rent",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 3
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "landlord_registration",
+      "canonical_code": "landlord_registration",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 3
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "occupation_contract",
+      "canonical_code": "occupation_contract",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 3
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "fire_risk_assessment",
+      "canonical_code": "fire_risk_assessment",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 2
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "right_to_rent",
+      "canonical_code": "right_to_rent",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 2
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "deposit_pi",
+      "canonical_code": "deposit_pi",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 1
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "fire_detection",
+      "canonical_code": "fire_detection",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 1
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "landlord_registration",
+      "canonical_code": "landlord_registration",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 1
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "occupation_contract",
+      "canonical_code": "occupation_contract",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 1
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "communal_cleaning",
+      "canonical_code": null,
+      "published_match": false,
+      "mapped_match": false,
+      "count": 1
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "communal_fire_doors",
+      "canonical_code": null,
+      "published_match": false,
+      "mapped_match": false,
+      "count": 1
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "property_licence",
+      "canonical_code": "property_licence",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 1
+    }
+  ],
+  "published_true_mapped_false_rows": [],
+  "published_true_mapped_false_count": 0,
+  "linkage_exact_counts": {
+    "rows_with_linked_reminders_only": 256,
+    "rows_with_linked_documents": 11,
+    "rows_with_linked_work_orders": 0,
+    "rows_with_linked_invoices": 0
+  },
+  "ghost_currently_visible_rows": [],
+  "ghost_currently_visible_count": 0,
+  "visibility_simulation": [
+    {
+      "label": "england",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "requirements_page_count_before": 12,
+      "requirements_page_count_after": 10,
+      "requirements_page_count_delta": -2,
+      "dashboard_overdue_before": 0,
+      "dashboard_overdue_after": 0,
+      "dashboard_overdue_delta": 0,
+      "today_requirement_tasks_before": 12,
+      "today_requirement_tasks_after": 10,
+      "today_requirement_tasks_delta": -2,
+      "compliance_score_total_before": 12,
+      "compliance_score_total_after": 10,
+      "compliance_score_total_delta": -2
+    },
+    {
+      "label": "scotland",
+      "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+      "requirements_page_count_before": 10,
+      "requirements_page_count_after": 8,
+      "requirements_page_count_delta": -2,
+      "dashboard_overdue_before": 0,
+      "dashboard_overdue_after": 0,
+      "dashboard_overdue_delta": 0,
+      "today_requirement_tasks_before": 10,
+      "today_requirement_tasks_after": 8,
+      "today_requirement_tasks_delta": -2,
+      "compliance_score_total_before": 10,
+      "compliance_score_total_after": 8,
+      "compliance_score_total_delta": -2
+    },
+    {
+      "label": "mixed_jurisdiction",
+      "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+      "requirements_page_count_before": 16,
+      "requirements_page_count_after": 14,
+      "requirements_page_count_delta": -2,
+      "dashboard_overdue_before": 0,
+      "dashboard_overdue_after": 0,
+      "dashboard_overdue_delta": 0,
+      "today_requirement_tasks_before": 16,
+      "today_requirement_tasks_after": 14,
+      "today_requirement_tasks_delta": -2,
+      "compliance_score_total_before": 16,
+      "compliance_score_total_after": 14,
+      "compliance_score_total_delta": -2
+    }
+  ]
+}

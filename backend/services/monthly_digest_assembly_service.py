@@ -21,6 +21,10 @@ from services.monthly_digest_snapshot_service import (
     load_latest_snapshot,
 )
 from utils.risk_bands import score_to_risk_level
+from services.scoring_semantics_v1 import (
+    attach_semantics_contract,
+    headline_score_display_for_export,
+)
 from utils.expiry_utils import get_effective_expiry_date
 
 from services.monthly_digest_limits import (
@@ -124,6 +128,34 @@ def _abs_url(base: str, path: str) -> str:
     return base.rstrip("/") + p
 
 
+def digest_pr5_override_observability(score_block: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Digest-level mirrors of ``score_block["effective_override_output"]`` for PR5 observability.
+
+    Read-through only: does not alter scoring, selection, flags, or HIUA.
+    """
+    eo = score_block.get("effective_override_output")
+    if not isinstance(eo, dict):
+        return {
+            "override_output_source": None,
+            "fallback_applied": False,
+            "fallback_reason_codes": [],
+        }
+    raw_codes = eo.get("fallback_reason_codes")
+    if isinstance(raw_codes, list):
+        codes = list(raw_codes)
+    elif raw_codes is None:
+        codes = []
+    else:
+        codes = [raw_codes]
+    fa = eo.get("fallback_applied")
+    return {
+        "override_output_source": eo.get("override_output_source"),
+        "fallback_applied": bool(fa) if fa is not None else False,
+        "fallback_reason_codes": codes,
+    }
+
+
 async def assemble_monthly_digest_payload(
     client: Dict[str, Any],
     prefs: Optional[Dict[str, Any]],
@@ -151,8 +183,17 @@ async def assemble_monthly_digest_payload(
     ).strip().rstrip("/")
 
     score_block = await calculate_compliance_score(cid)
-    score = int(score_block.get("score") or 0)
-    risk_level = score_to_risk_level(score)
+    raw_headline_score = score_block.get("score")
+    headline_status = score_block.get("score_status")
+    try:
+        score = int(round(float(raw_headline_score))) if raw_headline_score is not None else None
+    except (TypeError, ValueError):
+        score = None
+    if score is not None and headline_status in ("ok", "partial", "stale"):
+        risk_level = score_to_risk_level(score)
+    else:
+        risk_level = "Not scored"
+    effective_risk_level = score_block.get("effective_portfolio_risk_state") or risk_level
     stats = score_block.get("stats") or {}
 
     prop_filter_primary = {"client_id": cid, "is_active": {"$ne": False}}
@@ -262,20 +303,29 @@ async def assemble_monthly_digest_payload(
         exp_c = int(pb.get("expiring") or pb.get("expiring_soon") or 0)
         valid_c = int(pb.get("valid") or 0)
         p_score = p.get("compliance_score")
-        if p_score is None:
+        if p_score is None and pb.get("score") is not None:
             p_score = pb.get("score")
+        prop_score_status = pb.get("score_status")
         miss_c = sum(
             1
             for r in applicable
             if r.get("property_id") == pid and _missing_evidence(r)
         )
         wo_c = sum(1 for w in open_wos if w.get("property_id") == pid)
-        prop_risk = score_to_risk_level(int(p_score)) if p_score is not None else risk_level
+        _blocked = frozenset({"reconciliation_required", "calculating", "unavailable", "unknown"})
+        if p_score is not None and (prop_score_status is None or prop_score_status not in _blocked):
+            try:
+                prop_risk = score_to_risk_level(int(p_score))
+            except (TypeError, ValueError):
+                prop_risk = risk_level
+        else:
+            prop_risk = "Not scored"
         property_rows_pdf.append(
             {
                 "property_id": pid,
                 "name": prop_labels.get(pid, pid),
                 "score": p_score,
+                "score_status": prop_score_status,
                 "risk_level": prop_risk,
                 "overdue_count": overdue_c,
                 "expiring_soon_count": exp_c,
@@ -344,6 +394,7 @@ async def assemble_monthly_digest_payload(
                 {
                     "name": pr.get("name"),
                     "score": pr.get("score"),
+                    "score_status": pr.get("score_status"),
                     "risk_level": pr.get("risk_level"),
                     "overdue_count": int(pr.get("overdue_count") or 0),
                     "expiring_soon_count": int(pr.get("expiring_soon_count") or 0),
@@ -474,7 +525,22 @@ async def assemble_monthly_digest_payload(
         "digest_property_total_in_account": property_total_count,
         "digest_requirements_total_in_account": requirements_total_count,
         "compliance_score": score,
-        "risk_level": risk_level,
+        "compliance_score_display": headline_score_display_for_export(raw_headline_score, headline_status),
+        "score_authority": score_block.get("score_authority"),
+        "score_status": headline_status,
+        "last_calculated_at": score_block.get("last_calculated_at") or score_block.get("portfolio_last_calculated_at"),
+        "score_coverage": score_block.get("score_coverage"),
+        "score_status_message": score_block.get("score_status_message"),
+        "risk_level": effective_risk_level,
+        "base_portfolio_risk_state": score_block.get("base_portfolio_risk_state"),
+        "effective_portfolio_risk_state": score_block.get("effective_portfolio_risk_state"),
+        "risk_override_reasons": score_block.get("risk_override_reasons") or [],
+        "critical_property_count": int(score_block.get("critical_property_count") or 0),
+        "high_risk_gap_count": int(score_block.get("high_risk_gap_count") or 0),
+        "unknown_or_stale_property_count": int(score_block.get("unknown_or_stale_property_count") or 0),
+        "attention_required": bool(score_block.get("attention_required")),
+        "critical_property_escalation": bool(score_block.get("critical_property_escalation")),
+        "suppress_positive_headline": bool(score_block.get("suppress_positive_headline")),
         "total_requirements": total_requirements,
         "compliant": valid_count,
         "valid_count": valid_count,
@@ -515,6 +581,35 @@ async def assemble_monthly_digest_payload(
         "jurisdiction_compliance_notice": _jur_notice,
         **digest_prefs,
     }
+    payload.update(digest_pr5_override_observability(score_block))
+
+    try:
+        from services.hiua_operational_uncertainty import hiua_tenant_operational_summary
+
+        _hiua = await hiua_tenant_operational_summary(
+            db,
+            cid,
+            property_ids=pid_filter,
+            max_gaps_scan=500,
+            max_detail=20,
+        )
+        payload["hiua_operational_uncertainty"] = _hiua
+        payload["digest_hiua_line"] = _hiua.get("hiua_digest_line")
+        payload["digest_hiua_report_framing_notice"] = _hiua.get("hiua_report_framing_notice")
+    except Exception:
+        payload["hiua_operational_uncertainty"] = {
+            "hiua_active": False,
+            "hiua_open_gap_count": 0,
+            "hiua_reason_codes": [],
+            "hiua_gap_details": [],
+            "hiua_command_centre_message": None,
+            "hiua_command_centre_tooltip": None,
+            "hiua_command_centre_filter_label": None,
+            "hiua_digest_line": None,
+            "hiua_report_framing_notice": None,
+        }
+        payload["digest_hiua_line"] = None
+        payload["digest_hiua_report_framing_notice"] = None
 
     try:
         from services.portal_activity_service import compute_activity_deltas
@@ -586,4 +681,4 @@ async def assemble_monthly_digest_payload(
     payload["digest_pdf_requirement_rows_total"] = n_req_rows
     payload["digest_pdf_requirement_rows_omitted"] = max(0, n_req_rows - DIGEST_PDF_MAX_REQUIREMENT_ROWS)
 
-    return payload
+    return attach_semantics_contract(payload)

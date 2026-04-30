@@ -243,7 +243,8 @@ def property_matches_registry_conditions(
     """
     True when ``property_doc`` satisfies ``conditions`` (AND/OR over rules).
 
-    * ``property_doc is None`` → True (caller has no snapshot; preserve legacy behaviour).
+    * ``property_doc is None`` → True only when there are no rules to evaluate; if ``rules`` is
+      non-empty, returns False (fail closed: cannot prove a property matches without a snapshot).
     * Empty or missing ``rules`` → True (applies to all properties).
     """
     if property_doc is None:

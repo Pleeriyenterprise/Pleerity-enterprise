@@ -19,8 +19,27 @@ Weighting Model:
 from database import database
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
-from utils.risk_bands import score_to_grade_color_message, risk_level_to_grade_color_message
+from utils.risk_bands import (
+    score_to_grade_color_message,
+    risk_level_to_grade_color_message,
+    score_to_risk_level,
+)
 from services.evidence_review_scoring_adapter import evidence_review_contributes_positive_credit
+from services.scoring_semantics_v1 import (
+    SCORING_SEMANTICS_VERSION,
+    aggregate_persisted_portfolio_headline,
+    attach_semantics_contract,
+    resolve_property_score_status,
+)
+from services.portfolio_risk_override import derive_portfolio_risk_override
+from services.portfolio_risk_override import (
+    derive_policy_portfolio_risk_override,
+    select_effective_portfolio_risk_override,
+)
+from services.portfolio_risk_override_flag import is_feature_policy_backed_portfolio_override_enabled
+from services.portfolio_override_policy_health import get_tenant_policy_runtime_health
+from services.portfolio_risk_override_latch import apply_persistent_critical_escalation_latch
+from services.policy_reason_codes import PolicyReasonCode
 from services.compliance_rules_registry import (
     build_jurisdiction_compliance_notice,
     build_portfolio_jurisdiction_attestation,
@@ -30,6 +49,128 @@ from services.compliance_rules_registry import (
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Tenant-scoped reads: no silent 100-property truncation (Batch 2). Hard cap guards runaway queries.
+_MAX_TENANT_FETCH = 500_000
+
+
+def _override_portfolio_message(effective_risk: Optional[str], reasons: List[str]) -> str:
+    if effective_risk == "Critical Risk":
+        return "Critical unresolved compliance risks require immediate operational action."
+    if effective_risk == "High Risk":
+        return "High unresolved compliance risks require prompt operational action."
+    if effective_risk == "Moderate Risk":
+        if PolicyReasonCode.UNKNOWN_OR_STALE_SUPPRESSION.value in reasons:
+            return "Portfolio risk is moderated due to stale or unavailable property signals."
+        return "Portfolio requires attention to unresolved compliance risk signals."
+    return "Portfolio risk currently reflects low unresolved operational risk."
+
+
+async def build_portfolio_override_outputs(
+    *,
+    db: Any,
+    client_id: str,
+    base_portfolio_risk_state: Optional[str],
+    properties: List[Dict[str, Any]],
+    property_breakdown: List[Dict[str, Any]],
+    gap_engine: Dict[str, Any],
+    policy_aggregate_unavailable: bool,
+) -> Dict[str, Any]:
+    legacy_override_output = derive_portfolio_risk_override(
+        base_portfolio_risk_state=base_portfolio_risk_state,
+        properties=properties,
+        property_breakdown=property_breakdown,
+        gap_engine=gap_engine,
+    )
+    try:
+        runtime_health = await get_tenant_policy_runtime_health(db, client_id=client_id)
+    except Exception:
+        runtime_health = {}
+    reconciliation_in_progress = bool(runtime_health.get("reconciliation_in_progress", True))
+    drift_detected = bool(runtime_health.get("drift_detected"))
+
+    policy_override_output = derive_policy_portfolio_risk_override(
+        base_portfolio_risk_state=base_portfolio_risk_state,
+        gap_engine=gap_engine,
+    )
+    gap_chk = runtime_health.get("gap_reconciliation_checkpoint")
+    gap_reconciliation_checkpoint = gap_chk if isinstance(gap_chk, dict) else {}
+    policy_override_output = await apply_persistent_critical_escalation_latch(
+        db,
+        client_id=client_id,
+        policy_override_output=policy_override_output,
+        gap_engine=gap_engine if isinstance(gap_engine, dict) else {},
+        gap_reconciliation_checkpoint=gap_reconciliation_checkpoint,
+    )
+    policy_cov = float(((gap_engine.get("policy") or {}).get("policy_coverage_percent")) or 0.0)
+    effective_override_output = select_effective_portfolio_risk_override(
+        legacy_override_output=legacy_override_output,
+        policy_override_output=policy_override_output,
+        policy_switch_enabled=is_feature_policy_backed_portfolio_override_enabled(client_id),
+        policy_coverage_percent=policy_cov,
+        policy_coverage_threshold_percent=float(runtime_health.get("policy_coverage_threshold_percent") or 99.5),
+        drift_detected=drift_detected,
+        reconciliation_in_progress=reconciliation_in_progress,
+        policy_aggregate_unavailable=policy_aggregate_unavailable,
+    )
+    return {
+        "legacy_override_output": legacy_override_output,
+        "policy_override_output": policy_override_output,
+        "effective_override_output": effective_override_output,
+    }
+
+
+async def mongo_find_to_list(cursor, cap: int = _MAX_TENANT_FETCH) -> List[Dict[str, Any]]:
+    """Drain a Motor cursor (or test mock with ``to_list``) up to ``cap`` documents."""
+    if cursor is None:
+        return []
+    fn = getattr(cursor, "to_list", None)
+    if callable(fn):
+        return await fn(cap)
+    out: List[Dict[str, Any]] = []
+    async for doc in cursor:
+        out.append(doc)
+        if len(out) >= cap:
+            break
+    return out
+
+
+def property_persisted_score_row_status(prop: Dict[str, Any]) -> str:
+    """Client-visible persisted headline status for one property row (SCORING_SEMANTICS_V1)."""
+    return resolve_property_score_status(prop)
+
+
+async def get_persisted_portfolio_headline_for_summary(
+    client_id: str,
+    *,
+    skip_lazy_backfill: bool = False,
+) -> Dict[str, Any]:
+    """
+    Authoritative persisted headline for portfolio summary routes (all properties for client_id).
+    Enqueues lazy backfill for rows missing ``compliance_score`` (same semantics as dashboard path).
+    """
+    db = database.get_db()
+    # Full property rows (tenant-scoped) so portfolio legacy matrix + runtime filters match DB truth.
+    properties = await mongo_find_to_list(
+        db.properties.find({"client_id": client_id}, {"_id": 0}),
+        cap=_MAX_TENANT_FETCH,
+    )
+    if not skip_lazy_backfill:
+        from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_LAZY_BACKFILL, ACTOR_SYSTEM
+
+        for p in properties:
+            if p.get("compliance_score") is None:
+                await enqueue_compliance_recalc(
+                    property_id=p["property_id"],
+                    client_id=client_id,
+                    trigger_reason=TRIGGER_LAZY_BACKFILL,
+                    actor_type=ACTOR_SYSTEM,
+                    actor_id=None,
+                    correlation_id=f"LAZY_BACKFILL:{p['property_id']}",
+                )
+    headline = aggregate_persisted_portfolio_headline(properties)
+    by_id = {p["property_id"]: p for p in properties if p.get("property_id")}
+    return {**headline, "properties": properties, "properties_by_id": by_id}
 
 
 def _jurisdiction_api_fields(client_row: Dict[str, Any], properties: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -101,34 +242,92 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
     """
     db = database.get_db()
     try:
-        properties = await db.properties.find(
-            {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "compliance_bucket_breakdown": 1, "score_breakdown": 1,
-             "compliance_earned_points": 1, "compliance_applicable_points": 1, "compliance_top_deficits": 1, "compliance_top_next_actions": 1,
-             "compliance_last_calculated_at": 1, "is_hmo": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "jurisdiction": 1,
-             "scoring_jurisdiction_bucket": 1}
-        ).to_list(100)
+        properties = await mongo_find_to_list(
+            db.properties.find(
+                {"client_id": client_id},
+                {
+                    "_id": 0,
+                    "property_id": 1,
+                    "compliance_score": 1,
+                    "compliance_score_pending": 1,
+                    "compliance_breakdown": 1,
+                    "compliance_bucket_breakdown": 1,
+                    "score_breakdown": 1,
+                    "compliance_earned_points": 1,
+                    "compliance_applicable_points": 1,
+                    "compliance_top_deficits": 1,
+                    "compliance_top_next_actions": 1,
+                    "compliance_last_calculated_at": 1,
+                    "compliance_score_pending": 1,
+                    "is_hmo": 1,
+                    "nickname": 1,
+                    "address_line_1": 1,
+                    "postcode": 1,
+                    "jurisdiction": 1,
+                    "scoring_jurisdiction_bucket": 1,
+                },
+            ),
+            cap=_MAX_TENANT_FETCH,
+        )
         if not properties:
-            return {
-                "score": 100,
-                "grade": "A",
-                "color": "green",
-                "message": "No properties to evaluate",
-                "breakdown": {},
-                "recommendations": [],
-                "enhanced_model": True,
-                "stats": {},
-                "properties_count": 0,
-                "score_last_calculated_at": None,
-                "score_model_version": "1.2",
-                "model_updated_at": "2026-01-15",
-                "data_completeness_percent": None,
-                "components": {},
-                "property_breakdown": [],
-                "drivers": [],
-                **_jurisdiction_api_fields({}, []),
-            }
+            client_row_empty = await db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "default_jurisdiction": 1, "jurisdiction_fallback_acknowledged_at": 1},
+            ) or {}
+            _agg_empty = aggregate_persisted_portfolio_headline([])
+            _override_empty = await build_portfolio_override_outputs(
+                db=db,
+                client_id=client_id,
+                base_portfolio_risk_state=_agg_empty.get("risk_level"),
+                properties=[],
+                property_breakdown=[],
+                gap_engine={},
+                policy_aggregate_unavailable=False,
+            )
+            _risk_empty = _override_empty["effective_override_output"]
+            return attach_semantics_contract(
+                {
+                    "score": None,
+                    "grade": None,
+                    "color": "gray",
+                    "message": _agg_empty.get("score_status_message") or "No properties to evaluate",
+                    "score_status": _agg_empty["score_status"],
+                    "breakdown": {},
+                    "recommendations": [],
+                    "enhanced_model": True,
+                    "stats": {},
+                    "properties_count": 0,
+                    "score_last_calculated_at": None,
+                    "last_calculated_at": None,
+                    "score_model_version": "1.2",
+                    "model_updated_at": "2026-01-15",
+                    "data_completeness_percent": None,
+                    "components": {},
+                    "property_breakdown": [],
+                    "drivers": [],
+                    "score_authority": "persisted_portfolio_aggregate",
+                    "risk_level": _risk_empty["effective_portfolio_risk_state"],
+                    "portfolio_risk_level": _risk_empty["effective_portfolio_risk_state"],
+                    "base_portfolio_risk_state": _risk_empty["base_portfolio_risk_state"],
+                    "effective_portfolio_risk_state": _risk_empty["effective_portfolio_risk_state"],
+                    "risk_override_reasons": _risk_empty["risk_override_reasons"],
+                    "critical_property_count": _risk_empty["critical_property_count"],
+                    "high_risk_gap_count": _risk_empty["high_risk_gap_count"],
+                    "unknown_or_stale_property_count": _risk_empty["unknown_or_stale_property_count"],
+                    "attention_required": _risk_empty["attention_required"],
+                    "critical_property_escalation": _risk_empty["critical_property_escalation"],
+                    "suppress_positive_headline": _risk_empty["suppress_positive_headline"],
+                    "legacy_override_output": _override_empty["legacy_override_output"],
+                    "policy_override_output": _override_empty["policy_override_output"],
+                    "effective_override_output": _override_empty["effective_override_output"],
+                    "properties_missing_persisted_score": 0,
+                    "score_coverage": _agg_empty.get("score_coverage"),
+                    "portfolio_last_calculated_at": _agg_empty.get("portfolio_last_calculated_at"),
+                    **_jurisdiction_api_fields(client_row_empty, []),
+                }
+            )
         from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_LAZY_BACKFILL, ACTOR_SYSTEM
+
         need_backfill = [p for p in properties if p.get("compliance_score") is None]
         for p in need_backfill:
             await enqueue_compliance_recalc(
@@ -139,13 +338,6 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 actor_id=None,
                 correlation_id=f"LAZY_BACKFILL:{p['property_id']}",
             )
-        properties = await db.properties.find(
-            {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "compliance_score": 1, "compliance_breakdown": 1, "compliance_bucket_breakdown": 1, "score_breakdown": 1,
-             "compliance_earned_points": 1, "compliance_applicable_points": 1, "compliance_top_deficits": 1, "compliance_top_next_actions": 1,
-             "is_hmo": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "compliance_last_calculated_at": 1, "jurisdiction": 1,
-             "scoring_jurisdiction_bucket": 1}
-        ).to_list(100)
         scores = [p.get("compliance_score") for p in properties if p.get("compliance_score") is not None]
         if not scores:
             client_row_nr = await db.clients.find_one(
@@ -153,27 +345,61 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 {"_id": 0, "default_jurisdiction": 1, "jurisdiction_fallback_acknowledged_at": 1},
             ) or {}
             _notice_nr = build_jurisdiction_compliance_notice(client_row_nr, properties)
-            return {
-                "score": 100,
-                "grade": "A",
-                "color": "green",
-                "message": "No requirements to evaluate",
-                "breakdown": {},
-                "recommendations": [],
-                "enhanced_model": True,
-                "stats": {},
-                "properties_count": len(properties),
-                "score_last_calculated_at": None,
-                "score_model_version": "1.2",
-                "model_updated_at": "2026-01-15",
-                "data_completeness_percent": None,
-                "components": {},
-                "property_breakdown": [],
-                "drivers": [],
-                "jurisdiction_compliance_notice": _notice_nr,
-                **_jurisdiction_api_fields(client_row_nr, properties),
-            }
+            _agg_nr = aggregate_persisted_portfolio_headline(properties)
+            _override_nr = await build_portfolio_override_outputs(
+                db=db,
+                client_id=client_id,
+                base_portfolio_risk_state=_agg_nr.get("risk_level"),
+                properties=properties,
+                property_breakdown=[],
+                gap_engine={},
+                policy_aggregate_unavailable=False,
+            )
+            _risk_nr = _override_nr["effective_override_output"]
+            return attach_semantics_contract(
+                {
+                    "score": None,
+                    "grade": None,
+                    "color": "gray",
+                    "message": _agg_nr.get("score_status_message") or "Persisted compliance scores are not available yet.",
+                    "score_status": _agg_nr["score_status"],
+                    "breakdown": {},
+                    "recommendations": [],
+                    "enhanced_model": True,
+                    "stats": {},
+                    "properties_count": len(properties),
+                    "score_last_calculated_at": None,
+                    "last_calculated_at": None,
+                    "score_model_version": "1.2",
+                    "model_updated_at": "2026-01-15",
+                    "data_completeness_percent": None,
+                    "components": {},
+                    "property_breakdown": [],
+                    "drivers": [],
+                    "score_authority": "persisted_portfolio_aggregate",
+                    "jurisdiction_compliance_notice": _notice_nr,
+                    "risk_level": _risk_nr["effective_portfolio_risk_state"],
+                    "portfolio_risk_level": _risk_nr["effective_portfolio_risk_state"],
+                    "base_portfolio_risk_state": _risk_nr["base_portfolio_risk_state"],
+                    "effective_portfolio_risk_state": _risk_nr["effective_portfolio_risk_state"],
+                    "risk_override_reasons": _risk_nr["risk_override_reasons"],
+                    "critical_property_count": _risk_nr["critical_property_count"],
+                    "high_risk_gap_count": _risk_nr["high_risk_gap_count"],
+                    "unknown_or_stale_property_count": _risk_nr["unknown_or_stale_property_count"],
+                    "attention_required": _risk_nr["attention_required"],
+                    "critical_property_escalation": _risk_nr["critical_property_escalation"],
+                    "suppress_positive_headline": _risk_nr["suppress_positive_headline"],
+                    "legacy_override_output": _override_nr["legacy_override_output"],
+                    "policy_override_output": _override_nr["policy_override_output"],
+                    "effective_override_output": _override_nr["effective_override_output"],
+                    "properties_missing_persisted_score": _agg_nr.get("properties_missing_score", len(properties)),
+                    "score_coverage": _agg_nr.get("score_coverage"),
+                    "portfolio_last_calculated_at": _agg_nr.get("portfolio_last_calculated_at"),
+                    **_jurisdiction_api_fields(client_row_nr, properties),
+                }
+            )
         client_score = round(sum(scores) / len(scores))
+        _head_agg = aggregate_persisted_portfolio_headline(properties)
         breakdowns = [p.get("compliance_breakdown") or {} for p in properties if isinstance(p.get("compliance_breakdown"), dict)]
         if breakdowns:
             def avg(key):
@@ -194,10 +420,10 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             {"_id": 0, "default_jurisdiction": 1, "jurisdiction_fallback_acknowledged_at": 1},
         ) or {}
         property_ids = [p["property_id"] for p in properties]
-        raw_requirements = await db.requirements.find(
-            {"client_id": client_id},
-            {"_id": 0},
-        ).to_list(500)
+        raw_requirements = await mongo_find_to_list(
+            db.requirements.find({"client_id": client_id}, {"_id": 0}),
+            cap=_MAX_TENANT_FETCH,
+        )
         from services.requirement_client_runtime_surface import (
             filter_requirement_rows_for_client_runtime_surfaces,
             client_portal_surface_visible_row,
@@ -222,10 +448,13 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         expiring_soon = _counts["expiring_soon"]
         overdue = _counts["overdue"]
         missing_evidence = _counts["missing_evidence"]
-        documents = await db.documents.find(
-            {"client_id": client_id},
-            {"_id": 0, "property_id": 1, "requirement_id": 1, "status": 1, "evidence_review_state": 1, "assurance_tier": 1},
-        ).to_list(1000)
+        documents = await mongo_find_to_list(
+            db.documents.find(
+                {"client_id": client_id},
+                {"_id": 0, "property_id": 1, "requirement_id": 1, "status": 1, "evidence_review_state": 1, "assurance_tier": 1},
+            ),
+            cap=_MAX_TENANT_FETCH,
+        )
         req_ids_with_verified = set()
         req_ids_with_any_doc = set()
         for d in documents:
@@ -295,12 +524,29 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "nearest_expiry_type": nearest_type,
             "hmo_properties": sum(1 for p in properties if p.get("is_hmo")),
         }
+        gap_engine_unavailable = False
         try:
             from services.compliance_gap_sync import aggregate_gap_counts_for_client
 
             stats["gap_engine"] = await aggregate_gap_counts_for_client(db, client_id)
         except Exception:
-            stats["gap_engine"] = {"by_kind": {}, "by_severity": {}, "total_open": 0}
+            gap_engine_unavailable = True
+            stats["gap_engine"] = {
+                "by_kind": {},
+                "by_severity": {},
+                "total_open": 0,
+                "policy": {
+                    "critical_mandatory_breach_count": 0,
+                    "high_risk_gap_count": 0,
+                    "attention_only_gap_count": 0,
+                    "unknown_or_stale_signal_count": 0,
+                    "policy_fields_present_count": 0,
+                    "policy_coverage_percent": 0.0,
+                    "top_reason_codes": {},
+                    "policy_versions": {},
+                    "total_open": 0,
+                },
+            }
         prop_map = {p["property_id"]: p for p in properties}
         jurisdiction_compliance_notice = build_jurisdiction_compliance_notice(client_row, properties)
         res_by_pid = {
@@ -326,11 +572,18 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             bp = by_property.get(pid, {})
             jr = res_by_pid.get(pid)
             jf = property_jurisdiction_requirement_flags(p)
+            _lc = p.get("compliance_last_calculated_at")
+            if isinstance(_lc, datetime):
+                _lc_out = _lc.isoformat()
+            else:
+                _lc_out = _lc if isinstance(_lc, str) else None
             property_breakdown.append({
                 "property_id": pid,
                 "name": p.get("nickname") or p.get("address_line_1") or "Property",
                 "postcode": p.get("postcode") or "",
                 "score": p.get("compliance_score"),
+                "score_status": resolve_property_score_status(p),
+                "last_calculated_at": _lc_out,
                 "valid": bp.get("valid", 0),
                 "expiring": bp.get("expiring", 0),
                 "overdue": bp.get("overdue", 0),
@@ -345,6 +598,17 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             if int(row.get("overdue") or 0) > 0
             or (row.get("score") is not None and float(row.get("score") or 0) < 60)
         )
+        base_risk_state = _head_agg.get("risk_level") or score_to_risk_level(client_score)
+        override_outputs = await build_portfolio_override_outputs(
+            db=db,
+            client_id=client_id,
+            base_portfolio_risk_state=base_risk_state,
+            properties=properties,
+            property_breakdown=property_breakdown,
+            gap_engine=stats.get("gap_engine") or {},
+            policy_aggregate_unavailable=gap_engine_unavailable,
+        )
+        risk_override = override_outputs["effective_override_output"]
         due_0_30 = due_31_60 = due_61_90 = 0
         for r in portal_reqs:
             if r.get("status") in ("COMPLIANT", "VALID", "PENDING", "EXPIRING_SOON"):
@@ -479,6 +743,20 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "grade": grade,
             "color": color,
             "message": message,
+            "base_portfolio_risk_state": risk_override["base_portfolio_risk_state"],
+            "effective_portfolio_risk_state": risk_override["effective_portfolio_risk_state"],
+            "risk_override_reasons": risk_override["risk_override_reasons"],
+            "critical_property_count": risk_override["critical_property_count"],
+            "high_risk_gap_count": risk_override["high_risk_gap_count"],
+            "unknown_or_stale_property_count": risk_override["unknown_or_stale_property_count"],
+            "attention_required": risk_override["attention_required"],
+            "critical_property_escalation": risk_override["critical_property_escalation"],
+            "suppress_positive_headline": risk_override["suppress_positive_headline"],
+            "legacy_override_output": override_outputs["legacy_override_output"],
+            "policy_override_output": override_outputs["policy_override_output"],
+            "effective_override_output": override_outputs["effective_override_output"],
+            "risk_level": risk_override["effective_portfolio_risk_state"],
+            "portfolio_risk_level": risk_override["effective_portfolio_risk_state"],
             "enhanced_model": True,
             "breakdown": breakdown,
             "weights": {
@@ -496,6 +774,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "model_updated_at": "2026-01-15",
             "data_completeness_percent": round(verified_coverage, 0) if total_reqs > 0 else None,
             "components": components,
+            "gap_engine_policy": (stats.get("gap_engine") or {}).get("policy") or {},
             "property_breakdown": property_breakdown,
             "drivers": drivers,
             "bucket_breakdown": bucket_breakdown,
@@ -528,60 +807,133 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "jurisdiction_compliance_notice": jurisdiction_compliance_notice,
             **_jurisdiction_api_fields(client_row, properties),
         }
+        result["score_status"] = _head_agg.get("score_status")
+        result["score_status_message"] = _head_agg.get("score_status_message")
+        result["score_coverage"] = _head_agg.get("score_coverage")
+        result["portfolio_last_calculated_at"] = _head_agg.get("portfolio_last_calculated_at")
+        result["last_calculated_at"] = result.get("score_last_calculated_at")
+        result["score_authority"] = "persisted_portfolio_aggregate"
+        result["properties_missing_persisted_score"] = _head_agg.get("properties_missing_score", 0)
+        if result.get("suppress_positive_headline"):
+            _rg, _rc, _rm = risk_level_to_grade_color_message(
+                result.get("effective_portfolio_risk_state")
+            )
+            result["color"] = _rc
+            result["message"] = _override_portfolio_message(
+                result.get("effective_portfolio_risk_state"),
+                result.get("risk_override_reasons") or [],
+            )
+        result = attach_semantics_contract(result)
         # Catalog matrix: optional alternate view only — headline score/grade stay persisted-scoring average.
         try:
             from services.catalog_compliance import get_portfolio_compliance_from_catalog
             catalog = await get_portfolio_compliance_from_catalog(client_id)
-            if catalog and catalog.get("portfolio_score") is not None:
-                portfolio_score = int(catalog["portfolio_score"])
+            if catalog:
+                ps_cat = catalog.get("portfolio_score")
+                portfolio_score_int = int(ps_cat) if ps_cat is not None else None
                 risk_level = catalog.get("risk_level") or catalog.get("portfolio_risk_level")
-                if risk_level:
+                if portfolio_score_int is not None and risk_level:
                     if str(risk_level).strip() == "Low Risk":
-                        cg, cc, cm = score_to_grade_color_message(portfolio_score)
+                        cg, cc, cm = score_to_grade_color_message(portfolio_score_int)
                     else:
                         cg, cc, cm = risk_level_to_grade_color_message(risk_level)
+                elif portfolio_score_int is not None:
+                    cg, cc, cm = score_to_grade_color_message(portfolio_score_int)
                 else:
-                    cg, cc, cm = score_to_grade_color_message(portfolio_score)
+                    cg, cc, cm = None, "gray", "Catalog matrix preview has no aggregate score for this portfolio shape."
                 result["catalog_portfolio_view"] = {
-                    "portfolio_score": portfolio_score,
+                    "score_authority": "non_authoritative_requirement_matrix",
+                    "portfolio_score": portfolio_score_int,
                     "risk_level": risk_level,
                     "grade": cg,
                     "color": cc,
                     "message": cm,
                     "updated_at": catalog.get("updated_at"),
-                    "note": "Alternate catalog-weighted portfolio view; headline score remains persisted scoring average.",
+                    "note": "Catalog-weighted requirement matrix preview only. Headline score and KPI cards must use persisted portfolio aggregate.",
                 }
         except Exception as cat_err:
             logger.debug("Catalog compliance optional view not attached: %s", cat_err)
         return result
     except Exception as e:
         logger.error(f"Error calculating compliance score: {e}")
-        return {
-            "score": 0,
-            "grade": "?",
-            "color": "gray",
-            "message": "Unable to calculate score",
-            "breakdown": {},
-            "recommendations": [],
-            "error": str(e),
-            "enhanced_model": True,
-            "stats": {},
-            "properties_count": 0,
-            "score_last_calculated_at": None,
-            "score_model_version": "1.2",
-            "model_updated_at": "2026-01-15",
-            "data_completeness_percent": None,
-            "components": {},
-            "property_breakdown": [],
-            "drivers": [],
-            "jurisdiction_compliance_notice": {
-                "active": False,
-                "compliance_basis": None,
-                "affected_property_ids": [],
-                "affected_property_count": 0,
-            },
-            **_jurisdiction_api_fields({}, []),
-        }
+        return attach_semantics_contract(
+            {
+                "score": None,
+                "grade": None,
+                "color": "gray",
+                "message": "Unable to calculate score",
+                "score_status": "unavailable",
+                "breakdown": {},
+                "recommendations": [],
+                "error": str(e),
+                "enhanced_model": True,
+                "stats": {},
+                "properties_count": 0,
+                "score_last_calculated_at": None,
+                "last_calculated_at": None,
+                "score_model_version": "1.2",
+                "model_updated_at": "2026-01-15",
+                "data_completeness_percent": None,
+                "components": {},
+                "property_breakdown": [],
+                "drivers": [],
+                "score_authority": "unavailable",
+                "risk_level": "Moderate Risk",
+                "portfolio_risk_level": "Moderate Risk",
+                "base_portfolio_risk_state": None,
+                "effective_portfolio_risk_state": "Moderate Risk",
+                "risk_override_reasons": [PolicyReasonCode.UNKNOWN_OR_STALE_SUPPRESSION.value],
+                "critical_property_count": 0,
+                "high_risk_gap_count": 0,
+                "unknown_or_stale_property_count": 0,
+                "attention_required": False,
+                "critical_property_escalation": False,
+                "suppress_positive_headline": True,
+                "legacy_override_output": {
+                    "base_portfolio_risk_state": None,
+                    "effective_portfolio_risk_state": "Moderate Risk",
+                    "risk_override_reasons": [PolicyReasonCode.UNKNOWN_OR_STALE_SUPPRESSION.value],
+                    "critical_property_count": 0,
+                    "high_risk_gap_count": 0,
+                    "unknown_or_stale_property_count": 0,
+                    "attention_required": False,
+                    "critical_property_escalation": False,
+                    "suppress_positive_headline": True,
+                },
+                "policy_override_output": {
+                    "base_portfolio_risk_state": None,
+                    "effective_portfolio_risk_state": "Moderate Risk",
+                    "risk_override_reasons": [PolicyReasonCode.UNKNOWN_OR_STALE_SUPPRESSION.value],
+                    "critical_property_count": 0,
+                    "high_risk_gap_count": 0,
+                    "unknown_or_stale_property_count": 0,
+                    "attention_required": False,
+                    "critical_property_escalation": False,
+                    "suppress_positive_headline": True,
+                },
+                "effective_override_output": {
+                    "base_portfolio_risk_state": None,
+                    "effective_portfolio_risk_state": "Moderate Risk",
+                    "risk_override_reasons": [PolicyReasonCode.UNKNOWN_OR_STALE_SUPPRESSION.value],
+                    "critical_property_count": 0,
+                    "high_risk_gap_count": 0,
+                    "unknown_or_stale_property_count": 0,
+                    "attention_required": False,
+                    "critical_property_escalation": False,
+                    "suppress_positive_headline": True,
+                    "override_output_source": "legacy",
+                    "fallback_applied": False,
+                    "fallback_reason_codes": [],
+                },
+                "jurisdiction_compliance_notice": {
+                    "active": False,
+                    "compliance_basis": None,
+                    "affected_property_ids": [],
+                    "affected_property_count": 0,
+                },
+                **_jurisdiction_api_fields({}, []),
+            }
+        )
 
 
 async def _calculate_compliance_score_legacy_from_db(client_id: str) -> Dict[str, Any]:

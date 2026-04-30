@@ -225,7 +225,11 @@ def test_admin_retry_wrong_client_scoped_returns_error():
             ):
                 r = client.post(
                     "/api/admin/clients/client-A/agreements/retry-issue",
-                    json={"acceptance_id": "belongs-to-B", "payment_reference": "cs_123"},
+                    json={
+                        "acceptance_id": "belongs-to-B",
+                        "payment_reference": "cs_123",
+                        "reason": "Retry after wrong client scoped acceptance mismatch investigation.",
+                    },
                 )
         assert r.status_code == 400
         assert "ACCEPTANCE_NOT_FOUND" in str(r.json())

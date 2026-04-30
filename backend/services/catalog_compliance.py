@@ -265,11 +265,11 @@ async def get_property_compliance_detail(
         })
 
     if weight_sum <= 0:
-        property_score = 100
+        property_score = None
     else:
         property_score = round(weighted_sum / weight_sum)
         property_score = max(0, min(100, property_score))
-    risk_from_score = score_to_risk_level(property_score)
+    risk_from_score = score_to_risk_level(property_score) if property_score is not None else None
     if high_total == 0:
         risk_index_val = 0.0
         risk_level = risk_from_score
@@ -283,7 +283,7 @@ async def get_property_compliance_detail(
             risk_level = "Moderate Risk"
         else:
             risk_level = "Low Risk"
-        risk_level = _max_risk(risk_from_score, risk_level)
+        risk_level = _max_risk(risk_from_score, risk_level) if risk_from_score is not None else risk_level
     if high_overdue >= 2:
         risk_level = "Critical Risk"
     elif high_overdue >= 1:
@@ -315,12 +315,12 @@ async def get_portfolio_compliance_from_catalog(
     properties = await db.properties.find(
         {"client_id": client_id},
         {"_id": 0, "property_id": 1, "address_line_1": 1, "nickname": 1, "postcode": 1},
-    ).to_list(100)
+    ).to_list(500_000)
     if not properties:
         return {
-            "portfolio_score": 100,
-            "portfolio_risk_level": "Low Risk",
-            "risk_level": "Low Risk",
+            "portfolio_score": None,
+            "portfolio_risk_level": None,
+            "risk_level": None,
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "kpis": {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0},
             "properties": [],
@@ -334,9 +334,14 @@ async def get_portfolio_compliance_from_catalog(
         detail = await get_property_compliance_detail(client_id, prop["property_id"])
         if not detail:
             continue
-        total_weighted += detail["property_score"] * sum(m.get("weight", 1) for m in detail["matrix"])
-        total_weights += sum(m.get("weight", 1) for m in detail["matrix"])
-        portfolio_risk_level = _max_risk(portfolio_risk_level, detail["risk_level"])
+        wsum = sum(m.get("weight", 1) for m in detail["matrix"])
+        ps = detail.get("property_score")
+        if ps is not None and wsum:
+            total_weighted += float(ps) * wsum
+            total_weights += wsum
+        d_risk = detail.get("risk_level")
+        if d_risk:
+            portfolio_risk_level = d_risk if portfolio_risk_level is None else _max_risk(portfolio_risk_level, d_risk)
         for k in kpis_agg:
             kpis_agg[k] += detail["kpis"].get(k, 0)
         property_list.append({
@@ -352,13 +357,16 @@ async def get_portfolio_compliance_from_catalog(
             "missing_count": detail["kpis"].get("missing", 0),
         })
     if total_weights <= 0:
-        portfolio_score = 100
+        portfolio_score = None
+        portfolio_risk_level = None
     else:
         portfolio_score = round(total_weighted / total_weights)
         portfolio_score = max(0, min(100, portfolio_score))
-    portfolio_risk_level = score_to_risk_level(portfolio_score)
+        portfolio_risk_level = score_to_risk_level(portfolio_score)
     for p in property_list:
-        portfolio_risk_level = _max_risk(portfolio_risk_level, p["risk_level"])
+        prl = p.get("risk_level")
+        if prl:
+            portfolio_risk_level = prl if portfolio_risk_level is None else _max_risk(portfolio_risk_level, prl)
     return {
         "portfolio_score": portfolio_score,
         "portfolio_risk_level": portfolio_risk_level,

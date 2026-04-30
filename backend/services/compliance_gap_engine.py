@@ -18,6 +18,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from presentation.label_service import requirement_label
 from services.compliance_expiry_policy import resolve_expiring_soon_days_for_requirement
 from services.compliance_score import get_requirement_weight
+from services.policy_field_normalizer import resolve_policy_facts
+from services.portfolio_risk_policy import POLICY_CLASSIFICATION_VERSION, classify_gap_policy_predicates
 from services.requirement_evidence_authority import (
     AUTHORITY_VERSION,
     authority_state,
@@ -30,6 +32,7 @@ from services.requirement_evidence_authority import (
     EA_UPLOADED_UNCONFIRMED,
     EA_VERIFIED_CURRENT,
     EA_VERIFIED_EXPIRED,
+    normalized_evidence_state_for_policy,
 )
 
 # --- Canonical gap kinds (stable contract) ---
@@ -105,9 +108,42 @@ class ComplianceGap:
     surfaces: Dict[str, bool] = field(default_factory=lambda: {"today": True, "command_center": True})
     policy: Dict[str, Any] = field(default_factory=dict)
     authority_snapshot: Dict[str, Any] = field(default_factory=dict)
+    days_overdue: Optional[int] = None
+    days_to_expiry: Optional[int] = None
 
-    def to_mongo(self, *, client_id: str, property_id: str, requirement_id: str, requirement_code: str) -> Dict[str, Any]:
+    def to_mongo(
+        self,
+        *,
+        client_id: str,
+        property_id: str,
+        requirement_id: str,
+        requirement_code: str,
+        requirement_row: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         gk = stable_gap_key(client_id, property_id, requirement_id, self.gap_kind)
+        req_row = requirement_row if isinstance(requirement_row, dict) else {}
+        policy_facts = resolve_policy_facts(
+            req_row,
+            registry_metadata=(req_row.get("registry_metadata") or {}),
+            catalog_defaults={},
+            gap_payload={
+                "gap_kind": self.gap_kind,
+                "authority_snapshot": self.authority_snapshot,
+            },
+        )
+        policy_facts["evidence_state_normalized"] = normalized_evidence_state_for_policy(req_row)
+        predicates = classify_gap_policy_predicates(
+            {
+                "gap_kind": self.gap_kind,
+                "days_to_expiry": self.days_to_expiry,
+                "days_overdue": self.days_overdue,
+                "delivery_proof_required": (
+                    self.gap_kind in (GAP_DELIVERY_PROOF_MISSING, GAP_TENANT_DELIVERY_PROOF_MISSING)
+                    and bool((self.policy or {}).get("tenant_delivery_required") or (self.policy or {}).get("delivery_proof_required"))
+                ),
+            },
+            policy_facts,
+        )
         return {
             "gap_key": gk,
             "gap_kind": self.gap_kind,
@@ -125,9 +161,23 @@ class ComplianceGap:
             "recommended_url": self.recommended_url,
             "recommended_action_label": self.recommended_action_label,
             "due_at": self.due_at,
+            "days_overdue": self.days_overdue,
+            "days_to_expiry": self.days_to_expiry,
             "surfaces": dict(self.surfaces),
             "policy": dict(self.policy),
             "authority_snapshot": dict(self.authority_snapshot),
+            # Operational snapshots (non-canonical authority): copied at gap emit time.
+            "requirement_code_normalized": policy_facts.get("requirement_code_normalized"),
+            "applicability_state": policy_facts.get("applicability_state"),
+            "is_mandatory": bool(policy_facts.get("is_mandatory")),
+            "policy_criticality": policy_facts.get("policy_criticality"),
+            "evidence_state_normalized": policy_facts.get("evidence_state_normalized"),
+            "policy_classification_version": POLICY_CLASSIFICATION_VERSION,
+            "critical_mandatory_breach": bool(predicates.get("critical_mandatory_breach")),
+            "high_risk_gap": bool(predicates.get("high_risk_gap")),
+            "attention_only_gap": bool(predicates.get("attention_only_gap")),
+            "unknown_or_stale_signal": bool(predicates.get("unknown_or_stale_suppression")),
+            "policy_reason_codes": list(predicates.get("reason_codes") or []),
         }
 
 
@@ -156,6 +206,7 @@ def derive_gaps_from_legacy_requirement_row(
     req_url = _url_frag_property_req(pid, code) or "/documents"
     due = requirement.get("due_date")
     due_s = str(due) if due else None
+    due_dt = _parse_dt(due)
 
     gaps: List[ComplianceGap] = []
     if st in ("NOT_REQUIRED",):
@@ -181,6 +232,7 @@ def derive_gaps_from_legacy_requirement_row(
                     "escalation_ready": sev == SEVERITY_CRITICAL,
                 },
                 authority_snapshot={"legacy_status": st, "mode": "legacy_mirror"},
+                days_overdue=max(0, (now.date() - due_dt.date()).days) if due_dt else None,
             )
         )
     elif st == "EXPIRING_SOON":
@@ -199,6 +251,7 @@ def derive_gaps_from_legacy_requirement_row(
                 due_at=due_s,
                 policy={"create_issue_if_open": False, "escalation_ready": False},
                 authority_snapshot={"legacy_status": st, "mode": "legacy_mirror"},
+                days_to_expiry=(due_dt.date() - now.date()).days if due_dt else None,
             )
         )
     elif st in ("PENDING", "MISSING"):
@@ -292,7 +345,7 @@ def derive_gaps_from_authority(
                 action_type="missing_document",
                 recommended_url=req_url,
                 recommended_action_label="Add proof",
-                policy={"create_issue_if_open": base in (SEVERITY_HIGH, SEVERITY_CRITICAL)},
+                policy={"create_issue_if_open": base in (SEVERITY_HIGH, SEVERITY_CRITICAL), "delivery_proof_required": True},
                 authority_snapshot={**snap, "delivery_proof_status": wo_proof},
             )
         )
@@ -413,6 +466,7 @@ def derive_gaps_from_authority(
                 due_at=eff_exp_s,
                 policy={"create_issue_if_open": sev in (SEVERITY_HIGH, SEVERITY_CRITICAL), "escalation_ready": sev == SEVERITY_CRITICAL},
                 authority_snapshot=snap,
+                days_overdue=overdue_days,
             )
         )
         return gaps
@@ -436,6 +490,7 @@ def derive_gaps_from_authority(
                     due_at=eff_exp_s,
                     policy={"create_issue_if_open": False},
                     authority_snapshot=snap,
+                    days_to_expiry=days,
                 )
             )
         return gaps

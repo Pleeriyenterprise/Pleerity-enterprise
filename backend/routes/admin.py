@@ -4975,16 +4975,22 @@ async def get_client_control_panel(request: Request, client_id: str):
 
         compliance_score = None
         compliance_risk_level = None
+        score_data: Dict[str, Any] = {}
         try:
             from services.compliance_score import calculate_compliance_score
 
             score_data = await calculate_compliance_score(client_id)
-            compliance_score = score_data.get("overall_score")
-            compliance_risk_level = score_data.get("risk_level")
+            # Portfolio headline uses persisted property scores (see calculate_compliance_score).
+            compliance_score = score_data.get("score")
+            compliance_risk_level = score_data.get("message") or score_data.get("grade")
         except Exception:
-            # Do not fail control panel if score recompute is unavailable.
-            compliance_score = client.get("compliance_score")
-            compliance_risk_level = client.get("risk_level")
+            # Do not fail control panel if score recompute is unavailable — never substitute a legacy client row as headline.
+            score_data = {
+                "score_authority": "unavailable",
+                "score_status": "unavailable",
+                "last_calculated_at": None,
+                "score_coverage": None,
+            }
 
         issues_count = await db.maintenance_issues.count_documents({"client_id": client_id})
         work_orders_count = await db.work_orders.count_documents({"client_id": client_id})
@@ -5121,6 +5127,13 @@ async def get_client_control_panel(request: Request, client_id: str):
                 "properties_count": properties_count,
                 "compliance_score": compliance_score,
                 "risk_level": compliance_risk_level,
+                "score_authority": score_data.get("score_authority"),
+                "score_status": score_data.get("score_status"),
+                "last_calculated_at": score_data.get("last_calculated_at")
+                or score_data.get("portfolio_last_calculated_at"),
+                "score_coverage": score_data.get("score_coverage"),
+                "score_status_message": score_data.get("score_status_message"),
+                "scoring_semantics_version": score_data.get("scoring_semantics_version"),
                 "missing_documents": missing_docs,
                 "overdue_items": overdue_items,
                 "unresolved_evidence_document_count": unresolved_evidence_document_count,
@@ -5282,6 +5295,31 @@ async def admin_action_recalculate_compliance(request: Request, client_id: str):
         metadata={"action_type": "recalculate_compliance", "properties_enqueued": enqueued},
     )
     return {"success": True, "enqueued": enqueued}
+
+
+@router.post("/clients/{client_id}/actions/reconcile-compliance-scores")
+async def admin_action_reconcile_compliance_scores(request: Request, client_id: str):
+    """Enqueue idempotent recalc jobs for properties with missing or pending persisted scores only."""
+    admin = await admin_route_guard(request)
+    db = database.get_db()
+    if not await db.clients.find_one({"client_id": client_id}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    from services.compliance_score_reconciliation_service import enqueue_reconciliation_for_properties
+
+    result = await enqueue_reconciliation_for_properties(client_id=client_id)
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=admin.get("portal_user_id"),
+        actor_role=UserRole.ROLE_ADMIN,
+        client_id=client_id,
+        metadata={
+            "action_type": "reconcile_compliance_scores",
+            "enqueued": result.get("enqueued"),
+            "skipped": result.get("skipped"),
+        },
+    )
+    return {"success": True, **result}
 
 
 @router.post("/clients/{client_id}/actions/run-job")

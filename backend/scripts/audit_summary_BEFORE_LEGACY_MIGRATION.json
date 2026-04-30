@@ -1,0 +1,932 @@
+{
+  "mode": "dry_run",
+  "scanned": 378,
+  "changed": 378,
+  "operational_cleanup": {},
+  "state_counts": {
+    "active": 306,
+    "hidden_deprecated": 9,
+    "unmapped_readonly": 63
+  },
+  "grouped_counts": [
+    {
+      "legacy_state": "active",
+      "requirement_type": "eicr",
+      "canonical_code": "eicr",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 37
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "epc",
+      "canonical_code": "epc",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 37
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "fire_alarm",
+      "canonical_code": "fire_detection",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 37
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "gas_safety",
+      "canonical_code": "gas_safety",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 37
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "legionella",
+      "canonical_code": "legionella",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 37
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "portable_appliance_test",
+      "canonical_code": "portable_appliance_test",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 37
+    },
+    {
+      "legacy_state": "unmapped_readonly",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 21
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 16
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "hmo_fire_risk_evidence",
+      "canonical_code": "hmo_fire_risk_evidence",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 16
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "hmo_license",
+      "canonical_code": "hmo_license",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 16
+    },
+    {
+      "legacy_state": "unmapped_readonly",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "published_match": false,
+      "mapped_match": false,
+      "count": 16
+    },
+    {
+      "legacy_state": "unmapped_readonly",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "published_match": false,
+      "mapped_match": false,
+      "count": 16
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "tenancy_agreement",
+      "canonical_code": "tenancy_agreement",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 7
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "landlord_registration_ni",
+      "canonical_code": "landlord_registration_ni",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 6
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "deposit_pi",
+      "canonical_code": "deposit_pi",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 5
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "co_alarms",
+      "canonical_code": "co_alarms",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 4
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "smoke_alarms",
+      "canonical_code": "smoke_alarms",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 4
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "how_to_rent",
+      "canonical_code": "how_to_rent",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 3
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "right_to_rent",
+      "canonical_code": "right_to_rent",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 3
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "scotland_landlord_registration",
+      "canonical_code": "scotland_landlord_registration",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 3
+    },
+    {
+      "legacy_state": "unmapped_readonly",
+      "requirement_type": "landlord_registration",
+      "canonical_code": "landlord_registration",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 3
+    },
+    {
+      "legacy_state": "unmapped_readonly",
+      "requirement_type": "occupation_contract",
+      "canonical_code": "occupation_contract",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 3
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "fire_risk_assessment",
+      "canonical_code": "fire_risk_assessment",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 2
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "how_to_rent",
+      "canonical_code": "how_to_rent",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 2
+    },
+    {
+      "legacy_state": "hidden_deprecated",
+      "requirement_type": "right_to_rent",
+      "canonical_code": "right_to_rent",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 2
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "deposit_pi",
+      "canonical_code": "deposit_pi",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 1
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "fire_detection",
+      "canonical_code": "fire_detection",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 1
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "landlord_registration",
+      "canonical_code": "landlord_registration",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 1
+    },
+    {
+      "legacy_state": "active",
+      "requirement_type": "occupation_contract",
+      "canonical_code": "occupation_contract",
+      "published_match": true,
+      "mapped_match": true,
+      "count": 1
+    },
+    {
+      "legacy_state": "unmapped_readonly",
+      "requirement_type": "communal_cleaning",
+      "canonical_code": null,
+      "published_match": false,
+      "mapped_match": false,
+      "count": 1
+    },
+    {
+      "legacy_state": "unmapped_readonly",
+      "requirement_type": "communal_fire_doors",
+      "canonical_code": null,
+      "published_match": false,
+      "mapped_match": false,
+      "count": 1
+    },
+    {
+      "legacy_state": "unmapped_readonly",
+      "requirement_type": "how_to_rent",
+      "canonical_code": "how_to_rent",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 1
+    },
+    {
+      "legacy_state": "unmapped_readonly",
+      "requirement_type": "property_licence",
+      "canonical_code": "property_licence",
+      "published_match": false,
+      "mapped_match": false,
+      "count": 1
+    }
+  ],
+  "published_true_mapped_false_rows": [],
+  "published_true_mapped_false_count": 0,
+  "linkage_exact_counts": {
+    "rows_with_linked_reminders_only": 319,
+    "rows_with_linked_documents": 11,
+    "rows_with_linked_work_orders": 0,
+    "rows_with_linked_invoices": 0
+  },
+  "ghost_currently_visible_rows": [
+    {
+      "requirement_id": "992c6bc3-bcc7-439e-9e06-49c64a741f71",
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "property_id": "f6dc5ca2-6285-4aca-bf8b-0f77d8b67898",
+      "requirement_type": "deposit_pi",
+      "canonical_code": "deposit_pi",
+      "client_surface_visible": null,
+      "legacy_state_after_migration": "hidden_deprecated"
+    },
+    {
+      "requirement_id": "b97d646e-4dfe-4c31-9e3e-f1664210f7ec",
+      "client_id": "959eed26-a142-4899-b22c-6ccfe732c52c",
+      "property_id": "0e401328-56d8-47da-a9c5-f9d0babcea80",
+      "requirement_type": "deposit_pi",
+      "canonical_code": "deposit_pi",
+      "client_surface_visible": null,
+      "legacy_state_after_migration": "hidden_deprecated"
+    },
+    {
+      "requirement_id": "413527ba-c969-42f1-89d3-62459a881824",
+      "client_id": "959eed26-a142-4899-b22c-6ccfe732c52c",
+      "property_id": "1fe1368c-df98-456c-9715-3e40fbc367c8",
+      "requirement_type": "deposit_pi",
+      "canonical_code": "deposit_pi",
+      "client_surface_visible": null,
+      "legacy_state_after_migration": "hidden_deprecated"
+    },
+    {
+      "requirement_id": "09fbdd11-ae43-4007-bc3c-13402bb68b44",
+      "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+      "property_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+      "requirement_type": "deposit_pi",
+      "canonical_code": "deposit_pi",
+      "client_surface_visible": null,
+      "legacy_state_after_migration": "hidden_deprecated"
+    },
+    {
+      "requirement_id": "99906df6-cb2b-446d-9490-7aab88f145de",
+      "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+      "property_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+      "requirement_type": "how_to_rent",
+      "canonical_code": "how_to_rent",
+      "client_surface_visible": null,
+      "legacy_state_after_migration": "hidden_deprecated"
+    },
+    {
+      "requirement_id": "ee2e70c1-721b-43b0-9dde-1ee7f0113129",
+      "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+      "property_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+      "requirement_type": "right_to_rent",
+      "canonical_code": "right_to_rent",
+      "client_surface_visible": null,
+      "legacy_state_after_migration": "hidden_deprecated"
+    },
+    {
+      "requirement_id": "2c8dbc4f-82dc-4113-9b07-10345ba3661e",
+      "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+      "property_id": "b8016cb8-5a4c-4416-9e9c-7a49d0f727e7",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "cd834d39-bfbe-43e2-b761-9fa3c8b5ef37",
+      "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+      "property_id": "b8016cb8-5a4c-4416-9e9c-7a49d0f727e7",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "86b9fe01-4ed3-451f-9aa9-a6c5f4f71048",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "requirement_type": "deposit_pi",
+      "canonical_code": "deposit_pi",
+      "client_surface_visible": null,
+      "legacy_state_after_migration": "hidden_deprecated"
+    },
+    {
+      "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "requirement_type": "right_to_rent",
+      "canonical_code": "right_to_rent",
+      "client_surface_visible": null,
+      "legacy_state_after_migration": "hidden_deprecated"
+    },
+    {
+      "requirement_id": "bb3eb656-7186-4ae0-9bef-5c796ed14fe6",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "requirement_type": "how_to_rent",
+      "canonical_code": "how_to_rent",
+      "client_surface_visible": null,
+      "legacy_state_after_migration": "hidden_deprecated"
+    },
+    {
+      "requirement_id": "5c4a24f2-841a-4d9e-8672-823c878da82c",
+      "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+      "property_id": "989adf3c-44c3-4ada-bdbc-af5eb060a560",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "9b67a327-842f-47a6-bb32-1660931efc79",
+      "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+      "property_id": "989adf3c-44c3-4ada-bdbc-af5eb060a560",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "10061ddb-f048-4aa0-9130-0a7ec59b4227",
+      "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+      "property_id": "fe9f66cd-c87c-4576-b2ed-5b767a61225b",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "c495e245-3db6-41be-ad5a-e6b91ddea78c",
+      "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+      "property_id": "76c5b548-f4e4-4481-880c-c2b4d5f03335",
+      "requirement_type": "how_to_rent",
+      "canonical_code": "how_to_rent",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "a6b1d613-161e-487c-9a41-3d5751556b3a",
+      "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+      "property_id": "76c5b548-f4e4-4481-880c-c2b4d5f03335",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "55355fad-bd37-41d5-82bf-cdf997bd9d9c",
+      "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+      "property_id": "76c5b548-f4e4-4481-880c-c2b4d5f03335",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "70c7b9ad-cba6-43b2-91d7-fe114e1cfa93",
+      "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+      "property_id": "76c5b548-f4e4-4481-880c-c2b4d5f03335",
+      "requirement_type": "communal_cleaning",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "42aecf43-82bc-41c1-9722-df8d2e76db9f",
+      "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+      "property_id": "76c5b548-f4e4-4481-880c-c2b4d5f03335",
+      "requirement_type": "communal_fire_doors",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "6e65a785-c47b-411c-a94e-b83f4859e37b",
+      "client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+      "property_id": "6d939c70-06ab-4dc8-8b36-204958d2cdb3",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "08879b64-f2d1-46c0-847b-384a8e85ba2f",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "6a2aeaae-19e6-445c-8481-8f71406dfb0a",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "property_id": "fedac677-cd2b-41fe-b5b8-b00f00ddfe67",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "cd8ef2ee-fdff-4f62-840d-2c0c9a0133f3",
+      "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+      "property_id": "a9bc7f1a-4ee4-4bf1-be3d-9ee9aa3ec435",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "10b61fb6-e743-4947-bfc6-2edb66bf89ad",
+      "client_id": "24e15552-df1e-4b1e-943d-82832554e1a8",
+      "property_id": "9ea56cb2-8fa6-4309-86db-361696aab6b8",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "3a6e1b91-5689-4107-9bb9-4bec3de4da35",
+      "client_id": "24e15552-df1e-4b1e-943d-82832554e1a8",
+      "property_id": "9ea56cb2-8fa6-4309-86db-361696aab6b8",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "c9b0a279-67ae-4706-8981-169c48ae2d60",
+      "client_id": "26fbbc0b-7422-45f5-8ff6-852270b99721",
+      "property_id": "2cf1aae3-8ae6-43c0-8d11-52c6b8c9ac73",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "1393b085-72ac-4ae9-a7b1-a31d15f473d0",
+      "client_id": "26fbbc0b-7422-45f5-8ff6-852270b99721",
+      "property_id": "2cf1aae3-8ae6-43c0-8d11-52c6b8c9ac73",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "9f18fe4e-9b1b-4231-aff2-57288e77582d",
+      "client_id": "27d048c3-6113-4a83-b5ef-2811cb12c1eb",
+      "property_id": "61facc76-3110-431d-8f09-3dc3eb7bae96",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "866caddd-71ab-48e2-be9f-fdd0b56c42df",
+      "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+      "property_id": "13b370bd-5364-46a7-88de-96eec2570341",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "7f472aaa-8b50-4b92-aa2d-bac39fffb302",
+      "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+      "property_id": "13b370bd-5364-46a7-88de-96eec2570341",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "e53624f8-6bef-48d2-80fe-26575c7eb7e8",
+      "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+      "property_id": "5afab08d-ae91-4648-b3e4-cfd041bf06dc",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "30a4f32b-cf3f-4078-bcdb-3b37067f7b64",
+      "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+      "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "37b44055-b25f-43ff-96cb-1c9e0a619548",
+      "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+      "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "d1b5b1c5-ef37-48e6-9ddd-5a6d6ed38567",
+      "client_id": "35401744-6cd6-4c80-9bd6-f6131e8c05a2",
+      "property_id": "00cca9ca-d270-40e5-894d-45cd42dec4f2",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "2ac7735d-bf44-4de1-8906-6284aeccbbec",
+      "client_id": "35401744-6cd6-4c80-9bd6-f6131e8c05a2",
+      "property_id": "bed64161-a263-4cea-86ec-a630a8645c6a",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "703eb5b5-af09-430f-97e3-08190c268c35",
+      "client_id": "35401744-6cd6-4c80-9bd6-f6131e8c05a2",
+      "property_id": "bed64161-a263-4cea-86ec-a630a8645c6a",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "8a0fc8fb-1f28-4a8d-9f88-d1473c6f8248",
+      "client_id": "38907123-9ab9-49b0-8316-2d5b6e0a2803",
+      "property_id": "91f541b5-6c9f-483a-a4d5-14b283c44540",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "ba510114-7d0b-4eeb-9d05-0e445ee99994",
+      "client_id": "38907123-9ab9-49b0-8316-2d5b6e0a2803",
+      "property_id": "91f541b5-6c9f-483a-a4d5-14b283c44540",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "c89fb0a6-a683-499a-aa0f-90c85856501c",
+      "client_id": "422e2785-f168-416b-95e8-9149454fbc1c",
+      "property_id": "9cbbbbd6-7193-4949-af1e-6224756b64be",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "e87fd63c-7198-4d2c-97da-2be017d557b6",
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "property_id": "f6dc5ca2-6285-4aca-bf8b-0f77d8b67898",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "7c9263ec-4234-46f9-af3e-94492aa31538",
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "property_id": "f6dc5ca2-6285-4aca-bf8b-0f77d8b67898",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "94260370-f168-412e-b846-529840ea1278",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "property_id": "0d9119a8-7679-462c-8422-dca5fce2cbc9",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "b0c6b43b-e241-42dd-ab09-9815b991c516",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "property_id": "8077005c-49c9-4e7a-bfa1-ae7efbb1cd40",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "d4e73fcd-a6d0-45f7-89fa-8ea56da4f876",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "property_id": "8077005c-49c9-4e7a-bfa1-ae7efbb1cd40",
+      "requirement_type": "property_licence",
+      "canonical_code": "property_licence",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "b87cfe59-b680-4d2a-ac0f-1054f90b6ab0",
+      "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+      "property_id": "a93ff8b8-3f3c-4b7d-8b46-ad9d1e387b57",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "1aa82b6c-484e-4364-96ec-3363a8cb131d",
+      "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+      "property_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "88480afd-ca64-4acb-be74-c44901c91369",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "96194b6a-1325-44b3-88c3-52b50c7965e8",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "35293fae-7718-407a-b055-0817ce3016ac",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "83554c5a-cfa9-417f-b08d-138bfe86e5bb",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "4c4b93dc-fac4-4a82-87dd-c4cdd661b9fa",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "abc1e1b8-d6ff-4f14-8c63-6c030ac7c503",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "8e632aab-4485-42ea-bac4-936d1dc37aef",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "0ba444c0-aee3-46ce-b5db-0c4eafdf4cd2",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "b3ded9ac-67c3-46de-94b4-14916140ceaf",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "8ada7bce-4887-4a1b-ac51-6c9dd2431ceb",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "d57f9dc9-600e-4fa1-bfaf-6fdaa9041775",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "property_id": "bd318edf-9c77-4437-b120-129c91836359",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "0283b0fd-33aa-4611-83b4-5661cd201ab5",
+      "client_id": "921716dc-b0e0-4284-9d0a-4acd140fa6ff",
+      "property_id": "f4034e7a-09f9-440d-bfe4-65e0436730c3",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "797c1457-0267-4292-80ce-d2e79f32625c",
+      "client_id": "959eed26-a142-4899-b22c-6ccfe732c52c",
+      "property_id": "0e401328-56d8-47da-a9c5-f9d0babcea80",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "b6d9a8c6-062d-45c1-b2ae-d20e9ad79690",
+      "client_id": "959eed26-a142-4899-b22c-6ccfe732c52c",
+      "property_id": "1fe1368c-df98-456c-9715-3e40fbc367c8",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "110d667a-864c-4b4a-9936-36623fccb2bf",
+      "client_id": "a032036f-70a3-4fe5-b629-d9ce9c104165",
+      "property_id": "c5a41593-c050-4f54-8cb1-7553093acfe3",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "5df09325-db16-4e99-9bc7-1978e130e7d9",
+      "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+      "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "c99b155d-35cd-452c-b1c3-e59bb9e50c19",
+      "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+      "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "d3a6dc48-6892-4c42-9044-7f386a72dd10",
+      "client_id": "f68d4f4b-8007-43c6-84cb-a20c4ab69891",
+      "property_id": "f63a7b05-9b58-4a22-8aeb-8a874574011b",
+      "requirement_type": "hmo_fire_risk",
+      "canonical_code": "hmo_fire_risk",
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "ebb31888-99db-4cc6-96f7-f07cd4c28abf",
+      "client_id": "fc635d44-8d90-41e5-af4c-00866e31b412",
+      "property_id": "b3b74120-b343-4ca3-b6e8-0f3626af747c",
+      "requirement_type": "emergency_lighting",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    },
+    {
+      "requirement_id": "ceb07973-1020-471a-86fd-b9926f2159c2",
+      "client_id": "fc635d44-8d90-41e5-af4c-00866e31b412",
+      "property_id": "b3b74120-b343-4ca3-b6e8-0f3626af747c",
+      "requirement_type": "fire_extinguisher",
+      "canonical_code": null,
+      "client_surface_visible": true,
+      "legacy_state_after_migration": "unmapped_readonly"
+    }
+  ],
+  "ghost_currently_visible_count": 66,
+  "visibility_simulation": [
+    {
+      "label": "england",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "requirements_page_count_before": 14,
+      "requirements_page_count_after": 10,
+      "requirements_page_count_delta": -4,
+      "dashboard_overdue_before": 0,
+      "dashboard_overdue_after": 0,
+      "dashboard_overdue_delta": 0,
+      "today_requirement_tasks_before": 14,
+      "today_requirement_tasks_after": 10,
+      "today_requirement_tasks_delta": -4,
+      "compliance_score_total_before": 14,
+      "compliance_score_total_after": 10,
+      "compliance_score_total_delta": -4
+    },
+    {
+      "label": "scotland",
+      "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+      "requirements_page_count_before": 12,
+      "requirements_page_count_after": 8,
+      "requirements_page_count_delta": -4,
+      "dashboard_overdue_before": 0,
+      "dashboard_overdue_after": 0,
+      "dashboard_overdue_delta": 0,
+      "today_requirement_tasks_before": 12,
+      "today_requirement_tasks_after": 8,
+      "today_requirement_tasks_delta": -4,
+      "compliance_score_total_before": 12,
+      "compliance_score_total_after": 8,
+      "compliance_score_total_delta": -4
+    },
+    {
+      "label": "mixed_jurisdiction",
+      "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+      "requirements_page_count_before": 19,
+      "requirements_page_count_after": 14,
+      "requirements_page_count_delta": -5,
+      "dashboard_overdue_before": 0,
+      "dashboard_overdue_after": 0,
+      "dashboard_overdue_delta": 0,
+      "today_requirement_tasks_before": 19,
+      "today_requirement_tasks_after": 14,
+      "today_requirement_tasks_delta": -5,
+      "compliance_score_total_before": 19,
+      "compliance_score_total_after": 14,
+      "compliance_score_total_delta": -5
+    }
+  ]
+}

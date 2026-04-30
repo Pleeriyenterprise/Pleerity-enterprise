@@ -1,0 +1,413 @@
+{
+  "families": {
+    "deposit_pi": {
+      "row_count": 5,
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 0,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0,
+      "rows_with_any_financial_or_evidence": 0,
+      "rows_with_reminders_or_open_gaps_or_tenant_req": 0
+    },
+    "hmo_fire_risk": {
+      "row_count": 21,
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 21,
+      "compliance_gaps_open": 1,
+      "tenant_requests_active": 0,
+      "rows_with_any_financial_or_evidence": 0,
+      "rows_with_reminders_or_open_gaps_or_tenant_req": 21
+    },
+    "how_to_rent": {
+      "row_count": 3,
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 1,
+      "tenant_requests_active": 0,
+      "rows_with_any_financial_or_evidence": 0,
+      "rows_with_reminders_or_open_gaps_or_tenant_req": 1
+    },
+    "property_licence": {
+      "row_count": 1,
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0,
+      "rows_with_any_financial_or_evidence": 0,
+      "rows_with_reminders_or_open_gaps_or_tenant_req": 1
+    },
+    "right_to_rent": {
+      "row_count": 2,
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 0,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0,
+      "rows_with_any_financial_or_evidence": 0,
+      "rows_with_reminders_or_open_gaps_or_tenant_req": 0
+    }
+  },
+  "per_row": [
+    {
+      "family": "deposit_pi",
+      "requirement_id": "992c6bc3-bcc7-439e-9e06-49c64a741f71",
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 0,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "deposit_pi",
+      "requirement_id": "b97d646e-4dfe-4c31-9e3e-f1664210f7ec",
+      "client_id": "959eed26-a142-4899-b22c-6ccfe732c52c",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 0,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "deposit_pi",
+      "requirement_id": "413527ba-c969-42f1-89d3-62459a881824",
+      "client_id": "959eed26-a142-4899-b22c-6ccfe732c52c",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 0,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "deposit_pi",
+      "requirement_id": "09fbdd11-ae43-4007-bc3c-13402bb68b44",
+      "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 0,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "how_to_rent",
+      "requirement_id": "99906df6-cb2b-446d-9490-7aab88f145de",
+      "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 0,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "right_to_rent",
+      "requirement_id": "ee2e70c1-721b-43b0-9dde-1ee7f0113129",
+      "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 0,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "deposit_pi",
+      "requirement_id": "86b9fe01-4ed3-451f-9aa9-a6c5f4f71048",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 0,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "right_to_rent",
+      "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 0,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "how_to_rent",
+      "requirement_id": "bb3eb656-7186-4ae0-9bef-5c796ed14fe6",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 0,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "10061ddb-f048-4aa0-9130-0a7ec59b4227",
+      "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 1,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "how_to_rent",
+      "requirement_id": "c495e245-3db6-41be-ad5a-e6b91ddea78c",
+      "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 1,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "6e65a785-c47b-411c-a94e-b83f4859e37b",
+      "client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "08879b64-f2d1-46c0-847b-384a8e85ba2f",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "6a2aeaae-19e6-445c-8481-8f71406dfb0a",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "cd8ef2ee-fdff-4f62-840d-2c0c9a0133f3",
+      "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "9f18fe4e-9b1b-4231-aff2-57288e77582d",
+      "client_id": "27d048c3-6113-4a83-b5ef-2811cb12c1eb",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "e53624f8-6bef-48d2-80fe-26575c7eb7e8",
+      "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "d1b5b1c5-ef37-48e6-9ddd-5a6d6ed38567",
+      "client_id": "35401744-6cd6-4c80-9bd6-f6131e8c05a2",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "c89fb0a6-a683-499a-aa0f-90c85856501c",
+      "client_id": "422e2785-f168-416b-95e8-9149454fbc1c",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "94260370-f168-412e-b846-529840ea1278",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "b0c6b43b-e241-42dd-ab09-9815b991c516",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "property_licence",
+      "requirement_id": "d4e73fcd-a6d0-45f7-89fa-8ea56da4f876",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "b87cfe59-b680-4d2a-ac0f-1054f90b6ab0",
+      "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "1aa82b6c-484e-4364-96ec-3363a8cb131d",
+      "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "88480afd-ca64-4acb-be74-c44901c91369",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "0ba444c0-aee3-46ce-b5db-0c4eafdf4cd2",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "d57f9dc9-600e-4fa1-bfaf-6fdaa9041775",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "0283b0fd-33aa-4611-83b4-5661cd201ab5",
+      "client_id": "921716dc-b0e0-4284-9d0a-4acd140fa6ff",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "797c1457-0267-4292-80ce-d2e79f32625c",
+      "client_id": "959eed26-a142-4899-b22c-6ccfe732c52c",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "b6d9a8c6-062d-45c1-b2ae-d20e9ad79690",
+      "client_id": "959eed26-a142-4899-b22c-6ccfe732c52c",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "110d667a-864c-4b4a-9936-36623fccb2bf",
+      "client_id": "a032036f-70a3-4fe5-b629-d9ce9c104165",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    },
+    {
+      "family": "hmo_fire_risk",
+      "requirement_id": "d3a6dc48-6892-4c42-9044-7f386a72dd10",
+      "client_id": "f68d4f4b-8007-43c6-84cb-a20c4ab69891",
+      "documents": 0,
+      "work_orders": 0,
+      "invoices": 0,
+      "reminders": 1,
+      "compliance_gaps_open": 0,
+      "tenant_requests_active": 0
+    }
+  ]
+}

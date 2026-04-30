@@ -215,6 +215,8 @@ class TestReminderWritesReminderTypeAndRefs:
                         scheduler.db.properties.find = MagicMock(
                             return_value=_AsyncPropCursor([dict(_REMINDER_SCHEDULER_TEST_PROPERTY)])
                         )
+                        scheduler.db.properties.find_one = AsyncMock(return_value=dict(_REMINDER_SCHEDULER_TEST_PROPERTY))
+                        scheduler.db.clients.find_one = AsyncMock(return_value={"client_id": "c1"})
                         with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock):
                             with patch("services.plan_registry.plan_registry.enforce_feature", new_callable=AsyncMock, return_value=(False, None, None)):
                                 await scheduler.send_daily_reminders()
@@ -250,6 +252,7 @@ class TestReminderWritesReminderTypeAndRefs:
                 scheduler.db.requirements = MagicMock()
                 scheduler.db.audit_logs = MagicMock()
                 scheduler.db.properties = MagicMock()
+                scheduler.db.properties.find_one = AsyncMock(return_value=dict(_REMINDER_SCHEDULER_TEST_PROPERTY))
 
                 scheduler.db.clients.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
                 scheduler.db.notification_preferences.find_one = AsyncMock(
@@ -290,6 +293,7 @@ class TestReminderWritesReminderTypeAndRefs:
                 scheduler.db.properties.find = MagicMock(
                     return_value=_AsyncPropCursor([dict(_REMINDER_SCHEDULER_TEST_PROPERTY)])
                 )
+                scheduler.db.clients.find_one = AsyncMock(return_value={"client_id": "c1"})
 
                 with patch("services.jobs.JobScheduler._resolve_reminder_recipients", new_callable=AsyncMock, return_value=["u@example.com"]):
                     with patch("services.jobs.JobScheduler._send_reminder_email", new_callable=AsyncMock) as mock_send:

@@ -60,6 +60,10 @@ import {
   requirementMapFromList,
 } from '../utils/portalRequirementAttention';
 import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
+import {
+  headlineScoreDisplayForDashboard,
+  headlineScoreShowsOutOf100,
+} from '../utils/scoringHeadlineDisplay';
 const KPI_NO_DATA = 'No data yet';
 
 /** Compact (i) hint for dashboard KPIs — must sit under TooltipProvider. */
@@ -601,6 +605,10 @@ const ClientDashboard = () => {
       setRestrictReason(null);
       const response = await clientAPI.getDashboard();
       setData(response.data);
+      const h = response.data?.compliance_score_headline;
+      if (h && typeof h === 'object') {
+        setComplianceScore((prev) => prev || h);
+      }
       // Defensive: detect missing plan/entitlement (test accounts not fully provisioned)
       const client = response.data?.client;
       if (client && client.billing_plan == null && client.plan_code == null) {
@@ -844,25 +852,63 @@ const ClientDashboard = () => {
   // Single property: use portfolio summary score so main card and portfolio table show the same number.
   // Use backend risk_level for grade/message when present; for Low Risk derive grade from score (90+ → A, 80–89 → B) so 100/100 shows Grade A.
   const displayScoreInfo = useMemo(() => {
-    const singleProperty = portfolioSummary?.properties?.length === 1 && portfolioSummary?.portfolio_score != null;
+    const portfolioStatus = portfolioSummary?.score_status;
+    const singleProperty =
+      portfolioSummary?.properties?.length === 1 && portfolioSummary?.portfolio_score != null;
     if (singleProperty) {
       const score = portfolioSummary.portfolio_score;
       const riskLevel = portfolioSummary.risk_level || portfolioSummary.portfolio_risk_level;
+      if (['unavailable', 'reconciliation_required', 'unknown', 'calculating'].includes(portfolioStatus || '')) {
+        return {
+          score: null,
+          grade: null,
+          color: 'gray',
+          message: portfolioSummary?.score_status_message || complianceScore?.message || 'Compliance score is not available for this view.',
+          scoreStatus: portfolioStatus,
+        };
+      }
       if (riskLevel) {
         const s = (riskLevel || '').trim();
         const { grade, color, message } = s === 'Low Risk'
           ? scoreToGradeColorMessage(score)
           : riskLevelToGradeColorMessage(riskLevel);
-        return { score, grade, color, message };
+        return { score, grade, color, message, scoreStatus: portfolioStatus };
       }
       const { grade, color, message } = scoreToGradeColorMessage(score);
-      return { score, grade, color, message };
+      return { score, grade, color, message, scoreStatus: portfolioStatus };
     }
     if (complianceScore) {
-      return { score: complianceScore.score, grade: complianceScore.grade, color: complianceScore.color, message: complianceScore.message };
+      const st = complianceScore.score_status;
+      return {
+        score: complianceScore.score,
+        grade: complianceScore.grade,
+        color: complianceScore.color,
+        message: complianceScore.message,
+        scoreStatus: st,
+        scoreStatusMessage: complianceScore.score_status_message,
+        scoreCoverage: complianceScore.score_coverage,
+      };
     }
     return null;
   }, [complianceScore, portfolioSummary]);
+
+  /** Top strip + cards: authoritative headline label (no silent 0 when status forbids numerics). */
+  const portfolioHeadlineUi = useMemo(() => {
+    const score = displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score;
+    const st =
+      displayScoreInfo?.scoreStatus ??
+      complianceScore?.score_status ??
+      portfolioSummary?.score_status;
+    const h = headlineScoreDisplayForDashboard(score, st);
+    const display = typeof h === 'number' ? formatDashboardScore(h) : h;
+    const showOutOf100 = headlineScoreShowsOutOf100(score, st);
+    return { display, showOutOf100 };
+  }, [displayScoreInfo, complianceScore, portfolioSummary]);
+
+  const headlineCoverageNote =
+    displayScoreInfo?.scoreStatusMessage ||
+    complianceScore?.score_status_message ||
+    portfolioSummary?.score_status_message;
 
   // Missing-evidence bucket from canonical score stats (portal projection); no client-side pending+overdue sum.
   const actionableMissingCount = useMemo(() => {
@@ -1546,9 +1592,9 @@ const ClientDashboard = () => {
           <div className="mb-6 flex flex-wrap items-center gap-4 py-3 px-4 rounded-xl bg-gray-50 border border-gray-200" data-testid="dashboard-top-strip">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold text-midnight-blue">
-                {formatDashboardScore(displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score)}
+                {portfolioHeadlineUi.display}
               </span>
-              <span className="text-gray-500">/100</span>
+              {portfolioHeadlineUi.showOutOf100 ? <span className="text-gray-500">/100</span> : null}
               <span className={`ml-1 text-lg font-semibold ${
                 displayScoreInfo?.color === 'green' ? 'text-green-600' :
                 displayScoreInfo?.color === 'amber' ? 'text-amber-600' :
@@ -1567,6 +1613,17 @@ const ClientDashboard = () => {
               <span className="text-xs text-gray-500">{portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0} propert{(portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0) === 1 ? 'y' : 'ies'}</span>
             )}
           </div>
+        )}
+        {headlineCoverageNote &&
+          (displayScoreInfo?.scoreStatus === 'partial' ||
+            displayScoreInfo?.scoreStatus === 'stale' ||
+            complianceScore?.score_status === 'partial' ||
+            complianceScore?.score_status === 'stale' ||
+            portfolioSummary?.score_status === 'partial' ||
+            portfolioSummary?.score_status === 'stale') && (
+          <p className="mb-6 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2" data-testid="dashboard-headline-coverage">
+            {headlineCoverageNote}
+          </p>
         )}
 
         {!setupView && isClientUser && (
@@ -1811,7 +1868,7 @@ const ClientDashboard = () => {
                   </DashboardKpiHint>
                 </p>
                 <p className="text-xl font-bold text-midnight-blue">
-                  {formatDashboardScore(displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score)}
+                  {portfolioHeadlineUi.display}
                 </p>
               </CardContent>
             </Card>
@@ -2082,15 +2139,24 @@ const ClientDashboard = () => {
                       </Button>
                     </div>
                   )}
-                  {cc && cc.compliance_status_summary && cc.compliance_status_summary.score != null && (
+                  {cc && cc.compliance_status_summary && (cc.compliance_status_summary.score != null || cc.compliance_status_summary.score_status) && (
                     <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-sm">
                       <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Compliance (snapshot)</p>
                       <p className="font-semibold text-midnight-blue">
                         Grade {formatDashboardGrade(cc.compliance_status_summary.grade)} · Score{' '}
-                        {cc.compliance_status_summary.score != null
-                          ? Math.round(Number(cc.compliance_status_summary.score))
-                          : KPI_NO_DATA}
+                        {headlineScoreDisplayForDashboard(
+                          cc.compliance_status_summary.score,
+                          cc.compliance_status_summary.score_status
+                        )}
                       </p>
+                      {cc.compliance_status_summary.score_status && (
+                        <p className="text-xs text-gray-600 mt-1">
+                          Status: {cc.compliance_status_summary.score_status}
+                          {cc.compliance_status_summary.last_calculated_at
+                            ? ` · Last calculated ${new Date(cc.compliance_status_summary.last_calculated_at).toLocaleString()}`
+                            : ''}
+                        </p>
+                      )}
                       {cc.compliance_status_summary.message && (
                         <p className="text-gray-600 mt-1">{cc.compliance_status_summary.message}</p>
                       )}
@@ -2108,7 +2174,10 @@ const ClientDashboard = () => {
                     inboxReady &&
                     dashboardAlignedInboxSections.urgent.length === 0 &&
                     (!hasFeature('predictive_maintenance') || (cc.upcoming_risks?.length ?? 0) === 0) &&
-                    !(cc.compliance_status_summary && cc.compliance_status_summary.score != null) && (
+                    !(
+                      cc.compliance_status_summary &&
+                      (cc.compliance_status_summary.score != null || cc.compliance_status_summary.score_status)
+                    ) && (
                       <p className="text-sm text-gray-500">No priority rows in this snapshot — open Command Center or Today for the full inbox.</p>
                     )}
                 </div>
@@ -2436,9 +2505,9 @@ const ClientDashboard = () => {
                       displayScoreInfo?.color === 'red' ? 'text-red-700' :
                       'text-gray-700'
                     }`}>
-                      {formatDashboardScore(displayScoreInfo?.score ?? complianceScore?.score)}
+                      {portfolioHeadlineUi.display}
                     </span>
-                    <span className="text-2xl text-gray-400">/100</span>
+                    {portfolioHeadlineUi.showOutOf100 ? <span className="text-2xl text-gray-400">/100</span> : null}
                   </div>
                 </div>
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
@@ -2649,8 +2718,24 @@ const ClientDashboard = () => {
               ) : (() => {
                 const total = complianceScore?.stats?.total_requirements ?? 0;
                 const valid = complianceScore?.stats?.compliant ?? 0;
-                const displayScore = displayScoreInfo?.score ?? complianceScore?.score ?? 0;
-                const allValid = total > 0 && valid === total && actionableMissingCount === 0 && displayScore >= 80;
+                const rawEncouragement =
+                  displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score;
+                const stEncouragement =
+                  displayScoreInfo?.scoreStatus ??
+                  complianceScore?.score_status ??
+                  portfolioSummary?.score_status;
+                const headlineNum =
+                  rawEncouragement != null &&
+                  headlineScoreShowsOutOf100(rawEncouragement, stEncouragement)
+                    ? Number(rawEncouragement)
+                    : null;
+                const allValid =
+                  total > 0 &&
+                  valid === total &&
+                  actionableMissingCount === 0 &&
+                  headlineNum != null &&
+                  !Number.isNaN(headlineNum) &&
+                  headlineNum >= 80;
                 if (allValid) {
                   return (
                 <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-100">
@@ -2926,7 +3011,10 @@ const ClientDashboard = () => {
                 >
                   <p className="font-semibold text-midnight-blue break-words">{getPropertyDisplayLabel(p) || p.name || p.property_id}</p>
                   <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
-                    <span>Score: {p.property_score ?? p.score ?? 0}/100</span>
+                    <span>
+                      Score: {headlineScoreDisplayForDashboard(p.property_score ?? p.score, p.score_status)}
+                      {headlineScoreShowsOutOf100(p.property_score ?? p.score, p.score_status) ? '/100' : ''}
+                    </span>
                     <span>{formatRiskLabel(p.risk_level)}</span>
                     <span>Overdue: {p.overdue_count ?? 0}</span>
                     <span>Expiring: {p.expiring_30_count ?? p.expiring_soon_count ?? 0}</span>
@@ -2957,7 +3045,10 @@ const ClientDashboard = () => {
                       onClick={() => navigateToPropertyDashboard(navigate, p.property_id)}
                     >
                       <td className="p-3 font-medium text-midnight-blue max-w-[14rem] break-words">{getPropertyDisplayLabel(p) || p.name || p.property_id}</td>
-                      <td className="p-3">{p.property_score ?? p.score ?? 0}/100</td>
+                      <td className="p-3">
+                        {headlineScoreDisplayForDashboard(p.property_score ?? p.score, p.score_status)}
+                        {headlineScoreShowsOutOf100(p.property_score ?? p.score, p.score_status) ? '/100' : ''}
+                      </td>
                       <td className="p-3 whitespace-nowrap">{formatRiskLabel(p.risk_level)}</td>
                       <td className="p-3">{p.overdue_count ?? 0}</td>
                       <td className="p-3">{p.expiring_30_count ?? p.expiring_soon_count ?? 0}</td>
@@ -2998,7 +3089,7 @@ const ClientDashboard = () => {
                     </DashboardKpiHint>
                   </p>
                   <p className="text-3xl font-bold text-midnight-blue">
-                    {formatDashboardScore(displayScoreInfo?.score ?? complianceScore?.score ?? portfolioSummary?.portfolio_score)}
+                    {portfolioHeadlineUi.display}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {displayScoreInfo?.message ?? (portfolioSummary?.risk_level ? formatRiskLabel(portfolioSummary.risk_level) : (complianceScore?.message || 'Portfolio'))}
@@ -3137,6 +3228,7 @@ const ClientDashboard = () => {
                     <div className="md:hidden space-y-3">
                       {dashboardFocusProperties.map((p) => {
                         const score = p.property_score ?? p.score;
+                        const st = p.score_status;
                         const gaps = buildDashboardComplianceGapsLine(p, openJobsByProperty, hasFeature('maintenance_workflows'));
                         return (
                           <button
@@ -3150,7 +3242,10 @@ const ClientDashboard = () => {
                               {getPropertyDisplayLabel(p) || p.name || p.property_id}
                             </p>
                             <p className="text-sm text-gray-800 mt-1">
-                              <span className="font-semibold">{score != null ? `${score}/100` : KPI_NO_DATA}</span>
+                              <span className="font-semibold">
+                                {headlineScoreDisplayForDashboard(score, st)}
+                                {headlineScoreShowsOutOf100(score, st) ? '/100' : ''}
+                              </span>
                               {p.risk_level ? (
                                 <span className="text-gray-600"> · {formatRiskLabel(p.risk_level)}</span>
                               ) : null}
@@ -3174,6 +3269,7 @@ const ClientDashboard = () => {
                         <tbody>
                           {dashboardFocusProperties.map((p) => {
                             const score = p.property_score ?? p.score;
+                            const st = p.score_status;
                             const gaps = buildDashboardComplianceGapsLine(p, openJobsByProperty, hasFeature('maintenance_workflows'));
                             return (
                               <tr
@@ -3187,7 +3283,8 @@ const ClientDashboard = () => {
                                 </td>
                                 <td className="p-3 whitespace-nowrap">
                                   <div className="font-semibold text-midnight-blue">
-                                    {score != null ? `${score}/100` : KPI_NO_DATA}
+                                    {headlineScoreDisplayForDashboard(score, st)}
+                                    {headlineScoreShowsOutOf100(score, st) ? '/100' : ''}
                                   </div>
                                   <div className="text-xs text-gray-600">
                                     {p.risk_level ? formatRiskLabel(p.risk_level) : KPI_NO_DATA}

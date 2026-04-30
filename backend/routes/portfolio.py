@@ -12,6 +12,13 @@ from services.catalog_compliance import (
     get_property_compliance_detail,
     get_portfolio_compliance_from_catalog,
 )
+from services.compliance_score import (
+    get_persisted_portfolio_headline_for_summary,
+    mongo_find_to_list,
+    property_persisted_score_row_status,
+    build_portfolio_override_outputs,
+)
+from services.scoring_semantics_v1 import attach_semantics_contract
 from datetime import datetime, timezone
 from typing import Optional
 import logging
@@ -36,56 +43,165 @@ REQUIREMENT_POINTS = {
 @router.get("/compliance-summary")
 async def get_compliance_summary(request: Request):
     """
-    Portfolio compliance summary. Uses catalog-driven scoring when requirements_catalog is populated;
-    otherwise falls back to legacy (equal weight, fixed points). Returns portfolio_score, risk_level,
-    and when catalog-driven: updated_at, kpis, properties with name, score, risk_level, overdue_count,
-    expiring_30_count, missing_count.
+    Portfolio compliance summary. Headline ``portfolio_score`` / ``risk_level`` always use persisted
+    property scores (``compliance_score`` aggregate). Catalog or legacy matrix lenses are returned only
+    under explicitly non-authoritative preview keys for requirement KPIs / diagnostics.
     """
     user = await client_route_guard(request)
     client_id = user["client_id"]
+    headline = await get_persisted_portfolio_headline_for_summary(client_id)
+    db = database.get_db()
+    gap_engine_unavailable = False
+    try:
+        from services.compliance_gap_sync import aggregate_gap_counts_for_client
+
+        gap_engine = await aggregate_gap_counts_for_client(db, client_id)
+    except Exception:
+        gap_engine_unavailable = True
+        gap_engine = {
+            "by_kind": {},
+            "by_severity": {},
+            "total_open": 0,
+            "policy": {
+                "critical_mandatory_breach_count": 0,
+                "high_risk_gap_count": 0,
+                "attention_only_gap_count": 0,
+                "unknown_or_stale_signal_count": 0,
+                "policy_fields_present_count": 0,
+                "policy_coverage_percent": 0.0,
+                "top_reason_codes": {},
+                "policy_versions": {},
+                "total_open": 0,
+            },
+        }
     catalog_result = await get_portfolio_compliance_from_catalog(client_id)
     if catalog_result:
-        return {
-            "portfolio_score": catalog_result["portfolio_score"],
-            "risk_level": catalog_result["risk_level"],
-            "portfolio_risk_level": catalog_result.get("portfolio_risk_level", catalog_result["risk_level"]),
-            "updated_at": catalog_result.get("updated_at", datetime.now(timezone.utc).isoformat()),
-            "kpis": catalog_result.get("kpis", {}),
-            "properties": [
+        merged_props = []
+        for p in catalog_result.get("properties", []):
+            pid = p["property_id"]
+            row = headline["properties_by_id"].get(pid, {})
+            persisted = row.get("compliance_score")
+            preview_matrix = p.get("score")
+            st = property_persisted_score_row_status(row)
+            if row.get("risk_level") is not None:
+                risk_out = row.get("risk_level")
+            elif persisted is not None:
+                risk_out = score_to_risk_level(int(round(float(persisted))))
+            else:
+                risk_out = None
+            _lc = row.get("compliance_last_calculated_at")
+            if hasattr(_lc, "isoformat"):
+                _lc = _lc.isoformat()
+            merged_props.append(
                 {
-                    "property_id": p["property_id"],
+                    "property_id": pid,
                     "name": p.get("name"),
                     "nickname": p.get("nickname"),
                     "address_line_1": p.get("address_line_1"),
                     "postcode": p.get("postcode"),
-                    "property_score": p.get("score"),
-                    "score": p.get("score"),
-                    "risk_level": p["risk_level"],
+                    "score": persisted,
+                    "property_score": persisted,
+                    "preview_matrix_score": preview_matrix,
+                    "risk_level": risk_out,
+                    "score_status": st,
+                    "score_authority": "persisted_property_score",
+                    "last_calculated_at": _lc if isinstance(_lc, str) else None,
                     "overdue_count": p.get("overdue_count", 0),
                     "expiring_soon_count": p.get("expiring_30_count", 0),
                     "expiring_30_count": p.get("expiring_30_count", 0),
                     "missing_count": p.get("missing_count", 0),
                 }
-                for p in catalog_result.get("properties", [])
-            ],
-        }
-    # Legacy path
-    db = database.get_db()
-    properties = await db.properties.find(
-        {"client_id": client_id},
-        {"_id": 0},
-    ).to_list(100)
+            )
+        override_outputs = await build_portfolio_override_outputs(
+            db=db,
+            client_id=client_id,
+            base_portfolio_risk_state=headline.get("risk_level"),
+            properties=headline.get("properties") or [],
+            property_breakdown=merged_props,
+            gap_engine=gap_engine,
+            policy_aggregate_unavailable=gap_engine_unavailable,
+        )
+        risk_override = override_outputs["effective_override_output"]
+        return attach_semantics_contract(
+            {
+                "portfolio_score": headline.get("portfolio_score"),
+                "risk_level": risk_override.get("effective_portfolio_risk_state"),
+                "portfolio_risk_level": risk_override.get("effective_portfolio_risk_state"),
+                "base_portfolio_risk_state": risk_override.get("base_portfolio_risk_state"),
+                "effective_portfolio_risk_state": risk_override.get("effective_portfolio_risk_state"),
+                "risk_override_reasons": risk_override.get("risk_override_reasons"),
+                "critical_property_count": risk_override.get("critical_property_count"),
+                "high_risk_gap_count": risk_override.get("high_risk_gap_count"),
+                "unknown_or_stale_property_count": risk_override.get("unknown_or_stale_property_count"),
+                "attention_required": risk_override.get("attention_required"),
+                "critical_property_escalation": risk_override.get("critical_property_escalation"),
+                "suppress_positive_headline": risk_override.get("suppress_positive_headline"),
+                "legacy_override_output": override_outputs["legacy_override_output"],
+                "policy_override_output": override_outputs["policy_override_output"],
+                "effective_override_output": override_outputs["effective_override_output"],
+                "score_status": headline.get("score_status"),
+                "score_status_message": headline.get("score_status_message"),
+                "score_authority": "persisted_portfolio_aggregate",
+                "last_calculated_at": headline.get("portfolio_last_calculated_at"),
+                "score_coverage": headline.get("score_coverage"),
+                "updated_at": catalog_result.get("updated_at", datetime.now(timezone.utc).isoformat()),
+                "kpis": catalog_result.get("kpis", {}),
+                "gap_engine_diagnostics": {"policy": (gap_engine.get("policy") or {})},
+                "properties": merged_props,
+                "catalog_matrix_portfolio_preview": {
+                    "score_authority": "non_authoritative_requirement_matrix",
+                    "portfolio_score": catalog_result.get("portfolio_score"),
+                    "portfolio_risk_level": catalog_result.get("portfolio_risk_level"),
+                    "risk_level": catalog_result.get("risk_level"),
+                    "updated_at": catalog_result.get("updated_at"),
+                    "note": "Catalog-weighted matrix preview only; headline KPIs use persisted compliance scores.",
+                },
+            }
+        )
+    # Legacy matrix path (no catalog): operational preview only for matrix numbers.
+    properties = headline.get("properties") or []
     if not properties:
-        return {
-            "portfolio_score": 100,
-            "risk_level": "Low Risk",
-            "properties": [],
-        }
+        override_outputs = await build_portfolio_override_outputs(
+            db=db,
+            client_id=client_id,
+            base_portfolio_risk_state=headline.get("risk_level"),
+            properties=[],
+            property_breakdown=[],
+            gap_engine=gap_engine,
+            policy_aggregate_unavailable=gap_engine_unavailable,
+        )
+        risk_override = override_outputs["effective_override_output"]
+        return attach_semantics_contract(
+            {
+                "portfolio_score": headline.get("portfolio_score"),
+                "risk_level": risk_override.get("effective_portfolio_risk_state"),
+                "portfolio_risk_level": risk_override.get("effective_portfolio_risk_state"),
+                "base_portfolio_risk_state": risk_override.get("base_portfolio_risk_state"),
+                "effective_portfolio_risk_state": risk_override.get("effective_portfolio_risk_state"),
+                "risk_override_reasons": risk_override.get("risk_override_reasons"),
+                "critical_property_count": risk_override.get("critical_property_count"),
+                "high_risk_gap_count": risk_override.get("high_risk_gap_count"),
+                "unknown_or_stale_property_count": risk_override.get("unknown_or_stale_property_count"),
+                "attention_required": risk_override.get("attention_required"),
+                "critical_property_escalation": risk_override.get("critical_property_escalation"),
+                "suppress_positive_headline": risk_override.get("suppress_positive_headline"),
+                "legacy_override_output": override_outputs["legacy_override_output"],
+                "policy_override_output": override_outputs["policy_override_output"],
+                "effective_override_output": override_outputs["effective_override_output"],
+                "score_status": headline.get("score_status"),
+                "score_status_message": headline.get("score_status_message"),
+                "score_authority": "persisted_portfolio_aggregate",
+                "last_calculated_at": headline.get("portfolio_last_calculated_at"),
+                "score_coverage": headline.get("score_coverage"),
+                "gap_engine_diagnostics": {"policy": (gap_engine.get("policy") or {})},
+                "properties": [],
+            }
+        )
     client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
-    requirements = await db.requirements.find(
-        {"client_id": client_id},
-        {"_id": 0},
-    ).to_list(1000)
+    requirements = await mongo_find_to_list(
+        db.requirements.find({"client_id": client_id}, {"_id": 0}),
+        cap=500_000,
+    )
     from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 
     requirements = await filter_requirement_rows_for_client_runtime_surfaces(
@@ -116,41 +232,102 @@ async def get_compliance_summary(request: Request):
             if (r.get("status") or "").upper().strip() == "EXPIRING_SOON"
         )
         if not prop_reqs:
-            property_score = 100
+            legacy_matrix_property_score = None
         else:
             points = []
             for r in prop_reqs:
                 status_val = (r.get("status") or "PENDING").upper().strip()
                 pt = REQUIREMENT_POINTS.get(status_val, REQUIREMENT_POINTS["PENDING"])
                 points.append(pt)
-            property_score = round(sum(points) / len(points))
-            property_score = max(0, min(100, property_score))
-        risk_level = score_to_risk_level(property_score)
-        total_weighted_score += property_score * len(prop_reqs)
+            legacy_matrix_property_score = round(sum(points) / len(points))
+            legacy_matrix_property_score = max(0, min(100, legacy_matrix_property_score))
+        matrix_risk = (
+            score_to_risk_level(legacy_matrix_property_score)
+            if legacy_matrix_property_score is not None
+            else None
+        )
+        total_weighted_score += (legacy_matrix_property_score or 0) * len(prop_reqs)
         total_requirements += len(prop_reqs)
         name = prop.get("nickname") or prop.get("address_line_1") or pid
-        property_summaries.append({
-            "property_id": pid,
-            "name": name,
-            "nickname": prop.get("nickname"),
-            "address_line_1": prop.get("address_line_1"),
-            "postcode": prop.get("postcode"),
-            "property_score": property_score,
-            "risk_level": risk_level,
-            "overdue_count": overdue_count,
-            "expiring_soon_count": expiring_soon_count,
-        })
+        persisted = prop.get("compliance_score")
+        st = property_persisted_score_row_status(prop)
+        if prop.get("risk_level") is not None:
+            risk_out = prop.get("risk_level")
+        elif persisted is not None:
+            risk_out = score_to_risk_level(int(round(float(persisted))))
+        else:
+            risk_out = None
+        _plc = prop.get("compliance_last_calculated_at")
+        if hasattr(_plc, "isoformat"):
+            _plc = _plc.isoformat()
+        _plc_out = _plc if isinstance(_plc, str) else None
+        property_summaries.append(
+            {
+                "property_id": pid,
+                "name": name,
+                "nickname": prop.get("nickname"),
+                "address_line_1": prop.get("address_line_1"),
+                "postcode": prop.get("postcode"),
+                "score": persisted,
+                "property_score": persisted,
+                "preview_legacy_matrix_score": legacy_matrix_property_score,
+                "preview_legacy_matrix_risk_level": matrix_risk,
+                "risk_level": risk_out,
+                "score_status": st,
+                "last_calculated_at": _plc_out,
+                "overdue_count": overdue_count,
+                "expiring_soon_count": expiring_soon_count,
+            }
+        )
     if total_requirements == 0:
-        portfolio_score = 100
+        matrix_portfolio_score = None
+        matrix_portfolio_risk = None
     else:
-        portfolio_score = round(total_weighted_score / total_requirements)
-        portfolio_score = max(0, min(100, portfolio_score))
-    portfolio_risk = score_to_risk_level(portfolio_score)
-    return {
-        "portfolio_score": portfolio_score,
-        "risk_level": portfolio_risk,
-        "properties": property_summaries,
-    }
+        matrix_portfolio_score = round(total_weighted_score / total_requirements)
+        matrix_portfolio_score = max(0, min(100, matrix_portfolio_score))
+        matrix_portfolio_risk = score_to_risk_level(matrix_portfolio_score)
+    override_outputs = await build_portfolio_override_outputs(
+        db=db,
+        client_id=client_id,
+        base_portfolio_risk_state=headline.get("risk_level"),
+        properties=properties,
+        property_breakdown=property_summaries,
+        gap_engine=gap_engine,
+        policy_aggregate_unavailable=gap_engine_unavailable,
+    )
+    risk_override = override_outputs["effective_override_output"]
+    return attach_semantics_contract(
+        {
+            "portfolio_score": headline.get("portfolio_score"),
+            "risk_level": risk_override.get("effective_portfolio_risk_state"),
+            "portfolio_risk_level": risk_override.get("effective_portfolio_risk_state"),
+            "base_portfolio_risk_state": risk_override.get("base_portfolio_risk_state"),
+            "effective_portfolio_risk_state": risk_override.get("effective_portfolio_risk_state"),
+            "risk_override_reasons": risk_override.get("risk_override_reasons"),
+            "critical_property_count": risk_override.get("critical_property_count"),
+            "high_risk_gap_count": risk_override.get("high_risk_gap_count"),
+            "unknown_or_stale_property_count": risk_override.get("unknown_or_stale_property_count"),
+            "attention_required": risk_override.get("attention_required"),
+            "critical_property_escalation": risk_override.get("critical_property_escalation"),
+            "suppress_positive_headline": risk_override.get("suppress_positive_headline"),
+            "legacy_override_output": override_outputs["legacy_override_output"],
+            "policy_override_output": override_outputs["policy_override_output"],
+            "effective_override_output": override_outputs["effective_override_output"],
+            "score_status": headline.get("score_status"),
+            "score_status_message": headline.get("score_status_message"),
+            "score_authority": "persisted_portfolio_aggregate",
+            "last_calculated_at": headline.get("portfolio_last_calculated_at"),
+            "score_coverage": headline.get("score_coverage"),
+            "gap_engine_diagnostics": {"policy": (gap_engine.get("policy") or {})},
+            "properties": property_summaries,
+            "legacy_matrix_portfolio_preview": {
+                "score_authority": "non_authoritative_legacy_matrix",
+                "portfolio_score": matrix_portfolio_score,
+                "risk_level": matrix_portfolio_risk,
+                "note": "Legacy equal-weight matrix preview only; headline uses persisted compliance scores.",
+            },
+        }
+    )
 
 
 @router.get("/properties/{property_id}/compliance-detail")
@@ -173,18 +350,16 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
             "risk_level": 1,
             "compliance_last_calculated_at": 1,
             "jurisdiction": 1,
+            "compliance_score_pending": 1,
         },
     )
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    preview_matrix = None
     detail = await get_property_compliance_detail(client_id, property_id)
     if detail is not None:
         response = dict(detail)
-        # Prefer matrix-computed score/risk so property detail matches the requirements matrix (no stale stored values)
-        if response.get("property_score") is not None:
-            response["score"] = response["property_score"]
-        if response.get("risk_level") is not None:
-            response["risk_level"] = response["risk_level"]
+        preview_matrix = response.pop("property_score", None)
     else:
         # Fallback: no catalog or no applicable; return minimal from requirements
         client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
@@ -226,7 +401,7 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
                 "property_id": property_id,
             })
         if not matrix:
-            property_score = 100
+            property_score = None
         else:
             property_score = round(sum(m["numeric_score"] for m in matrix) / len(matrix))
         kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0}
@@ -246,12 +421,25 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
             "matrix": matrix,
             "property_score": property_score,
             "risk_index": 0.0,
-            "risk_level": score_to_risk_level(property_score),
+            "risk_level": score_to_risk_level(property_score) if property_score is not None else None,
             "kpis": kpis,
         }
-    # Enrich with score change tracking and last updated (score/risk already set from detail when available)
-    response.setdefault("score", prop.get("compliance_score"))
-    response.setdefault("risk_level", prop.get("risk_level"))
+        preview_matrix = response.pop("property_score", None)
+    # Client-visible headline score is always persisted; matrix is preview only.
+    response["preview_matrix_score"] = preview_matrix
+    response["score"] = prop.get("compliance_score")
+    if prop.get("risk_level") is not None:
+        response["risk_level"] = prop.get("risk_level")
+    elif prop.get("compliance_score") is not None:
+        response["risk_level"] = score_to_risk_level(int(round(float(prop["compliance_score"]))))
+    else:
+        response["risk_level"] = None
+    response["score_status"] = property_persisted_score_row_status(prop)
+    response["score_authority"] = "persisted_property_score"
+    _plat = prop.get("compliance_last_calculated_at")
+    if hasattr(_plat, "isoformat"):
+        _plat = _plat.isoformat()
+    response["last_calculated_at"] = _plat if isinstance(_plat, str) else None
     response["last_updated_at"] = response.get("last_updated_at") or prop.get("compliance_last_calculated_at")
     latest_log = await db.score_change_log.find_one(
         {"property_id": property_id, "client_id": client_id},
@@ -295,7 +483,7 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
     response["effective_jurisdiction_label"] = _att["effective_jurisdiction_label"]
     response["jurisdiction_source"] = _att["jurisdiction_source"]
     response["client_default_jurisdiction"] = client_doc.get("default_jurisdiction")
-    return response
+    return attach_semantics_contract(response)
 
 
 @router.get("/properties/{property_id}/score-history")

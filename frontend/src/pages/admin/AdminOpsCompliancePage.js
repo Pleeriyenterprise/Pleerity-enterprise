@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import { adminAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
+import {
+  headlineScoreDisplayForDashboard,
+  headlineScoreShowsOutOf100,
+} from '../../utils/scoringHeadlineDisplay';
 
 function formatWhen(v) {
   if (!v) return '—';
@@ -123,9 +127,18 @@ export default function AdminOpsCompliancePage() {
                       <td className="p-3 tabular-nums">{r.expiring_soon_count}</td>
                       <td className="p-3 text-gray-600 whitespace-nowrap">{formatWhen(r.requirements_last_updated)}</td>
                       <td className="p-3">
-                        {r.portfolio_score != null ? (
+                        {r.portfolio_score != null || r.score_status ? (
                           <span>
-                            {r.portfolio_score}/100 · Grade {r.portfolio_grade || '—'}
+                            {headlineScoreDisplayForDashboard(r.portfolio_score, r.score_status)}
+                            {headlineScoreShowsOutOf100(r.portfolio_score, r.score_status) ? (
+                              <>
+                                /100 · Grade {r.portfolio_grade || '—'}
+                              </>
+                            ) : (
+                              <span className="text-gray-600">
+                                {r.score_status ? ` · ${r.score_status}` : ''}
+                              </span>
+                            )}
                           </span>
                         ) : (
                           <span className="text-gray-400">Filter one client for score</span>

@@ -73,8 +73,20 @@ def test_verify_document_updates_requirement_and_finalizes_compliance_job(client
     mock_db.documents.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
     mock_db.requirements.update_one = AsyncMock(side_effect=capture_requirement_update)
     mock_db.requirements.find_one = AsyncMock(
-        return_value={"requirement_id": REQ_ID, "requirement_code": "TEST", "requirement_type": "TEST"}
+        return_value={
+            "requirement_id": REQ_ID,
+            "client_id": CLIENT_ID,
+            "property_id": PROP_ID,
+            "requirement_code": "TEST",
+            "requirement_type": "TEST",
+        }
     )
+    _ev_cur = MagicMock()
+    _ev_cur.to_list = AsyncMock(return_value=[])
+    mock_db.compliance_evidence_records = MagicMock()
+    mock_db.compliance_evidence_records.find = MagicMock(return_value=_ev_cur)
+    mock_db.compliance_evidence_records.find_one = AsyncMock(return_value=None)
+    mock_db.compliance_evidence_records.insert_one = AsyncMock()
     mock_db.work_orders.find = MagicMock(
         return_value=_FakeWorkOrderCursor([{"work_order_id": WO_ID}])
     )

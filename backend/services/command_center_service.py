@@ -186,12 +186,40 @@ async def get_command_center_bundle(
         except Exception as e:
             logger.warning("command_center gap_engine aggregate failed: %s", e)
             gap_engine_counts = {"by_kind": {}, "by_severity": {}, "total_open": 0}
+        hiua_block: Dict[str, Any] = {}
+        try:
+            from services.hiua_operational_uncertainty import hiua_tenant_operational_summary
+
+            _db = database.get_db()
+            _pids = {str(property_id_filter)} if property_id_filter else None
+            hiua_block = await hiua_tenant_operational_summary(
+                _db, client_id, property_ids=_pids, max_gaps_scan=400, max_detail=15
+            )
+        except Exception as e:
+            logger.warning("command_center hiua summary failed: %s", e)
+            hiua_block = {
+                "hiua_active": False,
+                "hiua_open_gap_count": 0,
+                "hiua_reason_codes": [],
+                "hiua_gap_details": [],
+                "hiua_command_centre_message": None,
+                "hiua_command_centre_tooltip": None,
+                "hiua_command_centre_filter_label": None,
+                "hiua_digest_line": None,
+                "hiua_report_framing_notice": None,
+            }
         compliance_status_summary = {
             "score": cs.get("score"),
             "grade": cs.get("grade"),
             "message": cs.get("message"),
             "color": cs.get("color"),
             "properties_count": cs.get("properties_count"),
+            "score_authority": cs.get("score_authority"),
+            "score_status": cs.get("score_status"),
+            "last_calculated_at": cs.get("last_calculated_at") or cs.get("portfolio_last_calculated_at"),
+            "score_coverage": cs.get("score_coverage"),
+            "score_status_message": cs.get("score_status_message"),
+            "scoring_semantics_version": cs.get("scoring_semantics_version"),
             # Canonical portfolio requirement KPIs (portal-visible + project_requirement_row_client_runtime).
             # Command Centre UI must use these fields only — no Math.max with other APIs.
             "compliance_counts_authority": "calculate_compliance_score.stats",
@@ -202,6 +230,7 @@ async def get_command_center_bundle(
             "requirements_total": stats.get("total_requirements"),
             "properties_at_risk_count": stats.get("properties_at_risk_count"),
             "gap_engine": gap_engine_counts,
+            "hiua_operational_uncertainty": hiua_block,
             "jurisdiction_compliance_notice": notice,
             "jurisdiction_required": jreq,
             "compliance_confidence": jconf,
@@ -221,8 +250,26 @@ async def get_command_center_bundle(
         compliance_status_summary = {
             "score": None,
             "grade": None,
-            "message": None,
+            "message": "Compliance score summary unavailable.",
+            "color": "gray",
+            "score_authority": "unavailable",
+            "score_status": "unavailable",
+            "last_calculated_at": None,
+            "score_coverage": None,
+            "score_status_message": None,
+            "scoring_semantics_version": None,
             "gap_engine": {"by_kind": {}, "by_severity": {}, "total_open": 0},
+            "hiua_operational_uncertainty": {
+                "hiua_active": False,
+                "hiua_open_gap_count": 0,
+                "hiua_reason_codes": [],
+                "hiua_gap_details": [],
+                "hiua_command_centre_message": None,
+                "hiua_command_centre_tooltip": None,
+                "hiua_command_centre_filter_label": None,
+                "hiua_digest_line": None,
+                "hiua_report_framing_notice": None,
+            },
             "jurisdiction_compliance_notice": {
                 "active": False,
                 "compliance_basis": None,

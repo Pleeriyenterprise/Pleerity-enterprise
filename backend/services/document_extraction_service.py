@@ -65,6 +65,9 @@ def _extract_text_from_file(file_path: str, mime_type: str) -> str:
             except UnicodeDecodeError:
                 continue
         return ""
+    except Exception as e:
+        logger.warning("Text extraction failed for %s: %s", file_path, e)
+        return ""
 
 
 def _extract_text_with_ocr_fallback(file_path: str, mime_type: str) -> Tuple[str, str]:
@@ -105,9 +108,6 @@ def _extract_text_with_ocr_fallback(file_path: str, mime_type: str) -> Tuple[str
     except Exception as e:
         logger.warning("OCR fallback failed: %s", e)
         return "", "none"
-    except Exception as e:
-        logger.warning("Text extraction failed for %s: %s", file_path, e)
-        return ""
 
 
 def _check_rate_limit(client_id: str) -> Optional[str]:

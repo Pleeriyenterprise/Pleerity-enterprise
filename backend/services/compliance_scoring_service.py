@@ -12,7 +12,13 @@ from typing import Dict, Any, Optional, List
 import logging
 
 from services.compliance_scoring_v2 import compute_property_score_v2
-from utils.risk_bands import score_to_grade_color_message
+from utils.risk_bands import score_to_grade_color_message, score_to_risk_level
+from services.scoring_semantics_v1 import (
+    attach_semantics_contract,
+    resolve_property_score_status,
+    SCORE_AUTHORITY_PERSISTED_HEADLINE,
+    SCORE_STATUS_RECONCILIATION_REQUIRED,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +32,8 @@ REASON_REQUIREMENT_CHANGED = "REQUIREMENT_CHANGED"
 REASON_EXPIRY_ROLLOVER = "EXPIRY_ROLLOVER"
 REASON_PROPERTY_CREATED = "PROPERTY_CREATED"
 REASON_LAZY_BACKFILL = "LAZY_BACKFILL"
+# First-time repair when a client reads property explainability and the row has no persisted score yet.
+REASON_SCORE_READ_REPAIR = "SCORE_READ_REPAIR"
 
 
 def _parse_due_date(due_date_str) -> Optional[datetime]:
@@ -361,3 +369,149 @@ async def recalculate_and_persist(
             )
 
     return result
+
+
+def _merge_live_compliance_with_persisted_headline(
+    live: Dict[str, Any],
+    prop: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Split persisted headline (authoritative) from live engine snapshot (operational preview only).
+    Client KPIs must read ``authoritative`` only; ``operational_preview`` is never a substitute score.
+    """
+    operational_preview: Dict[str, Any] = {
+        "score_authority": "operational_preview_only",
+        "live_engine_snapshot": dict(live),
+    }
+    authoritative: Dict[str, Any] = {
+        "score_authority": SCORE_AUTHORITY_PERSISTED_HEADLINE,
+        "property_id": prop.get("property_id"),
+    }
+    ps = prop.get("compliance_score")
+    if ps is not None:
+        try:
+            score_int = int(round(float(ps)))
+        except (TypeError, ValueError):
+            score_int = None
+        if score_int is not None:
+            g, c, m = score_to_grade_color_message(score_int)
+            authoritative["score"] = score_int
+            authoritative["score_status"] = resolve_property_score_status(prop)
+            authoritative["grade"] = g
+            authoritative["color"] = c
+            authoritative["message"] = m
+        else:
+            authoritative["score"] = None
+            authoritative["score_status"] = SCORE_STATUS_RECONCILIATION_REQUIRED
+            authoritative["grade"] = None
+            authoritative["color"] = "gray"
+            authoritative["message"] = (
+                "Stored compliance score could not be read; reconciliation may be required."
+            )
+    else:
+        st = "calculating" if prop.get("compliance_score_pending") else "reconciliation_required"
+        authoritative["score"] = None
+        authoritative["score_status"] = st
+        authoritative["grade"] = None
+        authoritative["color"] = "gray"
+        authoritative["message"] = (
+            "Compliance score is being calculated for this property."
+            if st == "calculating"
+            else "Compliance score is not yet available; reconciliation may be required."
+        )
+    if prop.get("risk_level") is not None:
+        authoritative["risk_level"] = prop.get("risk_level")
+    elif authoritative.get("score") is not None:
+        authoritative["risk_level"] = score_to_risk_level(int(authoritative["score"]))
+    if prop.get("compliance_bucket_breakdown"):
+        authoritative["bucket_breakdown"] = prop.get("compliance_bucket_breakdown")
+    if prop.get("score_breakdown") is not None:
+        authoritative["score_breakdown"] = prop.get("score_breakdown")
+    if prop.get("compliance_earned_points") is not None:
+        authoritative["earned_points"] = prop.get("compliance_earned_points")
+    if prop.get("compliance_applicable_points") is not None:
+        authoritative["applicable_points"] = prop.get("compliance_applicable_points")
+    if prop.get("compliance_top_deficits") is not None:
+        authoritative["top_deficits"] = prop.get("compliance_top_deficits") or []
+    if prop.get("compliance_top_next_actions") is not None:
+        authoritative["top_next_actions"] = prop.get("compliance_top_next_actions") or []
+    if prop.get("scoring_jurisdiction_bucket") is not None:
+        authoritative["jurisdiction"] = prop.get("scoring_jurisdiction_bucket")
+        authoritative["scoring_jurisdiction_bucket"] = prop.get("scoring_jurisdiction_bucket")
+    if isinstance(prop.get("compliance_breakdown"), dict) and prop.get("compliance_breakdown"):
+        authoritative["breakdown"] = prop.get("compliance_breakdown")
+    authoritative["weights_version"] = prop.get("compliance_version") or live.get("weights_version") or WEIGHTS_VERSION
+    _raw_lc = prop.get("compliance_last_calculated_at")
+    authoritative["compliance_last_calculated_at"] = _raw_lc
+    if hasattr(_raw_lc, "isoformat"):
+        authoritative["last_calculated_at"] = _raw_lc.isoformat()
+    elif isinstance(_raw_lc, str):
+        authoritative["last_calculated_at"] = _raw_lc
+    else:
+        authoritative["last_calculated_at"] = None
+    merged = {
+        "explanation_contract_version": "batch2_authoritative_split_v1",
+        "authoritative": authoritative,
+        "operational_preview": operational_preview,
+        "score_authority": authoritative.get("score_authority"),
+        "score_status": authoritative.get("score_status"),
+        "last_calculated_at": authoritative.get("last_calculated_at"),
+    }
+    return attach_semantics_contract(merged)
+
+
+async def get_authoritative_property_compliance_for_client(
+    property_id: str,
+    client_id: str,
+) -> Dict[str, Any]:
+    """
+    Client-facing property explainability: operational context from the same planner as scoring,
+    headline score and breakdowns from Mongo fields updated only via recalculate_and_persist.
+
+    If the property has never had a persisted score, runs one repair recalc (idempotent).
+    """
+    db = database.get_db()
+    prop = await db.properties.find_one(
+        {"property_id": property_id, "client_id": client_id},
+        {
+            "_id": 0,
+            "property_id": 1,
+            "client_id": 1,
+            "compliance_score": 1,
+            "compliance_score_pending": 1,
+            "compliance_breakdown": 1,
+            "compliance_bucket_breakdown": 1,
+            "score_breakdown": 1,
+            "compliance_earned_points": 1,
+            "compliance_applicable_points": 1,
+            "compliance_top_deficits": 1,
+            "compliance_top_next_actions": 1,
+            "scoring_jurisdiction_bucket": 1,
+            "risk_level": 1,
+            "compliance_version": 1,
+            "compliance_last_calculated_at": 1,
+        },
+    )
+    if not prop:
+        return {"error": "property_not_found"}
+
+    if prop.get("compliance_score") is None:
+        await recalculate_and_persist(
+            property_id,
+            REASON_SCORE_READ_REPAIR,
+            actor={"role": "SYSTEM"},
+            context={"correlation_id": f"score_read_repair:{property_id}"},
+        )
+        prop = (
+            await db.properties.find_one(
+                {"property_id": property_id, "client_id": client_id},
+                {"_id": 0},
+            )
+            or prop
+        )
+
+    live = await calculate_property_compliance(property_id)
+    if live.get("error"):
+        return live
+    merged = _merge_live_compliance_with_persisted_headline(live, prop)
+    return merged

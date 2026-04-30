@@ -26,6 +26,10 @@ import {
   getGovernanceRiskBadgeClass,
   getGovernanceWarning,
 } from '../utils/adminActionGovernance';
+import {
+  headlineScoreDisplayForDashboard,
+  headlineScoreShowsOutOf100,
+} from '../utils/scoringHeadlineDisplay';
 
 const MIN_DANGEROUS_ACTION_REASON = 10;
 
@@ -133,7 +137,16 @@ function deriveComplianceHeadline(compliance) {
   const overdue = Number(compliance?.overdue_items) || 0;
   const missing = Number(compliance?.missing_documents) || 0;
   const score = compliance?.compliance_score;
-  const scoreNum = typeof score === 'number' ? score : score != null ? Number(score) : null;
+  const st = compliance?.score_status;
+  const headlineBlocked = ['unavailable', 'reconciliation_required', 'unknown', 'calculating'];
+  const scoreNum =
+    st && headlineBlocked.includes(String(st))
+      ? null
+      : typeof score === 'number'
+        ? score
+        : score != null
+          ? Number(score)
+          : null;
 
   if (overdue > 0 || risk.includes('CRITICAL') || risk === 'HIGH' || risk === 'SEVERE') {
     return {
@@ -949,8 +962,14 @@ const AdminClientControlPanelPage = () => {
         <div className="rounded-lg bg-slate-50/80 p-3 space-y-1">
           <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Compliance</p>
           <p className="text-sm text-gray-700">
-            <span className="font-medium text-gray-900">{compliance.properties_count ?? '—'}</span> properties · score{' '}
-            <span className="font-medium">{compliance.compliance_score ?? '—'}</span>
+            <span className="font-medium text-gray-900">{compliance.properties_count ?? '—'}</span> properties · headline score{' '}
+            <span className="font-medium">
+              {headlineScoreDisplayForDashboard(compliance.compliance_score, compliance.score_status)}
+              {headlineScoreShowsOutOf100(compliance.compliance_score, compliance.score_status) ? '/100' : ''}
+            </span>
+            {compliance.score_status ? (
+              <span className="text-gray-600"> ({compliance.score_status})</span>
+            ) : null}
           </p>
         </div>
         <div className="rounded-lg bg-slate-50/80 p-3 space-y-1">
@@ -1062,7 +1081,14 @@ const AdminClientControlPanelPage = () => {
       ) : null}
       <SectionCard title="Compliance overview">
         <Row label="Properties count" value={compliance.properties_count} />
-        <Row label="Compliance score" value={compliance.compliance_score ?? '—'} />
+        <Row
+          label="Compliance score (headline)"
+          value={`${String(headlineScoreDisplayForDashboard(compliance.compliance_score, compliance.score_status))}${
+            headlineScoreShowsOutOf100(compliance.compliance_score, compliance.score_status) ? '/100' : ''
+          }`}
+        />
+        <Row label="Score status" value={compliance.score_status || '—'} />
+        <Row label="Last calculated (headline)" value={compliance.last_calculated_at || '—'} />
         <Row label="Risk level" value={compliance.risk_level || 'Not yet recorded'} />
         <Row label="Missing documents" value={compliance.missing_documents} />
         <Row label="Overdue items" value={compliance.overdue_items} />
@@ -1090,7 +1116,10 @@ const AdminClientControlPanelPage = () => {
             {compliance.risk_level ? (
               <li>
                 Modelled risk level: <span className="font-medium">{compliance.risk_level}</span>
-                {compliance.compliance_score != null ? ` (score ${compliance.compliance_score})` : ''}.
+                {' '}
+                (headline:{' '}
+                {String(headlineScoreDisplayForDashboard(compliance.compliance_score, compliance.score_status))}
+                {headlineScoreShowsOutOf100(compliance.compliance_score, compliance.score_status) ? '/100' : ''}).
               </li>
             ) : (
               <li>Risk level not yet recorded — run “Update compliance status” from Overview if needed.</li>
@@ -1105,12 +1134,14 @@ const AdminClientControlPanelPage = () => {
             {(Number(compliance.missing_documents) || 0) > 0 ? (
               <li>Chase missing documents or confirm exemptions with the client.</li>
             ) : null}
-            {!compliance.risk_level && compliance.compliance_score == null ? (
+            {!compliance.risk_level &&
+            !headlineScoreShowsOutOf100(compliance.compliance_score, compliance.score_status) ? (
               <li>Trigger a fresh compliance calculation if this client was recently onboarded or data changed.</li>
             ) : null}
             {(Number(compliance.overdue_items) || 0) === 0 &&
             (Number(compliance.missing_documents) || 0) === 0 &&
-            (compliance.risk_level || compliance.compliance_score != null) ? (
+            (compliance.risk_level ||
+              headlineScoreShowsOutOf100(compliance.compliance_score, compliance.score_status)) ? (
               <li>No automatic follow-ups from counts alone — keep routine monitoring.</li>
             ) : null}
           </ul>
@@ -1495,7 +1526,12 @@ const AdminClientControlPanelPage = () => {
         <div className="mt-2 space-y-2 text-sm">
           <Row label="Compliance headline" value={complianceHeadline.label} />
           <Row label="Risk level" value={compliance.risk_level || 'Not yet recorded'} />
-          <Row label="Compliance score" value={compliance.compliance_score ?? '—'} />
+          <Row
+            label="Compliance score (headline)"
+            value={`${String(headlineScoreDisplayForDashboard(compliance.compliance_score, compliance.score_status))}${
+              headlineScoreShowsOutOf100(compliance.compliance_score, compliance.score_status) ? '/100' : ''
+            }`}
+          />
           <Row label="Entitlement (billing)" value={billing.canonical_entitlement_state || '—'} />
           <Row label="Subscription status" value={billing.status || identity?.status || '—'} />
         </div>

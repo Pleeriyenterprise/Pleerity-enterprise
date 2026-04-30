@@ -75,16 +75,25 @@ def project_requirement_row_client_runtime(requirement: Dict[str, Any]) -> Dict[
     from services.requirement_evidence_authority import (
         authority_runtime_requirement_status,
         authority_state,
+        normalized_evidence_state_for_policy,
     )
 
     eff = get_effective_expiry_date(requirement)
     st = authority_runtime_requirement_status(requirement) or requirement.get("status")
-    return {
+    out = {
         **requirement,
         "status": st,
         "due_date": eff.isoformat() if eff else None,
         "evidence_state": authority_state(requirement) or requirement.get("evidence_state"),
     }
+    # PR2 write-path enrichment pass-through: runtime projections must not strip policy snapshot fields.
+    out.setdefault("requirement_code_normalized", requirement.get("requirement_code_normalized"))
+    out.setdefault("applicability_state", requirement.get("applicability_state"))
+    out.setdefault("is_mandatory", requirement.get("is_mandatory"))
+    out.setdefault("policy_criticality", requirement.get("policy_criticality"))
+    out.setdefault("policy_classification_version", requirement.get("policy_classification_version"))
+    out["evidence_state_normalized"] = normalized_evidence_state_for_policy(requirement)
+    return out
 
 
 def compute_client_portal_requirement_stats(portal_projected_rows: List[Dict[str, Any]]) -> Dict[str, int]:

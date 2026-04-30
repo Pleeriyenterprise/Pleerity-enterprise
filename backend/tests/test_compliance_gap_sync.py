@@ -9,6 +9,17 @@ from services.compliance_gap_sync import sync_compliance_gaps_for_requirement
 from services.requirement_evidence_authority import AUTHORITY_VERSION
 
 
+_GAP_SYNC_PROPERTY = {
+    "property_id": "p-sync",
+    "client_id": "c-sync",
+    "jurisdiction": "England",
+    "property_type": "residential",
+    "tenancy_active": True,
+}
+
+_GAP_SYNC_CLIENT = {"client_id": "c-sync", "default_jurisdiction": "England"}
+
+
 def _requirement_missing_authority():
     return {
         "client_id": "c-sync",
@@ -25,6 +36,10 @@ def _requirement_missing_authority():
 async def test_upsert_set_excludes_created_at_set_on_insert_only():
     req = _requirement_missing_authority()
     db = MagicMock()
+    db.properties = MagicMock()
+    db.properties.find_one = AsyncMock(return_value=dict(_GAP_SYNC_PROPERTY))
+    db.clients = MagicMock()
+    db.clients.find_one = AsyncMock(return_value=dict(_GAP_SYNC_CLIENT))
     captured: dict = {}
 
     async def capture_update_one(filter_q, update, upsert=False):
@@ -55,6 +70,10 @@ async def test_upsert_set_excludes_created_at_set_on_insert_only():
 async def test_upsert_existing_document_updates_without_created_at_in_set():
     req = _requirement_missing_authority()
     db = MagicMock()
+    db.properties = MagicMock()
+    db.properties.find_one = AsyncMock(return_value=dict(_GAP_SYNC_PROPERTY))
+    db.clients = MagicMock()
+    db.clients.find_one = AsyncMock(return_value=dict(_GAP_SYNC_CLIENT))
 
     async def second_insert_no_upsert(filter_q, update, upsert=False):
         r = MagicMock()
@@ -79,6 +98,10 @@ async def test_upsert_existing_document_updates_without_created_at_in_set():
 async def test_failed_upsert_returns_error_and_skips_resolve_when_all_fail():
     req = _requirement_missing_authority()
     db = MagicMock()
+    db.properties = MagicMock()
+    db.properties.find_one = AsyncMock(return_value=dict(_GAP_SYNC_PROPERTY))
+    db.clients = MagicMock()
+    db.clients.find_one = AsyncMock(return_value=dict(_GAP_SYNC_CLIENT))
     db.compliance_gaps.update_one = AsyncMock(side_effect=RuntimeError("server error"))
     db.compliance_gaps.find = MagicMock(return_value=MagicMock())
     db.compliance_gaps.find.return_value.to_list = AsyncMock(return_value=[])
@@ -97,6 +120,10 @@ async def test_failed_upsert_returns_error_and_skips_resolve_when_all_fail():
 async def test_resolve_failure_recorded():
     req = _requirement_missing_authority()
     db = MagicMock()
+    db.properties = MagicMock()
+    db.properties.find_one = AsyncMock(return_value=dict(_GAP_SYNC_PROPERTY))
+    db.clients = MagicMock()
+    db.clients.find_one = AsyncMock(return_value=dict(_GAP_SYNC_CLIENT))
     db.compliance_gaps.update_one = AsyncMock(return_value=MagicMock(upserted_id=None))
     db.compliance_gaps.find = MagicMock(return_value=MagicMock())
     db.compliance_gaps.find.return_value.to_list = AsyncMock(return_value=[{"gap_key": "stale", "gap_kind": "EXPIRED"}])

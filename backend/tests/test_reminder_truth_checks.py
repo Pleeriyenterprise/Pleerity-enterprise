@@ -7,6 +7,22 @@ def _iso_in_days(days: int) -> str:
     return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
 
 
+class _AsyncCursor:
+    def __init__(self, rows):
+        self._rows = list(rows)
+
+    def __aiter__(self):
+        self._idx = 0
+        return self
+
+    async def __anext__(self):
+        if self._idx >= len(self._rows):
+            raise StopAsyncIteration
+        row = self._rows[self._idx]
+        self._idx += 1
+        return row
+
+
 def test_daily_reminder_suppresses_already_compliant_requirement():
     async def _run():
         import os
@@ -17,6 +33,9 @@ def test_daily_reminder_suppresses_already_compliant_requirement():
         scheduler.db.clients.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[
             {"client_id": "c1", "email": "c1@test.com", "subscription_status": "ACTIVE", "entitlement_status": "ENABLED"},
         ])))
+        scheduler.db.clients.find_one = AsyncMock(
+            return_value={"client_id": "c1", "default_jurisdiction": "England"}
+        )
         scheduler.db.notification_preferences.find_one = AsyncMock(return_value={
             "expiry_reminders": True,
             "reminder_days_before": 30,
@@ -24,19 +43,50 @@ def test_daily_reminder_suppresses_already_compliant_requirement():
             "quiet_hours_enabled": False,
         })
         scheduler.db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[
-            {"requirement_id": "r1", "client_id": "c1", "property_id": "p1", "requirement_type": "GAS", "due_date": _iso_in_days(10), "status": "PENDING"},
+            {
+                "requirement_id": "r1",
+                "client_id": "c1",
+                "property_id": "p1",
+                "requirement_type": "gas_safety",
+                "due_date": _iso_in_days(10),
+                "status": "PENDING",
+                "applicability": "REQUIRED",
+                "client_surface_visible": True,
+            },
         ])))
         scheduler.db.requirements.find_one = AsyncMock(return_value={
             "requirement_id": "r1",
             "client_id": "c1",
             "property_id": "p1",
-            "requirement_type": "GAS",
+            "requirement_type": "gas_safety",
             "due_date": _iso_in_days(10),
             "status": "COMPLIANT",
             "applicability": "REQUIRED",
+            "client_surface_visible": True,
         })
         scheduler.db.requirements.update_one = AsyncMock()
-        scheduler.db.properties.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+        scheduler.db.properties.find = MagicMock(
+            return_value=_AsyncCursor(
+                [
+                    {
+                        "property_id": "p1",
+                        "client_id": "c1",
+                        "jurisdiction": "England",
+                        "property_type": "house",
+                        "has_gas_supply": True,
+                    }
+                ]
+            )
+        )
+        scheduler.db.properties.find_one = AsyncMock(
+            return_value={
+                "property_id": "p1",
+                "client_id": "c1",
+                "jurisdiction": "England",
+                "property_type": "house",
+                "has_gas_supply": True,
+            }
+        )
         scheduler.db.reminder_item_state.find_one = AsyncMock(return_value=None)
         scheduler.db.reminder_item_state.update_one = AsyncMock()
         scheduler.db.reminder_evaluation_log.insert_one = AsyncMock()

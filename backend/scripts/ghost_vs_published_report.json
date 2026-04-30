@@ -1,0 +1,41 @@
+{
+  "published_registry_entry_count": 23,
+  "ghost_row_count": 0,
+  "bucket_counts": {},
+  "by_jurisdiction": {},
+  "by_client_id": {},
+  "by_client_property_key": {},
+  "grouped_by_requirement_type_and_canonical": [],
+  "canonical_keys_visible_before_not_after_anywhere": [
+    "co_alarms",
+    "fire_risk_assessment",
+    "how_to_rent",
+    "right_to_rent",
+    "smoke_alarms"
+  ],
+  "requirement_types_visible_before_not_after_anywhere": [
+    "co_alarms",
+    "fire_detection",
+    "fire_risk_assessment",
+    "how_to_rent",
+    "right_to_rent",
+    "smoke_alarms"
+  ],
+  "recommendation": "likely_safe_to_apply_after_review_readonly_evidence_rows",
+  "recommendation_notes": {
+    "publish_or_map_first_rows": 0,
+    "deprecated_or_safe_hide_rows": 0,
+    "readonly_evidence_rows": 0,
+    "missing_publish_absent_2a": 0,
+    "missing_publish_blocked_2b": 0,
+    "map_canonical_3": 0
+  },
+  "rollup_user_categories": {
+    "1_correctly_deprecated_legacy": 0,
+    "2_missing_or_unactivatable_published": 0,
+    "3_should_map_to_existing_published_canonical": 0,
+    "4_readonly_legacy_evidence": 0,
+    "5_safe_to_hide": 0
+  },
+  "rows": []
+}

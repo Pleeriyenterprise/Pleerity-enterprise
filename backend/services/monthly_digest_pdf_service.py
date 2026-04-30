@@ -17,6 +17,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from services.monthly_digest_limits import DIGEST_PDF_MAX_REQUIREMENT_ROWS
+from services.scoring_semantics_v1 import headline_score_display_for_export
 from utils.storage_paths import resolve_data_dir
 
 logger = logging.getLogger(__name__)
@@ -155,13 +156,51 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
                 fb_style,
             )
         )
+    dhl = model.get("digest_hiua_line")
+    dhfn = model.get("digest_hiua_report_framing_notice")
+    if dhl or dhfn:
+        hiua_style = ParagraphStyle(
+            name="DigestHiua",
+            parent=styles["Normal"],
+            fontSize=9,
+            textColor=colors.HexColor("#4c1d95"),
+            spaceBefore=8,
+            spaceAfter=4,
+        )
+        hiua_sub = ParagraphStyle(
+            name="DigestHiuaSub",
+            parent=styles["Normal"],
+            fontSize=8,
+            textColor=colors.HexColor("#5b21b6"),
+            spaceBefore=2,
+            spaceAfter=6,
+        )
+        body.append(Paragraph("<b>Operational follow-up (applicability)</b>", h3))
+        if dhl:
+            body.append(
+                Paragraph(
+                    "<b>Summary:</b> " + html.escape(str(dhl)),
+                    hiua_style,
+                )
+            )
+        if dhfn:
+            body.append(Paragraph(html.escape(str(dhfn)), hiua_sub))
     body.append(PageBreak())
 
     # Section 2 — Executive summary
     body.append(Paragraph("2. Executive summary", h2))
     exec_rows = [
         ["Metric", "Value"],
-        ["Compliance score (0–100)", str(int(model.get("compliance_score") or 0))],
+        [
+            "Compliance score (0–100)",
+            html.escape(
+                str(
+                    model.get("compliance_score_display")
+                    if model.get("compliance_score_display") is not None
+                    else (model.get("compliance_score") if model.get("compliance_score") is not None else "N/A")
+                )
+            ),
+        ],
         ["Risk level", html.escape(str(model.get("risk_level") or "—"))],
         ["Total tracked requirements", str(int(model.get("total_requirements") or 0))],
         ["Valid (compliant)", str(int(model.get("valid_count") or model.get("compliant") or 0))],
@@ -251,7 +290,7 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
             prop_rows.append(
                 [
                     html.escape(str(pr.get("name") or "—"))[:45],
-                    str(pr.get("score") if pr.get("score") is not None else "—"),
+                    headline_score_display_for_export(pr.get("score"), pr.get("score_status")),
                     html.escape(str(pr.get("risk_level") or "—"))[:14],
                     str(int(pr.get("overdue_count") or 0)),
                     str(int(pr.get("expiring_soon_count") or 0)),

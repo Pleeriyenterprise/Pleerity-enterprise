@@ -1,0 +1,756 @@
+{
+  "report_kind": "overlap_then_coverage_merge_preview",
+  "mongo_load_note": "Loaded active published entries from Mongo.",
+  "overlap_changelog_note": null,
+  "previous_published_entry_count": 14,
+  "overlap_correction_removals": [],
+  "post_overlap_entry_count": 14,
+  "merged_entry_count": 23,
+  "coverage_merge_applied": true,
+  "coverage_patch_entry_count": 19,
+  "rows": [
+    {
+      "registry_key": "EICR|DEFAULT",
+      "canonical_code": "EICR",
+      "scope_key": "DEFAULT",
+      "display_name": "Electrical Installation Condition Report (EICR)",
+      "display_jurisdictions": [
+        "ENGLAND",
+        "WALES",
+        "SCOTLAND",
+        "NORTHERN_IRELAND"
+      ],
+      "property_conditions_summary": "Applies to all properties (no rules).",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "updated",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload valid EICR certificate",
+      "action_links_count": 3,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "eicr"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "EPC|DEFAULT",
+      "canonical_code": "EPC",
+      "scope_key": "DEFAULT",
+      "display_name": "Energy Performance Certificate (EPC)",
+      "display_jurisdictions": [
+        "ENGLAND",
+        "WALES",
+        "SCOTLAND",
+        "NORTHERN_IRELAND"
+      ],
+      "property_conditions_summary": "Applies to all properties (no rules).",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "updated",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload valid EPC document",
+      "action_links_count": 4,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "epc"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "FIRE_RISK_ASSESSMENT|DEFAULT",
+      "canonical_code": "FIRE_RISK_ASSESSMENT",
+      "scope_key": "DEFAULT",
+      "display_name": "Fire risk assessment (FRA) \u2014 suitable & sufficient",
+      "display_jurisdictions": [
+        "ENGLAND",
+        "WALES",
+        "SCOTLAND",
+        "NORTHERN_IRELAND"
+      ],
+      "property_conditions_summary": "Applies when all of the following are true:\n  \u2022 Is HMO is Yes",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "added",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": null,
+      "action_links_count": 3,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "fire_risk_assessment"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "FITNESS_FOR_HUMAN_HABITATION|WALES",
+      "canonical_code": "FITNESS_FOR_HUMAN_HABITATION",
+      "scope_key": "WALES",
+      "display_name": "Fitness for Human Habitation",
+      "display_jurisdictions": [
+        "WALES"
+      ],
+      "property_conditions_summary": "Applies when all of the following are true:\n  \u2022 Tenancy active equals Yes",
+      "coverage_repair": "not_in_coverage_patch_list",
+      "coverage_repair_action": "n/a",
+      "client_surface_visible": true,
+      "primary_action_mode": "view_guidance",
+      "cta_label_override": "Review habitability obligations",
+      "action_links_count": 2,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "fitness_for_human_habitation"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "GAS_SAFETY|DEFAULT",
+      "canonical_code": "GAS_SAFETY",
+      "scope_key": "DEFAULT",
+      "display_name": "Gas safety certificate",
+      "display_jurisdictions": [
+        "ENGLAND",
+        "WALES",
+        "SCOTLAND",
+        "NORTHERN_IRELAND"
+      ],
+      "property_conditions_summary": "Applies to all properties (no rules).",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "updated",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload valid gas safety certificate",
+      "action_links_count": 2,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "gas_safety"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "HMO_FIRE_RISK|DEFAULT",
+      "canonical_code": "HMO_FIRE_RISK",
+      "scope_key": "DEFAULT",
+      "display_name": "HMO fire safety management evidence (log book, tests, compartmentation)",
+      "display_jurisdictions": [
+        "ENGLAND",
+        "WALES",
+        "SCOTLAND",
+        "NORTHERN_IRELAND"
+      ],
+      "property_conditions_summary": "Applies when all of the following are true:\n  \u2022 Is HMO is Yes",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "updated",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload fire risk assessment report",
+      "action_links_count": 3,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "hmo_fire_risk",
+        "hmo_fire_risk_evidence"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "HMO_LICENSING|DEFAULT",
+      "canonical_code": "HMO_LICENSING",
+      "scope_key": "DEFAULT",
+      "display_name": "HMO / selective / additional licensing (local authority)",
+      "display_jurisdictions": [
+        "ENGLAND",
+        "WALES",
+        "SCOTLAND",
+        "NORTHERN_IRELAND"
+      ],
+      "property_conditions_summary": "Applies when all of the following are true:\n  \u2022 Is HMO is Yes",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "updated",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload valid HMO licence",
+      "action_links_count": 2,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "hmo_license",
+        "hmo_licensing",
+        "property_licence"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "HOW_TO_RENT|DEFAULT",
+      "canonical_code": "HOW_TO_RENT",
+      "scope_key": "DEFAULT",
+      "display_name": "How to rent guide (England)",
+      "display_jurisdictions": [
+        "ENGLAND"
+      ],
+      "property_conditions_summary": "Applies to all properties (no rules).",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "added",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": null,
+      "action_links_count": 0,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "how_to_rent"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "LANDLORD_REGISTRATION_NI|DEFAULT",
+      "canonical_code": "LANDLORD_REGISTRATION_NI",
+      "scope_key": "DEFAULT",
+      "display_name": "Northern Ireland landlord registration",
+      "display_jurisdictions": [
+        "NORTHERN_IRELAND"
+      ],
+      "property_conditions_summary": "Applies to all properties (no rules).",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "added",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": null,
+      "action_links_count": 1,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "landlord_registration_ni"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "LANDLORD_REGISTRATION|DEFAULT",
+      "canonical_code": "LANDLORD_REGISTRATION",
+      "scope_key": "DEFAULT",
+      "display_name": "Scottish landlord registration",
+      "display_jurisdictions": [
+        "SCOTLAND"
+      ],
+      "property_conditions_summary": "Applies to all properties (no rules).",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "added",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": null,
+      "action_links_count": 2,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "landlord_registration",
+        "scotland_landlord_registration"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "LEAD_TESTING|SCOTLAND",
+      "canonical_code": "LEAD_TESTING",
+      "scope_key": "SCOTLAND",
+      "display_name": "Lead Testing",
+      "display_jurisdictions": [
+        "SCOTLAND"
+      ],
+      "property_conditions_summary": "Applies when all of the following are true:\n  \u2022 Building age (years) is greater than 50\n  \u2022 Tenancy active equals Yes",
+      "coverage_repair": "not_in_coverage_patch_list",
+      "coverage_repair_action": "n/a",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload lead hazard assessment report",
+      "action_links_count": 2,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "lead_testing"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "LEGIONELLA|DEFAULT",
+      "canonical_code": "LEGIONELLA",
+      "scope_key": "DEFAULT",
+      "display_name": "Legionella risk assessment",
+      "display_jurisdictions": [
+        "ENGLAND",
+        "WALES",
+        "SCOTLAND",
+        "NORTHERN_IRELAND"
+      ],
+      "property_conditions_summary": "Applies to all properties (no rules).",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "updated",
+      "client_surface_visible": true,
+      "primary_action_mode": "arrange_job",
+      "cta_label_override": "Upload Legionella risk assessment report",
+      "action_links_count": 2,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "legionella"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "OCCUPATION_CONTRACT|DEFAULT",
+      "canonical_code": "OCCUPATION_CONTRACT",
+      "scope_key": "DEFAULT",
+      "display_name": "Written occupation contract (Wales)",
+      "display_jurisdictions": [
+        "WALES"
+      ],
+      "property_conditions_summary": "Applies to all properties (no rules).",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "added",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": null,
+      "action_links_count": 1,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "occupation_contract",
+        "wales_occupation_contract"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "PAT_TESTING|DEFAULT",
+      "canonical_code": "PAT_TESTING",
+      "scope_key": "DEFAULT",
+      "display_name": "Portable appliance testing (PAT)",
+      "display_jurisdictions": [
+        "ENGLAND",
+        "WALES",
+        "SCOTLAND",
+        "NORTHERN_IRELAND"
+      ],
+      "property_conditions_summary": "Applies to all properties (no rules).",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "updated",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload portable appliance testing report",
+      "action_links_count": 2,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "pat_testing",
+        "portable_appliance_test"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "RENT_SMART_WALES_REGISTRATION|WALES",
+      "canonical_code": "RENT_SMART_WALES_REGISTRATION",
+      "scope_key": "WALES",
+      "display_name": "Rent Smart Wales Registration",
+      "display_jurisdictions": [
+        "WALES"
+      ],
+      "property_conditions_summary": "Applies when all of the following are true:\n  \u2022 Tenancy active equals Yes",
+      "coverage_repair": "not_in_coverage_patch_list",
+      "coverage_repair_action": "n/a",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload Rent Smart Wales registration evidence",
+      "action_links_count": 2,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "rent_smart_wales",
+        "rent_smart_wales_registration"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "REPAIRING_STANDARD|SCOTLAND",
+      "canonical_code": "REPAIRING_STANDARD",
+      "scope_key": "SCOTLAND",
+      "display_name": "Repairing Standard Property Review (Scotland)",
+      "display_jurisdictions": [
+        "SCOTLAND"
+      ],
+      "property_conditions_summary": "Applies when all of the following are true:\n  \u2022 Tenancy active is Yes",
+      "coverage_repair": "not_in_coverage_patch_list",
+      "coverage_repair_action": "n/a",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Complete property review",
+      "action_links_count": 1,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "repairing_standard"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "RIGHT_TO_RENT|DEFAULT",
+      "canonical_code": "RIGHT_TO_RENT",
+      "scope_key": "DEFAULT",
+      "display_name": "Right to rent compliance",
+      "display_jurisdictions": [
+        "ENGLAND"
+      ],
+      "property_conditions_summary": "Applies to all properties (no rules).",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "added",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": null,
+      "action_links_count": 0,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "right_to_rent",
+        "right_to_rent_checks"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "SMOKE_HEAT_ALARMS|DEFAULT",
+      "canonical_code": "SMOKE_HEAT_ALARMS",
+      "scope_key": "DEFAULT",
+      "display_name": "Smoke, Heat & CO Alarm Compliance",
+      "display_jurisdictions": [
+        "ENGLAND",
+        "WALES",
+        "SCOTLAND",
+        "NORTHERN_IRELAND"
+      ],
+      "property_conditions_summary": "Applies to all properties (no rules).",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "updated",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload smoke, heat or CO alarm evidence",
+      "action_links_count": 4,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "co_alarms",
+        "fire_alarm",
+        "fire_detection",
+        "smoke_alarms",
+        "smoke_heat_alarms"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "TENANCY_AGREEMENT|DEFAULT",
+      "canonical_code": "TENANCY_AGREEMENT",
+      "scope_key": "DEFAULT",
+      "display_name": "Tenancy agreement",
+      "display_jurisdictions": [
+        "ENGLAND",
+        "WALES",
+        "SCOTLAND",
+        "NORTHERN_IRELAND"
+      ],
+      "property_conditions_summary": "Applies to all properties (no rules).",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "added",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": null,
+      "action_links_count": 0,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "tenancy_agreement"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "TENANCY_DEPOSIT_PROTECTION|ENGLAND",
+      "canonical_code": "TENANCY_DEPOSIT_PROTECTION",
+      "scope_key": "ENGLAND",
+      "display_name": "Tenancy deposit protection (England)",
+      "display_jurisdictions": [
+        "ENGLAND"
+      ],
+      "property_conditions_summary": "Applies when all of the following are true:\n  \u2022 Deposit taken is Yes\n  \u2022 Tenancy active is Yes",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "updated",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload tenancy deposit protection evidence",
+      "action_links_count": 3,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "deposit_pi",
+        "tenancy_deposit_protection"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "TENANCY_DEPOSIT_PROTECTION|NORTHERN_IRELAND",
+      "canonical_code": "TENANCY_DEPOSIT_PROTECTION",
+      "scope_key": "NORTHERN_IRELAND",
+      "display_name": "Tenancy deposit protection (Northern Ireland)",
+      "display_jurisdictions": [
+        "NORTHERN_IRELAND"
+      ],
+      "property_conditions_summary": "Applies when all of the following are true:\n  \u2022 Deposit taken is Yes\n  \u2022 Tenancy active is Yes",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "added",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload tenancy deposit protection evidence",
+      "action_links_count": 0,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "deposit_pi",
+        "tenancy_deposit_protection"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "TENANCY_DEPOSIT_PROTECTION|SCOTLAND",
+      "canonical_code": "TENANCY_DEPOSIT_PROTECTION",
+      "scope_key": "SCOTLAND",
+      "display_name": "Tenancy deposit protection (Scotland)",
+      "display_jurisdictions": [
+        "SCOTLAND"
+      ],
+      "property_conditions_summary": "Applies when all of the following are true:\n  \u2022 Deposit taken is Yes\n  \u2022 Tenancy active is Yes",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "updated",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload tenancy deposit protection evidence",
+      "action_links_count": 0,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "deposit_pi",
+        "tenancy_deposit_protection"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    },
+    {
+      "registry_key": "TENANCY_DEPOSIT_PROTECTION|WALES",
+      "canonical_code": "TENANCY_DEPOSIT_PROTECTION",
+      "scope_key": "WALES",
+      "display_name": "Tenancy deposit protection (Wales)",
+      "display_jurisdictions": [
+        "WALES"
+      ],
+      "property_conditions_summary": "Applies when all of the following are true:\n  \u2022 Deposit taken is Yes\n  \u2022 Tenancy active is Yes",
+      "coverage_repair": "patched",
+      "coverage_repair_action": "added",
+      "client_surface_visible": true,
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload tenancy deposit protection evidence",
+      "action_links_count": 0,
+      "why_it_matters_present": true,
+      "planner_requirement_types_mapped": [
+        "deposit_pi",
+        "tenancy_deposit_protection"
+      ],
+      "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+    }
+  ],
+  "grouped_registry_keys_by_jurisdiction": {
+    "ENGLAND": [
+      "EICR|DEFAULT",
+      "EPC|DEFAULT",
+      "FIRE_RISK_ASSESSMENT|DEFAULT",
+      "GAS_SAFETY|DEFAULT",
+      "HMO_FIRE_RISK|DEFAULT",
+      "HMO_LICENSING|DEFAULT",
+      "HOW_TO_RENT|DEFAULT",
+      "LEGIONELLA|DEFAULT",
+      "PAT_TESTING|DEFAULT",
+      "RIGHT_TO_RENT|DEFAULT",
+      "SMOKE_HEAT_ALARMS|DEFAULT",
+      "TENANCY_AGREEMENT|DEFAULT",
+      "TENANCY_DEPOSIT_PROTECTION|ENGLAND"
+    ],
+    "WALES": [
+      "EICR|DEFAULT",
+      "EPC|DEFAULT",
+      "FIRE_RISK_ASSESSMENT|DEFAULT",
+      "FITNESS_FOR_HUMAN_HABITATION|WALES",
+      "GAS_SAFETY|DEFAULT",
+      "HMO_FIRE_RISK|DEFAULT",
+      "HMO_LICENSING|DEFAULT",
+      "LEGIONELLA|DEFAULT",
+      "OCCUPATION_CONTRACT|DEFAULT",
+      "PAT_TESTING|DEFAULT",
+      "RENT_SMART_WALES_REGISTRATION|WALES",
+      "SMOKE_HEAT_ALARMS|DEFAULT",
+      "TENANCY_AGREEMENT|DEFAULT",
+      "TENANCY_DEPOSIT_PROTECTION|WALES"
+    ],
+    "SCOTLAND": [
+      "EICR|DEFAULT",
+      "EPC|DEFAULT",
+      "FIRE_RISK_ASSESSMENT|DEFAULT",
+      "GAS_SAFETY|DEFAULT",
+      "HMO_FIRE_RISK|DEFAULT",
+      "HMO_LICENSING|DEFAULT",
+      "LANDLORD_REGISTRATION|DEFAULT",
+      "LEAD_TESTING|SCOTLAND",
+      "LEGIONELLA|DEFAULT",
+      "PAT_TESTING|DEFAULT",
+      "REPAIRING_STANDARD|SCOTLAND",
+      "SMOKE_HEAT_ALARMS|DEFAULT",
+      "TENANCY_AGREEMENT|DEFAULT",
+      "TENANCY_DEPOSIT_PROTECTION|SCOTLAND"
+    ],
+    "NORTHERN_IRELAND": [
+      "EICR|DEFAULT",
+      "EPC|DEFAULT",
+      "FIRE_RISK_ASSESSMENT|DEFAULT",
+      "GAS_SAFETY|DEFAULT",
+      "HMO_FIRE_RISK|DEFAULT",
+      "HMO_LICENSING|DEFAULT",
+      "LANDLORD_REGISTRATION_NI|DEFAULT",
+      "LEGIONELLA|DEFAULT",
+      "PAT_TESTING|DEFAULT",
+      "SMOKE_HEAT_ALARMS|DEFAULT",
+      "TENANCY_AGREEMENT|DEFAULT",
+      "TENANCY_DEPOSIT_PROTECTION|NORTHERN_IRELAND"
+    ]
+  },
+  "duplication_overlap_review": {
+    "TENANCY_DEPOSIT_PROTECTION_model": {
+      "note": "Four jurisdiction-scoped rows (England, Wales, Scotland, Northern Ireland); no UK-wide DEFAULT; each row gates on deposit_taken and tenancy_active.",
+      "deposit_pi_keys": [
+        "TENANCY_DEPOSIT_PROTECTION|ENGLAND",
+        "TENANCY_DEPOSIT_PROTECTION|NORTHERN_IRELAND",
+        "TENANCY_DEPOSIT_PROTECTION|SCOTLAND",
+        "TENANCY_DEPOSIT_PROTECTION|WALES"
+      ],
+      "tenancy_deposit_protection_keys": [
+        "TENANCY_DEPOSIT_PROTECTION|ENGLAND",
+        "TENANCY_DEPOSIT_PROTECTION|NORTHERN_IRELAND",
+        "TENANCY_DEPOSIT_PROTECTION|SCOTLAND",
+        "TENANCY_DEPOSIT_PROTECTION|WALES"
+      ]
+    },
+    "LANDLORD_REGISTRATION_DEFAULT_vs_LANDLORD_REGISTRATION_NI": {
+      "LANDLORD_REGISTRATION|DEFAULT": {
+        "registry_key": "LANDLORD_REGISTRATION|DEFAULT",
+        "canonical_code": "LANDLORD_REGISTRATION",
+        "scope_key": "DEFAULT",
+        "display_name": "Scottish landlord registration",
+        "display_jurisdictions": [
+          "SCOTLAND"
+        ],
+        "property_conditions_summary": "Applies to all properties (no rules).",
+        "coverage_repair": "patched",
+        "coverage_repair_action": "added",
+        "client_surface_visible": true,
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "action_links_count": 2,
+        "why_it_matters_present": true,
+        "planner_requirement_types_mapped": [
+          "landlord_registration",
+          "scotland_landlord_registration"
+        ],
+        "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+      },
+      "LANDLORD_REGISTRATION_NI|DEFAULT": {
+        "registry_key": "LANDLORD_REGISTRATION_NI|DEFAULT",
+        "canonical_code": "LANDLORD_REGISTRATION_NI",
+        "scope_key": "DEFAULT",
+        "display_name": "Northern Ireland landlord registration",
+        "display_jurisdictions": [
+          "NORTHERN_IRELAND"
+        ],
+        "property_conditions_summary": "Applies to all properties (no rules).",
+        "coverage_repair": "patched",
+        "coverage_repair_action": "added",
+        "client_surface_visible": true,
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "action_links_count": 1,
+        "why_it_matters_present": true,
+        "planner_requirement_types_mapped": [
+          "landlord_registration_ni"
+        ],
+        "maps_legacy_materialised_rows": "Overlays Mongo requirements / plan rows whose requirement_type is in planner_requirement_types_mapped; does not rewrite legacy rows."
+      },
+      "scotland_slug_keys": [
+        "LANDLORD_REGISTRATION|DEFAULT"
+      ],
+      "ni_slug_keys": [
+        "LANDLORD_REGISTRATION_NI|DEFAULT"
+      ],
+      "generic_landlord_registration_slug_keys": [
+        "LANDLORD_REGISTRATION|DEFAULT"
+      ]
+    },
+    "FIRE_DETECTION_vs_SMOKE_HEAT_partition": {
+      "fire_alarm": {
+        "registry_keys": [
+          "SMOKE_HEAT_ALARMS|DEFAULT"
+        ],
+        "count": 1
+      },
+      "fire_detection": {
+        "registry_keys": [
+          "SMOKE_HEAT_ALARMS|DEFAULT"
+        ],
+        "count": 1
+      },
+      "smoke_alarms": {
+        "registry_keys": [
+          "SMOKE_HEAT_ALARMS|DEFAULT"
+        ],
+        "count": 1
+      },
+      "co_alarms": {
+        "registry_keys": [
+          "SMOKE_HEAT_ALARMS|DEFAULT"
+        ],
+        "count": 1
+      },
+      "smoke_heat_alarms": {
+        "registry_keys": [
+          "SMOKE_HEAT_ALARMS|DEFAULT"
+        ],
+        "count": 1
+      }
+    },
+    "HMO_FIRE_vs_FRA_vs_HMO_LICENSING": {
+      "hmo_fire_risk": [
+        "HMO_FIRE_RISK|DEFAULT"
+      ],
+      "hmo_fire_risk_evidence": [
+        "HMO_FIRE_RISK|DEFAULT"
+      ],
+      "fire_risk_assessment": [
+        "FIRE_RISK_ASSESSMENT|DEFAULT"
+      ],
+      "hmo_license": [
+        "HMO_LICENSING|DEFAULT"
+      ],
+      "property_licence": [
+        "HMO_LICENSING|DEFAULT"
+      ],
+      "hmo_licensing": [
+        "HMO_LICENSING|DEFAULT"
+      ]
+    },
+    "tenancy_pack": {
+      "how_to_rent": [
+        "HOW_TO_RENT|DEFAULT"
+      ],
+      "tenancy_agreement": [
+        "TENANCY_AGREEMENT|DEFAULT"
+      ],
+      "occupation_contract": [
+        "OCCUPATION_CONTRACT|DEFAULT"
+      ],
+      "wales_occupation_contract": [
+        "OCCUPATION_CONTRACT|DEFAULT"
+      ]
+    },
+    "right_to_rent_family": {
+      "right_to_rent": {
+        "registry_keys": [
+          "RIGHT_TO_RENT|DEFAULT"
+        ],
+        "count": 1
+      },
+      "right_to_rent_checks": {
+        "registry_keys": [
+          "RIGHT_TO_RENT|DEFAULT"
+        ],
+        "count": 1
+      }
+    }
+  }
+}

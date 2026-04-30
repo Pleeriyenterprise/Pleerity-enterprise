@@ -19,6 +19,11 @@ import io
 import logging
 from utils.expiry_utils import get_effective_expiry_date
 from services.requirement_evidence_authority import authority_runtime_requirement_status, authority_state
+from services.scoring_semantics_v1 import (
+    aggregate_persisted_portfolio_headline,
+    headline_score_display_for_export,
+    resolve_property_score_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -149,17 +154,18 @@ async def generate_evidence_readiness_pdf(
     elements.append(PageBreak())
 
     # —— Executive summary ——
-    scores = [p.get("compliance_score") for p in properties if p.get("compliance_score") is not None]
-    portfolio_score = round(sum(scores) / len(scores)) if scores else None
     risk_levels = [p.get("risk_level") for p in properties if p.get("risk_level")]
     overdue_count = sum(1 for r in requirements if (r.get("status") or "").upper() in ("OVERDUE", "EXPIRED"))
     expiring_count = sum(1 for r in requirements if (r.get("status") or "").upper() == "EXPIRING_SOON")
     missing_count = sum(1 for r in requirements if (r.get("status") or "").upper() in ("PENDING", "MISSING"))
     valid_count = sum(1 for r in requirements if (r.get("status") or "").upper() in ("COMPLIANT", "VALID"))
+    agg = aggregate_persisted_portfolio_headline(properties, now=now)
+    disp = headline_score_display_for_export(agg.get("portfolio_score"), agg.get("score_status"))
+    score_frag = f"{disp}/100" if disp.isdigit() else disp
 
     elements.append(Paragraph("Executive Summary", styles["heading"]))
     summary_text = f"""
-    <b>Score:</b> {portfolio_score if portfolio_score is not None else 'N/A'}/100 &nbsp;|&nbsp;
+    <b>Score:</b> {score_frag} &nbsp;|&nbsp;
     <b>Risk level:</b> {risk_levels[0] if len(risk_levels) == 1 else (risk_levels[0] if risk_levels else 'N/A')}
     <br/><br/>
     <b>Counts:</b> {len(properties)} propert(ies); {len(requirements)} requirements.
@@ -176,12 +182,15 @@ async def generate_evidence_readiness_pdf(
     prop_data = [["Address", "Score", "Risk level", "Last updated"]]
     for p in properties[:50]:
         addr = p.get("address_line_1") or p.get("nickname") or p.get("property_id", "")
-        score = p.get("compliance_score")
+        st = resolve_property_score_status(p, now=now)
+        score_cell = headline_score_display_for_export(p.get("compliance_score"), st)
+        if score_cell.isdigit():
+            score_cell = f"{score_cell}/100"
         risk = p.get("risk_level") or "—"
         updated = p.get("compliance_last_calculated_at") or "—"
         if isinstance(updated, str) and len(updated) > 16:
             updated = updated[:10]
-        prop_data.append([addr[:50], str(score) if score is not None else "—", risk, updated])
+        prop_data.append([addr[:50], score_cell, risk, updated])
     if len(prop_data) > 1:
         t = Table(prop_data, colWidths=[200, 50, 90, 80])
         t.setStyle(table_style)

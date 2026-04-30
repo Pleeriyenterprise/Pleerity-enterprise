@@ -79,7 +79,18 @@ class Database:
             await self.db.properties.create_index("client_id")
             await self.db.properties.create_index("property_id", unique=True)
             await self.db.properties.create_index("compliance_status")
-            
+            try:
+                await self.db.properties.create_index(
+                    [("client_id", 1), ("compliance_score", 1)],
+                    name="idx_properties_client_compliance_score",
+                )
+                await self.db.properties.create_index(
+                    [("client_id", 1), ("compliance_score_pending", 1)],
+                    name="idx_properties_client_compliance_pending",
+                )
+            except Exception as e:
+                logger.warning("properties compliance score indexes: %s", e)
+
             # Documents - pending verification admin list (status + uploaded_at; client_id filter)
             await self.db.documents.create_index([("status", 1), ("uploaded_at", 1)])
             await self.db.documents.create_index([("client_id", 1), ("status", 1), ("uploaded_at", 1)])
@@ -264,6 +275,65 @@ class Database:
                 await self.db.compliance_gaps.create_index([("client_id", 1), ("status", 1)])
                 await self.db.compliance_gaps.create_index([("client_id", 1), ("property_id", 1), ("status", 1)])
                 await self.db.compliance_gaps.create_index([("requirement_id", 1), ("status", 1)])
+                await self.db.compliance_gaps.create_index(
+                    [("client_id", 1), ("status", 1), ("critical_mandatory_breach", 1)],
+                    name="idx_gap_client_status_critical_breach",
+                )
+                await self.db.compliance_gaps.create_index(
+                    [("client_id", 1), ("status", 1), ("high_risk_gap", 1)],
+                    name="idx_gap_client_status_high_risk",
+                )
+                await self.db.compliance_gaps.create_index(
+                    [("client_id", 1), ("status", 1), ("policy_classification_version", 1)],
+                    name="idx_gap_client_status_policy_version",
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.requirements.create_index(
+                    [("client_id", 1), ("requirement_id", 1)],
+                    name="idx_requirements_client_requirement_id",
+                )
+                await self.db.requirements.create_index(
+                    [("client_id", 1), ("applicability_state", 1), ("is_mandatory", 1), ("policy_criticality", 1)],
+                    name="idx_requirements_client_policy_fields",
+                )
+                await self.db.requirements.create_index(
+                    [("client_id", 1), ("requirement_code_normalized", 1), ("property_id", 1)],
+                    name="idx_requirements_client_code_property",
+                )
+                await self.db.requirements.create_index(
+                    [("client_id", 1), ("policy_classification_version", 1)],
+                    name="idx_requirements_client_policy_version",
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.compliance_policy_backfill_checkpoints.create_index(
+                    [("job_name", 1), ("client_id", 1)],
+                    unique=True,
+                    name="idx_policy_backfill_checkpoint_job_client",
+                )
+                await self.db.compliance_policy_backfill_checkpoints.create_index(
+                    [("status", 1), ("updated_at", -1)],
+                    name="idx_policy_backfill_checkpoint_status_updated",
+                )
+                await self.db.compliance_policy_backfill_dead_letters.create_index(
+                    [("job_name", 1), ("client_id", 1), ("created_at", -1)],
+                    name="idx_policy_backfill_dlq_job_client_created",
+                )
+                await self.db.compliance_policy_backfill_dead_letters.create_index(
+                    [("client_id", 1), ("requirement_id", 1), ("created_at", -1)],
+                    name="idx_policy_backfill_dlq_client_requirement_created",
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.portfolio_risk_override_latches.create_index(
+                    "client_id",
+                    unique=True,
+                    name="idx_portfolio_risk_override_latch_client",
+                )
             except Exception:
                 pass
             try:

@@ -12,6 +12,7 @@ from utils.audit import create_audit_log
 
 from services.compliance_gap_engine import infer_compliance_gaps_for_requirement
 from services.compliance_gap_operational_bridge import apply_gap_operational_bridge
+from services.compliance_gap_policy_aggregate import aggregate_policy_gap_counts_for_client
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,7 @@ async def sync_compliance_gaps_for_requirement(
             requirement_code=(
                 str(requirement.get("requirement_code") or requirement.get("code") or requirement.get("requirement_type") or "")
             ),
+            requirement_row=requirement,
         )
         row["status"] = "open"
         row["updated_at"] = now
@@ -192,7 +194,8 @@ async def aggregate_gap_counts_for_client(db, client_id: str, property_id: Optio
         cur = db.compliance_gaps.aggregate(pipeline)
         rows = await cur.to_list(200)
     except Exception:
-        return {"by_kind": {}, "by_severity": {}, "total_open": 0}
+        policy = await aggregate_policy_gap_counts_for_client(db, client_id, property_id=property_id)
+        return {"by_kind": {}, "by_severity": {}, "total_open": 0, "policy": policy}
     by_kind: Dict[str, int] = {}
     by_sev: Dict[str, int] = {}
     total = 0
@@ -204,4 +207,5 @@ async def aggregate_gap_counts_for_client(db, client_id: str, property_id: Optio
         total += c
         by_kind[k] = by_kind.get(k, 0) + c
         by_sev[s] = by_sev.get(s, 0) + c
-    return {"by_kind": by_kind, "by_severity": by_sev, "total_open": total}
+    policy = await aggregate_policy_gap_counts_for_client(db, client_id, property_id=property_id)
+    return {"by_kind": by_kind, "by_severity": by_sev, "total_open": total, "policy": policy}

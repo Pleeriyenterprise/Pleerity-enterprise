@@ -20,6 +20,7 @@ from presentation.label_service import (
     document_type_label,
     requirement_label,
 )
+from services.scoring_semantics_v1 import headline_score_display_for_export
 
 logger = logging.getLogger(__name__)
 
@@ -371,7 +372,33 @@ class EmailService:
                 f"<strong>Default jurisdiction notice:</strong> {html_module.escape(str(djfb))}"
                 "</p>"
             )
-        score = int(m.get("compliance_score") or 0)
+        hiua_html = ""
+        dhl = m.get("digest_hiua_line")
+        dhfn = m.get("digest_hiua_report_framing_notice")
+        if dhl or dhfn:
+            inner_hiua = ""
+            if dhl:
+                inner_hiua += (
+                    '<p style="margin:12px 0 0 0;padding:10px 12px;background:#f5f3ff;border-left:4px solid #6d28d9;'
+                    'font-size:13px;color:#4c1d95;line-height:1.55;">'
+                    f"<strong>Operational follow-up (applicability):</strong> {html_module.escape(str(dhl))}"
+                    "</p>"
+                )
+            if dhfn:
+                inner_hiua += (
+                    '<p style="margin:8px 0 0 0;padding:8px 12px 10px 12px;background:#faf5ff;border-left:4px solid #a78bfa;'
+                    'font-size:12px;color:#5b21b6;line-height:1.5;">'
+                    f"{html_module.escape(str(dhfn))}"
+                    "</p>"
+                )
+            hiua_html = f'<div style="margin:4px 0 8px 0;">{inner_hiua}</div>'
+        score_display = html_module.escape(
+            str(m.get("compliance_score_display") or headline_score_display_for_export(m.get("compliance_score"), m.get("score_status")))
+        )
+        score_status = m.get("score_status")
+        score_status_esc = html_module.escape(str(score_status)) if score_status else ""
+        last_calc = m.get("last_calculated_at")
+        last_calc_esc = html_module.escape(str(last_calc)) if last_calc else ""
         risk = html_module.escape(str(m.get("risk_level") or "—"))
         total = int(m.get("total_requirements") or 0)
         valid = int(m.get("valid_count") or m.get("compliant") or 0)
@@ -398,10 +425,12 @@ class EmailService:
                 nm = html_module.escape(str(row.get("name") or "Property"))
                 rk = html_module.escape(str(row.get("risk_level") or "—"))
                 sc = row.get("score")
-                sc_s = html_module.escape(str(sc)) if sc is not None else "—"
+                sc_s = html_module.escape(
+                    str(headline_score_display_for_export(sc, row.get("score_status")))
+                )
                 ovd = int(row.get("overdue_count") or 0)
                 miss = int(row.get("missing_evidence_count") or 0)
-                bits = [f"Score {sc_s}", rk]
+                bits = [f"Headline score {sc_s}", rk]
                 if ovd:
                     bits.append(f"{ovd} overdue")
                 if miss:
@@ -412,7 +441,21 @@ class EmailService:
 
         cards = ""
         if m.get("include_compliance_summary", True):
-            cards += metric_card("Compliance score", html_module.escape(str(score)))
+            cards += metric_card("Compliance score (headline)", score_display)
+            if score_status_esc:
+                meta_bits = [f"Status: {score_status_esc}"]
+                if last_calc_esc:
+                    meta_bits.append(f"Last calculated: {last_calc_esc}")
+                cards += metric_card("Score semantics", html_module.escape(" · ".join(meta_bits)))
+            cov = m.get("score_coverage")
+            if isinstance(cov, dict) and int(cov.get("properties_missing_score") or 0) > 0:
+                cards += metric_card(
+                    "Score coverage",
+                    html_module.escape(
+                        f"{int(cov.get('properties_with_score') or 0)} of {int(cov.get('properties_total') or 0)} properties with stored scores; "
+                        f"{int(cov.get('properties_missing_score') or 0)} without."
+                    ),
+                )
             cards += metric_card("Risk level", risk)
             cards += metric_card("Tracked requirements", html_module.escape(str(total)))
             cards += metric_card("Valid", html_module.escape(str(valid)))
@@ -527,6 +570,7 @@ class EmailService:
 {scope_note_html}
 {jur_note_html}
 {jur_fb_html}
+{hiua_html}
 <div style="height:16px;"></div>
 {cards}
 {top_prop_html}
@@ -1884,7 +1928,9 @@ Review the admin dashboard pending-verification list to process these documents.
             lines.extend(
                 [
                     f"Properties: {model.get('properties_count', 0)}",
-                    f"Compliance score: {model.get('compliance_score', 0)}",
+                    f"Compliance score (headline): {model.get('compliance_score_display') or headline_score_display_for_export(model.get('compliance_score'), model.get('score_status'))}",
+                    f"Score status: {model.get('score_status') or '—'}",
+                    f"Last calculated (headline): {model.get('last_calculated_at') or model.get('portfolio_last_calculated_at') or '—'}",
                     f"Risk: {model.get('risk_level', '')}",
                     f"Requirements: {model.get('total_requirements', 0)} (valid {model.get('valid_count', model.get('compliant', 0))}, "
                     f"expiring soon {model.get('expiring_soon', 0)}, overdue {model.get('overdue', 0)}, "
@@ -1892,6 +1938,15 @@ Review the admin dashboard pending-verification list to process these documents.
                     "",
                 ]
             )
+            dhl_txt = model.get("digest_hiua_line")
+            dhfn_txt = model.get("digest_hiua_report_framing_notice")
+            if dhl_txt or dhfn_txt:
+                lines.append("OPERATIONAL FOLLOW-UP (APPLICABILITY — NOT A CONFIRMED BREACH FLAG)")
+                if dhl_txt:
+                    lines.append(str(dhl_txt))
+                if dhfn_txt:
+                    lines.append(str(dhfn_txt))
+                lines.append("")
             d = model.get("deltas") or {}
             if d.get("has_prior_snapshot"):
                 lines.append("Changes since your last report:")

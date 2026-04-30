@@ -230,6 +230,18 @@ async def test_sync_compliance_gaps_upsert_and_resolve_audits():
             self.modified_count = 1 if not upserted else 0
 
     db = MagicMock()
+    db.properties = MagicMock()
+    db.properties.find_one = AsyncMock(
+        return_value={
+            "property_id": "p-gap",
+            "client_id": "c-gap",
+            "jurisdiction": "England",
+            "property_type": "residential",
+            "tenancy_active": True,
+        }
+    )
+    db.clients = MagicMock()
+    db.clients.find_one = AsyncMock(return_value={"client_id": "c-gap", "default_jurisdiction": "England"})
     db.compliance_gaps.update_one = AsyncMock(return_value=UR(upserted=True))
     db.compliance_gaps.find = MagicMock(return_value=MagicMock())
     db.compliance_gaps.find.return_value.to_list = AsyncMock(
@@ -302,6 +314,18 @@ async def test_reminder_evaluation_includes_gap_engine():
         "due_date": "2026-12-31T00:00:00+00:00",
     }
     db = MagicMock()
+    db.properties = MagicMock()
+    db.properties.find_one = AsyncMock(
+        return_value={
+            "property_id": "p1",
+            "client_id": "c1",
+            "jurisdiction": "England",
+            "property_type": "residential",
+            "tenancy_active": True,
+        }
+    )
+    db.clients = MagicMock()
+    db.clients.find_one = AsyncMock(return_value={"client_id": "c1", "default_jurisdiction": "England"})
     db.requirements.find_one = AsyncMock(return_value=req)
     db.reminder_item_state.find_one = AsyncMock(return_value=None)
     db.reminder_item_state.update_one = AsyncMock()
@@ -361,3 +385,24 @@ async def test_command_center_merges_gap_engine_counts():
 
     assert bundle["compliance_status_summary"]["gap_engine"]["total_open"] == 1
     assert bundle["compliance_status_summary"]["gap_engine"]["by_kind"]["EXPIRED"] == 1
+
+
+def test_gap_to_mongo_includes_policy_snapshot_fields():
+    requirement = _synced_req(requirement_id="r-policy")
+    requirement["applicability_state"] = "REQUIRED"
+    requirement["is_mandatory"] = True
+    requirement["policy_criticality"] = "HIGH"
+    gaps = infer_compliance_gaps_for_requirement(requirement, property_doc=None)
+    row = gaps[0].to_mongo(
+        client_id="c-gap",
+        property_id="p-gap",
+        requirement_id="r-policy",
+        requirement_code="EPC",
+        requirement_row=requirement,
+    )
+    assert row["requirement_code_normalized"] == "epc"
+    assert row["applicability_state"] in ("REQUIRED", "UNKNOWN")
+    assert isinstance(row["is_mandatory"], bool)
+    assert row["policy_criticality"] in ("LOW", "MEDIUM", "HIGH", "CRITICAL")
+    assert "policy_classification_version" in row
+    assert "policy_reason_codes" in row

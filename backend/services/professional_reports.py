@@ -231,12 +231,53 @@ class ProfessionalReportGenerator:
             spaceAfter=20
         ))
         
+        # Portfolio CVP headline (persisted property scores — same contract as portal; not the requirement % below)
+        try:
+            from services.compliance_score import calculate_compliance_score
+            from services.scoring_semantics_v1 import (
+                SCORING_SEMANTICS_VERSION,
+                headline_score_display_for_export,
+            )
+
+            cs = await calculate_compliance_score(client_id)
+            disp = headline_score_display_for_export(cs.get("score"), cs.get("score_status"))
+            scale_note = " (0–100 headline)" if str(disp).isdigit() else ""
+            st = cs.get("score_status") or "—"
+            auth = cs.get("score_authority") or "—"
+            lc_raw = cs.get("last_calculated_at") or cs.get("portfolio_last_calculated_at") or "—"
+            cov = cs.get("score_coverage") or {}
+            cov_note = ""
+            if isinstance(cov, dict) and int(cov.get("properties_missing_score") or 0) > 0:
+                cov_note = (
+                    f" Averages {int(cov.get('properties_with_score') or 0)} of {int(cov.get('properties_total') or 0)} "
+                    f"properties with stored scores; {int(cov.get('properties_missing_score') or 0)} without a stored score."
+                )
+            cvp_block = f"""
+            <b>Portfolio compliance score (CVP headline)</b>{scale_note}: <b>{disp}</b><br/>
+            <b>Score status:</b> {st} &nbsp;|&nbsp; <b>Authority:</b> {auth}<br/>
+            <b>Last calculated:</b> {lc_raw}<br/>
+            <i>Scoring contract: {SCORING_SEMANTICS_VERSION}.</i> This headline uses persisted property scores only.{cov_note}
+            """
+            elements.append(Paragraph("Portfolio compliance score", styles["heading"]))
+            elements.append(Paragraph(cvp_block, styles["body"]))
+            elements.append(Spacer(1, 16))
+        except Exception as cvp_err:
+            logger.warning("Professional compliance summary PDF: CVP headline unavailable: %s", cvp_err)
+            elements.append(Paragraph("Portfolio compliance score", styles["heading"]))
+            elements.append(
+                Paragraph(
+                    "<b>Portfolio compliance score (CVP headline):</b> unavailable in this export run.",
+                    styles["body"],
+                )
+            )
+            elements.append(Spacer(1, 16))
+
         # Executive Summary
         elements.append(Paragraph("Executive Summary", styles["heading"]))
         
         score_pct = round((compliant / total_reqs * 100) if total_reqs > 0 else 0)
         summary_text = f"""
-        Your property portfolio currently shows a <b>{score_pct}%</b> compliance rate. 
+        The following <b>{score_pct}%</b> figure is a <b>requirement-status completion rate</b> from portal-visible rows — not the CVP headline score above.
         Out of <b>{total_reqs}</b> total requirements across <b>{total_props}</b> properties:
         <br/><br/>
         • <b>{compliant}</b> requirements are fully compliant<br/>

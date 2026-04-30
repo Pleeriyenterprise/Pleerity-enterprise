@@ -295,6 +295,13 @@ def test_requirement_authority_stays_mismatch_flagged_when_doc_unsatisfied():
         return_value={"requirement_id": "r1", "client_id": "c1", "property_id": "p1", "status": "PENDING"}
     )
     db.properties.find_one = AsyncMock(return_value={"property_id": "p1"})
+    db.clients.find_one = AsyncMock(return_value={"client_id": "c1"})
+    _ev_cur = MagicMock()
+    _ev_cur.to_list = AsyncMock(return_value=[])
+    db.compliance_evidence_records = MagicMock()
+    db.compliance_evidence_records.find = MagicMock(return_value=_ev_cur)
+    db.compliance_evidence_records.find_one = AsyncMock(return_value=None)
+    db.compliance_evidence_records.insert_one = AsyncMock()
     captured = {}
 
     async def capture_update(filt, update, *args, **kwargs):

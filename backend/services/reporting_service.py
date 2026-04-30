@@ -21,6 +21,7 @@ from services.requirement_client_runtime_surface import (
     project_requirement_row_client_runtime,
     compute_client_portal_requirement_stats,
 )
+from services.scoring_semantics_v1 import attach_semantics_contract, headline_score_display_for_export
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +141,34 @@ class ReportingService:
                 "expiring_next_90_days": expiring_90
             }
         }
-        
+        try:
+            from services.compliance_score import calculate_compliance_score
+
+            cs = await calculate_compliance_score(client_id)
+            report_data["summary"]["compliance_score_headline"] = {
+                "score": cs.get("score"),
+                "score_authority": cs.get("score_authority"),
+                "score_status": cs.get("score_status"),
+                "last_calculated_at": cs.get("last_calculated_at") or cs.get("portfolio_last_calculated_at"),
+                "score_coverage": cs.get("score_coverage"),
+                "score_status_message": cs.get("score_status_message"),
+                "compliance_score_display": headline_score_display_for_export(
+                    cs.get("score"), cs.get("score_status")
+                ),
+            }
+        except Exception as e:
+            logger.warning("compliance headline for compliance summary report: %s", e)
+            report_data["summary"]["compliance_score_headline"] = {
+                "score": None,
+                "score_authority": "unavailable",
+                "score_status": "unavailable",
+                "last_calculated_at": None,
+                "score_coverage": None,
+                "score_status_message": None,
+                "compliance_score_display": "N/A",
+            }
+        report_data = attach_semantics_contract(report_data)
+
         if include_details:
             # Add property details
             property_details = []
@@ -356,7 +384,14 @@ class ReportingService:
         output.write(f"Report: {data['report_type']}\n")
         output.write(f"Generated: {data['generated_at']}\n")
         output.write(f"Client: {data['client']['name']}\n\n")
-        
+        ch = (data.get("summary") or {}).get("compliance_score_headline") or {}
+        output.write("=== PORTFOLIO COMPLIANCE SCORE (AUTHORITATIVE HEADLINE) ===\n")
+        output.write(f"Displayed score,{ch.get('compliance_score_display') or 'N/A'}\n")
+        output.write(f"score_authority,{ch.get('score_authority') or ''}\n")
+        output.write(f"score_status,{ch.get('score_status') or ''}\n")
+        output.write(f"last_calculated_at,{ch.get('last_calculated_at') or ''}\n")
+        output.write("\n")
+
         # Summary section
         output.write("=== SUMMARY ===\n")
         summary = data['summary']

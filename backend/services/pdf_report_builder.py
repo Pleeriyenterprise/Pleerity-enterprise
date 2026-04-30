@@ -20,6 +20,11 @@ from presentation.jurisdiction_reporting import (
     portfolio_jurisdiction_summary_sentence,
 )
 from utils.expiry_utils import get_computed_status, get_effective_expiry_date
+from services.scoring_semantics_v1 import (
+    aggregate_persisted_portfolio_headline,
+    headline_score_display_for_export,
+    resolve_property_score_status,
+)
 
 PDF_FOOTER_DISCLAIMER = "This report does not constitute legal advice."
 
@@ -154,6 +159,13 @@ def _derive_counts_and_risk(
     }
 
 
+def _evidence_readiness_headline_score_frag(properties: List[dict], now: datetime) -> str:
+    """SCORING_SEMANTICS_V1: never show ``N/A/100``; only append ``/100`` for authoritative numeric headlines."""
+    agg = aggregate_persisted_portfolio_headline(properties, now=now)
+    disp = headline_score_display_for_export(agg.get("portfolio_score"), agg.get("score_status"))
+    return f"{disp}/100" if disp.isdigit() else disp
+
+
 def _top_risk_drivers(
     requirements: List[dict],
     properties: List[dict],
@@ -215,8 +227,9 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
 
     # Executive summary
     elements.append(Paragraph("Executive Summary", styles["heading"]))
+    score_frag = _evidence_readiness_headline_score_frag(properties, now)
     summary_text = f"""
-    <b>Score:</b> {derived['portfolio_score'] if derived['portfolio_score'] is not None else 'N/A'}/100 &nbsp;|&nbsp;
+    <b>Score:</b> {score_frag} &nbsp;|&nbsp;
     <b>Risk level:</b> {derived['risk_level']}
     <br/><br/>
     <b>Counts:</b> {len(properties)} propert(ies); {len(requirements)} requirements.
@@ -256,12 +269,15 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     prop_data = [["Address", "Score", "Risk level", "Last updated"]]
     for p in properties[:50]:
         addr = p.get("address_line_1") or p.get("nickname") or p.get("property_id", "")
-        score = p.get("compliance_score")
+        st = resolve_property_score_status(p, now=now)
+        score_cell = headline_score_display_for_export(p.get("compliance_score"), st)
+        if score_cell.isdigit():
+            score_cell = f"{score_cell}/100"
         risk = p.get("risk_level") or "—"
         updated = p.get("compliance_last_calculated_at") or "—"
         if isinstance(updated, str) and len(updated) > 16:
             updated = updated[:10]
-        prop_data.append([addr[:50], str(score) if score is not None else "—", risk, updated])
+        prop_data.append([addr[:50], score_cell, risk, updated])
     if len(prop_data) > 1:
         t = Table(prop_data, colWidths=[200, 50, 90, 80])
         t.setStyle(table_style)
@@ -363,7 +379,12 @@ def build_score_explanation_report(
     crn = client_doc.get("customer_reference") or client_id
     now = datetime.now(timezone.utc)
     now_str = now.strftime("%d %B %Y at %H:%M UTC")
-    data_as_of = score_payload.get("score_last_calculated_at") or now.isoformat()
+    data_as_of = (
+        score_payload.get("last_calculated_at")
+        or score_payload.get("portfolio_last_calculated_at")
+        or score_payload.get("score_last_calculated_at")
+        or now.isoformat()
+    )
     if isinstance(data_as_of, str) and len(data_as_of) > 19:
         data_as_of = data_as_of[:19].replace("T", " ")
 
@@ -398,6 +419,8 @@ def build_score_explanation_report(
     # —— 2. Portfolio snapshot ——
     elements.append(Paragraph("Portfolio snapshot", styles["heading"]))
     score = score_payload.get("score")
+    score_status = score_payload.get("score_status")
+    score_display = headline_score_display_for_export(score, score_status)
     grade = score_payload.get("grade") or "—"
     stats = score_payload.get("stats") or {}
     valid = stats.get("compliant", 0)
@@ -407,8 +430,17 @@ def build_score_explanation_report(
     completeness = score_payload.get("data_completeness_percent")
     completeness_str = f"{completeness}%" if completeness is not None else "—"
     model_ver = score_payload.get("score_model_version") or "—"
+    cov = score_payload.get("score_coverage") or {}
+    cov_note = ""
+    if isinstance(cov, dict) and int(cov.get("properties_missing_score") or 0) > 0:
+        cov_note = (
+            f"<br/><b>Coverage:</b> score averages {int(cov.get('properties_with_score') or 0)} of "
+            f"{int(cov.get('properties_total') or 0)} properties with persisted scores."
+        )
     snapshot_text = f"""
-    <b>Overall score:</b> {score if score is not None else '—'}/100 &nbsp;|&nbsp; <b>Grade:</b> {grade}
+    <b>Overall score (headline):</b> {score_display}{'/100' if score_display.isdigit() else ''} &nbsp;|&nbsp; <b>Grade:</b> {grade}
+    <br/><b>Score status:</b> {score_status or '—'} &nbsp;|&nbsp; <b>Authority:</b> {score_payload.get('score_authority') or '—'}
+    {cov_note}
     <br/><br/>
     <b>Valid:</b> {valid} &nbsp;|&nbsp; <b>Expiring soon:</b> {expiring} &nbsp;|&nbsp; <b>Overdue:</b> {overdue}
     <br/>
@@ -536,7 +568,7 @@ def build_score_explanation_report(
         for p in prop_breakdown[:30]:
             prop_rows.append([
                 (p.get("name") or p.get("property_id") or "—")[:40],
-                str(p.get("score")) if p.get("score") is not None else "—",
+                headline_score_display_for_export(p.get("score"), p.get("score_status")),
                 str(p.get("valid", 0)),
                 str(p.get("expiring", 0)),
                 str(p.get("overdue", 0)),
@@ -625,7 +657,10 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
 
     # Executive summary
     elements.append(Paragraph("Executive Summary", styles["heading"]))
-    score_line = f"<b>Score:</b> {derived['portfolio_score'] if derived['portfolio_score'] is not None else 'N/A'}/100 &nbsp;|&nbsp; <b>Risk level:</b> {derived['risk_level']}"
+    score_line = (
+        f"<b>Score:</b> {_evidence_readiness_headline_score_frag(properties, now)} &nbsp;|&nbsp; "
+        f"<b>Risk level:</b> {derived['risk_level']}"
+    )
     if score_delta is not None or score_change_summary:
         score_line += "<br/><b>Score change:</b> " + (score_change_summary or (f"Delta {score_delta:+d}" if score_delta is not None else "—"))
     summary_text = f"""

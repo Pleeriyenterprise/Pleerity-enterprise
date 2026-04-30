@@ -50,6 +50,10 @@ import {
 } from '../utils/portalRequirementAttention';
 import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
+import {
+  headlineScoreDisplayForDashboard,
+  headlineScoreShowsOutOf100,
+} from '../utils/scoringHeadlineDisplay';
 
 const KPI_NO_DATA = 'No data yet';
 
@@ -534,16 +538,30 @@ export default function ClientCommandCenterPage() {
           <CardTitle className="text-base">Compliance &amp; issues</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {summary && summary.score != null ? (
+          {summary && (summary.score != null || summary.score_status) ? (
             <div
               className={`rounded-xl border p-4 ${complianceStripClasses(summary.color)}`}
               data-testid="command-center-compliance-strip"
             >
               <p className="text-xs font-semibold uppercase tracking-wide opacity-90">Overall compliance</p>
               <p className="text-lg font-semibold mt-1">
-                Grade {formatDashboardGrade(summary.grade)} · Score {Math.round(Number(summary.score))}
+                Grade {formatDashboardGrade(summary.grade)} · Score{' '}
+                {headlineScoreDisplayForDashboard(summary.score, summary.score_status)}
+                {headlineScoreShowsOutOf100(summary.score, summary.score_status) ? '/100' : ''}
               </p>
+              {summary.score_status && (
+                <p className="text-xs mt-1 opacity-90">
+                  Status: {summary.score_status}
+                  {summary.last_calculated_at
+                    ? ` · Last calculated ${new Date(summary.last_calculated_at).toLocaleString()}`
+                    : ''}
+                </p>
+              )}
               {summary.message ? <p className="text-sm mt-2 opacity-95">{summary.message}</p> : null}
+              {summary.score_status_message &&
+                (summary.score_status === 'partial' || summary.score_status === 'stale') && (
+                  <p className="text-xs mt-2 opacity-95 border-t border-black/5 pt-2">{summary.score_status_message}</p>
+                )}
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs opacity-90">
                 {summary.requirements_overdue != null && (
                   <span
@@ -710,10 +728,18 @@ export default function ClientCommandCenterPage() {
                   propert
                   {(portfolioSummary.properties?.length ?? 0) === 1 ? 'y' : 'ies'}
                 </span>
-                {portfolioSummary.portfolio_score != null && (
+                {(portfolioSummary.portfolio_score != null || portfolioSummary.score_status) && (
                   <span>
                     Portfolio score:{' '}
-                    <span className="font-medium">{Math.round(Number(portfolioSummary.portfolio_score))}</span>
+                    <span className="font-medium">
+                      {headlineScoreDisplayForDashboard(
+                        portfolioSummary.portfolio_score,
+                        portfolioSummary.score_status
+                      )}
+                      {headlineScoreShowsOutOf100(portfolioSummary.portfolio_score, portfolioSummary.score_status)
+                        ? '/100'
+                        : ''}
+                    </span>
                   </span>
                 )}
                 {propertiesAtRisk > 0 && (

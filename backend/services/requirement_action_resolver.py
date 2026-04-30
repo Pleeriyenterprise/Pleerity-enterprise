@@ -4,7 +4,7 @@ separated from maintenance flows and aligned with compliance_requirement_class /
 
 Keep in sync with frontend/src/utils/requirementTakeActionResolver.js (labels and routes).
 
-JOB-class rows: envelope stays primary "book inspection / property + hash" plus optional secondary
+JOB-class rows: envelope stays primary "coordinate inspection + property hash" plus optional secondary
 upload — multi-mode guided evidence resolution is intentionally not layered onto JOB workflows until
 product policy explicitly requires it (existing job envelopes unchanged).
 """
@@ -35,7 +35,9 @@ ACTION_OBLIGATION = "OBLIGATION"
 INTENT_UPLOAD_EVIDENCE = "upload_evidence"
 INTENT_VIEW_GUIDANCE = "view_guidance"
 INTENT_MAINTENANCE = "maintenance"
-INTENT_BOOK_INSPECTION = "book_inspection"
+# Stable intent: external inspection arranged by landlord/professional; platform coordinates + evidence.
+INTENT_COORDINATE_INSPECTION_EVIDENCE = "coordinate_inspection_evidence"
+INTENT_BOOK_INSPECTION = INTENT_COORDINATE_INSPECTION_EVIDENCE  # legacy alias
 INTENT_GUIDED_EVIDENCE = "guided_evidence_resolution"
 INTENT_GUIDED_EVIDENCE_UNAVAILABLE = "guided_evidence_unavailable"
 INTENT_DIRECT_EVIDENCE = "direct_evidence_action"
@@ -182,26 +184,30 @@ def _guided_multi_mode_primary_label(policy: Dict[str, Any]) -> str:
 
 
 def job_primary_label(requirement: Dict[str, Any]) -> str:
+    """
+    JOB-class primary CTA: coordinate externally arranged inspections and upload evidence.
+    Does not imply the platform books inspections (no marketplace scheduling here).
+    """
     code = _norm_code(requirement)
     if "eicr" in code or code == "electrical_safety":
-        return "Book electrical inspection"
+        return "Coordinate electrical inspection & upload EICR"
     if "gas" in code or code in ("cp12", "gas_safety", "gas_safety_certificate"):
-        return "Book gas safety inspection"
+        return "Coordinate Gas Safety inspection & upload certificate"
     if "epc" in code:
-        return "Book EPC assessment"
+        return "Coordinate EPC assessment & upload certificate"
     if "fire" in code and "risk" in code:
-        return "Book fire risk assessment"
+        return "Coordinate fire risk assessment & upload evidence"
     if "pat" in code or "portable_appliance" in code:
-        return "Book PAT testing"
+        return "Coordinate PAT testing & upload evidence"
     if "legionella" in code:
-        return "Book legionella assessment"
+        return "Coordinate Legionella assessment & upload evidence"
     disp = str(requirement.get("display_label") or "").strip()
     if disp and disp.lower() not in ("requirement", ""):
-        return f"Book inspection — {disp}"
+        return f"Coordinate inspection & upload evidence — {disp}"
     rl = requirement_label(requirement.get("requirement_code") or requirement.get("requirement_type") or "")
     if rl and rl.lower() != "requirement":
-        return f"Book inspection — {rl}"
-    return "Book inspection / arrange compliance"
+        return f"Coordinate inspection & upload evidence — {rl}"
+    return "Coordinate inspection & upload compliance evidence"
 
 
 def _engine(requirement: Dict[str, Any]) -> Dict[str, Any]:
@@ -325,7 +331,7 @@ def resolve_take_action_envelope(
                 "route": primary_route,
                 "kind": "navigate",
                 "handler": "navigate",
-                "intent": INTENT_BOOK_INSPECTION,
+                "intent": INTENT_COORDINATE_INSPECTION_EVIDENCE,
             },
             "secondary": sec_upload,
             "supporting_external_links": supporting,

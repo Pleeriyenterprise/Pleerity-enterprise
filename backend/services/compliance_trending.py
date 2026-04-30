@@ -5,7 +5,6 @@ Provides "what changed" explanations for score movements.
 """
 from database import database
 from services.compliance_score import calculate_compliance_score
-from services.compliance_scoring_service import calculate_property_compliance
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 import logging
@@ -42,9 +41,9 @@ async def capture_daily_snapshot(client_id: str) -> Dict[str, Any]:
             {"client_id": client_id, "date_key": date_key},
             {
                 "$set": {
-                    "score": score_data.get("score", 0),
-                    "grade": score_data.get("grade", "?"),
-                    "color": score_data.get("color", "gray"),
+                    "score": score_data.get("score"),
+                    "grade": score_data.get("grade"),
+                    "color": score_data.get("color") or "gray",
                     "breakdown": score_data.get("breakdown", {}),
                     "stats": score_data.get("stats", {}),
                     "updated_at": now.isoformat(),
@@ -71,7 +70,7 @@ async def capture_daily_snapshot(client_id: str) -> Dict[str, Any]:
         return {
             "snapshot_id": sid,
             "action": action,
-            "score": score_data.get("score", 0),
+            "score": score_data.get("score"),
         }
     
     except Exception as e:
@@ -80,14 +79,17 @@ async def capture_daily_snapshot(client_id: str) -> Dict[str, Any]:
 
 
 async def capture_property_daily_snapshot(client_id: str, property_id: str) -> Optional[Dict[str, Any]]:
-    """Capture a daily score snapshot for one property. Idempotent per (property_id, date)."""
+    """Capture a daily score snapshot for one property. Idempotent per (property_id, date). Uses persisted Property.compliance_score only."""
     db = database.get_db()
     try:
-        result = await calculate_property_compliance(property_id)
-        score = result.get("score", 0)
-        if "error" in result:
-            logger.debug("Skip property snapshot %s: %s", property_id, result.get("error"))
+        prop = await db.properties.find_one(
+            {"property_id": property_id, "client_id": client_id},
+            {"_id": 0, "compliance_score": 1},
+        )
+        if not prop or prop.get("compliance_score") is None:
+            logger.debug("Skip property snapshot %s: no persisted score", property_id)
             return None
+        score = int(round(float(prop.get("compliance_score"))))
         now = datetime.now(timezone.utc)
         date_key = now.strftime("%Y-%m-%d")
         await db[PROPERTY_SCORE_DAILY_COLLECTION].update_one(

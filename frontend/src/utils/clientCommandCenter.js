@@ -10,6 +10,7 @@ import {
   CLIENT_INBOX_JOB_FALLBACK_CTA,
 } from './jobWorkflowUi';
 import { inboxTaskLinkedRequirementId } from './portalRequirementAttention';
+import { headlineScoreShowsOutOf100 } from './scoringHeadlineDisplay';
 
 const TERMINAL_WORK_ORDER_STATUSES = new Set(['COMPLETED', 'VERIFIED', 'CLOSED', 'CANCELLED']);
 
@@ -183,9 +184,13 @@ export function countPropertiesAtRisk(portfolioSummary, complianceSummary) {
   let n = 0;
   for (const p of props) {
     const overdue = Number(p.overdue_count ?? 0) > 0;
-    const score = p.property_score != null ? Number(p.property_score) : p.score != null ? Number(p.score) : null;
+    const raw = p.property_score != null ? p.property_score : p.score != null ? p.score : null;
+    const score = raw != null ? Number(raw) : null;
+    const st = p.score_status;
+    const numericAuthoritative =
+      score != null && !Number.isNaN(score) && headlineScoreShowsOutOf100(score, st);
     const risk = String(p.risk_level || '').toLowerCase();
-    const badScore = score != null && !Number.isNaN(score) && score < 60;
+    const badScore = numericAuthoritative && score < 60;
     const badRisk = /high|severe|critical/.test(risk);
     if (overdue || badScore || badRisk) n += 1;
   }

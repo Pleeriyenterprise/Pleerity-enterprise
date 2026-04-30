@@ -76,7 +76,13 @@ def _desired_open_gap_keys(requirement: Dict[str, Any], *, property_doc: Optiona
     keys: Set[str] = set()
     unsynced = False
     for g in gaps:
-        row = g.to_mongo(client_id=cid, property_id=pid, requirement_id=rid, requirement_code=code)
+        row = g.to_mongo(
+            client_id=cid,
+            property_id=pid,
+            requirement_id=rid,
+            requirement_code=code,
+            requirement_row=requirement,
+        )
         keys.add(str(row["gap_key"]))
         if g.gap_kind == GAP_AUTHORITY_UNSYNCED:
             unsynced = True
@@ -389,7 +395,13 @@ async def inspect_proposed_gap_composition(
             juris = _jurisdiction_for(requirement, pdoc)
             inc = 0
             for g in gaps:
-                row = g.to_mongo(client_id=cids, property_id=pid, requirement_id=rids, requirement_code=code)
+                row = g.to_mongo(
+                    client_id=cids,
+                    property_id=pid,
+                    requirement_id=rids,
+                    requirement_code=code,
+                    requirement_row=requirement,
+                )
                 gk = str(row.get("gap_key") or "")
                 if net_new_only and gk in existing:
                     continue

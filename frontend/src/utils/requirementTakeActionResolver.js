@@ -63,17 +63,19 @@ export function inferRequirementActionType(requirement) {
 
 function jobPrimaryLabel(requirement) {
   const code = normalizeRequirementCode(requirement?.requirement_code || requirement?.requirement_type || '');
-  if (code.includes('eicr') || code === 'electrical_safety') return 'Book electrical inspection';
-  if (code.includes('gas') || ['cp12', 'gas_safety', 'gas_safety_certificate'].includes(code)) return 'Book gas safety inspection';
-  if (code.includes('epc')) return 'Book EPC assessment';
-  if (code.includes('fire') && code.includes('risk')) return 'Book fire risk assessment';
-  if (code.includes('pat') || code.includes('portable_appliance')) return 'Book PAT testing';
-  if (code.includes('legionella')) return 'Book legionella assessment';
+  if (code.includes('eicr') || code === 'electrical_safety') return 'Coordinate electrical inspection & upload EICR';
+  if (code.includes('gas') || ['cp12', 'gas_safety', 'gas_safety_certificate'].includes(code)) {
+    return 'Coordinate Gas Safety inspection & upload certificate';
+  }
+  if (code.includes('epc')) return 'Coordinate EPC assessment & upload certificate';
+  if (code.includes('fire') && code.includes('risk')) return 'Coordinate fire risk assessment & upload evidence';
+  if (code.includes('pat') || code.includes('portable_appliance')) return 'Coordinate PAT testing & upload evidence';
+  if (code.includes('legionella')) return 'Coordinate Legionella assessment & upload evidence';
   const disp = String(requirement?.display_label || '').trim();
-  if (disp && disp.toLowerCase() !== 'requirement') return `Book inspection — ${disp}`;
+  if (disp && disp.toLowerCase() !== 'requirement') return `Coordinate inspection & upload evidence — ${disp}`;
   const rl = requirementLabel(requirement?.requirement_code || requirement?.requirement_type || '');
-  if (rl && rl.toLowerCase() !== 'requirement') return `Book inspection — ${rl}`;
-  return 'Book inspection / arrange compliance';
+  if (rl && rl.toLowerCase() !== 'requirement') return `Coordinate inspection & upload evidence — ${rl}`;
+  return 'Coordinate inspection & upload compliance evidence';
 }
 
 /**
@@ -115,7 +117,7 @@ function primaryIntentFromTakeActionPrimary(primary) {
   if (r.includes('/documents')) return 'upload_evidence';
   if (r.includes('/operations/issues/new')) return 'maintenance';
   if (r.includes('#compliance')) return 'view_guidance';
-  if (/#req=/.test(r) || r.includes('/properties/')) return 'book_inspection';
+  if (/#req=/.test(r) || r.includes('/properties/')) return 'coordinate_inspection_evidence';
   return 'view_requirement';
 }
 
@@ -263,7 +265,7 @@ export function resolveRequirementAction(requirement, _property = {}) {
       primary_action_label: jobPrimaryLabel(requirement),
       primary_action_handler: 'navigate',
       primary_route: primaryRoute,
-      primary_intent: 'book_inspection',
+      primary_intent: 'coordinate_inspection_evidence',
       secondary_action: secondary,
       supporting_external_links: supporting,
     };

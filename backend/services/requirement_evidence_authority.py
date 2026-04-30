@@ -652,6 +652,18 @@ def authority_state(requirement: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def normalized_evidence_state_for_policy(requirement: Dict[str, Any]) -> str:
+    """
+    Policy normalization source-of-truth:
+    1) versioned/synced evidence authority state
+    2) legacy requirement.evidence_state fallback
+    """
+    st = authority_state(requirement)
+    if st:
+        return st
+    return str(requirement.get("evidence_state") or "").strip().upper()
+
+
 def authority_runtime_requirement_status(requirement: Dict[str, Any]) -> Optional[str]:
     """
     Authoritative runtime status projection for consumers that previously read requirement.status.

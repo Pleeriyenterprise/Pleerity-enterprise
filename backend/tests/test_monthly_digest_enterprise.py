@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 from services.monthly_digest_assembly_service import reporting_period_for_previous_calendar_month
 from services.monthly_digest_assembly_service import _missing_evidence
+from services.monthly_digest_assembly_service import digest_pr5_override_observability
 from services.monthly_digest_snapshot_service import build_fingerprint_map, compute_deltas, requirement_fingerprint
 from services.jobs import effective_digest_calendar_day
 from services.monthly_digest_pdf_service import build_monthly_digest_pdf_bytes
@@ -168,3 +169,193 @@ def test_missing_evidence_uses_projected_status_not_raw_evidence_state():
     assert _missing_evidence({"status": "PENDING", "applicability": "REQUIRED"}) is True
     assert _missing_evidence({"status": "MISSING", "applicability": "REQUIRED"}) is True
     assert _missing_evidence({"status": "COMPLIANT", "evidence_state": "MISSING", "applicability": "REQUIRED"}) is False
+
+
+def test_pdf_includes_hiua_payload_lines_when_present(monkeypatch):
+    monkeypatch.setattr("reportlab.rl_config.pageCompression", 0)
+    brand = MagicMock()
+    brand.company_name = "Co"
+    brand.tagline = "T"
+    brand.primary_color = "#0B1D3A"
+    brand.logo_path = None
+    brand.include_pleerity_attribution = False
+    brand.powered_by_text = ""
+    model = {
+        "reporting_month_label": "March 2026",
+        "generated_at_display": "01 April 2026",
+        "account_name": "A",
+        "properties_count": 1,
+        "compliance_score": 80,
+        "risk_level": "Low Risk",
+        "total_requirements": 1,
+        "valid_count": 1,
+        "compliant": 1,
+        "expiring_soon": 0,
+        "overdue": 0,
+        "missing_evidence_count": 0,
+        "open_compliance_jobs": 0,
+        "open_maintenance_jobs": 0,
+        "deltas": {"has_prior_snapshot": False},
+        "include_compliance_summary": True,
+        "include_action_items": True,
+        "include_upcoming_expiries": True,
+        "include_recent_documents": True,
+        "include_recommendations": True,
+        "include_audit_summary": False,
+        "property_rows_pdf": [],
+        "requirement_rows_pdf": [],
+        "top_risk_drivers": [],
+        "top_next_actions": [],
+        "digest_hiua_line": "HIUA_UNIQUE_DIGEST_LINE_XYZ",
+        "digest_hiua_report_framing_notice": "HIUA_UNIQUE_FRAME_NOTICE_ABC",
+    }
+    pdf = build_monthly_digest_pdf_bytes(model, brand=brand)
+    assert b"HIUA_UNIQUE_DIGEST_LINE_XYZ" in pdf
+    assert b"HIUA_UNIQUE_FRAME_NOTICE_ABC" in pdf
+
+
+def test_digest_pr5_override_observability_policy_path():
+    sb = {
+        "effective_override_output": {
+            "override_output_source": "policy",
+            "fallback_applied": False,
+            "fallback_reason_codes": [],
+            "effective_portfolio_risk_state": "Critical Risk",
+        }
+    }
+    o = digest_pr5_override_observability(sb)
+    assert o["override_output_source"] == "policy"
+    assert o["fallback_applied"] is False
+    assert o["fallback_reason_codes"] == []
+
+
+def test_digest_pr5_override_observability_legacy_fallback():
+    sb = {
+        "effective_override_output": {
+            "override_output_source": "legacy_fallback",
+            "fallback_applied": True,
+            "fallback_reason_codes": ["POLICY_FIELDS_INCOMPLETE", "RECONCILIATION_IN_PROGRESS"],
+        }
+    }
+    o = digest_pr5_override_observability(sb)
+    assert o["override_output_source"] == "legacy_fallback"
+    assert o["fallback_applied"] is True
+    assert o["fallback_reason_codes"] == ["POLICY_FIELDS_INCOMPLETE", "RECONCILIATION_IN_PROGRESS"]
+
+
+def test_digest_pr5_override_observability_missing_effective_defaults():
+    assert digest_pr5_override_observability({}) == {
+        "override_output_source": None,
+        "fallback_applied": False,
+        "fallback_reason_codes": [],
+    }
+
+
+def test_digest_payload_merge_includes_pr5_keys_like_assemble():
+    """Same merge as ``assemble_monthly_digest_payload`` after building ``score_block``."""
+    score_block = {
+        "effective_override_output": {
+            "override_output_source": "policy",
+            "fallback_applied": False,
+            "fallback_reason_codes": [],
+        }
+    }
+    merged = {"compliance_score": 18, **digest_pr5_override_observability(score_block)}
+    assert merged["compliance_score"] == 18
+    assert merged["override_output_source"] == "policy"
+    assert merged["fallback_applied"] is False
+    assert merged["fallback_reason_codes"] == []
+
+
+def test_digest_pr5_observability_with_pr5_env_allowlist(monkeypatch):
+    """PR5 allowlist env on; digest observability still mirrors score_block only (no logic change)."""
+    monkeypatch.setenv("FEATURE_POLICY_BACKED_PORTFOLIO_OVERRIDE", "true")
+    monkeypatch.setenv(
+        "FEATURE_POLICY_BACKED_PORTFOLIO_OVERRIDE_TENANT_ALLOWLIST",
+        "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+    )
+    from services.portfolio_risk_override_flag import is_feature_policy_backed_portfolio_override_enabled
+
+    assert is_feature_policy_backed_portfolio_override_enabled("04ceda9f-dd72-4b70-a6f5-809bef1b7b6a") is True
+    sb = {
+        "effective_override_output": {
+            "override_output_source": "policy",
+            "fallback_applied": False,
+            "fallback_reason_codes": [],
+        }
+    }
+    o = digest_pr5_override_observability(sb)
+    assert o["override_output_source"] == "policy"
+    assert "fallback_applied" in o and "fallback_reason_codes" in o
+
+
+def test_monthly_digest_plain_text_includes_hiua_payload():
+    from models.core import EmailTemplateAlias
+    from services.email_service import EmailService
+
+    svc = EmailService()
+    txt = svc._build_text_body(
+        EmailTemplateAlias.MONTHLY_DIGEST,
+        {
+            "reporting_month_label": "March 2026",
+            "account_name": "Test",
+            "client_name": "Test",
+            "properties_count": 1,
+            "compliance_score": 80,
+            "score_status": "ok",
+            "last_calculated_at": "2026-04-01",
+            "portfolio_last_calculated_at": None,
+            "risk_level": "Low Risk",
+            "total_requirements": 1,
+            "valid_count": 1,
+            "compliant": 1,
+            "expiring_soon": 0,
+            "overdue": 0,
+            "missing_evidence_count": 0,
+            "deltas": {"has_prior_snapshot": False},
+            "urgent_items": [],
+            "primary_cta_url": "https://example.test/today",
+            "portal_link": "https://example.test/",
+            "digest_pdf_attached": False,
+            "digest_hiua_line": "PLAIN_HIUA_LINE",
+            "digest_hiua_report_framing_notice": "PLAIN_HIUA_FRAME",
+        },
+    )
+    assert "PLAIN_HIUA_LINE" in txt
+    assert "PLAIN_HIUA_FRAME" in txt
+    assert "OPERATIONAL FOLLOW-UP" in txt
+
+
+def test_monthly_digest_email_html_includes_hiua_payload():
+    from services.email_service import EmailService
+
+    svc = EmailService()
+    html = svc._build_monthly_digest_action_body_html(
+        {
+            "reporting_month_label": "March 2026",
+            "account_name": "Test",
+            "client_name": "Test",
+            "generated_at_display": "1 Apr 2026",
+            "data_as_of": "2026-04-01",
+            "properties_count": 1,
+            "compliance_score": 80,
+            "score_status": "ok",
+            "last_calculated_at": "2026-04-01",
+            "risk_level": "Low Risk",
+            "total_requirements": 2,
+            "valid_count": 2,
+            "compliant": 2,
+            "expiring_soon": 0,
+            "overdue": 0,
+            "missing_evidence_count": 0,
+            "include_compliance_summary": True,
+            "include_action_items": False,
+            "include_recommendations": True,
+            "deltas": {"has_prior_snapshot": False},
+            "digest_hiua_line": "EMAIL_HIUA_LINE_MARKER",
+            "digest_hiua_report_framing_notice": "EMAIL_HIUA_FRAME_MARKER",
+        }
+    )
+    assert "EMAIL_HIUA_LINE_MARKER" in html
+    assert "EMAIL_HIUA_FRAME_MARKER" in html
+    assert "Operational follow-up (applicability)" in html

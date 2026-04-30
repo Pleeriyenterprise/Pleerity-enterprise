@@ -4,7 +4,8 @@ from pydantic import BaseModel
 from database import database
 from middleware import client_route_guard
 from services.compliance_score import calculate_compliance_score
-from services.compliance_scoring_service import calculate_property_compliance
+from services.scoring_semantics_v1 import SCORE_AUTHORITY_UNAVAILABLE, SCORE_STATUS_UNAVAILABLE
+from services.compliance_scoring_service import get_authoritative_property_compliance_for_client
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 import asyncio
@@ -94,7 +95,7 @@ def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> s
 
 @router.get("/compliance-score")
 async def get_compliance_score(request: Request):
-    """Get the client's overall compliance score (0-100). Uses single source of truth in calculate_compliance_score (catalog when available, else stored scores)."""
+    """Get the client's overall compliance score. Headline ``score`` is the persisted portfolio aggregate; optional ``catalog_portfolio_view`` is a non-authoritative matrix preview."""
     user = await client_route_guard(request)
     client_id = user["client_id"]
 
@@ -126,8 +127,12 @@ async def get_property_compliance_score_explanation(request: Request, property_i
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
 
     try:
-        data = await calculate_property_compliance(property_id)
+        data = await get_authoritative_property_compliance_for_client(property_id, user["client_id"])
+        if data.get("error") == "property_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
         return data
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Property compliance explainability error: {e}")
         raise HTTPException(
@@ -580,6 +585,38 @@ async def get_dashboard(request: Request):
         if checklist.get("error"):
             checklist = {"items": [], "completed_at": None, "all_required_complete": False}
 
+        compliance_score_headline = None
+        try:
+            cs = await calculate_compliance_score(user["client_id"])
+            compliance_score_headline = {
+                "score": cs.get("score"),
+                "grade": cs.get("grade"),
+                "color": cs.get("color"),
+                "message": cs.get("message"),
+                "score_authority": cs.get("score_authority"),
+                "score_status": cs.get("score_status"),
+                "last_calculated_at": cs.get("last_calculated_at") or cs.get("portfolio_last_calculated_at"),
+                "score_coverage": cs.get("score_coverage"),
+                "score_status_message": cs.get("score_status_message"),
+                "scoring_semantics_version": cs.get("scoring_semantics_version"),
+                "properties_count": cs.get("properties_count"),
+            }
+        except Exception as headline_err:
+            logger.warning("dashboard compliance headline unavailable: %s", headline_err)
+            compliance_score_headline = {
+                "score": None,
+                "grade": None,
+                "color": "gray",
+                "message": "Compliance score summary unavailable.",
+                "score_authority": SCORE_AUTHORITY_UNAVAILABLE,
+                "score_status": SCORE_STATUS_UNAVAILABLE,
+                "last_calculated_at": None,
+                "score_coverage": None,
+                "score_status_message": None,
+                "scoring_semantics_version": None,
+                "properties_count": None,
+            }
+
         return {
             "client": client,
             "properties": properties_out,
@@ -590,6 +627,7 @@ async def get_dashboard(request: Request):
                 "expiring_soon": expiring
             },
             "onboarding_checklist": checklist,
+            "compliance_score_headline": compliance_score_headline,
         }
     
     except Exception as e:

@@ -7,6 +7,7 @@ from services.compliance_requirement_registry import build_requirement_plan_for_
 from services.provisioning import REQUIREMENT_GENERATION_SOURCE_DB_RULE
 from services.requirement_client_runtime_surface import (
     CLIENT_RUNTIME_REQUIREMENT_SURFACE_INVARIANT,
+    project_requirement_row_client_runtime,
     requirement_row_passes_client_runtime_surface_gates,
 )
 
@@ -217,6 +218,27 @@ def test_requirement_rules_row_not_subject_to_planner_membership():
         plan_types_lower=pt,
         published_registry_entries=None,
     )
+
+
+def test_project_runtime_row_preserves_policy_snapshot_fields():
+    row = {
+        "requirement_id": "r-pol",
+        "requirement_type": "gas_safety",
+        "status": "PENDING",
+        "evidence_state": "MISSING",
+        "requirement_code_normalized": "gas_safety",
+        "applicability_state": "REQUIRED",
+        "is_mandatory": True,
+        "policy_criticality": "HIGH",
+        "policy_classification_version": "v1",
+    }
+    out = project_requirement_row_client_runtime(row)
+    assert out["requirement_code_normalized"] == "gas_safety"
+    assert out["applicability_state"] == "REQUIRED"
+    assert out["is_mandatory"] is True
+    assert out["policy_criticality"] == "HIGH"
+    assert out["policy_classification_version"] == "v1"
+    assert "evidence_state_normalized" in out
 
 
 def test_requirement_rules_row_still_rejects_explicit_wrong_jurisdiction():

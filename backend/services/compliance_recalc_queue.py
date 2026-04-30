@@ -26,6 +26,8 @@ TRIGGER_LAZY_BACKFILL = "LAZY_BACKFILL"
 # Daily scheduled sweep: enqueue recalc per property with date-scoped correlation (deduped).
 TRIGGER_SCHEDULED_PROPERTY_BATCH = "SCHEDULED_PROPERTY_BATCH"
 TRIGGER_CLIENT_JURISDICTION_UPDATED = "CLIENT_JURISDICTION_UPDATED"
+# Idempotent batch: enqueue reconciliation for properties that need persisted scores aligned.
+TRIGGER_RECONCILIATION_BATCH = "RECONCILIATION_BATCH"
 
 STATUS_PENDING = "PENDING"
 STATUS_RUNNING = "RUNNING"

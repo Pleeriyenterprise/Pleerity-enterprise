@@ -212,6 +212,7 @@ async def get_compliance_clients_summary(
             "requirements_last_updated": r.get("requirements_last_updated"),
             "portfolio_score": None,
             "portfolio_grade": None,
+            "score_status": None,
             "score_updated_at": None,
         }
         rows.append(row)
@@ -232,6 +233,7 @@ async def get_compliance_clients_summary(
                     "requirements_last_updated": None,
                     "portfolio_score": None,
                     "portfolio_grade": None,
+                    "score_status": None,
                     "score_updated_at": None,
                 }
             )
@@ -243,6 +245,7 @@ async def get_compliance_clients_summary(
             cs = await calculate_compliance_score(client_id)
             rows[0]["portfolio_score"] = cs.get("score")
             rows[0]["portfolio_grade"] = cs.get("grade")
+            rows[0]["score_status"] = cs.get("score_status")
             rows[0]["score_updated_at"] = datetime.now(timezone.utc).isoformat()
         except Exception as e:
             logger.warning("compliance-clients-summary score for %s: %s", client_id, e)

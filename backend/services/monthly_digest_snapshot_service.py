@@ -59,7 +59,7 @@ def compute_deltas(
     current_fps: Dict[str, str],
     current_reqs: List[Dict[str, Any]],
     *,
-    current_score: int,
+    current_score: Optional[int],
     current_missing_evidence: int,
     documents_uploaded_period: int,
 ) -> Dict[str, Any]:
@@ -85,7 +85,7 @@ def compute_deltas(
     prev_fps: Dict[str, str] = prev.get("requirement_fingerprints") or {}
     prev_score = prev.get("compliance_score")
     score_delta = None
-    if prev_score is not None:
+    if prev_score is not None and current_score is not None:
         try:
             score_delta = int(current_score) - int(prev_score)
         except (TypeError, ValueError):

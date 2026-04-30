@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -176,11 +176,18 @@ async def list_reports(request: Request):
 
 
 @router.get("/score-drivers.csv")
-async def get_score_drivers_csv(request: Request):
+async def get_score_drivers_csv(
+    request: Request,
+    scoring_metadata: bool = Query(
+        False,
+        description="When true, prepends SCORING_SEMANTICS_EXPORT_V1 headline metadata rows before driver data (RFC-style parsers may skip lines starting with #). Default false preserves legacy single-header CSV shape.",
+    ),
+):
     """
     Export score drivers as CSV (portfolio scope).
     Columns: CRN, Property name, Postcode, Requirement, Status, Date used, Date confidence,
     Evidence uploaded, Next step label, Last updated.
+    Optional ``scoring_metadata=true``: prepends scoring contract rows (export_format + headline fields).
     Plan-gated by reports_pdf (Portfolio and Professional only). Audit logged.
     """
     from services.plan_registry import plan_registry
@@ -223,6 +230,23 @@ async def get_score_drivers_csv(request: Request):
 
         output = io.StringIO()
         writer = csv.writer(output)
+        if scoring_metadata:
+            writer.writerow(["# export_format=SCORING_SEMANTICS_EXPORT_V1"])
+            writer.writerow(
+                [
+                    "scoring_semantics_version",
+                    score_data.get("scoring_semantics_version") or "",
+                ]
+            )
+            writer.writerow(["score_authority", score_data.get("score_authority") or ""])
+            writer.writerow(["score_status", score_data.get("score_status") or ""])
+            writer.writerow(
+                [
+                    "last_calculated_at",
+                    (score_data.get("last_calculated_at") or score_data.get("portfolio_last_calculated_at") or ""),
+                ]
+            )
+            writer.writerow([])
         writer.writerow([
             "CRN", "Property name", "Postcode", "Requirement", "Status", "Date used",
             "Date confidence", "Evidence uploaded", "Next step label", "Last updated",
@@ -260,7 +284,12 @@ async def get_score_drivers_csv(request: Request):
             actor_id=user.get("portal_user_id"),
             client_id=user["client_id"],
             resource_type="report",
-            metadata={"report_type": "score_drivers_csv", "scope": "portfolio"},
+            metadata={
+                "report_type": "score_drivers_csv",
+                "scope": "portfolio",
+                "scoring_metadata": scoring_metadata,
+                "export_format": "SCORING_SEMANTICS_EXPORT_V1" if scoring_metadata else "score_drivers_legacy_v0",
+            },
         )
 
         filename = f"score_drivers_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.csv"
