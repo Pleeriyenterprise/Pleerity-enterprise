@@ -5,6 +5,9 @@ Uses Compliance Score v1 (evidence-based, no legal verdicts) from compliance_sco
 
 All score changes must go through recalculate_and_persist(); no route implements
 its own scoring. Dashboard and GET /compliance-score read stored property scores.
+
+Admin ``validate-compliance-score`` with ``fix=true`` calls
+``recalculate_and_persist`` with ``REASON_ADMIN_VALIDATOR_REPAIR`` (Stream B).
 """
 from database import database
 from datetime import datetime, timezone, date, timedelta
@@ -34,6 +37,8 @@ REASON_PROPERTY_CREATED = "PROPERTY_CREATED"
 REASON_LAZY_BACKFILL = "LAZY_BACKFILL"
 # First-time repair when a client reads property explainability and the row has no persisted score yet.
 REASON_SCORE_READ_REPAIR = "SCORE_READ_REPAIR"
+# Admin POST validate-compliance-score with fix=true (canonical persist via recalculate_and_persist).
+REASON_ADMIN_VALIDATOR_REPAIR = "ADMIN_VALIDATOR_REPAIR"
 
 
 def _parse_due_date(due_date_str) -> Optional[datetime]:

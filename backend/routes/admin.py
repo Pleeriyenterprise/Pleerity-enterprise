@@ -2574,7 +2574,15 @@ async def validate_compliance_score(
     body: ValidateComplianceScoreRequest = Body(default=ValidateComplianceScoreRequest()),
 ):
     """Admin-only: verify stored compliance score matches freshly computed score.
-    Optionally fix=true updates stored score to computed and writes snapshot + COMPLIANCE_SCORE_REPAIRED audit.
+
+    **Stream B:** When ``fix=true`` and a mismatch exists, persistence uses only
+    ``compliance_scoring_service.recalculate_and_persist`` with
+    ``REASON_ADMIN_VALIDATOR_REPAIR`` (single writer). Emits
+    ``COMPLIANCE_SCORE_MISMATCH_DETECTED`` (if mismatch), then canonical
+    ``COMPLIANCE_SCORE_UPDATED`` from recalc, then ``COMPLIANCE_SCORE_REPAIRED``.
+    Shared ``correlation_id`` links audit metadata.
+
+    When ``fix=false``, diagnostic only (compare + optional mismatch audit).
     """
     user = await admin_route_guard(request)
     db = database.get_db()
@@ -2588,7 +2596,11 @@ async def validate_compliance_score(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Property not found",
             )
-        from services.compliance_scoring_service import calculate_property_compliance, WEIGHTS_VERSION
+        from services.compliance_scoring_service import (
+            calculate_property_compliance,
+            recalculate_and_persist,
+            REASON_ADMIN_VALIDATOR_REPAIR,
+        )
 
         result = await calculate_property_compliance(property_id)
         if result.get("error"):
@@ -2617,7 +2629,9 @@ async def validate_compliance_score(
             "breakdown_diffs": breakdown_diffs if breakdown_diffs else None,
         }
 
+        repaired = False
         if not match:
+            correlation_id = f"ADMIN_VALIDATOR_REPAIR:{property_id}:{uuid.uuid4().hex[:12]}"
             await create_audit_log(
                 action=AuditAction.COMPLIANCE_SCORE_MISMATCH_DETECTED,
                 actor_id=user.get("portal_user_id"),
@@ -2629,72 +2643,25 @@ async def validate_compliance_score(
                     "stored_score": stored_score,
                     "computed_score": computed_score,
                     "diff_summary": diff_summary,
+                    "correlation_id": correlation_id,
                 },
             )
             if body.fix:
-                now = datetime.now(timezone.utc)
-                new_breakdown = result.get("breakdown", {})
-                await db.properties.update_one(
-                    {"property_id": property_id},
-                    {"$set": {
-                        "compliance_score": computed_score,
-                        "compliance_breakdown": new_breakdown,
-                        "scoring_jurisdiction_bucket": result.get("jurisdiction"),
-                        "compliance_last_calculated_at": now.isoformat(),
-                        "compliance_version": result.get("weights_version", WEIGHTS_VERSION),
-                        "compliance_score_pending": False,
-                    }},
-                )
-                breakdown_summary = {
-                    "status_score": new_breakdown.get("status_score"),
-                    "expiry_score": new_breakdown.get("expiry_score"),
-                    "document_score": new_breakdown.get("document_score"),
-                    "overdue_penalty_score": new_breakdown.get("overdue_penalty_score"),
-                    "risk_score": new_breakdown.get("risk_score"),
-                }
-                history_doc = {
-                    "property_id": property_id,
-                    "client_id": prop["client_id"],
-                    "score": computed_score,
-                    "breakdown_summary": breakdown_summary,
-                    "created_at": now.isoformat(),
-                    "reason": "VALIDATOR_REPAIR",
-                    "actor": {"id": user.get("portal_user_id"), "role": "ADMIN"},
-                }
-                await db.property_compliance_score_history.insert_one(history_doc)
-                from services.score_ledger_service import log_score_change
-                from utils.risk_bands import score_to_grade_color_message
-                before_grade = None
-                if stored_score is not None:
-                    g, _, _ = score_to_grade_color_message(int(round(stored_score)))
-                    before_grade = g
-                after_grade_g, _, _ = score_to_grade_color_message(int(round(computed_score)))
-                await log_score_change(
-                    client_id=prop["client_id"],
-                    property_id=property_id,
-                    actor_type="ADMIN",
-                    actor_id=user.get("portal_user_id"),
-                    trigger_reason="VALIDATOR_REPAIR",
-                    trigger_type="SCHEDULED_RECALC",
-                    trigger_label="Score corrected (admin)",
-                    before_score=stored_score,
-                    after_score=computed_score,
-                    before_grade=before_grade,
-                    after_grade=after_grade_g,
-                    drivers_before={
-                        "status": stored_breakdown.get("status_score"),
-                        "timeline": stored_breakdown.get("expiry_score"),
-                        "documents": stored_breakdown.get("document_score"),
-                        "overdue_penalty": stored_breakdown.get("overdue_penalty_score"),
+                recalc_result = await recalculate_and_persist(
+                    property_id,
+                    REASON_ADMIN_VALIDATOR_REPAIR,
+                    actor={"id": user.get("portal_user_id"), "role": "ADMIN"},
+                    context={
+                        "correlation_id": correlation_id,
+                        "diff_summary": diff_summary,
                     },
-                    drivers_after={
-                        "status": computed_breakdown.get("status_score"),
-                        "timeline": computed_breakdown.get("expiry_score"),
-                        "documents": computed_breakdown.get("document_score"),
-                        "overdue_penalty": computed_breakdown.get("overdue_penalty_score"),
-                    },
-                    rule_version=result.get("weights_version", "v1"),
                 )
+                if recalc_result.get("error"):
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Recalculation failed: {recalc_result.get('error')}",
+                    )
+                new_score = recalc_result.get("score")
                 await create_audit_log(
                     action=AuditAction.COMPLIANCE_SCORE_REPAIRED,
                     actor_id=user.get("portal_user_id"),
@@ -2702,13 +2669,17 @@ async def validate_compliance_score(
                     resource_type="property",
                     resource_id=property_id,
                     before_state={"compliance_score": stored_score},
-                    after_state={"compliance_score": computed_score},
+                    after_state={"compliance_score": new_score},
                     metadata={
                         "property_id": property_id,
                         "previous_score": stored_score,
-                        "new_score": computed_score,
+                        "new_score": new_score,
+                        "correlation_id": correlation_id,
+                        "diff_summary": diff_summary,
+                        "canonical_reason": REASON_ADMIN_VALIDATOR_REPAIR,
                     },
                 )
+                repaired = True
 
         return {
             "property_id": property_id,
@@ -2716,7 +2687,7 @@ async def validate_compliance_score(
             "computed_score": computed_score,
             "match": match,
             "diff_summary": diff_summary,
-            "repaired": bool(not match and body.fix),
+            "repaired": repaired,
         }
     except HTTPException:
         raise

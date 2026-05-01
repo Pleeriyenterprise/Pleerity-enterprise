@@ -47,6 +47,7 @@ from services.work_order_pricing_service import (
     reject_quote_for_work_order,
     submit_quote_for_work_order,
 )
+from services.requirement_evidence_authority import sync_requirement_evidence_authority
 from utils.audit import create_audit_log
 from utils.expiry_utils import get_computed_status
 
@@ -293,6 +294,7 @@ async def mark_requirement_not_applicable_by_id(
             }
         },
     )
+    await sync_requirement_evidence_authority(db, rid, property_id_hint=prop_id or None)
     await create_audit_log(
         action=AuditAction.REQUIREMENT_ACTION_TRIGGERED,
         actor_id=_actor_id(user),
@@ -355,6 +357,7 @@ async def reopen_requirement(request: Request, requirement_id: str, user: Dict[s
             }
         },
     )
+    await sync_requirement_evidence_authority(db, rid, property_id_hint=prop_id or None)
     await create_audit_log(
         action=AuditAction.REQUIREMENT_ACTION_TRIGGERED,
         actor_id=_actor_id(user),

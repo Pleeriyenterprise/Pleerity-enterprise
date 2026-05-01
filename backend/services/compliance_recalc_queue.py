@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from typing import Optional
 import logging
 
+from utils.compliance_fanout_log import compliance_fanout_extra
+
 logger = logging.getLogger(__name__)
 
 # Trigger reasons (match task correlation_id rules)
@@ -81,6 +83,18 @@ async def enqueue_compliance_recalc(
         return True
     except Exception as e:
         if "duplicate key" in str(e).lower() or "E11000" in str(e):
+            logger.info(
+                "compliance_fanout: recalc_enqueue duplicate key no-op",
+                extra=compliance_fanout_extra(
+                    op="recalc_enqueue",
+                    stage="dedupe",
+                    client_id=client_id,
+                    property_id=property_id,
+                    correlation_id=correlation_id,
+                    trigger_reason=trigger_reason,
+                    dedupe=True,
+                ),
+            )
             return False
         raise
     finally:
@@ -97,4 +111,13 @@ async def enqueue_compliance_recalc(
                 "enqueue_compliance_recalc: risk regen schedule failed property_id=%s: %s",
                 property_id,
                 regen_err,
+                extra=compliance_fanout_extra(
+                    op="recalc_enqueue",
+                    stage="failed",
+                    client_id=client_id,
+                    property_id=property_id,
+                    correlation_id=correlation_id,
+                    trigger_reason=trigger_reason,
+                    exc_type=type(regen_err).__name__,
+                ),
             )

@@ -218,7 +218,7 @@ async def materialize_requirements_for_property(
                 property_id=property_id,
                 requirement_id=str(rid),
                 before=dict(existing),
-                pipeline_applicability_state=str(policy_facts["applicability_state"]),
+                pipeline_applicability_state=str(policy_facts["pipeline_applicability_state"]),
                 event_type="MATERIALIZATION_PIPELINE_APPLICABILITY",
                 actor={"type": "system", "id": "requirement_materialization"},
             )
@@ -275,7 +275,7 @@ async def materialize_requirements_for_property(
                 property_id=property_id,
                 requirement_id=str(doc.get("requirement_id") or ""),
                 before={},
-                pipeline_applicability_state=str(doc_policy_facts["applicability_state"]),
+                pipeline_applicability_state=str(doc_policy_facts["pipeline_applicability_state"]),
                 event_type="MATERIALIZATION_PIPELINE_APPLICABILITY",
                 actor={"type": "system", "id": "requirement_materialization"},
             )

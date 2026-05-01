@@ -2,6 +2,20 @@
 Provides a 0-100 score based on requirement statuses, expiry timelines, documents,
 and property-specific risk factors.
 
+**Stream B — score authority (reads vs writes)**
+
+- **Authoritative property headline persistence** is only
+  ``compliance_scoring_service.recalculate_and_persist`` (plus the job queue that
+  drains into it). Admin ``validate-compliance-score`` with ``fix=true`` uses that
+  same path with ``REASON_ADMIN_VALIDATOR_REPAIR``.
+- **This module** aggregates **already-persisted** ``Property.compliance_score``
+  for portfolio headline and builds live ``stats`` from the portal runtime
+  projection — authoritative for **client reads**, not a substitute for the
+  enterprise write path.
+- **``_calculate_compliance_score_legacy_from_db``** — **non-authoritative**;
+  full client recompute from DB; **no callers** in production code paths (grep
+  audit 2026-04); kept for reference / emergencies only.
+
 Enhanced Version (January 2026):
 - Requirement type weighting (Gas Safety/EICR more critical than EPC)
 - HMO property multiplier (stricter compliance requirements)
@@ -937,8 +951,15 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
 
 
 async def _calculate_compliance_score_legacy_from_db(client_id: str) -> Dict[str, Any]:
-    """Legacy path: compute client score from full DB (used only if needed for fallback).
-    Kept for reference; normal path uses stored property scores.
+    """**NON-AUTHORITATIVE / LEGACY — diagnostic or reference only.**
+
+    Computes a client-level score by walking requirements in Mongo without using
+    the persisted enterprise headline. **Not** invoked by routes or jobs in the
+    current tree; ``calculate_compliance_score`` is the supported read path.
+
+    Do not wire this to client-visible KPIs without product + Stream B tracker
+    approval. Prefer ``recalculate_and_persist`` per property, then aggregate
+    stored scores.
     """
     db = database.get_db()
     try:

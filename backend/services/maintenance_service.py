@@ -10,6 +10,8 @@ import os
 import uuid
 from database import database
 import logging
+
+from utils.compliance_fanout_log import compliance_fanout_extra
 from auth import generate_secure_token, hash_token
 from services.work_order_assignment_constants import (
     ASSIGNMENT_ROUTING_ASSIGNED,
@@ -1092,7 +1094,19 @@ async def update_work_order(
                     }
                 )
             except Exception as outcome_err:
-                logger.debug("Action outcome work_order_completed skip: %s", outcome_err)
+                logger.warning(
+                    "Action outcome work_order_completed skip: %s",
+                    outcome_err,
+                    extra=compliance_fanout_extra(
+                        op="outcome_apply",
+                        stage="failed",
+                        client_id=str(result.get("client_id") or "") or None,
+                        property_id=str(result.get("property_id") or "") or None,
+                        requirement_id=str(result.get("linked_property_requirement_id") or "") or None,
+                        correlation_id=f"work_order_completed:{work_order_id}",
+                        exc_type=type(outcome_err).__name__,
+                    ),
+                )
         if evidence_keys_append and prev_kind == WORK_ORDER_KIND_COMPLIANCE and result.get("client_id"):
             try:
                 from services.compliance_outcome_engine import (
@@ -1121,7 +1135,19 @@ async def update_work_order(
                     }
                 )
             except Exception as cert_e:
-                logger.debug("Compliance certificate_uploaded outcome skip: %s", cert_e)
+                logger.warning(
+                    "Compliance certificate_uploaded outcome skip: %s",
+                    cert_e,
+                    extra=compliance_fanout_extra(
+                        op="outcome_apply",
+                        stage="failed",
+                        client_id=str(result.get("client_id") or "") or None,
+                        property_id=str(result.get("property_id") or "") or None,
+                        requirement_id=str(result.get("linked_property_requirement_id") or "") or None,
+                        correlation_id=f"certificate_uploaded:{work_order_id}",
+                        exc_type=type(cert_e).__name__,
+                    ),
+                )
         if evidence_keys_append and result and result.get("client_id"):
             prev_keys = set((prev_snapshot or {}).get("evidence_keys") or [])
             newly_added = [k for k in (evidence_keys_append or []) if k and str(k).strip() and k not in prev_keys]

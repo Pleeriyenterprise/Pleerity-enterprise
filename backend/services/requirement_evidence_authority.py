@@ -27,6 +27,7 @@ from datetime import datetime, timezone, date
 from typing import Any, Dict, List, Optional, Tuple
 
 from models import DocumentStatus, RequirementStatus
+from utils.compliance_fanout_log import compliance_fanout_extra
 from models.evidence_review import EvidenceReviewState
 from services.evidence_document_match_engine import document_blocks_verified_satisfaction
 from services.evidence_review_config import is_feature_evidence_review_v2
@@ -599,14 +600,35 @@ async def sync_requirement_evidence_authority(
         from services.compliance_gap_sync import sync_compliance_gaps_for_requirement
 
         sync_out = await sync_compliance_gaps_for_requirement(db, merged, property_doc=property_doc)
-        if sync_out.get("errors"):
+        errs = sync_out.get("errors") or []
+        if errs:
             logger.warning(
                 "sync_compliance_gaps_for_requirement reported errors requirement_id=%s: %s",
                 requirement_id,
-                sync_out["errors"],
+                errs,
+                extra=compliance_fanout_extra(
+                    op="gap_sync",
+                    stage="partial",
+                    client_id=str(requirement.get("client_id") or "") or None,
+                    property_id=str(pid or "") or None,
+                    requirement_id=str(requirement_id),
+                    error_count=len(errs),
+                ),
             )
     except Exception as gap_exc:
-        logger.warning("sync_compliance_gaps_for_requirement failed requirement_id=%s: %s", requirement_id, gap_exc)
+        logger.warning(
+            "sync_compliance_gaps_for_requirement failed requirement_id=%s: %s",
+            requirement_id,
+            gap_exc,
+            extra=compliance_fanout_extra(
+                op="gap_sync",
+                stage="partial",
+                client_id=str(requirement.get("client_id") or "") or None,
+                property_id=str(pid or "") or None,
+                requirement_id=str(requirement_id),
+                exc_type=type(gap_exc).__name__,
+            ),
+        )
     return blob
 
 

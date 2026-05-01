@@ -251,30 +251,29 @@ async def run_tenant_requirement_policy_backfill(
             last_requirement_id = rid
             try:
                 facts, core = _requirement_policy_facts_and_core_patch(req)
-                prov = merge_provenance_into_requirement_patch(req, str(facts["applicability_state"]))
+                prov = merge_provenance_into_requirement_patch(req, str(facts["pipeline_applicability_state"]))
                 patch = {**core, **prov}
-                if not _requirement_policy_backfill_write_needed(req, core, prov):
-                    continue
-                await rl.tick()
-                await _retry(
-                    lambda: db.requirements.update_one(
-                        {"client_id": client_id, "requirement_id": rid},
-                        {"$set": patch},
-                    ),
-                    max_retries=max_retries,
-                    backoff_seconds=backoff_seconds,
-                )
-                await maybe_audit_applicability_transition(
-                    db,
-                    client_id=client_id,
-                    property_id=req.get("property_id"),
-                    requirement_id=rid,
-                    before=dict(req),
-                    after_patch=prov,
-                    event_type="POLICY_BACKFILL_PIPELINE_APPLICABILITY",
-                    actor={"type": "system", "id": "compliance_policy_backfill"},
-                )
-                updated += 1
+                if _requirement_policy_backfill_write_needed(req, core, prov):
+                    await rl.tick()
+                    await _retry(
+                        lambda: db.requirements.update_one(
+                            {"client_id": client_id, "requirement_id": rid},
+                            {"$set": patch},
+                        ),
+                        max_retries=max_retries,
+                        backoff_seconds=backoff_seconds,
+                    )
+                    await maybe_audit_applicability_transition(
+                        db,
+                        client_id=client_id,
+                        property_id=req.get("property_id"),
+                        requirement_id=rid,
+                        before=dict(req),
+                        after_patch=prov,
+                        event_type="POLICY_BACKFILL_PIPELINE_APPLICABILITY",
+                        actor={"type": "system", "id": "compliance_policy_backfill"},
+                    )
+                    updated += 1
             except Exception as e:
                 failed += 1
                 await _dead_letter(

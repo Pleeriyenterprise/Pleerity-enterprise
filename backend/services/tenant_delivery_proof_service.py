@@ -18,6 +18,7 @@ from models import AuditAction, UserRole
 from utils.audit import create_audit_log
 
 from services.compliance_gap_sync import sync_compliance_gaps_for_requirement
+from utils.compliance_fanout_log import compliance_fanout_extra
 from services.compliance_pack import compliance_pack_service
 from services.notification_orchestrator import NotificationOrchestrator
 
@@ -319,7 +320,19 @@ async def initiate_tenant_compliance_delivery(
                     try:
                         await sync_compliance_gaps_for_requirement(db, full, property_doc=prop)
                     except Exception as sync_e:
-                        logger.warning("gap sync after tenant delivery failed rid=%s: %s", rid, sync_e)
+                        logger.warning(
+                            "gap sync after tenant delivery failed rid=%s: %s",
+                            rid,
+                            sync_e,
+                            extra=compliance_fanout_extra(
+                                op="gap_sync",
+                                stage="failed",
+                                client_id=str(client_id),
+                                property_id=str(property_id),
+                                requirement_id=str(rid),
+                                exc_type=type(sync_e).__name__,
+                            ),
+                        )
         return {
             "delivery_id": delivery_id,
             "outcome": "sent",

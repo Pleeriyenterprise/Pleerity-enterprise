@@ -9,11 +9,17 @@ Converts concrete user/system actions into deterministic, auditable outcomes:
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from database import database
 from services.compliance_scoring_service import recalculate_and_persist
+from utils.compliance_fanout_log import compliance_fanout_extra
+
+logger = logging.getLogger(__name__)
+
+_MAX_REQUIREMENTS_FOR_OUTCOME_AUTHORITY_SYNC = 500
 
 
 EVENT_CERTIFICATE_UPLOADED = "certificate_uploaded"
@@ -166,6 +172,55 @@ async def _set_requirement_compliant(event: Dict[str, Any]) -> None:
     )
 
 
+async def _sync_requirement_evidence_authority_after_compliant_set(event: Dict[str, Any]) -> None:
+    """
+    After _set_requirement_compliant mutates requirement rows, refresh evidence authority
+    (which includes gap sync) so persisted gaps match obligation state before scoring.
+    Tenant-scoped: client_id + property_id from the outcome event only.
+    """
+    req_type = (event.get("requirement_type") or "").strip()
+    if not req_type:
+        return
+    client_id = str(event.get("client_id") or "").strip()
+    property_id = str(event.get("property_id") or "").strip()
+    if not client_id or not property_id:
+        return
+    db = database.get_db()
+    from services.requirement_evidence_authority import sync_requirement_evidence_authority
+
+    rows = await db.requirements.find(
+        {
+            "client_id": client_id,
+            "property_id": property_id,
+            "$or": [{"requirement_type": req_type}, {"requirement_code": req_type}],
+        },
+        {"_id": 0, "requirement_id": 1},
+    ).to_list(_MAX_REQUIREMENTS_FOR_OUTCOME_AUTHORITY_SYNC)
+    for row in rows:
+        rid = row.get("requirement_id")
+        if not rid:
+            continue
+        try:
+            await sync_requirement_evidence_authority(db, str(rid), property_id_hint=property_id)
+        except Exception as exc:
+            logger.warning(
+                "sync_requirement_evidence_authority after outcome compliant-set failed "
+                "client_id=%s property_id=%s requirement_id=%s: %s",
+                client_id,
+                property_id,
+                rid,
+                exc,
+                extra=compliance_fanout_extra(
+                    op="authority_sync",
+                    stage="failed",
+                    client_id=client_id,
+                    property_id=property_id,
+                    requirement_id=str(rid),
+                    exc_type=type(exc).__name__,
+                ),
+            )
+
+
 async def apply_action_outcome(event: Dict[str, Any]) -> Dict[str, Any]:
     """
     Apply a compliance action outcome and return a UX payload.
@@ -204,6 +259,7 @@ async def apply_action_outcome(event: Dict[str, Any]) -> Dict[str, Any]:
     # Apply deterministic state effects before recalculation.
     if event_type in (EVENT_CERTIFICATE_VERIFIED, EVENT_REQUIREMENT_COMPLETED):
         await _set_requirement_compliant(event)
+        await _sync_requirement_evidence_authority_after_compliant_set(event)
         await _mark_related_risk_resolved(event)
     elif event_type == EVENT_WORK_ORDER_COMPLETED:
         meta = event.get("metadata") or {}

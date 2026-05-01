@@ -14,6 +14,7 @@ from models import AuditAction, UserRole
 from utils.audit import create_audit_log
 
 from services.compliance_gap_sync import sync_compliance_gaps_for_requirement
+from utils.compliance_fanout_log import compliance_fanout_extra
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,19 @@ async def _sync_requirements_for_proof(
             try:
                 await sync_compliance_gaps_for_requirement(db, full, property_doc=prop)
             except Exception as e:
-                logger.warning("gap sync after tenant delivery reconcile failed rid=%s: %s", rid, e)
+                logger.warning(
+                    "gap sync after tenant delivery reconcile failed rid=%s: %s",
+                    rid,
+                    e,
+                    extra=compliance_fanout_extra(
+                        op="gap_sync",
+                        stage="failed",
+                        client_id=str(cid) if cid else None,
+                        property_id=str(pid) if pid else None,
+                        requirement_id=str(rid),
+                        exc_type=type(e).__name__,
+                    ),
+                )
 
 
 async def apply_message_log_to_tenant_delivery_proofs(db, log: Dict[str, Any]) -> List[str]:

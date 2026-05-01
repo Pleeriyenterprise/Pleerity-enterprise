@@ -120,6 +120,10 @@ def test_mark_not_applicable_cancels_job_when_confirmed(client_http):
         patch("routes.api_compliance_workflow.maintenance_service.update_work_order", new_callable=AsyncMock, side_effect=track_update),
         patch("routes.api_compliance_workflow.create_audit_log", new_callable=AsyncMock),
         patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock),
+        patch(
+            "routes.api_compliance_workflow.sync_requirement_evidence_authority",
+            new_callable=AsyncMock,
+        ) as sync_auth,
     ):
         res = client_http.post(
             f"/api/requirements/{REQ_ID}/mark-not-applicable",
@@ -128,3 +132,50 @@ def test_mark_not_applicable_cancels_job_when_confirmed(client_http):
     assert res.status_code == 200
     assert res.json().get("ok") is True
     assert any(x[0] == "wo-active-2" and x[1].get("status") == "CANCELLED" for x in updates)
+    sync_auth.assert_awaited_once()
+    assert sync_auth.await_args[0][1] == REQ_ID
+    assert sync_auth.await_args[1].get("property_id_hint") == PROP_ID
+
+
+def test_reopen_requirement_calls_sync_evidence_authority(client_http):
+    mock_db = _mock_db_for_requirement()
+
+    async def req_find_one_na(filt, *args, **kwargs):
+        if filt.get("requirement_id") == REQ_ID and filt.get("client_id") == CLIENT_ID:
+            return {
+                "requirement_id": REQ_ID,
+                "client_id": CLIENT_ID,
+                "property_id": PROP_ID,
+                "requirement_code": "gas_safety",
+                "requirement_type": "gas_safety",
+                "jurisdiction": "England",
+                "applicability": "NOT_REQUIRED",
+                "status": "NOT_REQUIRED",
+                "client_surface_visible": True,
+                "requirement_generation_source": "catalog_registry",
+            }
+        return None
+
+    mock_db.requirements.find_one = AsyncMock(side_effect=req_find_one_na)
+    mock_db.requirements.update_one = AsyncMock(return_value={"modified_count": 1})
+
+    with (
+        patch.object(db_singleton, "get_db", return_value=mock_db),
+        patch("routes.api_compliance_workflow.create_audit_log", new_callable=AsyncMock),
+        patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock),
+        patch(
+            "routes.api_compliance_workflow.sync_requirement_evidence_authority",
+            new_callable=AsyncMock,
+        ) as sync_auth,
+        patch(
+            "routes.api_compliance_workflow._client_requirement_row_eligible",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+    ):
+        res = client_http.post(f"/api/requirements/{REQ_ID}/reopen")
+    assert res.status_code == 200
+    assert res.json().get("ok") is True
+    sync_auth.assert_awaited_once()
+    assert sync_auth.await_args[0][1] == REQ_ID
+    assert sync_auth.await_args[1].get("property_id_hint") == PROP_ID

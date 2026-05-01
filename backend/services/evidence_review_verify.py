@@ -12,6 +12,7 @@ from models import AuditAction, DocumentStatus, RequirementStatus
 from models.evidence_review import AssuranceTier, EvidenceReviewState
 
 from utils.audit import create_audit_log
+from utils.compliance_fanout_log import compliance_fanout_extra
 
 from services.evidence_review_actions import correlation_id_new, document_is_calendrically_expired, run_validation_for_document, transition_review_fields
 from services.evidence_review_policy import promotions_allowed_for_accept_unverified
@@ -215,8 +216,20 @@ async def execute_verify_document_v2(
                     "metadata": meta,
                 }
             )
-    except Exception:
-        pass
+    except Exception as outcome_err:
+        logger.warning(
+            "evidence_review_verify: apply_action_outcome certificate_verified failed: %s",
+            outcome_err,
+            extra=compliance_fanout_extra(
+                op="outcome_apply",
+                stage="failed",
+                client_id=str(document.get("client_id") or ""),
+                property_id=str(document.get("property_id") or "") or None,
+                requirement_id=str(document.get("requirement_id") or "") or None,
+                correlation_id=f"certificate_verified:{document_id}",
+                exc_type=type(outcome_err).__name__,
+            ),
+        )
 
     try:
         await _append_document_evidence_to_work_order(document_id, document.get("work_order_id"))

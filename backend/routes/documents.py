@@ -4,6 +4,7 @@ from database import database
 from middleware import client_route_guard, admin_route_guard
 from models import Document, DocumentStatus, RequirementStatus, AuditAction
 from utils.audit import create_audit_log
+from utils.compliance_fanout_log import compliance_fanout_extra
 from utils.api_errors import log_api_error, structured_error
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from config.security_limits import security_limits
@@ -1436,7 +1437,19 @@ async def perform_client_document_upload(
             }
         )
     except Exception as outcome_err:
-        logger.debug("Action outcome skip for document upload: %s", outcome_err)
+        logger.warning(
+            "Action outcome skip for document upload: %s",
+            outcome_err,
+            extra=compliance_fanout_extra(
+                op="outcome_apply",
+                stage="failed",
+                client_id=str(user.get("client_id") or ""),
+                property_id=str(property_id or "") or None,
+                requirement_id=str(requirement_id) if requirement_id else None,
+                correlation_id=f"certificate_uploaded:{document.document_id}",
+                exc_type=type(outcome_err).__name__,
+            ),
+        )
 
     out: Dict[str, Any] = {
         "message": "Document uploaded successfully",
@@ -2090,7 +2103,19 @@ async def verify_document(
                     }
                 )
         except Exception as outcome_err:
-            logger.debug("Action outcome certificate_verified skip: %s", outcome_err)
+            logger.warning(
+                "Action outcome certificate_verified skip: %s",
+                outcome_err,
+                extra=compliance_fanout_extra(
+                    op="outcome_apply",
+                    stage="failed",
+                    client_id=str(document.get("client_id") or ""),
+                    property_id=str(document.get("property_id") or "") or None,
+                    requirement_id=str(document.get("requirement_id") or "") or None,
+                    correlation_id=f"certificate_verified:{document_id}",
+                    exc_type=type(outcome_err).__name__,
+                ),
+            )
 
         try:
             await _append_document_evidence_to_work_order(document_id, document.get("work_order_id"))
@@ -3130,7 +3155,19 @@ async def apply_ai_extraction(
                     }
                 )
         except Exception as outcome_err:
-            logger.debug("Action outcome skip for extraction apply: %s", outcome_err)
+            logger.warning(
+                "Action outcome skip for extraction apply: %s",
+                outcome_err,
+                extra=compliance_fanout_extra(
+                    op="outcome_apply",
+                    stage="failed",
+                    client_id=str(document.get("client_id") or ""),
+                    property_id=str(document.get("property_id") or "") or None,
+                    requirement_id=str(requirement_id) if requirement_id else None,
+                    correlation_id=f"certificate_verified:{document_id}",
+                    exc_type=type(outcome_err).__name__,
+                ),
+            )
 
         try:
             await _append_document_evidence_to_work_order(document_id, document.get("work_order_id"))

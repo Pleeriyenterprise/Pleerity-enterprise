@@ -244,13 +244,39 @@ class TestJurisdictionSeparateFromScoringBucket:
         db.documents.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
         db.clients.find_one = AsyncMock(return_value={})
 
+        _eff = {
+            "base_portfolio_risk_state": "Low Risk",
+            "effective_portfolio_risk_state": "Low Risk",
+            "risk_override_reasons": [],
+            "critical_property_count": 0,
+            "high_risk_gap_count": 0,
+            "unknown_or_stale_property_count": 0,
+            "attention_required": False,
+            "critical_property_escalation": False,
+            "suppress_positive_headline": False,
+        }
+        _override_bundle = {
+            "legacy_override_output": _eff,
+            "policy_override_output": _eff,
+            "effective_override_output": _eff,
+        }
         with patch("services.compliance_score.database.get_db", return_value=db):
             with patch(
                 "services.catalog_compliance.get_portfolio_compliance_from_catalog",
                 new_callable=AsyncMock,
                 return_value=None,
             ):
-                result = await calculate_compliance_score("c1")
+                with patch(
+                    "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+                    new_callable=AsyncMock,
+                    return_value={"by_kind": {}, "by_severity": {}, "total_open": 0, "policy": {}},
+                ):
+                    with patch(
+                        "services.compliance_score.build_portfolio_override_outputs",
+                        new_callable=AsyncMock,
+                        return_value=_override_bundle,
+                    ):
+                        result = await calculate_compliance_score("c1")
         by_id = {x["property_id"]: x for x in result["score_breakdown_by_property"]}
         assert by_id["p1"]["jurisdiction"] == "England"
         assert by_id["p2"]["jurisdiction"] == "Wales"
@@ -311,13 +337,39 @@ class TestDashboardReadsStoredScore:
         db.documents.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
         db.clients.find_one = AsyncMock(return_value={})
 
+        _eff = {
+            "base_portfolio_risk_state": "Low Risk",
+            "effective_portfolio_risk_state": "Low Risk",
+            "risk_override_reasons": [],
+            "critical_property_count": 0,
+            "high_risk_gap_count": 0,
+            "unknown_or_stale_property_count": 0,
+            "attention_required": False,
+            "critical_property_escalation": False,
+            "suppress_positive_headline": False,
+        }
+        _override_bundle = {
+            "legacy_override_output": _eff,
+            "policy_override_output": _eff,
+            "effective_override_output": _eff,
+        }
         with patch("services.compliance_score.database.get_db", return_value=db):
             with patch(
                 "services.catalog_compliance.get_portfolio_compliance_from_catalog",
                 new_callable=AsyncMock,
                 return_value=None,
             ):
-                result = await calculate_compliance_score("c1")
+                with patch(
+                    "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+                    new_callable=AsyncMock,
+                    return_value={"by_kind": {}, "by_severity": {}, "total_open": 0, "policy": {}},
+                ):
+                    with patch(
+                        "services.compliance_score.build_portfolio_override_outputs",
+                        new_callable=AsyncMock,
+                        return_value=_override_bundle,
+                    ):
+                        result = await calculate_compliance_score("c1")
         assert result["score"] == 80
         assert "breakdown" in result
         db.properties.find.assert_called()
@@ -383,11 +435,14 @@ class TestValidateComplianceScoreEndpoint:
         assert result["repaired"] is False
         audit.assert_called_once()
         assert getattr(audit.call_args[1]["action"], "value", str(audit.call_args[1]["action"])) == "COMPLIANCE_SCORE_MISMATCH_DETECTED"
+        meta = audit.call_args[1]["metadata"]
+        assert "correlation_id" in meta
+        assert str(meta["correlation_id"]).startswith("ADMIN_VALIDATOR_REPAIR:p1:")
 
     @pytest.mark.asyncio
-    async def test_validate_mismatch_with_fix_updates_property_and_writes_repaired_audit(self):
+    async def test_validate_mismatch_with_fix_calls_recalculate_and_persist_and_repaired_audit(self):
         from routes.admin import validate_compliance_score, ValidateComplianceScoreRequest
-        from models import AuditAction
+        from services.compliance_scoring_service import REASON_ADMIN_VALIDATOR_REPAIR
 
         request = MagicMock()
         prop = {"property_id": "p1", "client_id": "c1", "compliance_score": 70, "compliance_breakdown": {}}
@@ -405,18 +460,67 @@ class TestValidateComplianceScoreEndpoint:
                     return_value=computed,
                 ):
                     with patch("routes.admin.create_audit_log", new_callable=AsyncMock) as audit:
-                        with patch("services.score_ledger_service.log_score_change", new_callable=AsyncMock):
+                        with patch(
+                            "services.compliance_scoring_service.recalculate_and_persist",
+                            new_callable=AsyncMock,
+                            return_value={"score": 85},
+                        ) as recalc:
                             body = ValidateComplianceScoreRequest(fix=True)
                             result = await validate_compliance_score(request, "p1", body)
         assert result["match"] is False
         assert result["repaired"] is True
-        db.properties.update_one.assert_called_once()
-        assert db.properties.update_one.call_args[0][1]["$set"]["compliance_score"] == 85
-        db.property_compliance_score_history.insert_one.assert_called_once()
-        history = db.property_compliance_score_history.insert_one.call_args[0][0]
-        assert history["reason"] == "VALIDATOR_REPAIR"
-        assert history["score"] == 85
+        recalc.assert_awaited_once()
+        assert recalc.await_args.args[0] == "p1"
+        assert recalc.await_args.args[1] == REASON_ADMIN_VALIDATOR_REPAIR
+        assert recalc.await_args.kwargs["context"]["correlation_id"].startswith("ADMIN_VALIDATOR_REPAIR:p1:")
+        db.properties.update_one.assert_not_called()
+        db.property_compliance_score_history.insert_one.assert_not_called()
         assert audit.await_count == 2
         actions = [getattr(c[1]["action"], "value", str(c[1]["action"])) for c in audit.call_args_list]
         assert "COMPLIANCE_SCORE_MISMATCH_DETECTED" in actions
         assert "COMPLIANCE_SCORE_REPAIRED" in actions
+        repaired_meta = audit.call_args_list[1][1]["metadata"]
+        assert repaired_meta.get("correlation_id", "").startswith("ADMIN_VALIDATOR_REPAIR:p1:")
+        assert repaired_meta.get("canonical_reason") == REASON_ADMIN_VALIDATOR_REPAIR
+
+    @pytest.mark.asyncio
+    async def test_validate_fix_does_not_use_direct_property_writes(self):
+        """Stream B: repair path persists only via recalculate_and_persist (no admin $set / history / ledger)."""
+        from routes.admin import validate_compliance_score, ValidateComplianceScoreRequest
+
+        request = MagicMock()
+        prop = {"property_id": "p1", "client_id": "c1", "compliance_score": 70, "compliance_breakdown": {}}
+        computed = {
+            "score": 85,
+            "breakdown": {
+                "status_score": 90,
+                "expiry_score": 80,
+                "document_score": 85,
+                "overdue_penalty_score": 90,
+                "risk_score": 100,
+            },
+            "weights_version": "v2_jurisdictional",
+            "jurisdiction": "ENGLAND_WALES",
+        }
+        db = MagicMock()
+        db.properties.find_one = AsyncMock(return_value=prop)
+        db.properties.update_one = AsyncMock()
+        db.property_compliance_score_history.insert_one = AsyncMock()
+
+        with patch("routes.admin.admin_route_guard", new_callable=AsyncMock, return_value={"portal_user_id": "admin1"}):
+            with patch("routes.admin.database.get_db", return_value=db):
+                with patch(
+                    "services.compliance_scoring_service.calculate_property_compliance",
+                    new_callable=AsyncMock,
+                    return_value=computed,
+                ):
+                    with patch("routes.admin.create_audit_log", new_callable=AsyncMock):
+                        with patch(
+                            "services.compliance_scoring_service.recalculate_and_persist",
+                            new_callable=AsyncMock,
+                            return_value={"score": 85},
+                        ):
+                            body = ValidateComplianceScoreRequest(fix=True)
+                            await validate_compliance_score(request, "p1", body)
+        db.properties.update_one.assert_not_called()
+        db.property_compliance_score_history.insert_one.assert_not_called()

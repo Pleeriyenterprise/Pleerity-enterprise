@@ -7,6 +7,7 @@ from middleware import client_route_guard
 from models import Property, ComplianceStatus, AuditAction, UserRole
 from utils.expiry_utils import get_effective_expiry_date, get_computed_status, is_included_for_calendar
 from utils.audit import create_audit_log
+from utils.compliance_fanout_log import compliance_fanout_extra
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
@@ -185,6 +186,53 @@ async def create_property(request: Request, data: CreatePropertyRequest):
 # Fields that affect compliance score applicability (v1); changing any triggers recalc.
 APPLICABILITY_FIELDS = frozenset({"is_hmo", "bedrooms", "occupancy", "licence_required", "has_gas_supply", "has_gas", "tenancy_active", "furnished", "property_type"})
 
+_MAX_REQUIREMENTS_GAP_SYNC_AFTER_MATERIALIZATION = 500
+
+
+async def _sync_compliance_gaps_for_property_requirements_after_materialization(
+    db,
+    *,
+    client_id: str,
+    property_id: str,
+) -> None:
+    """
+    After requirement materialisation, persist gap rows for each requirement on this property
+    (default gap lifecycle + operational bridge). Tenant-scoped: client_id + property_id only.
+    """
+    from services.compliance_gap_sync import sync_compliance_gaps_for_requirement
+
+    cid = str(client_id or "").strip()
+    pid = str(property_id or "").strip()
+    if not cid or not pid:
+        return
+    prop_doc = await db.properties.find_one({"property_id": pid, "client_id": cid}, {"_id": 0})
+    rows = await db.requirements.find(
+        {"property_id": pid, "client_id": cid},
+        {"_id": 0},
+    ).to_list(_MAX_REQUIREMENTS_GAP_SYNC_AFTER_MATERIALIZATION)
+    for req in rows:
+        rid = req.get("requirement_id")
+        if not rid:
+            continue
+        try:
+            await sync_compliance_gaps_for_requirement(db, req, property_doc=prop_doc)
+        except Exception as exc:
+            logger.warning(
+                "patch_property: gap sync after materialisation failed client_id=%s property_id=%s requirement_id=%s: %s",
+                cid,
+                pid,
+                rid,
+                exc,
+                extra=compliance_fanout_extra(
+                    op="gap_sync",
+                    stage="failed",
+                    client_id=cid,
+                    property_id=pid,
+                    requirement_id=str(rid),
+                    exc_type=type(exc).__name__,
+                ),
+            )
+
 
 class PatchPropertyRequest(BaseModel):
     """Optional fields for PATCH; only provided keys are updated."""
@@ -279,16 +327,39 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
     from services.provisioning_status_hook import update_provisioning_status_for_property
     await update_provisioning_status_for_property(user["client_id"], property_id)
 
+    materialization_ok = False
     if jurisdiction_changed or applicability_changed:
         try:
             from services.requirement_materialization_service import materialize_requirements_for_property
 
             await materialize_requirements_for_property(user["client_id"], property_id, reconcile_obsolete=True)
+            materialization_ok = True
         except Exception as mat_err:
             logger.exception(
                 "patch_property: requirement materialisation failed property_id=%s: %s",
                 property_id,
                 mat_err,
+            )
+
+    if materialization_ok:
+        try:
+            await _sync_compliance_gaps_for_property_requirements_after_materialization(
+                db,
+                client_id=str(user["client_id"]),
+                property_id=str(property_id),
+            )
+        except Exception as gap_sweep_err:
+            logger.warning(
+                "patch_property: post-materialisation gap sync sweep failed property_id=%s: %s",
+                property_id,
+                gap_sweep_err,
+                extra=compliance_fanout_extra(
+                    op="gap_sync",
+                    stage="failed",
+                    client_id=str(user["client_id"]),
+                    property_id=str(property_id),
+                    exc_type=type(gap_sweep_err).__name__,
+                ),
             )
 
     if jurisdiction_changed:

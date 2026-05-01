@@ -99,10 +99,35 @@ async def test_catalog_portfolio_view_does_not_replace_headline_score():
             "updated_at": "2026-01-15T00:00:00+00:00",
         }
 
+    _eff = {
+        "base_portfolio_risk_state": "Low Risk",
+        "effective_portfolio_risk_state": "Low Risk",
+        "risk_override_reasons": [],
+        "critical_property_count": 0,
+        "high_risk_gap_count": 0,
+        "unknown_or_stale_property_count": 0,
+        "attention_required": False,
+        "critical_property_escalation": False,
+        "suppress_positive_headline": False,
+    }
+    _override_bundle = {
+        "legacy_override_output": _eff,
+        "policy_override_output": _eff,
+        "effective_override_output": _eff,
+    }
+
     with patch("services.compliance_score.database.get_db", return_value=db), patch(
         "services.catalog_compliance.get_portfolio_compliance_from_catalog",
         new_callable=AsyncMock,
         side_effect=_catalog,
+    ), patch(
+        "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+        new_callable=AsyncMock,
+        return_value={"by_kind": {}, "by_severity": {}, "total_open": 0, "policy": {}},
+    ), patch(
+        "services.compliance_score.build_portfolio_override_outputs",
+        new_callable=AsyncMock,
+        return_value=_override_bundle,
     ):
         result = await calculate_compliance_score("c1")
 
@@ -146,10 +171,35 @@ async def test_stats_overdue_matches_portal_projection_counts():
     documents = []
     db = _make_db_mock(properties, requirements, documents)
 
+    _eff = {
+        "base_portfolio_risk_state": "Low Risk",
+        "effective_portfolio_risk_state": "Low Risk",
+        "risk_override_reasons": [],
+        "critical_property_count": 0,
+        "high_risk_gap_count": 0,
+        "unknown_or_stale_property_count": 0,
+        "attention_required": False,
+        "critical_property_escalation": False,
+        "suppress_positive_headline": False,
+    }
+    _override_bundle = {
+        "legacy_override_output": _eff,
+        "policy_override_output": _eff,
+        "effective_override_output": _eff,
+    }
+
     with patch("services.compliance_score.database.get_db", return_value=db), patch(
         "services.catalog_compliance.get_portfolio_compliance_from_catalog",
         new_callable=AsyncMock,
         return_value=None,
+    ), patch(
+        "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+        new_callable=AsyncMock,
+        return_value={"by_kind": {}, "by_severity": {}, "total_open": 0, "policy": {}},
+    ), patch(
+        "services.compliance_score.build_portfolio_override_outputs",
+        new_callable=AsyncMock,
+        return_value=_override_bundle,
     ):
         result = await calculate_compliance_score("c1")
 

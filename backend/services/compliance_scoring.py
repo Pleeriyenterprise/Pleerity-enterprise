@@ -2,6 +2,12 @@
 Compliance Score v1: evidence-based scoring (no legal verdicts).
 Inputs: property record + linked requirements + linked documents.
 Applicable requirements from requirement_catalog.get_applicable_requirements(); only those are scored; weights renormalize to 100.
+
+**NON-AUTHORITATIVE for property persistence (Stream B):** Enterprise scores are
+computed with ``compliance_scoring_v2.compute_property_score_v2`` and persisted
+only via ``compliance_scoring_service.recalculate_and_persist``. This v1 module
+remains for **tests**, migration comparisons, and historical reference — not for
+writing ``Property.compliance_score`` in production flows.
 """
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional

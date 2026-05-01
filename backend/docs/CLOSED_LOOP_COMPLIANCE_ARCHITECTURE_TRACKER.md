@@ -1,0 +1,434 @@
+# Closed-loop compliance architecture — implementation tracker
+
+**Purpose:** Coordinate cross-cutting closed-loop work (applicability, score authority, remediation identity, CTAs, events, audit lineage) without ad-hoc scope creep. This file is **governance and planning only**; it does not replace design docs or runbooks.
+
+**Companion:** `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` (audit / gap framing).
+
+**Last updated:** 2026-04-30 (Stream E — Phase 3: structured `compliance_fanout` logging on high-risk fan-out paths).
+
+---
+
+## Implementation Order Rules
+
+1. **P0 streams must be completed before P1 streams** unless explicitly approved (document approver and rationale in the stream’s `risks` or `blocked-by` section).
+2. **No implementation PR may start** unless it **names the tracker stream** it belongs to (PR title or description: e.g. `Stream A — …`).
+3. **Every PR** that ships backend or tracker-affecting behaviour must **update this tracker** after merge (see **Architecture Authority Rules** §5–§7 for required PR fields and duplicate-truth stop rule). **Every Cursor implementation prompt** that ships backend behaviour must likewise update this tracker (`completed work`, `remaining tasks`, `risks`, implementation phases / dates).
+4. **No new feature** may bypass **Score Authority**, **CTA Contract**, **Remediation Identity**, **Event Contract**, or **Audit Lineage** rules as defined in acceptance criteria for streams B–F (and applicability separation for Stream A). If a feature cannot comply, it is blocked until criteria are relaxed in writing here.
+5. **If implementation discovers a new risk**, **update this tracker before coding further** (add to `risks` and, if needed, `blocked-by` / `depends-on`).
+
+---
+
+## Architecture Authority Rules
+
+1. **Every domain must have one named authority** — Each closed-loop domain (applicability, score, remediation correlation, CTA, event fan-out, audit) names a single module, contract, or document as the source of truth for that concern. See **Named authorities (this programme)** below.
+2. **New code must reuse the named authority** instead of creating parallel logic (no second scoring path, second resolver, or second applicability merge semantics for the same concern).
+3. **Diagnostic-only exceptions** must be clearly labelled **admin-only** and/or **non-authoritative** in code (docstring/comment) and, if user-visible, in this tracker or linked runbook so they cannot be mistaken for product truth.
+4. **Completed streams must not be rewritten** unless this tracker explicitly marks the stream **Reopen** (date, approver, rationale). Partial or in-progress streams remain open to narrow PRs that respect these rules.
+5. **Every PR must update this tracker** — At minimum: bump **Last updated**, adjust the relevant stream’s `completed work` / `remaining tasks` / `risks` / implementation phases, and append the **Changelog (tracker edits only)** row for that PR.
+6. **Every PR description must state:**
+   - **Stream** (A–F, exact label),
+   - **Authority reused** (named module/API/doc matrix row),
+   - **Files changed** (high-signal list),
+   - **Tests run** (commands or CI job names),
+   - **Remaining risks** (short, honest).
+7. **If duplicate truth is discovered** (two sources diverge for the same obligation, score, CTA, or audit story), **stop implementation** and update this tracker (`risks`, `blocked-by`, or new matrix row) **before** further coding.
+
+### Named authorities (this programme)
+
+| Domain / stream | Named authority |
+|-----------------|-----------------|
+| **Stream A — Applicability** | `resolve_policy_facts` + `applicability_provenance_pipeline` (pipeline write path); `applicability_effective_resolver` (effective read); `applicability_operator_actions` + `applicability_resolution_audit` (operator path). |
+| **Stream B — Score** | `compliance_scoring_service.recalculate_and_persist` (authoritative enterprise write); runtime filter + projection helpers referenced from scoring module docstrings (read alignment with portal). |
+| **Stream C — Remediation correlation** | Until product approves more: **`gap_key`** + `operational_root_key` bridge semantics + `client_priority_stream` → `unified_tasks_service`; correlation runbook doc once published. |
+| **Stream D — CTA (requirements)** | `requirement_action_resolver` (`take_action` / `resolve_take_action_*`). |
+| **Stream D — CTA (risk)** | `risk_signal_service` + Command Centre operations URL pattern (intentionally not the requirement resolver). |
+| **Stream E — Event fan-out** | `STREAM_E_MUTATION_FANOUT_MATRIX.md` (Stream E phase 1); code must match matrix rows. |
+| **Stream F — Audit** | `create_audit_log`; `applicability_resolution_audit` append-only contract; gap lifecycle audit flags as documented in gap sync. |
+
+### Stream lifecycle (rule 4)
+
+| Stream | Status for rewrite rule | Notes |
+|--------|-------------------------|--------|
+| A | **Open** | In progress; narrow PRs allowed. |
+| B | **Open (partial)** | Not “complete”; matrix-first, then stragglers. |
+| C | **Open** | Runbook + spike product-gated. |
+| D | **Open (partial)** | Matrix + guardrails before wide changes. |
+| E | **Open (partial)** | Phase 1 matrix; **E2.1–E2.3** gap fixes; **Phase 3** structured fan-out logs; phase 4 (outbox/debounce) deferred. |
+| F | **Open (partial)** | Join recipe doc first. |
+
+No stream is **Closed** yet. When a stream is closed, add a row here: **Closed** + date + link to PR; reopen only with explicit **Reopen** line in this table.
+
+---
+
+## Recommended cross-stream implementation order
+
+Execute in this order unless a stream’s **blocked-by** requires a pause (document rationale if deviating).
+
+1. **Stream B —** Score authority matrix (**complete** — `STREAM_B_SCORING_AUTHORITY_MATRIX.md`): endpoint → scoring source → persisted vs computed → authority class → consumers.
+2. **Stream E —** Event consistency matrix (**phase 1 complete** — `STREAM_E_MUTATION_FANOUT_MATRIX.md`): mutation → gap sync Y/N/quiet → score recalc Y/N → audit types; quiet operator semantics documented.
+3. **Stream D —** CTA contract matrix and guardrails (producer/consumer inventory; backend prefers resolver over gap `recommended_*` where ambiguous; test-locked).
+4. **Stream F —** Audit join recipe (forensics doc: how to reconstruct one story across `audit_logs`, `applicability_resolution_audit`, gap lifecycle, score history).
+5. **Stream C —** Remediation correlation runbook (ops queries: `requirement_id` / `gap_key` → gaps, issues `operational_root_key`, WO links, risk ids).
+6. **Stream C —** Internal read-model spike (**product-gated**): optional internal join endpoint or script-backed rows keyed by conceptual `remediation_key` / `source_system`; no new client product until validated.
+7. **Stream A —** Residual provenance sweeps (grep merge/read paths; reader alignment; operator regression tests) after matrices and runbook reduce blind spots.
+
+---
+
+## Stream A — Applicability Governance
+
+| Field | Content |
+|--------|---------|
+| **status** | In progress — provenance selector, effective resolver, PR4 operator commands, resolution queue, and gap refresh after operator path exist; discipline remains on readers/writers and legacy coexistence. |
+| **priority** | P0 |
+| **completed work** | Effective vs pipeline read model; append-only `applicability_resolution_audit`; internal resolution queue; operator reason enums; post-operator gap sync (quiet lifecycle where designed); runbook for ops boundaries; materialization/backfill provenance merge uses `pipeline_applicability_state` where wired (see services + tests). |
+| **remaining tasks** | Ensure **all** writers/readers that touch applicability use canonical facts (`pipeline_applicability_state` vs effective); eliminate accidental dual-truth in new routes; document any intentional exception in this tracker. |
+| **risks** | Long-lived `OPERATOR_OVERRIDE` without pipeline repair forks truth; reporting surfaces that bypass runtime filters disagree with portal KPIs. |
+| **blocked-by / depends-on** | **Depends-on:** policy/registry publish semantics (materialization timing). **Execute after** global steps 1–6 so score/event/CTA/audit/remediation inventories exist. **Blocked-by:** none unless Score/Event streams need a shared correlation id (note cross-links when introduced). |
+
+**Acceptance criteria:** (1) Single documented rule for which field is “pipeline truth” vs “effective truth” on requirement rows. (2) No merge path overwrites stored pipeline applicability with operator-influenced effective state. (3) `REVOKE_OVERRIDE` restores effective to true pipeline truth after pipeline correction. (4) Operator actions audited with required keys. (5) Runbook-aligned exception paths documented here if any.
+
+### Architectural authority
+
+- **Pipeline truth** on requirement rows: provenance patches from policy resolution + materialization/backfill paths calling `merge_provenance_into_requirement_patch` / `apply_provenance_and_audit_after_requirement_patch` must use **`pipeline_applicability_state`** from `resolve_policy_facts`, not effective `applicability_state` when provenance exists.
+- **Effective truth** for obligation semantics: `applicability_effective_resolver` + legacy dual-write per `APPLICABILITY_PROVENANCE_LEGACY_APPLICABILITY_STATE.md`.
+- **Operator mutations:** `applicability_operator_actions` + append-only `applicability_resolution_audit`; ops boundaries in `RUNBOOK_APPLICABILITY_RESOLUTION_OPERATIONS.md`.
+
+### Forbidden patterns
+
+- Passing effective `applicability_state` into provenance merge as pipeline input.
+- New routes or aggregations for client KPIs reading raw `requirements` without **`filter_requirement_rows_for_client_runtime_surfaces`** / **`project_requirement_row_client_runtime`** (or documented equivalent).
+- Writing applicability while bypassing policy facts normalizer / provenance selector where the rest of the stack does not.
+
+### Affected modules (non-exhaustive)
+
+`policy_field_normalizer.py` (and related policy facts), `applicability_provenance_pipeline.py`, `applicability_effective_resolver.py`, `applicability_operator_actions.py`, `applicability_resolution_audit.py`, `applicability_resolution_queue.py`, `requirement_materialization_service.py`, `compliance_policy_backfill_service.py`, `compliance_registry_*`, `compliance_gap_sync.py` (post-operator quiet paths), tests `test_applicability_*`, `test_requirement_materialization_*`, `test_compliance_policy_backfill_*`.
+
+### Required audit before implementation
+
+- Grep: all call sites of `merge_provenance_into_requirement_patch`, `apply_provenance_and_audit_after_requirement_patch`, direct writes to applicability/provenance on `requirements`.
+- Confirm each path’s pipeline vs effective semantics vs `resolve_policy_facts` keys; cross-check runbook (exception vs pipeline truth, revoke).
+
+### Implementation phases
+
+Each numbered phase is an intended **separate PR**; title format `Stream A — <phase>`. PR description must satisfy **Architecture Authority Rules** §6.
+
+1. **Stream A — Applicability write-path inventory** — Doc PR: table writer → fields → pipeline vs effective; link runbook.
+2. **Stream A — Residual provenance merge fixes** — Code PR only if grep finds wrong parameters; extend existing provenance/materialization/backfill tests.
+3. **Stream A — Reader alignment sweep** — Small vertical PRs (e.g. portfolio/catalog, then reporting/scripts); each uses canonical helpers or documents a tracker exception in the same PR.
+4. **Stream A — Operator edge regression pack** — Tests for `OPERATOR_OVERRIDE` / `REVOKE_OVERRIDE` with pipeline correction (reuse operator + gap sync fixtures where present).
+
+### Acceptance tests (stream-specific)
+
+- Unit/integration: pipeline not overwritten by effective in provenance merge; materialization/backfill pass `pipeline_applicability_state`.
+- New reader paths: tests for projection vs runtime filter expectations, or doc-only exception with ticket reference.
+
+### Rollout risks
+
+- Wide reader sweeps in one PR — prefer vertical slices per surface.
+- Legacy rows without provenance — cover normalizer fallback already defined in code/docs.
+
+---
+
+## Stream B — Score Authority Consolidation
+
+| Field | Content |
+|--------|---------|
+| **status** | Partial — single writer for property score; admin `validate-compliance-score` `fix=true` **implemented** via `recalculate_and_persist` + `REASON_ADMIN_VALIDATOR_REPAIR`. |
+| **priority** | P0 |
+| **current phase** | **Phase 4 — Straggler wiring** (matrix: `STREAM_E_MUTATION_FANOUT_MATRIX.md`) or **Digest / Command Centre** hardening. |
+| **completed work** | Scoring matrix; legacy labelling; **admin repair refactor:** removed direct `update_one` / `property_compliance_score_history` / `log_score_change` from `routes/admin.py` repair path; `COMPLIANCE_SCORE_MISMATCH_DETECTED` + `correlation_id`; `recalculate_and_persist` → `COMPLIANCE_SCORE_UPDATED`; then `COMPLIANCE_SCORE_REPAIRED` with shared `correlation_id` + `canonical_reason`. Tests: `TestValidateComplianceScoreEndpoint`. Docs: `STREAM_B_SCORING_AUTHORITY_MATRIX.md` §2, §5a, §9. |
+| **remaining tasks** | Straggler recalc wiring using `STREAM_E_MUTATION_FANOUT_MATRIX.md` (Stream E phase 1 **done**); digest/CC tests where claims exist. |
+| **risks** | **Triple audit** on repair (mismatch + updated + repaired) may inflate ops volume vs old two-step + partial write; dashboards filtering only `REPAIRED` should include `UPDATED` correlation for full story; `calculate_property_compliance` runs twice per repair (compare + inside recalc). |
+| **blocked-by / depends-on** | **Depends-on:** Stream A for obligation truth fed into scoring; **Stream E** phase 1 matrix (**published**) for straggler prioritisation. **Blocked-by:** none unless product freezes scoring API. |
+
+**Acceptance criteria:** (1) Documented list of **authoritative** score write paths and triggers. (2) No new surface computes property compliance score outside that authority without explicit tracker exception. (3) Staleness/repair behaviour documented and test-backed for declared paths. (4) Legacy path either removed, wrapped, or labelled “non-authoritative” in code + here.
+
+### Findings (Stream B — scoring authority matrix audit, 2026-04-30)
+
+- **Authoritative property score writers:** `recalculate_and_persist` (including `job_runner` queue worker), synchronous `recalculate_and_persist` on jurisdiction patch in `routes/properties.py`, `compliance_outcome_engine` outcome handler.
+- **Admin repair:** `routes/admin.py` `validate-compliance-score` with `fix=true` calls **`recalculate_and_persist`** with **`REASON_ADMIN_VALIDATOR_REPAIR`**; route emits mismatch + repaired audits with shared **`correlation_id`** (canonical **`COMPLIANCE_SCORE_UPDATED`** from scoring service).
+- **No callers found** for `compliance_score._calculate_compliance_score_legacy_from_db` (dead / reference-only risk only).
+- **Reads:** Client headline + stats flow through `compliance_score.calculate_compliance_score` and `get_authoritative_property_compliance_for_client`; Command Centre, portfolio, reports, digest, ops summary, score timeline fallback — all mapped in matrix doc.
+- **Enqueue-only:** Broad `enqueue_compliance_recalc` surface area (documents, properties, client, admin, jobs, governed rules, provisioning, evidence review, etc.) — does not persist score until worker runs `recalculate_and_persist`.
+
+### Recommended next PR
+
+**Stream B — Straggler wiring** (use `STREAM_E_MUTATION_FANOUT_MATRIX.md` “Recalc today?” / “Missing-wiring risk”) **or** **Stream B — Digest / Command Centre** alignment tests.
+
+### Architectural authority
+
+- **Authoritative enterprise write path:** `compliance_scoring_service.recalculate_and_persist` (history/reasons semantics per module).
+- **Read alignment:** scoring module docstring pattern — runtime filter + projection helpers consistent with portal KPIs.
+
+### Forbidden patterns
+
+- New routes/jobs persisting property compliance scores outside `compliance_scoring_service` without tracker exception.
+- Client-visible KPIs using `compliance_score` legacy entrypoints without explicit “non-authoritative” boundary in code + this tracker.
+
+### Affected modules (non-exhaustive)
+
+`compliance_scoring_service.py`, `compliance_scoring_v2.py`, `compliance_score.py`, `compliance_recalc_queue.py`, `job_runner.py`, `routes/properties.py`, `routes/admin.py`, `routes/client.py`, `routes/portfolio.py`, `routes/reports.py`, `routes/ops_compliance.py`, `command_center_service.py`, `monthly_digest_assembly_service.py`, `monthly_digest_pdf_service.py`, `email_service.py`, `reporting_service.py`, `compliance_trending.py`, `score_events_service.py`, `compliance_outcome_engine.py`, `score_ledger_service.py`, `risk_signal_service.py`, `catalog_compliance.py` (portfolio lens), `compliance_explain_admin_service.py`, authority tests (`test_compliance_*`, `test_batch*_score_*`).
+
+### Required audit before implementation
+
+- Read-only **route + job grep**: matrix **endpoint → scoring module → persisted fields → consumers** (dashboard, Today, portfolio, digest, PDF/email if applicable); mark authoritative vs legacy vs read-repair-only. **→ Done** for current backend tree; live in `STREAM_B_SCORING_AUTHORITY_MATRIX.md`.
+
+### Implementation phases
+
+Each numbered phase is an intended **separate PR**; title format `Stream B — <phase>`. PR description must satisfy **Architecture Authority Rules** §6.
+
+1. ~~**Stream B — Scoring authority matrix**~~ — **Done:** `STREAM_B_SCORING_AUTHORITY_MATRIX.md`.
+2. ~~**Stream B — Legacy path labelling**~~ — **Done.**
+3. ~~**Stream B — Admin repair vs authority**~~ — **Done:** `recalculate_and_persist` + `REASON_ADMIN_VALIDATOR_REPAIR`; audits + `correlation_id`.
+4. **Stream B — Straggler wiring** — After Stream E matrix (**available**): one micro-PR per proven missing `enqueue_compliance_recalc` / sync recalc.
+5. **Stream B — Digest / Command Centre alignment** — Targeted tests / degraded-mode docs once stragglers are known.
+
+### Acceptance tests (stream-specific)
+
+- Tests for persisted score headline vs catalog (`SCORE_AUTHORITY_PERSISTED_HEADLINE`-style patterns where present).
+- Regression tests for each newly wired recalculation path.
+
+### Rollout risks
+
+- Over-triggering recalculation (cost/latency) — keep wiring PRs minimal.
+- Lazy repair masking missing triggers — matrix must distinguish intentional vs accidental reliance on read-repair.
+
+---
+
+## Stream C — Remediation Architecture Unification
+
+| Field | Content |
+|--------|---------|
+| **status** | Not started (architecture gap) — multiple signal sources (gaps, risk, WO, issues, invoices, overdue) without one persisted remediation lifecycle record. |
+| **priority** | P0 |
+| **completed work** | Unified tasks DTO; priority stream → resolver-backed CTAs for requirement-backed actions; optional gap→issue bridge (idempotent per `gap_key`); explicit inbox non-closure semantics documented. |
+| **remaining tasks** | Define canonical remediation identity (or minimal correlation contract) across gaps/issues/WO; dedupe story across action types; closure semantics tied to evidence/gap resolve/score where product requires. |
+| **risks** | Duplicate surfacing of same obligation; operators treating dismiss/snooze as compliance closure; optional bridge off on operator sync path. |
+| **blocked-by / depends-on** | **Depends-on:** Stream D for stable requirement CTAs; Stream B for “done means score/gap reflects reality”; Stream F for audit linkage. **Blocked-by:** product decision on correlation-only MVP vs internal read-model spike scope. |
+
+**Acceptance criteria:** (1) Documented **one** remediation correlation key or lifecycle model for in-scope entities. (2) No new remediation source added without mapping into that model or documented exception. (3) Inbox actions remain non-authoritative for compliance closure unless explicitly redesigned and recorded here.
+
+### Architectural authority
+
+- **Stable keys today:** `gap_key` on `compliance_gaps`; `operational_root_key` = `gap_key` when bridge creates issues; priority stream → `unified_tasks_service` as client aggregation.
+- **Conceptual contract** (gap analysis §4, design-only): correlation via `remediation_key` / `(client_id, remediation_key, source_system)` — **documentation and read-side first**; no new persisted lifecycle entity without product approval.
+
+### Forbidden patterns
+
+- New persisted “single remediation lifecycle” store without explicit product approval and tracker update.
+- Dedupe by **`requirement_id` alone** when multiple gaps per requirement.
+- Treating Today snooze/dismiss/reviewed or risk dismiss as compliance closure.
+
+### Affected modules (non-exhaustive)
+
+`compliance_gap_engine.py`, `compliance_gap_sync.py`, `compliance_gap_operational_bridge.py`, `client_priority_stream.py`, `unified_tasks_service.py`, `client_task_state_service.py`, `command_center_service.py`, `maintenance_issues_service.py` (bridge path), work order routes/models, `risk_signal_service.py`.
+
+### Required audit before implementation
+
+- Map **source_system** → stable key: gap (`gap_key`), risk (signal id / command centre URL pattern), WO/issue linkage fields per gap analysis §3.
+- Record product gate: correlation-only MVP vs internal read-model spike before coding beyond docs/runbook.
+
+### Next PRs (concrete)
+
+1. **Stream C — Remediation correlation runbook** — Doc PR: ops query recipes (**global step 5**).
+2. **Stream C — Internal read-model spike** — Optional internal endpoint or script-backed joiner; admin-only / no client product until validated (**global step 6**, product-gated).
+3. **Stream C — Dedupe policy (risk vs gap)** — **After product rules:** narrow change in `unified_tasks_service` or priority stream.
+4. **Stream C — Bridge / quiet-sync documentation** — Doc PR: operator gap sync disables bridge by design; link from runbook.
+
+### Acceptance tests (stream-specific)
+
+- Existing unified-task / CTA tests stay green; add tests only for documented dedupe or key exposure changes.
+- If internal read-model: contract tests on shape + stable keys; no external client exposure unless explicitly routed.
+
+### Rollout risks
+
+- Dedupe collapses user-visible items incorrectly — product-owned rules first.
+- Internal endpoint misuse — match existing admin-only / feature-flag patterns.
+
+---
+
+## Stream D — CTA Contract Integrity
+
+| Field | Content |
+|--------|---------|
+| **status** | Partial — `requirement_action_resolver` / `take_action` contract and tests for Today alignment exist; cross-repo and constructed URLs remain drift class. |
+| **priority** | P1 |
+| **completed work** | Backend resolver contract + tests; documentation of parity intent with frontend resolver. |
+| **remaining tasks** | CI or contract checks preventing backend/frontend resolver drift where feasible; audit constructed CTAs (e.g. risk slim paths) vs resolver-derived URLs; empty/fallback action hardening per surface. |
+| **risks** | Dead or misleading CTAs; silent fallback URLs; partial Command Centre bundles on submodule errors. |
+| **blocked-by / depends-on** | **Depends-on:** Stream C for which entity types expose `take_action`. Matrix + guardrails run **global step 3** (before Stream A sweep); **applicability-edge** CTA expansions defer to **Stream A** (global step 7) unless explicitly approved. |
+
+**Acceptance criteria:** (1) Requirement-backed CTAs go through resolver contract. (2) New action types include contract test or documented cross-repo check. (3) No shipped CTA that cannot be traced to an obligation/signal row + policy. (4) Documented list of intentional non-resolver URLs (if any) with owner.
+
+### Architectural authority
+
+- **Requirement-backed CTAs:** `requirement_action_resolver` (`resolve_take_action_*`, `take_action`); enrichment via `unified_tasks_service` / priority mapping.
+- **Risk CTAs:** dedicated operations URL pattern (`command_center_service` / `risk_signal_service`) — intentionally separate from resolver.
+
+### Forbidden patterns
+
+- **Rule R2 (gap analysis):** New surfaces using `compliance_gaps.recommended_url` for requirement-primary CTAs when resolver should win.
+- Frontend rebuilding requirement intent URLs outside parity with backend resolver.
+- Shipping intents without URL where contract expects both.
+
+### Affected modules (non-exhaustive)
+
+`requirement_action_resolver.py`, `requirement_action_links.py`, `client_priority_stream.py`, `unified_tasks_service.py`, `command_center_service.py`, gap → priority mapping modules, Today / authority alignment tests.
+
+### Required audit before implementation
+
+- Inventory producers of `primary_action_url` / `take_action` for requirements; list gap `recommended_*` consumers (backend + frontend repo if applicable).
+- Exception table for intentional non-resolver URLs (e.g. risk slim path).
+
+### Implementation phases
+
+Each numbered phase is an intended **separate PR**; title format `Stream D — <phase>`. PR description must satisfy **Architecture Authority Rules** §6.
+
+1. **Stream D — CTA producer/consumer matrix** — Doc PR: surface → authority path → exception flag (**global step 3**).
+2. **Stream D — Backend gap field guardrails** — Resolver preferred over gap `recommended_*` where still ambiguous; test-locked.
+3. **Stream D — Resolver validation hardening** — Narrow PR: non-empty URL for shipped intents at resolver or API boundary.
+4. **Stream D — Cross-repo parity CI** — Golden test or diff gate: `requirementTakeActionResolver.js` vs `requirement_action_resolver.py` (separate repo PR if CI lives there).
+
+### Acceptance tests (stream-specific)
+
+- Extend `test_compliance_authority_alignment` / take-action matrix tests for touched intents or surfaces.
+- Command Centre: document or test degraded behaviour when subgraph errors (align with P2 “banner” scope if out of scope).
+
+### Rollout risks
+
+- Parity CI blocks on copy drift — scope golden files to **intent + URL** if agreed.
+- Hardening too strict for JOB envelope — align with existing resolver comments.
+
+---
+
+## Stream E — Event Consistency Contracts
+
+| Field | Content |
+|--------|---------|
+| **status** | Partial — phase **1** matrix + **E2.1–E2.3** + **Phase 3** structured logging **shipped**; optional matrix rows / phase 4 deferred. |
+| **priority** | P0 |
+| **current phase** | **Phase 4 — Optional outbox/debounce** (or further narrow matrix rows if product prioritises). |
+| **completed work** | Idempotent gap upserts; applicability queue; **`STREAM_E_MUTATION_FANOUT_MATRIX.md`**; **E2.1** `compliance_outcome_engine` — after `_set_requirement_compliant`, `sync_requirement_evidence_authority` per affected requirement **before** `recalculate_and_persist` (`tests/test_compliance_outcome_engine.py`); **E2.2** `api_compliance_workflow` mark-not-applicable + reopen — `sync_requirement_evidence_authority` after update (`test_compliance_workflow_mark_not_applicable_http.py`); **E2.3** `routes/properties.py` `patch_property` — post-success materialisation gap sweep via `sync_compliance_gaps_for_requirement` (cap 500, default lifecycle/bridge) (`test_properties_requirement_materialisation_http.py`). **Phase 3:** `utils/compliance_fanout_log.compliance_fanout_extra` — structured `event=compliance_fanout` on authority/gap partial-fail, recalc enqueue dedupe (`stage=dedupe`), `apply_action_outcome` swallow paths (`routes/documents.py`, `maintenance_service.py`, `evidence_review_verify.py`), tenant delivery + property sweep warnings, outcome-engine authority sync exception (`tests/test_compliance_fanout_log.py`). |
+| **remaining tasks** | Optional matrix follow-ups (e.g. tenant delivery `Enq` only — rows 13–14); `patch_requirement` audit gap (row 10 / Stream F); deeper observability (e.g. `recalculate_and_persist` inner warnings, other DEBUG-only skips); defer outbox/debounce unless product/infra approve. |
+| **risks** | Transient queue lag on `Enq`-only paths unchanged; double recalc on some verify paths unchanged; gap sweep skips when materialisation throws (logged). |
+| **blocked-by / depends-on** | **Depends-on:** Streams A, B for payloads; Stream F for correlation on new milestones. **Blocked-by:** infra if adopting outbox/debounce later. |
+
+**Acceptance criteria:** (1) For each **classified** mutation path, documented outcome: gap sync (Y/N), score (Y/N), audit event types. (2) New paths add a matrix row before merge. (3) Ordering/eventual consistency boundaries documented for client-facing surfaces.
+
+### Architectural authority
+
+- **Documented fan-out** today: **`STREAM_E_MUTATION_FANOUT_MATRIX.md`** + hand-written triggers (`requirement_evidence_authority`, operator applicability + `sync_compliance_gaps_for_requirement`, tenant delivery reconciliation, backfills) per gap analysis — **no central saga** unless product approves deferred scope.
+
+### Forbidden patterns
+
+- New mutation paths that change obligation/gap/score without updating the **mutation matrix** (this stream’s acceptance criteria).
+- Swallowing gap sync failures without structured logs where today only warnings exist.
+
+### Affected modules (non-exhaustive)
+
+`requirement_evidence_authority.py`, `compliance_gap_sync.py`, tenant delivery reconciliation modules, `tenant_delivery_proof_service.py`, `applicability_operator_actions.py`, `compliance_policy_backfill_service.py`, gap backfill services, `compliance_scoring_service.py`, `compliance_outcome_engine.py`, `routes/api_compliance_workflow.py`, `applicability_resolution_queue.py`, `risk_signal_regen_queue.py`.
+
+### Findings (Stream E — mutation matrix, 2026-04-30)
+
+- **Single matrix:** `STREAM_E_MUTATION_FANOUT_MATRIX.md` — **22** classified rows covering document upload/delete/verify/reject (client + admin), evidence authority sync, requirement PATCH, workflow API mark-not-applicable / reopen, property PATCH (jurisdiction / applicability), applicability operator (**quiet** gap sync), tenant delivery initiate + reconciliation, gap backfill vs policy gap reconciliation job, WO completion, issue resolution, admin score validate/repair, admin bulk recalc enqueue.
+- **Quiet sync:** `applicability_operator_actions` → `sync_compliance_gaps_for_requirement(..., audit_lifecycle=False, run_operational_bridge=False)` — intentional; see matrix §Cross-cutting notes.
+- **E2.1–E2.3 shipped (2026-05-01):** Outcome engine compliant-set branch + workflow API requirement mutations + property post-materialisation gap sweep — see matrix rows 17–18, 21–22, 11.
+- **Audit gap (unchanged):** Client `patch_requirement` — matrix row 10; defer Stream F unless combined PR agreed.
+- **Recalc without gap sync (unchanged):** Tenant delivery paths — matrix rows 13–14.
+- **Outcome engine:** WO / issue events that **do not** use `_set_requirement_compliant` still have **no** authority refresh on that path (by design of this slice).
+
+### Required audit before implementation
+
+- ~~Build mutation → gap sync (Y/N/quiet) → score recalc (Y/N) → audit types from code~~ **Done** — see matrix doc; keep matrix updated when adding paths.
+- Record intentional quiet operator sync (`audit_lifecycle=False`, `run_operational_bridge=False`).
+
+### Implementation phases
+
+Each numbered phase is an intended **separate PR**; title format `Stream E — <phase>`. PR description must satisfy **Architecture Authority Rules** §6.
+
+1. ~~**Stream E — Mutation fan-out matrix**~~ — **Done:** `STREAM_E_MUTATION_FANOUT_MATRIX.md` + tracker (**global step 2**).
+2. **Stream E — Matrix gap fixes** — **Done (approved slice 2026-05-01):** micro-PRs **E2.1** (outcome engine), **E2.2** (workflow API), **E2.3** (property PATCH post-materialisation); further rows optional.
+3. ~~**Stream E — Logging / observability**~~ — **Done (2026-04-30):** `compliance_fanout_extra` + WARNING/INFO on high-risk paths (authority gap partial, recalc dedupe, `apply_action_outcome` failures, tenant delivery / property sweep, outcome-engine authority sync); `tests/test_compliance_fanout_log.py`; matrix cross-cutting note §2 aligned with E2.1.
+4. **Stream E — Optional outbox/debounce** — **Defer** unless product + infra approve; separate PR + tracker update if pursued.
+
+### Recommended next PR
+
+**Stream B — Straggler wiring** (matrix columns “Recalc today?” / tenant delivery rows 13–14) **or** **Stream E — Phase 4** (outbox/debounce — product/infra gate).
+
+### Acceptance tests (stream-specific)
+
+- Per fixed path: integration or service tests for gap sync and/or score hooks.
+- Regression: quiet operator path does **not** emit gap lifecycle audit.
+
+### Rollout risks
+
+- Synchronous recalculation everywhere — prefer existing async/job patterns.
+- Accidentally auditing quiet operator gap sync — operator noise.
+
+---
+
+## Stream F — Audit Correlation & Traceability
+
+| Field | Content |
+|--------|---------|
+| **status** | Partial — `audit_logs`, `applicability_resolution_audit`, gap lifecycle, collection-specific logs; single reconstructable timeline not guaranteed without correlation keys. |
+| **priority** | P1 |
+| **completed work** | Append-only applicability audit; gap lifecycle events where enabled; patterns in `risk_signal_service` and client navigation audit. |
+| **remaining tasks** | Standardise correlation keys across new audits; document join recipe; incremental optional `audit_correlation_id` on new transitions only. |
+| **risks** | Forensics requires multiple stores; operator support misinterprets volume as noise. |
+| **blocked-by / depends-on** | **Depends-on:** Streams A–E for auditable transitions. **Blocked-by:** retention/compliance policy for new audit fields. |
+
+**Acceptance criteria:** (1) New compliance-posture transitions emit auditable records with tenant/entity ids. (2) Correlation key scheme documented (addendum or linked doc). (3) Applicability and gap critical transitions remain append-only / idempotent per existing contracts.
+
+### Architectural authority
+
+- **Stores:** `audit_logs` (`create_audit_log`), `applicability_resolution_audit`, gap lifecycle when enabled, risk / Today navigation audits.
+- **Incremental correlation:** optional shared id on **new** milestones only — no big-bang rewrite of historical rows.
+
+### Forbidden patterns
+
+- Breaking append-only / required-key contracts on `applicability_resolution_audit`.
+- Assuming a single-collection timeline without documented joins (quiet gap sync requires applicability audit + row diffs per gap analysis).
+
+### Affected modules (non-exhaustive)
+
+`create_audit_log` call sites, `applicability_resolution_audit.py`, `compliance_gap_sync.py` (audit flags), `risk_signal_service.py`, `routes/client.py` (Today), score history writers in `compliance_scoring_service.py`.
+
+### Required audit before implementation
+
+- Event types per store: applicability command, gap open/resolve/issue-created, score recalc reasons, risk dismiss.
+- Legal/retention review before new PII-bearing audit fields.
+
+### Implementation phases
+
+Each numbered phase is an intended **separate PR**; title format `Stream F — <phase>`. PR description must satisfy **Architecture Authority Rules** §6.
+
+1. **Stream F — Forensics join recipe** — Doc PR: reconstruct one remediation story from multiple collections (**global step 4**).
+2. **Stream F — Correlation id on new milestones** — Narrow PR: optional UUID on new closure-style business audits, propagated to related `audit_logs` only for that path.
+3. **Stream F — Standardise id keys on new audits** — Ensure new `create_audit_log` calls include `client_id`, `property_id`, `requirement_id` / `gap_key` consistently (no broad schema migration unless already planned).
+4. **Stream F — Score milestone audit** — Pair with Stream B straggler wiring: structured audit using existing reason constants (no new scoring formula).
+
+### Acceptance tests (stream-specific)
+
+- Tests for audit payloads including required linkage fields for new event types.
+- Applicability audit immutability tests unchanged or extended, not weakened.
+
+### Rollout risks
+
+- Correlation UUID without query guidance — document query patterns in join recipe.
+- Over-auditing operator paths — do not add gap lifecycle noise where quiet sync is intentional.
+
+---
+
+## Changelog (tracker edits only)
+
+| Date | Change |
+|------|--------|
+| 2026-04-30 | Initial tracker created with six streams and implementation order rules. |
+| 2026-04-30 | Cross-stream sequencing (B→E→D→F→C runbook→C spike→A); concrete implementation phases per stream; gap-analysis draft sections; **Architecture Authority Rules** §1–7; named-authorities + stream lifecycle tables; Implementation Order Rule 3 extended to every PR; stream sections use **Implementation phases** (PR checklist → §6). |
+| 2026-04-30 | **Stream B — Scoring authority matrix** phase: added `STREAM_B_SCORING_AUTHORITY_MATRIX.md`; updated Stream B (current phase → 2, findings, risks, admin-exception, recommended next PR, expanded affected modules, phased checklist). |
+| 2026-04-30 | **Stream B — Legacy labelling + admin repair decision:** docstrings (`compliance_score`, `compliance_scoring`, `compliance_scoring_service`, `admin.validate_compliance_score`); matrix §5a (recommend **B** now, **A** later); contract test; Stream B phase → 3; enterprise test mocks for gap aggregate + portfolio override. |
+| 2026-04-30 | **Stream B — Admin repair refactor:** `fix=true` → `recalculate_and_persist` + `REASON_ADMIN_VALIDATOR_REPAIR`; removed second writer; tracker/matrix/tests updated. |
+| 2026-04-30 | **Stream E — Mutation fan-out matrix:** added `STREAM_E_MUTATION_FANOUT_MATRIX.md`; Stream E phase 1 marked **Done**; findings + **current phase → 2**; cross-links Stream B straggler wiring; named-authorities + lifecycle + global step 2 updated. |
+| 2026-04-30 | **Stream E — Phase 3 (logging):** `compliance_fanout_log.compliance_fanout_extra`; structured WARNING/INFO on authority gap partial, compliance recalc enqueue dedupe, `apply_action_outcome` exception paths (documents, maintenance, evidence review verify v2), tenant delivery + reconciliation + `patch_property` sweep, outcome-engine post-compliant authority sync failures; `test_compliance_fanout_log.py`; matrix §2 cross-cutting note; tracker Stream E → phase **4** next. |
+| 2026-05-01 | **Stream E — Phase 2 (E2.1–E2.3):** outcome engine authority refresh after compliant-set; workflow API `sync_requirement_evidence_authority` on mark-not-applicable + reopen; property `patch_property` post-materialisation `sync_compliance_gaps_for_requirement` sweep (500 cap); tests + matrix rows 11/17/18/21/22 + tracker Stream E (phase **3** next). |
