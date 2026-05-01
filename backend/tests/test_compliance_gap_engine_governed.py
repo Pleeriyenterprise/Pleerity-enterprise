@@ -8,6 +8,7 @@ import pytest
 
 from models import AuditAction
 from services.compliance_gap_engine import (
+    ComplianceGap,
     GAP_EVIDENCE_UPLOADED_UNCONFIRMED,
     GAP_EXPIRED,
     GAP_EXPIRING_SOON,
@@ -161,6 +162,95 @@ def test_no_gap_when_verified_current_and_not_expiring():
     with patch("services.compliance_gap_engine.resolve_expiring_soon_days_for_requirement", return_value=60):
         gaps = infer_compliance_gaps_for_requirement(r, property_doc=None, now=now)
     assert gaps == []
+
+
+def _minimal_gap_wrong_url() -> ComplianceGap:
+    return ComplianceGap(
+        gap_kind=GAP_MISSING_EVIDENCE,
+        severity="HIGH",
+        title="Missing evidence",
+        description="d",
+        why_matters="w",
+        recommended_action_detail="detail",
+        priority_score=40,
+        action_type="missing_document",
+        recommended_url="/wrong-from-gap-template",
+        recommended_action_label="Wrong gap label",
+    )
+
+
+def test_gaps_to_priority_actions_suppresses_gap_url_when_canonical_primary_has_no_route():
+    """Stream D B1: navigable primary route absent — do not keep raw gap recommended_url."""
+    g = _minimal_gap_wrong_url()
+    req = {
+        "client_id": "c1",
+        "property_id": "p1",
+        "requirement_id": "r1",
+        "requirement_code": "gas_safety",
+        "jurisdiction": "England",
+        "take_action": {
+            "primary": {
+                "label": "Upload Gas Safety",
+                "kind": "navigate",
+                "handler": "navigate",
+            },
+            "contract": "requirement_take_action_v1",
+        },
+    }
+    rows = gaps_to_priority_actions([g], req)
+    assert len(rows) == 1
+    assert rows[0]["recommended_url"] == ""
+    assert rows[0]["diagnostic_gap_recommended_url"] == "/wrong-from-gap-template"
+    assert rows[0]["recommended_action_label"] == "Upload Gas Safety"
+
+
+def test_gaps_to_priority_actions_guided_primary_keeps_empty_url_not_gap():
+    g = _minimal_gap_wrong_url()
+    req = {
+        "client_id": "c1",
+        "property_id": "p1",
+        "requirement_id": "r1",
+        "requirement_code": "smoke_heat_alarms",
+        "jurisdiction": "England",
+        "take_action": {
+            "primary": {
+                "label": "Resolve requirement",
+                "route": None,
+                "kind": "guided_evidence_resolution",
+                "handler": "guided_evidence",
+                "property_id": "p1",
+                "requirement_id": "r1",
+            },
+            "contract": "requirement_take_action_v1",
+        },
+    }
+    rows = gaps_to_priority_actions([g], req)
+    assert rows[0]["recommended_url"] == ""
+    assert rows[0]["diagnostic_gap_recommended_url"] == "/wrong-from-gap-template"
+
+
+def test_gaps_to_priority_actions_direct_evidence_primary_keeps_empty_url_not_gap():
+    g = _minimal_gap_wrong_url()
+    req = {
+        "client_id": "c1",
+        "property_id": "p1",
+        "requirement_id": "r1",
+        "requirement_code": "declaration_only",
+        "jurisdiction": "England",
+        "take_action": {
+            "primary": {
+                "label": "Submit declaration",
+                "kind": "direct_evidence_action",
+                "handler": "direct_evidence",
+                "property_id": "p1",
+                "requirement_id": "r1",
+            },
+            "contract": "requirement_take_action_v1",
+        },
+    }
+    rows = gaps_to_priority_actions([g], req)
+    assert rows[0]["recommended_url"] == ""
+    assert rows[0]["diagnostic_gap_recommended_url"] == "/wrong-from-gap-template"
 
 
 def test_gaps_to_priority_action_types():

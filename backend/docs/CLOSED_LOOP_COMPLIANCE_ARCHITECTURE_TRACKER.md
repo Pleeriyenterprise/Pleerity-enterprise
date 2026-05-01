@@ -4,7 +4,7 @@
 
 **Companion:** `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` (audit / gap framing).
 
-**Last updated:** 2026-04-30 (Stream E — Phase 3: structured `compliance_fanout` logging on high-risk fan-out paths).
+**Last updated:** 2026-04-30 (Stream D — Phase 2: B1/B2 guardrails + B3 tenant_request metadata slice).
 
 ---
 
@@ -42,6 +42,7 @@
 | **Stream C — Remediation correlation** | Until product approves more: **`gap_key`** + `operational_root_key` bridge semantics + `client_priority_stream` → `unified_tasks_service`; correlation runbook doc once published. |
 | **Stream D — CTA (requirements)** | `requirement_action_resolver` (`take_action` / `resolve_take_action_*`). |
 | **Stream D — CTA (risk)** | `risk_signal_service` + Command Centre operations URL pattern (intentionally not the requirement resolver). |
+| **Stream D — CTA inventory (read-only)** | `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md` — producer/consumer audit; does not replace code authorities above. |
 | **Stream E — Event fan-out** | `STREAM_E_MUTATION_FANOUT_MATRIX.md` (Stream E phase 1); code must match matrix rows. |
 | **Stream F — Audit** | `create_audit_log`; `applicability_resolution_audit` append-only contract; gap lifecycle audit flags as documented in gap sync. |
 
@@ -52,7 +53,7 @@
 | A | **Open** | In progress; narrow PRs allowed. |
 | B | **Open (partial)** | Not “complete”; matrix-first, then stragglers. |
 | C | **Open** | Runbook + spike product-gated. |
-| D | **Open (partial)** | Matrix + guardrails before wide changes. |
+| D | **Open (partial)** | Phase 1 matrix; **Phase 2** B1/B2 + **B3** (tenant_request `metadata.take_action` + mismatch log) shipped; phases 3–4 open. |
 | E | **Open (partial)** | Phase 1 matrix; **E2.1–E2.3** gap fixes; **Phase 3** structured fan-out logs; phase 4 (outbox/debounce) deferred. |
 | F | **Open (partial)** | Join recipe doc first. |
 
@@ -66,7 +67,7 @@ Execute in this order unless a stream’s **blocked-by** requires a pause (docum
 
 1. **Stream B —** Score authority matrix (**complete** — `STREAM_B_SCORING_AUTHORITY_MATRIX.md`): endpoint → scoring source → persisted vs computed → authority class → consumers.
 2. **Stream E —** Event consistency matrix (**phase 1 complete** — `STREAM_E_MUTATION_FANOUT_MATRIX.md`): mutation → gap sync Y/N/quiet → score recalc Y/N → audit types; quiet operator semantics documented.
-3. **Stream D —** CTA contract matrix and guardrails (producer/consumer inventory; backend prefers resolver over gap `recommended_*` where ambiguous; test-locked).
+3. **Stream D —** CTA contract (**phase 1 matrix** published); **phase 2 (B1/B2/B3)** guardrails + tenant_request metadata slice **shipped**; phases 3–4 per tracker.
 4. **Stream F —** Audit join recipe (forensics doc: how to reconstruct one story across `audit_logs`, `applicability_resolution_audit`, gap lifecycle, score history).
 5. **Stream C —** Remediation correlation runbook (ops queries: `requirement_id` / `gap_key` → gaps, issues `operational_root_key`, WO links, risk ids).
 6. **Stream C —** Internal read-model spike (**product-gated**): optional internal join endpoint or script-backed rows keyed by conceptual `remediation_key` / `source_system`; no new client product until validated.
@@ -251,12 +252,13 @@ Each numbered phase is an intended **separate PR**; title format `Stream B — <
 
 | Field | Content |
 |--------|---------|
-| **status** | Partial — `requirement_action_resolver` / `take_action` contract and tests for Today alignment exist; cross-repo and constructed URLs remain drift class. |
+| **status** | Partial — phase **1** matrix + **Phase 2** B1/B2/B3 **shipped**; phases 3–4 open. |
 | **priority** | P1 |
-| **completed work** | Backend resolver contract + tests; documentation of parity intent with frontend resolver. |
-| **remaining tasks** | CI or contract checks preventing backend/frontend resolver drift where feasible; audit constructed CTAs (e.g. risk slim paths) vs resolver-derived URLs; empty/fallback action hardening per surface. |
+| **current phase** | **Phase 3 — Resolver validation hardening** (non-empty navigable URL where contract expects) **or** **Phase 4** cross-repo parity CI. |
+| **completed work** | **Phase 1:** `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md` (producer/consumer audit + §3 exceptions). **Phase 2 (2026-04-30):** **B1/B2** — `gaps_to_priority_actions` + `_primary_action_fields` gap/canonical alignment (`test_compliance_gap_engine_governed`, `test_today_requirement_cta_authority`). **B3** — `_tenant_request_tasks` attaches **`metadata.take_action`** when `property_id`+`requirement_id` resolve a requirement row (`primary_action_*` unchanged); **`logger.warning`** + `compliance_fanout_extra(op="tenant_request_cta", stage="partial")` when canonical primary is not standard `/documents` navigate for that pair (`test_unified_tasks_tenant_request_cta`). **ComplianceScorePage** driver debt remains (frontend). |
+| **remaining tasks** | Phase 3: resolver/API URL validation; phase 4: golden parity JS ↔ Python; optional Command Centre degraded-mode banner; optional future **tenant_request** primary CTA alignment **with** frontend guided `source_type` handling. |
 | **risks** | Dead or misleading CTAs; silent fallback URLs; partial Command Centre bundles on submodule errors. |
-| **blocked-by / depends-on** | **Depends-on:** Stream C for which entity types expose `take_action`. Matrix + guardrails run **global step 3** (before Stream A sweep); **applicability-edge** CTA expansions defer to **Stream A** (global step 7) unless explicitly approved. |
+| **blocked-by / depends-on** | **Depends-on:** Stream C for which entity types expose `take_action`. Matrix inventory **done**; guardrails run per Stream D phases 2–4 (**before** Stream A sweep where CTA-sensitive); **applicability-edge** CTA expansions defer to **Stream A** (global step 7) unless explicitly approved. |
 
 **Acceptance criteria:** (1) Requirement-backed CTAs go through resolver contract. (2) New action types include contract test or documented cross-repo check. (3) No shipped CTA that cannot be traced to an obligation/signal row + policy. (4) Documented list of intentional non-resolver URLs (if any) with owner.
 
@@ -273,19 +275,27 @@ Each numbered phase is an intended **separate PR**; title format `Stream B — <
 
 ### Affected modules (non-exhaustive)
 
-`requirement_action_resolver.py`, `requirement_action_links.py`, `client_priority_stream.py`, `unified_tasks_service.py`, `command_center_service.py`, gap → priority mapping modules, Today / authority alignment tests.
+`requirement_action_resolver.py`, `requirement_action_links.py`, `client_priority_stream.py`, `unified_tasks_service.py`, `command_center_service.py`, `compliance_gap_engine.py` (`gaps_to_priority_actions`), gap → priority mapping modules, `today_projection_service.py`, `risk_signal_service.py`, `requirement_truth.py`, `requirement_client_runtime_surface.py`, `catalog_compliance.py`, `monthly_digest_assembly_service.py`, `priority_actions.py`, frontend `requirementTakeActionResolver.js`, `ctaRegistry.js`, Today / Command Centre / Property Detail / Requirement Intelligence Modal; **inventory:** `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md`; Today / authority alignment tests.
 
 ### Required audit before implementation
 
-- Inventory producers of `primary_action_url` / `take_action` for requirements; list gap `recommended_*` consumers (backend + frontend repo if applicable).
-- Exception table for intentional non-resolver URLs (e.g. risk slim path).
+- ~~Inventory producers of `primary_action_url` / `take_action` for requirements; list gap `recommended_*` consumers (backend + frontend repo if applicable).~~ **Done** — see `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md`.
+- ~~Exception table for intentional non-resolver URLs (e.g. risk slim path).~~ **Done** — matrix §3.
+
+### Findings (Stream D — CTA matrix, 2026-04-30)
+
+- **Requirement CTAs** are contractually **`take_action`** / `requirement_action_resolver` on the backend, with **mandatory parity** to `frontend/src/utils/requirementTakeActionResolver.js`; Today and unified tasks enforce resolver over misaligned gap `recommended_*` when `canonical_take_action` is present (`test_today_requirement_cta_authority.py`).
+- **Risk CTAs** intentionally **bypass** the requirement resolver: copy from `risk_signal_service` (`RECOMMENDED_ACTIONS`, etc.); URL from **constructed** `/operations/risk-signals?signal_id=…` in `client_priority_stream` and `command_center_service._slim_risk` — duplicate pattern, medium drift risk if one path changes.
+- **Compliance score page** (`ComplianceScorePage.js`) still builds **synthetic** driver tasks (TODO in source) — **high** residual CTA integrity risk until drivers hydrate canonical `take_action`.
+- **Admin** priority stream (`priority_actions.py` + `AdminDashboard.js`) is a **separate** system (`/admin/…` URLs); low risk to **client** CTA contract but must not be mistaken for tenant-facing authority.
+- **`complianceObligationPresent.js`** synthesises explanatory `recommended_action_text` — informational, not navigation authority.
 
 ### Implementation phases
 
 Each numbered phase is an intended **separate PR**; title format `Stream D — <phase>`. PR description must satisfy **Architecture Authority Rules** §6.
 
-1. **Stream D — CTA producer/consumer matrix** — Doc PR: surface → authority path → exception flag (**global step 3**).
-2. **Stream D — Backend gap field guardrails** — Resolver preferred over gap `recommended_*` where still ambiguous; test-locked.
+1. ~~**Stream D — CTA producer/consumer matrix**~~ — **Done (2026-04-30):** `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md` — surface → module → label/URL authority → workflow → `take_action` bypass → audience → risk (**global step 3** inventory).
+2. **Stream D — Backend gap field guardrails** — **Done (2026-04-30):** B1 `gaps_to_priority_actions` + B2 `_primary_action_fields` + **B3** `_tenant_request_tasks` metadata + mismatch log (`test_unified_tasks_tenant_request_cta`). Phases 3–4 next.
 3. **Stream D — Resolver validation hardening** — Narrow PR: non-empty URL for shipped intents at resolver or API boundary.
 4. **Stream D — Cross-repo parity CI** — Golden test or diff gate: `requirementTakeActionResolver.js` vs `requirement_action_resolver.py` (separate repo PR if CI lives there).
 
@@ -298,6 +308,10 @@ Each numbered phase is an intended **separate PR**; title format `Stream D — <
 
 - Parity CI blocks on copy drift — scope golden files to **intent + URL** if agreed.
 - Hardening too strict for JOB envelope — align with existing resolver comments.
+
+### Recommended next PR (Stream D)
+
+**Stream D — Phase 3:** Resolver / API boundary validation for non-empty navigable URL where contract expects one **or** **Stream D — Phase 4** intent+URL golden parity. **Optional Phase 2 follow-up:** grep-only inventory for any remaining raw gap-field readers on client requirement-primary paths (no behaviour change unless findings warrant a new slice).
 
 ---
 
@@ -432,3 +446,6 @@ Each numbered phase is an intended **separate PR**; title format `Stream F — <
 | 2026-04-30 | **Stream E — Mutation fan-out matrix:** added `STREAM_E_MUTATION_FANOUT_MATRIX.md`; Stream E phase 1 marked **Done**; findings + **current phase → 2**; cross-links Stream B straggler wiring; named-authorities + lifecycle + global step 2 updated. |
 | 2026-04-30 | **Stream E — Phase 3 (logging):** `compliance_fanout_log.compliance_fanout_extra`; structured WARNING/INFO on authority gap partial, compliance recalc enqueue dedupe, `apply_action_outcome` exception paths (documents, maintenance, evidence review verify v2), tenant delivery + reconciliation + `patch_property` sweep, outcome-engine post-compliant authority sync failures; `test_compliance_fanout_log.py`; matrix §2 cross-cutting note; tracker Stream E → phase **4** next. |
 | 2026-05-01 | **Stream E — Phase 2 (E2.1–E2.3):** outcome engine authority refresh after compliant-set; workflow API `sync_requirement_evidence_authority` on mark-not-applicable + reopen; property `patch_property` post-materialisation `sync_compliance_gaps_for_requirement` sweep (500 cap); tests + matrix rows 11/17/18/21/22 + tracker Stream E (phase **3** next). |
+| 2026-04-30 | **Stream D — Phase 1 (CTA matrix):** added `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md`; named-authorities row; global step 3 wording; Stream D status/completed/remaining/current phase + findings + recommended next PR (phase 2); required-audit items marked done. |
+| 2026-04-30 | **Stream D — Phase 2 (first slice, B1/B2):** `gaps_to_priority_actions` suppresses raw gap `recommended_url` when canonical `take_action.primary` has no navigable route; `_primary_action_fields` prefers `canonical_take_action` label/route and blocks gap URL fallback on empty canonical route; tests in `test_compliance_gap_engine_governed.py` + `test_today_requirement_cta_authority.py`; tracker Stream D updated. |
+| 2026-04-30 | **Stream D — Phase 2 (B3 slice):** `_tenant_request_tasks` attaches `metadata.take_action` when requirement resolves; `logger.warning` + `compliance_fanout_extra(op="tenant_request_cta")` on non-standard-document canonical vs hardcoded upload CTA; `test_unified_tasks_tenant_request_cta.py`. |

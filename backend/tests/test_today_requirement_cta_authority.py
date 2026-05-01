@@ -198,6 +198,66 @@ def test_today_emits_guided_take_action_primary_without_navigate_url():
     assert prim.get("requirement_id") == "r1"
 
 
+def test_unified_primary_fields_canonical_empty_route_does_not_fallback_to_gap_url():
+    """Stream D B2: empty canonical primary route — use resolver URL (here guided → ''), not gap recommended_url."""
+    a = {
+        "action_type": "missing_document",
+        "related_property_id": "p1",
+        "related_requirement_id": "r1",
+        "requirement_code": "smoke_heat_alarms",
+        "jurisdiction": "England",
+        "registry_metadata": {},
+        "recommended_url": "/wrong-gap",
+        "recommended_action_label": "Wrong gap label",
+        "canonical_take_action": {
+            "primary": {
+                "label": "Resolve requirement",
+                "route": "",
+                "kind": "guided_evidence_resolution",
+                "handler": "guided_evidence",
+                "intent": "guided_evidence_resolution",
+                "property_id": "p1",
+                "requirement_id": "r1",
+            },
+            "secondary": None,
+            "supporting_external_links": [],
+            "contract": "requirement_take_action_v1",
+        },
+    }
+    eng = {"compliance_requirement_class": "DOCUMENT", "fulfillment_mode": "document"}
+    pri_type, label, url, *_ = _primary_action_fields(a, "requirement", compliance_engine=eng)
+    assert pri_type == "guided_evidence_resolution"
+    assert url == ""
+    assert label == "Resolve requirement"
+
+
+def test_unified_primary_fields_canonical_empty_label_does_not_fallback_to_gap_label():
+    """Stream D B2: empty canonical primary label — use resolver-derived label, not gap recommended_action_label."""
+    a = {
+        "action_type": "missing_document",
+        "related_property_id": "p9",
+        "related_requirement_id": "r9",
+        "requirement_code": "gas_safety",
+        "jurisdiction": "England",
+        "recommended_url": "/wrong",
+        "recommended_action_label": "Wrong label from gap",
+        "canonical_take_action": {
+            "primary": {
+                "label": "",
+                "route": "/documents?property_id=p9&requirement_id=r9",
+                "kind": "navigate",
+                "handler": "navigate",
+            },
+            "secondary": None,
+            "supporting_external_links": [],
+        },
+    }
+    pri_type, label, url, *_ = _primary_action_fields(a, "requirement", compliance_engine=None)
+    assert "/wrong" not in url
+    assert url == "/documents?property_id=p9&requirement_id=r9"
+    assert label != "Wrong label from gap"
+
+
 def test_unified_primary_fields_for_guided_resolution():
     a = {
         "action_type": "missing_document",

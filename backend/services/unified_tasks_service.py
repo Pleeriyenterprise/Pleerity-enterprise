@@ -36,8 +36,41 @@ from services.requirement_code_registry import (
 from services.compliance_requirement_engine import resolve_engine_payload_from_code
 from services.requirement_action_resolver import resolve_take_action_for_priority_action, resolve_take_action_envelope
 from services.requirement_client_runtime_surface import project_requirement_row_client_runtime
+from utils.compliance_fanout_log import compliance_fanout_extra
 
 logger = logging.getLogger(__name__)
+
+
+def _canonical_take_action_is_standard_document_navigate(
+    take_action: Dict[str, Any],
+    *,
+    property_id: str,
+    requirement_id: str,
+) -> bool:
+    """
+    True when canonical primary CTA matches the hardcoded tenant_request document-vault deep link
+    (navigate to /documents with this property_id + requirement_id). Used for mismatch logging only.
+    """
+    if not isinstance(take_action, dict) or take_action.get("suppressed"):
+        return True
+    pri = take_action.get("primary")
+    if not isinstance(pri, dict):
+        return True
+    if pri.get("external") is True:
+        return False
+    kind = str(pri.get("kind") or "").strip().lower()
+    if kind in ("guided_evidence_resolution", "direct_evidence_action"):
+        return False
+    if kind not in ("", "navigate"):
+        return False
+    route = str(pri.get("route") or "").strip()
+    if "/documents" not in route:
+        return False
+    if property_id and property_id not in route:
+        return False
+    if requirement_id and requirement_id not in route:
+        return False
+    return True
 
 # --- Display / domain mapping: priority action -> unified source_type ---
 ACTION_TO_SOURCE = {
@@ -168,13 +201,26 @@ def _primary_action_fields(
         ta_canon = a.get("canonical_take_action") if isinstance(a.get("canonical_take_action"), dict) else {}
         pri_c = ta_canon.get("primary") if isinstance(ta_canon.get("primary"), dict) else {}
         sec_c = ta_canon.get("secondary") if isinstance(ta_canon.get("secondary"), dict) else {}
-        plabel = str(resolved.get("primary_action_label") or label)
-        raw_purl = resolved.get("primary_action_url")
-        purl = str(url) if raw_purl is None else str(raw_purl)
-        if pri_c.get("label"):
-            plabel = str(pri_c.get("label") or plabel)
-        if pri_c.get("route"):
-            purl = str(pri_c.get("route") or purl)
+        # Stream D B2: when canonical_take_action.primary exists, prefer canonical label/route; empty canonical
+        # route means no gap recommended_url fallback (guided/direct/resolver-empty stay off gap templates).
+        has_canonical_primary = bool(ta_canon) and bool(pri_c)
+        if has_canonical_primary:
+            canon_label = str(pri_c.get("label") or "").strip()
+            canon_route = str(pri_c.get("route") or "").strip()
+            if canon_label:
+                plabel = canon_label
+            else:
+                rl = str(resolved.get("primary_action_label") or "").strip()
+                plabel = rl if rl else "View"
+            if canon_route:
+                purl = canon_route
+            else:
+                rp = resolved.get("primary_action_url")
+                purl = "" if rp is None else str(rp)
+        else:
+            plabel = str(resolved.get("primary_action_label") or label)
+            raw_purl = resolved.get("primary_action_url")
+            purl = str(url) if raw_purl is None else str(raw_purl)
         slabel = resolved.get("secondary_action_label")
         surl = resolved.get("secondary_action_url")
         if sec_c.get("label"):
@@ -600,6 +646,51 @@ async def _tenant_request_tasks(
         status = str(r.get("status") or "").upper()
         in_prog = status == "IN_PROGRESS"
         title = f"Tenant certificate request: {requirement_label(req_code) if req_code else 'Certificate'}"
+        metadata: Dict[str, Any] = {
+            "domain": "tenant",
+            "tenant_request_id": rid,
+            "requirement_id": req_id,
+            "requirement_code": req_code or None,
+            "related_property_id": prop_id,
+        }
+        if prop_id and req_id:
+            try:
+                req_row = await db.requirements.find_one(
+                    {"requirement_id": req_id, "property_id": prop_id, "client_id": client_id},
+                    {"_id": 0},
+                )
+                if isinstance(req_row, dict) and req_row.get("requirement_id"):
+                    pj = str(req_row.get("jurisdiction") or "").strip() or None
+                    env = resolve_take_action_envelope(
+                        req_row,
+                        property_id=prop_id,
+                        property_jurisdiction=pj,
+                    )
+                    ta = env.get("take_action")
+                    if isinstance(ta, dict) and ta:
+                        metadata["take_action"] = ta
+                        if not _canonical_take_action_is_standard_document_navigate(
+                            ta, property_id=prop_id, requirement_id=req_id
+                        ):
+                            pri = ta.get("primary") if isinstance(ta.get("primary"), dict) else {}
+                            kind = str(pri.get("kind") or "").strip() or "none"
+                            logger.warning(
+                                "tenant_request unified task: hardcoded primary CTA unchanged; "
+                                "canonical take_action is not standard document navigate (kind=%s)",
+                                kind,
+                                extra=compliance_fanout_extra(
+                                    op="tenant_request_cta",
+                                    stage="partial",
+                                    client_id=client_id,
+                                    property_id=prop_id,
+                                    requirement_id=req_id,
+                                    correlation_id=f"tenant_request:{rid}",
+                                    trigger_reason="canonical_primary_non_standard_document_navigate",
+                                ),
+                            )
+            except Exception as exc:
+                logger.debug("unified_tasks: tenant_request take_action metadata enrich failed: %s", exc)
+
         out.append(
             {
                 "id": f"tenant_request:{rid}",
@@ -627,13 +718,7 @@ async def _tenant_request_tasks(
                 "secondary_action_url": "/tenants",
                 "action_context_type": "tenant_request_certificate",
                 "primary_recommended_action": "Upload document",
-                "metadata": {
-                    "domain": "tenant",
-                    "tenant_request_id": rid,
-                    "requirement_id": req_id,
-                    "requirement_code": req_code or None,
-                    "related_property_id": prop_id,
-                },
+                "metadata": metadata,
                 "filter_tags": ["tenant", "compliance"],
             }
         )

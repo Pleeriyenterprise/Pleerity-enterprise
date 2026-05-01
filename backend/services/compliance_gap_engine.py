@@ -634,12 +634,19 @@ def gaps_to_priority_actions(gaps: List[ComplianceGap], requirement: Dict[str, A
         row["recommended_client_authority"] = "gap_engine_diagnostic"
         ta = requirement.get("take_action") if isinstance(requirement.get("take_action"), dict) else {}
         pri = ta.get("primary") if isinstance(ta.get("primary"), dict) else None
-        if pri and pri.get("route"):
-            row["recommended_url"] = str(pri.get("route") or "").strip() or g.recommended_url
-        elif pri and pri.get("kind") == "guided_evidence_resolution":
-            row["recommended_url"] = ""
-        if pri and pri.get("label"):
-            row["recommended_action_label"] = str(pri.get("label") or "").strip() or g.recommended_action_label
+        # Stream D B1: when canonical take_action has a primary, never expose raw gap recommended_url as the
+        # client primary URL if the resolver route is missing (guided/direct use empty URL; other kinds clear gap).
+        route_slip = str(pri.get("route") or "").strip() if pri else ""
+        if route_slip:
+            row["recommended_url"] = route_slip
+        elif pri:
+            kind = str(pri.get("kind") or "").strip()
+            if kind in ("guided_evidence_resolution", "direct_evidence_action"):
+                row["recommended_url"] = ""
+            elif ta:
+                row["recommended_url"] = ""
+        if pri and str(pri.get("label") or "").strip():
+            row["recommended_action_label"] = str(pri.get("label") or "").strip()
         if ta:
             row["canonical_take_action"] = ta
             row["recommended_client_authority"] = "canonical_take_action"
