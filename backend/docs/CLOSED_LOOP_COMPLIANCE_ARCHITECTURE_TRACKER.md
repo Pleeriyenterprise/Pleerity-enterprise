@@ -4,7 +4,7 @@
 
 **Companion:** `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` (audit / gap framing).
 
-**Last updated:** 2026-04-30 (Stream E — `patch_requirement` audit + tenant delivery `Enq` + outcome appendix).
+**Last updated:** 2026-04-30 (Stream C — remediation correlation runbook published).
 
 ---
 
@@ -39,7 +39,7 @@
 |-----------------|-----------------|
 | **Stream A — Applicability** | `resolve_policy_facts` + `applicability_provenance_pipeline` (pipeline write path); `applicability_effective_resolver` (effective read); `applicability_operator_actions` + `applicability_resolution_audit` (operator path). |
 | **Stream B — Score** | `compliance_scoring_service.recalculate_and_persist` (authoritative enterprise write); runtime filter + projection helpers referenced from scoring module docstrings (read alignment with portal). |
-| **Stream C — Remediation correlation** | Until product approves more: **`gap_key`** + `operational_root_key` bridge semantics + `client_priority_stream` → `unified_tasks_service`; correlation runbook doc once published. |
+| **Stream C — Remediation correlation** | **`STREAM_C_REMEDIATION_CORRELATION_RUNBOOK.md`** (read-only correlation vocabulary + join recipes); code authorities unchanged: **`gap_key`**, `operational_root_key` bridge, `client_priority_stream` → `unified_tasks_service`. |
 | **Stream D — CTA (requirements)** | `requirement_action_resolver` (`take_action` / `resolve_take_action_*`). |
 | **Stream D — CTA (risk)** | `risk_signal_service` + Command Centre operations URL pattern (intentionally not the requirement resolver). |
 | **Stream D — CTA inventory (read-only)** | `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md` — producer/consumer audit; does not replace code authorities above. |
@@ -52,7 +52,7 @@
 |--------|-------------------------|--------|
 | A | **Open** | In progress; narrow PRs allowed. |
 | B | **Open (partial)** | Not “complete”; matrix-first, then stragglers. |
-| C | **Open** | Runbook + spike product-gated. |
+| C | **Open (partial)** | **Correlation runbook published** (`STREAM_C_REMEDIATION_CORRELATION_RUNBOOK.md`); internal read-model spike + dedupe policy remain **product-gated**. |
 | D | **Open (partial)** | Phase 1 matrix; **Phase 2** B1/B2 + **B3** (tenant_request `metadata.take_action` + mismatch log) shipped; phases 3–4 open. |
 | E | **Open (partial)** | Phase 1 matrix; **E2.1–E2.3** gap fixes; **Phase 3** structured fan-out logs; phase 4 (outbox/debounce) deferred. |
 | F | **Open (partial)** | Phase 1 join recipe **published**; correlation-id milestones later. |
@@ -69,7 +69,7 @@ Execute in this order unless a stream’s **blocked-by** requires a pause (docum
 2. **Stream E —** Event consistency matrix (**phase 1 complete** — `STREAM_E_MUTATION_FANOUT_MATRIX.md`): mutation → gap sync Y/N/quiet → score recalc Y/N → audit types; quiet operator semantics documented.
 3. **Stream D —** CTA contract (**phase 1 matrix** published); **phase 2 (B1/B2/B3)** guardrails + tenant_request metadata slice **shipped**; phases 3–4 per tracker.
 4. **Stream F —** Audit join recipe (forensics doc: how to reconstruct one story across `audit_logs`, `applicability_resolution_audit`, gap lifecycle, score history).
-5. **Stream C —** Remediation correlation runbook (ops queries: `requirement_id` / `gap_key` → gaps, issues `operational_root_key`, WO links, risk ids).
+5. ~~**Stream C —** Remediation correlation runbook~~ — **Done (2026-04-30):** `STREAM_C_REMEDIATION_CORRELATION_RUNBOOK.md` (stable keys, closure vs non-closure, `remediation_key` / `source_system`, MV row shape, dedupe/closure/forbidden rules; companion to `STREAM_F_FORENSICS_JOIN_RECIPE.md`).
 6. **Stream C —** Internal read-model spike (**product-gated**): optional internal join endpoint or script-backed rows keyed by conceptual `remediation_key` / `source_system`; no new client product until validated.
 7. **Stream A —** Residual provenance sweeps (grep merge/read paths; reader alignment; operator regression tests) after matrices and runbook reduce blind spots.
 
@@ -200,19 +200,19 @@ Each numbered phase is an intended **separate PR**; title format `Stream B — <
 
 | Field | Content |
 |--------|---------|
-| **status** | Not started (architecture gap) — multiple signal sources (gaps, risk, WO, issues, invoices, overdue) without one persisted remediation lifecycle record. |
+| **status** | Partial — **correlation runbook shipped**; multiple signal sources still without one persisted remediation lifecycle record (by design until product approves spike). |
 | **priority** | P0 |
-| **completed work** | Unified tasks DTO; priority stream → resolver-backed CTAs for requirement-backed actions; optional gap→issue bridge (idempotent per `gap_key`); explicit inbox non-closure semantics documented. |
-| **remaining tasks** | Define canonical remediation identity (or minimal correlation contract) across gaps/issues/WO; dedupe story across action types; closure semantics tied to evidence/gap resolve/score where product requires. |
+| **completed work** | Unified tasks DTO; priority stream → resolver-backed CTAs for requirement-backed actions; optional gap→issue bridge (idempotent per `gap_key`); explicit inbox non-closure semantics documented. **`STREAM_C_REMEDIATION_CORRELATION_RUNBOOK.md`:** per-source stable keys, linked IDs, owner/status, closure vs non-closure, evidence/recalc and audit linkage, dedupe risk, client/admin/diagnostic audience; proposed **`remediation_key`** / **`source_system`** conventions; minimum viable remediation row (design-only); dedupe, closure, and forbidden-interpretation rules; crosswalk to `ACTION_TO_SOURCE` / `task_id`. |
+| **remaining tasks** | **Product-gated:** internal read-model spike (global step 6); dedupe policy (risk vs gap) after product rules; bridge/quiet-sync doc slice (Next PRs item 4). Optional: tighten “one conceptual model” language in APIs once spike validates. |
 | **risks** | Duplicate surfacing of same obligation; operators treating dismiss/snooze as compliance closure; optional bridge off on operator sync path. |
-| **blocked-by / depends-on** | **Depends-on:** Stream D for stable requirement CTAs; Stream B for “done means score/gap reflects reality”; Stream F for audit linkage. **Blocked-by:** product decision on correlation-only MVP vs internal read-model spike scope. |
+| **blocked-by / depends-on** | **Depends-on:** Stream D for stable requirement CTAs; Stream B for “done means score/gap reflects reality”; Stream F for audit linkage (`STREAM_F_FORENSICS_JOIN_RECIPE.md`). **Blocked-by:** product decision on internal read-model spike scope and dedupe rules (correlation **runbook** is complete). |
 
 **Acceptance criteria:** (1) Documented **one** remediation correlation key or lifecycle model for in-scope entities. (2) No new remediation source added without mapping into that model or documented exception. (3) Inbox actions remain non-authoritative for compliance closure unless explicitly redesigned and recorded here.
 
 ### Architectural authority
 
 - **Stable keys today:** `gap_key` on `compliance_gaps`; `operational_root_key` = `gap_key` when bridge creates issues; priority stream → `unified_tasks_service` as client aggregation.
-- **Conceptual contract** (gap analysis §4, design-only): correlation via `remediation_key` / `(client_id, remediation_key, source_system)` — **documentation and read-side first**; no new persisted lifecycle entity without product approval.
+- **Conceptual contract** (gap analysis §4, design-only): correlation via `remediation_key` / `(client_id, remediation_key, source_system)` — **documented** in `STREAM_C_REMEDIATION_CORRELATION_RUNBOOK.md` §3–5; no new persisted lifecycle entity without product approval.
 
 ### Forbidden patterns
 
@@ -231,7 +231,7 @@ Each numbered phase is an intended **separate PR**; title format `Stream B — <
 
 ### Next PRs (concrete)
 
-1. **Stream C — Remediation correlation runbook** — Doc PR: ops query recipes (**global step 5**).
+1. ~~**Stream C — Remediation correlation runbook**~~ — **Done (2026-04-30):** `STREAM_C_REMEDIATION_CORRELATION_RUNBOOK.md` (**global step 5**).
 2. **Stream C — Internal read-model spike** — Optional internal endpoint or script-backed joiner; admin-only / no client product until validated (**global step 6**, product-gated).
 3. **Stream C — Dedupe policy (risk vs gap)** — **After product rules:** narrow change in `unified_tasks_service` or priority stream.
 4. **Stream C — Bridge / quiet-sync documentation** — Doc PR: operator gap sync disables bridge by design; link from runbook.
@@ -455,3 +455,4 @@ Each numbered phase is an intended **separate PR**; title format `Stream F — <
 | 2026-04-30 | **Stream E — Outcome engine coverage freeze (doc + tests, no runtime change):** `STREAM_E_MUTATION_FANOUT_MATRIX.md` appendix (`compliance_outcome_engine` / `ALL_EVENTS`); `tests/test_compliance_outcome_engine_event_coverage.py`; named-authorities Stream E row; Stream E completed work + findings; **Last updated**. |
 | 2026-04-30 | **Stream E — Tenant delivery score convergence:** `enqueue_property_recalc_after_tenant_delivery_gap_batch` in `tenant_delivery_reconciliation.py`; calls from `tenant_delivery_proof_service` + `_sync_requirements_for_proof` / tenant acknowledge; matrix rows 13–14 + cross-cutting §5; tests in `test_tenant_delivery_and_audit_pack.py`; tracker Stream E completed/remaining/findings/next PR + **Last updated**. |
 | 2026-04-30 | **Stream E — `patch_requirement` audit (row 10):** `REQUIREMENT_ACTION_TRIGGERED` in `routes/properties.py`; `test_patch_requirement_audit_http.py`; matrix row 10; `STREAM_F_FORENSICS_JOIN_RECIPE.md` §5; tracker Stream E completed/remaining/findings/next PR + **Last updated**. |
+| 2026-04-30 | **Stream C — Remediation correlation runbook:** added `STREAM_C_REMEDIATION_CORRELATION_RUNBOOK.md`; named-authorities Stream C row; lifecycle **Open (partial)**; global step 5 marked done; Stream C status/completed/remaining/required-audit/Next PRs item 1; **Last updated**. |
