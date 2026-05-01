@@ -65,6 +65,34 @@ from services.admin_action_governance import (
 logger = logging.getLogger(__name__)
 
 
+async def _enqueue_recalc_after_standalone_authority_sync(
+    *,
+    property_id: Optional[str],
+    client_id: Optional[str],
+    portal_user_id: Optional[str],
+    correlation_id: str,
+) -> None:
+    """Stream B straggler: queue property score after sync_requirement_evidence_authority (no sync recalc here)."""
+    pid = (property_id or "").strip()
+    cid = (client_id or "").strip()
+    if not pid or not cid:
+        return
+    from services.compliance_recalc_queue import (
+        ACTOR_ADMIN,
+        TRIGGER_DOC_STATUS_CHANGED,
+        enqueue_compliance_recalc,
+    )
+
+    await enqueue_compliance_recalc(
+        property_id=pid,
+        client_id=cid,
+        trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
+        actor_type=ACTOR_ADMIN,
+        actor_id=str(portal_user_id or "") or None,
+        correlation_id=correlation_id,
+    )
+
+
 def _portal_user_role_for_audit(user: Dict[str, Any]) -> Optional[UserRole]:
     try:
         return UserRole(str(user.get("role") or ""))
@@ -563,6 +591,12 @@ async def resolve_unresolved_document_scope(
     await db.documents.update_one({"document_id": document_id}, {"$set": update_payload})
     if update_payload.get("requirement_id"):
         await sync_requirement_evidence_authority(db, update_payload["requirement_id"], property_id_hint=body.property_id.strip())
+        await _enqueue_recalc_after_standalone_authority_sync(
+            property_id=body.property_id.strip(),
+            client_id=str(doc.get("client_id") or ""),
+            portal_user_id=user.get("portal_user_id"),
+            correlation_id=f"AUTHORITY_SYNC:RESOLVE_UNRESOLVED_SCOPE:{document_id}",
+        )
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,
         actor_id=user.get("portal_user_id"),
@@ -621,6 +655,12 @@ async def admin_link_document_requirement(request: Request, document_id: str, bo
         context="admin_link_requirement",
     )
     await sync_requirement_evidence_authority(db, body.requirement_id, property_id_hint=req.get("property_id"))
+    await _enqueue_recalc_after_standalone_authority_sync(
+        property_id=str(req.get("property_id") or ""),
+        client_id=str(doc.get("client_id") or ""),
+        portal_user_id=user.get("portal_user_id"),
+        correlation_id=f"AUTHORITY_SYNC:ADMIN_LINK_REQUIREMENT:{document_id}",
+    )
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,
         actor_id=user.get("portal_user_id"),
@@ -645,6 +685,12 @@ async def admin_unlink_document_requirement(request: Request, document_id: str):
     await db.documents.update_one({"document_id": document_id}, {"$set": {"requirement_id": None}})
     if prior_requirement_id:
         await sync_requirement_evidence_authority(db, str(prior_requirement_id), property_id_hint=doc.get("property_id"))
+        await _enqueue_recalc_after_standalone_authority_sync(
+            property_id=str(doc.get("property_id") or ""),
+            client_id=str(doc.get("client_id") or ""),
+            portal_user_id=user.get("portal_user_id"),
+            correlation_id=f"AUTHORITY_SYNC:ADMIN_UNLINK_REQUIREMENT:{document_id}",
+        )
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,
         actor_id=user.get("portal_user_id"),
@@ -672,6 +718,12 @@ async def admin_reject_unresolved_document(request: Request, document_id: str):
     )
     if prior_requirement_id:
         await sync_requirement_evidence_authority(db, str(prior_requirement_id), property_id_hint=doc.get("property_id"))
+        await _enqueue_recalc_after_standalone_authority_sync(
+            property_id=str(doc.get("property_id") or ""),
+            client_id=str(doc.get("client_id") or ""),
+            portal_user_id=user.get("portal_user_id"),
+            correlation_id=f"AUTHORITY_SYNC:ADMIN_REJECT_UNRESOLVED:{document_id}",
+        )
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,
         actor_id=user.get("portal_user_id"),
@@ -740,6 +792,12 @@ async def admin_resolve_evidence_match(
         )
         if prior_rid:
             await sync_requirement_evidence_authority(db, str(prior_rid), property_id_hint=doc.get("property_id"))
+            await _enqueue_recalc_after_standalone_authority_sync(
+                property_id=str(doc.get("property_id") or ""),
+                client_id=str(cid or ""),
+                portal_user_id=user.get("portal_user_id"),
+                correlation_id=f"AUTHORITY_SYNC:EVIDENCE_MATCH_APPROVE_OVERRIDE:{document_id}",
+            )
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user.get("portal_user_id"),
@@ -760,6 +818,12 @@ async def admin_resolve_evidence_match(
         )
         if prior_rid:
             await sync_requirement_evidence_authority(db, str(prior_rid), property_id_hint=doc.get("property_id"))
+            await _enqueue_recalc_after_standalone_authority_sync(
+                property_id=str(doc.get("property_id") or ""),
+                client_id=str(cid or ""),
+                portal_user_id=user.get("portal_user_id"),
+                correlation_id=f"AUTHORITY_SYNC:EVIDENCE_MATCH_REJECT:{document_id}",
+            )
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user.get("portal_user_id"),
@@ -805,13 +869,35 @@ async def admin_resolve_evidence_match(
             filename=doc.get("file_name"),
             context="admin_relink_requirement",
         )
+        touched_property_ids: List[str] = []
         if prior_rid and str(prior_rid) != rid:
             await sync_requirement_evidence_authority(db, str(prior_rid), property_id_hint=doc.get("property_id"))
+            prior_req_row = await db.requirements.find_one(
+                {"requirement_id": str(prior_rid), "client_id": cid},
+                {"_id": 0, "property_id": 1},
+            )
+            pp = str((prior_req_row or {}).get("property_id") or doc.get("property_id") or "").strip()
+            if pp:
+                touched_property_ids.append(pp)
         await sync_requirement_evidence_authority(db, rid, property_id_hint=req.get("property_id"))
+        np = str(req.get("property_id") or doc.get("property_id") or "").strip()
+        if np and np not in touched_property_ids:
+            touched_property_ids.append(np)
         try:
             await persist_document_evidence_match_after_extraction(db, document_id)
         except Exception:
             logger.exception("persist_document_evidence_match_after_extraction failed after relink document_id=%s", document_id)
+        seen_enqueue_props = set()
+        for prop_id in touched_property_ids:
+            if not prop_id or prop_id in seen_enqueue_props:
+                continue
+            seen_enqueue_props.add(prop_id)
+            await _enqueue_recalc_after_standalone_authority_sync(
+                property_id=prop_id,
+                client_id=str(cid or ""),
+                portal_user_id=user.get("portal_user_id"),
+                correlation_id=f"AUTHORITY_SYNC:EVIDENCE_MATCH_RELINK:{document_id}:{prop_id}",
+            )
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user.get("portal_user_id"),
@@ -865,6 +951,7 @@ async def admin_backfill_evidence_match(request: Request, body: AdminEvidenceMat
     rows = await db.documents.find(q, {"_id": 0}).limit(body.limit).to_list(body.limit)
     updated = 0
     preview: List[Dict[str, Any]] = []
+    backfill_batch_tag = uuid.uuid4().hex[:16] if not body.dry_run else ""
     for doc in rows:
         did = doc.get("document_id")
         if not did:
@@ -882,6 +969,15 @@ async def admin_backfill_evidence_match(request: Request, body: AdminEvidenceMat
                 preview.append({"document_id": did, "action": "would_persist_from_extraction"})
                 continue
             await persist_document_evidence_match_after_extraction(db, str(did))
+            pid_bf = str(doc.get("property_id") or "").strip()
+            cid_bf = str(doc.get("client_id") or "").strip()
+            if pid_bf and cid_bf and backfill_batch_tag:
+                await _enqueue_recalc_after_standalone_authority_sync(
+                    property_id=pid_bf,
+                    client_id=cid_bf,
+                    portal_user_id=user.get("portal_user_id"),
+                    correlation_id=f"AUTHORITY_SYNC:EVIDENCE_MATCH_BACKFILL:{backfill_batch_tag}:{pid_bf}",
+                )
             updated += 1
             continue
 
@@ -907,6 +1003,15 @@ async def admin_backfill_evidence_match(request: Request, body: AdminEvidenceMat
         rid = doc.get("requirement_id")
         if rid:
             await sync_requirement_evidence_authority(db, str(rid), property_id_hint=doc.get("property_id"))
+            pid_bf = str(doc.get("property_id") or "").strip()
+            cid_bf = str(doc.get("client_id") or "").strip()
+            if pid_bf and cid_bf and backfill_batch_tag:
+                await _enqueue_recalc_after_standalone_authority_sync(
+                    property_id=pid_bf,
+                    client_id=cid_bf,
+                    portal_user_id=user.get("portal_user_id"),
+                    correlation_id=f"AUTHORITY_SYNC:EVIDENCE_MATCH_BACKFILL:{backfill_batch_tag}:{pid_bf}",
+                )
         updated += 1
 
     await create_audit_log(

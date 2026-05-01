@@ -189,6 +189,24 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
 
     # Section 2 — Executive summary
     body.append(Paragraph("2. Executive summary", h2))
+    snap_line = (model.get("digest_snapshot_framing_line") or "").strip()
+    if not snap_line:
+        _gd = str(model.get("generated_at_display") or model.get("data_as_of") or "").strip()
+        if _gd:
+            snap_line = f"Snapshot as of {_gd}"
+    if snap_line:
+        snap_style = ParagraphStyle(
+            name="DigestSnapshotBanner",
+            parent=styles["Normal"],
+            fontSize=9,
+            textColor=colors.HexColor("#475569"),
+            spaceBefore=0,
+            spaceAfter=10,
+            fontName="Helvetica-Bold",
+        )
+        body.append(Paragraph(html.escape(snap_line), snap_style))
+    _lc_headline = model.get("last_calculated_at") or model.get("portfolio_last_calculated_at")
+    _ssm_pdf = (model.get("score_status_message") or "").strip()
     exec_rows = [
         ["Metric", "Value"],
         [
@@ -201,6 +219,19 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
                 )
             ),
         ],
+        [
+            "Score status",
+            html.escape(str(model.get("score_status") or "—")),
+        ],
+        [
+            "Last calculated (headline)",
+            html.escape(str(_lc_headline) if _lc_headline not in (None, "") else "—"),
+        ],
+    ]
+    if _ssm_pdf:
+        exec_rows.append(["Headline note", html.escape(_ssm_pdf)])
+    exec_rows.extend(
+        [
         ["Risk level", html.escape(str(model.get("risk_level") or "—"))],
         ["Total tracked requirements", str(int(model.get("total_requirements") or 0))],
         ["Valid (compliant)", str(int(model.get("valid_count") or model.get("compliant") or 0))],
@@ -209,7 +240,8 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
         ["Missing evidence", str(int(model.get("missing_evidence_count") or 0))],
         ["Open compliance jobs", str(int(model.get("open_compliance_jobs") or 0))],
         ["Open maintenance jobs", str(int(model.get("open_maintenance_jobs") or 0))],
-    ]
+        ]
+    )
     t_exec = Table([[Paragraph(cell, styles["Normal"]) for cell in row] for row in exec_rows], colWidths=[9 * cm, 7 * cm])
     t_exec.setStyle(
         TableStyle(

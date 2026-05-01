@@ -180,7 +180,7 @@ async def get_score_drivers_csv(
     request: Request,
     scoring_metadata: bool = Query(
         False,
-        description="When true, prepends SCORING_SEMANTICS_EXPORT_V1 headline metadata rows before driver data (RFC-style parsers may skip lines starting with #). Default false preserves legacy single-header CSV shape.",
+        description="When true, prepends SCORING_SEMANTICS_EXPORT_V1 headline metadata rows (score_status, last_calculated_at, score_status_message, export_generated_at) before driver data. When false, prepends comment rows (# export_snapshot_generated_at, # headline_*) so exports are clearly point-in-time vs live portal.",
     ),
 ):
     """
@@ -216,6 +216,7 @@ async def get_score_drivers_csv(
         data_as_of = score_data.get("score_last_calculated_at") or datetime.now(timezone.utc).isoformat()
         if isinstance(data_as_of, datetime):
             data_as_of = data_as_of.isoformat()
+        export_generated_at = datetime.now(timezone.utc).isoformat()
 
         def _next_step_label(actions):
             if not actions:
@@ -246,6 +247,21 @@ async def get_score_drivers_csv(
                     (score_data.get("last_calculated_at") or score_data.get("portfolio_last_calculated_at") or ""),
                 ]
             )
+            writer.writerow(["score_status_message", (score_data.get("score_status_message") or "")])
+            writer.writerow(["export_generated_at", export_generated_at])
+            writer.writerow([])
+        else:
+            writer.writerow(["# export_snapshot_generated_at", export_generated_at])
+            writer.writerow(["# headline_score_status", score_data.get("score_status") or ""])
+            writer.writerow(
+                [
+                    "# headline_last_calculated_at",
+                    str(score_data.get("last_calculated_at") or score_data.get("portfolio_last_calculated_at") or ""),
+                ]
+            )
+            _ssm = (score_data.get("score_status_message") or "").strip()
+            if _ssm:
+                writer.writerow(["# headline_score_status_message", _ssm])
             writer.writerow([])
         writer.writerow([
             "CRN", "Property name", "Postcode", "Requirement", "Status", "Date used",

@@ -390,6 +390,10 @@ class ReportingService:
         output.write(f"score_authority,{ch.get('score_authority') or ''}\n")
         output.write(f"score_status,{ch.get('score_status') or ''}\n")
         output.write(f"last_calculated_at,{ch.get('last_calculated_at') or ''}\n")
+        output.write(f"score_status_message,{ch.get('score_status_message') or ''}\n")
+        output.write(
+            "export_snapshot_note,CSV generated at Generated time above; headline uses persisted scores as of last_calculated_at (not live portal).\n"
+        )
         output.write("\n")
 
         # Summary section

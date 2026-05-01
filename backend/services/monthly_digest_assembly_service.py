@@ -510,13 +510,16 @@ async def assemble_monthly_digest_payload(
 
     _jur_notice = build_jurisdiction_compliance_notice(client, properties)
 
+    _generated_at_display = now.strftime("%d %B %Y %H:%M UTC")
+
     payload: Dict[str, Any] = {
         "period_start": period_start.isoformat(),
         "period_end": period_end.isoformat(),
         "report_month_key": report_month_key,
         "reporting_month_label": reporting_month_label,
         "data_as_of": now.isoformat(),
-        "generated_at_display": now.strftime("%d %B %Y %H:%M UTC"),
+        "generated_at_display": _generated_at_display,
+        "digest_snapshot_framing_line": f"Snapshot as of {_generated_at_display}",
         "client_id": cid,
         "account_name": account_name,
         "client_name": account_name,

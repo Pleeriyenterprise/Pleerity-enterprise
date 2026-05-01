@@ -91,6 +91,56 @@ def _build_dedupe_key(event: Dict[str, Any]) -> str:
     )
 
 
+def _resolve_outcome_correlation_id(event: Dict[str, Any], event_type: str, dedupe_key: str) -> str:
+    """
+    Single stable correlation id per outcome application (aligns with dedupe_key / idempotency).
+
+    Precedence:
+    1) event["correlation_id"] (caller-supplied root)
+    2) metadata["correlation_id"] when metadata is a dict
+    3) Ecosystem-aligned strings when ids are known (WO / document / issue / risk), matching
+       patterns used in maintenance and evidence paths for log joinability
+    4) ACTION_OUTCOME:{dedupe_key} — always stable for the same logical outcome row
+    """
+    top = str(event.get("correlation_id") or "").strip()
+    if top:
+        return top
+    meta = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+    mid = str(meta.get("correlation_id") or "").strip()
+    if mid:
+        return mid
+    sid = str(event.get("source_id") or "").strip()
+
+    if event_type == EVENT_WORK_ORDER_COMPLETED:
+        wid = str(meta.get("work_order_id") or sid or "").strip()
+        if wid:
+            return f"work_order_completed:{wid}"
+    if event_type == EVENT_CERTIFICATE_UPLOADED:
+        woid = str(meta.get("work_order_id") or sid or "").strip()
+        if woid:
+            return f"certificate_uploaded:{woid}"
+    if event_type == EVENT_CERTIFICATE_VERIFIED:
+        doc = str(meta.get("document_id") or sid or "").strip()
+        if doc:
+            return f"certificate_verified:{doc}"
+    if event_type == EVENT_ISSUE_CREATED:
+        iid = str(meta.get("issue_id") or sid or "").strip()
+        if iid:
+            return f"issue_created:{iid}"
+    if event_type == EVENT_ISSUE_RESOLVED:
+        iid = str(meta.get("issue_id") or sid or "").strip()
+        if iid:
+            return f"issue_resolved:{iid}"
+    if event_type in (EVENT_RISK_SIGNAL_ACKNOWLEDGED, EVENT_RISK_SIGNAL_RESOLVED):
+        sig = str(meta.get("signal_id") or sid or "").strip()
+        if sig:
+            return f"{event_type}:{sig}"
+    if event_type == EVENT_REQUIREMENT_COMPLETED and sid:
+        return f"requirement_completed:{sid}"
+
+    return f"ACTION_OUTCOME:{dedupe_key}"
+
+
 async def _count_active_risk_signals(client_id: str, property_id: str) -> int:
     db = database.get_db()
     return await db.risk_signals.count_documents(
@@ -272,10 +322,12 @@ async def apply_action_outcome(event: Dict[str, Any]) -> Dict[str, Any]:
     elif event_type == EVENT_RISK_SIGNAL_RESOLVED:
         await _mark_related_risk_resolved(event)
 
+    outcome_correlation_id = _resolve_outcome_correlation_id(event, event_type, dedupe_key)
     rctx: Dict[str, Any] = {
         "outcome_event_type": event_type,
         "source_id": event.get("source_id"),
         "skip_risk_regen_enqueue": True,
+        "correlation_id": outcome_correlation_id,
     }
     if event.get("metadata"):
         rctx["outcome_metadata"] = event.get("metadata")
@@ -334,6 +386,7 @@ async def apply_action_outcome(event: Dict[str, Any]) -> Dict[str, Any]:
         "dedupe_key": dedupe_key,
         "source_id": event.get("source_id"),
         "metadata": event.get("metadata") or {},
+        "correlation_id": outcome_correlation_id,
     }
     await db.compliance_activity_log.insert_one(activity_doc)
 

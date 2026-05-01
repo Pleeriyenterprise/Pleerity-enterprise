@@ -54,6 +54,7 @@ import {
   headlineScoreDisplayForDashboard,
   headlineScoreShowsOutOf100,
 } from '../utils/scoringHeadlineDisplay';
+import { COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE } from '../utils/scoreFreshnessUi';
 
 const KPI_NO_DATA = 'No data yet';
 
@@ -558,10 +559,9 @@ export default function ClientCommandCenterPage() {
                 </p>
               )}
               {summary.message ? <p className="text-sm mt-2 opacity-95">{summary.message}</p> : null}
-              {summary.score_status_message &&
-                (summary.score_status === 'partial' || summary.score_status === 'stale') && (
-                  <p className="text-xs mt-2 opacity-95 border-t border-black/5 pt-2">{summary.score_status_message}</p>
-                )}
+              {summary.score_status_message && String(summary.score_status_message).trim() ? (
+                <p className="text-xs mt-2 opacity-95 border-t border-black/5 pt-2">{String(summary.score_status_message).trim()}</p>
+              ) : null}
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs opacity-90">
                 {summary.requirements_overdue != null && (
                   <span
@@ -580,7 +580,14 @@ export default function ClientCommandCenterPage() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-600">Compliance score is not available yet.</p>
+            <div className="text-sm text-gray-600 space-y-2" data-testid="command-center-compliance-degraded">
+              <p>{COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE}</p>
+              {summary?.score_status_message && String(summary.score_status_message).trim() ? (
+                <p className="text-xs text-gray-700 border-t border-gray-200 pt-2">
+                  {String(summary.score_status_message).trim()}
+                </p>
+              ) : null}
+            </div>
           )}
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <span className="text-gray-700">

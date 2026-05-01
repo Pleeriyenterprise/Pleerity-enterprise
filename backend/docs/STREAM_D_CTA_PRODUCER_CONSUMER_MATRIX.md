@@ -57,7 +57,7 @@
 | D-C04 | **Property Detail** — `frontend/src/pages/PropertyDetailPage.js` | Requirements from client APIs (enriched) | **`resolveRequirementAction`** (`requirementTakeActionResolver.js`) | Yes | Full resolver handler set (guided, external, navigate) | **No** when API sends `take_action` | Client | **High** | Multiple compliance tables; tests `PropertyDetailPage.complianceActions.test.js`. |
 | D-C05 | **Requirement Intelligence Modal** — `frontend/src/components/client/RequirementIntelligenceModal.js` | `getRequirementWorkflow` + `seedRequirement` | **`resolveRequirementAction(merged)`** | Yes | Inherits resolver | **No** when merged payload includes `take_action` | Client | **High** | Same FE resolver as Property Detail; merge via `requirementIntelligenceMerge`. |
 | D-C06 | **Client Dashboard** — `frontend/src/pages/ClientDashboard.js` | Today inbox + Command Centre widgets | Delegates to same task / CC shapes | Partial | Generic CTAs in widgets | Same as D-C01/D-C02 | Client | **Medium** | KPI vs inbox boundaries documented in dashboard copy. |
-| D-C07 | **Compliance score** — `frontend/src/pages/ComplianceScorePage.js` | `/client/compliance-score` + requirements | **Synthetic** `navigateDriverAction` builds `primary_action_url` until drivers hydrated with `take_action` (TODO in file) | Partial | Document-first UPLOAD/VIEW | **Yes** — explicit bypass until hydration | Client | **High** | Tracked technical debt; uses `resolveTaskCta` on synthetic task. |
+| D-C07 | **Compliance score** — `frontend/src/pages/ComplianceScorePage.js` | `/client/compliance-score` + `GET /client/requirements` (join on `property_id` + `requirement_id`) | **`requirementUsesServerTakeActionPrimary`** gate → **`resolveRequirementAction`** only for actionable remediation; structural **Open property** when no server primary; **`useGuidedEvidenceModal`** for guided primary | Yes when canonical | Inherits resolver when `take_action.primary` is server-complete | **No** for score-driver remediation row (heuristic `actions` not used for routes/labels) | Client | **Medium** | Synthetic `navigateDriverAction` + `resolveTaskCta` driver path **removed** (2026-05-01). Helpers: `ComplianceScorePage.driverRemediation.js`; tests: `ComplianceScorePage.scoreDrivers.test.js`. Recommendations block remains narrative text from score API (not raw gap `recommended_*`). **Async honesty (2026-05-02):** `score_status_message` when present + factual drivers-vs-stored-headline note (`scoreFreshnessUi.js`, `ComplianceScorePage.asyncHonesty.test.js`). |
 | D-C08 | **Client risk signals** — `frontend/src/pages/ClientRiskSignalsPage.js` | Risk API | Signal `recommended_action` **text** + separate navigation to WO/issue flows | Partial | **Book**/inspect from backend strings | **Yes** (not `take_action`) | Client | **Medium** | Aligns with D-P09 / operations CTA pattern. |
 | D-C09 | **CTA registry** — `frontend/src/utils/ctaRegistry.js` | Unified task shape | Combines **`resolveInboxTaskTakeActionRoute`** with `buildEntityRoute` fallback | Yes | Registry per `source_type` + `action_type` | Fallback can use `primary_action_url` from server | Client | **Medium** | Single client-router for Today-style tasks. |
 | D-C10 | **Admin Dashboard** priority table — `frontend/src/pages/AdminDashboard.js` | Admin priority actions API | `recommended_action_label` + `recommended_url` from **admin** producer | Yes | Admin generic | **Yes** | **Admin** | **Low** | Client CTA contract does not apply. |
@@ -97,7 +97,7 @@
 - **Today + Command Centre urgent tasks:** ultimately fed by **`client_priority_stream`** → **`unified_tasks_service`**; requirement compliance types **must** go through resolver path in `_primary_action_fields`.
 - **Risk:** copy from **`risk_signal_service`**; URL from **constructed operations pattern** — do not route risk through requirement resolver.
 - **Admin priority stream:** separate system (`priority_actions`) — does not use client `take_action`.
-- **Known bypass / debt:** **Compliance score drivers** (D-C07) until hydrated with canonical `take_action`.
+- **Compliance score drivers (D-C07):** actionable remediation is **resolver-gated** on the client; without `take_action.primary` authority the driver row shows a non-actionable message plus optional structural **Open property** (not a fabricated remediation label).
 
 ---
 
@@ -108,6 +108,8 @@
 - `backend/tests/test_compliance_authority_alignment.py`, `test_catalog_compliance_take_action_matrix.py` — catalog / matrix alignment.
 - `backend/tests/fixtures/cta_parity_fixtures.py` + `backend/tests/test_cta_parity_contract.py` — **Stream D Phase 4** deterministic parity cases (`P01`–`P10`); see `STREAM_D_CTA_PARITY_ENFORCEMENT.md`.
 - `frontend/src/utils/requirementTakeActionResolver.test.js` — frontend parity coverage.
+- `frontend/src/pages/ComplianceScorePage.scoreDrivers.test.js` + `ComplianceScorePage.driverRemediation.test.js` — D-C07 regression: no synthetic remediation CTA without canonical `take_action`; stable row keys vs `gap_key`.
+- `frontend/src/pages/ComplianceScorePage.asyncHonesty.test.js` — D-C07 surface: drivers-vs-headline note + `score_status_message` when API provides it.
 
 ---
 

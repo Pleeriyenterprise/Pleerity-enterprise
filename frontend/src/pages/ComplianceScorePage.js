@@ -24,16 +24,18 @@ import {
   HelpCircle,
   Download,
   FileDown,
-  Upload,
-  ExternalLink,
   X,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../components/ui/tooltip';
 import { Skeleton } from '../components/ui/skeleton';
-import { buildEntityRoute, recordClientPortalInteraction, resolveClientPortalPath } from '../utils/clientPortalNavigation';
-import { resolveTaskCta } from '../utils/ctaRegistry';
+import { recordClientPortalInteraction, resolveClientPortalPath } from '../utils/clientPortalNavigation';
+import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
+import {
+  resolveRequirementAction,
+  requirementUsesServerTakeActionPrimary,
+} from '../utils/requirementTakeActionResolver';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 import { complianceRequirementStatusLabel } from '../domain/presentDomain';
@@ -43,6 +45,8 @@ import {
   headlineScoreDisplayForDashboard,
   headlineScoreShowsOutOf100,
 } from '../utils/scoringHeadlineDisplay';
+import { findRequirementRowForScoreDriver, scoreDriverRowReactKey } from './ComplianceScorePage.driverRemediation';
+import { COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE } from '../utils/scoreFreshnessUi';
 
 function scoreDriverStatusLabel(raw) {
   const s = String(raw || '').trim().toUpperCase();
@@ -54,9 +58,129 @@ function scoreDriverStatusLabel(raw) {
   return lbl && lbl !== '—' ? lbl : 'Needs attention';
 }
 
+/**
+ * Score-driver remediation: only `take_action.primary` shapes that pass
+ * {@link requirementUsesServerTakeActionPrimary} may render actionable labels/routes.
+ * Heuristic driver `actions` (UPLOAD/VIEW/CONFIRM) are not used for navigation.
+ */
+function ScoreDriverRemediationActions({ driver, requirements, navigate, openGuidedEvidence }) {
+  const req = findRequirementRowForScoreDriver(requirements, driver);
+  const hasCanonical = !!(req && requirementUsesServerTakeActionPrimary(req));
+  const propertyId = driver?.property_id != null ? String(driver.property_id).trim() : '';
+
+  if (!hasCanonical) {
+    return (
+      <div
+        className="text-xs text-gray-600 max-w-[240px] leading-snug"
+        data-testid="score-driver-remediation-non-actionable"
+        data-canonical-remediation="0"
+      >
+        <p>No server-confirmed remediation step is available on this summary.</p>
+        {propertyId ? (
+          <button
+            type="button"
+            className="mt-1.5 text-electric-teal hover:underline font-medium text-left"
+            data-testid="score-driver-open-property-structural"
+            onClick={(e) => {
+              e.stopPropagation();
+              const target = resolveClientPortalPath(`/properties/${propertyId}`, '/properties');
+              recordClientPortalInteraction('compliance_score_open_property_structural', { property_id: propertyId });
+              navigate(target);
+            }}
+          >
+            Open property
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  const ta = resolveRequirementAction(req, {});
+
+  const onPrimary = (e) => {
+    e.stopPropagation();
+    if (ta.primary_action_handler === 'guided_evidence') {
+      openGuidedEvidence({
+        propertyId: propertyId,
+        requirementId: String(req.requirement_id),
+        requirement: req,
+        initialEvidenceMode: ta.guided_initial_evidence_mode || undefined,
+      });
+      return;
+    }
+    if (ta.primary_action_handler === 'external' && ta.primary_route) {
+      window.open(ta.primary_route, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const route = ta.primary_route;
+    if (route) {
+      const target = resolveClientPortalPath(route, '/properties');
+      recordClientPortalInteraction('compliance_score_driver_canonical_primary', {
+        property_id: propertyId,
+        requirement_id: String(req.requirement_id),
+      });
+      navigate(target);
+    }
+  };
+
+  const onSecondary = (e) => {
+    e.stopPropagation();
+    const sec = ta.secondary_action;
+    if (!sec?.route) return;
+    if (sec.external) window.open(sec.route, '_blank', 'noopener,noreferrer');
+    else {
+      const target = resolveClientPortalPath(sec.route, '/properties');
+      navigate(target);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap gap-1" data-canonical-remediation="1" data-testid="score-driver-canonical-remediation">
+      {ta.primary_action_handler === 'guided_evidence_error' ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled
+          title="Guided resolution unavailable — missing property or requirement context."
+          className="border-gray-200 text-gray-500 cursor-not-allowed"
+          data-testid="score-driver-canonical-primary"
+        >
+          {ta.primary_action_label}
+        </Button>
+      ) : ta.primary_action_handler === 'none' ? (
+        <span className="text-xs text-gray-500">{ta.primary_action_label}</span>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="border-electric-teal text-electric-teal hover:bg-electric-teal/10"
+          data-testid="score-driver-canonical-primary"
+          onClick={onPrimary}
+        >
+          {ta.primary_action_label}
+        </Button>
+      )}
+      {ta.secondary_action?.route ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-testid="score-driver-canonical-secondary"
+          onClick={onSecondary}
+        >
+          {ta.secondary_action.label}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 const ComplianceScorePage = () => {
   const { hasFeature } = useEntitlements();
   const navigate = useNavigate();
+  const { openGuidedEvidence } = useGuidedEvidenceModal();
   const canExportScore = hasFeature('reports_pdf'); // Portfolio and Professional only
   const [scoreData, setScoreData] = useState(null);
   const [properties, setProperties] = useState([]);
@@ -151,28 +275,6 @@ const ComplianceScorePage = () => {
     } catch {
       return null;
     }
-  };
-
-  // TODO: Score drivers use document-first synthetic actions (UPLOAD/VIEW/CONFIRM) until each driver is
-  // hydrated with canonical `take_action` from requirements; only then can guided/direct evidence CTAs align here.
-  const navigateDriverAction = (driver, action) => {
-    if (!driver?.property_id || !driver?.requirement_id) return;
-    const task = {
-      source_type: 'requirement',
-      source_id: driver.requirement_id,
-      requirement_id: driver.requirement_id,
-      property_id: driver.property_id,
-      primary_action_type: action === 'VIEW' ? 'review_requirement' : 'upload_evidence',
-      primary_action_url:
-        action === 'VIEW'
-          ? buildEntityRoute(
-              { requirement_id: driver.requirement_id, property_id: driver.property_id, mode: 'requirement' },
-              '/requirements'
-            )
-          : `/documents?property_id=${encodeURIComponent(driver.property_id)}&requirement_id=${encodeURIComponent(driver.requirement_id)}`,
-    };
-    const cta = resolveTaskCta(task, 'primary');
-    navigate(resolveClientPortalPath(cta.route, action === 'VIEW' ? '/requirements' : '/documents'));
   };
 
   useEffect(() => {
@@ -392,12 +494,14 @@ const ComplianceScorePage = () => {
                       )}
                     </p>
                   )}
-                  {scoreData?.score_status_message &&
-                    (scoreData.score_status === 'partial' || scoreData.score_status === 'stale') && (
-                      <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mt-2">
-                        {scoreData.score_status_message}
-                      </p>
-                    )}
+                  {scoreData?.score_status_message && String(scoreData.score_status_message).trim() ? (
+                    <p
+                      className="text-xs text-gray-800 bg-gray-50 border border-gray-200 rounded-md px-2 py-1.5 mt-2 leading-snug"
+                      data-testid="compliance-score-status-message"
+                    >
+                      {String(scoreData.score_status_message).trim()}
+                    </p>
+                  ) : null}
                   <p className="text-sm text-gray-600 mt-1">
                     Informational indicator based on portal records. Not legal advice.
                   </p>
@@ -630,6 +734,14 @@ const ComplianceScorePage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {(scoreData?.drivers?.length ?? 0) > 0 ? (
+              <p
+                className="text-xs text-gray-600 mb-3 leading-snug"
+                data-testid="compliance-score-drivers-persisted-note"
+              >
+                {COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE}
+              </p>
+            ) : null}
             {!(scoreData?.drivers?.length) ? (
               <p className="text-gray-500 py-6 text-center">No issues detected based on current portal records.</p>
             ) : (
@@ -638,7 +750,7 @@ const ComplianceScorePage = () => {
                   <p className="text-sm text-gray-600 mb-3">Some drivers may be hidden until a document is uploaded or dates are confirmed.</p>
                 )}
                 {/* Desktop: table */}
-                <div className="hidden md:block overflow-x-auto -mx-4 sm:mx-0">
+                <div className="hidden md:block overflow-x-auto -mx-4 sm:mx-0" data-testid="score-drivers-table-desktop">
                   <div className="min-w-[640px] md:min-w-0">
                     <table className="w-full text-sm border-collapse">
                       <thead>
@@ -653,7 +765,7 @@ const ComplianceScorePage = () => {
                       </thead>
                       <tbody>
                         {(driversFilterPropertyId ? scoreData.drivers.filter(d => d.property_id === driversFilterPropertyId) : scoreData.drivers).map((d, idx) => (
-                          <tr key={d.requirement_id || idx} className="border-b border-gray-100 hover:bg-gray-50">
+                          <tr key={scoreDriverRowReactKey(d, idx)} className="border-b border-gray-100 hover:bg-gray-50">
                             <td className="py-3 pr-2">{d.requirement_name || '—'}</td>
                             <td className="py-3 pr-2">{d.property_name || d.property_id || '—'}</td>
                             <td className="py-3 pr-2">
@@ -680,50 +792,12 @@ const ComplianceScorePage = () => {
                             </td>
                             <td className="py-3 pr-2">{d.evidence_uploaded ? 'Uploaded' : 'Not uploaded'}</td>
                             <td className="py-3 pl-2">
-                              {d.actions?.includes('UPLOAD') && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="mr-1 border-electric-teal text-electric-teal hover:bg-electric-teal/10"
-                                  disabled={!d.property_id || !d.requirement_id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigateDriverAction(d, 'UPLOAD');
-                                  }}
-                                >
-                                  <Upload className="w-3.5 h-3.5 mr-1" />
-                                  Upload document
-                                </Button>
-                              )}
-                              {d.actions?.includes('CONFIRM') && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="mr-1"
-                                  disabled={!d.property_id || !d.requirement_id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigateDriverAction(d, 'CONFIRM');
-                                  }}
-                                >
-                                  Confirm details
-                                </Button>
-                              )}
-                              {d.actions?.includes('VIEW') && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="border-electric-teal text-electric-teal hover:bg-electric-teal/10"
-                                  disabled={!d.property_id || !d.requirement_id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigateDriverAction(d, 'VIEW');
-                                  }}
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5 mr-1" />
-                                  View requirement
-                                </Button>
-                              )}
+                              <ScoreDriverRemediationActions
+                                driver={d}
+                                requirements={requirements}
+                                navigate={navigate}
+                                openGuidedEvidence={openGuidedEvidence}
+                              />
                             </td>
                           </tr>
                         ))}
@@ -732,9 +806,9 @@ const ComplianceScorePage = () => {
                   </div>
                 </div>
                 {/* Mobile: stacked cards */}
-                <div className="md:hidden space-y-3">
+                <div className="md:hidden space-y-3" data-testid="score-drivers-cards-mobile">
                   {(driversFilterPropertyId ? scoreData.drivers.filter(d => d.property_id === driversFilterPropertyId) : scoreData.drivers).map((d, idx) => (
-                    <div key={d.requirement_id || idx} className="p-4 border rounded-lg bg-gray-50 space-y-3">
+                    <div key={scoreDriverRowReactKey(d, idx)} className="p-4 border rounded-lg bg-gray-50 space-y-3">
                       <p className="font-medium text-midnight-blue">{d.requirement_name || '—'}</p>
                       <p className="text-sm text-gray-600">{d.property_name || d.property_id}</p>
                       <p className="text-sm">
@@ -751,45 +825,12 @@ const ComplianceScorePage = () => {
                         {d.date_used ? new Date(d.date_used).toLocaleDateString() : '—'} · {d.evidence_uploaded ? 'Uploaded' : 'Not uploaded'}
                       </p>
                       <div className="flex flex-col gap-2 pt-1">
-                        {d.actions?.includes('UPLOAD') && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="min-h-11 w-full border-electric-teal text-electric-teal hover:bg-electric-teal/10"
-                            disabled={!d.property_id || !d.requirement_id}
-                            onClick={() => {
-                              navigateDriverAction(d, 'UPLOAD');
-                            }}
-                          >
-                            <Upload className="w-3.5 h-3.5 mr-1" /> Upload document
-                          </Button>
-                        )}
-                        {d.actions?.includes('CONFIRM') && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="min-h-11 w-full"
-                            disabled={!d.property_id || !d.requirement_id}
-                            onClick={() => {
-                              navigateDriverAction(d, 'CONFIRM');
-                            }}
-                          >
-                            Confirm details
-                          </Button>
-                        )}
-                        {d.actions?.includes('VIEW') && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="min-h-11 w-full border-electric-teal text-electric-teal hover:bg-electric-teal/10"
-                            disabled={!d.property_id || !d.requirement_id}
-                            onClick={() => {
-                              navigateDriverAction(d, 'VIEW');
-                            }}
-                          >
-                            <ExternalLink className="w-3.5 h-3.5 mr-1" /> View requirement
-                          </Button>
-                        )}
+                        <ScoreDriverRemediationActions
+                          driver={d}
+                          requirements={requirements}
+                          navigate={navigate}
+                          openGuidedEvidence={openGuidedEvidence}
+                        />
                       </div>
                     </div>
                   ))}

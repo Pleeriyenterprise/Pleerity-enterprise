@@ -6,6 +6,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ClientCommandCenterPage from './ClientCommandCenterPage';
 import { clientAPI } from '../api/client';
+import { COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE } from '../utils/scoreFreshnessUi';
 
 jest.mock('../api/client', () => ({
   clientAPI: {
@@ -160,6 +161,57 @@ describe('ClientCommandCenterPage requirement intel', () => {
         propertyId: 'p-cc-1',
         requirementId: 'req-cc-1',
       }),
+    );
+  });
+});
+
+describe('ClientCommandCenterPage compliance snapshot degraded UX', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockOpenGuidedEvidence.mockClear();
+    clientAPI.getCommandCenter.mockResolvedValue({
+      data: {
+        urgent_actions: [],
+        upcoming_risks: [],
+      },
+    });
+    clientAPI.getComplianceSummary.mockResolvedValue({ data: { properties: [] } });
+    clientAPI.getRequirements.mockResolvedValue({ data: { requirements: [] } });
+  });
+
+  it('shows bundle degraded copy when compliance_status_summary is absent', async () => {
+    render(
+      <MemoryRouter>
+        <ClientCommandCenterPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId('command-center-loading')).not.toBeInTheDocument();
+    });
+    const degraded = screen.getByTestId('command-center-compliance-degraded');
+    expect(degraded).toHaveTextContent(COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE);
+  });
+
+  it('shows score_status_message under degraded copy when summary omits score and status', async () => {
+    clientAPI.getCommandCenter.mockResolvedValue({
+      data: {
+        urgent_actions: [],
+        upcoming_risks: [],
+        compliance_status_summary: {
+          score_status_message: 'Upstream aggregation delayed.',
+        },
+      },
+    });
+    render(
+      <MemoryRouter>
+        <ClientCommandCenterPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId('command-center-loading')).not.toBeInTheDocument();
+    });
+    expect(screen.getByTestId('command-center-compliance-degraded')).toHaveTextContent(
+      'Upstream aggregation delayed.',
     );
   });
 });

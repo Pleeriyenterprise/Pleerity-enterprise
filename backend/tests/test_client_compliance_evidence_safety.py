@@ -238,16 +238,60 @@ async def test_authority_sync_runs_after_evidence_creation_and_legacy_payload_wo
     )
     create_mock = AsyncMock(return_value={"evidence_record_id": "cer_1"})
     sync_mock = AsyncMock()
+    enqueue_mock = AsyncMock(return_value=True)
     with patch.object(route.database, "get_db", return_value=db):
         with patch.object(route, "create_compliance_evidence_record", create_mock):
             with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
-                out = await route.post_compliance_evidence(
-                    property_id="p1",
-                    requirement_id="r1",
-                    body=body,
-                    request=_req(),
-                    user={"client_id": "c1", "portal_user_id": "u1"},
-                )
+                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
+                    out = await route.post_compliance_evidence(
+                        property_id="p1",
+                        requirement_id="r1",
+                        body=body,
+                        request=_req(),
+                        user={"client_id": "c1", "portal_user_id": "u1"},
+                    )
     assert out["ok"] is True
     create_mock.assert_awaited()
     sync_mock.assert_awaited_once()
+    enqueue_mock.assert_awaited_once()
+    ek = enqueue_mock.await_args.kwargs
+    assert ek["property_id"] == "p1"
+    assert ek["client_id"] == "c1"
+    assert ek["correlation_id"] == "GUIDED_EVIDENCE_AUTHORITY:p1:r1:cer_1"
+
+
+@pytest.mark.asyncio
+async def test_evidence_verification_enqueues_recalc_after_authority_sync():
+    db = MagicMock()
+    db.compliance_evidence_records.find_one = AsyncMock(
+        return_value={
+            "evidence_record_id": "cer_v1",
+            "client_id": "c1",
+            "property_id": "p1",
+            "requirement_id": "r1",
+        }
+    )
+    apply_mock = AsyncMock(return_value={"evidence_record_id": "cer_v1", "status": "VERIFIED"})
+    sync_mock = AsyncMock()
+    enqueue_mock = AsyncMock(return_value=True)
+    body = route.VerifyEvidenceRequest(decision="VERIFY")
+    with patch.object(route.database, "get_db", return_value=db):
+        with patch.object(route, "apply_verification_decision", apply_mock):
+            with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
+                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
+                    out = await route.post_evidence_verification(
+                        property_id="p1",
+                        requirement_id="r1",
+                        evidence_record_id="cer_v1",
+                        body=body,
+                        request=_req(),
+                        user={
+                            "client_id": "c1",
+                            "portal_user_id": "u1",
+                            "role": "ROLE_CLIENT_ADMIN",
+                        },
+                    )
+    assert out["ok"] is True
+    sync_mock.assert_awaited_once()
+    enqueue_mock.assert_awaited_once()
+    assert enqueue_mock.await_args.kwargs["correlation_id"] == "GUIDED_EVIDENCE_VERIFY:p1:r1:cer_v1"

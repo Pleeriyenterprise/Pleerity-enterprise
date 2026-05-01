@@ -762,7 +762,7 @@ const AdminClientControlPanelPage = () => {
   const statusSummaryCard = !loading && data && (
     <div className={`rounded-2xl border-2 p-5 shadow-md ${complianceHeadline.palette}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+          <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-600/90">Compliance status</p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <span className={`inline-flex items-center rounded-lg px-3 py-1 text-lg font-bold tracking-tight ${complianceHeadline.badge}`}>
@@ -809,11 +809,11 @@ const AdminClientControlPanelPage = () => {
       <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
         Run these only after checking diagnostics. If state is still inconsistent after one safe retry, this is an
         <span className="font-semibold"> Engineering escalation required</span> incident.
-      </div>
+          </div>
       <div>
         <p className="text-xs text-gray-500 mb-2">Primary</p>
         <div className="flex flex-wrap gap-2">
-          <button
+            <button
             type="button"
             disabled={isBusy || loading}
             onClick={() => runAction('Update compliance status', () => adminAPI.recalculateCompliance(clientId))}
@@ -836,38 +836,38 @@ const AdminClientControlPanelPage = () => {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={isBusy || loading}
-            onClick={() => runAction('Resend activation email', () => adminAPI.resendActivationEmail(clientId))}
+              disabled={isBusy || loading}
+              onClick={() => runAction('Resend activation email', () => adminAPI.resendActivationEmail(clientId))}
             className="px-3 py-2 text-sm rounded-lg bg-gray-100 text-gray-900 border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
-          >
-            Resend activation email
-          </button>
-          <button
+            >
+              Resend activation email
+            </button>
+            <button
             type="button"
-            disabled={isBusy || loading}
-            onClick={() => runAction('Resend dashboard email', () => adminAPI.resendDashboardEmail(clientId))}
+              disabled={isBusy || loading}
+              onClick={() => runAction('Resend dashboard email', () => adminAPI.resendDashboardEmail(clientId))}
             className="px-3 py-2 text-sm rounded-lg bg-gray-100 text-gray-900 border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
-          >
-            Resend dashboard email
-          </button>
-          <button
-            type="button"
-            disabled={isBusy || loading}
-            onClick={checkPasswordLinkStatus}
+            >
+              Resend dashboard email
+            </button>
+            <button
+              type="button"
+              disabled={isBusy || loading}
+              onClick={checkPasswordLinkStatus}
             className="px-3 py-2 text-sm rounded-lg bg-white text-gray-800 border border-gray-300 hover:bg-slate-50 disabled:opacity-50"
-            title="Check whether a valid token exists (raw link only if server returns it)"
-          >
-            Password link status
-          </button>
-          <button
-            type="button"
-            disabled={isBusy || loading}
-            onClick={generatePasswordSetupLink}
+              title="Check whether a valid token exists (raw link only if server returns it)"
+            >
+              Password link status
+            </button>
+            <button
+              type="button"
+              disabled={isBusy || loading}
+              onClick={generatePasswordSetupLink}
             className="px-3 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
-            title="Creates a new token and link; requires your password"
-          >
-            New password link
-          </button>
+              title="Creates a new token and link; requires your password"
+            >
+              New password link
+            </button>
         </div>
       </div>
     </div>
@@ -893,24 +893,24 @@ const AdminClientControlPanelPage = () => {
       </div>
       <p className="text-xs text-amber-900">{getGovernanceEscalationGuidance('start_impersonation')}</p>
       <div className="flex flex-wrap gap-2">
-        <button
+            <button
           type="button"
-          disabled={isBusy || loading}
+              disabled={isBusy || loading}
           onClick={() => {
             const reason = getRequiredReason('unlock_account', 'Unlock account');
             if (!reason) return;
             runAction('Unlock account', () => adminAPI.unlockClientAccount(clientId, { reason }));
           }}
           className="px-3 py-2 text-sm rounded-lg bg-amber-50 text-amber-950 border border-amber-300 hover:bg-amber-100 disabled:opacity-50"
-        >
-          Unlock account
+            >
+              Unlock account
           <span className={`ml-2 rounded border px-1.5 py-0.5 text-[10px] ${getGovernanceRiskBadgeClass('unlock_account')}`}>
             governed
           </span>
-        </button>
-        <button
+            </button>
+            <button
           type="button"
-          disabled={isBusy || loading}
+              disabled={isBusy || loading}
           onClick={() => {
             setImpersonationReason('');
             setImpersonationConfirmed(false);
@@ -919,10 +919,10 @@ const AdminClientControlPanelPage = () => {
           className="px-3 py-2 text-sm rounded-lg bg-indigo-50 text-indigo-950 border border-indigo-300 hover:bg-indigo-100 disabled:opacity-50"
         >
           View as user…
-        </button>
-      </div>
+            </button>
+          </div>
       <p className="text-xs text-amber-900">{getGovernanceWarning('unlock_account')}</p>
-    </div>
+        </div>
   );
 
   const identityAccountCard = !loading && data && (
@@ -939,17 +939,17 @@ const AdminClientControlPanelPage = () => {
         </div>
         <div>
           <p className="text-xs font-medium text-gray-500 mb-1">Account</p>
-          <Row label="Password set" value={account.password_set ? 'Yes' : 'No'} />
-          <Row label="Last login" value={fmtDate(account.last_login)} />
-          <Row label="Onboarding stage" value={account.onboarding_stage} />
-          <Row label="Activation email sent" value={account.activation_email_sent ? 'Yes' : 'No'} />
-          <Row label="Dashboard ready sent" value={account.dashboard_ready_sent ? 'Yes' : 'No'} />
+              <Row label="Password set" value={account.password_set ? 'Yes' : 'No'} />
+              <Row label="Last login" value={fmtDate(account.last_login)} />
+              <Row label="Onboarding stage" value={account.onboarding_stage} />
+              <Row label="Activation email sent" value={account.activation_email_sent ? 'Yes' : 'No'} />
+              <Row label="Dashboard ready sent" value={account.dashboard_ready_sent ? 'Yes' : 'No'} />
           {billing.canonical_entitlement_state ? (
             <Row label="Entitlement (billing)" value={billing.canonical_entitlement_state} />
           ) : null}
         </div>
       </div>
-    </SectionCard>
+            </SectionCard>
   );
 
   const overviewMetricsCollapsible = !loading && data && (
@@ -971,7 +971,7 @@ const AdminClientControlPanelPage = () => {
               <span className="text-gray-600"> ({compliance.score_status})</span>
             ) : null}
           </p>
-        </div>
+                      </div>
         <div className="rounded-lg bg-slate-50/80 p-3 space-y-1">
           <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Operations</p>
           <p className="text-sm text-gray-700">
@@ -1015,7 +1015,7 @@ const AdminClientControlPanelPage = () => {
             }
           />
           <Row label="Completed at" value={fmtDate(operationalSnapshot.onboarding_checklist?.completed_at)} />
-        </div>
+                      </div>
       )}
       <div className="space-y-2 text-sm">
         <div className="font-medium text-gray-900">Digest & broadcasts</div>
@@ -1023,7 +1023,7 @@ const AdminClientControlPanelPage = () => {
         <Row label="Last broadcast delivery" value={fmtDate(operationalSnapshot.last_broadcast_delivery?.created_at)} />
         <Row label="Email status (last)" value={operationalSnapshot.last_broadcast_delivery?.email_status || '—'} />
         <Row label="In-app status (last)" value={operationalSnapshot.last_broadcast_delivery?.in_app_status || '—'} />
-      </div>
+                    </div>
     </CollapsibleBlock>
   );
 
@@ -1052,8 +1052,8 @@ const AdminClientControlPanelPage = () => {
           <div className="rounded border border-gray-200 bg-white px-2 py-1.5">
             Provisioning complete: {String(account.onboarding_stage || '').toUpperCase() === 'PROVISIONED' ? 'Yes' : 'No/Unknown'}
           </div>
-        </div>
-      </SectionCard>
+              </div>
+            </SectionCard>
       {identityAccountCard}
       {overviewMetricsCollapsible}
       {overviewProgressCollapsible}
@@ -1080,7 +1080,7 @@ const AdminClientControlPanelPage = () => {
         </div>
       ) : null}
       <SectionCard title="Compliance overview">
-        <Row label="Properties count" value={compliance.properties_count} />
+              <Row label="Properties count" value={compliance.properties_count} />
         <Row
           label="Compliance score (headline)"
           value={`${String(headlineScoreDisplayForDashboard(compliance.compliance_score, compliance.score_status))}${
@@ -1090,9 +1090,9 @@ const AdminClientControlPanelPage = () => {
         <Row label="Score status" value={compliance.score_status || '—'} />
         <Row label="Last calculated (headline)" value={compliance.last_calculated_at || '—'} />
         <Row label="Risk level" value={compliance.risk_level || 'Not yet recorded'} />
-        <Row label="Missing documents" value={compliance.missing_documents} />
-        <Row label="Overdue items" value={compliance.overdue_items} />
-      </SectionCard>
+              <Row label="Missing documents" value={compliance.missing_documents} />
+              <Row label="Overdue items" value={compliance.overdue_items} />
+            </SectionCard>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <SectionCard title="What's wrong" subdued>
           <ul className="text-sm text-gray-700 space-y-2 list-disc pl-4">
@@ -1238,7 +1238,7 @@ const AdminClientControlPanelPage = () => {
 
   const operationsTab = !loading && data && (
     <div className="space-y-4 max-w-4xl">
-      <SectionCard title="Operations">
+            <SectionCard title="Operations">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div className="rounded-xl bg-slate-50 p-4 text-center">
             <div className="text-3xl font-bold text-midnight-blue tabular-nums">{ops.issues ?? '—'}</div>
@@ -1246,7 +1246,7 @@ const AdminClientControlPanelPage = () => {
             <Link className="text-xs text-electric-teal hover:underline mt-2 inline-block" to="/admin/ops/risk">
               Open risk & insights
             </Link>
-          </div>
+              </div>
           <div className="rounded-xl bg-slate-50 p-4 text-center">
             <div className="text-3xl font-bold text-midnight-blue tabular-nums">{ops.work_orders ?? '—'}</div>
             <div className="text-xs font-medium text-gray-600 uppercase tracking-wide mt-1">Jobs</div>
@@ -1268,7 +1268,7 @@ const AdminClientControlPanelPage = () => {
           </Link>{' '}
           — full queues and assignments live here (not filtered to this client in the UI).
         </p>
-      </SectionCard>
+            </SectionCard>
     </div>
   );
 
@@ -1538,24 +1538,24 @@ const AdminClientControlPanelPage = () => {
       </CollapsibleBlock>
       <CollapsibleBlock title="Command centre task activity" subtitle="Client portal Tasks inbox (read-only)." defaultOpen={false}>
         <div className="max-h-60 overflow-y-auto mt-2">
-          {taskActivityLoading ? (
-            <div className="text-sm text-gray-500">Loading…</div>
-          ) : !taskActivity?.length ? (
-            <div className="text-sm text-gray-500">No recorded inbox activity.</div>
-          ) : (
-            taskActivity.map((row) => (
-              <div key={row.event_id || `${row.task_id}-${row.created_at}`} className="py-2 border-b border-gray-100 last:border-0 text-sm">
-                <div className="text-xs text-gray-500">{fmtDate(row.created_at)}</div>
-                <div className="text-gray-900">{formatTaskActivityLine(row)}</div>
+                {taskActivityLoading ? (
+                  <div className="text-sm text-gray-500">Loading…</div>
+                ) : !taskActivity?.length ? (
+                  <div className="text-sm text-gray-500">No recorded inbox activity.</div>
+                ) : (
+                  taskActivity.map((row) => (
+                    <div key={row.event_id || `${row.task_id}-${row.created_at}`} className="py-2 border-b border-gray-100 last:border-0 text-sm">
+                      <div className="text-xs text-gray-500">{fmtDate(row.created_at)}</div>
+                      <div className="text-gray-900">{formatTaskActivityLine(row)}</div>
                 {row.task_id && (
                   <div className="text-xs text-gray-400 font-mono mt-0.5 truncate" title={row.task_id}>
                     {row.task_id}
                   </div>
                 )}
+                    </div>
+                  ))
+                )}
               </div>
-            ))
-          )}
-        </div>
       </CollapsibleBlock>
       <CollapsibleBlock title="Action history" subtitle="Last known runs for control-panel actions." defaultOpen={false}>
         <div className="max-h-72 overflow-y-auto mt-2">
@@ -1600,7 +1600,7 @@ const AdminClientControlPanelPage = () => {
                       {sev}
                     </span>
                     <div className="text-xs text-gray-500">{formatAuditTimestampUtc(ev.timestamp)}</div>
-                  </div>
+                    </div>
                   <div className="text-sm text-gray-900">{getAuditEventLabel(raw)}</div>
                   <details className="mt-1 text-xs text-gray-600">
                     <summary className="cursor-pointer select-none text-electric-teal">Raw event details</summary>
@@ -1611,7 +1611,7 @@ const AdminClientControlPanelPage = () => {
                       </pre>
                     )}
                   </details>
-                </div>
+              </div>
               );
             })
           )}

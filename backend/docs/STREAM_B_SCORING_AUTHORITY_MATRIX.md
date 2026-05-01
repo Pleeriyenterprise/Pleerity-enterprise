@@ -4,7 +4,7 @@
 **Phase:** Scoring authority matrix (audit only; no runtime or API changes)  
 **Named authority (writes):** `compliance_scoring_service.recalculate_and_persist`  
 **Companion reads:** `compliance_scoring_service.calculate_property_compliance` (v2 planner, no persist unless called inside `recalculate_and_persist` or read-repair), `compliance_score.calculate_compliance_score` (portfolio headline + live `stats` from persisted rows + runtime projection)  
-**Last updated:** 2026-04-30 (admin repair → `recalculate_and_persist`)  
+**Last updated:** 2026-04-30 (FE async honesty + digest/export snapshot + score-explanation + Evidence Readiness + professional compliance summary PDF copy; §6–§7)  
 
 ---
 
@@ -99,6 +99,7 @@ Use one row per **entry surface** (route, job step, script, or service called by
 |------|------------------------------|
 | Client recomputes portfolio % from raw requirements | Command Centre docstring: use `compliance_counts_authority` / `calculate_compliance_score.stats` only — **discipline**; not enforceable in this repo alone |
 | Client uses catalog matrix as headline | `calculate_compliance_score` attaches `catalog_portfolio_view` as **alternate lens only** — backend contract documented |
+| Client dashboard / compliance score page imply a single “moment in time” | **FE slices (2026-05-02 + 2026-04-30):** `ClientDashboard.js` surfaces `score_status` / `score_status_message` / last-calculated for non-`ok` states + portfolio timestamp when present; `ComplianceScorePage.js` surfaces `score_status_message` for all statuses when set, plus a factual **drivers vs stored headline** note; **`ClientCommandCenterPage.js`** when `compliance_status_summary` is missing shows explicit **bundle-degraded** copy + optional `score_status_message`, and shows `score_status_message` on the strip whenever set; **`PropertyDetailPage.js`** on Compliance tab (when explainability + operational preview load) shows **stored headline vs current detail** copy + `score_status_message` / `last_calculated_at` — **no API changes** (`frontend/src/utils/scoreFreshnessUi.js`; tests `ClientDashboard.scoreFreshness.test.js`, `ComplianceScorePage.asyncHonesty.test.js`, `ClientCommandCenterPage.test.js`, `PropertyDetailPage.asyncHonesty.test.js`, `scoreFreshnessUi.test.js`). |
 
 ---
 
@@ -109,8 +110,9 @@ Use one row per **entry surface** (route, job step, script, or service called by
 | Queue lag | `compliance_score_pending`, `enqueue_compliance_recalc` — dashboard can show old headline until worker runs |
 | Read repair | `get_authoritative_property_compliance_for_client` calls `recalculate_and_persist` when `compliance_score` is **null** |
 | Lazy backfill | `get_persisted_portfolio_headline_for_summary` / `calculate_compliance_score` can enqueue `TRIGGER_LAZY_BACKFILL` for missing scores |
-| Digest vs live portal | Digest uses same `calculate_compliance_score` as other surfaces — **aligned** at assembly time; **time** divergence vs “live now” if email delayed |
+| Digest vs live portal | Digest uses same `calculate_compliance_score` as other surfaces — **aligned** at assembly time; **time** divergence vs “live now” if email delayed — **mitigated (2026-04-30):** `digest_snapshot_framing_line` (`Snapshot as of {generated_at_display}`) on digest model; email (`email_service`), PDF executive summary (`monthly_digest_pdf_service`), plain text include snapshot + `score_status` / `last_calculated_at` / optional `score_status_message` near headline; compliance summary CSV (`reporting_service`) adds `score_status_message` + `export_snapshot_note`; `GET /api/reports/score-drivers.csv` prepends `# export_snapshot_*` / `# headline_*` (legacy) or extra metadata rows when `scoring_metadata=true` |
 | Partial Command Centre | Try/except per subgraph — compliance block can fail while other widgets succeed (gap analysis) |
+| Dashboard headline vs live KPI counts | Same split as headline vs `stats` in `calculate_compliance_score` — mitigated on dashboard/compliance-score/Command Centre/Property Detail **copy only** (see §6 FE slices); digest email/PDF + compliance CSV + score-drivers CSV **snapshot labelling** (see §7 digest row); **`GET /api/reports/score-explanation.pdf`** (`pdf_report_builder.build_score_explanation_report`): **Snapshot as of** + `score_status_message`, persisted-vs-queue-lag copy, removal of misleading “live calculator” wording (**2026-04-30**); **Evidence Readiness PDF** (`pdf_report_builder.build_portfolio_report` / `build_property_report`): **Snapshot generated at** (export time UTC), executive **Score status** / **Last score calculation** / **Headline note** from `aggregate_persisted_portfolio_headline`, portfolio table score cells with per-property persisted meta when present, methodology wording avoids implying live portal truth (**2026-04-30**); **Professional compliance summary PDF** (`professional_reports.generate_compliance_summary_pdf`): **Snapshot generated at**, **Headline note** from `score_status_message`, **Last score calculation (persisted batch)** vs PDF generation time, executive copy avoids portal-truth implication (**2026-04-30**); optional follow-up: scheduled digest |
 
 ---
 
@@ -120,7 +122,7 @@ Use one row per **entry surface** (route, job step, script, or service called by
 
 **Read / aggregate:** `compliance_score.py`, `scoring_semantics_v1.py`, `portfolio_risk_override*.py`, `command_center_service.py`, `routes/client.py`, `routes/portfolio.py`, `routes/reports.py`, `routes/ops_compliance.py`, `services/reporting_service.py`, `services/monthly_digest_assembly_service.py`, `services/monthly_digest_pdf_service.py`, `services/email_service.py`, `services/compliance_trending.py`, `services/score_events_service.py`, `services/compliance_explain_admin_service.py`, `services/risk_signal_service.py`  
 
-**Enqueue-only (many):** `routes/documents.py`, `routes/evidence_review.py`, `routes/client.py`, `routes/admin.py`, `routes/api_compliance_workflow.py`, `services/evidence_review_verify.py`, `services/jobs.py`, `services/provisioning.py`, `services/compliance_governed_rules_service.py`, `services/compliance_score.py`, `services/compliance_score_reconciliation_service.py`, etc.  
+**Enqueue-only (many):** `routes/documents.py`, `routes/evidence_review.py`, `routes/client.py`, `routes/admin.py` (including **standalone authority-sync** document + guided-evidence adjacency paths → `enqueue_compliance_recalc` per **Stream B straggler 2026-05-01**), `routes/client_compliance_evidence.py`, `routes/api_compliance_workflow.py`, `services/evidence_review_verify.py`, `services/jobs.py`, `services/provisioning.py`, `services/compliance_governed_rules_service.py`, `services/compliance_score.py`, `services/compliance_score_reconciliation_service.py`, etc.  
 
 **Tests / contracts:** `test_compliance_scoring_enterprise.py`, `test_compliance_authority_alignment.py`, `test_batch1_score_authority.py`, `test_batch2_p0_score_authority_contract.py`, `test_compliance_score_golden.py`, …  
 
@@ -130,7 +132,7 @@ Use one row per **entry surface** (route, job step, script, or service called by
 
 1. ~~**Stream B — Legacy path labelling**~~ — Done (docstrings in `compliance_score.py`, `compliance_scoring.py`, module notes in `compliance_scoring_service.py` / `admin.py`).  
 2. ~~**Stream B — Admin repair alignment (Option A)**~~ — **Done:** `fix=true` → `recalculate_and_persist` + `REASON_ADMIN_VALIDATOR_REPAIR`; mismatch + repaired audits + `correlation_id`.  
-3. **Stream B — Straggler wiring** — After **Stream E** mutation matrix: enqueue or sync `recalculate_and_persist` only where matrix proves a gap.  
+3. **Stream B — Straggler wiring** — After **Stream E** mutation matrix: enqueue or sync `recalculate_and_persist` only where matrix proves a gap. **Shipped slice (2026-05-01):** standalone `sync_requirement_evidence_authority` on selected **admin** + **client guided evidence** routes → `enqueue_compliance_recalc` (see matrix row 9).  
 4. **Stream B — Digest / Command Centre** — Hardening / tests only after stragglers addressed.  
 
 ---

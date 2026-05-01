@@ -274,6 +274,9 @@ async def recalculate_and_persist(
         "reason": reason,
         "actor": actor,
     }
+    _cid = (context or {}).get("correlation_id")
+    if _cid is not None and str(_cid).strip():
+        history_doc["correlation_id"] = str(_cid).strip()
     await db.property_compliance_score_history.insert_one(history_doc)
 
     delta = (new_score - previous_score) if previous_score is not None else None
@@ -297,6 +300,8 @@ async def recalculate_and_persist(
         "created_at": now.isoformat(),
         "actor": actor,
     }
+    if _cid is not None and str(_cid).strip():
+        score_change_log_doc["correlation_id"] = str(_cid).strip()
     await db.score_change_log.insert_one(score_change_log_doc)
 
     from services.score_ledger_service import log_score_change

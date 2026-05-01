@@ -54,11 +54,12 @@ These fields and behaviours **must** stay aligned across Python and JavaScript f
 
 ---
 
-## 4. How frontend parity is validated (no frontend implementation in this PR)
+## 4. How frontend parity is validated
 
 | Mechanism | Role |
 |-----------|------|
 | **`requirementTakeActionResolver.test.js`** | Unit parity for `resolveRequirementAction`, `requirementUsesServerTakeActionPrimary`, `resolveInboxTaskTakeActionRoute`, suppression, guided unavailable, merge of supporting links. |
+| **`ComplianceScorePage.scoreDrivers.test.js`** (Stream D — D-C07) | Regression: score-driver remediation uses the same **server-primary gate** (`requirementUsesServerTakeActionPrimary`) + `resolveRequirementAction` as other obligation surfaces; no heuristic driver `actions` as clickable remediation. |
 | **Manual cross-check** | When changing `requirement_action_resolver.py`, run FE tests locally and compare `intent` / `kind` / `handler` / route rules against §1 table. |
 | **Future CI gate (recommended)** | In the **frontend** repo or monorepo workflow: export fixture JSON from `cta_parity_fixtures` (generated step) or duplicate golden subset in JS — **release-blocking** once product approves (see §6). |
 
@@ -82,6 +83,7 @@ These fields and behaviours **must** stay aligned across Python and JavaScript f
 
 - **Primary** label/route when `requirementUsesServerTakeActionPrimary` is true (server-complete primary).
 - **Rule R2:** Raw gap `recommended_url` / `recommended_action_label` for **requirement-primary** surfaces when `canonical_take_action` / resolver output exists (matrix §4).
+- **Compliance score drivers (D-C07):** Do not present **requirement-primary remediation** labels or routes unless `requirementUsesServerTakeActionPrimary` is true for the joined requirement row (matrix D-C07).
 - **Risk / ops** URLs using the requirement resolver — risk stays on `/operations/risk-signals?signal_id=…` contract (matrix §3).
 - **Suppressed** or **guided-unavailable** rows: no silent fallback to `/documents` as **primary** intent.
 

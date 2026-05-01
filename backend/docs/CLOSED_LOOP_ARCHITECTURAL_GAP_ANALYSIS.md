@@ -377,6 +377,222 @@ Intended loop:
 
 ---
 
+## 18. State consistency, authoritative data, and temporal honesty
+
+> **Operational specifics**, mutation-path behaviour, reconciliation semantics, and reconstruction rules remain governed by the authoritative **Stream B–F** matrices and runbooks (`STREAM_B_SCORING_AUTHORITY_MATRIX.md`, `STREAM_C_REMEDIATION_CORRELATION_RUNBOOK.md`, `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md`, `STREAM_E_MUTATION_FANOUT_MATRIX.md`, `STREAM_F_RECONSTRUCTION_CONSISTENCY.md`, `STREAM_F_FORENSICS_JOIN_RECIPE.md`, `STREAM_F_PHASE2_CORRELATION_PROPAGATION.md`, `STREAM_D_CTA_PARITY_ENFORCEMENT.md`, and `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md`). **This section defines architectural principles only** — it does not replace per-stream inventories, acceptance criteria, or implementation phases.
+
+The platform is **event-driven** and **partially asynchronous**.
+
+Meaningful compliance events may trigger:
+
+* synchronous updates
+* queued recalculations
+* background reconciliation
+* delayed aggregation updates
+* eventual convergence across dependent read surfaces
+
+The architecture must explicitly distinguish between:
+
+* **authoritative persisted state**
+* **live operational projections**
+* **previews / explainability snapshots**
+* **diagnostic / internal correlation views**
+* **historical audit state**
+
+**Do not present these as equivalent.**
+
+### A. Authoritative vs non-authoritative data
+
+**Authoritative state:**
+
+* verified requirement status
+* persisted compliance score
+* published policy registry rules
+* verification outcomes
+* committed audit events
+
+**Non-authoritative or derived state:**
+
+* previews
+* projections
+* explainability snapshots
+* operational estimates
+* support / debug correlation views
+* temporary queue states
+* unresolved reconciliation states
+
+UI and reports must **clearly distinguish** authoritative state from derived or diagnostic state.
+
+Internal support tooling must **never** be presented as customer truth.
+
+### B. Eventual consistency rules
+
+The system is **allowed** to converge asynchronously.
+
+However:
+
+* dependent systems must **eventually converge** after meaningful compliance events
+* stale states must **not silently persist indefinitely**
+* users must **not be misled** into believing recalculation is immediate when it is **queued**
+* recalculation lag must be **observable** where relevant
+
+Where recalculation is asynchronous:
+
+* expose **freshness** state
+* expose **calculation status** where needed
+* avoid implying **immediate** consistency
+
+**Examples:**
+
+* persisted score may temporarily lag live requirement state
+* dashboard counts may refresh before headline score updates
+* reports may reflect snapshot time rather than current portal state
+
+### C. Temporal honesty
+
+Every **report**, **export**, **digest**, or **snapshot-based surface** that includes compliance scoring or aggregated compliance state must clearly communicate:
+
+* **generation time**
+* **score calculation time** (persisted batch / headline authority as documented for that surface)
+* **snapshot scope**
+* whether values are **live** or **persisted snapshots**
+
+**Do not imply:**
+
+* real-time compliance truth
+* instant recalculation
+* guaranteed legal compliance certainty
+* live synchronization across all surfaces
+
+### D. Compliance closure vs operational closure
+
+**Operational completion** does not automatically equal **compliance resolution**.
+
+Examples — **completed job**, **dismissed risk**, **closed issue**, **cleared inbox task**, **acknowledged reminder** — must **not** independently mark a requirement compliant unless **evidence** and **verification authority** support the transition.
+
+The system must preserve this distinction in:
+
+* workflows
+* reports
+* dashboards
+* audit trails
+* remediation views
+
+### E. Event fan-out discipline
+
+Meaningful compliance mutations must follow **controlled fan-out** rules.
+
+Examples:
+
+* evidence verified
+* requirement applicability changed
+* remediation outcome completed
+* evidence rejected
+* policy applicability recalculated
+
+Downstream updates may include:
+
+* requirement state changes
+* risk recalculation
+* score recalculation
+* dashboard refresh impact
+* reminder recalculation
+* audit events
+* report readiness updates
+
+Fan-out behaviour must be **explicit** and **governed** (per mutation matrix and service contracts).
+
+**Avoid:**
+
+* hidden side effects
+* duplicate recalculation paths
+* conflicting recalculation triggers
+* UI-only state correction
+* orphan updates that do not propagate
+
+### F. Correlation and reconstruction
+
+Important compliance events should preserve **reconstructable lineage** where possible.
+
+The platform should support operational reconstruction across:
+
+* audit events
+* score changes
+* remediation activity
+* evidence lifecycle
+* operational workflows
+* recalculation events
+
+Where asynchronous processing exists:
+
+* preserve **stable correlation identifiers** where appropriate
+* avoid creating unrelated duplicate lineage chains
+* distinguish **weak joins** from **authoritative joins**
+
+**Do not assume** timestamp order alone proves causality.
+
+### G. Remediation identity discipline
+
+A requirement may produce **multiple independent** remediation states or gaps.
+
+**Do not assume:**
+
+* one requirement equals one remediation item
+* `requirement_id` alone is a safe remediation identity
+
+Use **stable remediation identifiers** where appropriate (see remediation correlation runbook).
+
+Avoid collapsing distinct remediation states into misleading single records.
+
+### H. Internal diagnostic tooling
+
+Diagnostic or correlation tooling may exist for:
+
+* support
+* operations
+* audit investigation
+* forensic reconstruction
+
+Such tooling must:
+
+* remain clearly **non-authoritative** where applicable
+* be **access-controlled**
+* avoid customer-facing exposure unless explicitly **product-approved**
+* avoid becoming a hidden **second source of truth**
+
+### I. Queue and reconciliation observability
+
+Where queues or background reconciliation exist, the platform should support **operational observability** for:
+
+* pending recalculation
+* failed reconciliation
+* delayed propagation
+* stale score conditions
+* degraded dependency states
+
+Users and support staff should not be forced to **infer** these states blindly from inconsistent outputs.
+
+### J. Product claim discipline
+
+**Do not imply:**
+
+* guaranteed legal compliance
+* real-time universal consistency
+* automatic certification validity
+* operational completion equals regulatory compliance
+
+The platform supports:
+
+* monitoring
+* evidence management
+* remediation coordination
+* audit readiness
+* compliance visibility
+
+**Final compliance determination** remains dependent on evidence quality, verification authority, policy rules, and applicable regulation.
+
+---
+
 ## Appendix — key modules referenced
 
 | Concern | Modules |
@@ -392,4 +608,4 @@ Intended loop:
 
 ---
 
-*This document is descriptive. Update it when major architectural seams change (new DTOs, new audit collections, or scoring authority moves).*
+*This document is descriptive. Update it when major architectural seams change (new DTOs, new audit collections, or scoring authority moves). **§18** is normative programme doctrine for state consistency, temporal honesty, and closure semantics — aligned with Streams B–F; keep it consistent with those matrices when they evolve.*

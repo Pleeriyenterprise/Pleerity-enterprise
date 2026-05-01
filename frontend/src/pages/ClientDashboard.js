@@ -64,6 +64,11 @@ import {
   headlineScoreDisplayForDashboard,
   headlineScoreShowsOutOf100,
 } from '../utils/scoringHeadlineDisplay';
+import {
+  formatScoreLastCalculatedForUi,
+  pickScoreLastCalculatedIso,
+  resolveDashboardFreshnessExplanation,
+} from '../utils/scoreFreshnessUi';
 const KPI_NO_DATA = 'No data yet';
 
 /** Compact (i) hint for dashboard KPIs — must sit under TooltipProvider. */
@@ -865,6 +870,7 @@ const ClientDashboard = () => {
           color: 'gray',
           message: portfolioSummary?.score_status_message || complianceScore?.message || 'Compliance score is not available for this view.',
           scoreStatus: portfolioStatus,
+          scoreStatusMessage: portfolioSummary?.score_status_message ?? complianceScore?.score_status_message,
         };
       }
       if (riskLevel) {
@@ -872,10 +878,24 @@ const ClientDashboard = () => {
         const { grade, color, message } = s === 'Low Risk'
           ? scoreToGradeColorMessage(score)
           : riskLevelToGradeColorMessage(riskLevel);
-        return { score, grade, color, message, scoreStatus: portfolioStatus };
+        return {
+          score,
+          grade,
+          color,
+          message,
+          scoreStatus: portfolioStatus,
+          scoreStatusMessage: portfolioSummary?.score_status_message ?? complianceScore?.score_status_message,
+        };
       }
       const { grade, color, message } = scoreToGradeColorMessage(score);
-      return { score, grade, color, message, scoreStatus: portfolioStatus };
+      return {
+        score,
+        grade,
+        color,
+        message,
+        scoreStatus: portfolioStatus,
+        scoreStatusMessage: portfolioSummary?.score_status_message ?? complianceScore?.score_status_message,
+      };
     }
     if (complianceScore) {
       const st = complianceScore.score_status;
@@ -905,10 +925,31 @@ const ClientDashboard = () => {
     return { display, showOutOf100 };
   }, [displayScoreInfo, complianceScore, portfolioSummary]);
 
-  const headlineCoverageNote =
-    displayScoreInfo?.scoreStatusMessage ||
-    complianceScore?.score_status_message ||
-    portfolioSummary?.score_status_message;
+  /** Portfolio headline freshness: non-ok status copy + when stored scores were last calculated (no new APIs). */
+  const dashboardScoreFreshness = useMemo(() => {
+    const stRaw =
+      displayScoreInfo?.scoreStatus ?? complianceScore?.score_status ?? portfolioSummary?.score_status ?? '';
+    const st = String(stRaw).trim().toLowerCase();
+    const msg =
+      displayScoreInfo?.scoreStatusMessage ??
+      complianceScore?.score_status_message ??
+      portfolioSummary?.score_status_message ??
+      data?.compliance_score_headline?.score_status_message;
+    const explanation = resolveDashboardFreshnessExplanation(stRaw, msg);
+    const lastIso =
+      pickScoreLastCalculatedIso(complianceScore) ||
+      pickScoreLastCalculatedIso(portfolioSummary) ||
+      pickScoreLastCalculatedIso(data?.compliance_score_headline);
+    const lastCalculatedLine = formatScoreLastCalculatedForUi(lastIso);
+    const isPartialOrStale = st === 'partial' || st === 'stale';
+    return {
+      statusKey: st,
+      explanation,
+      lastCalculatedLine,
+      isPartialOrStale,
+      hasAny: Boolean(explanation || lastCalculatedLine),
+    };
+  }, [displayScoreInfo, complianceScore, portfolioSummary, data]);
 
   // Missing-evidence bucket from canonical score stats (portal projection); no client-side pending+overdue sum.
   const actionableMissingCount = useMemo(() => {
@@ -1614,16 +1655,29 @@ const ClientDashboard = () => {
             )}
           </div>
         )}
-        {headlineCoverageNote &&
-          (displayScoreInfo?.scoreStatus === 'partial' ||
-            displayScoreInfo?.scoreStatus === 'stale' ||
-            complianceScore?.score_status === 'partial' ||
-            complianceScore?.score_status === 'stale' ||
-            portfolioSummary?.score_status === 'partial' ||
-            portfolioSummary?.score_status === 'stale') && (
-          <p className="mb-6 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2" data-testid="dashboard-headline-coverage">
-            {headlineCoverageNote}
-          </p>
+        {dashboardScoreFreshness.hasAny && (
+          <div
+            className={`mb-6 rounded-lg px-3 py-2 text-xs ${
+              dashboardScoreFreshness.isPartialOrStale && dashboardScoreFreshness.explanation
+                ? 'border border-amber-200 bg-amber-50 text-amber-950'
+                : 'border border-gray-200 bg-slate-50 text-gray-800'
+            }`}
+            data-testid="dashboard-score-freshness"
+          >
+            {dashboardScoreFreshness.explanation ? (
+              <p className="leading-snug" data-testid="dashboard-score-freshness-explanation">
+                {dashboardScoreFreshness.explanation}
+              </p>
+            ) : null}
+            {dashboardScoreFreshness.lastCalculatedLine ? (
+              <p
+                className={`leading-snug text-gray-700 ${dashboardScoreFreshness.explanation ? 'mt-1.5' : ''}`}
+                data-testid="dashboard-score-freshness-last-calculated"
+              >
+                {dashboardScoreFreshness.lastCalculatedLine}
+              </p>
+            ) : null}
+          </div>
         )}
 
         {!setupView && isClientUser && (

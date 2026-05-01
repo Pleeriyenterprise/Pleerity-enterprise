@@ -32,6 +32,35 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _professional_compliance_summary_escape_xml(text: str) -> str:
+    """XML-safe text for ReportLab Paragraph markup (compliance summary PDF only)."""
+    from xml.sax.saxutils import escape
+
+    return escape(text or "", {'"': "&quot;", "'": "&apos;"})
+
+
+def _professional_compliance_summary_score_batch_time_display(raw: Any) -> str:
+    """Persisted headline score batch time for display — not PDF generation time."""
+    if raw is None or raw == "":
+        return "—"
+    if isinstance(raw, datetime):
+        dt = raw if raw.tzinfo is not None else raw.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).strftime("%d %B %Y at %H:%M UTC")
+    s = str(raw).strip()
+    if not s:
+        return "—"
+    s_iso = s.replace("Z", "+00:00")
+    try:
+        d = datetime.fromisoformat(s_iso)
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=timezone.utc)
+        return d.astimezone(timezone.utc).strftime("%d %B %Y at %H:%M UTC")
+    except Exception:
+        if len(s) >= 19 and "T" in s[:19]:
+            return s[:19].replace("T", " ")
+        return s[:48] if len(s) > 48 else s
+
+
 def hex_to_rgb(hex_color: str) -> tuple:
     """Convert hex color to RGB tuple for reportlab."""
     hex_color = hex_color.lstrip('#')
@@ -149,7 +178,10 @@ class ProfessionalReportGenerator:
         include_details: bool = True
     ) -> io.BytesIO:
         """Generate a professionally formatted compliance summary PDF.
-        
+
+        Snapshot framing: export time vs persisted CVP headline (`calculate_compliance_score`),
+        including `score_status_message` and last score batch time when returned.
+
         Includes:
         - Executive summary
         - Compliance score breakdown
@@ -219,7 +251,7 @@ class ProfessionalReportGenerator:
         # Title
         elements.append(Paragraph("Compliance Summary Report", styles["title"]))
         elements.append(Paragraph(
-            f"{branding['company_name']}<br/>Generated: {now.strftime('%d %B %Y at %H:%M')}",
+            f"{branding['company_name']}<br/>PDF generated: {now.strftime('%d %B %Y at %H:%M UTC')}",
             styles["subtitle"]
         ))
         
@@ -230,8 +262,24 @@ class ProfessionalReportGenerator:
             color=colors.Color(*hex_to_rgb(branding["secondary_color"])),
             spaceAfter=20
         ))
+
+        snap_ts = now.strftime("%d %B %Y at %H:%M UTC")
+        elements.append(
+            Paragraph(
+                f"<b>Snapshot generated at</b> {_professional_compliance_summary_escape_xml(snap_ts)}",
+                styles["body"],
+            )
+        )
+        elements.append(
+            Paragraph(
+                "Point-in-time export. The CVP headline below reflects persisted scores from the last completed calculation "
+                "shown under <b>Last score calculation</b>; it may differ after later recalculation.",
+                styles["small"],
+            )
+        )
+        elements.append(Spacer(1, 10))
         
-        # Portfolio CVP headline (persisted property scores — same contract as portal; not the requirement % below)
+        # Portfolio CVP headline (persisted property scores; not the requirement completion % below)
         try:
             from services.compliance_score import calculate_compliance_score
             from services.scoring_semantics_v1 import (
@@ -244,7 +292,14 @@ class ProfessionalReportGenerator:
             scale_note = " (0–100 headline)" if str(disp).isdigit() else ""
             st = cs.get("score_status") or "—"
             auth = cs.get("score_authority") or "—"
-            lc_raw = cs.get("last_calculated_at") or cs.get("portfolio_last_calculated_at") or "—"
+            lc_candidate = cs.get("last_calculated_at") or cs.get("portfolio_last_calculated_at")
+            lc_display = _professional_compliance_summary_score_batch_time_display(lc_candidate)
+            ssm = (cs.get("score_status_message") or "").strip()
+            headline_note_html = ""
+            if ssm:
+                headline_note_html = (
+                    f"<br/><b>Headline note:</b> {_professional_compliance_summary_escape_xml(ssm)}"
+                )
             cov = cs.get("score_coverage") or {}
             cov_note = ""
             if isinstance(cov, dict) and int(cov.get("properties_missing_score") or 0) > 0:
@@ -253,13 +308,20 @@ class ProfessionalReportGenerator:
                     f"properties with stored scores; {int(cov.get('properties_missing_score') or 0)} without a stored score."
                 )
             cvp_block = f"""
-            <b>Portfolio compliance score (CVP headline)</b>{scale_note}: <b>{disp}</b><br/>
-            <b>Score status:</b> {st} &nbsp;|&nbsp; <b>Authority:</b> {auth}<br/>
-            <b>Last calculated:</b> {lc_raw}<br/>
-            <i>Scoring contract: {SCORING_SEMANTICS_VERSION}.</i> This headline uses persisted property scores only.{cov_note}
+            <b>Portfolio compliance score (CVP headline)</b>{scale_note}: <b>{_professional_compliance_summary_escape_xml(str(disp))}</b><br/>
+            <b>Score status:</b> {_professional_compliance_summary_escape_xml(str(st))} &nbsp;|&nbsp; <b>Authority:</b> {_professional_compliance_summary_escape_xml(str(auth))}<br/>
+            <b>Last score calculation (persisted batch):</b> {_professional_compliance_summary_escape_xml(lc_display)}{headline_note_html}<br/>
+            <i>Scoring contract: {SCORING_SEMANTICS_VERSION}.</i> Headline uses persisted property scores only.{cov_note}
             """
             elements.append(Paragraph("Portfolio compliance score", styles["heading"]))
             elements.append(Paragraph(cvp_block, styles["body"]))
+            elements.append(
+                Paragraph(
+                    "Last score calculation time is when the persisted headline was last computed in the system, "
+                    "not when this PDF was generated.",
+                    styles["small"],
+                )
+            )
             elements.append(Spacer(1, 16))
         except Exception as cvp_err:
             logger.warning("Professional compliance summary PDF: CVP headline unavailable: %s", cvp_err)
@@ -277,13 +339,13 @@ class ProfessionalReportGenerator:
         
         score_pct = round((compliant / total_reqs * 100) if total_reqs > 0 else 0)
         summary_text = f"""
-        The following <b>{score_pct}%</b> figure is a <b>requirement-status completion rate</b> from portal-visible rows — not the CVP headline score above.
+        The following <b>{score_pct}%</b> figure is a <b>requirement-status completion rate</b> from requirements included in this report's scope — not the CVP headline score above.
         Out of <b>{total_reqs}</b> total requirements across <b>{total_props}</b> properties:
         <br/><br/>
         • <b>{compliant}</b> requirements are fully compliant<br/>
         • <b>{expiring}</b> are expiring soon and need renewal<br/>
         • <b>{overdue}</b> are overdue and require immediate attention<br/>
-        • <b>{missing_evidence}</b> need evidence or confirmation (missing / pending on portal-visible requirements)
+        • <b>{missing_evidence}</b> need evidence or confirmation (missing / pending within that same scope, at export time)
         """
         elements.append(Paragraph(summary_text, styles["body"]))
         elements.append(Spacer(1, 20))

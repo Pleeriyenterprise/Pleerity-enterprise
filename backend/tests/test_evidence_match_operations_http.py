@@ -266,6 +266,11 @@ async def test_admin_resolve_evidence_match_approve_direct():
         patch.object(db_singleton, "get_db", return_value=mock_db),
         patch("routes.admin.create_audit_log", new_callable=AsyncMock),
         patch("services.requirement_evidence_authority.sync_requirement_evidence_authority", new_callable=AsyncMock),
+        patch(
+            "routes.admin._enqueue_recalc_after_standalone_authority_sync",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
     ):
         out = await admin_resolve_evidence_match(request, doc_id, body)
 

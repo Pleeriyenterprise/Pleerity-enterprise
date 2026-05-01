@@ -21,6 +21,11 @@ from services.compliance_evidence_record_service import (
     effective_evidence_resolution,
     guided_method_ui_rows_for_modes,
 )
+from services.compliance_recalc_queue import (
+    ACTOR_CLIENT,
+    TRIGGER_DOC_STATUS_CHANGED,
+    enqueue_compliance_recalc,
+)
 from services.requirement_evidence_authority import sync_requirement_evidence_authority
 from utils.audit import create_audit_log
 from utils.request_ip import get_client_ip
@@ -290,6 +295,15 @@ async def post_compliance_evidence(
         raise HTTPException(status_code=400, detail=msg) from e
 
     await sync_requirement_evidence_authority(db, requirement_id, property_id_hint=property_id)
+    eid = str((rec or {}).get("evidence_record_id") or "").strip() or "new"
+    await enqueue_compliance_recalc(
+        property_id=property_id,
+        client_id=str(client_id),
+        trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
+        actor_type=ACTOR_CLIENT,
+        actor_id=str(uid),
+        correlation_id=f"GUIDED_EVIDENCE_AUTHORITY:{property_id}:{requirement_id}:{eid}",
+    )
     return {"ok": True, "evidence_record": rec}
 
 
@@ -333,6 +347,14 @@ async def post_evidence_verification(
     if not updated:
         raise HTTPException(status_code=404, detail="Evidence record not found")
     await sync_requirement_evidence_authority(db, requirement_id, property_id_hint=property_id)
+    await enqueue_compliance_recalc(
+        property_id=property_id,
+        client_id=str(client_id),
+        trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
+        actor_type=ACTOR_CLIENT,
+        actor_id=str(uid),
+        correlation_id=f"GUIDED_EVIDENCE_VERIFY:{property_id}:{requirement_id}:{evidence_record_id}",
+    )
     return {"ok": True, "evidence_record": updated}
 
 

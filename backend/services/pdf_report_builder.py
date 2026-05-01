@@ -1,10 +1,12 @@
 """
 Deterministic PDF report builder (sync).
 Evidence Readiness report from pre-loaded report_data. No AI; template-only.
+Evidence Readiness PDFs label export time and persisted score metadata (no live-portal truth claims).
 Footer: "This report does not constitute legal advice."
 """
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from xml.sax.saxutils import escape as _xml_escape
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -159,11 +161,74 @@ def _derive_counts_and_risk(
     }
 
 
-def _evidence_readiness_headline_score_frag(properties: List[dict], now: datetime) -> str:
+def _evidence_readiness_snapshot_timestamp_display(now: datetime) -> str:
+    """UTC label for snapshot framing (aligned with cover ``Generated`` line)."""
+    return now.strftime("%d %B %Y at %H:%M UTC")
+
+
+def _evidence_readiness_last_calc_display(raw: Any) -> str:
+    """Human-readable persisted score batch time for Evidence Readiness PDF."""
+    if raw is None or raw == "":
+        return "—"
+    if isinstance(raw, datetime):
+        dt = raw if raw.tzinfo is not None else raw.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).strftime("%d %B %Y at %H:%M UTC")
+    s = str(raw).strip()
+    if not s:
+        return "—"
+    s_iso = s.replace("Z", "+00:00")
+    try:
+        d = datetime.fromisoformat(s_iso)
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=timezone.utc)
+        return d.astimezone(timezone.utc).strftime("%d %B %Y at %H:%M UTC")
+    except Exception:
+        if len(s) >= 19 and "T" in s[:19]:
+            return s[:19].replace("T", " ")
+        return s[:32] if len(s) > 32 else s
+
+
+def _evidence_readiness_headline_score_from_agg(agg: dict) -> str:
     """SCORING_SEMANTICS_V1: never show ``N/A/100``; only append ``/100`` for authoritative numeric headlines."""
-    agg = aggregate_persisted_portfolio_headline(properties, now=now)
     disp = headline_score_display_for_export(agg.get("portfolio_score"), agg.get("score_status"))
     return f"{disp}/100" if disp.isdigit() else disp
+
+
+def _evidence_readiness_headline_score_frag(
+    properties: List[dict], now: datetime, agg: Optional[dict] = None
+) -> str:
+    """Portfolio headline display; pass ``agg`` to avoid a second aggregate pass."""
+    agg = agg if agg is not None else aggregate_persisted_portfolio_headline(properties, now=now)
+    return _evidence_readiness_headline_score_from_agg(agg)
+
+
+def _evidence_readiness_exec_aggregate_meta_html(agg: dict) -> str:
+    """HTML lines for executive summary: score status, last portfolio calculation, optional headline note."""
+    st = agg.get("score_status")
+    st_s = _xml_escape(str(st)) if st is not None and str(st) != "" else "—"
+    last = _evidence_readiness_last_calc_display(agg.get("portfolio_last_calculated_at"))
+    lines = [
+        f"<b>Score status:</b> {st_s} &nbsp;|&nbsp; <b>Last score calculation:</b> {_xml_escape(last)}",
+    ]
+    ssm = (agg.get("score_status_message") or "").strip()
+    if ssm:
+        lines.append(f"<b>Headline note:</b> {_xml_escape(ssm)}")
+    return "<br/>".join(lines)
+
+
+def _evidence_readiness_property_score_cell_html(p: dict, *, now: datetime) -> str:
+    """Score column HTML: headline plus score status and optional last calculation / property message."""
+    st = resolve_property_score_status(p, now=now)
+    disp = headline_score_display_for_export(p.get("compliance_score"), st)
+    primary = f"{disp}/100" if disp.isdigit() else disp
+    meta: List[str] = [f"Score status: {_xml_escape(str(st))}"]
+    lcat = p.get("compliance_last_calculated_at")
+    if lcat is not None and str(lcat).strip():
+        meta.append(f"Last calculated: {_xml_escape(_evidence_readiness_last_calc_display(lcat))}")
+    pssm = (p.get("score_status_message") or "").strip()
+    if pssm:
+        meta.append(_xml_escape(pssm[:200] + ("…" if len(pssm) > 200 else "")))
+    return _xml_escape(primary) + '<br/><font size="8">' + " · ".join(meta) + "</font>"
 
 
 def _top_risk_drivers(
@@ -207,6 +272,7 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     styles, table_style = _build_styles_and_table_style(branding)
     derived = _derive_counts_and_risk(properties, requirements, now, client_doc=client)
     top_risks = _top_risk_drivers(requirements, properties, client, limit=10)
+    headline_agg = aggregate_persisted_portfolio_headline(properties, now=now)
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -227,10 +293,19 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
 
     # Executive summary
     elements.append(Paragraph("Executive Summary", styles["heading"]))
-    score_frag = _evidence_readiness_headline_score_frag(properties, now)
+    snap_ts = _evidence_readiness_snapshot_timestamp_display(now)
+    elements.append(Paragraph(f"<b>Snapshot generated at</b> {_xml_escape(snap_ts)}", styles["body"]))
+    elements.append(Paragraph(
+        "This PDF is a point-in-time export. Persisted headline scores and counts reflect data loaded for this run "
+        "and may differ from the client application after later recalculation or data changes.",
+        styles["small"],
+    ))
+    elements.append(Spacer(1, 8))
+    score_frag = _evidence_readiness_headline_score_frag(properties, now, headline_agg)
     summary_text = f"""
     <b>Score:</b> {score_frag} &nbsp;|&nbsp;
     <b>Risk level:</b> {derived['risk_level']}
+    <br/>{_evidence_readiness_exec_aggregate_meta_html(headline_agg)}
     <br/><br/>
     <b>Counts:</b> {len(properties)} propert(ies); {len(requirements)} requirements.
     Evidence in place: <b>{derived['valid_count']}</b> &nbsp;|&nbsp;
@@ -269,17 +344,14 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     prop_data = [["Address", "Score", "Risk level", "Last updated"]]
     for p in properties[:50]:
         addr = p.get("address_line_1") or p.get("nickname") or p.get("property_id", "")
-        st = resolve_property_score_status(p, now=now)
-        score_cell = headline_score_display_for_export(p.get("compliance_score"), st)
-        if score_cell.isdigit():
-            score_cell = f"{score_cell}/100"
+        score_cell = Paragraph(_evidence_readiness_property_score_cell_html(p, now=now), styles["body"])
         risk = p.get("risk_level") or "—"
         updated = p.get("compliance_last_calculated_at") or "—"
         if isinstance(updated, str) and len(updated) > 16:
             updated = updated[:10]
         prop_data.append([addr[:50], score_cell, risk, updated])
     if len(prop_data) > 1:
-        t = Table(prop_data, colWidths=[200, 50, 90, 80])
+        t = Table(prop_data, colWidths=[185, 100, 85, 80])
         t.setStyle(table_style)
         elements.append(t)
     else:
@@ -323,7 +395,7 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     elements.append(Paragraph("Scoring methodology summary", styles["heading"]))
     elements.append(Paragraph(
         "Scores are evidence-based: each applicable requirement contributes a weight; status (Evidence in place, Expiring soon, Expired/overdue, Missing evidence) maps to a factor. "
-        "Expiring-soon uses the same jurisdiction- and requirement-aware window as the live portal (not a fixed calendar constant). "
+        "Expiring-soon uses the same jurisdiction- and requirement-aware rule window as configured for scoring (not a fixed calendar constant). "
         "Risk level is derived from overall score and critical requirement status. This is not a legal compliance opinion.",
         styles["body"],
     ))
@@ -374,19 +446,44 @@ def build_score_explanation_report(
     Build Compliance Score Summary (Informational) PDF. Audit-style, branded.
     Sections: cover, portfolio snapshot, what score means, weighting model,
     top drivers, property breakdown, appendix (full drivers). Footer: disclaimer + Pleerity line.
+
+    Headline timing: **Snapshot as of** uses the same persisted-batch timestamps as the cover
+    (`last_calculated_at` / `portfolio_last_calculated_at` / `score_last_calculated_at`), then PDF
+    generation time if none are set. Driver rows reflect requirement state at PDF generation time.
     """
     company_name = client_doc.get("company_name") or client_doc.get("full_name") or "Client"
     crn = client_doc.get("customer_reference") or client_id
     now = datetime.now(timezone.utc)
     now_str = now.strftime("%d %B %Y at %H:%M UTC")
-    data_as_of = (
+
+    raw_as_of = (
         score_payload.get("last_calculated_at")
         or score_payload.get("portfolio_last_calculated_at")
         or score_payload.get("score_last_calculated_at")
-        or now.isoformat()
     )
-    if isinstance(data_as_of, str) and len(data_as_of) > 19:
-        data_as_of = data_as_of[:19].replace("T", " ")
+
+    def _score_report_as_of_display(raw: Any) -> str:
+        """Human-readable as-of for headline (persisted batch time); falls back to PDF generation time."""
+        if raw is None or raw == "":
+            return now_str
+        if isinstance(raw, datetime):
+            dt = raw if raw.tzinfo is not None else raw.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc).strftime("%d %B %Y at %H:%M UTC")
+        s = str(raw).strip()
+        if not s:
+            return now_str
+        s_iso = s.replace("Z", "+00:00")
+        try:
+            d = datetime.fromisoformat(s_iso)
+            if d.tzinfo is None:
+                d = d.replace(tzinfo=timezone.utc)
+            return d.astimezone(timezone.utc).strftime("%d %B %Y at %H:%M UTC")
+        except Exception:
+            if len(s) >= 19 and "T" in s[:19]:
+                return s[:19].replace("T", " ")
+            return s
+
+    data_as_of_display = _score_report_as_of_display(raw_as_of)
 
     branding = branding or {
         "primary_color": "#0B1D3A",
@@ -405,7 +502,7 @@ def build_score_explanation_report(
     elements.append(Spacer(1, 60))
     elements.append(Paragraph("Compliance Score Summary (Informational)", styles["title"]))
     elements.append(Paragraph(
-        f"{company_name}<br/>CRN: {crn}<br/>Generated: {now_str}<br/>Data as of: {data_as_of}",
+        f"{company_name}<br/>CRN: {crn}<br/>Generated: {now_str}<br/>Data as of: {_xml_escape(data_as_of_display)}",
         styles["subtitle"],
     ))
     elements.append(Paragraph(
@@ -418,6 +515,13 @@ def build_score_explanation_report(
 
     # —— 2. Portfolio snapshot ——
     elements.append(Paragraph("Portfolio snapshot", styles["heading"]))
+    elements.append(
+        Paragraph(
+            f"<b>Snapshot as of</b> {_xml_escape(data_as_of_display)}",
+            styles["body"],
+        )
+    )
+    elements.append(Spacer(1, 8))
     score = score_payload.get("score")
     score_status = score_payload.get("score_status")
     score_display = headline_score_display_for_export(score, score_status)
@@ -437,10 +541,14 @@ def build_score_explanation_report(
             f"<br/><b>Coverage:</b> score averages {int(cov.get('properties_with_score') or 0)} of "
             f"{int(cov.get('properties_total') or 0)} properties with persisted scores."
         )
+    ssm = (score_payload.get("score_status_message") or "").strip()
+    headline_note = ""
+    if ssm:
+        headline_note = f"<br/><b>Headline note:</b> {_xml_escape(ssm)}"
     snapshot_text = f"""
     <b>Overall score (headline):</b> {score_display}{'/100' if score_display.isdigit() else ''} &nbsp;|&nbsp; <b>Grade:</b> {grade}
     <br/><b>Score status:</b> {score_status or '—'} &nbsp;|&nbsp; <b>Authority:</b> {score_payload.get('score_authority') or '—'}
-    {cov_note}
+    {cov_note}{headline_note}
     <br/><br/>
     <b>Valid:</b> {valid} &nbsp;|&nbsp; <b>Expiring soon:</b> {expiring} &nbsp;|&nbsp; <b>Overdue:</b> {overdue}
     <br/>
@@ -481,7 +589,9 @@ def build_score_explanation_report(
         styles["body"],
     ))
     elements.append(Paragraph(
-        "<b>Updates:</b> Score recalculates automatically when documents, dates, applicability, or status changes.",
+        "<b>Updates:</b> The headline uses persisted portfolio scores (as of the snapshot above). "
+        "Background recalculation runs after material changes; the headline can lag until that work completes. "
+        "Counts in this section use portal-visible requirement data at PDF generation time and may change before the headline updates.",
         styles["body"],
     ))
     elements.append(Spacer(1, 24))
@@ -519,7 +629,8 @@ def build_score_explanation_report(
         elements.append(
             Paragraph(
                 "A per-bucket breakdown is not included in this PDF until each property has a current stored breakdown on the "
-                "current model. The headline score and drivers above still reflect the live calculator.",
+                "current model. The headline above reflects persisted scores as of the snapshot time; driver rows use requirement "
+                "states from when this PDF was generated and may appear ahead of the next headline refresh.",
                 styles["body"],
             )
         )
@@ -530,7 +641,12 @@ def build_score_explanation_report(
     top_drivers = drivers[:10]
     elements.append(Paragraph("Top drivers (what is affecting your score)", styles["heading"]))
     if not top_drivers:
-        elements.append(Paragraph("No issues detected based on current portal records.", styles["body"]))
+        elements.append(
+            Paragraph(
+                "No issues detected from the requirement data used when this PDF was generated.",
+                styles["body"],
+            )
+        )
     else:
         driver_rows = [["Property", "Requirement", "Status", "Date used", "Evidence", "Next step"]]
         for d in top_drivers:
@@ -636,6 +752,7 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     derived = _derive_counts_and_risk(properties, requirements, now, client_doc=client)
     top_risks = _top_risk_drivers(requirements, properties, client, limit=10)
     prop = properties[0] if properties else {}
+    headline_agg = aggregate_persisted_portfolio_headline(properties, now=now)
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -657,10 +774,23 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
 
     # Executive summary
     elements.append(Paragraph("Executive Summary", styles["heading"]))
+    snap_ts = _evidence_readiness_snapshot_timestamp_display(now)
+    elements.append(Paragraph(f"<b>Snapshot generated at</b> {_xml_escape(snap_ts)}", styles["body"]))
+    elements.append(Paragraph(
+        "This PDF is a point-in-time export. Persisted headline scores and counts reflect data loaded for this run "
+        "and may differ from the client application after later recalculation or data changes.",
+        styles["small"],
+    ))
+    elements.append(Spacer(1, 8))
     score_line = (
-        f"<b>Score:</b> {_evidence_readiness_headline_score_frag(properties, now)} &nbsp;|&nbsp; "
+        f"<b>Score:</b> {_evidence_readiness_headline_score_frag(properties, now, headline_agg)} &nbsp;|&nbsp; "
         f"<b>Risk level:</b> {derived['risk_level']}"
     )
+    score_line += "<br/>" + _evidence_readiness_exec_aggregate_meta_html(headline_agg)
+    prop_score_msg = (prop.get("score_status_message") or "").strip()
+    agg_score_msg = (headline_agg.get("score_status_message") or "").strip()
+    if prop_score_msg and prop_score_msg != agg_score_msg:
+        score_line += f"<br/><b>Headline note:</b> {_xml_escape(prop_score_msg)}"
     if score_delta is not None or score_change_summary:
         score_line += "<br/><b>Score change:</b> " + (score_change_summary or (f"Delta {score_delta:+d}" if score_delta is not None else "—"))
     summary_text = f"""
@@ -730,7 +860,7 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     elements.append(Paragraph("Scoring methodology summary", styles["heading"]))
     elements.append(Paragraph(
         "Scores are evidence-based; status (Evidence in place, Expiring soon, Expired/overdue, Missing evidence) maps to a factor. "
-        "Expiring-soon uses the jurisdiction- and requirement-aware portal window. Risk level is derived from score. "
+        "Expiring-soon uses the jurisdiction- and requirement-aware rule window used in scoring. Risk level is derived from score. "
         "This is not a legal compliance opinion.",
         styles["body"],
     ))

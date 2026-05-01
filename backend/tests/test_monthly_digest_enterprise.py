@@ -301,6 +301,7 @@ def test_monthly_digest_plain_text_includes_hiua_payload():
             "account_name": "Test",
             "client_name": "Test",
             "properties_count": 1,
+            "digest_snapshot_framing_line": "Snapshot as of 01 April 2026 10:00 UTC",
             "compliance_score": 80,
             "score_status": "ok",
             "last_calculated_at": "2026-04-01",
@@ -324,6 +325,7 @@ def test_monthly_digest_plain_text_includes_hiua_payload():
     assert "PLAIN_HIUA_LINE" in txt
     assert "PLAIN_HIUA_FRAME" in txt
     assert "OPERATIONAL FOLLOW-UP" in txt
+    assert "Snapshot as of 01 April 2026 10:00 UTC" in txt
 
 
 def test_monthly_digest_email_html_includes_hiua_payload():
@@ -336,11 +338,13 @@ def test_monthly_digest_email_html_includes_hiua_payload():
             "account_name": "Test",
             "client_name": "Test",
             "generated_at_display": "1 Apr 2026",
+            "digest_snapshot_framing_line": "Snapshot as of 01 April 2026 10:00 UTC",
             "data_as_of": "2026-04-01",
             "properties_count": 1,
             "compliance_score": 80,
             "score_status": "ok",
             "last_calculated_at": "2026-04-01",
+            "score_status_message": "Headline uses last completed batch.",
             "risk_level": "Low Risk",
             "total_requirements": 2,
             "valid_count": 2,
@@ -359,3 +363,54 @@ def test_monthly_digest_email_html_includes_hiua_payload():
     assert "EMAIL_HIUA_LINE_MARKER" in html
     assert "EMAIL_HIUA_FRAME_MARKER" in html
     assert "Operational follow-up (applicability)" in html
+    assert "Snapshot as of 01 April 2026 10:00 UTC" in html
+    assert "Headline uses last completed batch." in html
+
+
+def test_monthly_digest_pdf_executive_summary_includes_snapshot_and_score_rows(monkeypatch):
+    monkeypatch.setattr("reportlab.rl_config.pageCompression", 0)
+    brand = MagicMock()
+    brand.company_name = "Co"
+    brand.tagline = "T"
+    brand.primary_color = "#0B1D3A"
+    brand.logo_path = None
+    brand.include_pleerity_attribution = False
+    brand.powered_by_text = ""
+    model = {
+        "reporting_month_label": "March 2026",
+        "generated_at_display": "30 April 2026 12:00 UTC",
+        "digest_snapshot_framing_line": "Snapshot as of 30 April 2026 12:00 UTC",
+        "account_name": "A",
+        "properties_count": 1,
+        "compliance_score": 80,
+        "score_status": "stale",
+        "last_calculated_at": "2026-04-01T08:00:00Z",
+        "score_status_message": "Recalculation pending for one property.",
+        "risk_level": "Low Risk",
+        "total_requirements": 1,
+        "valid_count": 1,
+        "compliant": 1,
+        "expiring_soon": 0,
+        "overdue": 0,
+        "missing_evidence_count": 0,
+        "open_compliance_jobs": 0,
+        "open_maintenance_jobs": 0,
+        "deltas": {"has_prior_snapshot": False},
+        "include_compliance_summary": True,
+        "include_action_items": True,
+        "include_upcoming_expiries": True,
+        "include_recent_documents": True,
+        "include_recommendations": True,
+        "include_audit_summary": False,
+        "property_rows_pdf": [],
+        "requirement_rows_pdf": [],
+        "top_risk_drivers": [],
+        "top_next_actions": [],
+    }
+    pdf = build_monthly_digest_pdf_bytes(model, brand=brand)
+    assert pdf.startswith(b"%PDF")
+    assert b"Snapshot as of 30 April 2026 12:00 UTC" in pdf
+    assert b"Score status" in pdf
+    assert b"Last calculated" in pdf
+    assert b"2026-04-01" in pdf
+    assert b"Recalculation pending for one property." in pdf

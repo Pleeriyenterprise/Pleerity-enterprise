@@ -17,10 +17,11 @@ Admin endpoints:
 - POST /api/admin/support/conversation/{id}/reply - Admin reply to conversation
 - POST /api/admin/support/lookup-by-crn - Admin account lookup
 - GET /api/admin/support/audit-log - View audit logs
+- POST /api/admin/support/remediation-correlation-view - Stream C internal correlation (feature-flagged)
 """
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime, timezone, timedelta
 from middleware import require_support_or_above, client_route_guard, require_owner_or_admin, get_current_user
 from utils.rate_limiter import rate_limiter
@@ -99,6 +100,21 @@ class AdminCreateTicketFromConversationRequest(BaseModel):
 
 class AdminLookupRequest(BaseModel):
     crn: str
+
+
+class RemediationCorrelationEntry(BaseModel):
+    kind: Literal["gap_key", "issue_id", "work_order_id", "risk_signal_id"]
+    value: str = Field(..., min_length=1, max_length=512)
+
+
+class RemediationCorrelationViewRequest(BaseModel):
+    """Stream C v1 — property-scoped read-only correlation (admin/support, feature-flagged)."""
+
+    client_id: str = Field(..., min_length=1, max_length=128)
+    property_id: str = Field(..., min_length=1, max_length=128)
+    entry: RemediationCorrelationEntry
+    as_of: Optional[str] = None
+    window_half_days: int = Field(14, ge=1, le=31)
 
 
 # ============================================================================
@@ -1034,6 +1050,49 @@ async def get_audit_log(
     )
     
     return {"logs": logs, "total": len(logs)}
+
+
+@admin_router.post("/remediation-correlation-view")
+async def remediation_correlation_view(
+    body: RemediationCorrelationViewRequest,
+    current_user: dict = Depends(require_support_or_above),
+):
+    """
+    Stream C internal remediation correlation read-model (v1).
+
+    Read-only joins across compliance_gaps, maintenance_issues, work_orders,
+    risk_signals, audit_logs, property_compliance_score_history, score_change_log.
+    Requires FEATURE_REMEDIATION_CORRELATION_VIEW_V1. Not a source of truth.
+    """
+    from services.remediation_correlation_view import (
+        is_remediation_correlation_view_v1_enabled,
+        build_remediation_correlation_view,
+    )
+
+    if not is_remediation_correlation_view_v1_enabled():
+        raise HTTPException(
+            status_code=404,
+            detail="Remediation correlation view is disabled",
+        )
+
+    db = database.get_db()
+    try:
+        return await build_remediation_correlation_view(
+            db,
+            client_id=body.client_id.strip(),
+            property_id=body.property_id.strip(),
+            entry_kind=body.entry.kind,
+            entry_value=body.entry.value.strip(),
+            as_of_raw=body.as_of,
+            window_half_days=body.window_half_days,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except LookupError:
+        raise HTTPException(
+            status_code=404,
+            detail="Anchor not found for client_id, property_id, and entry",
+        ) from None
 
 
 @admin_router.get("/stats")

@@ -120,6 +120,7 @@ import {
   headlineScoreDisplayForDashboard,
   headlineScoreShowsOutOf100,
 } from '../utils/scoringHeadlineDisplay';
+import { PROPERTY_DETAIL_STORED_VS_PREVIEW_NOTE } from '../utils/scoreFreshnessUi';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -1378,6 +1379,16 @@ export default function PropertyDetailPage() {
                       : ''}
                   </p>
                 )}
+                {!complianceDetail.score_status && complianceDetail.last_calculated_at && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    Last calculated: {new Date(complianceDetail.last_calculated_at).toLocaleString()}
+                  </p>
+                )}
+                {complianceDetail.score_status_message && String(complianceDetail.score_status_message).trim() ? (
+                  <p className="text-xs text-gray-600 mt-1 border-t border-gray-200 pt-1.5">
+                    {String(complianceDetail.score_status_message).trim()}
+                  </p>
+                ) : null}
                 <p className="text-xs text-gray-500 mt-1">Compliance snapshot for this property — not legal advice.</p>
                 <div className="flex flex-wrap gap-2 mt-2">
                   <Button
@@ -1605,6 +1616,22 @@ export default function PropertyDetailPage() {
                   <span className="text-sm text-gray-500">Last updated: {new Date(complianceDetail.last_updated_at).toLocaleString()}</span>
                 )}
               </div>
+              {complianceExplainability ? (
+                <div
+                  className="mb-4 rounded-lg border border-gray-200 bg-gray-50/90 px-3 py-2.5 text-xs text-gray-700 space-y-1.5"
+                  data-testid="property-compliance-stored-vs-preview-note"
+                >
+                  <p>{PROPERTY_DETAIL_STORED_VS_PREVIEW_NOTE}</p>
+                  {complianceDetail.score_status_message && String(complianceDetail.score_status_message).trim() ? (
+                    <p className="text-gray-800">{String(complianceDetail.score_status_message).trim()}</p>
+                  ) : null}
+                  {complianceDetail.last_calculated_at ? (
+                    <p className="text-gray-600">
+                      Last calculated: {new Date(complianceDetail.last_calculated_at).toLocaleString()}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {(complianceDetail.score_delta != null || complianceDetail.score_change_summary) && (
                 <div className="mb-4 flex flex-wrap items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white">
                   {complianceDetail.score_delta != null && complianceDetail.score_delta !== 0 && (

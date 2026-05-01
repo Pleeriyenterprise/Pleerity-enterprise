@@ -406,6 +406,23 @@ class EmailService:
         ovd = int(m.get("overdue") or 0)
         miss = int(m.get("missing_evidence_count") or 0)
 
+        tpr = m.get("digest_email_top_properties_at_risk") or []
+        gen_raw = str(m.get("generated_at_display") or m.get("data_as_of") or "").strip()
+        snapshot_framing = (m.get("digest_snapshot_framing_line") or "").strip()
+        if not snapshot_framing and gen_raw:
+            snapshot_framing = f"Snapshot as of {gen_raw}"
+        show_score_snapshot_banner = m.get("include_compliance_summary", True) or (
+            bool(tpr) and m.get("include_property_breakdown", True)
+        )
+        snapshot_html = ""
+        if snapshot_framing and show_score_snapshot_banner:
+            snapshot_html = (
+                '<p style="margin:0 0 12px 0;padding:8px 12px;background:#f1f5f9;border-radius:8px;'
+                'font-size:13px;color:#334155;line-height:1.45;">'
+                f"{html_module.escape(snapshot_framing)}"
+                "</p>"
+            )
+
         def metric_card(title: str, value: str) -> str:
             return (
                 f'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin:0 0 10px 0;">'
@@ -414,7 +431,6 @@ class EmailService:
             )
 
         top_prop_html = ""
-        tpr = m.get("digest_email_top_properties_at_risk") or []
         if tpr and m.get("include_property_breakdown", True):
             parts = [
                 '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">'
@@ -442,11 +458,16 @@ class EmailService:
         cards = ""
         if m.get("include_compliance_summary", True):
             cards += metric_card("Compliance score (headline)", score_display)
-            if score_status_esc:
-                meta_bits = [f"Status: {score_status_esc}"]
+            ssm_raw = (m.get("score_status_message") or "").strip()
+            if score_status_esc or last_calc_esc or ssm_raw:
+                meta_bits: List[str] = []
+                if score_status_esc:
+                    meta_bits.append(f"Status: {score_status_esc}")
                 if last_calc_esc:
                     meta_bits.append(f"Last calculated: {last_calc_esc}")
-                cards += metric_card("Score semantics", html_module.escape(" · ".join(meta_bits)))
+                if ssm_raw:
+                    meta_bits.append(html_module.escape(ssm_raw))
+                cards += metric_card("Score semantics", " · ".join(meta_bits))
             cov = m.get("score_coverage")
             if isinstance(cov, dict) and int(cov.get("properties_missing_score") or 0) > 0:
                 cards += metric_card(
@@ -571,6 +592,7 @@ class EmailService:
 {jur_note_html}
 {jur_fb_html}
 {hiua_html}
+{snapshot_html}
 <div style="height:16px;"></div>
 {cards}
 {top_prop_html}
@@ -1928,9 +1950,28 @@ Review the admin dashboard pending-verification list to process these documents.
             lines.extend(
                 [
                     f"Properties: {model.get('properties_count', 0)}",
+                ]
+            )
+            snap_txt = (model.get("digest_snapshot_framing_line") or "").strip()
+            if not snap_txt:
+                _gr = str(model.get("generated_at_display") or model.get("data_as_of") or "").strip()
+                if _gr:
+                    snap_txt = f"Snapshot as of {_gr}"
+            if snap_txt:
+                lines.append(snap_txt)
+                lines.append("")
+            lines.extend(
+                [
                     f"Compliance score (headline): {model.get('compliance_score_display') or headline_score_display_for_export(model.get('compliance_score'), model.get('score_status'))}",
                     f"Score status: {model.get('score_status') or '—'}",
                     f"Last calculated (headline): {model.get('last_calculated_at') or model.get('portfolio_last_calculated_at') or '—'}",
+                ]
+            )
+            ssm_plain = (model.get("score_status_message") or "").strip()
+            if ssm_plain:
+                lines.append(f"Headline note: {ssm_plain}")
+            lines.extend(
+                [
                     f"Risk: {model.get('risk_level', '')}",
                     f"Requirements: {model.get('total_requirements', 0)} (valid {model.get('valid_count', model.get('compliant', 0))}, "
                     f"expiring soon {model.get('expiring_soon', 0)}, overdue {model.get('overdue', 0)}, "

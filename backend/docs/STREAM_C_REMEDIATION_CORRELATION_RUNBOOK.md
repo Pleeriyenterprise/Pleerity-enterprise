@@ -2,7 +2,7 @@
 
 **Purpose:** Give support, ops, and engineering a **single correlation vocabulary** and **join recipes** across persisted remediation *signals* (gaps, risk, issues, work orders) and *presentation* layers (Today / unified tasks), without implying a unified lifecycle store exists today.
 
-**Companion:** `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` (Stream C), `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` §3–4, `STREAM_F_FORENSICS_JOIN_RECIPE.md` (Mongo + `audit_logs` query order).
+**Companion:** `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` (Stream C), `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` §3–4, `STREAM_F_FORENSICS_JOIN_RECIPE.md` (Mongo + `audit_logs` query order), `STREAM_F_RECONSTRUCTION_CONSISTENCY.md` (when audit vs score timestamps diverge), `STREAM_F_PHASE2_CORRELATION_PROPAGATION.md` (`correlation_id` vs `score_change_log`).
 
 **Authority:** This document is **governance and read-side correlation only** — no runtime behaviour. Product may later adopt a persisted remediation aggregate; until then, use **`remediation_key` + `source_system`** as *logical* keys for scripts, dashboards, and internal APIs (see §8–12).
 
@@ -254,6 +254,27 @@ Shape for **internal** dashboards / exports (not implemented in this PR):
 - **From `signal_id`:** `risk_signals` → property → related gaps by property + time (heuristic) → risk audits.  
 - **From `task_id`:** Parse `source_type:source_id` → underlying collection → re-run §10 row for that system.  
 - **From `document_id`:** `STREAM_F` §C + gap list for linked `requirement_id`.
+
+---
+
+## 11. Implemented internal API (v1 — read-only)
+
+**Support usage (how to use safely):** `SUPPORT_REMEDIATION_CORRELATION_VIEW_V1.md`.
+
+**Route:** `POST /api/admin/support/remediation-correlation-view`  
+**Gate:** `FEATURE_REMEDIATION_CORRELATION_VIEW_V1` (`1` / `true` / `yes`). When unset or false, the server returns **404** with detail `Remediation correlation view is disabled`.  
+**Auth:** `require_support_or_above` (Owner / Admin / Support). **Not** client-facing.
+
+**Body (required unless noted):** `client_id`, `property_id`, `entry: { kind, value }`; optional `as_of` (ISO8601), `window_half_days` (1–31, default 14 — radius in days around `as_of` for supporting reads).
+
+**Entry kinds:** `gap_key` | `issue_id` | `work_order_id` | `risk_signal_id` (see §3 `remediation_key` / §4 `source_system`).
+
+**Sources read (v1 only):** `compliance_gaps`, `maintenance_issues`, `work_orders`, `risk_signals`, `audit_logs`, `property_compliance_score_history`, `score_change_log`. No new collection; no unified_tasks / Today / tenant inbox / approvals / documents / requirements-as-anchor.
+
+**Implementation:** `services/remediation_correlation_view.py` + `routes/support.py`. Caps: audit logs 50; score history 20; score change log 20; linked issues 10; linked work orders 10 (truncation flags on the envelope).
+
+**Response envelope:** every successful JSON body includes **`non_authoritative: true`** (machine-readable) alongside the human **`disclaimer`** string.  
+**Diagnostics:** `score_change_log_present_mapping_advisory` is set only when loaded `score_change_log` rows carry **non-empty `changed_requirements`**, malformed `changed_requirements`, or per-entry **missing/empty `requirement_key`** (mapping ambiguity). It is **not** set merely because score-change rows exist in the time window.
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Purpose:** Help support, admin, and engineering **reconstruct one compliance/remediation story** from MongoDB and general `audit_logs` without assuming a single timeline or shared correlation id. This document is **operational guidance only**; it does not change product behaviour.
 
-**Companion:** `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` (Stream F), `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md`, `STREAM_E_MUTATION_FANOUT_MATRIX.md` (mutation → gap sync / recalc / audit patterns).
+**Companion:** `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` (Stream F), `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md`, `STREAM_E_MUTATION_FANOUT_MATRIX.md` (mutation → gap sync / recalc / audit patterns), **`STREAM_F_PHASE2_CORRELATION_PROPAGATION.md`** (where `correlation_id` survives), **`STREAM_F_RECONSTRUCTION_CONSISTENCY.md`** (trusted join order).
 
 **Authority (facts in this doc):** Collection names and key fields are aligned with `database.py` index definitions and the services named below. When behaviour is **intentional but non-obvious** (quiet gap sync, inbox non-closure), this doc cites the same sources as the tracker.
 
@@ -25,6 +25,7 @@
 | **`work_orders`** | Contractor workflow: `work_order_id`, `client_id`, `property_id`, optional `issue_id`, optional `risk_signal_id` / linkage fields per product usage. |
 | **`client_task_overrides`** | Per-user inbox suppression/snooze/done overlay — **presentation only**. |
 | **`client_task_activity_log`** | Append-only inbox actions (snooze, dismiss, reviewed, restore). |
+| **`compliance_activity_log`** | Outcome engine feed: includes **`correlation_id`** (Stream F F2-B) alongside `dedupe_key` for join to score audit/ledger on the same application. |
 | **`properties`** | Current persisted headline: `compliance_score`, breakdown fields, `compliance_last_calculated_at`, etc. |
 | **`compliance_score_history`** | **Client-level** daily/trend snapshots (`compliance_trending`) — portfolio trend card; not the same as `property_compliance_score_history`. |
 
@@ -181,8 +182,8 @@ Train support: **dismiss ≠ fixed**.
 2. Query **`property_compliance_score_history`** for `property_id` (+ `client_id`), sort `created_at` descending — each doc has **`reason`** (trigger reason string).
 3. Match **`score_change_log`** entries on `created_at` / score pair; inspect **`changed_requirements`** for obligation-level movement.
 4. Query **`score_ledger_events`** for human-readable **`trigger_label`** / **`trigger_type`**; check **`document_id`** / **`requirement_id`** / **`correlation_id`** when populated.
-5. Check **`audit_logs`** for `COMPLIANCE_SCORE_UPDATED` and **`metadata.reason`**, **`metadata.correlation_id`** (admin repair).
-6. **Enqueue path:** If only **`enqueue_compliance_recalc`** ran, score rows may appear **later** than document audit — consult **`STREAM_E_MUTATION_FANOUT_MATRIX.md`** for the mutation row (Sync vs Enq).
+5. Check **`audit_logs`** for `COMPLIANCE_SCORE_UPDATED` and **`metadata.reason`**, **`metadata.correlation_id`** (admin repair, tenant delivery, requirement PATCH enqueue, when callers supplied id).
+6. **Enqueue path:** If only **`enqueue_compliance_recalc`** ran, score rows may appear **later** than document audit — consult **`STREAM_E_MUTATION_FANOUT_MATRIX.md`** for the mutation row (Sync vs Enq). **Reconstruction order:** when timestamps disagree, follow **`STREAM_F_RECONSTRUCTION_CONSISTENCY.md`** §1.
 
 **Double-score windows:** Some paths enqueue **and** call synchronous recalc (matrix notes on verify/outcome) — expect **tight pairs** of history rows; interpret the **last** consistent state as authoritative for “current”.
 
@@ -223,4 +224,4 @@ Use this ladder **before** assuming data loss:
 
 ## Document control
 
-**Owner:** Platform / compliance engineering. **Change rule:** Update this doc when collections, audit actions, or intentional quiet paths change; mirror updates in `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` Stream F changelog.
+**Owner:** Platform / compliance engineering. **Change rule:** Update this doc when collections, audit actions, or intentional quiet paths change; mirror updates in `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` Stream F changelog. When correlation propagation behaviour changes, update **`STREAM_F_PHASE2_CORRELATION_PROPAGATION.md`** and **`STREAM_F_RECONSTRUCTION_CONSISTENCY.md`** in the same PR.
