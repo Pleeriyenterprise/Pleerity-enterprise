@@ -9,7 +9,7 @@
 | Concern | Authority |
 |--------|-----------|
 | Requirement-backed primary CTAs | `services/requirement_action_resolver.py` — `resolve_take_action_envelope`, `resolve_take_action_for_priority_action`, `take_action` contract (`requirement_take_action_v1`). |
-| Parity (same contract, different runtime) | `frontend/src/utils/requirementTakeActionResolver.js` (+ tests). |
+| Parity (same contract, different runtime) | **`STREAM_D_CTA_PARITY_ENFORCEMENT.md`** + `tests/fixtures/cta_parity_fixtures.py` + `tests/test_cta_parity_contract.py` (backend freeze); **`frontend/src/utils/requirementTakeActionResolver.js`** (+ tests); optional future FE CI gate per enforcement doc §6. |
 | Risk signal **copy** and suggested action codes | `services/risk_signal_service.py` (`RECOMMENDED_ACTIONS`, `SUGGESTED_ACTION_*`). |
 | Risk / operations **navigation URL** (not resolver) | Constructed pattern `/operations/risk-signals?signal_id=…` in `client_priority_stream`, `command_center_service._slim_risk`. |
 
@@ -101,15 +101,16 @@
 
 ---
 
-## 6. Tests (existing anchors — no new tests in this doc PR)
+## 6. Tests (anchors)
 
 - `backend/tests/test_today_requirement_cta_authority.py` — Today / unified primary vs gap `recommended_*`.
 - `backend/tests/test_requirement_action_resolver.py` — resolver envelope.
 - `backend/tests/test_compliance_authority_alignment.py`, `test_catalog_compliance_take_action_matrix.py` — catalog / matrix alignment.
+- `backend/tests/fixtures/cta_parity_fixtures.py` + `backend/tests/test_cta_parity_contract.py` — **Stream D Phase 4** deterministic parity cases (`P01`–`P10`); see `STREAM_D_CTA_PARITY_ENFORCEMENT.md`.
 - `frontend/src/utils/requirementTakeActionResolver.test.js` — frontend parity coverage.
 
 ---
 
 ## 7. Recommended follow-ups (implementation — out of scope for this matrix)
 
-See tracker **Stream D — implementation phases**: phase 2 (backend gap guardrails), phase 3 (resolver URL validation), phase 4 (cross-repo parity CI).
+See tracker **Stream D — implementation phases**: phase 2 (backend gap guardrails), phase 3 (resolver URL validation), phase 4 (parity enforcement — **backend slice** shipped; optional FE CI gate).

@@ -4,7 +4,7 @@
 
 **Companion:** `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` (audit / gap framing).
 
-**Last updated:** 2026-04-30 (Stream C — remediation correlation runbook published).
+**Last updated:** 2026-05-01 (Stream D Phase 4 — backend CTA parity enforcement slice).
 
 ---
 
@@ -43,6 +43,7 @@
 | **Stream D — CTA (requirements)** | `requirement_action_resolver` (`take_action` / `resolve_take_action_*`). |
 | **Stream D — CTA (risk)** | `risk_signal_service` + Command Centre operations URL pattern (intentionally not the requirement resolver). |
 | **Stream D — CTA inventory (read-only)** | `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md` — producer/consumer audit; does not replace code authorities above. |
+| **Stream D — CTA parity freeze (read-only + BE tests)** | `STREAM_D_CTA_PARITY_ENFORCEMENT.md` + `tests/fixtures/cta_parity_fixtures.py` + `tests/test_cta_parity_contract.py`; frontend mirror remains `requirementTakeActionResolver.js`. |
 | **Stream E — Event fan-out** | `STREAM_E_MUTATION_FANOUT_MATRIX.md` (Stream E phase 1) + appendix **Outcome engine** (`compliance_outcome_engine` / `ALL_EVENTS`); code must match matrix rows and contract tests. |
 | **Stream F — Audit** | `create_audit_log`; `applicability_resolution_audit` append-only contract; gap lifecycle audit flags as documented in gap sync; **operational joins:** `STREAM_F_FORENSICS_JOIN_RECIPE.md`. |
 
@@ -53,7 +54,7 @@
 | A | **Open** | In progress; narrow PRs allowed. |
 | B | **Open (partial)** | Not “complete”; matrix-first, then stragglers. |
 | C | **Open (partial)** | **Correlation runbook published** (`STREAM_C_REMEDIATION_CORRELATION_RUNBOOK.md`); internal read-model spike + dedupe policy remain **product-gated**. |
-| D | **Open (partial)** | Phase 1 matrix; **Phase 2** B1/B2 + **B3** (tenant_request `metadata.take_action` + mismatch log) shipped; phases 3–4 open. |
+| D | **Open (partial)** | Phase 1 matrix; **Phase 2** B1/B2 + **B3** shipped; **Phase 4** backend parity fixtures + contract tests + enforcement doc **shipped**; phase 3 + optional FE CI gate open. |
 | E | **Open (partial)** | Phase 1 matrix; **E2.1–E2.3** gap fixes; **Phase 3** structured fan-out logs; phase 4 (outbox/debounce) deferred. |
 | F | **Open (partial)** | Phase 1 join recipe **published**; correlation-id milestones later. |
 
@@ -297,7 +298,7 @@ Each numbered phase is an intended **separate PR**; title format `Stream D — <
 1. ~~**Stream D — CTA producer/consumer matrix**~~ — **Done (2026-04-30):** `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md` — surface → module → label/URL authority → workflow → `take_action` bypass → audience → risk (**global step 3** inventory).
 2. **Stream D — Backend gap field guardrails** — **Done (2026-04-30):** B1 `gaps_to_priority_actions` + B2 `_primary_action_fields` + **B3** `_tenant_request_tasks` metadata + mismatch log (`test_unified_tasks_tenant_request_cta`). Phases 3–4 next.
 3. **Stream D — Resolver validation hardening** — Narrow PR: non-empty URL for shipped intents at resolver or API boundary.
-4. **Stream D — Cross-repo parity CI** — Golden test or diff gate: `requirementTakeActionResolver.js` vs `requirement_action_resolver.py` (separate repo PR if CI lives there).
+4. ~~**Stream D — Cross-repo parity CI**~~ — **Partial (2026-05-01):** Backend parity freeze — `STREAM_D_CTA_PARITY_ENFORCEMENT.md`, `tests/fixtures/cta_parity_fixtures.py`, `tests/test_cta_parity_contract.py`. **Defer:** optional FE golden export / CI job in frontend pipeline (enforcement doc §6).
 
 ### Acceptance tests (stream-specific)
 
@@ -311,7 +312,7 @@ Each numbered phase is an intended **separate PR**; title format `Stream D — <
 
 ### Recommended next PR (Stream D)
 
-**Stream D — Phase 3:** Resolver / API boundary validation for non-empty navigable URL where contract expects one **or** **Stream D — Phase 4** intent+URL golden parity. **Optional Phase 2 follow-up:** grep-only inventory for any remaining raw gap-field readers on client requirement-primary paths (no behaviour change unless findings warrant a new slice).
+**Stream D — Phase 3:** Resolver / API boundary validation for non-empty navigable URL where contract expects one **or** optional **Phase 4** frontend CI wiring against `STREAM_D_CTA_PARITY_ENFORCEMENT.md` §6. **Optional Phase 2 follow-up:** grep-only inventory for any remaining raw gap-field readers on client requirement-primary paths (no behaviour change unless findings warrant a new slice).
 
 ---
 
@@ -456,3 +457,4 @@ Each numbered phase is an intended **separate PR**; title format `Stream F — <
 | 2026-04-30 | **Stream E — Tenant delivery score convergence:** `enqueue_property_recalc_after_tenant_delivery_gap_batch` in `tenant_delivery_reconciliation.py`; calls from `tenant_delivery_proof_service` + `_sync_requirements_for_proof` / tenant acknowledge; matrix rows 13–14 + cross-cutting §5; tests in `test_tenant_delivery_and_audit_pack.py`; tracker Stream E completed/remaining/findings/next PR + **Last updated**. |
 | 2026-04-30 | **Stream E — `patch_requirement` audit (row 10):** `REQUIREMENT_ACTION_TRIGGERED` in `routes/properties.py`; `test_patch_requirement_audit_http.py`; matrix row 10; `STREAM_F_FORENSICS_JOIN_RECIPE.md` §5; tracker Stream E completed/remaining/findings/next PR + **Last updated**. |
 | 2026-04-30 | **Stream C — Remediation correlation runbook:** added `STREAM_C_REMEDIATION_CORRELATION_RUNBOOK.md`; named-authorities Stream C row; lifecycle **Open (partial)**; global step 5 marked done; Stream C status/completed/remaining/required-audit/Next PRs item 1; **Last updated**. |
+| 2026-05-01 | **Stream D — Phase 4 (backend parity):** `STREAM_D_CTA_PARITY_ENFORCEMENT.md`; `tests/fixtures/cta_parity_fixtures.py` + `tests/test_cta_parity_contract.py`; `tests/__init__.py` + `tests/fixtures/__init__.py`; matrix §6 + parity authority row; tracker Stream D (status, current phase, completed, remaining, Next PRs phase 4, lifecycle, named authorities, recommended next PR); **Last updated**. |
