@@ -4,7 +4,7 @@
 
 **Companion:** `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` (audit / gap framing).
 
-**Last updated:** 2026-04-30 (Stream D — Phase 2: B1/B2 guardrails + B3 tenant_request metadata slice).
+**Last updated:** 2026-04-30 (Stream E — `patch_requirement` audit + tenant delivery `Enq` + outcome appendix).
 
 ---
 
@@ -43,8 +43,8 @@
 | **Stream D — CTA (requirements)** | `requirement_action_resolver` (`take_action` / `resolve_take_action_*`). |
 | **Stream D — CTA (risk)** | `risk_signal_service` + Command Centre operations URL pattern (intentionally not the requirement resolver). |
 | **Stream D — CTA inventory (read-only)** | `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md` — producer/consumer audit; does not replace code authorities above. |
-| **Stream E — Event fan-out** | `STREAM_E_MUTATION_FANOUT_MATRIX.md` (Stream E phase 1); code must match matrix rows. |
-| **Stream F — Audit** | `create_audit_log`; `applicability_resolution_audit` append-only contract; gap lifecycle audit flags as documented in gap sync. |
+| **Stream E — Event fan-out** | `STREAM_E_MUTATION_FANOUT_MATRIX.md` (Stream E phase 1) + appendix **Outcome engine** (`compliance_outcome_engine` / `ALL_EVENTS`); code must match matrix rows and contract tests. |
+| **Stream F — Audit** | `create_audit_log`; `applicability_resolution_audit` append-only contract; gap lifecycle audit flags as documented in gap sync; **operational joins:** `STREAM_F_FORENSICS_JOIN_RECIPE.md`. |
 
 ### Stream lifecycle (rule 4)
 
@@ -55,7 +55,7 @@
 | C | **Open** | Runbook + spike product-gated. |
 | D | **Open (partial)** | Phase 1 matrix; **Phase 2** B1/B2 + **B3** (tenant_request `metadata.take_action` + mismatch log) shipped; phases 3–4 open. |
 | E | **Open (partial)** | Phase 1 matrix; **E2.1–E2.3** gap fixes; **Phase 3** structured fan-out logs; phase 4 (outbox/debounce) deferred. |
-| F | **Open (partial)** | Join recipe doc first. |
+| F | **Open (partial)** | Phase 1 join recipe **published**; correlation-id milestones later. |
 
 No stream is **Closed** yet. When a stream is closed, add a row here: **Closed** + date + link to PR; reopen only with explicit **Reopen** line in this table.
 
@@ -322,8 +322,8 @@ Each numbered phase is an intended **separate PR**; title format `Stream D — <
 | **status** | Partial — phase **1** matrix + **E2.1–E2.3** + **Phase 3** structured logging **shipped**; optional matrix rows / phase 4 deferred. |
 | **priority** | P0 |
 | **current phase** | **Phase 4 — Optional outbox/debounce** (or further narrow matrix rows if product prioritises). |
-| **completed work** | Idempotent gap upserts; applicability queue; **`STREAM_E_MUTATION_FANOUT_MATRIX.md`**; **E2.1** `compliance_outcome_engine` — after `_set_requirement_compliant`, `sync_requirement_evidence_authority` per affected requirement **before** `recalculate_and_persist` (`tests/test_compliance_outcome_engine.py`); **E2.2** `api_compliance_workflow` mark-not-applicable + reopen — `sync_requirement_evidence_authority` after update (`test_compliance_workflow_mark_not_applicable_http.py`); **E2.3** `routes/properties.py` `patch_property` — post-success materialisation gap sweep via `sync_compliance_gaps_for_requirement` (cap 500, default lifecycle/bridge) (`test_properties_requirement_materialisation_http.py`). **Phase 3:** `utils/compliance_fanout_log.compliance_fanout_extra` — structured `event=compliance_fanout` on authority/gap partial-fail, recalc enqueue dedupe (`stage=dedupe`), `apply_action_outcome` swallow paths (`routes/documents.py`, `maintenance_service.py`, `evidence_review_verify.py`), tenant delivery + property sweep warnings, outcome-engine authority sync exception (`tests/test_compliance_fanout_log.py`). |
-| **remaining tasks** | Optional matrix follow-ups (e.g. tenant delivery `Enq` only — rows 13–14); `patch_requirement` audit gap (row 10 / Stream F); deeper observability (e.g. `recalculate_and_persist` inner warnings, other DEBUG-only skips); defer outbox/debounce unless product/infra approve. |
+| **completed work** | Idempotent gap upserts; applicability queue; **`STREAM_E_MUTATION_FANOUT_MATRIX.md`** (incl. **appendix — Outcome engine**; rows 13–14 **tenant delivery → `Enq`**; **row 10** client `patch_requirement` → `REQUIREMENT_ACTION_TRIGGERED`). **E-patch-requirement-audit (2026-04-30):** `routes/properties.py` `patch_requirement` — audit after `sync_requirement_evidence_authority`, before `enqueue_compliance_recalc`; `tests/test_patch_requirement_audit_http.py`. **E2.1** `compliance_outcome_engine` — after `_set_requirement_compliant`, `sync_requirement_evidence_authority` per affected requirement **before** `recalculate_and_persist` (`tests/test_compliance_outcome_engine.py`); **E-outcome-coverage:** `tests/test_compliance_outcome_engine_event_coverage.py`. **E-tenant-delivery-recalc:** `tenant_delivery_proof_service` + `tenant_delivery_reconciliation`; tests in `test_tenant_delivery_and_audit_pack.py`. **E2.2** `api_compliance_workflow` mark-not-applicable + reopen — `sync_requirement_evidence_authority` after update (`test_compliance_workflow_mark_not_applicable_http.py`); **E2.3** `routes/properties.py` `patch_property` — post-success materialisation gap sweep via `sync_compliance_gaps_for_requirement` (cap 500, default lifecycle/bridge) (`test_properties_requirement_materialisation_http.py`). **Phase 3:** `utils/compliance_fanout_log.compliance_fanout_extra` — structured `event=compliance_fanout` on authority/gap partial-fail, recalc enqueue dedupe (`stage=dedupe`), `apply_action_outcome` swallow paths (`routes/documents.py`, `maintenance_service.py`, `evidence_review_verify.py`), tenant delivery + property sweep warnings, outcome-engine authority sync exception (`tests/test_compliance_fanout_log.py`). |
+| **remaining tasks** | Optional matrix follow-ups; deeper observability (e.g. `recalculate_and_persist` inner warnings, other DEBUG-only skips); defer outbox/debounce unless product/infra approve. |
 | **risks** | Transient queue lag on `Enq`-only paths unchanged; double recalc on some verify paths unchanged; gap sweep skips when materialisation throws (logged). |
 | **blocked-by / depends-on** | **Depends-on:** Streams A, B for payloads; Stream F for correlation on new milestones. **Blocked-by:** infra if adopting outbox/debounce later. |
 
@@ -347,8 +347,8 @@ Each numbered phase is an intended **separate PR**; title format `Stream D — <
 - **Single matrix:** `STREAM_E_MUTATION_FANOUT_MATRIX.md` — **22** classified rows covering document upload/delete/verify/reject (client + admin), evidence authority sync, requirement PATCH, workflow API mark-not-applicable / reopen, property PATCH (jurisdiction / applicability), applicability operator (**quiet** gap sync), tenant delivery initiate + reconciliation, gap backfill vs policy gap reconciliation job, WO completion, issue resolution, admin score validate/repair, admin bulk recalc enqueue.
 - **Quiet sync:** `applicability_operator_actions` → `sync_compliance_gaps_for_requirement(..., audit_lifecycle=False, run_operational_bridge=False)` — intentional; see matrix §Cross-cutting notes.
 - **E2.1–E2.3 shipped (2026-05-01):** Outcome engine compliant-set branch + workflow API requirement mutations + property post-materialisation gap sweep — see matrix rows 17–18, 21–22, 11.
-- **Audit gap (unchanged):** Client `patch_requirement` — matrix row 10; defer Stream F unless combined PR agreed.
-- **Recalc without gap sync (unchanged):** Tenant delivery paths — matrix rows 13–14.
+- **`patch_requirement` audit (2026-04-30):** `REQUIREMENT_ACTION_TRIGGERED` / `client_patch_requirement` after authority sync, before enqueue; `REQUIREMENT_UPDATED:{requirement_id}` in metadata for queue join — matrix row 10; `STREAM_F_FORENSICS_JOIN_RECIPE.md` §5.
+- **Tenant delivery → score (2026-04-30):** After **≥1** successful gap sync in proof send / reconcile `_sync_requirements_for_proof` / tenant acknowledge, **`enqueue_compliance_recalc`** once per property with `TENANT_DELIVERY:{delivery_id}`; **no** sync recalc on the hot path. Partial gap-sync failure still enqueues if **any** requirement sync succeeded.
 - **Outcome engine:** WO / issue events that **do not** use `_set_requirement_compliant` still have **no** authority refresh on that path (by design of this slice).
 
 ### Required audit before implementation
@@ -367,7 +367,7 @@ Each numbered phase is an intended **separate PR**; title format `Stream E — <
 
 ### Recommended next PR
 
-**Stream B — Straggler wiring** (matrix columns “Recalc today?” / tenant delivery rows 13–14) **or** **Stream E — Phase 4** (outbox/debounce — product/infra gate).
+**Stream B — Straggler wiring** (remaining matrix “Recalc today?” gaps) **or** **Stream E — Phase 4** (outbox/debounce — product/infra gate).
 
 ### Acceptance tests (stream-specific)
 
@@ -385,10 +385,11 @@ Each numbered phase is an intended **separate PR**; title format `Stream E — <
 
 | Field | Content |
 |--------|---------|
-| **status** | Partial — `audit_logs`, `applicability_resolution_audit`, gap lifecycle, collection-specific logs; single reconstructable timeline not guaranteed without correlation keys. |
+| **status** | Partial — phase **1** forensics doc **shipped**; correlation standardisation still open. |
 | **priority** | P1 |
-| **completed work** | Append-only applicability audit; gap lifecycle events where enabled; patterns in `risk_signal_service` and client navigation audit. |
-| **remaining tasks** | Standardise correlation keys across new audits; document join recipe; incremental optional `audit_correlation_id` on new transitions only. |
+| **current phase** | **Phase 2 — Correlation id on new milestones** (narrow PR) **or** Phase 3 audit key standardisation. |
+| **completed work** | Append-only applicability audit; gap lifecycle events where enabled; patterns in `risk_signal_service` and client navigation audit. **Phase 1 (2026-04-30):** `STREAM_F_FORENSICS_JOIN_RECIPE.md` — key collections, join keys, query order by entry point, proof per store, weak lineage + quiet sync + inbox vs closure + score recalc trace + applicability/HIUA + escalation. |
+| **remaining tasks** | Standardise correlation keys across new audits; incremental optional `audit_correlation_id` on new transitions only; Phase 3 — consistent id keys on new `create_audit_log` payloads (no broad migration). |
 | **risks** | Forensics requires multiple stores; operator support misinterprets volume as noise. |
 | **blocked-by / depends-on** | **Depends-on:** Streams A–E for auditable transitions. **Blocked-by:** retention/compliance policy for new audit fields. |
 
@@ -397,6 +398,7 @@ Each numbered phase is an intended **separate PR**; title format `Stream E — <
 ### Architectural authority
 
 - **Stores:** `audit_logs` (`create_audit_log`), `applicability_resolution_audit`, gap lifecycle when enabled, risk / Today navigation audits.
+- **Operational reconstruction:** `STREAM_F_FORENSICS_JOIN_RECIPE.md` (read-only; Mongo + audit join order; does not imply single-collection timeline).
 - **Incremental correlation:** optional shared id on **new** milestones only — no big-bang rewrite of historical rows.
 
 ### Forbidden patterns
@@ -417,7 +419,7 @@ Each numbered phase is an intended **separate PR**; title format `Stream E — <
 
 Each numbered phase is an intended **separate PR**; title format `Stream F — <phase>`. PR description must satisfy **Architecture Authority Rules** §6.
 
-1. **Stream F — Forensics join recipe** — Doc PR: reconstruct one remediation story from multiple collections (**global step 4**).
+1. ~~**Stream F — Forensics join recipe**~~ — **Done (2026-04-30):** `STREAM_F_FORENSICS_JOIN_RECIPE.md` (**global step 4**).
 2. **Stream F — Correlation id on new milestones** — Narrow PR: optional UUID on new closure-style business audits, propagated to related `audit_logs` only for that path.
 3. **Stream F — Standardise id keys on new audits** — Ensure new `create_audit_log` calls include `client_id`, `property_id`, `requirement_id` / `gap_key` consistently (no broad schema migration unless already planned).
 4. **Stream F — Score milestone audit** — Pair with Stream B straggler wiring: structured audit using existing reason constants (no new scoring formula).
@@ -449,3 +451,7 @@ Each numbered phase is an intended **separate PR**; title format `Stream F — <
 | 2026-04-30 | **Stream D — Phase 1 (CTA matrix):** added `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md`; named-authorities row; global step 3 wording; Stream D status/completed/remaining/current phase + findings + recommended next PR (phase 2); required-audit items marked done. |
 | 2026-04-30 | **Stream D — Phase 2 (first slice, B1/B2):** `gaps_to_priority_actions` suppresses raw gap `recommended_url` when canonical `take_action.primary` has no navigable route; `_primary_action_fields` prefers `canonical_take_action` label/route and blocks gap URL fallback on empty canonical route; tests in `test_compliance_gap_engine_governed.py` + `test_today_requirement_cta_authority.py`; tracker Stream D updated. |
 | 2026-04-30 | **Stream D — Phase 2 (B3 slice):** `_tenant_request_tasks` attaches `metadata.take_action` when requirement resolves; `logger.warning` + `compliance_fanout_extra(op="tenant_request_cta")` on non-standard-document canonical vs hardcoded upload CTA; `test_unified_tasks_tenant_request_cta.py`. |
+| 2026-04-30 | **Stream F — Phase 1 (forensics join recipe):** added `STREAM_F_FORENSICS_JOIN_RECIPE.md`; named-authorities row + Stream F status/current phase/completed/remaining/architectural authority; global step 4 marked done; lifecycle table updated. |
+| 2026-04-30 | **Stream E — Outcome engine coverage freeze (doc + tests, no runtime change):** `STREAM_E_MUTATION_FANOUT_MATRIX.md` appendix (`compliance_outcome_engine` / `ALL_EVENTS`); `tests/test_compliance_outcome_engine_event_coverage.py`; named-authorities Stream E row; Stream E completed work + findings; **Last updated**. |
+| 2026-04-30 | **Stream E — Tenant delivery score convergence:** `enqueue_property_recalc_after_tenant_delivery_gap_batch` in `tenant_delivery_reconciliation.py`; calls from `tenant_delivery_proof_service` + `_sync_requirements_for_proof` / tenant acknowledge; matrix rows 13–14 + cross-cutting §5; tests in `test_tenant_delivery_and_audit_pack.py`; tracker Stream E completed/remaining/findings/next PR + **Last updated**. |
+| 2026-04-30 | **Stream E — `patch_requirement` audit (row 10):** `REQUIREMENT_ACTION_TRIGGERED` in `routes/properties.py`; `test_patch_requirement_audit_http.py`; matrix row 10; `STREAM_F_FORENSICS_JOIN_RECIPE.md` §5; tracker Stream E completed/remaining/findings/next PR + **Last updated**. |

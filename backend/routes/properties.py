@@ -659,6 +659,37 @@ async def patch_requirement(
 
     await sync_requirement_evidence_authority(db, requirement_id, property_id_hint=property_id)
 
+    fields_changed: List[str] = []
+    if data.confirmed_expiry_date is not None:
+        fields_changed.append("confirmed_expiry_date")
+    if data.issue_date is not None:
+        fields_changed.append("issue_date")
+    if data.certificate_number is not None:
+        fields_changed.append("certificate_number")
+    if data.applicability is not None:
+        fields_changed.append("applicability")
+    if data.not_required_reason is not None and str(data.not_required_reason).strip():
+        fields_changed.append("not_required_reason")
+
+    recalc_correlation_id = f"REQUIREMENT_UPDATED:{requirement_id}"
+    await create_audit_log(
+        action=AuditAction.REQUIREMENT_ACTION_TRIGGERED,
+        actor_id=user.get("portal_user_id"),
+        client_id=user["client_id"],
+        resource_type="requirement",
+        resource_id=requirement_id,
+        metadata={
+            "event": "client_patch_requirement",
+            "mutation_source": "routes.properties.patch_requirement",
+            "property_id": property_id,
+            "requirement_id": requirement_id,
+            "fields_changed": fields_changed,
+            "status_before": req.get("status"),
+            "status_after": update.get("status"),
+            "correlation_id": recalc_correlation_id,
+        },
+    )
+
     # Recalculate property compliance when requirement expiry/status changes (e.g. confirm details later)
     from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROPERTY_UPDATED, ACTOR_CLIENT
     await enqueue_compliance_recalc(
@@ -667,7 +698,7 @@ async def patch_requirement(
         trigger_reason=TRIGGER_PROPERTY_UPDATED,
         actor_type=ACTOR_CLIENT,
         actor_id=user.get("portal_user_id"),
-        correlation_id=f"REQUIREMENT_UPDATED:{requirement_id}",
+        correlation_id=recalc_correlation_id,
     )
     try:
         from services.score_events_service import write_score_event, EVENT_REQUIREMENT_STATUS_CHANGED, ACTOR_ROLE_CLIENT

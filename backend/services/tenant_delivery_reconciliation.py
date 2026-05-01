@@ -14,11 +14,64 @@ from models import AuditAction, UserRole
 from utils.audit import create_audit_log
 
 from services.compliance_gap_sync import sync_compliance_gaps_for_requirement
+from services.compliance_recalc_queue import (
+    ACTOR_CLIENT,
+    ACTOR_SYSTEM,
+    TRIGGER_PROPERTY_UPDATED,
+    enqueue_compliance_recalc,
+)
 from utils.compliance_fanout_log import compliance_fanout_extra
 
 logger = logging.getLogger(__name__)
 
 INTENT = "TENANT_COMPLIANCE_PACK"
+
+
+async def enqueue_property_recalc_after_tenant_delivery_gap_batch(
+    *,
+    client_id: str,
+    property_id: str,
+    delivery_id: str,
+    actor_type: str,
+    actor_id: Optional[str] = None,
+) -> None:
+    """
+    After at least one successful tenant-delivery-driven gap sync for a property, enqueue
+    a single compliance recalc (Stream E — score convergence). Idempotent per delivery_id
+    via correlation_id TENANT_DELIVERY:{delivery_id}.
+    """
+    cid = str(client_id or "").strip()
+    pid = str(property_id or "").strip()
+    did = str(delivery_id or "").strip()
+    if not cid or not pid or not did:
+        return
+    correlation_id = f"TENANT_DELIVERY:{did}"
+    try:
+        await enqueue_compliance_recalc(
+            property_id=pid,
+            client_id=cid,
+            trigger_reason=TRIGGER_PROPERTY_UPDATED,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            correlation_id=correlation_id,
+        )
+    except Exception as exc:
+        logger.warning(
+            "enqueue_compliance_recalc after tenant delivery gap batch failed client_id=%s property_id=%s delivery_id=%s: %s",
+            cid,
+            pid,
+            did,
+            exc,
+            extra=compliance_fanout_extra(
+                op="recalc_enqueue",
+                stage="failed",
+                client_id=cid,
+                property_id=pid,
+                correlation_id=correlation_id,
+                trigger_reason=TRIGGER_PROPERTY_UPDATED,
+                exc_type=type(exc).__name__,
+            ),
+        )
 
 
 def _iso(v: Any) -> Optional[str]:
@@ -73,10 +126,13 @@ async def _sync_requirements_for_proof(
     *,
     tenant_proof_status: str,
     property_doc: Optional[Dict[str, Any]] = None,
+    recalc_actor_type: str = ACTOR_SYSTEM,
+    recalc_actor_id: Optional[str] = None,
 ) -> None:
     cid = proof.get("client_id")
     pid = proof.get("property_id")
     req_ids = proof.get("requirement_ids_covered") or []
+    delivery_id = str(proof.get("delivery_id") or "").strip()
     if not cid or not pid or not req_ids:
         return
     now = datetime.now(timezone.utc).isoformat()
@@ -87,11 +143,13 @@ async def _sync_requirements_for_proof(
     prop = property_doc
     if prop is None:
         prop = await db.properties.find_one({"property_id": pid, "client_id": cid}, {"_id": 0})
+    any_gap_sync_ok = False
     for rid in req_ids:
         full = await db.requirements.find_one({"requirement_id": rid}, {"_id": 0})
         if full:
             try:
                 await sync_compliance_gaps_for_requirement(db, full, property_doc=prop)
+                any_gap_sync_ok = True
             except Exception as e:
                 logger.warning(
                     "gap sync after tenant delivery reconcile failed rid=%s: %s",
@@ -106,6 +164,14 @@ async def _sync_requirements_for_proof(
                         exc_type=type(e).__name__,
                     ),
                 )
+    if any_gap_sync_ok and delivery_id:
+        await enqueue_property_recalc_after_tenant_delivery_gap_batch(
+            client_id=str(cid),
+            property_id=str(pid),
+            delivery_id=delivery_id,
+            actor_type=recalc_actor_type,
+            actor_id=recalc_actor_id,
+        )
 
 
 async def apply_message_log_to_tenant_delivery_proofs(db, log: Dict[str, Any]) -> List[str]:
@@ -293,5 +359,7 @@ async def acknowledge_tenant_delivery_for_tenant(
         {**proof, "tenant_acknowledged_at": now_iso},
         tenant_proof_status="ACKNOWLEDGED",
         property_doc=None,
+        recalc_actor_type=ACTOR_CLIENT,
+        recalc_actor_id=tenant_portal_user_id,
     )
     return {"delivery_id": delivery_id, "tenant_acknowledged_at": now_iso}

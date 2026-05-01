@@ -92,6 +92,7 @@ def test_initiate_tenant_delivery_success_links_message_and_audits():
         patch.object(td, "NotificationOrchestrator") as orch_cls,
         patch("services.tenant_delivery_proof_service.create_audit_log", new_callable=AsyncMock) as audit,
         patch.object(td, "sync_compliance_gaps_for_requirement", new_callable=AsyncMock),
+        patch.object(td, "enqueue_property_recalc_after_tenant_delivery_gap_batch", new_callable=AsyncMock) as enq_score,
     ):
         orch_cls.return_value.send = AsyncMock(return_value=sent)
         out = asyncio.run(
@@ -114,6 +115,151 @@ def test_initiate_tenant_delivery_success_links_message_and_audits():
     um = mock_db.requirements.update_many.await_args
     assert um is not None
     assert um.args[1]["$set"]["tenant_delivery_proof_status"] == "SENT"
+    assert enq_score.await_count == 1
+    sk = enq_score.await_args.kwargs
+    assert sk["client_id"] == "c1"
+    assert sk["property_id"] == "p1"
+    assert sk["delivery_id"].startswith("td_")
+    assert sk["actor_id"] == "landlord1"
+
+
+def test_initiate_tenant_delivery_no_enqueue_when_all_gap_syncs_fail():
+    """Score enqueue runs only after at least one successful gap sync."""
+    from services import tenant_delivery_proof_service as td
+
+    user = {"client_id": "c1", "portal_user_id": "landlord1", "role": "ROLE_CLIENT_ADMIN"}
+    prop = {"property_id": "p1", "client_id": "c1", "is_active": True}
+    tenant = {
+        "portal_user_id": "t1",
+        "client_id": "c1",
+        "role": "ROLE_TENANT",
+        "status": "ACTIVE",
+        "auth_email": "tenant@example.com",
+    }
+
+    mock_db = MagicMock()
+
+    async def find_one(filter_q, *args, **kwargs):
+        fq = filter_q or {}
+        if fq.get("property_id") == "p1" and fq.get("client_id") == "c1":
+            return prop
+        if fq.get("portal_user_id") == "t1":
+            return tenant
+        if fq.get("message_id") == "mid-1":
+            return {"message_id": "mid-1", "status": "SENT"}
+        if fq.get("requirement_id") == "r1":
+            return {"requirement_id": "r1", "client_id": "c1", "property_id": "p1"}
+        return None
+
+    mock_db.properties.find_one = AsyncMock(side_effect=find_one)
+    mock_db.portal_users.find_one = AsyncMock(side_effect=find_one)
+    mock_db.tenant_assignments.count_documents = AsyncMock(return_value=0)
+    mock_db.requirements.find = MagicMock(
+        return_value=MagicMock(to_list=AsyncMock(return_value=[{"requirement_id": "r1", "tenant_delivery_required": True}]))
+    )
+    mock_db.requirements.find_one = AsyncMock(side_effect=find_one)
+    mock_db.clients.find_one = AsyncMock(return_value={"full_name": "Landlord"})
+    mock_db.tenant_delivery_proofs.insert_one = AsyncMock()
+    mock_db.tenant_delivery_proofs.update_one = AsyncMock()
+    mock_db.requirements.update_many = AsyncMock()
+    mock_db.message_logs.update_one = AsyncMock()
+    mock_db.message_logs.find_one = AsyncMock(side_effect=find_one)
+
+    async def failing_sync(*args, **kwargs):
+        raise RuntimeError("gap sync failed")
+
+    sent = NotificationResult(outcome="sent", message_id="mid-1", details={})
+
+    async def fake_pack(**kwargs):
+        return b"%PDF"
+
+    with (
+        patch.object(db_singleton, "get_db", return_value=mock_db),
+        patch.object(td.compliance_pack_service, "generate_compliance_pack", new=fake_pack),
+        patch.object(td, "NotificationOrchestrator") as orch_cls,
+        patch("services.tenant_delivery_proof_service.create_audit_log", new_callable=AsyncMock),
+        patch.object(td, "sync_compliance_gaps_for_requirement", new_callable=AsyncMock(side_effect=failing_sync)),
+        patch.object(td, "enqueue_property_recalc_after_tenant_delivery_gap_batch", new_callable=AsyncMock) as enq_score,
+    ):
+        orch_cls.return_value.send = AsyncMock(return_value=sent)
+        asyncio.run(
+            td.initiate_tenant_compliance_delivery(
+                client_id="c1",
+                property_id="p1",
+                tenant_portal_user_id="t1",
+                recipient_email="tenant@example.com",
+                initiated_by_user_id="landlord1",
+                initiated_by_role="ROLE_CLIENT_ADMIN",
+            )
+        )
+    enq_score.assert_not_called()
+
+
+def test_enqueue_after_tenant_delivery_gap_batch_correlation_id():
+    from services import tenant_delivery_reconciliation as tr
+    from services.compliance_recalc_queue import TRIGGER_PROPERTY_UPDATED
+
+    async def _run():
+        with patch.object(tr, "enqueue_compliance_recalc", new_callable=AsyncMock) as eq:
+            await tr.enqueue_property_recalc_after_tenant_delivery_gap_batch(
+                client_id="c1",
+                property_id="p1",
+                delivery_id="td-1",
+                actor_type="CLIENT",
+                actor_id="u1",
+            )
+        return eq
+
+    eq = asyncio.run(_run())
+    eq.assert_awaited_once()
+    assert eq.await_args.kwargs["correlation_id"] == "TENANT_DELIVERY:td-1"
+    assert eq.await_args.kwargs["trigger_reason"] == TRIGGER_PROPERTY_UPDATED
+    assert eq.await_args.kwargs["property_id"] == "p1"
+    assert eq.await_args.kwargs["client_id"] == "c1"
+
+
+def test_acknowledge_tenant_delivery_enqueues_recalc_after_gap_sync():
+    from services import tenant_delivery_reconciliation as tr
+    from services.compliance_recalc_queue import ACTOR_CLIENT
+
+    proof = {
+        "delivery_id": "td-ack",
+        "client_id": "c1",
+        "property_id": "p1",
+        "tenant_portal_user_id": "t1",
+        "requirement_ids_covered": ["r1"],
+    }
+    mock_db = MagicMock()
+    mock_db.tenant_delivery_proofs.find_one = AsyncMock(return_value=proof)
+    mock_db.tenant_assignments.count_documents = AsyncMock(return_value=0)
+    mock_db.tenant_delivery_proofs.update_one = AsyncMock()
+    mock_db.requirements.update_many = AsyncMock()
+    mock_db.requirements.find_one = AsyncMock(
+        return_value={"requirement_id": "r1", "client_id": "c1", "property_id": "p1"}
+    )
+    mock_db.properties.find_one = AsyncMock(return_value={"property_id": "p1", "client_id": "c1"})
+
+    captured = []
+
+    async def _ack():
+        with (
+            patch.object(db_singleton, "get_db", return_value=mock_db),
+            patch("services.tenant_delivery_reconciliation.create_audit_log", new_callable=AsyncMock),
+            patch.object(tr, "sync_compliance_gaps_for_requirement", new_callable=AsyncMock),
+            patch.object(tr, "enqueue_property_recalc_after_tenant_delivery_gap_batch", new_callable=AsyncMock) as enq_score,
+        ):
+            await tr.acknowledge_tenant_delivery_for_tenant(
+                delivery_id="td-ack",
+                tenant_portal_user_id="t1",
+                client_id="c1",
+            )
+            captured.append(enq_score)
+
+    asyncio.run(_ack())
+    enq_score = captured[0]
+    assert enq_score.await_count == 1
+    assert enq_score.await_args.kwargs["actor_type"] == ACTOR_CLIENT
+    assert enq_score.await_args.kwargs["actor_id"] == "t1"
 
 
 def test_initiate_tenant_delivery_failed_audits():
@@ -377,9 +523,15 @@ def test_reconcile_postmark_delivered_updates_proof_and_requirements():
         patch.object(tr, "_find_proofs_for_log", new=AsyncMock(return_value=[proof])),
         patch("services.tenant_delivery_reconciliation.create_audit_log", new_callable=AsyncMock),
         patch.object(tr, "sync_compliance_gaps_for_requirement", new_callable=AsyncMock),
+        patch.object(tr, "enqueue_property_recalc_after_tenant_delivery_gap_batch", new_callable=AsyncMock) as enq_score,
     ):
         out = asyncio.run(tr.apply_message_log_to_tenant_delivery_proofs(mock_db, log))
     assert "tdx" in out
+    assert enq_score.await_count == 1
+    ek = enq_score.await_args.kwargs
+    assert ek["client_id"] == "c1"
+    assert ek["property_id"] == "p1"
+    assert ek["delivery_id"] == "tdx"
     ac = mock_db.tenant_delivery_proofs.update_one.await_args
     assert ac.args[1]["$set"]["delivery_status"] == "DELIVERED"
     assert mock_db.requirements.update_many.await_args.args[1]["$set"]["tenant_delivery_proof_status"] == "DELIVERED"
@@ -448,10 +600,13 @@ def test_reconcile_bounced_does_not_set_delivered():
         patch.object(tr, "_find_proofs_for_log", new=AsyncMock(return_value=[proof])),
         patch("services.tenant_delivery_reconciliation.create_audit_log", new_callable=AsyncMock),
         patch.object(tr, "sync_compliance_gaps_for_requirement", new_callable=AsyncMock),
+        patch.object(tr, "enqueue_property_recalc_after_tenant_delivery_gap_batch", new_callable=AsyncMock) as enq_score,
     ):
         asyncio.run(tr.apply_message_log_to_tenant_delivery_proofs(mock_db, log))
     ac = mock_db.tenant_delivery_proofs.update_one.await_args
     assert ac.args[1]["$set"]["delivery_status"] == "BOUNCED"
+    assert enq_score.await_count == 1
+    assert enq_score.await_args.kwargs["delivery_id"] == "tdb"
     assert mock_db.requirements.update_many.await_args.args[1]["$set"]["tenant_delivery_proof_status"] == "BOUNCED"
 
 
