@@ -2,7 +2,7 @@
 
 **Purpose:** Coordinate cross-cutting closed-loop work (applicability, score authority, remediation identity, CTAs, events, audit lineage) without ad-hoc scope creep. This file is **governance and planning only**; it does not replace design docs or runbooks.
 
-**Companion:** `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` (audit / gap framing; normative doctrine **§18**). **Controlled beta (support/admin operations):** `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md`.
+**Companion:** `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` (audit / gap framing; normative doctrine **§18**). **Controlled beta (support/admin operations):** `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md`. **Product governance (value, trust, retention, workflow continuity — not a tracker):** `PROPERTY_COMPLIANCE_OS_GAP_AND_RETENTION_AUDIT.md`. **Product value / retention gap tracker (not architecture):** `PRODUCT_VALUE_GAP_TRACKER.md`.
 
 **Last updated:** 2026-04-30 (Controlled beta operations runbook; Stream B PDF snapshot honesty; matrix §7).
 

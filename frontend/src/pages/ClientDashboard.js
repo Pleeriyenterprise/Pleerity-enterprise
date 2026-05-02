@@ -2033,6 +2033,15 @@ const ClientDashboard = () => {
                 <Button variant="outline" size="sm" className="w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0" onClick={() => navigate('/today')}>
                   Today
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0"
+                  onClick={() => navigate('/work-queue')}
+                  data-testid="dashboard-link-work-queue"
+                >
+                  Work queue
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">

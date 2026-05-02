@@ -962,6 +962,38 @@ async def get_client_priorities(
         )
 
 
+@router.get(
+    "/work-queue",
+    summary="Unified Compliance Work Queue (v1 projection)",
+    response_description="Read-only queue rows derived from unified tasks only (PVG-001).",
+)
+async def get_client_unified_compliance_work_queue(
+    request: Request,
+    property_id: Optional[str] = Query(None, description="Filter by property"),
+    limit: int = Query(120, ge=1, le=200, description="Max raw priority rows pulled before projection"),
+):
+    """
+    UCWQ v1: a single list of open work items (compliance + operations) with v1 DTO fields only.
+    Projection is built only from the same unified task pipeline as Today / priorities — no parallel gap reads.
+    """
+    user = await client_route_guard(request)
+    try:
+        from services.unified_compliance_work_queue_service import get_unified_compliance_work_queue_v1
+
+        return await get_unified_compliance_work_queue_v1(
+            user["client_id"],
+            property_id_filter=property_id,
+            raw_limit=limit,
+            portal_user_id=user.get("portal_user_id"),
+        )
+    except Exception as e:
+        logger.error("Work queue error for client %s: %s", user.get("client_id"), e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load work queue",
+        )
+
+
 class ClientAnalyticsEventBody(BaseModel):
     """Allowed event names are enforced server-side (product_analytics_service.ALLOWED_EVENTS)."""
 

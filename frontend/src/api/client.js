@@ -471,6 +471,8 @@ export const clientAPI = {
   getTasks: (params = {}) => apiClient.get('/client/tasks', { params }),
   /** Same response as getTasks — stable alias for integrations and “Today / priorities” clients. */
   getPriorities: (params = {}) => apiClient.get('/client/priorities', { params }),
+  /** UCWQ v1: flat list of open work (unified-tasks projection only). */
+  getWorkQueue: (params = {}) => apiClient.get('/client/work-queue', { params }),
   /** Dashboard digest: summary, freshness, short activity (no full task lists). */
   getTasksDigest: (params = {}) => apiClient.get('/client/tasks/digest', { params }),
   /** Composed urgent tasks, risks, activity, compliance summary (read-only aggregate). */

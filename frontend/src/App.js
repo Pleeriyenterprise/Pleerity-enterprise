@@ -142,6 +142,7 @@ import OrderProvideInfoPublicPage from './pages/OrderProvideInfoPublicPage';
 import OrderCheckoutPage from './pages/OrderCheckoutPage';
 import ClientAuditLogPage from './pages/ClientAuditLogPage';
 import ClientTasksPage from './pages/ClientTasksPage';
+import ClientWorkQueuePage from './pages/ClientWorkQueuePage';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
@@ -365,6 +366,7 @@ function App() {
                   ======================================== */}
             <Route path="/dashboard" element={<ClientPortal><ClientDashboard /></ClientPortal>} />
             <Route path="/today" element={<ClientPortal><ClientTasksPage /></ClientPortal>} />
+            <Route path="/work-queue" element={<ClientPortal><ClientWorkQueuePage /></ClientPortal>} />
             <Route path="/command-center" element={<ClientPortal><ClientCommandCenterPage /></ClientPortal>} />
             <Route path="/tasks" element={<Navigate to="/today" replace />} />
             <Route path="/properties" element={<ClientPortal><PropertiesPage /></ClientPortal>} />

@@ -277,3 +277,70 @@ class TestComplianceRecalcSlaMonitor:
         # Should have RESOLVED audit and update_one setting active=False
         resolved_calls = [c for c in audit.call_args_list if getattr(c[1].get("action"), "value", str(c[1].get("action"))) == "COMPLIANCE_RECALC_SLA_RESOLVED"]
         assert len(resolved_calls) >= 1
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "last_calculated_at",
+        [None, "stale_iso"],
+        ids=["missing_last_calculated", "stale_last_calculated"],
+    )
+    async def test_property_pending_too_long_creates_warn_alert_and_breach_audit(
+        self, mock_now, last_calculated_at
+    ):
+        from services.compliance_sla_monitor import (
+            run_compliance_recalc_sla_monitor,
+            ALERT_PROPERTY_PENDING_TOO_LONG,
+            SLA_PENDING_SECONDS,
+            SEVERITY_WARN,
+        )
+
+        stale_iso = (mock_now - timedelta(seconds=SLA_PENDING_SECONDS + 60)).isoformat()
+        prop_doc = {
+            "property_id": "p_pending_long",
+            "client_id": "c_pending",
+            "compliance_last_calculated_at": stale_iso if last_calculated_at == "stale_iso" else last_calculated_at,
+        }
+
+        db = MagicMock()
+        db.compliance_recalc_queue.find = MagicMock(side_effect=lambda *a, **k: AsyncCursor([]))
+        db.compliance_recalc_queue.find_one = AsyncMock(return_value=None)
+
+        def properties_find(filter, *args, **kwargs):
+            if filter.get("compliance_score_pending") is True:
+                return AsyncCursor([prop_doc])
+            return AsyncCursor([])
+
+        db.properties.find = MagicMock(side_effect=properties_find)
+        db.compliance_sla_alerts.find_one = AsyncMock(return_value=None)
+        db.compliance_sla_alerts.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+        db.compliance_sla_alerts.update_one = AsyncMock()
+
+        with patch("services.compliance_sla_monitor.database.get_db", return_value=db):
+            with patch("services.compliance_sla_monitor.datetime") as m_dt:
+                m_dt.now.return_value = mock_now
+                m_dt.side_effect = lambda *a, **k: datetime(*a, **k) if a else mock_now
+                with patch("services.compliance_sla_monitor.create_audit_log", new_callable=AsyncMock) as audit:
+                    result = await run_compliance_recalc_sla_monitor()
+
+        assert result.get("breaches", 0) >= 1
+        breach_calls = [
+            c
+            for c in audit.call_args_list
+            if getattr(c[1]["action"], "value", str(c[1]["action"])) == "COMPLIANCE_RECALC_SLA_BREACH"
+        ]
+        assert len(breach_calls) >= 1
+        meta = breach_calls[0][1]["metadata"]
+        assert meta.get("alert_type") == ALERT_PROPERTY_PENDING_TOO_LONG
+        assert meta.get("severity") == SEVERITY_WARN
+        assert meta.get("property_id") == "p_pending_long"
+
+        upserts = [
+            c
+            for c in db.compliance_sla_alerts.update_one.call_args_list
+            if c[0] and len(c[0]) >= 2 and isinstance(c[0][1], dict) and c[0][1].get("$set")
+        ]
+        assert any(
+            c[0][1]["$set"].get("alert_type") == ALERT_PROPERTY_PENDING_TOO_LONG
+            and c[0][1]["$set"].get("severity") == SEVERITY_WARN
+            for c in upserts
+        )

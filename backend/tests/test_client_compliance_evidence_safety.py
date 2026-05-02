@@ -295,3 +295,91 @@ async def test_evidence_verification_enqueues_recalc_after_authority_sync():
     sync_mock.assert_awaited_once()
     enqueue_mock.assert_awaited_once()
     assert enqueue_mock.await_args.kwargs["correlation_id"] == "GUIDED_EVIDENCE_VERIFY:p1:r1:cer_v1"
+
+
+@pytest.mark.asyncio
+async def test_post_compliance_evidence_propagates_sync_failure_no_enqueue_no_ok():
+    """If sync_requirement_evidence_authority raises after create, request fails and recalc is not enqueued."""
+    db = MagicMock()
+    db.requirements.find_one = AsyncMock(
+        return_value={
+            "requirement_id": "r1",
+            "property_id": "p1",
+            "client_id": "c1",
+            "requirement_type": "smoke_heat_alarms",
+            "registry_metadata": {"evidence_resolution": {"allowed_evidence_modes": ["CONTRACTOR_CONFIRMATION"]}},
+        }
+    )
+    body = route.CreateEvidenceRequest.model_validate(
+        {
+            "evidence_mode": "CONTRACTOR_CONFIRMATION",
+            "contractor_confirmation": {
+                "contractor_name": "Trade Person",
+                "contractor_company": "Legacy Company Ltd",
+                "completion_date": "2026-04-01",
+                "work_summary": "Installed and tested alarms in all required rooms.",
+            },
+        }
+    )
+    create_mock = AsyncMock(return_value={"evidence_record_id": "cer_sync_fail"})
+    sync_mock = AsyncMock(side_effect=RuntimeError("authority_sync_failed"))
+    enqueue_mock = AsyncMock(return_value=True)
+    audit_mock = AsyncMock()
+    with patch.object(route.database, "get_db", return_value=db):
+        with patch.object(route, "create_compliance_evidence_record", create_mock):
+            with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
+                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
+                    with patch.object(route, "create_audit_log", audit_mock):
+                        with pytest.raises(RuntimeError, match="authority_sync_failed"):
+                            await route.post_compliance_evidence(
+                                property_id="p1",
+                                requirement_id="r1",
+                                body=body,
+                                request=_req(),
+                                user={"client_id": "c1", "portal_user_id": "u1"},
+                            )
+    create_mock.assert_awaited_once()
+    sync_mock.assert_awaited_once()
+    enqueue_mock.assert_not_awaited()
+    audit_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_post_evidence_verification_propagates_sync_failure_no_enqueue_no_ok():
+    """If sync_requirement_evidence_authority raises after verify, request fails and recalc is not enqueued."""
+    db = MagicMock()
+    db.compliance_evidence_records.find_one = AsyncMock(
+        return_value={
+            "evidence_record_id": "cer_v1",
+            "client_id": "c1",
+            "property_id": "p1",
+            "requirement_id": "r1",
+        }
+    )
+    apply_mock = AsyncMock(return_value={"evidence_record_id": "cer_v1", "status": "VERIFIED"})
+    sync_mock = AsyncMock(side_effect=RuntimeError("authority_sync_failed"))
+    enqueue_mock = AsyncMock(return_value=True)
+    audit_mock = AsyncMock()
+    body = route.VerifyEvidenceRequest(decision="VERIFY")
+    with patch.object(route.database, "get_db", return_value=db):
+        with patch.object(route, "apply_verification_decision", apply_mock):
+            with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
+                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
+                    with patch.object(route, "create_audit_log", audit_mock):
+                        with pytest.raises(RuntimeError, match="authority_sync_failed"):
+                            await route.post_evidence_verification(
+                                property_id="p1",
+                                requirement_id="r1",
+                                evidence_record_id="cer_v1",
+                                body=body,
+                                request=_req(),
+                                user={
+                                    "client_id": "c1",
+                                    "portal_user_id": "u1",
+                                    "role": "ROLE_CLIENT_ADMIN",
+                                },
+                            )
+    apply_mock.assert_awaited_once()
+    sync_mock.assert_awaited_once()
+    enqueue_mock.assert_not_awaited()
+    audit_mock.assert_not_awaited()

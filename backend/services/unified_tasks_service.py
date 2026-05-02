@@ -380,6 +380,9 @@ def _action_to_task(
     ce_book = _compliance_execution_booking_meta(action_type, a)
     if ce_book:
         task_metadata["compliance_execution_booking"] = ce_book
+    gk = a.get("gap_key")
+    if gk:
+        task_metadata["gap_key"] = str(gk)
     if action_type == ACTION_PENDING_APPROVAL:
         task_metadata["domain"] = "billing"
         task_metadata["billing_milestone_type"] = "pending_invoice_approval"
