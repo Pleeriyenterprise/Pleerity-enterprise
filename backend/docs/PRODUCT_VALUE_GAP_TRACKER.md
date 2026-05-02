@@ -60,12 +60,15 @@ This tracker **does not** approve bypassing stream rules. It **prioritises produ
 | **Linked streams** | Stream C, Stream D, Stream E, Stream F |
 | **Authorities to reuse (non-exhaustive)** | `unified_tasks_service` / priority stream patterns; `requirement_action_resolver` (Stream D); gap and outcome semantics (Stream C/E); audit/read models (Stream F). |
 | **Design document** | `UNIFIED_COMPLIANCE_WORK_QUEUE_DESIGN.md` |
+| **Wireframe & copy spec (v1)** | `UNIFIED_COMPLIANCE_WORK_QUEUE_WIREFRAME_V1.md` |
 | **Status** | In Design |
-| **Completed work** | Unified Compliance Work Queue design documented in `UNIFIED_COMPLIANCE_WORK_QUEUE_DESIGN.md`. |
-| **Files changed (design commit)** | `UNIFIED_COMPLIANCE_WORK_QUEUE_DESIGN.md`, `PRODUCT_VALUE_GAP_TRACKER.md` (PVG-001). |
+| **Completed work** | Unified Compliance Work Queue design in `UNIFIED_COMPLIANCE_WORK_QUEUE_DESIGN.md`. **Sign-off review completed** (scope lock, urgency mapping, closure language, navigation, v2 deferrals). **Tenant wireframe & copy spec drafted** in `UNIFIED_COMPLIANCE_WORK_QUEUE_WIREFRAME_V1.md` (page purpose, nav, empty state, row layout, urgency/closure/action copy, filters/sort, mobile, v1 exclusions, a11y, acceptance criteria). |
+| **Files changed (design commit)** | `UNIFIED_COMPLIANCE_WORK_QUEUE_DESIGN.md`, `PRODUCT_VALUE_GAP_TRACKER.md` (PVG-001); `UNIFIED_COMPLIANCE_WORK_QUEUE_WIREFRAME_V1.md` (wireframe/copy spec). |
 | **Tests run** | N/A (docs only). |
-| **Remaining risks** | Second source of truth if projection becomes a ledger; **Rule R2** regression (raw gap `recommended_*` as primary); **`requirement_id`-only dedupe**; risk vs gap **double count** (often valid — needs clear UX); **eventual consistency** (score/gap lag); **cognitive overload** if the list is too dense. |
-| **Next recommended step** | Product sign-off on DTO, urgency model, and UX before implementation. |
+| **Narrowed v1 scope decision** | **Included:** priority/unified pipeline only (requirement/gap-overlay, risk, WO, issue, approval) — **no** raw gaps, **no** tenant_request rows. **DTO:** `closure_summary_user` + `show_inbox_overlay_note` (not three closure columns). **Urgency:** three bands from existing `_urgency_level` mapping. **Positioning:** secondary to Today / Command Centre. |
+| **Remaining blockers before implementation** | **Product sign-off** on `UNIFIED_COMPLIANCE_WORK_QUEUE_WIREFRAME_V1.md` (nav label final choice: “Work queue” vs “Open work”, dashboard entry treatment, empty-state variant). **Engineering** route path + assembler contract review (no new authority). **No code** until product sign-off on wireframe spec. |
+| **Remaining risks** | Second source of truth if projection becomes a ledger; **Rule R2** regression (raw gap `recommended_*` as primary); **`requirement_id`-only dedupe**; risk vs gap **double count** (often valid — needs clear UX); **eventual consistency** (mitigated by no v1 per-row score strip); **cognitive overload** if v1 ships wide columns (mitigated by narrow DTO). |
+| **Next recommended step** | Formal **product approval** of wireframe/copy spec → PVG-001 → **In Implementation**; first PR implements assembler + route per design + wireframe, streams C/D/E, tests per design doc. |
 
 ---
 

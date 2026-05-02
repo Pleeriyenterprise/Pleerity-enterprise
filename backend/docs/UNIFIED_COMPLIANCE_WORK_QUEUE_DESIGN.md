@@ -2,9 +2,12 @@
 
 **Product value gap:** PVG-001 (`PRODUCT_VALUE_GAP_TRACKER.md`)  
 **Document type:** Product design — **not** an architecture matrix, stream tracker, or implementation spec.  
+**Tenant UX (v1):** `UNIFIED_COMPLIANCE_WORK_QUEUE_WIREFRAME_V1.md` (wireframe + copy spec for implementation).  
 **Aligned with:** `STREAM_C_REMEDIATION_CORRELATION_RUNBOOK.md`, `STREAM_D_CTA_PRODUCER_CONSUMER_MATRIX.md`, `STREAM_E_MUTATION_FANOUT_MATRIX.md`, `PROPERTY_COMPLIANCE_OS_GAP_AND_RETENTION_AUDIT.md`.
 
 **Non-goals for this document:** New collections, new remediation source of truth, replacing Today or Command Centre, exposing support-only correlation JSON to tenants, or bypassing named authorities.
+
+**v1 implementation readiness:** After sign-off review, this document locks **V1 scope lock**, **Urgency Mapping v1**, **User-facing Closure Language**, **Navigation and Product Positioning**, **tenant_request deferred to v2**, and **Explicit v2 deferrals**. **Wireframe/copy spec** is in `UNIFIED_COMPLIANCE_WORK_QUEUE_WIREFRAME_V1.md`; **product sign-off** on that spec remains the last gate before code.
 
 ---
 
@@ -60,37 +63,187 @@ Eligible families **already** fed by unified priority + tasks: **requirement** (
 
 ---
 
-## Tenant-facing DTO (row shape)
+## V1 scope lock
 
-Each row is a **view model**, not authoritative storage. Align with Stream C §5 “minimum viable remediation row” where applicable.
+**Sign-off review (2026):** v1 is intentionally **narrow** — projection-only, same upstream rows as Today/unified tasks, **three** user-facing urgency bands, **one** primary closure line + expand detail, **no** tenant_request rows, **no** new scoring or ledger.
+
+### Included sources (v1)
+
+Rows assembled **only** from the same **client priority → unified task** pipeline already used by Today (no parallel Mongo readers for raw gaps):
+
+| Source | Mechanism |
+|--------|-----------|
+| **Requirement-shaped compliance** | `ACTION_OVERDUE_COMPLIANCE`, `ACTION_MISSING_DOCUMENT`, `ACTION_CERT_EXPIRING_SOON` → `resolve_take_action_for_priority_action` / resolver overlay (`gaps_to_priority_actions`). |
+| **Gap-backed compliance** | Only as **priority actions** after overlay — **never** raw `compliance_gaps` documents. |
+| **Risk signals** | `ACTION_RISK_SIGNAL` — ops URL pattern per Stream D. |
+| **Work orders** | `ACTION_WORK_ORDER_*` — near breach, breached, open WO. |
+| **Maintenance issues** | `ACTION_OPEN_ISSUE`. |
+| **Approvals / invoice** | `ACTION_PENDING_APPROVAL`. |
+
+### Excluded sources (v1)
+
+| Source | Reason |
+|--------|--------|
+| **tenant_request / tenant_message** | **Deferred to v2** — Stream D `D-P06` metadata vs primary mismatch risk; v1 ships without inbox-request rows in UCWQ (Today may still show them). |
+| Raw **`compliance_gaps`** collection | Rule R2 — use priority overlay only. |
+| **`POST .../remediation-correlation-view`** | Support-only, non-authoritative. |
+| **Admin** `priority_actions` | Different audience. |
+| **New persisted queue / remediation SSOT** | Forbidden. |
+
+### Final v1 DTO fields (ship these only)
+
+| Field | Purpose |
+|-------|---------|
+| `queue_item_id` | Stable key: `task_id` from unified tasks (`source_type:source_id`) or deterministic `source_system` + `remediation_key`. |
+| `source_system` | From closed vocabulary for rows included above (e.g. `requirement`, `risk_signal`, `work_order`, `issue`, `approval`; gap identity via `remediation_key` / related ids — not `tenant_inbox` in v1). |
+| `remediation_key` | Stream C §3; **prefer `gap_key`** when present. |
+| `property_id`, `client_id` | Scope. |
+| `title`, `subtitle` | From existing priority/unified labels — no new copy authority. |
+| `urgency_band` | **Urgent \| Soon \| Watch** — see **Urgency Mapping v1** (derived only). |
+| `primary_action_type`, `primary_action_label`, `primary_action_url` | Same contract as unified task primary CTA (resolver or ops URL). |
+| `primary_action_authority` | `canonical_take_action` \| `operations_constructed` \| `fallback` — transparency for support QA. |
+| `closure_summary_user` | **Single** user-facing line summarising posture (see **User-facing Closure Language**). |
+| `show_inbox_overlay_note` | Boolean or enum: whether row has **only** inbox/snooze/dismiss relevance — must **not** read as “compliant.” |
+| `related_ids` | `requirement_id`, `gap_key`, `signal_id`, `issue_id`, `work_order_id`, `invoice_id` as applicable — deep links only. |
+
+### Deferred DTO fields (not in v1 API)
+
+| Field | Deferred to |
+|-------|-------------|
+| Separate `compliance_closure_state`, `operational_closure_state`, `inbox_visibility_state` columns | **v2** — v1 uses **`closure_summary_user`** + optional expand from same sources. |
+| `compliance_impact` taxonomy | **v2** (see **Explicit v2 deferrals**). |
+| `proof_state` | **v2**. |
+| Per-row / broad `score_context` | **v2** (PVG-004). |
+| `tenant_request` / `tenant_message` task shape | **v2** with strict Stream D rules. |
+
+### v1 filters and sorting
+
+| Capability | v1 behaviour |
+|------------|----------------|
+| **Sort** | Default: same composite intent as existing unified sort — reuse **`_impact_score`** / priority ordering from upstream task list where available; **tie-break:** `task_id` lexicographic, then `property_id`. **Never** sort by `requirement_id` alone when multiple `gap_key`s exist. |
+| **Filter** | `property_id` (required for multi-property clients), `urgency_band`, `source_system` (coarse). |
+| **Search** | **Out of scope v1** (defer to v2 unless trivial title match). |
+
+### v1 urgency bands (labels only)
+
+Three bands — **no** new engine; collapse of existing internal levels:
+
+| `urgency_band` | Meaning for user |
+|----------------|-------------------|
+| **Urgent** | Needs action now (overdue compliance, breached SLA, critical/high internal severity). |
+| **Soon** | Needs attention in the near term (medium internal level, approaching deadlines). |
+| **Watch** | Lower immediate pressure (low internal level; still visible). |
+
+---
+
+## Urgency mapping v1
+
+**Rule:** UCWQ does **not** compute new scores. For every row, reuse the **same inputs** already used by `unified_tasks_service._urgency_level(action_type, severity, overdue_days)` and map its **output string** to **`urgency_band`**:
+
+| Existing `_urgency_level` result | `urgency_band` |
+|----------------------------------|----------------|
+| `critical` | **Urgent** |
+| `high` | **Urgent** |
+| `medium` | **Soon** |
+| `low` | **Watch** |
+
+**Source types and inputs (reference — all already on priority/unified rows):**
+
+| Source type (concept) | Existing input fields (do not re-fetch) | Feeds `_urgency_level` via |
+|----------------------|----------------------------------------|------------------------------|
+| Requirement / gap-backed compliance | `action_type` (`ACTION_*`), `severity`, requirement `due_at` → `overdue_days` | Same row as unified task. |
+| Risk signal | `action_type` = `ACTION_RISK_SIGNAL`, risk **severity** on priority row | Same. |
+| Work order | `action_type` (`ACTION_WORK_ORDER_*`), WO SLA fields → overdue / breach flags reflected in `action_type` and **severity** | Same. |
+| Issue | `action_type` = `ACTION_OPEN_ISSUE`, **severity** / priority on row | Same. |
+| Approval | `action_type` = `ACTION_PENDING_APPROVAL`, **severity** | Same. |
+
+**Assembler obligation:** Build the UCWQ list from **the same unified task objects** (or bitwise-identical computation) so urgency is **not** recomputed with different rules. If a row cannot supply `severity` / `overdue_days`, inherit defaults already used by unified tasks for that `action_type`.
+
+**Tie-break (unchanged):** never dedupe by `requirement_id` alone; use `task_id` / `gap_key` per Stream C §6.
+
+---
+
+## User-facing closure language
+
+Replace internal terms (“compliance closure”, “operational closure”) on **default rows** with short, user-tested strings. **Systems definitions** remain in Stream C runbook for engineering.
+
+| Concept | User-facing label (v1 default copy — product may A/B) |
+|---------|--------------------------------------------------------|
+| **Compliance cleared** | **“Cleared for compliance”** or **“No open compliance issue for this item”** — only when gap / obligation persistence shows resolved **or** requirement shows compliant per authority (not inbox). |
+| **Operational follow-up** | **“Operational follow-up”** or **“Contractor / maintenance in progress”** — WO/issue active; **does not** alone mean statutory compliance is met. |
+| **Hidden or snoozed** | **“Hidden from your list”** or **“Snoozed — not resolved”** — Today dismiss / snooze / reviewed **only** affects **visibility**, not whether an obligation exists. |
+
+**`closure_summary_user`:** One line built from the above templates from **existing** row state (gap status, WO/issue status, task overlay flags) — **no** new persisted closure ledger.
+
+### Clarifications (must appear in UX microcopy or help)
+
+1. **Inbox actions do not mean compliant** — Snoozing, dismissing, or marking “reviewed” does **not** clear a compliance obligation.  
+2. **Operational completion ≠ always compliant** — Completing a work order or closing an issue **may not** clear a compliance gap (Stream E outcome matrix); users may still need evidence or obligation work.
+
+---
+
+## Navigation and Product Positioning
+
+| Question | v1 decision |
+|----------|-------------|
+| **How UCWQ relates to Today** | Today remains the **inbox-first** experience (visibility, snooze, dismiss). UCWQ is the **property-centric work queue** — “what needs doing across compliance + ops,” sortable and filterable. **No** removal or merge of Today in v1. |
+| **How UCWQ relates to Command Centre** | Command Centre remains the **snapshot / urgent bundle** entry. UCWQ is the **deep operational list** for users who want **one table** of open work — not a duplicate of the CC **layout**; may **link** to the same underlying tasks. |
+| **Primary user journey (v1)** | **Secondary surface:** user lands in **dashboard → Today or Command Centre** as today; **UCWQ** is reachable from **primary nav** “Work queue” (or equivalent) for users who opt into list-first operations. **Not** replacing CC/Today as default home. |
+| **Positioning sentence** | “**All open work in one sortable list** — same actions as Today, without replacing your inbox.” |
+
+**IA requirement:** Entry point must be **one click** from dashboard; **no** orphan screen.
+
+---
+
+## Explicit v2 deferrals
+
+The following are **out of scope for v1**; track under PVG-001 / PVG-005 / PVG-003 / PVG-004 as appropriate when implemented:
+
+| Item | Notes |
+|------|--------|
+| **`proof_state`** | Evidence hints without new ledger — needs product rules. |
+| **`compliance_impact` taxonomy** | Statutory vs operational vs billing — deferred to v2+ with PVG-005 alignment. |
+| **Advanced dedupe / collapse** | Risk vs gap double appearance collapse rules (Stream C product-gated). |
+| **Multi-band urgency normalisation (5+)** | PVG-005 — global model; v1 uses **three** bands only. |
+| **Applicability explanation layer** | “Why this applies” — PVG-003 / Stream A; not on UCWQ rows in v1. |
+| **Broad score context overlays** | Per-row / portfolio score status strips — PVG-004. |
+| **`tenant_request` / `tenant_message` in UCWQ** | Include in v2 **with** Stream D metadata/primary alignment rules and tests (`D-P06`). |
+| **Separate DTO columns** for three closure dimensions | v1 uses **`closure_summary_user`** + help copy; v2 may expose structured badges if user research supports it. |
+| **Full search** | Title/property search beyond filters — v2. |
+
+---
+
+## Tenant-facing DTO (reference — full conceptual model)
+
+Each row is a **view model**, not authoritative storage. **v1 ships the subset in “V1 scope lock” — final v1 DTO fields only.** The table below is the **long-form reference** for v2+ and documentation alignment with Stream C §5.
 
 | Field | Purpose |
 |-------|---------|
 | `queue_item_id` | Stable UI key: **`task_id`** from unified tasks **or** deterministic `source_system` + `remediation_key` when not task-backed. |
-| `source_system` | Closed vocabulary: `gap`, `risk_signal`, `work_order`, `maintenance_issue`, `requirement`, `approval`, `tenant_inbox`, … per Stream C §4. |
+| `source_system` | Closed vocabulary per Stream C §4 (v1 excludes `tenant_inbox` rows). |
 | `remediation_key` | Per Stream C §3; **prefer `gap_key`** when a gap row exists. |
 | `property_id`, `client_id` | Scope. |
 | `title`, `subtitle` | From existing label services / priority row / issue title — no new copy authority. |
-| `urgency` | Normalised **display band** (see Urgency model) — sorting only. |
-| `compliance_impact` | Coarse class: e.g. statutory gap, evidence gap, risk-only, operational-only, billing-adjacent — inferred from `source_system` + gap_kind / risk_type (product-tuned). |
+| `urgency` | See **V1 scope lock** — v1 exposes **`urgency_band`** only. |
+| `compliance_impact` | **v2** — coarse class taxonomy. |
 | `primary_action` | Resolver `take_action` for requirement-backed; **operations** deep link for risk/WO/issue per Stream D. |
-| `primary_action_authority` | e.g. `canonical_take_action`, `operations_constructed`, `tenant_inbox_navigation` — user-visible transparency. |
-| `compliance_closure_state` | Where source has truth: e.g. gap `open` / `resolved` — **not** inferred from inbox. |
-| `operational_closure_state` | WO/issue terminal when known from source. |
-| `inbox_visibility_state` | Task overlay: snoozed / dismissed / reviewed — **non-compliance** closure. |
-| `proof_state` | Coarse: none / pending_review / verified — from evidence hints where available without a new ledger. |
-| `score_context` | Optional one-liner: property or portfolio `score_status` / pending recalc honesty — aligns with PVG-004; **not** a second score. |
+| `primary_action_authority` | e.g. `canonical_take_action`, `operations_constructed` — user-visible transparency. |
+| `compliance_closure_state` | **v2 column** — v1 folded into `closure_summary_user`. |
+| `operational_closure_state` | **v2 column** — v1 folded into `closure_summary_user`. |
+| `inbox_visibility_state` | **v2 column** — v1 uses `show_inbox_overlay_note`. |
+| `proof_state` | **v2** — none / pending_review / verified. |
+| `score_context` | **v2** — PVG-004. |
 | `related_ids` | `requirement_id`, `gap_key`, `signal_id`, `issue_id`, `work_order_id` — for deep links only. |
 
 ---
 
-## Urgency model
+## Urgency model (non-v1 reference)
 
 **Not** a new global urgency engine (deeper normalisation is **PVG-005**).
 
-**v1:** Map **existing** severities / SLA proximity / overdue flags to **3–5 display bands** (e.g. critical / high / medium / low / informational) for **sorting and badges only**.
+**v1** uses **Urgency Mapping v1** only.
 
-**Inputs:** Gap severity, risk tier, WO SLA breach proximity, overdue / cert-expiring flags from priority stream, issue priority.
+**v2+:** Additional bands or cross-entity normalisation — PVG-005.
 
 **Tie-break:** `last_seen_at`, due date, stable `task_id` order — **never** dedupe or sort by **`requirement_id` alone** when multiple `gap_key`s can exist (Stream C §6).
 
@@ -104,13 +257,13 @@ Each row is a **view model**, not authoritative storage. Align with Stream C §5
 | Risk | Constructed **`/operations/risk-signals?signal_id=`** + risk workflow — **not** resolver. |
 | WO / issue / approval | Existing **operations** URLs from `client_priority_stream` (Stream D exception table). |
 | **Forbidden** | Raw **`recommended_url` / `recommended_action_label`** from gap documents as **client primary** CTA (**Rule R2**). |
-| Tenant_request rows | Prefer **`metadata.take_action`** when resolver can attach; log mismatch when canonical ≠ primary (existing D-P06 pattern). |
+| **tenant_request / tenant_message** | **v2** — see **V1 scope lock** and **Explicit v2 deferrals** (Stream D `D-P06` alignment required before inclusion). |
 
 ---
 
-## Completion / closure semantics
+## Completion / closure semantics (engineering reference)
 
-Three **orthogonal** dimensions (Stream C §7, correlation runbook §2):
+Three **orthogonal** dimensions (Stream C §7, correlation runbook §2) — **internal** truth model:
 
 | Dimension | Meaning |
 |-----------|---------|
@@ -118,7 +271,7 @@ Three **orthogonal** dimensions (Stream C §7, correlation runbook §2):
 | **Operational closure** | WO completed / issue closed — **may not** imply compliance met (Stream E outcome matrix). |
 | **Inbox / visibility** | Today dismiss, snooze, reviewed — **does not** complete compliance. |
 
-**UI:** Separate **badges** or sublabels per dimension when applicable; never show inbox dismiss as “compliant.”
+**v1 UI:** Use **`closure_summary_user`** and **User-facing Closure Language** — not three jargon badges on every row. **v2** may expose structured columns if research supports it.
 
 ---
 
@@ -126,8 +279,8 @@ Three **orthogonal** dimensions (Stream C §7, correlation runbook §2):
 
 1. **One list, multiple truths labelled** — do not collapse compliance closure and inbox closure into one checkmark.  
 2. **No fake completeness** — navigation-only rows labelled **Review / Open**, not “Fix compliance.”  
-3. **Timing honesty** — where Stream E implies lag, show a **short** score/recalc context on property-scoped rows.  
-4. **Do not duplicate Today or Command Centre** — UCWQ is **work-queue-first** (sort/filter, property-centric); Today retains **inbox** behaviour; Command Centre retains **snapshot/urgent bundle** unless product later **explicitly** merges.  
+3. **Timing honesty (v1)** — **No** per-row score overlay; rely on existing dashboard/score pages for async honesty (PVG-004 / Stream B). **v2** may add **score_context** per **Explicit v2 deferrals**.  
+4. **Do not duplicate Today or Command Centre** — UCWQ is **secondary** list-first surface in v1 (see **Navigation and Product Positioning**); Today retains **inbox**; Command Centre retains **snapshot/urgent bundle**.  
 5. **Progressive disclosure** — default **narrow** row; expand for IDs and “why this matters” from existing templates, not new legal claims.
 
 ---
@@ -140,7 +293,7 @@ Three **orthogonal** dimensions (Stream C §7, correlation runbook §2):
 | **Rule R2** regression | Single assembler path; no raw gap primary CTA. |
 | `requirement_id`-only dedupe | Dedupe by **`task_id`** or **`gap_key`**; never merge multiple gaps on one requirement without explicit product rule. |
 | Risk vs gap **double count** | Often **valid** (distinct systems); label clearly or product-gate collapse (Stream C). |
-| Eventual consistency | Row-level **score_context** + honest async copy; no instant headline promise. |
+| Eventual consistency | Users directed to **existing** score/dashboard honesty; **no** v1 per-row score strip (deferred v2). |
 | Cognitive overload | Default **minimal** columns; expand for power users. |
 | Support correlation JSON to tenants | **Forbidden** — tenant DTO only. |
 
@@ -150,8 +303,8 @@ Three **orthogonal** dimensions (Stream C §7, correlation runbook §2):
 
 | Phase | Focus |
 |-------|--------|
-| **D** | Design sign-off (this document + product review). |
-| **I1** | UX wireframes; freeze tenant DTO v1. |
+| **D** | Design sign-off (**complete** for architecture — wireframes + copy pass remain). |
+| **I1** | UX wireframes + **`closure_summary_user`** copy; freeze tenant DTO v1 per **V1 scope lock**. |
 | **I2** | Backend **assembler** — calls existing `get_unified_tasks_for_client` / priority assembly only; **no** new Mongo collection. |
 | **I3** | Client surface (route or tab) consuming assembler — **does not** remove Today/CC. |
 | **I4** | Contract and regression tests (see Tests needed). |
@@ -186,4 +339,4 @@ Not part of this design commit; required before release:
 
 **Owner:** Product + platform architecture (review).  
 **PVG:** PVG-001.  
-**Next step:** Product sign-off on DTO, urgency model, and UX before implementation (see `PRODUCT_VALUE_GAP_TRACKER.md`).
+**Next step:** Final **UX wireframes** and **closure copy** product approval → move PVG-001 to **In Implementation** in `PRODUCT_VALUE_GAP_TRACKER.md` (no architecture tracker change required).
