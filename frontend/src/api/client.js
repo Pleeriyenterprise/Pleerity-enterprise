@@ -473,6 +473,8 @@ export const clientAPI = {
   getPriorities: (params = {}) => apiClient.get('/client/priorities', { params }),
   /** UCWQ v1: flat list of open work (unified-tasks projection only). */
   getWorkQueue: (params = {}) => apiClient.get('/client/work-queue', { params }),
+  /** Portfolio compliance headline (score_status, timestamps) — same contract as dashboard. */
+  getComplianceScore: () => apiClient.get('/client/compliance-score'),
   /** Dashboard digest: summary, freshness, short activity (no full task lists). */
   getTasksDigest: (params = {}) => apiClient.get('/client/tasks/digest', { params }),
   /** Composed urgent tasks, risks, activity, compliance summary (read-only aggregate). */

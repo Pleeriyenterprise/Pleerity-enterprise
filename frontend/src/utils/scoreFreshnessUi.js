@@ -95,3 +95,19 @@ export const COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE =
 /** Property Detail when stored headline and explainability / operational preview are both shown. */
 export const PROPERTY_DETAIL_STORED_VS_PREVIEW_NOTE =
   'The headline uses the latest stored property score. Detail panels may include current requirement data while recalculation is pending.';
+
+/** PVG-004 Work queue: compliance headline snapshot failed (network/API); not a processing state. */
+export const WORK_QUEUE_SCORE_SNAPSHOT_LOAD_FAILED =
+  'We could not load your portfolio score context. Refresh the page or try again in a moment.';
+
+/**
+ * PVG-004: Headline states where the score may not update predictably or needs follow-up (distinct from “still calculating”).
+ * @param {string | null | undefined} scoreStatus
+ * @returns {boolean}
+ */
+export function isWorkQueueScoreHeadlineDegradedStatus(scoreStatus) {
+  const s = String(scoreStatus || '')
+    .trim()
+    .toLowerCase();
+  return s === 'unavailable' || s === 'unknown' || s === 'reconciliation_required';
+}

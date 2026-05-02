@@ -10,9 +10,14 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { AlertCircle, ListTodo } from 'lucide-react';
+import { AlertCircle, Info, ListTodo } from 'lucide-react';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { resolveTaskCta } from '../utils/ctaRegistry';
+import {
+  isWorkQueueScoreHeadlineDegradedStatus,
+  resolveDashboardFreshnessExplanation,
+  WORK_QUEUE_SCORE_SNAPSHOT_LOAD_FAILED,
+} from '../utils/scoreFreshnessUi';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { resolveClientPortalPath, recordClientPortalInteraction } from '../utils/clientPortalNavigation';
 
@@ -60,27 +65,61 @@ export default function ClientWorkQueuePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [items, setItems] = useState([]);
+  const [complianceHeadline, setComplianceHeadline] = useState(null);
+  const [complianceHeadlineFetchFailed, setComplianceHeadlineFetchFailed] = useState(false);
 
-  const load = useCallback(() => {
+  const refetchComplianceHeadline = useCallback(async () => {
+    if (!isClientUser) return;
+    try {
+      const r = await clientAPI.getComplianceScore();
+      setComplianceHeadline(r.data ?? null);
+      setComplianceHeadlineFetchFailed(false);
+    } catch {
+      setComplianceHeadline(null);
+      setComplianceHeadlineFetchFailed(true);
+    }
+  }, [isClientUser]);
+
+  const load = useCallback(async () => {
     if (!isClientUser) return;
     setLoading(true);
     setError('');
-    clientAPI
-      .getWorkQueue({})
-      .then((r) => {
-        const list = Array.isArray(r.data?.items) ? r.data.items : [];
-        setItems(list);
-      })
-      .catch((err) => {
-        setError(parseApiError(err, 'Could not load work queue'));
-        setItems([]);
-      })
-      .finally(() => setLoading(false));
+    const [wqRes, csRes] = await Promise.allSettled([
+      clientAPI.getWorkQueue({}),
+      clientAPI.getComplianceScore(),
+    ]);
+    if (wqRes.status === 'fulfilled') {
+      const list = Array.isArray(wqRes.value.data?.items) ? wqRes.value.data.items : [];
+      setItems(list);
+      setError('');
+    } else {
+      setError(parseApiError(wqRes.reason, 'Could not load work queue'));
+      setItems([]);
+    }
+    if (csRes.status === 'fulfilled') {
+      setComplianceHeadline(csRes.value.data ?? null);
+      setComplianceHeadlineFetchFailed(false);
+    } else {
+      setComplianceHeadline(null);
+      setComplianceHeadlineFetchFailed(true);
+    }
+    setLoading(false);
   }, [isClientUser]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!isClientUser) return undefined;
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        refetchComplianceHeadline();
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [isClientUser, refetchComplianceHeadline]);
 
   const onPrimaryAction = useCallback(
     (row) => {
@@ -129,6 +168,16 @@ export default function ClientWorkQueuePage() {
     );
   }
 
+  const headlineExplanation =
+    !complianceHeadlineFetchFailed && complianceHeadline
+      ? resolveDashboardFreshnessExplanation(
+          complianceHeadline.score_status,
+          complianceHeadline.score_status_message,
+        )
+      : null;
+  const headlineDegraded =
+    Boolean(headlineExplanation) && isWorkQueueScoreHeadlineDegradedStatus(complianceHeadline.score_status);
+
   return (
     <div className={portalPageRoot} data-testid="work-queue-root">
       <div className="mb-6">
@@ -141,6 +190,42 @@ export default function ClientWorkQueuePage() {
           inbox; hiding items elsewhere does not clear underlying obligations.
         </p>
       </div>
+
+      {complianceHeadlineFetchFailed ? (
+        <Alert
+          className="mb-4 border-amber-200 bg-amber-50"
+          data-testid="work-queue-headline-score-error"
+        >
+          <AlertCircle className="h-4 w-4 text-amber-700" />
+          <AlertDescription className="text-sm text-amber-900">
+            {WORK_QUEUE_SCORE_SNAPSHOT_LOAD_FAILED}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {headlineExplanation ? (
+        <Alert
+          className={
+            headlineDegraded
+              ? 'mb-4 border-amber-200 bg-amber-50'
+              : 'mb-4 border-slate-200 bg-slate-50'
+          }
+          data-testid={
+            headlineDegraded ? 'work-queue-headline-score-degraded' : 'work-queue-headline-score-processing'
+          }
+        >
+          {headlineDegraded ? (
+            <AlertCircle className="h-4 w-4 text-amber-700" />
+          ) : (
+            <Info className="h-4 w-4 text-slate-600" />
+          )}
+          <AlertDescription
+            className={headlineDegraded ? 'text-sm text-amber-900' : 'text-sm text-slate-800'}
+          >
+            {headlineExplanation}
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {error ? (
         <Alert className="mb-4 border-amber-200 bg-amber-50">

@@ -68,7 +68,7 @@ This tracker **does not** approve bypassing stream rules. It **prioritises produ
 | **Narrowed v1 scope decision** | Unchanged from design: projection-only, unified pipeline only, no tenant_request rows in UCWQ, three urgency bands, no raw gap primary CTA. **Not shipped in this slice:** `show_inbox_overlay_note`, advanced filters/sort UX, search, snoozed rows in the list. |
 | **Remaining blockers before implementation** | During **controlled beta stabilization**, treat **non–bug / non–trust** enhancements as **deferred** unless they meet the expansion gates in the § below. |
 | **Remaining risks** | Same as design: projection must never become a ledger; Rule R2 and dedupe-by-requirement-only remain regression targets as the queue gains features; guided-evidence rows depend on `take_action` remaining available inside `primary_action` for resolver parity. **Upstream task identity:** `get_unified_tasks_for_client` uses `task_id` = `requirement:{related_requirement_id}`, so **multiple gap-backed priority actions for the same requirement collapse to one unified task** before UCWQ — affecting Today and Command Centre the same way. See `DECISION_MULTI_GAP_TASK_IDENTITY.md`. |
-| **Next recommended step** | Stabilization: production/beta monitoring, trust and copy alignment with design docs, bugs and beta feedback triage. **Multi-gap task identity** remains an explicit architecture/product decision (`DECISION_MULTI_GAP_TASK_IDENTITY.md`) — not a default trigger for UCWQ-only feature work. Deferred enhancements (filters, search, `show_inbox_overlay_note`, etc.) only after stabilization exit criteria or explicit scope change. |
+| **Next recommended step** | **Observation-first stabilization** per `BETA_OBSERVATION_AND_TRUST_REVIEW.md`: production/beta monitoring, trust and copy alignment with design docs, bugs and beta feedback triage; **no** scope expansion beyond this row’s gates without evidenced pattern. **Multi-gap task identity** remains an explicit architecture/product decision (`DECISION_MULTI_GAP_TASK_IDENTITY.md`) — not a default trigger for UCWQ-only feature work. Deferred enhancements (filters, search, `show_inbox_overlay_note`, etc.) only after stabilization exit criteria or explicit scope change. |
 
 #### PVG-001 — Controlled beta stabilization mode (governance)
 
@@ -127,6 +127,11 @@ This tracker **does not** approve bypassing stream rules. It **prioritises produ
 | **Linked streams** | Stream B, Stream E, Stream F |
 | **Authorities to reuse (non-exhaustive)** | `compliance_scoring_service` / score status semantics; queue observability patterns (tenant-safe subset); export snapshot doctrine. |
 | **Status** | Partial |
+| **Completed work** | **Work queue async-honesty slice (frontend):** `ClientWorkQueuePage` loads portfolio headline via **`GET /api/client/compliance-score`** (`clientAPI.getComplianceScore`) — same authority as dashboard, no parallel scoring contract. Copy and non-ok detection reuse **`scoreFreshnessUi`** (`resolveDashboardFreshnessExplanation`, shared fallbacks; `isWorkQueueScoreHeadlineDegradedStatus` + `WORK_QUEUE_SCORE_SNAPSHOT_LOAD_FAILED` for classification). **UX:** healthy `score_status` → **no** headline strip (quiet); non-ok → short explanation only. **Three UI lanes:** processing-style non-ok (e.g. calculating / partial / stale) vs **degraded** statuses (unavailable / unknown / reconciliation_required) vs **compliance-score fetch failure** (safe fallback copy, not “calculating”). **`visibilitychange`** refetches headline only when the tab becomes visible so resolved backend states can replace pending copy without implying instant or real-time guarantees. Initial page load uses `allSettled` so work-queue list errors and headline fetch failures stay separable. |
+| **Files changed (implementation)** | `frontend/src/api/client.js` (`getComplianceScore`); `frontend/src/pages/ClientWorkQueuePage.js`; `frontend/src/pages/ClientWorkQueuePage.test.js`; `frontend/src/utils/scoreFreshnessUi.js` (PVG-004 helpers + fetch-fallback string). |
+| **Tests run** | `npx craco test --watchAll=false --testPathPattern=ClientWorkQueuePage.test` (all passed). Covers: **healthy silence** (no strips when `score_status` is ok); **calculating → resolved** after headline refetch (simulated via `visibilitychange`); **degraded vs processing** testids/copy lanes; **fetch-failure** fallback (not conflated with processing). |
+| **Remaining risks** | **Trust:** prolonged non-ok headline states can still feel like “nothing is working” even with honest copy. **Correctness:** tenant trust depends on **`score_status` classification** matching real backend behaviour. **Refresh:** `visibilitychange` is **opportunistic** — users who never background the tab may not see convergence until a full navigation/refresh; no guarantee of immediate UI sync after recalc. **Observation:** warning fatigue or score-vs-queue confusion if non-ok is frequent — track during beta (`BETA_OBSERVATION_AND_TRUST_REVIEW.md`). |
+| **Next recommended step** | **Paused for broad rollout** — gather **evidence** (frequency/duration of non-ok states, confusion vs defects, fatigue signals) per `BETA_OBSERVATION_AND_TRUST_REVIEW.md` before adding async-honesty to further surfaces. **Allowed without new scope:** small **`scoreFreshnessUi`** / visual-noise tweaks, bug fixes. Next surface for a slice **only** if evidence names it and duplication with Dashboard is avoided. |
 
 ---
 
@@ -203,7 +208,15 @@ Architecture tracker PR rules (stream label, authority, tests) **still apply**.
 
 ---
 
+## 7. Beta observation and trust review (stabilization phase)
+
+During **controlled beta stabilization**, product and support use **`BETA_OBSERVATION_AND_TRUST_REVIEW.md`** as the structured framework for **behavioral trust**, **cognitive load**, **fragmentation signals**, and **support patterns** — **without** speculative features, new authorities, or duplicate status systems. Evidence-linked triage: **observe vs implement** per that document.
+
+**PVG-001** and **PVG-004** are in **stabilization / observation** priority: fix defects and trust-preserving clarifications; **defer** broad PVG-004 async-honesty expansion until evidence supports the next surface.
+
+---
+
 ## Document control
 
 **Owner:** Product leadership (primary), with platform engineering and compliance architecture as reviewers.  
-**Updates:** When a PVG status changes or a gap is added/deferred; keep this file short and reference the **audit** for narrative rationale.
+**Updates:** When a PVG status changes or a gap is added/deferred; keep this file short and reference the **audit** for narrative rationale. **Stabilization observation** milestones: see §7 and `BETA_OBSERVATION_AND_TRUST_REVIEW.md`.

@@ -20,6 +20,7 @@ jest.mock('react-router-dom', () => {
 jest.mock('../api/client', () => ({
   clientAPI: {
     getWorkQueue: jest.fn(),
+    getComplianceScore: jest.fn(),
   },
   parseApiError: (_e, d) => d || 'Error',
 }));
@@ -41,6 +42,22 @@ describe('ClientWorkQueuePage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockOpenGuidedEvidence.mockClear();
+    clientAPI.getComplianceScore.mockResolvedValue({
+      data: { score_status: 'ok', score_status_message: null },
+    });
+  });
+
+  it('does not show portfolio headline strips when score_status is healthy', async () => {
+    clientAPI.getWorkQueue.mockResolvedValue({ data: { items: [], summary: { count: 0 } } });
+    render(
+      <MemoryRouter>
+        <ClientWorkQueuePage />
+      </MemoryRouter>,
+    );
+    await screen.findByTestId('work-queue-empty');
+    expect(screen.queryByTestId('work-queue-headline-score-processing')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('work-queue-headline-score-degraded')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('work-queue-headline-score-error')).not.toBeInTheDocument();
   });
 
   it('renders empty state when API returns no items', async () => {
@@ -149,6 +166,53 @@ describe('ClientWorkQueuePage', () => {
       'primary',
     );
     spy.mockRestore();
+  });
+
+  it('shows processing headline when score is calculating and clears it after headline refetch resolves to ok', async () => {
+    clientAPI.getWorkQueue.mockResolvedValue({ data: { items: [], summary: { count: 0 } } });
+    clientAPI.getComplianceScore
+      .mockResolvedValueOnce({
+        data: { score_status: 'calculating', score_status_message: null },
+      })
+      .mockResolvedValue({
+        data: { score_status: 'ok', score_status_message: null },
+      });
+    render(
+      <MemoryRouter>
+        <ClientWorkQueuePage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByTestId('work-queue-headline-score-processing')).toBeInTheDocument();
+    fireEvent(document, new Event('visibilitychange'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('work-queue-headline-score-processing')).not.toBeInTheDocument();
+    });
+  });
+
+  it('uses degraded styling for unavailable score_status, not processing', async () => {
+    clientAPI.getWorkQueue.mockResolvedValue({ data: { items: [], summary: { count: 0 } } });
+    clientAPI.getComplianceScore.mockResolvedValue({
+      data: { score_status: 'unavailable', score_status_message: null },
+    });
+    render(
+      <MemoryRouter>
+        <ClientWorkQueuePage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByTestId('work-queue-headline-score-degraded')).toBeInTheDocument();
+    expect(screen.queryByTestId('work-queue-headline-score-processing')).not.toBeInTheDocument();
+  });
+
+  it('shows load-failed headline when compliance score request fails', async () => {
+    clientAPI.getWorkQueue.mockResolvedValue({ data: { items: [], summary: { count: 0 } } });
+    clientAPI.getComplianceScore.mockRejectedValue(new Error('network'));
+    render(
+      <MemoryRouter>
+        <ClientWorkQueuePage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByTestId('work-queue-headline-score-error')).toBeInTheDocument();
+    expect(screen.queryByTestId('work-queue-headline-score-processing')).not.toBeInTheDocument();
   });
 
   afterEach(() => {
