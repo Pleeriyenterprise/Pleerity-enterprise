@@ -134,8 +134,9 @@ async def finish_job_run_failure(
     error_message: str,
     stack_trace: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    outcome_metrics: Optional[Dict[str, Any]] = None,
 ) -> None:
-    """Mark job run as failed."""
+    """Mark job run as failed. Optional ``outcome_metrics`` (e.g. batch counters) persist when provided."""
     db = database.get_db()
     now = datetime.now(timezone.utc)
     from bson import ObjectId
@@ -170,7 +171,7 @@ async def finish_job_run_failure(
     if metadata:
         update["metadata"] = {**(run.get("metadata") or {}), **metadata}
     update["outcome_status"] = OUTCOME_FAILED
-    update["outcome_metrics"] = {}
+    update["outcome_metrics"] = outcome_metrics if outcome_metrics is not None else {}
     await db[COLLECTION].update_one({"_id": oid}, {"$set": update})
     logger.debug("job_run failure job_run_id=%s error_code=%s", job_run_id, error_code)
 

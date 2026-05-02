@@ -4,6 +4,10 @@ import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { Zap, Play, RefreshCw, Clock, CheckCircle, AlertTriangle, XCircle, HelpCircle, FileText, Download } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
+import {
+  formatRiskSignalRegenOutcomeSummary,
+  getRiskSignalRegenDisplayLastRun,
+} from '../utils/riskSignalRegenWorkerAdminSummary';
 
 // Jobs that have message_logs drill-down (delivery reconciliation)
 const MESSAGE_LOGS_JOBS = new Set([
@@ -441,9 +445,41 @@ export default function AdminAutomationCentrePage() {
                     (!invInfo?.can_be_run_manually && invInfo ? 'Manual run intentionally excluded for this job contract.' : '');
                   const stateConfig = JOB_STATE[state] || JOB_STATE.no_runs;
                   const StateIcon = stateConfig.Icon;
+                  const riskRegenLast =
+                    jobName === 'risk_signal_regen_worker'
+                      ? getRiskSignalRegenDisplayLastRun(runInfo, invInfo)
+                      : null;
+                  const riskRegenBundle =
+                    jobName === 'risk_signal_regen_worker'
+                      ? formatRiskSignalRegenOutcomeSummary(riskRegenLast)
+                      : null;
                   return (
                     <tr key={jobName}>
-                      <td className="px-4 py-2 font-mono text-xs">{jobName}</td>
+                      <td className="px-4 py-2 font-mono text-xs align-top">
+                        <div>{jobName}</div>
+                        {jobName === 'risk_signal_regen_worker' && riskRegenBundle && (
+                          <div
+                            className="mt-1.5 space-y-0.5 text-[11px] text-gray-600 font-sans max-w-md"
+                            data-testid="risk-regen-outcome-summary"
+                          >
+                            {riskRegenBundle.headlineLines.map((t, i) => (
+                              <div key={i}>{t}</div>
+                            ))}
+                            {riskRegenBundle.showTechnicalDetail &&
+                              riskRegenBundle.technicalPayload &&
+                              Object.keys(riskRegenBundle.technicalPayload).length > 0 && (
+                                <details className="mt-1 text-gray-500 font-sans">
+                                  <summary className="cursor-pointer hover:underline select-none">
+                                    Technical details
+                                  </summary>
+                                  <pre className="mt-1 whitespace-pre-wrap break-all text-[10px] bg-gray-50 p-1.5 rounded border border-gray-100 max-h-40 overflow-auto">
+                                    {JSON.stringify(riskRegenBundle.technicalPayload, null, 2)}
+                                  </pre>
+                                </details>
+                              )}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-2">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${stateConfig.className}`}>
                           <StateIcon className="w-3.5 h-3.5" />

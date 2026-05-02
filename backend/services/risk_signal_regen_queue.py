@@ -120,8 +120,18 @@ async def enqueue_risk_signal_regen(
 async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
     """
     Claim PENDING jobs due now, run generate_risk_signals_for_property + operational automation.
+
+    Returns dict consumed by ``run_instrumented`` including ``outcome_status`` and ``outcome_metrics``
+    so ``job_runs`` distinguish queue-empty / flag-skips / regenerations / failures without
+    treating feature-flag skips as regenerated work.
     """
     from services import risk_signal_service
+    from services.job_run_service import (
+        OUTCOME_CONDITIONAL_NO_OUTPUT,
+        OUTCOME_DEGRADED,
+        OUTCOME_FAILED,
+        OUTCOME_SUCCESS,
+    )
     from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
     from services.operational_automation_service import evaluate_operational_automation_after_risk_refresh
     from models import AuditAction
@@ -130,8 +140,10 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
     db = database.get_db()
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
-    processed = 0
-    errors = 0
+    attempted_count = 0
+    regenerated_count = 0
+    skipped_feature_flag_count = 0
+    failed_count = 0
 
     stale_cutoff = (now - timedelta(minutes=30)).isoformat()
     await db.risk_signal_regen_queue.update_many(
@@ -155,6 +167,7 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
         if not job:
             break
 
+        attempted_count += 1
         jid = job["_id"]
         property_id = job["property_id"]
         client_id = job.get("client_id") or ""
@@ -179,7 +192,7 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
                     "risk_regen_worker skip (no PREDICTIVE_MAINTENANCE) property_id=%s",
                     property_id,
                 )
-                processed += 1
+                skipped_feature_flag_count += 1
                 continue
 
             logger.info("risk_regen_worker start property_id=%s client_id=%s", property_id, client_id)
@@ -203,9 +216,9 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
                 property_id,
                 out.get("generated"),
             )
-            processed += 1
+            regenerated_count += 1
         except Exception as e:
-            errors += 1
+            failed_count += 1
             err_str = str(e)
             next_attempts = attempts + 1
             if next_attempts >= 5:
@@ -262,11 +275,73 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
                     err_str,
                 )
 
-    return {
-        "message": f"Risk signal regen worker: {processed} processed, {errors} errors",
-        "count": processed,
-        "errors": errors,
+    queue_empty = attempted_count == 0
+    outcome_metrics: Dict[str, Any] = {
+        "attempted_count": attempted_count,
+        "regenerated_count": regenerated_count,
+        "skipped_feature_flag_count": skipped_feature_flag_count,
+        "failed_count": failed_count,
+        "queue_empty": queue_empty,
     }
+
+    if queue_empty:
+        outcome_kind = "NO_WORK_ELIGIBLE"
+        outcome_status = OUTCOME_CONDITIONAL_NO_OUTPUT
+        message = "Risk signal regen worker: no pending jobs (queue empty)"
+    elif failed_count > 0 and regenerated_count > 0:
+        outcome_kind = "DEGRADED"
+        outcome_status = OUTCOME_DEGRADED
+        message = (
+            f"Risk signal regen worker: {regenerated_count} regenerated, "
+            f"{failed_count} failed this batch, {skipped_feature_flag_count} skipped (feature flag)"
+        )
+    elif failed_count > 0:
+        outcome_kind = "FAILED"
+        outcome_status = OUTCOME_FAILED
+        message = (
+            f"Risk signal regen worker: {failed_count} failed, {regenerated_count} regenerated, "
+            f"{skipped_feature_flag_count} skipped (feature flag)"
+        )
+    elif regenerated_count > 0:
+        outcome_kind = "WORK_PERFORMED"
+        outcome_status = OUTCOME_SUCCESS
+        message = (
+            f"Risk signal regen worker: {regenerated_count} property/properties regenerated"
+            + (
+                f", {skipped_feature_flag_count} skipped (predictive maintenance off)"
+                if skipped_feature_flag_count
+                else ""
+            )
+        )
+    else:
+        # attempted > 0 but only feature-flag skips (no regen, no failures)
+        outcome_kind = "BLOCKED"
+        outcome_status = OUTCOME_CONDITIONAL_NO_OUTPUT
+        message = (
+            f"Risk signal regen worker: {skipped_feature_flag_count} job(s) cleared "
+            f"(predictive maintenance disabled); 0 risk regenerations run"
+        )
+
+    outcome_metrics["outcome_kind"] = outcome_kind
+
+    result: Dict[str, Any] = {
+        "message": message,
+        "count": regenerated_count,
+        "outcome_status": outcome_status,
+        "outcome_metrics": outcome_metrics,
+        # Back-compat for callers that still read ``errors``:
+        "errors": failed_count,
+    }
+    if outcome_status == OUTCOME_DEGRADED:
+        result["error_message"] = (
+            f"{failed_count} regeneration failure(s) in this run; {regenerated_count} succeeded"
+        )
+    if outcome_status == OUTCOME_FAILED:
+        result["error_code"] = "RISK_SIGNAL_REGEN_BATCH_FAILED"
+        result["error_message"] = f"All {failed_count} attempted regeneration(s) failed in this run"
+        result["stack_trace"] = None
+
+    return result
 
 
 async def get_regen_queue_summary(sample_limit: int = 25) -> Dict[str, Any]:

@@ -333,6 +333,7 @@ from services.job_schedule_registry import (
     JOB_STATE_CONDITIONAL_NO_OUTPUT,
     HEARTBEAT_STALE_SECONDS,
 )
+from services.risk_signal_regen_admin_surface import health_summary_reason_override
 
 HEALTH_SUMMARY_JOBS = ALL_JOB_IDS_FOR_HEALTH
 
@@ -615,6 +616,9 @@ async def build_health_summary_payload() -> Dict[str, Any]:
             heartbeat_stale=heartbeat_stale,
             next_run_iso=next_run_iso,
         )
+        _regen_ov = health_summary_reason_override(jid, state, jobs_detail[jid])
+        if _regen_ov:
+            reason = _regen_ov
         last_run_value = jobs_detail[jid].get("last_completed")
         if scheduler_runtime_available and not scheduler_registered:
             next_run_reason = "job_not_registered_in_scheduler_runtime"

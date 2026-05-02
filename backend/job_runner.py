@@ -82,6 +82,7 @@ async def run_instrumented(
                 error_code=result.get("error_code", "JobReportedFailed"),
                 error_message=result.get("error_message", "Job completed with outcome_status=failed"),
                 stack_trace=result.get("stack_trace"),
+                outcome_metrics=outcome_metrics if outcome_metrics else None,
             )
             return result
         if outcome_status == OUTCOME_DEGRADED:
