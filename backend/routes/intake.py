@@ -550,12 +550,21 @@ async def autocomplete_postcode(q: str):
             # Format results
             postcodes = []
             for item in data["result"][:10]:
+                outcode = item.get("outcode")
+                incode = item.get("incode")
+                pc = item.get("postcode")
+                if not pc and outcode and incode:
+                    pc = f"{outcode} {incode}".strip()
+                elif not pc and outcode:
+                    pc = str(outcode).strip()
                 postcodes.append({
-                    "postcode": item.get("postcode"),
+                    "postcode": pc,
+                    "outcode": outcode,
+                    "incode": incode,
                     "admin_district": item.get("admin_district"),
                     "post_town": item.get("post_town") or item.get("admin_district"),
                     "region": item.get("region"),
-                    "country": item.get("country")
+                    "country": item.get("country"),
                 })
             
             return {"postcodes": postcodes}

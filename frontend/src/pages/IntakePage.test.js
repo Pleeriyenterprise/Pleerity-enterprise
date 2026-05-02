@@ -51,6 +51,16 @@ jest.mock('../api/client', () => ({
     autocompletePostcode: jest.fn(() =>
       Promise.resolve({ data: { postcodes: [] } })
     ),
+    lookupPostcode: jest.fn(() =>
+      Promise.resolve({
+        data: {
+          postcode: 'SW1A 1AA',
+          suggested_city: 'London',
+          council_name: null,
+          council_code: null,
+        },
+      })
+    ),
     submit: jest.fn(() =>
       Promise.resolve({
         data: { client_id: 'test-client', customer_reference: 'REF123' },

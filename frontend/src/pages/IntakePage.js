@@ -45,6 +45,7 @@ import {
 } from '../utils/intakeEmail';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import { renderAgreementForDisplay, validateAgreementRender } from '../utils/agreementRender';
+import { isFullUkPostcode, normalizeUkPostcode, sanitizePostcodeFieldInput } from '../utils/ukPostcode';
 
 // Plan limits - NEW PLAN STRUCTURE (must match backend plan_registry.py)
 const PLAN_LIMITS = {
@@ -424,12 +425,20 @@ const IntakePage = () => {
             typeof d === 'object' && d && Array.isArray(d.validation_issues) && d.validation_issues.length
               ? ` ${d.validation_issues.join('; ')}`
               : '';
-          const msg =
+          const hasPostcodeIssue =
+            typeof d === 'object' &&
+            d &&
+            Array.isArray(d.validation_issues) &&
+            d.validation_issues.some((x) => String(x).includes('client_postcode_malformed_or_truncated'));
+          const baseMsg =
             typeof d === 'object' && d && d.message
               ? `${d.message}${issues}`
               : typeof d === 'string'
                 ? d
                 : 'Could not load the service agreement preview. Please refresh and try again.';
+          const msg = hasPostcodeIssue
+            ? `Please check the full postcode. It appears incomplete. Go back to property details and enter a complete UK postcode (e.g. KY10 1AA).${issues}`
+            : baseMsg;
           setAgreementFetchError(msg);
         }
       } finally {
@@ -515,6 +524,12 @@ const IntakePage = () => {
           const prop = formData.properties[i];
           if (!prop.postcode.trim()) {
             setError(`Property ${i + 1}: Postcode is required`);
+            return false;
+          }
+          if (!isFullUkPostcode(prop.postcode)) {
+            setError(
+              `Property ${i + 1}: Please check the full postcode. It appears incomplete.`,
+            );
             return false;
           }
           if (!prop.address_line_1.trim()) {
@@ -690,9 +705,11 @@ const IntakePage = () => {
   };
 
   const updateProperty = (index, field, value) => {
-    const updated = [...formData.properties];
-    updated[index] = { ...updated[index], [field]: value };
-    setFormData({ ...formData, properties: updated });
+    setFormData((fd) => {
+      const updated = [...fd.properties];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...fd, properties: updated };
+    });
   };
 
   // Submit intake (submit → agreement acceptance → checkout; button stays disabled until request completes)
@@ -1562,6 +1579,11 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
   const councilRef = useRef(null);
   const postcodeRef = useRef(null);
 
+  // Keep local input aligned when parent form state updates (e.g. canonical postcode after lookup).
+  useEffect(() => {
+    setPostcodeInput((property.postcode || '').trim().toUpperCase());
+  }, [property.postcode]);
+
   // Postcode autocomplete - fetch suggestions as user types
   const fetchPostcodeSuggestions = useCallback(async (query) => {
     if (!query || query.length < 2) {
@@ -1572,7 +1594,7 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
     setLoadingPostcodes(true);
     try {
       const response = await intakeAPI.autocompletePostcode(query);
-      setPostcodeSuggestions(response.data.postcodes || []);
+      setPostcodeSuggestions(response?.data?.postcodes || []);
     } catch (err) {
       console.error('Postcode autocomplete error:', err);
       setPostcodeSuggestions([]);
@@ -1593,12 +1615,17 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
 
   // Select a postcode from dropdown and trigger full lookup
   const selectPostcode = async (suggestion) => {
-    const postcode = suggestion.postcode;
+    const rawPc = (suggestion?.postcode || '').trim();
+    const out = (suggestion?.outcode || '').trim();
+    const inn = (suggestion?.incode || '').trim();
+    const combined = rawPc || (out && inn ? `${out} ${inn}`.trim() : out || '');
+    const postcode = normalizeUkPostcode(combined);
+    if (!postcode) return;
     setPostcodeInput(postcode);
     updateProperty(index, 'postcode', postcode);
     setShowPostcodeDropdown(false);
     setPostcodeSuggestions([]);
-    
+
     // Trigger full lookup
     await lookupPostcode(postcode);
   };
@@ -1621,19 +1648,26 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
     try {
       const response = await intakeAPI.lookupPostcode(postcode);
       const data = response.data;
-      
+
+      // Persist canonical postcode from postcodes.io (avoids drift vs outward-only fragments).
+      const canonical = normalizeUkPostcode(data.postcode || postcode);
+      if (canonical) {
+        updateProperty(index, 'postcode', canonical);
+        setPostcodeInput(canonical);
+      }
+
       // Auto-fill city
       if (data.suggested_city && !property.city) {
         updateProperty(index, 'city', data.suggested_city);
       }
-      
+
       // Auto-fill council
       if (data.council_name && !property.council_name) {
         updateProperty(index, 'council_name', data.council_name);
         updateProperty(index, 'council_code', data.council_code);
         setCouncilSearch(data.council_name);
       }
-      
+
       setPostcodeLookupDone(true);
       toast.success('Address details found! Please enter your street address.');
     } catch (err) {
@@ -1697,7 +1731,7 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
 
   // Handle postcode input change
   const handlePostcodeChange = (value) => {
-    const upperValue = value.toUpperCase();
+    const upperValue = sanitizePostcodeFieldInput(value);
     setPostcodeInput(upperValue);
     updateProperty(index, 'postcode', upperValue);
     setPostcodeLookupDone(false);
