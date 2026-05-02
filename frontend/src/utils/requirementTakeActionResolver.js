@@ -70,7 +70,7 @@ function jobPrimaryLabel(requirement) {
   if (code.includes('epc')) return 'Coordinate EPC assessment & upload certificate';
   if (code.includes('fire') && code.includes('risk')) return 'Coordinate fire risk assessment & upload evidence';
   if (code.includes('pat') || code.includes('portable_appliance')) return 'Coordinate PAT testing & upload evidence';
-  if (code.includes('legionella')) return 'Coordinate Legionella assessment & upload evidence';
+  if (code.includes('legionella')) return 'Upload legionella risk assessment';
   const disp = String(requirement?.display_label || '').trim();
   if (disp && disp.toLowerCase() !== 'requirement') return `Coordinate inspection & upload evidence — ${disp}`;
   const rl = requirementLabel(requirement?.requirement_code || requirement?.requirement_type || '');
@@ -277,9 +277,17 @@ export function resolveRequirementAction(requirement, _property = {}) {
       : pid
         ? `/documents?property_id=${encodeURIComponent(String(pid))}`
         : '/documents';
+  let docLabel = 'Upload document';
+  if (code.includes('legionella')) docLabel = 'Upload legionella risk assessment';
+  else if (code.includes('gas') || ['cp12', 'gas_safety', 'gas_safety_certificate'].includes(code)) {
+    docLabel = 'Upload valid gas safety certificate';
+  } else if (code.includes('eicr') || code === 'electrical_safety') docLabel = 'Upload valid EICR certificate';
+  else if (code.includes('epc')) docLabel = 'Upload current EPC document';
+  else if (code.includes('hmo') && code.includes('licen')) docLabel = 'Upload HMO licence';
+
   return {
     actionType: REQUIREMENT_ACTION_TYPES.DOCUMENT,
-    primary_action_label: 'Upload document',
+    primary_action_label: docLabel,
     primary_action_handler: 'navigate',
     primary_route: docRoute,
     primary_intent: 'upload_evidence',

@@ -44,7 +44,6 @@ import {
   Info,
 } from 'lucide-react';
 import UpgradePrompt, { getFeatureDisplayInfo } from '../components/UpgradePrompt';
-import { SUPPORT_EMAIL } from '../config';
 import { getEvidenceStatus } from '../utils/evidenceStatus';
 import { formatRiskLabel } from '../utils/riskLabel';
 import { humanRiskType, humanSeverity, humanAction, humanizeRiskReasonBullet } from '../utils/riskPresentation';
@@ -2109,7 +2108,6 @@ export default function PropertyDetailPage() {
                                       Requirement details
                                     </Button>
                                   ) : null}
-                                  <a href={`mailto:${SUPPORT_EMAIL}?subject=Support request: ${address}`} className="text-sm text-gray-500 hover:text-electric-teal px-1 py-1" onClick={(e) => e.stopPropagation()}>Request help</a>
                                 </div>
                               </td>
                             </tr>

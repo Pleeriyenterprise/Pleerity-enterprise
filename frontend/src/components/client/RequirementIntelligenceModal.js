@@ -5,10 +5,14 @@ import { Button } from '../ui/button';
 import { requirementLabel } from '../../domain/presentDomain';
 import { mergeRequirementSupportingLinks, resolveRequirementAction } from '../../utils/requirementTakeActionResolver';
 import { mergeRequirementIntelPayload, pickWhyItMattersForDisplay } from '../../utils/requirementIntelligenceMerge';
-import { requirementWorkflowDisplayPair, humanEvidenceStateLabel } from '../../utils/requirementIntelligenceLabels';
+import {
+  requirementStatusSummaryForModal,
+  humanApplicabilityClientLabel,
+  formatAcceptedEvidenceModesForClient,
+  activeComplianceJobClientSummary,
+} from '../../utils/requirementIntelligenceLabels';
 import { formatRiskLabel } from '../../utils/riskLabel';
 import { resolveDocumentsPath } from '../../utils/clientPortalNavigation';
-import { SUPPORT_EMAIL } from '../../config';
 import { useGuidedEvidenceModal } from '../../context/GuidedEvidenceModalContext';
 
 function formatIntelDate(value) {
@@ -35,16 +39,10 @@ function pickDueOrRenewal(merged) {
   return formatted ? `${label}: ${formatted}` : null;
 }
 
-function triggerExplanationLines(merged) {
-  const te = merged.trigger_explanation;
-  if (!te) return [];
-  if (typeof te === 'string' && te.trim()) return [te.trim()];
-  if (typeof te !== 'object') return [];
-  const lines = [];
-  if (te.property_jurisdiction) lines.push(`Property jurisdiction: ${te.property_jurisdiction}`);
-  if (te.jurisdiction_basis) lines.push(`Jurisdiction basis: ${String(te.jurisdiction_basis).replace(/_/g, ' ')}`);
-  if (te.requirement_type) lines.push(`Requirement type: ${te.requirement_type}`);
-  return lines;
+function tenantSafeTriggerExplanation(merged) {
+  const te = merged?.trigger_explanation;
+  if (typeof te === 'string' && te.trim()) return te.trim();
+  return '';
 }
 
 /**
@@ -113,7 +111,12 @@ export default function RequirementIntelligenceModal({
   );
 
   const why = useMemo(() => (merged ? pickWhyItMattersForDisplay(merged) : null), [merged]);
-  const statusPair = useMemo(() => requirementWorkflowDisplayPair(merged), [merged]);
+  const statusSummary = useMemo(() => requirementStatusSummaryForModal(merged), [merged]);
+  const acceptedEvidenceModes = useMemo(() => formatAcceptedEvidenceModesForClient(merged), [merged]);
+  const activeJobSummary = useMemo(
+    () => activeComplianceJobClientSummary(payload?.active_compliance_job),
+    [payload],
+  );
   const supportingLinks = useMemo(() => (merged ? mergeRequirementSupportingLinks(merged) : []), [merged]);
   const resolved = useMemo(() => resolveRequirementAction(merged, {}), [merged]);
 
@@ -138,10 +141,6 @@ export default function RequirementIntelligenceModal({
     return formatRiskLabel(String(r));
   }, [merged]);
 
-  const evidenceLine = useMemo(() => {
-    if (!merged?.evidence_state) return null;
-    return humanEvidenceStateLabel(merged.evidence_state);
-  }, [merged]);
 
   const pid = merged?.property_id ? String(merged.property_id) : '';
   const rid = merged?.requirement_id ? String(merged.requirement_id) : '';
@@ -165,22 +164,12 @@ export default function RequirementIntelligenceModal({
   const docsView = pid && rid ? resolveDocumentsPath(pid, { requirement_id: rid }) : pid ? resolveDocumentsPath(pid) : '/documents';
   const docsUpload =
     pid && rid ? resolveDocumentsPath(pid, { requirement_id: rid, focus: 'upload' }) : docsView;
-  const propertyCompliance = pid ? `/properties/${encodeURIComponent(pid)}#compliance` : null;
-  const mailQuery = addressForMailto
-    ? `?subject=${encodeURIComponent(`Support request: ${addressForMailto}`)}`
-    : `?subject=${encodeURIComponent('Support request: requirement')}`;
-
   const primaryLabel = String(resolved.primary_action_label || '').trim() || 'Take action';
 
   const showUploadSecondary =
     Boolean(pid && rid) &&
     resolved.primary_route &&
     String(resolved.primary_route).split('?')[0] !== '/documents';
-
-  const showBookSecondary =
-    Boolean(propertyCompliance) &&
-    (String(merged?.compliance_requirement_class || '').toUpperCase() === 'JOB' ||
-      String(merged?.engine_fulfillment_mode || merged?.fulfillment_mode || '').toLowerCase() === 'job');
 
   if (!open) return null;
 
@@ -216,20 +205,30 @@ export default function RequirementIntelligenceModal({
           {!loading && !error && merged ? (
             <>
               <section data-testid="requirement-intel-section-status">
-                <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">Current status</h3>
+                <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">Status summary</h3>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   <div>
-                    <dt className="text-gray-500 text-xs">Workflow</dt>
+                    <dt className="text-gray-500 text-xs">Action status</dt>
                     <dd className="font-medium text-gray-900" data-testid="requirement-intel-workflow-label">
-                      {statusPair.workflow}
+                      {statusSummary.workflow}
                     </dd>
                   </div>
-                  <div>
-                    <dt className="text-gray-500 text-xs">Compliance</dt>
-                    <dd className="font-medium text-gray-900" data-testid="requirement-intel-compliance-label">
-                      {statusPair.compliance}
-                    </dd>
-                  </div>
+                  {statusSummary.compliance ? (
+                    <div>
+                      <dt className="text-gray-500 text-xs">Compliance</dt>
+                      <dd className="font-medium text-gray-900" data-testid="requirement-intel-compliance-label">
+                        {statusSummary.compliance}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {statusSummary.evidenceLine ? (
+                    <div>
+                      <dt className="text-gray-500 text-xs">Evidence</dt>
+                      <dd className="font-medium text-gray-900" data-testid="requirement-intel-evidence-label">
+                        {statusSummary.evidenceLine}
+                      </dd>
+                    </div>
+                  ) : null}
                   {merged.property_jurisdiction ? (
                     <div className="sm:col-span-2">
                       <dt className="text-gray-500 text-xs">Jurisdiction</dt>
@@ -242,15 +241,9 @@ export default function RequirementIntelligenceModal({
                       <dd className="font-medium text-gray-900">{riskLine}</dd>
                     </div>
                   ) : null}
-                  {evidenceLine ? (
-                    <div>
-                      <dt className="text-gray-500 text-xs">Evidence</dt>
-                      <dd className="font-medium text-gray-900">{evidenceLine}</dd>
-                    </div>
-                  ) : null}
                   {pickDueOrRenewal(merged) ? (
                     <div className="sm:col-span-2">
-                      <dt className="text-gray-500 text-xs">Timing</dt>
+                      <dt className="text-gray-500 text-xs">Due / renewal</dt>
                       <dd className="font-medium text-gray-900">{pickDueOrRenewal(merged)}</dd>
                     </div>
                   ) : null}
@@ -267,7 +260,7 @@ export default function RequirementIntelligenceModal({
                   ) : null}
                   {why.source === 'published' ? (
                     <p className="text-xs text-teal-800 font-medium mb-1" data-testid="requirement-intel-published-why-badge">
-                      From published registry
+                      Based on your compliance rule set
                     </p>
                   ) : null}
                   {why.short ? (
@@ -286,18 +279,24 @@ export default function RequirementIntelligenceModal({
               <section data-testid="requirement-intel-section-what">
                 <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">What you need to do</h3>
                 <p className="text-gray-800">
-                  Follow the primary action below. It reflects the current obligation for this property.
+                  Use the primary action below. It matches the current obligation for this property.
                 </p>
-                {merged.take_action?.provenance?.primary_label ? (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Source: {String(merged.take_action.provenance.primary_label)}
-                  </p>
-                ) : null}
               </section>
+
+              {acceptedEvidenceModes && acceptedEvidenceModes.length > 0 ? (
+                <section data-testid="requirement-intel-section-accepted-evidence">
+                  <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">Accepted evidence</h3>
+                  <ul className="list-disc list-inside text-gray-800 space-y-1">
+                    {acceptedEvidenceModes.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
 
               {supportingLinks.length > 0 ? (
                 <section data-testid="requirement-intel-section-links">
-                  <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">Supporting action links</h3>
+                  <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">Guidance links</h3>
                   <ul className="space-y-2" data-testid="requirement-intel-action-links">
                     {supportingLinks.map((link, idx) => {
                       const url = String(link.url || '').trim();
@@ -322,65 +321,40 @@ export default function RequirementIntelligenceModal({
               ) : null}
 
               <section data-testid="requirement-intel-section-applicability">
-                <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">
-                  Applicability / why this applies
-                </h3>
-                {merged.applicability ? (
-                  <p className="text-gray-800">
-                    <span className="text-gray-500">Applicability: </span>
-                    {String(merged.applicability).replace(/_/g, ' ')}
-                  </p>
+                <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">Why this applies</h3>
+                <p className="text-gray-800" data-testid="requirement-intel-applicability-human">
+                  {humanApplicabilityClientLabel(merged.applicability)}
+                </p>
+                {tenantSafeTriggerExplanation(merged) ? (
+                  <p className="text-gray-700 mt-2 text-sm leading-relaxed">{tenantSafeTriggerExplanation(merged)}</p>
                 ) : null}
-                {triggerExplanationLines(merged).length > 0 ? (
-                  <ul className="list-disc list-inside text-gray-700 mt-2 space-y-1">
-                    {triggerExplanationLines(merged).map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-gray-600 text-sm">This requirement is included for this property based on your plan and jurisdiction rules.</p>
-                )}
               </section>
 
-              <section data-testid="requirement-intel-section-audit">
-                <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">Audit / source details</h3>
-                <dl className="space-y-1 text-sm text-gray-700">
-                  {merged.source ? (
-                    <div>
-                      <dt className="text-gray-500 text-xs inline mr-1">Source</dt>
-                      <dd className="inline">{String(merged.source)}</dd>
-                    </div>
+              {activeJobSummary.navigateJobId ? (
+                <section
+                  className="rounded-lg border border-amber-200 bg-amber-50/40 p-3"
+                  data-testid="requirement-intel-active-job"
+                >
+                  <p className="text-xs font-semibold text-midnight-blue uppercase tracking-wide">{activeJobSummary.title}</p>
+                  {activeJobSummary.lines.length > 0 ? (
+                    <ul className="mt-2 text-sm text-gray-800 list-disc list-inside space-y-1">
+                      {activeJobSummary.lines.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
                   ) : null}
-                  {merged.registry_metadata?.primary_action_mode ? (
-                    <div data-testid="requirement-intel-published-cta-mode">
-                      <dt className="text-gray-500 text-xs inline mr-1">Published primary action mode</dt>
-                      <dd className="inline">{String(merged.registry_metadata.primary_action_mode)}</dd>
-                    </div>
-                  ) : null}
-                  {merged.cta_action_mode ? (
-                    <div>
-                      <dt className="text-gray-500 text-xs inline mr-1">Resolved CTA mode</dt>
-                      <dd className="inline">{String(merged.cta_action_mode)}</dd>
-                    </div>
-                  ) : null}
-                </dl>
-              </section>
-
-              {payload?.active_compliance_job?.job_id ? (
-                <section className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
-                  <p className="text-xs font-semibold text-midnight-blue uppercase tracking-wide">Active compliance job</p>
                   <Button
                     type="button"
                     size="sm"
                     variant="secondary"
                     className="mt-2 w-full sm:w-auto min-h-10"
+                    data-testid="requirement-intel-open-job"
                     onClick={() => {
-                      const jid = payload.active_compliance_job.job_id;
                       onClose();
-                      onNavigate(`/operations/jobs/${jid}`);
+                      onNavigate(`/operations/jobs/${encodeURIComponent(activeJobSummary.navigateJobId)}`);
                     }}
                   >
-                    Open job {String(payload.active_compliance_job.job_id).slice(0, 8)}…
+                    View compliance job
                   </Button>
                 </section>
               ) : null}
@@ -425,19 +399,11 @@ export default function RequirementIntelligenceModal({
                     Upload document
                   </button>
                 ) : null}
-                {showBookSecondary && propertyCompliance ? (
-                  <button type="button" className="text-electric-teal hover:underline font-medium" onClick={() => onNavigate(propertyCompliance)}>
-                    Book inspection / job
-                  </button>
-                ) : null}
                 {onMarkNotApplicable ? (
                   <button type="button" className="text-electric-teal hover:underline font-medium" onClick={() => onMarkNotApplicable(merged)}>
                     Mark as not applicable
                   </button>
                 ) : null}
-                <a href={`mailto:${SUPPORT_EMAIL}${mailQuery}`} className="text-electric-teal hover:underline font-medium">
-                  Request help
-                </a>
                 {pid ? (
                   <button type="button" className="text-electric-teal hover:underline font-medium" onClick={() => onNavigate(docsView)}>
                     View documents

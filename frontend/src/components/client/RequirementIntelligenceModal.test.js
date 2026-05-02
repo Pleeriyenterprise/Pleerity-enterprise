@@ -40,6 +40,7 @@ describe('RequirementIntelligenceModal', () => {
             why_it_matters_short_published: 'Published why line',
             action_links_published: [{ label: 'Guidance', url: 'https://example.com/guidance' }],
             primary_action_mode: 'document_upload',
+            evidence_resolution: { allowed_evidence_modes: ['DOCUMENT_UPLOAD'] },
           },
         },
         active_compliance_job: null,
@@ -66,12 +67,47 @@ describe('RequirementIntelligenceModal', () => {
     expect(screen.getByTestId('requirement-intel-why-short')).toHaveTextContent('Published why line');
     expect(screen.getByTestId('requirement-intel-action-links')).toHaveTextContent('Guidance');
     expect(screen.getByTestId('requirement-intel-primary-cta')).toHaveTextContent('Upload evidence from API');
-    expect(screen.getByTestId('requirement-intel-workflow-label')).toHaveTextContent('Action required');
-    expect(screen.getByTestId('requirement-intel-compliance-label')).toHaveTextContent('Evidence missing');
-    expect(screen.getByTestId('requirement-intel-published-cta-mode')).toHaveTextContent('document_upload');
+    expect(screen.getByTestId('requirement-intel-workflow-label')).toHaveTextContent('Action needed');
+    expect(screen.getByTestId('requirement-intel-compliance-label')).toHaveTextContent('Missing required evidence');
+    expect(screen.queryByTestId('requirement-intel-published-cta-mode')).not.toBeInTheDocument();
 
     expect(screen.queryByText('MISSING')).not.toBeInTheDocument();
     expect(screen.queryByText('ACTION_REQUIRED')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Request help/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Book inspection/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('requirement-intel-section-accepted-evidence')).toBeInTheDocument();
+    expect(screen.getByText('Document upload')).toBeInTheDocument();
+  });
+
+  it('does not render raw UNKNOWN in applicability section', async () => {
+    clientAPI.getRequirementWorkflow.mockResolvedValue({
+      data: {
+        requirement: {
+          requirement_id: 'req-u',
+          property_id: 'prop-u',
+          display_label: 'Test req',
+          applicability: 'UNKNOWN',
+          workflow_status: 'IN_PROGRESS',
+          compliance_state: 'VALID',
+          take_action: {
+            primary: { label: 'Act', route: '/documents?property_id=prop-u&requirement_id=req-u', handler: 'navigate' },
+            supporting_external_links: [],
+          },
+        },
+        active_compliance_job: null,
+      },
+    });
+
+    render(
+      wrap(<RequirementIntelligenceModal open requirementId="req-u" seedRequirement={null} onClose={noop} onNavigate={noop} />),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('requirement-intel-loading')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('requirement-intel-applicability-human')).toBeInTheDocument();
+    expect(screen.getByTestId('requirement-intel-applicability-human').textContent).not.toMatch(/\bUNKNOWN\b/i);
   });
 
   it('shows jurisdiction-specific published why with label (not other regions)', async () => {
