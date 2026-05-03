@@ -84,12 +84,21 @@ async def test_create_acceptance_persists_governance_metadata_block():
                 return acc_coll
             return MagicMock()
 
-    rendered = {
+    preview_h = "p" * 64
+    accept_h = "a" * 64
+    rendered_preview = {
         "valid": True,
         "issues": [],
         "document": {"title": "A", "subtitle": "", "sections": []},
-        "canonical_text": "Agreement accepted text with UTC timestamp",
-        "render_hash_sha256": "abc123",
+        "canonical_text": "preview canonical text " * 20,
+        "render_hash_sha256": preview_h,
+    }
+    rendered_accept = {
+        "valid": True,
+        "issues": [],
+        "document": {"title": "A", "subtitle": "", "sections": []},
+        "canonical_text": "acceptance canonical text " * 20,
+        "render_hash_sha256": accept_h,
     }
 
     with (
@@ -100,7 +109,8 @@ async def test_create_acceptance_persists_governance_metadata_block():
         )),
         patch.object(svc, "build_commercial_snapshot", new_callable=AsyncMock, return_value=_snap()),
         patch.object(svc, "get_system_document_settings", new_callable=AsyncMock, return_value={"provider_email": "info@pleerityenterprise.co.uk"}),
-        patch.object(svc, "compile_agreement_document", return_value=rendered),
+        patch.object(svc, "compile_agreement_document", side_effect=[rendered_preview, rendered_accept]),
+        patch.object(svc, "validate_accepted_artifact_text", return_value=(True, [])),
         patch.object(svc, "create_audit_log", new_callable=AsyncMock),
     ):
         doc, err = await svc.create_acceptance(
@@ -110,7 +120,7 @@ async def test_create_acceptance_persists_governance_metadata_block():
             acceptance_text_snapshot="I agree",
             accepted_by_name="Ruth Ehijie",
             accepted_by_email="ruth@example.co.uk",
-            client_rendered_agreement_hash="abc123",
+            client_rendered_agreement_hash=preview_h,
             ip_address="203.0.113.1",
         )
     assert err is None
@@ -118,12 +128,75 @@ async def test_create_acceptance_persists_governance_metadata_block():
     meta = doc.get("acceptance_governance_metadata") or {}
     assert meta.get("agreement_version") == 4
     assert meta.get("accepted_at_utc", "").endswith("Z")
-    assert meta.get("render_hash_sha256") == "abc123"
-    assert meta.get("agreement_hash_sha256") == "abc123"
+    assert meta.get("render_hash_sha256") == accept_h
+    assert meta.get("agreement_hash_sha256") == accept_h
     assert meta.get("acceptance_session_id") == "sess-1"
     assert meta.get("acceptance_actor_id") == "c1"
     assert meta.get("acceptance_client_id") == "c1"
     assert meta.get("source_ip") == "203.0.113.1"
+    rv = doc.get("agreement_render_validation") or {}
+    assert rv.get("preview_render_hash_sha256") == preview_h
+    assert rv.get("render_hash_sha256") == accept_h
+
+
+@pytest.mark.asyncio
+async def test_create_acceptance_rejected_when_client_hash_not_preview_digest():
+    """Client must send the same digest as checkout preview (intake Step 5), not the acceptance-time hash."""
+    from models.agreements import COL_AGREEMENT_ACCEPTANCES
+    from services import agreement_acceptance_service as svc
+
+    fake_clients = MagicMock()
+    fake_clients.find_one = AsyncMock(return_value={"client_id": "c1", "intake_session_id": "sess-1"})
+    acc_coll = MagicMock()
+    acc_coll.insert_one = AsyncMock(return_value=MagicMock())
+
+    class _DB:
+        clients = fake_clients
+
+        def __getitem__(self, name):
+            if name == COL_AGREEMENT_ACCEPTANCES:
+                return acc_coll
+            return MagicMock()
+
+    preview_h = "p" * 64
+    accept_h = "a" * 64
+    rendered_preview = {
+        "valid": True,
+        "issues": [],
+        "document": {},
+        "canonical_text": "x" * 200,
+        "render_hash_sha256": preview_h,
+    }
+    rendered_accept = {
+        "valid": True,
+        "issues": [],
+        "document": {},
+        "canonical_text": "y" * 200,
+        "render_hash_sha256": accept_h,
+    }
+
+    with (
+        patch.object(svc.database, "get_db", return_value=_DB()),
+        patch.object(svc, "get_current_published_bundle", new_callable=AsyncMock, return_value=(
+            {"template_id": "t1", "code": "property_compliance_management_agreement", "name": "Agreement"},
+            {"version_id": "v1", "version_number": 4, "status": "published", "title": "A", "subtitle": "", "content_blocks": []},
+        )),
+        patch.object(svc, "build_commercial_snapshot", new_callable=AsyncMock, return_value=_snap()),
+        patch.object(svc, "get_system_document_settings", new_callable=AsyncMock, return_value={"provider_email": "info@pleerityenterprise.co.uk"}),
+        patch.object(svc, "compile_agreement_document", side_effect=[rendered_preview, rendered_accept]),
+    ):
+        doc, err = await svc.create_acceptance(
+            client_id="c1",
+            intake_session_id="sess-1",
+            template_code="property_compliance_management_agreement",
+            acceptance_text_snapshot="I agree",
+            accepted_by_name="Ruth Ehijie",
+            accepted_by_email="ruth@example.co.uk",
+            client_rendered_agreement_hash=accept_h,
+        )
+    assert doc is None
+    assert err == "AGREEMENT_RENDER_HASH_MISMATCH"
+    acc_coll.insert_one.assert_not_awaited()
 
 
 @pytest.mark.asyncio

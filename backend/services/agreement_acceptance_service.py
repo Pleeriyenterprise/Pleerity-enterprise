@@ -20,6 +20,7 @@ from services.agreement_catalog_service import get_current_published_bundle, get
 from services.agreement_commercial_snapshot import build_commercial_snapshot, commercial_snapshots_match
 from services.agreement_document_authority import compile_agreement_document, hash_document_structure_sha256
 from services.agreement_render_context import (
+    PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER,
     build_agreement_render_context,
     validate_accepted_artifact_text,
     validate_checkout_grade_render_context,
@@ -74,6 +75,66 @@ async def create_acceptance(
         return None, "CLIENT_NOT_FOUND"
 
     settings = await get_system_document_settings()
+
+    # Intake Step 5 sends render_hash_sha256 from POST /api/intake/agreement-preview, which compiles with the
+    # checkout preview timestamp placeholder — not the real acceptance clock. Those hashes intentionally differ
+    # (see tests.test_agreement_acceptance_pipeline_hardening.test_render_hash_changes_between_preview_placeholder_and_accepted_timestamp).
+    # Align with build_intake_agreement_preview: signatory from commercial snapshot when client_id is known.
+    preview_signatory = str(snap.get("client_full_name") or "").strip()
+    preview_ctx = build_agreement_render_context(
+        commercial_snapshot=snap,
+        settings=settings,
+        accepted_signatory_name=preview_signatory,
+        acceptance_timestamp_display=PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER,
+        agreement_version_number=int(ver.get("version_number") or 1),
+    )
+    ok_preview, preview_issues = validate_checkout_grade_render_context(
+        preview_ctx,
+        billing_amount_minor=int(snap.get("billing_amount_minor") or 0),
+        preview_mode=True,
+    )
+    if not ok_preview:
+        logger.warning(
+            "Agreement acceptance blocked: invalid preview render context client_id=%s issues=%s",
+            client_id,
+            preview_issues,
+        )
+        return None, "AGREEMENT_RENDER_INVALID"
+
+    preview_rendered = compile_agreement_document(
+        template_name=str(tpl.get("name") or "Service Agreement"),
+        template_code=str(tpl.get("code") or DEFAULT_TEMPLATE_CODE),
+        template_id=template_id,
+        version_id=version_id,
+        version_number=int(ver.get("version_number") or 1),
+        published_at=ver.get("published_at"),
+        effective_from=ver.get("effective_from"),
+        title=str(ver.get("title") or ""),
+        subtitle=str(ver.get("subtitle") or ""),
+        content_blocks=list(ver.get("content_blocks") or []),
+        render_context=preview_ctx,
+    )
+    if not preview_rendered.get("valid"):
+        logger.warning(
+            "Agreement acceptance blocked due to invalid preview compile client_id=%s issues=%s",
+            client_id,
+            preview_rendered.get("issues"),
+        )
+        return None, "AGREEMENT_RENDER_INVALID"
+
+    preview_hash = str(preview_rendered.get("render_hash_sha256") or "").strip()
+    client_hash = (client_rendered_agreement_hash or "").strip()
+    if not client_hash:
+        logger.warning("Agreement acceptance blocked: missing client render hash client_id=%s", client_id)
+        return None, "AGREEMENT_RENDER_HASH_MISSING"
+    if client_hash != preview_hash:
+        logger.warning(
+            "Agreement acceptance blocked: client hash does not match checkout preview digest client_id=%s client=%s preview=%s",
+            client_id,
+            client_hash[:16],
+            preview_hash[:16],
+        )
+        return None, "AGREEMENT_RENDER_HASH_MISMATCH"
 
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat().replace("+00:00", "Z")
@@ -136,18 +197,6 @@ async def create_acceptance(
         return None, "AGREEMENT_RENDER_INVALID"
 
     server_hash = str(rendered_result.get("render_hash_sha256") or "").strip()
-    client_hash = (client_rendered_agreement_hash or "").strip()
-    if not client_hash:
-        logger.warning("Agreement acceptance blocked: missing client render hash client_id=%s", client_id)
-        return None, "AGREEMENT_RENDER_HASH_MISSING"
-    if client_hash != server_hash:
-        logger.warning(
-            "Agreement acceptance blocked: client hash mismatch client_id=%s client=%s server=%s",
-            client_id,
-            client_hash[:16],
-            server_hash[:16],
-        )
-        return None, "AGREEMENT_RENDER_HASH_MISMATCH"
 
     acceptance_id = str(uuid.uuid4())
     doc: Dict[str, Any] = {
@@ -177,6 +226,7 @@ async def create_acceptance(
             "valid": True,
             "issues": list(render_issues or []),
             "render_hash_sha256": server_hash,
+            "preview_render_hash_sha256": preview_hash,
             "agreement_hash_sha256": server_hash,
             "rendered_snapshot_hash_sha256": hash_document_structure_sha256(rendered_result.get("document") or {}),
             "validated_at": now_iso,
