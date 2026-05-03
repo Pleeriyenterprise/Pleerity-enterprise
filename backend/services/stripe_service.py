@@ -611,6 +611,7 @@ class StripeService:
             subscription_status=billing.get("subscription_status"),
             billing_lifecycle_state=lifecycle_out,
             cancel_at_period_end=cancel_flag,
+            open_invoice_status=open_inv,
         )
         stripe_next_iso = _billing_timestamp_iso(billing.get("stripe_next_payment_attempt_at"))
         sync_note_admin = billing_sync_visibility_note(

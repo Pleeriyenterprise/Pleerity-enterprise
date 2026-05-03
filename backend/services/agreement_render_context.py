@@ -55,6 +55,15 @@ def build_agreement_render_context(
     is_preview = ts_raw == PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER
     ts_utc = _normalize_iso_utc(ts_raw) if not is_preview else ""
     ts_display = PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER if is_preview else _format_human_utc(ts_utc)
+    if is_preview:
+        acceptance_electronic_record_line = (
+            "Electronic acceptance is not yet recorded. When you complete acceptance, the date and time in UTC "
+            "will appear on your executed agreement."
+        )
+    else:
+        acceptance_electronic_record_line = (
+            f"This Agreement was electronically accepted on {ts_display}."
+        )
     client_full_name = str(snap.get("client_full_name") or "").strip()
     client_company_name = str(snap.get("client_company_name") or "").strip()
     parties_statement = _build_parties_statement(
@@ -80,6 +89,7 @@ def build_agreement_render_context(
         ),
         "accepted_signatory_name": (accepted_signatory_name or "").strip()[:200],
         "acceptance_timestamp": ts_display,
+        "acceptance_electronic_record_line": acceptance_electronic_record_line,
         "acceptance_timestamp_utc": ts_utc,
         "agreement_version": str(int(agreement_version_number or 1)),
         "support_email": canonical_support_email(st),

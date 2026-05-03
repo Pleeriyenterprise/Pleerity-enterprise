@@ -163,8 +163,9 @@ DEFAULT_BLOCKS: list[dict[str, Any]] = [
         "order": 10,
         "enabled": True,
         "content": (
-            "This Agreement was electronically accepted by {{accepted_signatory_name}} on {{acceptance_timestamp}}. "
-            "Acceptance is recorded against agreement version {{agreement_version}}."
+            "{{acceptance_electronic_record_line}} "
+            "Named signatory for electronic acceptance: {{accepted_signatory_name}}. "
+            "Agreement version {{agreement_version}}."
         ),
     },
 ]
@@ -190,11 +191,22 @@ async def ensure_default_agreement_assets() -> None:
         current_keys = {str((b or {}).get("key") or "") for b in (current_ver or {}).get("content_blocks") or []}
         current_blocks = (current_ver or {}).get("content_blocks") or []
         current_blob = " ".join(str((b or {}).get("content") or "") for b in current_blocks).lower()
+        _elec_block = next(
+            (b for b in current_blocks if str((b or {}).get("key") or "") == "electronic_acceptance"),
+            None,
+        )
+        _elec_txt = str((_elec_block or {}).get("content") or "")
+        electronic_acceptance_legacy = (
+            "was electronically accepted by" in _elec_txt.lower()
+            and "{{acceptance_timestamp}}" in _elec_txt
+            and "{{acceptance_electronic_record_line}}" not in _elec_txt
+        )
         needs_upgrade = (
             "compliance_limitation" not in current_keys
             or "where applicable" in current_blob
             or "applicable onboarding or setup fees" in current_blob
             or "billed on a {{billing_interval}} basis" in current_blob
+            or electronic_acceptance_legacy
         )
         if needs_upgrade:
             new_version_id = str(uuid.uuid4())
@@ -213,7 +225,7 @@ async def ensure_default_agreement_assets() -> None:
                     "effective_from": now,
                     "published_at": now,
                     "published_by": {"user_id": "system", "name": "System seed"},
-                    "change_notes": "Upgraded enterprise agreement structure",
+                    "change_notes": "Upgraded enterprise agreement structure (incl. electronic acceptance preview wording)",
                     "created_at": now,
                 }
             )

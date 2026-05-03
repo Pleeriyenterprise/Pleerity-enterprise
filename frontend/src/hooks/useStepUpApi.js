@@ -87,7 +87,11 @@ export function useStepUpApi() {
 
   const modal = (
     <Dialog open={open} onOpenChange={(v) => !v && cancel()}>
-      <DialogContent className="sm:max-w-md" onPointerDown={(e) => e.stopPropagation()}>
+      <DialogContent
+        overlayClassName="z-[220]"
+        className="z-[220] sm:max-w-md"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         <DialogHeader>
           <DialogTitle>Confirm your password</DialogTitle>
           <DialogDescription>

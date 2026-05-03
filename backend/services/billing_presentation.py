@@ -63,6 +63,7 @@ def billing_status_display(
     subscription_status: Optional[str],
     billing_lifecycle_state: Optional[str],
     cancel_at_period_end: bool = False,
+    open_invoice_status: Optional[str] = None,
 ) -> str:
     """Billing column — distinct from plan column; encodes payment path and cancellation."""
     if not has_subscription:
@@ -73,6 +74,8 @@ def billing_status_display(
         return "Cancelled"
     if cancel_at_period_end and u in ("ACTIVE", "TRIALING"):
         return "Cancelling — paid until period end"
+    if _open_invoice_payment_pending(open_invoice_status) and u in ("ACTIVE", "TRIALING", "PAST_DUE", "UNPAID"):
+        return "Payment retry pending"
     if lc == "grace_period":
         return "Grace-period access"
     if lc == "limited":
@@ -479,6 +482,7 @@ def build_client_billing_payload(
         subscription_status=subscription_status,
         billing_lifecycle_state=billing_lifecycle_state,
         cancel_at_period_end=cancel_at_period_end,
+        open_invoice_status=open_invoice_status,
     )
     lsl = lifecycle_status_label(
         has_subscription=has_subscription,

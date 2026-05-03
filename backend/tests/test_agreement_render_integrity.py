@@ -424,3 +424,18 @@ def test_commercial_snapshot_from_intake_preserves_full_postcode_for_render_cont
     )
     assert ok is True
     assert not errs
+
+
+def test_preview_electronic_record_line_not_pasted_after_on():
+    """Intake preview must not read as 'accepted on <placeholder sentence>'."""
+    ctx = build_agreement_render_context(
+        commercial_snapshot=_snap(),
+        settings={"provider_email": "info@pleerityenterprise.co.uk"},
+        accepted_signatory_name="Samantha Brown",
+        acceptance_timestamp_display=PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER,
+        agreement_version_number=3,
+    )
+    line = str(ctx.get("acceptance_electronic_record_line") or "")
+    assert "not yet recorded" in line.lower()
+    assert PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER not in line
+    assert ctx.get("acceptance_timestamp") == PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER

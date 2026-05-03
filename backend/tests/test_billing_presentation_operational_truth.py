@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from services.billing_presentation import (
+    billing_status_display,
     billing_sync_visibility_note,
     build_client_billing_payload,
     build_operational_billing_narrative_lines,
@@ -82,6 +83,26 @@ def test_plan_status_payment_retry_pending_overrides_active():
     )
     assert "Payment retry pending" in ps or "retry" in ps.lower()
     assert ps != "Active"
+
+
+def test_billing_status_matches_plan_when_open_invoice_on_active_subscription():
+    """Avoid contradictory Plan vs Billing lines in operational narrative."""
+    ps = plan_status_display(
+        has_subscription=True,
+        subscription_status="ACTIVE",
+        billing_lifecycle_state="active",
+        cancel_at_period_end=False,
+        open_invoice_status="open",
+    )
+    bs = billing_status_display(
+        has_subscription=True,
+        subscription_status="ACTIVE",
+        billing_lifecycle_state="active",
+        cancel_at_period_end=False,
+        open_invoice_status="open",
+    )
+    assert ps == "Payment retry pending"
+    assert bs == "Payment retry pending"
 
 
 def test_lifecycle_label_grace_not_active():

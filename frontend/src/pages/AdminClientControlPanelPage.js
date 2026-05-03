@@ -563,8 +563,18 @@ const AdminClientControlPanelPage = () => {
       );
       window.location.href = '/dashboard';
     } catch (err) {
-      const msg = err?.response?.data?.detail || err?.message || 'Unable to start impersonation';
-      toast.error(typeof msg === 'string' ? msg : 'Unable to start impersonation');
+      if (err?.message === 'step_up_cancelled') {
+        /* user closed password confirmation */
+      } else {
+        const raw = err?.response?.data?.detail;
+        const msg =
+          typeof raw === 'string'
+            ? raw
+            : raw && typeof raw === 'object'
+              ? raw.message || raw.error_code || 'Unable to start impersonation'
+              : err?.message || 'Unable to start impersonation';
+        toast.error(typeof msg === 'string' ? msg : 'Unable to start impersonation');
+      }
     } finally {
       setIsBusy(false);
       setImpersonationOpen(false);

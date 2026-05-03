@@ -33,6 +33,7 @@ import { Textarea } from '../components/ui/textarea';
 import { toast } from '@/utils/portalNotifications';
 import client from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import { useStepUpApi } from '../hooks/useStepUpApi';
 
 const HARD_DELETE_CONFIRM_PHRASE = 'PERMANENTLY DELETE TEST ACCOUNT';
 
@@ -331,6 +332,7 @@ export default function AdminTeamPage() {
   
   return (
     <UnifiedAdminLayout>
+      {stepUp.modal}
       <div className="p-6 space-y-6" data-testid="admin-team-page">
         {/* Header */}
         <div className="flex items-center justify-between">
