@@ -40,6 +40,16 @@ STRUCTURED_OUTCOME_METRIC_KEYS = frozenset(
         "queue_items_claim_skipped",
         "queue_items_failed",
         "queue_items_dead",
+        # Execution / monitor jobs (narrow instrumentation)
+        "checks_run",
+        "heartbeat_written",
+        "breached",
+        "alert_sent",
+        "incidents_created",
+        "alerts_sent",
+        "recovered",
+        "properties_considered",
+        "properties_enqueued",
     }
 )
 

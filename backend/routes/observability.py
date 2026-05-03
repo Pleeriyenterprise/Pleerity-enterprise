@@ -16,6 +16,7 @@ from bson import ObjectId
 from database import database
 from middleware import admin_route_guard
 from services.incident_service import list_incidents, get_incident, acknowledge_incident, resolve_incident
+from services.operational_alert_presentation import build_operational_presentation_for_incident
 from services.score_ledger_service import list_ledger, list_ledger_export
 from services.delivery_reconciliation import get_message_logs_for_run
 
@@ -138,6 +139,8 @@ async def get_incidents_list(
     """List incidents with optional filters. Admin only."""
     await admin_route_guard(request)
     data = await list_incidents(status=status, severity=severity, limit=limit, skip=skip)
+    for item in data.get("items") or []:
+        item["presentation"] = build_operational_presentation_for_incident(item, for_email_links=False)
     return data
 
 
@@ -167,6 +170,7 @@ async def get_incident_by_id(
         except Exception:
             incident["recovery_detected"] = False
             incident["recovery_hint"] = None
+    incident["presentation"] = build_operational_presentation_for_incident(incident, for_email_links=False)
     return incident
 
 

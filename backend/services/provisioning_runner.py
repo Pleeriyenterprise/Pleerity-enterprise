@@ -43,14 +43,20 @@ async def _send_provisioning_failed_admin_alert(job_id: str, client_id: Optional
         return
     try:
         from services.notification_orchestrator import notification_orchestrator
-        subject = f"[Admin] Provisioning failed: job {job_id}" + (f" client {client_id}" if client_id else "")
-        message = f"Job ID: {job_id}\nClient ID: {client_id or 'N/A'}\nError: {error_message[:500]}"
+        from services.operational_alert_presentation import enrich_provisioning_failed_admin_context
+
         for recipient in recipients:
             idempotency_key = f"PROVISIONING_FAILED_ADMIN_{job_id}_{hash(recipient) % 10**8}"
+            ctx = enrich_provisioning_failed_admin_context(
+                recipient=recipient,
+                job_id=job_id,
+                client_id=client_id,
+                error_message=error_message,
+            )
             await notification_orchestrator.send(
                 template_key="PROVISIONING_FAILED_ADMIN",
                 client_id=None,
-                context={"recipient": recipient, "subject": subject, "message": message},
+                context=ctx,
                 idempotency_key=idempotency_key,
                 event_type="provisioning_failed_admin",
             )

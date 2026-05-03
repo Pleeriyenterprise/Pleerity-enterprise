@@ -697,14 +697,23 @@ async def submit_order_provide_info(body: OrderProvideInfoSubmitBody, request: R
         )
         try:
             from services.notification_orchestrator import notification_orchestrator
-            await notification_orchestrator.send(
-                template_key="INTERNAL_ALERT",
-                client_id=None,
-                context={
+            from services.operational_alert_presentation import enrich_minimal_internal_alert_context
+
+            alert_ctx = enrich_minimal_internal_alert_context(
+                {
                     "recipient": admin["email"],
                     "message": email_data.get("text", ""),
                     "subject": email_data["subject"],
                 },
+                default_title="Client information submitted",
+            )
+            alert_ctx["dashboard_link"] = order_link
+            alert_ctx["suggested_action"] = "Review the order in Admin and continue processing."
+            alert_ctx["component"] = "Orders / client intake"
+            await notification_orchestrator.send(
+                template_key="INTERNAL_ALERT",
+                client_id=None,
+                context=alert_ctx,
                 idempotency_key=f"{order_id}_provide_info_token_{admin.get('email', '')}",
                 event_type="order_client_info_received",
             )

@@ -46,14 +46,21 @@ async def _send_stripe_webhook_failure_admin_alert(error_message: str):
         return
     try:
         from services.notification_orchestrator import notification_orchestrator
+        from services.operational_alert_presentation import enrich_stripe_webhook_failure_admin_context
+
         subject = "[Admin] Stripe webhook processing failure"
         message = f"Stripe webhook handler raised an exception.\n\nError: {error_message[:1000]}"
         for recipient in recipients:
             idempotency_key = f"STRIPE_WEBHOOK_FAILURE_ADMIN_{hash(error_message[:200] + recipient) % 10**10}"
+            ctx = enrich_stripe_webhook_failure_admin_context(
+                recipient=recipient,
+                subject=subject,
+                message=message,
+            )
             await notification_orchestrator.send(
                 template_key="STRIPE_WEBHOOK_FAILURE_ADMIN",
                 client_id=None,
-                context={"recipient": recipient, "subject": subject, "message": message},
+                context=ctx,
                 idempotency_key=idempotency_key,
                 event_type="stripe_webhook_failure_admin",
             )

@@ -53,7 +53,20 @@ async def run_notification_failure_spike_monitor() -> Dict[str, Any]:
         severity = "WARN"
 
     if not severity:
-        return {"breached": False, "failed_count": failed_count, "alert_sent": False}
+        return {
+            "breached": False,
+            "failed_count": failed_count,
+            "alert_sent": False,
+            "outcome_metrics": {
+                "checks_run": 1,
+                "failed_count": failed_count,
+                "breached": False,
+                "alert_sent": False,
+                "attempted_count": 1,
+                "success_count": 1,
+                "outcome_kind": "NO_SPIKE_DETECTED",
+            },
+        }
 
     # Cooldown: only send one alert per cooldown window
     cooldown_cursor = await db.notification_spike_cooldown.find_one({"_id": "spike_alert"})
@@ -73,6 +86,16 @@ async def run_notification_failure_spike_monitor() -> Dict[str, Any]:
             "failed_count": failed_count,
             "alert_sent": False,
             "cooldown": True,
+            "outcome_metrics": {
+                "checks_run": 1,
+                "failed_count": failed_count,
+                "breached": True,
+                "alert_sent": False,
+                "cooldown": True,
+                "attempted_count": 1,
+                "success_count": 1,
+                "outcome_kind": "SPIKE_DETECTED_COOLDOWN",
+            },
         }
 
     # Top failed templates
@@ -126,12 +149,22 @@ async def run_notification_failure_spike_monitor() -> Dict[str, Any]:
         message = "\n".join(body_lines)
 
         from services.notification_orchestrator import notification_orchestrator
+        from services.operational_alert_presentation import enrich_ops_notification_spike_email_context
+
         for recipient in recipients:
             idempotency_key = f"OPS_ALERT_NOTIFICATION_SPIKE_{now.strftime('%Y%m%d%H%M')}_{severity}_{hash(recipient) % 10**8}"
+            ctx = enrich_ops_notification_spike_email_context(
+                recipient=recipient,
+                subject=subject,
+                message=message,
+                ops_severity_token=severity or "",
+                failed_count=failed_count,
+                lookback_minutes=LOOKBACK_MINUTES,
+            )
             result = await notification_orchestrator.send(
                 template_key="OPS_ALERT_NOTIFICATION_SPIKE",
                 client_id=None,
-                context={"recipient": recipient, "subject": subject, "message": message},
+                context=ctx,
                 idempotency_key=idempotency_key,
                 event_type="notification_failure_spike",
             )
@@ -154,4 +187,13 @@ async def run_notification_failure_spike_monitor() -> Dict[str, Any]:
         "top_templates": top_templates,
         "top_reasons": top_reasons,
         "alert_sent": alert_sent,
+        "outcome_metrics": {
+            "checks_run": 1,
+            "failed_count": failed_count,
+            "breached": True,
+            "alert_sent": alert_sent,
+            "attempted_count": 1,
+            "success_count": 1,
+            "outcome_kind": "SPIKE_DETECTED",
+        },
     }

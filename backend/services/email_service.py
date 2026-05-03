@@ -1586,11 +1586,20 @@ class EmailService:
                 customer_reference=model.get("customer_reference"),
             )
         elif template_alias == EmailTemplateAlias.ADMIN_MANUAL:
-            # Internal/staff template – do not use customer layout. Accept "message" or "body" for content.
-            body_content = model.get("message") or model.get("body") or "You have a new notification from Compliance Vault Pro."
             footer = self._build_email_footer(model)
-            customer_ref = model.get('customer_reference', '')
+            customer_ref = model.get("customer_reference", "")
             ref_line = f"<p>Your Reference: <strong>{customer_ref}</strong></p>" if customer_ref else ""
+            if model.get("admin_manual_structured") and str(model.get("admin_manual_summary") or "").strip():
+                from email_templates.admin_manual_structured_layout import build_admin_manual_structured_html
+
+                inner = build_admin_manual_structured_html(
+                    model,
+                    footer_html="",
+                    customer_reference_html=ref_line or "",
+                )
+                return inner.replace("</body>", f"{footer}</body>", 1)
+            # Legacy: single block (message or body).
+            body_content = model.get("message") or model.get("body") or "You have a new notification from Compliance Vault Pro."
             return f"""
             <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -2043,6 +2052,46 @@ Always review the output and seek professional advice for legal matters.
 {model.get('tagline', 'AI-Driven Solutions & Compliance')}
             """
         elif template_alias == EmailTemplateAlias.INTERNAL_ALERT:
+            if model.get("severity_label"):
+                sl = str(model.get("severity_label", "")).replace("_", " ")
+                title = model.get("presentation_title") or model.get("title", "Internal alert")
+                lines = [f"[{sl}] {title}", ""]
+                osum = (model.get("operational_summary") or "").strip()
+                if osum:
+                    lines.append(osum)
+                bio = str(model.get("business_impact") or "").strip()
+                if bio and bio != osum:
+                    lines.extend(["", "Operational impact: " + bio])
+                cust = str(model.get("customer_impact") or "").strip()
+                if cust:
+                    lines.extend(["", "Customer impact: " + cust])
+                comp = str(model.get("affected_component") or model.get("component") or "").strip()
+                scope = str(model.get("affected_scope") or "").strip()
+                if comp or scope:
+                    lines.append("")
+                    if comp:
+                        lines.append("Component: " + comp)
+                    if scope:
+                        lines.append("Scope: " + scope)
+                action = (model.get("recommended_actions") or model.get("suggested_action") or "").strip()
+                if action:
+                    lines.extend(["", "Recommended actions: " + action])
+                res = str(model.get("resolution_link") or model.get("incident_link") or "").strip()
+                obs = str(model.get("dashboard_link") or "").strip()
+                if res:
+                    lines.extend(["", "Open incident: " + res])
+                if obs and obs != res:
+                    lines.extend(["", "Observability: " + obs])
+                tech = str(model.get("technical_details") or "").strip()
+                if tech:
+                    lines.extend(["", "--- Technical details ---", tech])
+                ts = model.get("timestamp", "")
+                if ts:
+                    lines.extend(["", str(ts)])
+                ref = str(model.get("severity", "")).strip()
+                if ref:
+                    lines.extend(["", f"(Stored severity reference: {ref})"])
+                return "\n".join(lines) + "\n" + footer
             severity = model.get("severity", "P2")
             title = model.get("title", "Internal alert")
             desc = model.get("description", "")
@@ -2404,6 +2453,24 @@ Always review the output and seek professional advice for legal matters.
                 "Why you received this: " + c.get("why_received", "you have an account with Pleerity."),
             ]
             return "\n".join(lines) + "\n" + footer
+        elif template_alias == EmailTemplateAlias.ADMIN_MANUAL:
+            if model.get("admin_manual_structured") and str(model.get("admin_manual_summary") or "").strip():
+                from email_templates.admin_manual_structured_layout import build_admin_manual_structured_plain_text
+
+                return build_admin_manual_structured_plain_text(model, footer=footer)
+            return f"""
+Compliance Vault Pro
+{ref_line}
+
+Hello {model.get('client_name', 'there')},
+
+{model.get('message', 'You have a new notification from Compliance Vault Pro.')}
+{footer}
+
+--
+{model.get('company_name', 'Pleerity Enterprise Ltd')}
+{model.get('tagline', 'AI-Driven Solutions & Compliance')}
+            """
         else:
             return f"""
 Compliance Vault Pro

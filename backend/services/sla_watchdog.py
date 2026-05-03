@@ -31,13 +31,6 @@ from services.internal_alert_registry import (
 logger = logging.getLogger(__name__)
 
 
-def _dashboard_link() -> str:
-    from utils.app_urls import get_app_base_url
-
-    base = get_app_base_url(for_email_links=True).strip().rstrip("/")
-    return f"{base}/admin/observability" if base else ""
-
-
 def _alert_type_from_incident(source: str, title: str) -> str:
     if source == SOURCE_HEARTBEAT:
         return SCHEDULER_HEARTBEAT_STALE
@@ -110,6 +103,7 @@ async def _send_incident_alert_email(
         return False
     try:
         from services.notification_orchestrator import notification_orchestrator
+        from services.operational_alert_presentation import build_internal_alert_email_context
 
         alert_type = _alert_type_from_incident(source, title)
         config = get_alert_config(alert_type) or {}
@@ -124,24 +118,26 @@ async def _send_incident_alert_email(
         suggested_action = config.get("suggested_action", "")
 
         now = datetime.now(timezone.utc)
-        context = {
-            "recipient": "",  # set per recipient below
-            "subject": f"[{severity}] {title}",
-            "severity": severity,
-            "title": title,
-            "description": description,
-            "component": component,
-            # degraded alerts: do not label a degraded finish time as "last successful run"
-            "last_successful_run": (last_success_at if is_degraded_alert else last_finished_at),
-            "last_run_at": last_finished_at,
-            "degraded_run": is_degraded_alert,
-            "expected_interval": expected_interval,
-            "current_status": description,
-            "possible_impact": config.get("description", description),
-            "suggested_action": suggested_action or "View Observability and resolve the incident.",
-            "dashboard_link": _dashboard_link(),
-            "timestamp": now.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        }
+        ts = now.strftime("%Y-%m-%d %H:%M:%S UTC")
+        context = build_internal_alert_email_context(
+            incident_id=incident_id,
+            stored_severity=severity,
+            title=title,
+            description=description,
+            source=source or "",
+            metadata=meta,
+            related_job_name=related_job_name,
+            related_job_run_id=None,
+            last_finished_at=last_finished_at,
+            last_successful_at=last_success_at,
+            is_degraded_alert=is_degraded_alert,
+            expected_interval=expected_interval,
+            current_status=description,
+            suggested_action=suggested_action or "View Observability and resolve the incident.",
+            component=component,
+            possible_impact=config.get("description", description),
+            timestamp=ts,
+        )
         idempotency_key = f"SLA_INCIDENT_{incident_id}"
         for addr in emails[:3]:
             context["recipient"] = addr
@@ -355,4 +351,14 @@ async def run_sla_watchdog() -> Dict[str, Any]:
         "incidents_created": incidents_created,
         "alerts_sent": alerts_sent,
         "incidents_recovered": recovered,
+        "outcome_metrics": {
+            "checks_run": 1,
+            "incidents_created": incidents_created,
+            "alerts_sent": alerts_sent,
+            "recovered": recovered,
+            "attempted_count": 1,
+            "success_count": 1,
+            "failed_count": 0,
+            "outcome_kind": "SLA_CHECK_COMPLETED",
+        },
     }

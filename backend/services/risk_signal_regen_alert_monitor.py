@@ -120,17 +120,20 @@ async def run_risk_signal_regen_alert_monitor() -> Dict[str, Any]:
         subject = "[P2] Risk signal regeneration queue needs attention"
         try:
             from services.notification_orchestrator import notification_orchestrator
+            from services.operational_alert_presentation import enrich_risk_regen_queue_ops_email_context
 
             for recipient in recipients:
                 idempotency_key = f"OPS_RISK_REGEN_QUEUE_{incident_id}_{hash(recipient) % 10**8}"
+                ctx = enrich_risk_regen_queue_ops_email_context(
+                    recipient=recipient,
+                    subject=subject,
+                    message=description,
+                    incident_id=incident_id,
+                )
                 result = await notification_orchestrator.send(
                     template_key="OPS_ALERT_NOTIFICATION_SPIKE",
                     client_id=None,
-                    context={
-                        "recipient": recipient,
-                        "subject": subject,
-                        "message": description,
-                    },
+                    context=ctx,
                     idempotency_key=idempotency_key,
                     event_type="risk_regen_queue_attention",
                 )

@@ -31,6 +31,8 @@ from services.plan_registry import plan_registry
 from services.control_centre_no_expected_outcome_flag import (
     should_flag_no_expected_outcome_control_centre,
 )
+from services.control_centre_outcome_aggregation import summarize_outcome_metrics_24h_by_family
+from services.operational_alert_presentation import build_operational_presentation_for_incident
 
 logger = logging.getLogger(__name__)
 
@@ -281,6 +283,14 @@ async def _collect_revenue_block(db, now: datetime) -> Dict[str, Any]:
             plan_def = plan_registry.get_plan_by_code_string(pc)
             revenue_at_risk_pence += int(round(((plan_def or {}).get("monthly_price") or 0) * 100))
 
+    operational_narrative_lines: List[str] = [
+        f"Billing rows in ACTIVE or TRIALING (client_billing): {active_subscribers}.",
+        f"Past-due billing rows: {past_due_accounts}. Failed payment records (30d): {failed_payments_30d}. Pending invoices (status pending): {pending_invoices}.",
+        f"Clients with LIMITED entitlement: {limited_entitlement} — access may be grace-based; confirm entitlements and Stripe per tenant.",
+        f"Stripe_events marked FAILED (last 3 days): {stripe_events_failed_recent}.",
+        "Paid revenue today / month sums reflect successful payment rows only; use Billing admin and Stripe for renewal completion, retries, and invoice line detail.",
+    ]
+
     return {
         "revenue_today_pence": revenue_day_pence,
         "revenue_this_month_pence": revenue_month_pence,
@@ -295,6 +305,7 @@ async def _collect_revenue_block(db, now: datetime) -> Dict[str, Any]:
         "stripe_events_failed_recent": stripe_events_failed_recent,
         "revenue_at_risk_pence": revenue_at_risk_pence,
         "revenue_at_risk_note": "Sum of monthly plan prices for past_due client_billing rows plus LIMITED clients (heuristic MRR at risk).",
+        "operational_narrative_lines": operational_narrative_lines,
     }
 
 
@@ -436,6 +447,21 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
     job_confidence = _clamp(
         100.0 * healthy_n / max(1, len(states_list)) - failed_n * 8 - degraded_n * 4 - missed_n * 6
     )
+    job_confidence_breakdown: Dict[str, Any] = {
+        "heuristic": True,
+        "healthy_like_critical_jobs": healthy_n,
+        "total_critical_jobs": len(states_list),
+        "failed_critical_jobs": failed_n,
+        "degraded_critical_jobs": degraded_n,
+        "missed_critical_jobs": missed_n,
+        "never_ran_or_overdue_critical_jobs": never_n,
+        "penalties_applied_points": {
+            "from_failed_jobs": failed_n * 8,
+            "from_degraded_jobs": degraded_n * 4,
+            "from_missed_jobs": missed_n * 6,
+        },
+        "interpretation": "Rough index from critical-path job states in this snapshot; use Automation Centre for each job.",
+    }
 
     total_job_runs_recorded = await db.job_runs.count_documents({})
 
@@ -463,6 +489,7 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
         ).to_list(1)
     )
     om = (outcome_row[0] if outcome_row else {}) or {}
+    outcome_families_24h = await summarize_outcome_metrics_24h_by_family(db, since_24h)
 
     registry = get_registry_by_id()
     jobs_detail = health.get("jobs") or {}
@@ -514,6 +541,8 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
                 "created_at": 1,
                 "source": 1,
                 "related_job_name": 1,
+                "related_job_run_id": 1,
+                "metadata": 1,
             },
         )
         .sort("created_at", -1)
@@ -522,6 +551,10 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
     async for inc in inc_cursor:
         oid = inc.get("_id")
         oid_str = str(oid) if oid is not None else ""
+        row = {k: v for k, v in inc.items() if k != "_id"}
+        row["id"] = oid_str
+        pres = build_operational_presentation_for_incident(row, for_email_links=False)
+        link_path = pres.get("resolution_links", {}).get("incident") or f"/admin/incidents?highlight={oid_str}"
         alerts.append(
             {
                 "id": f"automation:{oid_str}",
@@ -530,13 +563,15 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
                 "timestamp": inc.get("created_at"),
                 "status": inc.get("status"),
                 "title": inc.get("title") or "Incident",
-                "detail": (inc.get("description") or "")[:500],
-                "required_action": "Review in Incidents; ack/resolve or run related job if applicable.",
-                "link_path": f"/admin/incidents?highlight={oid_str}",
+                "detail": (pres.get("operational_summary") or inc.get("description") or "")[:500],
+                "required_action": pres.get("recommended_actions")
+                or "Review in Incidents; ack/resolve or run related job if applicable.",
+                "link_path": link_path,
                 "metadata": {
                     "source": inc.get("source"),
                     "related_job_name": inc.get("related_job_name"),
                 },
+                "presentation": pres,
             }
         )
 
@@ -554,7 +589,7 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
                 "detail": str(row.get("details") or "")[:500],
                 "required_action": "Review Security Monitoring; resolve when mitigated.",
                 "link_path": "/admin/security",
-                "metadata": {"incident_key": row.get("incident_key")},
+                "metadata": {"incident_key": row.get("incident_key"), "signal_tier": "operational"},
             }
         )
 
@@ -571,7 +606,7 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
                     "detail": f"{rev['past_due_accounts']} account(s) in client_billing with past_due status.",
                     "required_action": "Review Billing → clients with past_due; follow dunning or support.",
                     "link_path": "/admin/billing",
-                    "metadata": {"count": rev["past_due_accounts"]},
+                    "metadata": {"count": rev["past_due_accounts"], "signal_tier": "control_centre_summary"},
                 }
             )
         if rev.get("failed_payments_30d", 0) > 0:
@@ -586,7 +621,7 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
                     "detail": f"{rev['failed_payments_30d']} failed payment record(s) in payments collection.",
                     "required_action": "Inspect Stripe dashboard and payment logs.",
                     "link_path": "/admin/analytics",
-                    "metadata": {"count": rev["failed_payments_30d"]},
+                    "metadata": {"count": rev["failed_payments_30d"], "signal_tier": "control_centre_summary"},
                 }
             )
         if rev.get("stripe_events_failed_recent", 0) > 0:
@@ -618,7 +653,11 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
                 "detail": f"Aggregated detection counts: {td}",
                 "required_action": "Triage Security dashboard threat cards and open incidents.",
                 "link_path": "/admin/security",
-                "metadata": {"threat_detections": td},
+                "metadata": {
+                    "threat_detections": td,
+                    "signal_tier": "control_centre_summary",
+                    "signal_tier_note": "Aggregated counts also appear under Security; this row is a Control Centre cross-link.",
+                },
             }
         )
 
@@ -679,7 +718,14 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
                 "outcome_success_sum": om.get("outcome_success_sum", 0),
                 "outcome_failed_sum": om.get("outcome_failed_sum", 0),
                 "outcome_attempted_sum": om.get("outcome_attempted_sum", 0),
+                "mixed_units_diagnostic_only": True,
+                "mixed_units_warning": (
+                    "These totals add outcome counters across all job types; units differ by job "
+                    "(queue items, messages, heartbeat ticks, etc.). Do not treat as one business KPI. "
+                    "Use outcome_families_24h for grouped operational volume."
+                ),
             },
+            "outcome_families_24h": outcome_families_24h,
             "jobs_flagged_no_expected_outcome": jobs_no_expected_outcome[:20],
             "open_operational_incidents": health.get("open_incidents_count", 0),
         },
@@ -707,6 +753,6 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
             "automation_health": "100 minus weighted penalties from failed/degraded runs (24h), missed/never-ran critical jobs, stale heartbeat, P0/P1 incidents, stale delivery_unknown.",
             "security_risk": "0–100 higher=worse from open security incidents, auth failures (7d audit window), JWT/token/document/webhook signals, threat detection counts.",
             "revenue_health": "100 minus penalties for past_due accounts, failed payments (30d), LIMITED entitlements, recent FAILED stripe_events. Visible only to ROLE_OWNER; other roles see null score and redacted revenue block.",
-            "job_confidence": "Derived from critical job states (healthy-like vs failed/degraded/missed) with additional deductions.",
+            "job_confidence": "Heuristic index from critical job states (healthy-like vs failed/degraded/missed) with point deductions; not a forecast.",
         },
     }

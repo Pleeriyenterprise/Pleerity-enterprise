@@ -486,7 +486,29 @@ async def run_expiry_rollover_recalc():
                 count += 1
 
         logger.info(f"Expiry rollover enqueued: {count} properties")
-        return {"message": f"Expiry rollover: {count} properties enqueued", "count": count}
+        n_considered = len(property_ids)
+        om: Dict[str, Any] = {
+            "properties_considered": n_considered,
+            "properties_enqueued": count,
+            "attempted_count": 1,
+            "success_count": 1,
+            "failed_count": 0,
+            "outcome_kind": "NO_WORK_ELIGIBLE" if n_considered == 0 and count == 0 else "WORK_PERFORMED",
+        }
+        if n_considered == 0 and count == 0:
+            from services.job_run_service import OUTCOME_CONDITIONAL_NO_OUTPUT
+
+            return {
+                "message": "Expiry rollover: no properties in due-date window; nothing enqueued.",
+                "count": 0,
+                "outcome_status": OUTCOME_CONDITIONAL_NO_OUTPUT,
+                "outcome_metrics": om,
+            }
+        return {
+            "message": f"Expiry rollover: {count} properties enqueued",
+            "count": count,
+            "outcome_metrics": om,
+        }
     except Exception as e:
         logger.error(f"Expiry rollover job failed: {e}")
         raise
@@ -1366,7 +1388,17 @@ async def run_scheduler_heartbeat():
             {"$set": {"last_heartbeat_at": now.isoformat(), "updated_at": now.isoformat()}},
             upsert=True,
         )
-        return {"message": "Heartbeat updated", "count": 1}
+        return {
+            "message": "Heartbeat updated",
+            "count": 1,
+            "outcome_metrics": {
+                "attempted_count": 1,
+                "success_count": 1,
+                "heartbeat_written": True,
+                "checks_run": 1,
+                "outcome_kind": "WORK_PERFORMED",
+            },
+        }
     except Exception as e:
         logger.warning("Scheduler heartbeat failed: %s", e)
         raise

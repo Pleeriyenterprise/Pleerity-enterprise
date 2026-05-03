@@ -65,6 +65,13 @@ export default function AdminIncidentsPage() {
 
   const formatTime = (iso) => (iso ? new Date(iso).toLocaleString() : '—');
   const severityClass = (s) => (s === 'P0' ? 'bg-red-100 text-red-800' : s === 'P1' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800');
+  const presentationLabelClass = (label) => {
+    if (label === 'CRITICAL') return 'bg-red-100 text-red-800';
+    if (label === 'ACTION_REQUIRED') return 'bg-amber-100 text-amber-900';
+    if (label === 'WARNING') return 'bg-yellow-50 text-yellow-900';
+    return 'bg-gray-100 text-gray-800';
+  };
+  const formatPresentationLabel = (label) => (label ? String(label).replace(/_/g, ' ') : '');
 
   return (
     <UnifiedAdminLayout>
@@ -120,19 +127,84 @@ export default function AdminIncidentsPage() {
 
         {data.items && data.items.length > 0 && (
           <div className="space-y-4">
-            {data.items.map((inc) => (
+            {data.items.map((inc) => {
+              const pr = inc.presentation || {};
+              const presTitle = pr.presentation_title || inc.title;
+              const presSummary = pr.operational_summary || inc.description;
+              const resLink = pr.resolution_link || (pr.resolution_links && pr.resolution_links.incident);
+              return (
               <div key={inc.id} className="bg-white border border-gray-200 rounded-lg p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${severityClass(inc.severity)}`}>
+                      {pr.severity_label ? (
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${presentationLabelClass(pr.severity_label)}`}>
+                          {formatPresentationLabel(pr.severity_label)}
+                        </span>
+                      ) : null}
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${severityClass(inc.severity)}`} title="Stored severity (audit)">
                         {inc.severity}
                       </span>
                       <span className="text-xs text-gray-500">{inc.status}</span>
-                      {inc.related_job_name && <span className="text-xs text-gray-400 font-mono">{inc.related_job_name}</span>}
+                      {(pr.affected_component || inc.related_job_name) && (
+                        <span className="text-xs text-gray-500">
+                          {pr.affected_component || inc.related_job_name}
+                        </span>
+                      )}
                     </div>
-                    <h3 className="font-medium text-gray-900 mt-1">{inc.title}</h3>
-                    <p className="text-sm text-gray-600 mt-1">{inc.description}</p>
+                    <h3 className="font-medium text-gray-900 mt-1">{presTitle}</h3>
+                    <p className="text-sm text-gray-700 mt-1 leading-relaxed">{presSummary}</p>
+                    {pr.business_impact && pr.business_impact !== presSummary && (
+                      <p className="text-sm text-gray-600 mt-2 border-l-2 border-indigo-200 pl-2">
+                        <span className="font-medium text-gray-700">Impact: </span>
+                        {pr.business_impact}
+                      </p>
+                    )}
+                    {pr.customer_impact && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        <span className="font-medium text-gray-700">Customer impact: </span>
+                        {pr.customer_impact}
+                      </p>
+                    )}
+                    {pr.recommended_actions && (
+                      <p className="text-sm text-indigo-900 bg-indigo-50/80 rounded px-2 py-1.5 mt-2">
+                        <span className="font-medium">Recommended: </span>
+                        {pr.recommended_actions}
+                      </p>
+                    )}
+                    {resLink && (
+                      <p className="mt-2">
+                        <Link to={resLink} className="text-sm text-indigo-600 font-medium hover:underline">
+                          Open incident
+                        </Link>
+                        {pr.resolution_links?.observability && pr.resolution_links.observability !== resLink && (
+                          <>
+                            {' · '}
+                            <Link to={pr.resolution_links.observability} className="text-sm text-indigo-600 hover:underline">
+                              Observability
+                            </Link>
+                          </>
+                        )}
+                        {pr.resolution_links?.automation_centre &&
+                          pr.resolution_links.automation_centre !== resLink &&
+                          pr.resolution_links.automation_centre !== pr.resolution_links?.observability && (
+                            <>
+                              {' · '}
+                              <Link to={pr.resolution_links.automation_centre} className="text-sm text-indigo-600 hover:underline">
+                                Automation Centre
+                              </Link>
+                            </>
+                          )}
+                      </p>
+                    )}
+                    {pr.technical_details && (
+                      <details className="mt-3 text-xs text-gray-600">
+                        <summary className="cursor-pointer text-gray-500 font-medium">Technical details</summary>
+                        <pre className="mt-2 whitespace-pre-wrap bg-gray-50 border border-gray-100 rounded p-2 max-h-48 overflow-auto">
+                          {pr.technical_details}
+                        </pre>
+                      </details>
+                    )}
                     <p className="text-xs text-gray-400 mt-2">
                       Created {formatTime(inc.created_at)}
                       {inc.acknowledged_by && ` · Acked by ${inc.acknowledged_by} ${formatTime(inc.acknowledged_at)}`}
@@ -181,7 +253,8 @@ export default function AdminIncidentsPage() {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
 
