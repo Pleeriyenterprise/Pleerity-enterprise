@@ -74,7 +74,7 @@ DEFAULT_BLOCKS: list[dict[str, Any]] = [
             {
                 "type": "bullet_list",
                 "items": [
-                    "obtaining required inspections, licences, certifications, and professional assessments where applicable",
+                    "obtaining required inspections, licences, certifications, and professional assessments required for the Client's properties and operations",
                     "acting on compliance alerts, expiry notices, recommendations, or identified risks",
                     "maintaining safe and legally compliant properties",
                     "verifying that uploaded documents remain valid and applicable",
@@ -186,7 +186,22 @@ async def ensure_default_agreement_assets() -> None:
         )
         current_keys = {str((b or {}).get("key") or "") for b in (current_ver or {}).get("content_blocks") or []}
         current_blocks = (current_ver or {}).get("content_blocks") or []
-        current_blob = " ".join(str((b or {}).get("content") or "") for b in current_blocks).lower()
+
+        def _block_search_blob(block: Dict[str, Any]) -> str:
+            parts: list[str] = [str((block or {}).get("content") or "")]
+            nodes = (block or {}).get("nodes") or []
+            if isinstance(nodes, list):
+                for n in nodes:
+                    if not isinstance(n, dict):
+                        continue
+                    if str((n or {}).get("type") or "").strip().lower() == "bullet_list":
+                        for it in (n.get("items") or []):
+                            parts.append(str(it or ""))
+                    else:
+                        parts.append(str((n or {}).get("text") or ""))
+            return " ".join(parts)
+
+        current_blob = " ".join(_block_search_blob(b) for b in current_blocks if isinstance(b, dict)).lower()
         _elec_block = next(
             (b for b in current_blocks if str((b or {}).get("key") or "") == "electronic_acceptance"),
             None,
