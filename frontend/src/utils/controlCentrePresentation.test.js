@@ -8,6 +8,8 @@ import {
   humanizeScoringNoteText,
   humanizeScoringNoteKey,
   THREAT_DETECTION_LABELS,
+  signalAlertTierLabel,
+  scoreBreakdownDisplayLines,
 } from './controlCentrePresentation';
 
 describe('controlCentrePresentation', () => {
@@ -87,5 +89,32 @@ describe('controlCentrePresentation', () => {
     expect(THREAT_DETECTION_LABELS.endpoint_probing).toBeDefined();
     expect(THREAT_DETECTION_LABELS.token_reuse_multi_ip).toBeDefined();
     expect(THREAT_DETECTION_LABELS.cross_user_data_access_probe).toBeDefined();
+  });
+
+  describe('signalAlertTierLabel', () => {
+    it('maps known tiers', () => {
+      expect(signalAlertTierLabel('operational')).toBe('Operational');
+      expect(signalAlertTierLabel('control_centre_summary')).toBe('Summary echo');
+    });
+  });
+
+  describe('scoreBreakdownDisplayLines', () => {
+    it('formats job_confidence payload', () => {
+      const lines = scoreBreakdownDisplayLines('job_confidence', {
+        interpretation: 'Test interpretation.',
+        healthy_like_critical_jobs: 8,
+        total_critical_jobs: 10,
+        failed_critical_jobs: 1,
+        penalties_applied_points: { from_failed_jobs: 8 },
+      });
+      expect(lines.some((l) => l.includes('Test interpretation'))).toBe(true);
+      expect(lines.some((l) => l.includes('8 of 10'))).toBe(true);
+    });
+
+    it('formats automation penalty keys', () => {
+      const lines = scoreBreakdownDisplayLines('automation', { failed_runs_24h_penalty: 12 });
+      expect(lines.join(' ')).toMatch(/failed runs \(24h\)/i);
+      expect(lines.join(' ')).toContain('12');
+    });
   });
 });

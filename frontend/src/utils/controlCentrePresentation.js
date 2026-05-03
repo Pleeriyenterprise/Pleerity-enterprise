@@ -157,3 +157,85 @@ export function humanizeScoringNoteKey(key) {
   };
   return map[k] || snakeToTitleCase(k);
 }
+
+/** Control Centre alert.metadata.signal_tier → short table label. */
+export function signalAlertTierLabel(tier) {
+  const t = String(tier || '').trim();
+  if (t === 'operational') return 'Operational';
+  if (t === 'control_centre_summary') return 'Summary echo';
+  return '—';
+}
+
+const AUTOMATION_SCORE_FACTOR_LABELS = {
+  failed_runs_24h_penalty: 'Penalty from failed runs (24h)',
+  degraded_runs_24h_penalty: 'Penalty from degraded runs (24h)',
+  critical_missed_penalty: 'Penalty from missed critical runs',
+  never_ran_overdue_penalty: 'Penalty from never-ran / overdue critical jobs',
+  heartbeat_stale_penalty: 'Penalty from stale scheduler heartbeat',
+  open_p0_p1_penalty: 'Penalty from open P0/P1 incidents',
+  delivery_unknown_stale_penalty: 'Penalty from stale delivery confirmation gaps',
+};
+
+const SECURITY_SCORE_FACTOR_LABELS = {
+  open_security_incidents: 'Open security incidents (weighted)',
+  failed_auth_attempts_window: 'Failed auth attempts (window)',
+  jwt_failures: 'JWT validation issues',
+  token_misuse: 'Token misuse signals',
+  cross_user_access: 'Cross-user access attempts',
+  webhook_signature_failures: 'Webhook signature failures',
+  threat_detection_incidents: 'Threat-type detection counts (weighted)',
+};
+
+const REVENUE_SCORE_FACTOR_LABELS = {
+  past_due_penalty: 'Past-due accounts penalty',
+  failed_payments_penalty: 'Failed payments penalty',
+  limited_entitlement_penalty: 'LIMITED entitlement clients penalty',
+  stripe_processing_failures_penalty: 'Stripe processing failure penalty',
+};
+
+/**
+ * Human-readable lines for Control Centre score_breakdowns (display-only).
+ * @param {'automation'|'security_risk'|'revenue'|'job_confidence'} kind
+ * @param {Record<string, unknown>|null|undefined} payload
+ * @returns {string[]}
+ */
+export function scoreBreakdownDisplayLines(kind, payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  if (kind === 'job_confidence') {
+    const lines = [];
+    if (payload.interpretation) lines.push(String(payload.interpretation));
+    const h = payload.healthy_like_critical_jobs;
+    const tot = payload.total_critical_jobs;
+    if (h != null && tot != null) {
+      lines.push(`Critical jobs in a healthy-like state: ${h} of ${tot}.`);
+    }
+    const f = payload.failed_critical_jobs;
+    const d = payload.degraded_critical_jobs;
+    const m = payload.missed_critical_jobs;
+    const n = payload.never_ran_or_overdue_critical_jobs;
+    if (f != null || d != null || m != null || n != null) {
+      lines.push(
+        `Counts used in the heuristic — failed: ${f ?? '—'}, degraded: ${d ?? '—'}, missed: ${m ?? '—'}, never-ran/overdue: ${n ?? '—'}.`,
+      );
+    }
+    const pen = payload.penalties_applied_points;
+    if (pen && typeof pen === 'object') {
+      const parts = Object.entries(pen)
+        .map(([k, v]) => `${snakeToTitleCase(k)}: ${v} points`)
+        .join('; ');
+      if (parts) lines.push(`Point deductions rolled into the heuristic: ${parts}.`);
+    }
+    return lines;
+  }
+  const labelMap =
+    kind === 'automation'
+      ? AUTOMATION_SCORE_FACTOR_LABELS
+      : kind === 'security_risk'
+        ? SECURITY_SCORE_FACTOR_LABELS
+        : kind === 'revenue'
+          ? REVENUE_SCORE_FACTOR_LABELS
+          : {};
+  return Object.entries(payload)
+    .filter(([, v]) => v != null && v !== '')
+    .map(([k, v]) => `${labelMap[k] || snakeToTitleCase(k)}: ${v}`);
+}
