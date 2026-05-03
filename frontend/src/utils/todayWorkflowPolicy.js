@@ -110,7 +110,7 @@ export function mergeComplianceCreateIfEligible(task, workflow, ordered, showCom
   if (ordered.some((a) => String(a.id) === 'create_compliance_work_order')) return ordered;
   const synth = {
     id: 'create_compliance_work_order',
-    label: 'Fix compliance issue',
+    label: 'Create compliance job',
     requirement_id: ce.linked_property_requirement_id,
     property_id: ce.property_id || task.property_id,
     requirement_code: ce.requirement_code,

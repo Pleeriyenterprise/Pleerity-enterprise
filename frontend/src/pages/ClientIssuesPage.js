@@ -490,11 +490,11 @@ function ClientIssuesPageInner() {
         </CardContent>
       </Card>
 
-      {/* Recurring / Flagged issues panel */}
+      {/* Recurring maintenance issues (operational), distinct from predictive risk signals */}
       {recurringIssues.length > 0 && (
         <Card className="mb-6 border-amber-200 bg-amber-50/30">
           <CardHeader>
-            <CardTitle className="text-base">Recurring / Flagged issues</CardTitle>
+            <CardTitle className="text-base">Recurring maintenance issues</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
@@ -558,7 +558,7 @@ function ClientIssuesPageInner() {
                     {issueDetailData.status !== 'ready_for_work_order' && issueDetailData.status !== 'closed' && (
                       <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => handleCreateWoFromIssue(issueDetailData.issue_id)} disabled={creatingWoFromIssue === issueDetailData.issue_id}>
                         {creatingWoFromIssue === issueDetailData.issue_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4 mr-1" />}
-                        {PORTAL_COPY.fixIssue}
+                        {PORTAL_COPY.startMaintenanceJob}
                       </Button>
                     )}
                     <Button size="sm" variant="outline" onClick={() => { navigate(resolvePropertyPath(issueDetailData.property_id)); setIssueDetailDrawer(null); }}>
@@ -595,7 +595,7 @@ function ClientIssuesPageInner() {
                 <textarea value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} className="border border-gray-300 rounded-md px-3 py-2 w-full" rows={3} placeholder="Describe the issue..." required />
               </div>
               <div className="flex gap-2 pt-2">
-                <Button type="submit" disabled={createSaving} className="bg-electric-teal hover:bg-electric-teal/90">{createSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : PORTAL_COPY.fixIssue}</Button>
+                <Button type="submit" disabled={createSaving} className="bg-electric-teal hover:bg-electric-teal/90">{createSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : PORTAL_COPY.submitMaintenanceReport}</Button>
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
               </div>
             </form>

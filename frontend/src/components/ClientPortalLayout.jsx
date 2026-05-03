@@ -51,7 +51,7 @@ const OPERATIONS_CHILDREN = [
   { path: '/operations/issues', label: 'Issues', icon: AlertCircle, feature: 'maintenance_workflows' },
   { path: '/operations/work-orders', label: PORTAL_COPY.jobs, icon: Wrench, feature: 'maintenance_workflows' },
   { path: '/operations/contractors', label: 'Contractors', icon: Briefcase, feature: 'contractor_network' },
-  { path: '/operations/risk-signals', label: 'Flagged issues', icon: TrendingUp, feature: 'predictive_maintenance' },
+  { path: '/operations/risk-signals', label: 'Risk signals', icon: TrendingUp, feature: 'predictive_maintenance' },
   { path: '/operations/approvals', label: 'Approvals', icon: ClipboardCheck, feature: 'invoicing' },
 ];
 

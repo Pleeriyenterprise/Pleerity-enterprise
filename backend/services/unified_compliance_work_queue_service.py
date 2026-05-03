@@ -89,7 +89,10 @@ def _closure_summary_user(task: Dict[str, Any]) -> str:
     if st in ("work_order", "issue"):
         return "Operational follow-up may still be needed for statutory compliance."
     if st == "risk_signal":
-        return "Review the flagged signal—follow through in operations or compliance as needed."
+        return (
+            "Review the risk signal in Operations—acknowledging or dismissing it does not clear "
+            "compliance obligations; follow evidence and requirement paths when they apply."
+        )
     if st == "approval":
         return "Approve or reject to unblock invoices and spend visibility."
     return "Review and complete the next step when you are ready."

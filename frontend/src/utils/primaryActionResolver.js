@@ -1,12 +1,17 @@
 /**
  * Outcome-based primary actions for client portal (no API contract changes).
- * Classifies flagged signals and normalises labels away from internal workflow verbs.
+ * Classifies risk signals and normalises labels away from internal workflow verbs.
+ * Labels describe the next operational step only — not compliance restoration (Stream C/E).
  */
 
 export const OUTCOME_PRIMARY = {
-  fixComplianceIssue: 'Fix compliance issue',
-  fixIssue: 'Fix issue',
-  reviewIssue: 'Review issue',
+  /** Compliance inspection path (schedule_inspection + compliance engine). */
+  startInspectionJob: 'Start inspection job',
+  /** Schedule inspection when compliance engine is off — logs/trips inspection issue flow. */
+  logInspectionIssue: 'Log maintenance issue',
+  startMaintenanceJob: 'Start maintenance job',
+  logMaintenanceIssue: 'Log maintenance issue',
+  reviewRiskSignal: 'Review risk signal',
 };
 
 /**
@@ -32,16 +37,16 @@ export function resolveRiskSignalPrimaryKey(signal, hasMaintenanceWorkflows, has
     : ['create_issue', 'create_work_order'];
   const wantInspection = actions.includes('schedule_inspection') && hasMaintenanceWorkflows;
   if (wantInspection && hasComplianceEngine) {
-    return { key: 'compliance_inspection', label: OUTCOME_PRIMARY.fixComplianceIssue };
+    return { key: 'compliance_inspection', label: OUTCOME_PRIMARY.startInspectionJob };
   }
   if (wantInspection && !hasComplianceEngine) {
-    return { key: 'log_inspection_issue', label: OUTCOME_PRIMARY.fixIssue };
+    return { key: 'log_inspection_issue', label: OUTCOME_PRIMARY.logInspectionIssue };
   }
   if (actions.includes('create_work_order')) {
-    return { key: 'maintenance_job', label: OUTCOME_PRIMARY.fixIssue };
+    return { key: 'maintenance_job', label: OUTCOME_PRIMARY.startMaintenanceJob };
   }
   if (actions.includes('create_issue')) {
-    return { key: 'maintenance_issue', label: OUTCOME_PRIMARY.fixIssue };
+    return { key: 'maintenance_issue', label: OUTCOME_PRIMARY.logMaintenanceIssue };
   }
-  return { key: 'review', label: OUTCOME_PRIMARY.reviewIssue };
+  return { key: 'review', label: OUTCOME_PRIMARY.reviewRiskSignal };
 }

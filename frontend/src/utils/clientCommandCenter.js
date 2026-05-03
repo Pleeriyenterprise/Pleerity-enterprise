@@ -380,12 +380,12 @@ const COMMAND_CENTER_GENERIC_JOB_KEYS = new Set(['view job', 'open job']);
 const COMMAND_CENTER_CTA_LABEL_MAP = {
   'view job': CLIENT_INBOX_JOB_FALLBACK_CTA,
   'open job': CLIENT_INBOX_JOB_FALLBACK_CTA,
-  'review risk signal': 'Review issue',
-  'view risk signal': 'Review issue',
-  'review flagged issue': 'Review issue',
-  'create job': 'Fix issue',
-  'create compliance job': 'Fix compliance issue',
-  'create issue': 'Fix issue',
+  'review risk signal': 'Review risk signal',
+  'view risk signal': 'Open risk signal',
+  'review flagged issue': 'Review risk signal',
+  'create job': 'Start maintenance job',
+  'create compliance job': 'Create compliance job',
+  'create issue': 'Log maintenance issue',
 };
 
 /**
@@ -426,15 +426,15 @@ export function sanitizeCommandCenterCtaLabel(primaryLabel, task) {
   const st = String(task?.source_type || '');
   const pat = String(task?.primary_action_type || task?.action_type || '');
 
-  if (at === 'missing_document' || pat === 'upload_evidence') return 'Fix compliance issue';
-  if (at === 'overdue_compliance' || at === 'certificate_expiring_soon') return 'Fix compliance issue';
+  if (at === 'missing_document' || pat === 'upload_evidence') return 'Upload compliance evidence';
+  if (at === 'overdue_compliance' || at === 'certificate_expiring_soon') return 'Start compliance action';
   if (st === 'work_order' || /work_order/i.test(at)) {
     return clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA;
   }
-  if (st === 'risk_signal' || at === 'risk_signal') return 'Review issue';
-  if (st === 'issue') return 'Review issue';
+  if (st === 'risk_signal' || at === 'risk_signal') return 'Review risk signal';
+  if (st === 'issue') return 'Review maintenance issue';
   if (st === 'approval') return 'Review approval';
-  if (st === 'requirement') return 'Fix compliance issue';
+  if (st === 'requirement') return 'Start compliance action';
   return 'Continue in Today';
 }
 
@@ -490,9 +490,9 @@ export function commandCenterWhyThisMattersLine(task) {
     const hi = riskLevel && ['high', 'critical', 'severe'].includes(riskLevel);
     const prefix = label && label !== 'Requirement' ? `${label}: ` : '';
     if (hi) {
-      return `${prefix}Issue flagged — review now to resolve or dismiss${impactClause || ''}`;
+      return `${prefix}Risk signal — review now; dismissing does not clear compliance obligations${impactClause || ''}`;
     }
-    return `${prefix}Issue flagged — review to resolve or dismiss${impactClause || ''}`;
+    return `${prefix}Risk signal — review; dismissing does not clear compliance obligations${impactClause || ''}`;
   }
   if (at === 'open_operational_issue' || st === 'issue') {
     const sev = String(task?.severity || meta.severity || '').toLowerCase();
@@ -556,7 +556,7 @@ export function buildCommandCenterPropertyRowHubLink(task, primaryResolvedPath) 
     return { to: '/requirements', label: 'View requirements' };
   }
   if (st === 'risk_signal') {
-    // Row primary is already “Review issue”; portfolio link duplicated intent — keep “Open property” only.
+    // Row primary is already risk/maintenance phrasing; portfolio link duplicated intent — keep “Open property” only.
     return null;
   }
   if (st === 'issue') {
@@ -743,11 +743,11 @@ export function buildPortfolioVerdictBlock({
   } else if (predictiveEnabled && (riskCount || 0) > 0) {
     const rc = riskCount || 0;
     nextHintPath = '/operations/risk-signals';
-    nextHintLabel = 'Review flagged issues';
+    nextHintLabel = 'Review risk signals';
     bestNextMove =
       rc === 1
-        ? 'One issue is flagged for your portfolio — decide it in Flagged issues.'
-        : `${rc} issues are flagged — work through them in Flagged issues.`;
+        ? 'One predictive risk signal is open — triage it under Risk signals (this does not restore compliance by itself).'
+        : `${rc} predictive risk signals are open — work through them under Risk signals (risk-layer only; follow obligations separately).`;
     verdictSecondaryNav = { path: '/today', label: 'Open Today inbox' };
   } else if (urgentCount > 0) {
     nextHintPath = '/today';

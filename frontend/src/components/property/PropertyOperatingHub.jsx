@@ -302,7 +302,7 @@ export default function PropertyOperatingHub({
           </ul>
           {(riskSignalsData.signals || []).filter((s) => (s.status || 'active') === 'active').length > 2 && (
             <Button type="button" variant="outline" className={cn(portalSecondaryButtonClass, 'mt-3 w-full sm:w-auto')} onClick={() => onSelectTab(TAB_RISK_SIGNALS)}>
-              View all flagged issues
+              View all risk signals
             </Button>
           )}
         </section>

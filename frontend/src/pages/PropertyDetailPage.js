@@ -1478,7 +1478,7 @@ export default function PropertyDetailPage() {
           { id: TAB_EVIDENCE, label: 'Documents', icon: FileText, feature: null },
           { id: TAB_CONTRACTORS, label: 'Contractors', icon: Users, feature: 'contractor_network' },
           { id: TAB_TIMELINE, label: 'Timeline', icon: Calendar, feature: null },
-          { id: TAB_RISK_SIGNALS, label: 'Flagged issues', icon: AlertCircle, feature: 'predictive_maintenance' },
+          { id: TAB_RISK_SIGNALS, label: 'Risk signals', icon: AlertCircle, feature: 'predictive_maintenance' },
           { id: TAB_ASSETS, label: 'Assets', icon: Package, feature: 'maintenance_workflows' },
         ].map(({ id, label, icon: Icon, feature }) => {
           const enabled = id === TAB_ASSETS
@@ -2375,7 +2375,7 @@ export default function PropertyDetailPage() {
                             <td className="p-2 text-right">
                               <Button size="sm" variant="ghost" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
                               {iss.status !== 'ready_for_work_order' && iss.status !== 'closed' && (
-                                <Button size="sm" variant="outline" className="ml-1" onClick={() => handleCreateWoFromIssue(iss.issue_id)}>Fix issue</Button>
+                                <Button size="sm" variant="outline" className="ml-1" onClick={() => handleCreateWoFromIssue(iss.issue_id)}>Start maintenance job</Button>
                               )}
                             </td>
                           </tr>
@@ -2407,7 +2407,7 @@ export default function PropertyDetailPage() {
                 <div className="py-8 text-center text-gray-500">
                   <p className="font-medium">No jobs on this property yet.</p>
                   <div className="flex flex-wrap gap-2 justify-center mt-3">
-                    <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>Fix issue</Button>
+                    <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>Start maintenance job</Button>
                     {hasFeature('contractor_network') && <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_CONTRACTORS)}>Contractors</Button>}
                   </div>
                 </div>
@@ -2656,7 +2656,7 @@ export default function PropertyDetailPage() {
                   )}
                   <div className="flex flex-wrap gap-2 pt-2">
                     {issueDetailData.status !== 'ready_for_work_order' && issueDetailData.status !== 'closed' && (
-                      <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => handleCreateWoFromIssue(issueDetailData.issue_id)}>Fix issue</Button>
+                      <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => handleCreateWoFromIssue(issueDetailData.issue_id)}>Start maintenance job</Button>
                     )}
                     <Button size="sm" variant="outline" onClick={() => { setActiveTab(TAB_ASSETS); setIssueDetailDrawer(null); }}>View assets</Button>
                     <Button size="sm" variant="outline" onClick={() => setIssueDetailDrawer(null)}>Close</Button>
@@ -3392,7 +3392,7 @@ export default function PropertyDetailPage() {
                             className="mt-2 text-electric-teal hover:text-electric-teal/90 -ml-2"
                             onClick={() => setActiveTab(actionTab)}
                           >
-                            View {actionTab === TAB_EVIDENCE ? 'Documents' : actionTab === TAB_COMPLIANCE ? 'Compliance' : actionTab === TAB_MAINTENANCE ? 'Jobs & issues' : 'Flagged issues'}
+                            View {actionTab === TAB_EVIDENCE ? 'Documents' : actionTab === TAB_COMPLIANCE ? 'Compliance' : actionTab === TAB_MAINTENANCE ? 'Jobs & issues' : 'Risk signals'}
                           </Button>
                         )}
                       </div>
@@ -3417,7 +3417,7 @@ export default function PropertyDetailPage() {
       {activeTab === TAB_RISK_SIGNALS && !hasFeature('predictive_maintenance') && (
         <UpgradePrompt
           featureName={getFeatureDisplayInfo('predictive_maintenance').featureName}
-          featureDescription="View flagged issues and recommendations for this property."
+          featureDescription="View predictive risk signals and recommendations for this property. Resolving a signal does not by itself restore compliance."
           requiredPlan={getFeatureDisplayInfo('predictive_maintenance').requiredPlan}
           requiredPlanName={getFeatureDisplayInfo('predictive_maintenance').requiredPlanName}
           variant="card"
@@ -3425,13 +3425,13 @@ export default function PropertyDetailPage() {
       )}
       {activeTab === TAB_RISK_SIGNALS && hasFeature('predictive_maintenance') && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-midnight-blue">Flagged issues</h2>
+          <h2 className="text-lg font-semibold text-midnight-blue">Risk signals</h2>
           {riskSignalsLoading ? (
             <div className="flex items-center gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
           ) : !(riskSignalsData?.signals?.length) ? (
             <Card className="border border-gray-200">
               <CardContent className="py-8 text-center text-gray-500">
-                No flagged issues for this property. They update when property data changes or on the scheduled refresh.
+                No active risk signals for this property. Signals refresh when property data changes or on the scheduled update.
               </CardContent>
             </Card>
           ) : (
@@ -3756,8 +3756,8 @@ export default function PropertyDetailPage() {
                   ) : <p className="text-sm text-gray-500">No events yet.</p>}
                   {hasFeature('predictive_maintenance') && (
                     <>
-                      <h4 className="font-medium mt-4 mb-2">Flagged issues</h4>
-                      <p className="text-sm text-gray-500">View flagged issues on the Flagged issues tab.</p>
+                      <h4 className="font-medium mt-4 mb-2">Risk signals</h4>
+                      <p className="text-sm text-gray-500">View risk signals on the Risk signals tab.</p>
                     </>
                   )}
                   <div className="mt-4 flex gap-2">
@@ -3834,7 +3834,7 @@ export default function PropertyDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !bookInspectionSaving && setBookInspectionOpen(false)}>
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full m-4 p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-2 mb-3">
-              <h3 className="font-semibold text-midnight-blue text-lg">Fix compliance issue</h3>
+              <h3 className="font-semibold text-midnight-blue text-lg">Start inspection job</h3>
               <button type="button" onClick={() => !bookInspectionSaving && setBookInspectionOpen(false)} className="p-1 rounded hover:bg-gray-100" aria-label="Close">
                 <X className="w-5 h-5" />
               </button>
@@ -3863,7 +3863,7 @@ export default function PropertyDetailPage() {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setBookInspectionOpen(false)} disabled={bookInspectionSaving}>Cancel</Button>
               <Button onClick={confirmBookInspectionFromRisk} disabled={bookInspectionSaving || !bookInspectionReqPick}>
-                {bookInspectionSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Fix compliance issue'}
+                {bookInspectionSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Start inspection job'}
               </Button>
             </div>
           </div>

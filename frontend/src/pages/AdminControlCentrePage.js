@@ -21,6 +21,8 @@ import {
   humanizeScoringNoteKey,
   humanizeScoringNoteText,
   overallAutomationHealthLabel,
+  scoreBreakdownDisplayLines,
+  signalAlertTierLabel,
   threatDetectionsRawJson,
   threatDetectionsToDisplayRows,
 } from '../utils/controlCentrePresentation';
@@ -61,7 +63,7 @@ function ScoreCard({ title, value, hint, invert }) {
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
       <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{title}</div>
-      <div className={`mt-1 text-3xl font-bold tabular-nums ${color}`}>{v != null ? v : '—'}</div>
+      <div className={`mt-1 text-3xl font-bold tabular-nums ${color}`}>{v != null ? `${v}` : '—'}</div>
       {hint ? <div className="mt-2 text-xs text-gray-500">{hint}</div> : null}
     </div>
   );
@@ -127,7 +129,8 @@ export default function AdminControlCentrePage() {
               Platform status
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              Cross-cutting snapshot: health, automation, security, engagement, and revenue signals. Polling ~{Math.round(CONTROL_CENTRE_POLL_MS / 1000)}s plus manual refresh. Revenue metrics and revenue health score are visible only to{' '}
+              Cross-cutting snapshot built from existing observability data (job runs, security summaries, billing aggregates).
+              Numbered scores are heuristics for triage — they summarize signals, not guarantees. Polling ~{Math.round(CONTROL_CENTRE_POLL_MS / 1000)}s plus manual refresh. Revenue metrics and revenue health score are visible only to{' '}
               <span className="font-medium">Owner</span> (ROLE_OWNER). Overall status does not penalize non-owners for hidden revenue data.
             </p>
             {data?.generated_at ? (
@@ -155,19 +158,77 @@ export default function AdminControlCentrePage() {
               System health layer
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-              <ScoreCard title="Automation health" value={sys.scores?.automation_health} hint="100 = best; from job failures, SLA, heartbeat, incidents." />
-              <ScoreCard title="Security risk" value={sys.scores?.security_risk} hint="0 = best; higher = more flagged issues." invert />
               <ScoreCard
-                title="Revenue health"
+                title="Automation health (heuristic)"
+                value={sys.scores?.automation_health}
+                hint="100 = fewer penalties in this snapshot; driven by failed/degraded runs, missed jobs, heartbeat, incidents, delivery confirmation gaps."
+              />
+              <ScoreCard
+                title="Security risk (heuristic index)"
+                value={sys.scores?.security_risk}
+                hint="Higher = more weighted security signals in the window; 0 would mean none of the counted inputs fired."
+                invert
+              />
+              <ScoreCard
+                title="Revenue health (heuristic)"
                 value={sys.scores?.revenue_health}
                 hint={
                   revenueVisible
-                    ? '100 = best; from past-due accounts, failed payments, and entitlement limits (heuristic).'
+                    ? '100 = fewer billing friction signals (past-due, failed payments, LIMITED clients, recent Stripe failures).'
                     : 'Owner-only. Not shown for your role; excluded from your status penalty.'
                 }
               />
-              <ScoreCard title="Job confidence" value={sys.scores?.job_confidence} hint="Derived from critical job states." />
+              <ScoreCard
+                title="Job confidence (heuristic)"
+                value={sys.scores?.job_confidence}
+                hint="From latest critical job state sample (healthy-like vs failed/degraded/missed), not a forecast of future runs."
+              />
             </div>
+            {sys?.score_breakdowns ? (
+              <details className="mt-2 text-sm" data-testid="control-centre-score-breakdowns">
+                <summary className="cursor-pointer text-indigo-600 font-medium select-none">
+                  What went into these scores (contributing factors)
+                </summary>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="rounded border border-slate-200 p-3 bg-white">
+                    <div className="text-xs font-semibold text-gray-800 mb-1">Automation health</div>
+                    <ul className="list-disc list-inside text-xs text-gray-700 space-y-1">
+                      {scoreBreakdownDisplayLines('automation', sys.score_breakdowns.automation).map((line, i) => (
+                        <li key={`auto-bd-${i}`}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="rounded border border-slate-200 p-3 bg-white">
+                    <div className="text-xs font-semibold text-gray-800 mb-1">Security risk</div>
+                    <ul className="list-disc list-inside text-xs text-gray-700 space-y-1">
+                      {scoreBreakdownDisplayLines('security_risk', sys.score_breakdowns.security_risk).map((line, i) => (
+                        <li key={`sec-bd-${i}`}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  {revenueVisible ? (
+                    <div className="rounded border border-slate-200 p-3 bg-white md:col-span-2">
+                      <div className="text-xs font-semibold text-gray-800 mb-1">Revenue health</div>
+                      <ul className="list-disc list-inside text-xs text-gray-700 space-y-1">
+                        {scoreBreakdownDisplayLines('revenue', sys.score_breakdowns.revenue).map((line, i) => (
+                          <li key={`rev-bd-${i}`}>{line}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 md:col-span-2">Revenue score factors are Owner-only.</p>
+                  )}
+                  <div className="rounded border border-slate-200 p-3 bg-white md:col-span-2">
+                    <div className="text-xs font-semibold text-gray-800 mb-1">Job confidence</div>
+                    <ul className="list-disc list-inside text-xs text-gray-700 space-y-1">
+                      {scoreBreakdownDisplayLines('job_confidence', sys.score_breakdowns.job_confidence).map((line, i) => (
+                        <li key={`jc-bd-${i}`}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </details>
+            ) : null}
             <div className="text-sm text-gray-600 bg-slate-50 border border-slate-100 rounded-lg p-3">
               <span className="font-medium text-gray-800">Automation engine status:</span>{' '}
               <span className="text-gray-900">{overallAutomationHealthLabel(sys.overall_automation_health)}</span>
@@ -208,6 +269,11 @@ export default function AdminControlCentrePage() {
               <Zap className="w-5 h-5 text-amber-600" />
               Automation
             </h2>
+            <p className="text-xs text-gray-600 -mt-1">
+              Scheduler and background <span className="font-medium text-gray-800">job-run telemetry</span> for workers and
+              queues — not landlord-facing <span className="font-medium text-gray-800">risk signals</span> (Operations → Risk
+              signals) and not maintenance tickets.
+            </p>
             <MetricGrid
               items={[
                 ['Tracked critical jobs', String(auto.total_tracked_jobs ?? '—')],
@@ -232,28 +298,74 @@ export default function AdminControlCentrePage() {
                 ['Open operational incidents', String(auto.open_operational_incidents ?? '—')],
               ]}
             />
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <h3 className="font-medium text-gray-900 mb-2">Automation outcome tallies (24h)</h3>
+            <div className="bg-white border border-gray-200 rounded-lg p-4" data-testid="control-centre-outcome-families">
+              <h3 className="font-medium text-gray-900 mb-2">Automation activity by operational family (24h)</h3>
               <p className="text-xs text-gray-500 mb-3">
-                Sums of per-run outcome counters across all finished jobs in the window. Different job types use these fields
-                differently — interpret as operational volume, not a single business result. Use Automation Centre for per-job
-                detail.
+                Grouped sums of per-run outcome counters from finished <code className="text-[10px]">job_runs</code> only.
+                Families keep similar work together; each row still mixes job-specific units — read the note under the family
+                name before comparing to another family. Use Automation Centre for per-job semantics.
               </p>
-              <MetricGrid
-                items={[
-                  ['Finished runs', String(auto.business_outcomes_24h?.finished_runs ?? '—')],
-                  ['Successful units (summed)', String(auto.business_outcomes_24h?.outcome_success_sum ?? '—')],
-                  ['Failed units (summed)', String(auto.business_outcomes_24h?.outcome_failed_sum ?? '—')],
-                  ['Attempted units (summed)', String(auto.business_outcomes_24h?.outcome_attempted_sum ?? '—')],
-                ]}
-              />
+              {(auto.outcome_families_24h || []).length === 0 ? (
+                <p className="text-sm text-gray-500">No finished job runs in this window, or outcome metrics not present.</p>
+              ) : (
+                <div className="overflow-x-auto border border-gray-100 rounded-md">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Operational family</th>
+                        <th className="px-3 py-2 text-right">Finished runs</th>
+                        <th className="px-3 py-2 text-right">Success units (Σ)</th>
+                        <th className="px-3 py-2 text-right">Failed units (Σ)</th>
+                        <th className="px-3 py-2 text-right">Attempted units (Σ)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {(auto.outcome_families_24h || []).map((row) => (
+                        <tr key={row.family_key}>
+                          <td className="px-3 py-2 align-top max-w-md">
+                            <div className="font-medium text-gray-900">{row.family_label}</div>
+                            <div className="text-[11px] text-gray-500 mt-1">{row.family_disclaimer}</div>
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{row.finished_runs ?? '—'}</td>
+                          <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{row.outcome_success_sum ?? '—'}</td>
+                          <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{row.outcome_failed_sum ?? '—'}</td>
+                          <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{row.outcome_attempted_sum ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <details className="mt-4 text-xs rounded-md border border-amber-200 bg-amber-50/80 p-3" data-testid="control-centre-mixed-unit-diagnostics">
+                <summary className="cursor-pointer font-medium text-amber-950 select-none">
+                  Mixed-unit totals across all jobs (diagnostics only)
+                </summary>
+                <p className="mt-2 text-amber-900">
+                  {auto.business_outcomes_24h?.mixed_units_warning ||
+                    'These figures pool different semantic units; do not read them as a single platform KPI.'}
+                </p>
+                <div className="mt-3">
+                  <MetricGrid
+                    items={[
+                      ['Finished runs (all jobs)', String(auto.business_outcomes_24h?.finished_runs ?? '—')],
+                      ['Successful units (Σ, mixed)', String(auto.business_outcomes_24h?.outcome_success_sum ?? '—')],
+                      ['Failed units (Σ, mixed)', String(auto.business_outcomes_24h?.outcome_failed_sum ?? '—')],
+                      ['Attempted units (Σ, mixed)', String(auto.business_outcomes_24h?.outcome_attempted_sum ?? '—')],
+                    ]}
+                  />
+                </div>
+              </details>
             </div>
             {(auto.jobs_flagged_no_expected_outcome || []).length > 0 ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
                 <div className="font-semibold text-amber-900 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4" />
-                  Jobs that reported success but produced no attempted outcomes (unexpected for this job class)
+                  Telemetry: job runs marked success with zero attempted outcomes
                 </div>
+                <p className="mt-2 text-amber-900/90 text-xs">
+                  These rows flag <span className="font-medium">automation job runs</span> (outcome metrics), not client risk
+                  signals or maintenance issues. Use Automation Centre for run-level detail.
+                </p>
                 <ul className="mt-2 list-disc list-inside text-amber-900 space-y-2" data-testid="control-centre-jobs-flagged">
                   {auto.jobs_flagged_no_expected_outcome.map((j) => (
                     <li key={j.job_name}>
@@ -275,7 +387,8 @@ export default function AdminControlCentrePage() {
             ) : (
               <p className="text-sm text-gray-500 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                No jobs flagged for “success with zero attempted outcomes” in the latest critical-path sample.
+                No background job runs in the latest critical-path sample matched the telemetry pattern “success with zero
+                attempted outcomes”.
               </p>
             )}
           </section>
@@ -341,6 +454,23 @@ export default function AdminControlCentrePage() {
               <CreditCard className="w-5 h-5 text-emerald-700" />
               Revenue
             </h2>
+            {Array.isArray(rev.operational_narrative_lines) && rev.operational_narrative_lines.length > 0 ? (
+              <div
+                className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800 space-y-2"
+                data-testid="control-centre-revenue-narrative"
+              >
+                <div className="font-semibold text-slate-900">Billing operational snapshot (read-only)</div>
+                <p className="text-xs text-slate-600">
+                  Same underlying fields as the grid below — assembled for support triage. Authoritative per-client state
+                  remains in Billing admin and Stripe.
+                </p>
+                <ul className="list-disc list-inside text-sm text-slate-800 space-y-1">
+                  {rev.operational_narrative_lines.map((line, i) => (
+                    <li key={`rev-narr-${i}`}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <MetricGrid
               items={[
                 ['Revenue today', formatGbpPence(rev.revenue_today_pence)],
@@ -430,6 +560,7 @@ export default function AdminControlCentrePage() {
                   <tr>
                     <th className="px-3 py-2 text-left">Severity</th>
                     <th className="px-3 py-2 text-left">Category</th>
+                    <th className="px-3 py-2 text-left">Signal</th>
                     <th className="px-3 py-2 text-left">Title</th>
                     <th className="px-3 py-2 text-left">Status</th>
                     <th className="px-3 py-2 text-left">When</th>
@@ -441,6 +572,14 @@ export default function AdminControlCentrePage() {
                     <tr key={a.id}>
                       <td className="px-3 py-2 font-medium">{a.severity}</td>
                       <td className="px-3 py-2">{a.category}</td>
+                      <td className="px-3 py-2 text-xs text-gray-700 align-top whitespace-nowrap">
+                        <span data-testid={`alert-signal-${String(a.id || '').replace(/:/g, '-')}`}>
+                          {signalAlertTierLabel(a.metadata?.signal_tier)}
+                        </span>
+                        {a.metadata?.signal_tier_note ? (
+                          <div className="text-[10px] text-gray-500 mt-1 max-w-[10rem]">{a.metadata.signal_tier_note}</div>
+                        ) : null}
+                      </td>
                       <td className="px-3 py-2 max-w-md">
                         <div className="font-medium text-gray-900">{a.title}</div>
                         {a.metadata?.threat_detections && typeof a.metadata.threat_detections === 'object' ? (

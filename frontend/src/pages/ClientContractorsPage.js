@@ -11,7 +11,7 @@ function sourceLabel(sourceType) {
   const s = (sourceType || '').toLowerCase();
   if (s === 'landlord_added') return { label: 'My contractor', class: 'bg-slate-100 text-slate-700' };
   if (s === 'platform_network') return { label: 'Network', class: 'bg-blue-100 text-blue-800' };
-  if (s === 'self_registered') return { label: 'Marketplace', class: 'bg-emerald-100 text-emerald-800' };
+  if (s === 'self_registered') return { label: 'Admin-approved directory', class: 'bg-emerald-100 text-emerald-800' };
   return { label: sourceType || '—', class: 'bg-gray-100 text-gray-600' };
 }
 
@@ -76,7 +76,7 @@ function ClientContractorsPageInner() {
   const getCardTitle = () => {
     if (activeTab === 'my') return 'My contractors';
     if (activeTab === 'network') return 'Network contractors';
-    return 'Marketplace contractors';
+    return 'Admin-approved directory contractors';
   };
 
   const getEmptyMessage = () => {
@@ -93,7 +93,7 @@ function ClientContractorsPageInner() {
       );
     }
     if (activeTab === 'network') return 'No network contractors available. Your administrator can add platform network contractors from Operations & Compliance → Contractors.';
-    return 'No marketplace contractors available yet. Self-registered contractors appear here after admin approval.';
+    return 'No admin-approved directory contractors yet. Self-registered profiles appear here only after administrator approval.';
   };
 
   if (error && !loading) {
@@ -126,7 +126,7 @@ function ClientContractorsPageInner() {
         Contractors
       </h1>
       <p className="text-gray-600 mb-4">
-        Browse contractors already on your account, the platform network, and the marketplace. New contacts are added when you assign someone on a job (open any job from Operations → Jobs), so details stay tied to the right property and workflow.
+        Browse contractors on your account, the platform network, and the admin-approved directory. New contacts are added when you assign someone on a job (open any job from Operations → Jobs), so details stay tied to the right property and workflow.
       </p>
 
       <div className="flex flex-wrap gap-2 mb-4 items-center">
@@ -149,7 +149,7 @@ function ClientContractorsPageInner() {
           onClick={() => setActiveTab('marketplace')}
           className={`px-3 py-1.5 rounded text-sm font-medium ${activeTab === 'marketplace' ? 'bg-electric-teal text-white' : 'bg-gray-100 text-gray-700'}`}
         >
-          Marketplace
+          Directory (approved)
         </button>
       </div>
 

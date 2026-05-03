@@ -384,7 +384,7 @@ const FEATURE_DISPLAY = {
   audit_exports: { name: 'Audit export', description: 'Export audit logs.' },
   maintenance_workflows: { name: 'Maintenance & jobs', description: 'Create and manage jobs and maintenance issues per property.' },
   contractor_network: { name: 'Contractor network', description: 'View and manage contractors assigned to properties.' },
-  predictive_maintenance: { name: 'Flagged issues & assets', description: 'Automated flags from your property data, plus asset tracking.' },
+  predictive_maintenance: { name: 'Risk signals & assets', description: 'Predictive risk signals from your property data, plus asset tracking.' },
   invoicing: { name: 'Invoice & job approvals', description: 'Review and approve invoices and cost submissions linked to jobs. Compare amounts to benchmarks and maintain an audit trail.' },
 };
 

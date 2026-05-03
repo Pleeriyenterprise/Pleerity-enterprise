@@ -1788,7 +1788,7 @@ const ClientDashboard = () => {
               )}
               {dashboardFreshness.risk_signals_updated_at && (
                 <li>
-                  Flagged issues updated: {new Date(dashboardFreshness.risk_signals_updated_at).toLocaleString()}
+                  Risk signals updated: {new Date(dashboardFreshness.risk_signals_updated_at).toLocaleString()}
                   {isTimestampStale(dashboardFreshness.risk_signals_updated_at, FRESH_RISK_STALE_HOURS) && (
                     <span className="ml-2 text-amber-700" title="Risk data may be stale.">
                       May be outdated
@@ -1831,7 +1831,7 @@ const ClientDashboard = () => {
                 Security &amp; continuity snapshot
               </CardTitle>
               <p className="text-xs text-gray-500 mt-1">
-                Read-only summary of sign-in activity, requirement counts, maintenance issues, and open predictive issues. Not legal advice.
+                Read-only summary of sign-in activity, requirement counts, maintenance issues, and open predictive risk signals. Not legal advice.
               </p>
             </CardHeader>
             <CardContent className="text-sm text-gray-700 space-y-2 pt-0">
@@ -1858,7 +1858,7 @@ const ClientDashboard = () => {
                     {protectionSnapshot.risk?.predictive_enabled &&
                       protectionSnapshot.risk?.active_risk_signals_count != null && (
                         <li>
-                          Active flagged issues: {protectionSnapshot.risk.active_risk_signals_count}
+                          Active risk signals: {protectionSnapshot.risk.active_risk_signals_count}
                           {Number(protectionSnapshot.risk.high_or_critical_active_count || 0) > 0
                             ? ` (${protectionSnapshot.risk.high_or_critical_active_count} high or critical)`
                             : ''}
@@ -1867,7 +1867,7 @@ const ClientDashboard = () => {
                   </ul>
                   {commandCenterScopePropertyId && (
                     <p className="text-xs text-electric-teal">
-                      Maintenance issues and flagged-issue counts are scoped to the selected property; compliance totals are portfolio-wide.
+                      Maintenance issues and risk-signal counts are scoped to the selected property; compliance totals are portfolio-wide.
                     </p>
                   )}
                 </>
@@ -1953,10 +1953,11 @@ const ClientDashboard = () => {
               <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/operations/risk-signals')}>
                 <CardContent className="p-3 sm:p-4 min-w-0">
                   <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center">
-                    Flagged issues
-                    <DashboardKpiHint label="Flagged issues count">
-                      Open predictive issues stored for your portfolio (active status). Matches the security snapshot when loaded.
-                      Resolved or dismissed issues are excluded. Open the list for detail — not every item needs immediate work.
+                    Risk signals
+                    <DashboardKpiHint label="Active risk signals count">
+                      Open predictive risk signals for your portfolio (active status). Matches the security snapshot when loaded.
+                      Resolved or dismissed signals are excluded. Open the list for detail — not every item needs immediate work.
+                      Acknowledging or dismissing a signal does not clear compliance obligations by itself.
                     </DashboardKpiHint>
                   </p>
                   <p className="text-xl font-bold text-midnight-blue">{riskSignalsCount}</p>
@@ -2058,7 +2059,7 @@ const ClientDashboard = () => {
                     <span className="font-semibold text-midnight-blue">In this snapshot: </span>
                     {queueN} prioritised row{queueN === 1 ? '' : 's'}
                     {hasFeature('predictive_maintenance') && riskN > 0
-                      ? ` · ${riskN} issue${riskN === 1 ? '' : 's'} flagged for review (preview)`
+                      ? ` · ${riskN} risk signal${riskN === 1 ? '' : 's'} in preview (not compliance closure)`
                       : ''}
                   </p>
                 ) : null}
@@ -2178,7 +2179,7 @@ const ClientDashboard = () => {
                   )}
                   {cc && hasFeature('predictive_maintenance') && (cc.upcoming_risks?.length ?? 0) > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Issues flagged for review</p>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Risk signals (preview)</p>
                       <ul className="space-y-2 text-sm">
                         {cc.upcoming_risks.slice(0, 4).map((r) => (
                           <li key={r.signal_id || r.description} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
@@ -2198,7 +2199,7 @@ const ClientDashboard = () => {
                         ))}
                       </ul>
                       <Button variant="link" className="h-auto p-0 mt-1 text-electric-teal" onClick={() => navigate('/operations/risk-signals')}>
-                        View all flagged issues
+                        View all risk signals
                       </Button>
                     </div>
                   )}
@@ -2923,17 +2924,21 @@ const ClientDashboard = () => {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                     <TrendingUp className="w-4 h-4 text-electric-teal" />
-                    Flagged issues
-                    <DashboardKpiHint label="Flagged issues">
-                      Count of active predictive issues for your portfolio (same basis as the KPI row when the security snapshot has loaded).
+                    Risk signals
+                    <DashboardKpiHint label="Risk signals">
+                      Count of active predictive risk signals for your portfolio (same basis as the KPI row when the security snapshot has loaded).
+                      Clearing a signal is risk-layer housekeeping only — it does not restore compliance by itself.
                     </DashboardKpiHint>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl font-bold text-midnight-blue">{riskSignalsCount}</p>
-                  <p className="text-sm text-gray-500 mt-1">Open predictive issues across your properties — review to resolve or dismiss.</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Open predictive risk signals across your properties — review, acknowledge, or dismiss as appropriate. Follow
+                    compliance and evidence paths separately where obligations still apply.
+                  </p>
                   <Button variant="outline" size="sm" className="mt-3 text-electric-teal border-electric-teal" onClick={() => navigate('/operations/risk-signals')}>
-                    View flagged issues
+                    View risk signals
                   </Button>
                 </CardContent>
               </Card>
@@ -2987,9 +2992,11 @@ const ClientDashboard = () => {
                 )}
                 {riskSignalsCount > 0 && hasFeature('predictive_maintenance') && (
                   <li className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-3 border-b border-amber-200 last:border-0">
-                    <span className="text-sm text-gray-800 min-w-0 break-words">{riskSignalsCount} flagged issue{riskSignalsCount !== 1 ? 's' : ''}</span>
+                    <span className="text-sm text-gray-800 min-w-0 break-words">
+                      {riskSignalsCount} active risk signal{riskSignalsCount !== 1 ? 's' : ''}
+                    </span>
                     <Button size="sm" className="w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0 bg-electric-teal hover:bg-electric-teal/90 shrink-0" onClick={() => navigate('/operations/risk-signals')}>
-                      View flagged issues
+                      View risk signals
                     </Button>
                   </li>
                 )}

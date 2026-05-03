@@ -1446,7 +1446,7 @@ const BillingPage = () => {
                     {cancelContextSnapshot.risk?.predictive_enabled &&
                       cancelContextSnapshot.risk?.active_risk_signals_count != null && (
                         <li>
-                          Active flagged issues: {cancelContextSnapshot.risk.active_risk_signals_count}
+                          Active risk signals: {cancelContextSnapshot.risk.active_risk_signals_count}
                           {Number(cancelContextSnapshot.risk.high_or_critical_active_count || 0) > 0
                             ? ` (${cancelContextSnapshot.risk.high_or_critical_active_count} high or critical)`
                             : ''}

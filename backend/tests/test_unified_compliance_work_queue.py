@@ -12,6 +12,7 @@ from services.unified_compliance_work_queue_service import (
     UCWQ_V1_ITEM_TOP_LEVEL_KEYS,
     UCWQ_V1_PRIMARY_ACTION_KEYS,
     UCWQ_V1_RELATED_IDS_KEYS,
+    _closure_summary_user,
     urgency_band_from_unified_urgency_level,
 )
 
@@ -225,3 +226,10 @@ def test_remediation_key_prefers_gap_key(client, override_client_guard):
     ):
         r = client.get("/api/client/work-queue")
     assert r.json()["items"][0]["remediation_key"] == "stable-gap-key-xyz"
+
+
+def test_closure_summary_user_risk_signal_clarifies_not_compliance_closure():
+    msg = _closure_summary_user({"source_type": "risk_signal"})
+    assert "risk signal" in msg.lower()
+    assert "acknowledg" in msg.lower() or "dismiss" in msg.lower()
+    assert "compliance" in msg.lower()

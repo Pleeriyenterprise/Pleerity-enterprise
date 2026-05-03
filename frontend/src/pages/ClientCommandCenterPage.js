@@ -597,7 +597,7 @@ export default function ClientCommandCenterPage() {
             </span>
             {predictiveEnabled && riskCount > 0 && (
               <Button variant="link" className="h-auto p-0 text-electric-teal" asChild>
-                <Link to="/operations/risk-signals">Review flagged issues</Link>
+                <Link to="/operations/risk-signals">Review risk signals</Link>
               </Button>
             )}
           </div>

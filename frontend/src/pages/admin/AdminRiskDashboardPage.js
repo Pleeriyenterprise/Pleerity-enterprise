@@ -64,7 +64,7 @@ export default function AdminRiskDashboardPage() {
       .then((res) => setSummary(res.data))
       .catch(() => {
         setSummary(null);
-        toast.error('Failed to load flagged issues');
+        toast.error('Failed to load risk signals');
       })
       .finally(() => setLoading(false));
   }, [clientFilter, riskLevelFilter, riskTypeFilter, statusFilter]);

@@ -165,8 +165,8 @@ function ClientRiskSignalsPageInner() {
         if (err?.response?.status === 403) {
           setError(err?.response?.data?.detail || 'Predictive maintenance is not enabled for your account.');
         } else {
-          setError('Failed to load flagged issues.');
-          toast.error(err?.response?.data?.detail || 'Failed to load flagged issues');
+          setError('Failed to load risk signals.');
+          toast.error(err?.response?.data?.detail || 'Failed to load risk signals');
         }
         setData(null);
       })
@@ -225,12 +225,12 @@ function ClientRiskSignalsPageInner() {
       .then(([sig, view]) => {
         setDrawerSignal(sig);
         setDrawerSuggestedView(sig ? view : null);
-        if (!sig) toast.error('Failed to load flagged issue details');
+        if (!sig) toast.error('Failed to load risk signal details');
       })
       .catch(() => {
         setDrawerSignal(null);
         setDrawerSuggestedView(null);
-        toast.error('Failed to load flagged issue details');
+        toast.error('Failed to load risk signal details');
       })
       .finally(() => setDrawerLoading(false));
   }, [drawerSignalId]);
@@ -263,7 +263,7 @@ function ClientRiskSignalsPageInner() {
   const handleAcknowledge = async (signalId) => {
     try {
       await clientAPI.updateRiskSignalStatus(signalId, 'acknowledged');
-      toast.success('Flagged issue acknowledged');
+      toast.success('Risk signal acknowledged');
       refreshAfterStatusChange();
     } catch (e) {
       toast.error(e?.response?.data?.detail || 'Failed to acknowledge');
@@ -280,11 +280,11 @@ function ClientRiskSignalsPageInner() {
     setDismissSaving(true);
     try {
       await clientAPI.dismissRiskSignal(dismissTargetId, dismissReason);
-      toast.success('Flagged issue dismissed');
+      toast.success('Risk signal dismissed');
       setDismissTargetId(null);
       refreshAfterStatusChange();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Could not dismiss flagged issue');
+      toast.error(e?.response?.data?.detail || 'Could not dismiss risk signal');
     } finally {
       setDismissSaving(false);
     }
@@ -416,7 +416,7 @@ function ClientRiskSignalsPageInner() {
       <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full min-w-0 client-portal-prose">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 mb-4">
           <TrendingUp className="w-7 h-7 shrink-0" />
-          Flagged issues
+          Risk signals
         </h1>
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-6 flex items-start gap-3">
@@ -451,10 +451,12 @@ function ClientRiskSignalsPageInner() {
     <div className="p-4 sm:p-6 max-w-[1400px] mx-auto w-full min-w-0 client-portal-prose">
       <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 mb-2">
         <TrendingUp className="w-7 h-7 shrink-0" />
-        Flagged issues
+        Risk signals
       </h1>
       <p className="text-gray-600 mb-6 text-sm sm:text-base break-words">
-        Potential issues flagged automatically from your property data — each item suggests a single next step when you are ready to act.
+        Predictive risk signals from your property data — each item suggests a next operational step when you are ready. Acknowledging,
+        resolving, or dismissing a signal is <span className="font-medium text-gray-800">risk-layer housekeeping only</span> and does
+        not by itself restore compliance; follow obligations, evidence, and verification where they apply.
       </p>
 
       {(() => {
@@ -468,9 +470,9 @@ function ClientRiskSignalsPageInner() {
               <CardTitle className="text-base">At-a-glance summary</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-gray-700 space-y-1">
-              <p>{signals.length} active flagged issues across {grouped.length} properties.</p>
+              <p>{signals.length} active risk signals across {grouped.length} properties.</p>
               <p>{urgent} urgent, {medium} needs attention, and {Math.max(signals.length - urgent - medium, 0)} monitor.</p>
-              <p>Most affected properties: {top || 'None currently flagged'}.</p>
+              <p>Most affected properties: {top || 'None with active signals in this view'}.</p>
             </CardContent>
           </Card>
         );
@@ -626,7 +628,7 @@ function ClientRiskSignalsPageInner() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-amber-600" />
-              Urgent issues
+              Urgent risk signals
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -668,7 +670,7 @@ function ClientRiskSignalsPageInner() {
       {/* Table */}
       <Card>
         <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:space-y-0 pb-2">
-          <CardTitle>Active flagged issues</CardTitle>
+          <CardTitle>Active risk signals</CardTitle>
           {summary.lastRecalculatedAt && (
             <span className="text-xs text-muted-foreground break-words">
               Last recalculated: {new Date(summary.lastRecalculatedAt).toLocaleString()}
@@ -685,7 +687,7 @@ function ClientRiskSignalsPageInner() {
             <div className="py-12 text-center">
               {hasFilters ? (
                 <>
-                  <p className="text-gray-600 font-medium">No flagged issues match your current filters.</p>
+                  <p className="text-gray-600 font-medium">No risk signals match your current filters.</p>
                   <p className="text-sm text-gray-500 mt-1">Try clearing filters or adjusting the date range.</p>
                   <Button variant="outline" size="sm" className="mt-4" onClick={() => setFilters({ risk_level: '', risk_type: '', property_id: '', trend: '', status: '', q: '', from: '', to: '' })}>
                     Clear filters
@@ -694,9 +696,9 @@ function ClientRiskSignalsPageInner() {
               ) : (
                 <>
                   <Package className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-600 font-medium">No active flagged issues</p>
+                  <p className="text-gray-600 font-medium">No active risk signals</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Flagged issues are generated from property data (assets, jobs, compliance). They refresh when data changes or on the scheduled update.
+                    Risk signals are generated from property data (assets, jobs, compliance context). They refresh when data changes or on the scheduled update.
                   </p>
                   <div className="flex gap-2 justify-center mt-4">
                     <Button variant="outline" size="sm" onClick={() => navigate('/properties')}>
@@ -755,7 +757,7 @@ function ClientRiskSignalsPageInner() {
                     </div>
                     {Array.isArray(s.reasons) && s.reasons[0] && (
                       <p className="text-sm text-gray-700 break-words">
-                        <span className="font-medium text-gray-800">Why flagged:</span> {s.reasons[0]}
+                        <span className="font-medium text-gray-800">Context:</span> {s.reasons[0]}
                       </p>
                     )}
                     <p className="text-sm text-gray-700 break-words line-clamp-4">{humanAction(s.recommended_action, s)}</p>
@@ -794,12 +796,12 @@ function ClientRiskSignalsPageInner() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Flagged issue</TableHead>
+                      <TableHead>Risk signal</TableHead>
                       <TableHead>Property</TableHead>
                       <TableHead>Asset</TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Trend</TableHead>
-                      <TableHead>Why flagged</TableHead>
+                      <TableHead>Context</TableHead>
                       <TableHead>Recommended action</TableHead>
                       <TableHead>Last updated</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -875,7 +877,7 @@ function ClientRiskSignalsPageInner() {
       <Sheet open={!!drawerSignalId} onOpenChange={(open) => !open && setDrawerSignalId(null)}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Flagged issue details</SheetTitle>
+            <SheetTitle>Risk signal details</SheetTitle>
           </SheetHeader>
           {drawerLoading ? (
             <div className="flex gap-2 text-gray-500 py-8">
@@ -943,7 +945,7 @@ function ClientRiskSignalsPageInner() {
               )}
               {Array.isArray(drawerSignal.reasons) && drawerSignal.reasons.length > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase mb-1">Why flagged</p>
+                  <p className="text-xs text-muted-foreground uppercase mb-1">Signal context</p>
                   <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
                     {drawerSignal.reasons.map((r, i) => (
                       <li key={i}>{r}</li>
@@ -1081,9 +1083,15 @@ function ClientRiskSignalsPageInner() {
                   )}
                 </div>
               </div>
+              {drawerSignal?.status === 'active' && (
+                <p className="text-xs text-muted-foreground pt-3 border-t">
+                  Acknowledge or dismiss updates this risk signal only — it does not restore compliance or close statutory obligations
+                  by itself.
+                </p>
+              )}
             </div>
           ) : (
-            <p className="text-gray-500 py-4">Could not load flagged issue details.</p>
+            <p className="text-gray-500 py-4">Could not load risk signal details.</p>
           )}
           <SheetFooter className="pt-4 border-t flex flex-row flex-wrap items-center justify-between gap-3">
             {drawerSignal?.status === 'active' && (
@@ -1107,10 +1115,11 @@ function ClientRiskSignalsPageInner() {
       <Dialog open={Boolean(dismissTargetId)} onOpenChange={(o) => !o && setDismissTargetId(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Dismiss flagged issue</DialogTitle>
+            <DialogTitle>Dismiss risk signal</DialogTitle>
             <DialogDescription>
-              Dismiss only after you have handled the situation or decided no action is needed. If linked maintenance or
-              compliance work is already complete, you can dismiss without choosing a reason.
+              Dismiss only after you have handled the situation or decided no action is needed. Dismissing does not close compliance
+              gaps or obligations by itself. If linked maintenance or compliance work is already complete in the platform, you can
+              dismiss without choosing a reason.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
@@ -1139,10 +1148,11 @@ function ClientRiskSignalsPageInner() {
       <Dialog open={arrangeOpen} onOpenChange={(o) => !o && setArrangeOpen(false)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Fix compliance issue</DialogTitle>
+            <DialogTitle>Schedule compliance inspection job</DialogTitle>
             <DialogDescription>
               Choose the requirement this inspection addresses. You will open the job next to assign a contractor and complete
-              booking, visit, and proof.
+              booking, visit, and proof. Completing the job does not automatically restore compliance—evidence and verification still
+              follow their own paths when they apply.
             </DialogDescription>
           </DialogHeader>
           {arrangeLoading ? (

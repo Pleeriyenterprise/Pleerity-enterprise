@@ -112,7 +112,7 @@ export default function JurisdictionSettingsPage() {
       toast.success('Compliance defaults saved', {
         description:
           n != null && n > 0
-            ? `Scores and flagged issues are refreshing for ${n} propert${n === 1 ? 'y' : 'ies'}. This may take a minute.`
+            ? `Scores and risk signals are refreshing for ${n} propert${n === 1 ? 'y' : 'ies'}. This may take a minute.`
             : 'Your jurisdiction profile is updated. Scores will use these rules on the next calculation.',
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -207,7 +207,7 @@ export default function JurisdictionSettingsPage() {
             {recalcHint != null && recalcHint > 0 ? (
               <p className="text-green-800/90">
                 Background refresh started for <strong>{recalcHint}</strong> propert{recalcHint === 1 ? 'y' : 'ies'} (scores and
-                related flagged issues).
+                related risk signals).
               </p>
             ) : null}
           </AlertDescription>

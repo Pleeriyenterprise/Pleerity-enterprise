@@ -135,13 +135,13 @@ const TODAY_GENERIC_JOB_KEYS = new Set(['view job', 'open job']);
 const TODAY_CTA_LABEL_MAP = {
   'view job': CLIENT_INBOX_JOB_FALLBACK_CTA,
   'open job': CLIENT_INBOX_JOB_FALLBACK_CTA,
-  'review risk signal': 'Review issue',
-  'view risk signal': 'Review issue',
-  'review flagged issue': 'Review issue',
-  'create job': 'Fix issue',
-  'create compliance job': 'Fix compliance issue',
-  'create issue': 'Fix issue',
-  'upload certificate': 'Fix compliance issue',
+  'review risk signal': 'Review risk signal',
+  'view risk signal': 'Open risk signal',
+  'review flagged issue': 'Review risk signal',
+  'create job': 'Start maintenance job',
+  'create compliance job': 'Create compliance job',
+  'create issue': 'Log maintenance issue',
+  'upload certificate': 'Upload compliance evidence',
 };
 
 /**
@@ -200,13 +200,13 @@ function labelForTodayBusinessAction(act, task, workflow) {
     return String(act.label || '').trim();
   }
   if (String(act.id) === 'upload_certificate' && workflow === 'compliance') {
-    return 'Fix compliance issue';
+    return 'Upload compliance evidence';
   }
   if (String(act.id) === 'create_compliance_work_order' && workflow === 'compliance') {
-    return 'Fix compliance issue';
+    return 'Create compliance job';
   }
   if (String(act.id) === 'create_maintenance_job' && workflow === 'maintenance') {
-    return 'Fix issue';
+    return 'Start maintenance job';
   }
   if (String(act.id) === 'view_job') {
     return clientInboxJobCtaLabel(task) || CLIENT_INBOX_JOB_FALLBACK_CTA;
@@ -1446,7 +1446,7 @@ export default function ClientTasksPage() {
               <p>Compliance score updated: {formatWhen(freshness.score_updated_at)}</p>
             )}
             {freshness?.risk_signals_updated_at && (
-              <p>Flagged issues updated: {formatWhen(freshness.risk_signals_updated_at)}</p>
+              <p>Risk signals updated: {formatWhen(freshness.risk_signals_updated_at)}</p>
             )}
             {freshness?.last_automation_score_recalc_at && (
               <p>Last automated score recalc: {formatWhen(freshness.last_automation_score_recalc_at)}</p>

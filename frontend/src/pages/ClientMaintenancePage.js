@@ -392,7 +392,11 @@ function ClientMaintenancePageInner() {
       <p className="text-gray-600 mb-2 text-sm sm:text-base break-words">
         {PORTAL_COPY.jobsListDescription} Track status, request contractors where confirmation is required, and monitor SLA deadlines.
       </p>
-      <p className="text-gray-600 mb-6 text-sm sm:text-base break-words">{JOBS_PAGE_CONFIDENCE_LINE}</p>
+      <p className="text-gray-600 mb-2 text-sm sm:text-base break-words">{JOBS_PAGE_CONFIDENCE_LINE}</p>
+      <p className="text-gray-600 mb-6 text-xs sm:text-sm break-words text-muted-foreground">
+        Marking a job or work order complete records operational progress; it does not automatically restore compliance or close
+        obligations—evidence and verification still follow their own paths when they apply.
+      </p>
 
       {/* Summary KPI row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-3 mb-6">
@@ -601,7 +605,8 @@ function ClientMaintenancePageInner() {
         <CardHeader>
           <CardTitle className="text-base">{PORTAL_COPY.jobs}</CardTitle>
           <p className="text-xs text-gray-500 font-normal mt-1 leading-snug">
-            Row status reflects the live job record—updates here flow to compliance proof and SLA views.
+            Row status reflects the live job record. Where integrations apply, updates can feed evidence and SLA views; completing a
+            row does not by itself guarantee compliance restoration.
           </p>
         </CardHeader>
         <CardContent>
