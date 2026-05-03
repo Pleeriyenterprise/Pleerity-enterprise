@@ -19,11 +19,16 @@ def _n_properties(n: int) -> str:
     return f"{n} propert{'y' if n == 1 else 'ies'}"
 
 
-def should_skip_no_expected_outcome_flag(detail: Dict[str, Any]) -> bool:
+def should_skip_no_expected_outcome_flag(job_id: str, detail: Dict[str, Any]) -> bool:
     """
-    Control Centre jobs_flagged_no_expected_outcome: empty queue + conditional_no_output
-    is intentional for this job, not a configuration defect.
+    Control Centre jobs_flagged_no_expected_outcome: for risk_signal_regen_worker only,
+    empty queue + conditional_no_output is intentional, not a configuration defect.
+
+    Other jobs that reuse queue_empty / conditional_no_output must not be suppressed here
+    without an explicit job_id guard (would hide real misconfigurations).
     """
+    if job_id != RISK_SIGNAL_REGEN_JOB_ID:
+        return False
     if (detail.get("last_outcome_status") or "").strip().lower() != "conditional_no_output":
         return False
     om = detail.get("outcome_metrics") or {}

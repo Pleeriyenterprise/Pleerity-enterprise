@@ -12,7 +12,7 @@ def test_skip_no_outcome_flag_queue_empty_conditional():
         "last_run_status": "success",
         "outcome_metrics": {"queue_empty": True, "attempted_count": 0},
     }
-    assert should_skip_no_expected_outcome_flag(detail) is True
+    assert should_skip_no_expected_outcome_flag("risk_signal_regen_worker", detail) is True
 
 
 def test_skip_no_outcome_flag_not_when_flag_skips_only():
@@ -21,7 +21,17 @@ def test_skip_no_outcome_flag_not_when_flag_skips_only():
         "last_run_status": "success",
         "outcome_metrics": {"queue_empty": False, "attempted_count": 1, "skipped_feature_flag_count": 1},
     }
-    assert should_skip_no_expected_outcome_flag(detail) is False
+    assert should_skip_no_expected_outcome_flag("risk_signal_regen_worker", detail) is False
+
+
+def test_skip_no_outcome_flag_not_for_other_jobs_even_if_pattern_matches():
+    """Future workers must opt in explicitly; same metrics shape must not suppress flags."""
+    detail = {
+        "last_outcome_status": "conditional_no_output",
+        "last_run_status": "success",
+        "outcome_metrics": {"queue_empty": True, "attempted_count": 0},
+    }
+    assert should_skip_no_expected_outcome_flag("hypothetical_queue_worker", detail) is False
 
 
 def test_health_reason_queue_empty():

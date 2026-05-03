@@ -247,11 +247,14 @@ async def run_scheduled_reports():
 async def run_compliance_score_snapshots(client_id: Optional[str] = None):
     try:
         from services.compliance_trending import capture_all_client_snapshots
+        from services.compliance_snapshot_job_outcomes import build_compliance_score_snapshots_run_result
+
         result = await capture_all_client_snapshots(
             client_id=str(client_id).strip() if client_id and str(client_id).strip() else None
         )
-        logger.info(f"Compliance score snapshots completed: {result['success_count']}/{result['total_clients']} clients")
-        return {"message": f"Compliance score snapshots: {result['success_count']}/{result['total_clients']} clients"}
+        out = build_compliance_score_snapshots_run_result(result)
+        logger.info("Compliance score snapshots job outcome: %s", out.get("message"))
+        return out
     except Exception as e:
         logger.error(f"Compliance score snapshots job failed: {e}")
         raise
@@ -275,6 +278,7 @@ async def run_compliance_recalc_worker():
             STATUS_FAILED,
             STATUS_DEAD,
         )
+        from services.compliance_recalc_worker_job_outcomes import build_compliance_recalc_worker_run_result
         from services.compliance_scoring_service import recalculate_and_persist
         from models import AuditAction
         from utils.audit import create_audit_log
@@ -286,7 +290,11 @@ async def run_compliance_recalc_worker():
             {"status": STATUS_PENDING, "next_run_at": {"$lte": now_iso}}
         ).sort("next_run_at", 1).limit(10)
         jobs = await cursor.to_list(10)
+        batch_size = len(jobs)
+        claim_skipped = 0
         processed = 0
+        failed_retry = 0
+        dead_count = 0
         for job in jobs:
             jid = job["_id"]
             property_id = job["property_id"]
@@ -302,6 +310,7 @@ async def run_compliance_recalc_worker():
                 {"$set": {"status": STATUS_RUNNING, "updated_at": now_iso}},
             )
             if r.modified_count == 0:
+                claim_skipped += 1
                 continue
             actor = {"id": actor_id or "system", "role": actor_type}
             context = {"correlation_id": correlation_id, "trigger_reason": trigger_reason}
@@ -385,10 +394,12 @@ async def run_compliance_recalc_worker():
                 if next_attempts >= 5:
                     new_status = STATUS_DEAD
                     next_run_at = now_iso
+                    dead_count += 1
                 else:
                     new_status = STATUS_FAILED
                     delta = COMPLIANCE_RECALC_BACKOFF[min(next_attempts - 1, len(COMPLIANCE_RECALC_BACKOFF) - 1)]
                     next_run_at = (now + timedelta(seconds=delta)).isoformat()
+                    failed_retry += 1
                 err_str = str(e)
                 await db.compliance_recalc_queue.update_one(
                     {"_id": jid},
@@ -414,7 +425,15 @@ async def run_compliance_recalc_worker():
                     },
                 )
                 logger.warning(f"Compliance recalc failed property_id={property_id} attempts={next_attempts} err={err_str}")
-        return {"message": f"Compliance recalc worker: {processed} processed", "count": processed}
+        return build_compliance_recalc_worker_run_result(
+            {
+                "batch_size": batch_size,
+                "claim_skipped": claim_skipped,
+                "processed": processed,
+                "failed_retry": failed_retry,
+                "dead": dead_count,
+            }
+        )
     except Exception as e:
         logger.error(f"Compliance recalc worker failed: {e}")
         raise

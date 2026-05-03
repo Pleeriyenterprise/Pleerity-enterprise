@@ -5,19 +5,21 @@ import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { Zap, Play, RefreshCw, Clock, CheckCircle, AlertTriangle, XCircle, HelpCircle, FileText, Download } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
 import {
+  formatComplianceScoreSnapshotsOutcomeSummary,
+  getComplianceScoreSnapshotsDisplayLastRun,
+} from '../utils/complianceScoreSnapshotsAdminSummary';
+import {
+  formatComplianceRecalcWorkerOutcomeSummary,
+  getComplianceRecalcWorkerDisplayLastRun,
+} from '../utils/complianceRecalcWorkerAdminSummary';
+import {
   formatRiskSignalRegenOutcomeSummary,
   getRiskSignalRegenDisplayLastRun,
 } from '../utils/riskSignalRegenWorkerAdminSummary';
-
-// Jobs that have message_logs drill-down (delivery reconciliation)
-const MESSAGE_LOGS_JOBS = new Set([
-  'daily_reminders',
-  'monthly_digest',
-  'pending_verification_digest',
-  'compliance_check_morning',
-  'compliance_check_evening',
-  'scheduled_reports',
-]);
+import {
+  AUTOMATION_CENTRE_MESSAGE_LOGS_JOBS as MESSAGE_LOGS_JOBS,
+  getAutomationCentreDegradedReviewTitle,
+} from '../utils/automationCentreReviewHints';
 
 const JOB_STATE = {
   healthy: { label: 'Healthy', className: 'bg-green-100 text-green-800', Icon: CheckCircle },
@@ -453,6 +455,22 @@ export default function AdminAutomationCentrePage() {
                     jobName === 'risk_signal_regen_worker'
                       ? formatRiskSignalRegenOutcomeSummary(riskRegenLast)
                       : null;
+                  const snapshotLast =
+                    jobName === 'compliance_score_snapshots'
+                      ? getComplianceScoreSnapshotsDisplayLastRun(runInfo, invInfo)
+                      : null;
+                  const snapshotBundle =
+                    jobName === 'compliance_score_snapshots'
+                      ? formatComplianceScoreSnapshotsOutcomeSummary(snapshotLast)
+                      : null;
+                  const recalcLast =
+                    jobName === 'compliance_recalc_worker'
+                      ? getComplianceRecalcWorkerDisplayLastRun(runInfo, invInfo)
+                      : null;
+                  const recalcBundle =
+                    jobName === 'compliance_recalc_worker'
+                      ? formatComplianceRecalcWorkerOutcomeSummary(recalcLast)
+                      : null;
                   return (
                     <tr key={jobName}>
                       <td className="px-4 py-2 font-mono text-xs align-top">
@@ -479,6 +497,50 @@ export default function AdminAutomationCentrePage() {
                               )}
                           </div>
                         )}
+                        {jobName === 'compliance_score_snapshots' && snapshotBundle && (
+                          <div
+                            className="mt-1.5 space-y-0.5 text-[11px] text-gray-600 font-sans max-w-md"
+                            data-testid="compliance-score-snapshots-outcome-summary"
+                          >
+                            {snapshotBundle.headlineLines.map((t, i) => (
+                              <div key={`snap-${i}`}>{t}</div>
+                            ))}
+                            {snapshotBundle.showTechnicalDetail &&
+                              snapshotBundle.technicalPayload &&
+                              Object.keys(snapshotBundle.technicalPayload).length > 0 && (
+                                <details className="mt-1 text-gray-500 font-sans">
+                                  <summary className="cursor-pointer hover:underline select-none">
+                                    Technical details
+                                  </summary>
+                                  <pre className="mt-1 whitespace-pre-wrap break-all text-[10px] bg-gray-50 p-1.5 rounded border border-gray-100 max-h-40 overflow-auto">
+                                    {JSON.stringify(snapshotBundle.technicalPayload, null, 2)}
+                                  </pre>
+                                </details>
+                              )}
+                          </div>
+                        )}
+                        {jobName === 'compliance_recalc_worker' && recalcBundle && (
+                          <div
+                            className="mt-1.5 space-y-0.5 text-[11px] text-gray-600 font-sans max-w-md"
+                            data-testid="compliance-recalc-worker-outcome-summary"
+                          >
+                            {recalcBundle.headlineLines.map((t, i) => (
+                              <div key={`recalc-${i}`}>{t}</div>
+                            ))}
+                            {recalcBundle.showTechnicalDetail &&
+                              recalcBundle.technicalPayload &&
+                              Object.keys(recalcBundle.technicalPayload).length > 0 && (
+                                <details className="mt-1 text-gray-500 font-sans">
+                                  <summary className="cursor-pointer hover:underline select-none">
+                                    Technical details
+                                  </summary>
+                                  <pre className="mt-1 whitespace-pre-wrap break-all text-[10px] bg-gray-50 p-1.5 rounded border border-gray-100 max-h-40 overflow-auto">
+                                    {JSON.stringify(recalcBundle.technicalPayload, null, 2)}
+                                  </pre>
+                                </details>
+                              )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-2">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${stateConfig.className}`}>
@@ -492,7 +554,10 @@ export default function AdminAutomationCentrePage() {
                           <span className="ml-1 text-red-600 text-xs" title="Failed run events in last 24h (latest run may be success)">({failures24hCount} failed 24h)</span>
                         )}
                         {(state === 'degraded' || state === 'failed') && (
-                          <span className="ml-1.5 text-gray-500 text-xs" title="Review outcome_metrics and Message logs; act if failures repeat or key notifications are affected.">
+                          <span
+                            className="ml-1.5 text-gray-500 text-xs"
+                            title={getAutomationCentreDegradedReviewTitle(jobName)}
+                          >
                             (review)
                           </span>
                         )}

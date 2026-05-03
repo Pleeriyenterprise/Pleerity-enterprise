@@ -78,8 +78,12 @@ async def capture_daily_snapshot(client_id: str) -> Dict[str, Any]:
         raise
 
 
-async def capture_property_daily_snapshot(client_id: str, property_id: str) -> Optional[Dict[str, Any]]:
-    """Capture a daily score snapshot for one property. Idempotent per (property_id, date). Uses persisted Property.compliance_score only."""
+async def capture_property_daily_snapshot(client_id: str, property_id: str) -> Dict[str, Any]:
+    """Capture a daily score snapshot for one property. Idempotent per (property_id, date).
+
+    Returns a structured dict so batch callers can count created vs skipped vs failed
+    (skipped = no persisted score on the property — not an error).
+    """
     db = database.get_db()
     try:
         prop = await db.properties.find_one(
@@ -88,7 +92,7 @@ async def capture_property_daily_snapshot(client_id: str, property_id: str) -> O
         )
         if not prop or prop.get("compliance_score") is None:
             logger.debug("Skip property snapshot %s: no persisted score", property_id)
-            return None
+            return {"outcome": "skipped_no_score", "property_id": property_id}
         score = int(round(float(prop.get("compliance_score"))))
         now = datetime.now(timezone.utc)
         date_key = now.strftime("%Y-%m-%d")
@@ -100,10 +104,10 @@ async def capture_property_daily_snapshot(client_id: str, property_id: str) -> O
             },
             upsert=True,
         )
-        return {"property_id": property_id, "date": date_key, "score": score}
+        return {"outcome": "created", "property_id": property_id, "date": date_key, "score": score}
     except Exception as e:
         logger.warning("Property daily snapshot failed %s: %s", property_id, e)
-        return None
+        return {"outcome": "failed", "property_id": property_id, "error": str(e)}
 
 
 async def get_score_trend(
@@ -503,42 +507,67 @@ async def capture_all_client_snapshots(client_id: Optional[str] = None) -> Dict[
         success_count = 0
         error_count = 0
         errors = []
-        
+        property_snapshots_created = 0
+        property_snapshot_failures = 0
+        property_snapshots_skipped_no_score = 0
+        property_enumeration_failures = 0
+
         for client in clients:
+            cid = client["client_id"]
             try:
-                await capture_daily_snapshot(client["client_id"])
+                await capture_daily_snapshot(cid)
                 success_count += 1
-                # Property daily snapshots for score trend (per property)
                 try:
                     props = await db.properties.find(
-                        {"client_id": client["client_id"]},
+                        {"client_id": cid},
                         {"_id": 0, "property_id": 1},
                     ).to_list(500)
-                    for prop in props:
-                        await capture_property_daily_snapshot(client["client_id"], prop["property_id"])
-                except Exception as prop_err:
-                    logger.debug("Property snapshots for client %s: %s", client["client_id"], prop_err)
+                except Exception as enum_err:
+                    logger.error(
+                        "Property list for daily snapshots failed client_id=%s: %s",
+                        cid,
+                        enum_err,
+                    )
+                    property_enumeration_failures += 1
+                    continue
+                for prop in props:
+                    pid = prop.get("property_id")
+                    if not pid:
+                        continue
+                    pr = await capture_property_daily_snapshot(cid, pid)
+                    oc = (pr or {}).get("outcome")
+                    if oc == "created":
+                        property_snapshots_created += 1
+                    elif oc == "failed":
+                        property_snapshot_failures += 1
+                    else:
+                        property_snapshots_skipped_no_score += 1
             except Exception as e:
                 error_count += 1
-                errors.append({
-                    "client_id": client["client_id"],
-                    "error": str(e)
-                })
-        
-        logger.info(f"Compliance snapshot job completed: {success_count} success, {error_count} errors")
-        
+                errors.append({"client_id": cid, "error": str(e)})
+
+        logger.info(
+            "Compliance snapshot job completed: clients ok=%s failed=%s; property rows=%s prop_fail=%s",
+            success_count,
+            error_count,
+            property_snapshots_created,
+            property_snapshot_failures,
+        )
+
         return {
             "total_clients": len(clients),
             "success_count": success_count,
             "error_count": error_count,
-            "errors": errors[:10]  # Limit error details
+            "errors": errors[:10],
+            "clients_considered": len(clients),
+            "clients_succeeded": success_count,
+            "clients_failed": error_count,
+            "property_snapshots_created": property_snapshots_created,
+            "property_snapshot_failures": property_snapshot_failures,
+            "property_snapshots_skipped_no_score": property_snapshots_skipped_no_score,
+            "property_enumeration_failures": property_enumeration_failures,
         }
-    
+
     except Exception as e:
         logger.error(f"Compliance snapshot job failed: {e}")
-        return {
-            "total_clients": 0,
-            "success_count": 0,
-            "error_count": 1,
-            "errors": [{"error": str(e)}]
-        }
+        raise

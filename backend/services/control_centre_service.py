@@ -28,6 +28,10 @@ from services.job_schedule_registry import (
 from models import UserRole
 from services.security_monitoring_service import get_security_dashboard_summary
 from services.plan_registry import plan_registry
+from services.compliance_recalc_worker_job_outcomes import (
+    should_skip_control_centre_no_outcome_flag_recalc,
+)
+from services.compliance_snapshot_job_outcomes import should_skip_control_centre_no_outcome_flag
 from services.risk_signal_regen_admin_surface import should_skip_no_expected_outcome_flag
 
 logger = logging.getLogger(__name__)
@@ -472,7 +476,11 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
         if st not in (JOB_STATE_HEALTHY, JOB_STATE_CONDITIONAL_NO_OUTPUT):
             continue
         detail = jobs_detail.get(jid) or {}
-        if should_skip_no_expected_outcome_flag(detail):
+        if (
+            should_skip_no_expected_outcome_flag(jid, detail)
+            or should_skip_control_centre_no_outcome_flag(jid, detail)
+            or should_skip_control_centre_no_outcome_flag_recalc(jid, detail)
+        ):
             continue
         om_last = detail.get("outcome_metrics") or {}
         attempted = int(om_last.get("attempted_count") or om_last.get("expected_count") or 0)
