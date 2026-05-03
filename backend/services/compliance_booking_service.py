@@ -29,7 +29,7 @@ from services.work_order_execution_constants import (
 logger = logging.getLogger(__name__)
 
 _PURPOSE_LABEL = {
-    "inspection": "Book compliance inspection",
+    "inspection": "Compliance inspection job",
     "renewal": "Renew compliance certificate",
     "certification": "Obtain compliance certification",
     "remedial": "Compliance remedial work",
@@ -176,4 +176,4 @@ async def create_compliance_execution_work_order(
 def describe_compliance_booking_action(compliance_purpose: str) -> str:
     """Stable external label for API responses (matches backend semantics)."""
     p = (compliance_purpose or "").strip().lower()
-    return _PURPOSE_LABEL.get(p, "Compliance execution booking")
+    return _PURPOSE_LABEL.get(p, "Compliance execution job")

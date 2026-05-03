@@ -2032,7 +2032,12 @@ async def get_client_entitlements(request: Request):
         features["compliance_engine"] = {
             "enabled": bool(flags.get(COMPLIANCE_ENGINE)),
             "name": "Compliance execution",
-            "description": "Book compliance inspections and renewal jobs with contractor confirmation.",
+            "description": (
+                "Create compliance work orders for inspections, renewals, and certifications; "
+                "request contractor confirmation and track status. You arrange inspections with your "
+                "contractors — Pleerity does not book third-party appointments or run a marketplace "
+                "scheduling service."
+            ),
             "category": "compliance",
             "minimum_plan": None,
         }

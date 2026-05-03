@@ -1,5 +1,5 @@
 """
-Client API: compliance execution booking (compliance work orders + contractor confirmation flow).
+Client API: compliance execution jobs (compliance work orders + contractor confirmation flow).
 
 This is not maintenance repair: work orders are work_order_kind=COMPLIANCE (inspection / renewal / certification).
 Requires COMPLIANCE_ENGINE and MAINTENANCE_WORKFLOWS. Contractor recommendation actions require CONTRACTOR_NETWORK.

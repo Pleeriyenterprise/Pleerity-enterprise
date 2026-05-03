@@ -1354,7 +1354,7 @@ async def arrange_compliance_inspection_from_risk_signal_route(
     request: Request, signal_id: str, body: ArrangeInspectionBody
 ):
     """
-    Book a compliance inspection (COMPLIANCE job + routing flow). Canonical path for client portals.
+    Create a compliance inspection work order (COMPLIANCE job + routing flow). Canonical path for client portals.
     Requires PREDICTIVE_MAINTENANCE, MAINTENANCE_WORKFLOWS, and COMPLIANCE_ENGINE.
     """
     return await _arrange_compliance_inspection_from_risk_signal(request, signal_id, body)
@@ -1376,7 +1376,7 @@ async def log_inspection_issue_from_risk_signal_route(
 ):
     """
     Explicit maintenance path: create an inspection-labelled maintenance issue (not a compliance job).
-    Use arrange-compliance-inspection to book regulatory inspection work.
+    Use arrange-compliance-inspection to start a regulatory compliance inspection job.
     """
     user = await _require_predictive_enabled(request)
     await _require_maintenance_enabled(request)
