@@ -127,6 +127,57 @@ async def test_create_acceptance_persists_governance_metadata_block():
 
 
 @pytest.mark.asyncio
+async def test_create_acceptance_rejected_without_client_render_hash():
+    """Checkbox / UI alone cannot persist acceptance — server requires matching render digest."""
+    from models.agreements import COL_AGREEMENT_ACCEPTANCES
+    from services import agreement_acceptance_service as svc
+
+    fake_clients = MagicMock()
+    fake_clients.find_one = AsyncMock(return_value={"client_id": "c1", "intake_session_id": "sess-1"})
+    acc_coll = MagicMock()
+    acc_coll.insert_one = AsyncMock(return_value=MagicMock())
+
+    class _DB:
+        clients = fake_clients
+
+        def __getitem__(self, name):
+            if name == COL_AGREEMENT_ACCEPTANCES:
+                return acc_coll
+            return MagicMock()
+
+    rendered = {
+        "valid": True,
+        "issues": [],
+        "document": {"title": "A", "subtitle": "", "sections": []},
+        "canonical_text": "Agreement accepted text with UTC timestamp",
+        "render_hash_sha256": "abc123",
+    }
+
+    with (
+        patch.object(svc.database, "get_db", return_value=_DB()),
+        patch.object(svc, "get_current_published_bundle", new_callable=AsyncMock, return_value=(
+            {"template_id": "t1", "code": "property_compliance_management_agreement", "name": "Agreement"},
+            {"version_id": "v1", "version_number": 4, "status": "published", "title": "A", "subtitle": "", "content_blocks": []},
+        )),
+        patch.object(svc, "build_commercial_snapshot", new_callable=AsyncMock, return_value=_snap()),
+        patch.object(svc, "get_system_document_settings", new_callable=AsyncMock, return_value={"provider_email": "info@pleerityenterprise.co.uk"}),
+        patch.object(svc, "compile_agreement_document", return_value=rendered),
+    ):
+        doc, err = await svc.create_acceptance(
+            client_id="c1",
+            intake_session_id="sess-1",
+            template_code="property_compliance_management_agreement",
+            acceptance_text_snapshot="I agree",
+            accepted_by_name="Ruth Ehijie",
+            accepted_by_email="ruth@example.co.uk",
+            client_rendered_agreement_hash=None,
+        )
+    assert doc is None
+    assert err == "AGREEMENT_RENDER_HASH_MISSING"
+    acc_coll.insert_one.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_checkout_replay_fails_when_rendered_snapshot_modified():
     from services import agreement_acceptance_service as svc
 

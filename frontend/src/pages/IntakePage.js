@@ -2753,6 +2753,10 @@ const Step5Review = ({
                 />
                 <span className="text-sm text-gray-700">{agreementCurrent.acceptance_text_required}</span>
               </label>
+              <p className="text-xs text-gray-500 pl-7 -mt-2 max-w-prose">
+                Ticking this box alone does not store your acceptance — that happens only after you continue to payment
+                and the server confirms.
+              </p>
               {showAgreementViewer && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                   <div className="bg-white w-full max-w-4xl h-[85vh] rounded-lg shadow-xl flex flex-col">
@@ -2770,7 +2774,7 @@ const Step5Review = ({
                         </section>
                       ))}
                     </div>
-                    <div className="border-t px-6 py-4 bg-white sticky bottom-0">
+                    <div className="border-t px-6 py-4 bg-white sticky bottom-0 space-y-2">
                       <div className="flex items-start gap-3">
                         <input
                           type="checkbox"
@@ -2784,6 +2788,10 @@ const Step5Review = ({
                           Close
                         </Button>
                       </div>
+                      <p className="text-xs text-gray-500 pl-7">
+                        Ticking this box alone does not store your acceptance — that happens only after you continue to
+                        payment and the server confirms.
+                      </p>
                     </div>
                   </div>
                 </div>

@@ -162,11 +162,7 @@ DEFAULT_BLOCKS: list[dict[str, Any]] = [
         "required": True,
         "order": 10,
         "enabled": True,
-        "content": (
-            "{{acceptance_electronic_record_line}} "
-            "Named signatory for electronic acceptance: {{accepted_signatory_name}}. "
-            "Agreement version {{agreement_version}}."
-        ),
+        "content": "{{acceptance_electronic_record_line}}",
     },
 ]
 
@@ -201,12 +197,16 @@ async def ensure_default_agreement_assets() -> None:
             and "{{acceptance_timestamp}}" in _elec_txt
             and "{{acceptance_electronic_record_line}}" not in _elec_txt
         )
+        _elec_norm = "".join(_elec_txt.split())
+        electronic_acceptance_stale = electronic_acceptance_legacy or (
+            _elec_norm != "{{acceptance_electronic_record_line}}"
+        )
         needs_upgrade = (
             "compliance_limitation" not in current_keys
             or "where applicable" in current_blob
             or "applicable onboarding or setup fees" in current_blob
             or "billed on a {{billing_interval}} basis" in current_blob
-            or electronic_acceptance_legacy
+            or electronic_acceptance_stale
         )
         if needs_upgrade:
             new_version_id = str(uuid.uuid4())

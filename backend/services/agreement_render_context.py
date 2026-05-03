@@ -49,23 +49,29 @@ def build_agreement_render_context(
     """
     snap = commercial_snapshot or {}
     st = settings or {}
+    client_full_name = str(snap.get("client_full_name") or "").strip()
+    client_company_name = str(snap.get("client_company_name") or "").strip()
     monthly_minor = int(snap.get("billing_amount_minor") or 0)
     onboarding_minor = int(snap.get("onboarding_fee_minor") or 0)
     ts_raw = (acceptance_timestamp_display or "").strip()
     is_preview = ts_raw == PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER
     ts_utc = _normalize_iso_utc(ts_raw) if not is_preview else ""
     ts_display = PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER if is_preview else _format_human_utc(ts_utc)
+    ver_str = str(int(agreement_version_number or 1))
+    holder = ((accepted_signatory_name or "").strip() or client_full_name).strip()[:200]
     if is_preview:
         acceptance_electronic_record_line = (
-            "Electronic acceptance is not yet recorded. When you complete acceptance, the date and time in UTC "
-            "will appear on your executed agreement."
+            "Electronic acceptance has not yet been recorded. "
+            "When you accept this agreement and continue to payment, the acceptance date and time will be recorded "
+            "on the final agreement copy. "
+            f"Accepted by account holder: {holder}. "
+            f"Agreement version: {ver_str}."
         )
     else:
         acceptance_electronic_record_line = (
-            f"This Agreement was electronically accepted on {ts_display}."
+            f"This agreement was electronically accepted by {holder} on {ts_display}. "
+            f"Agreement version: {ver_str}."
         )
-    client_full_name = str(snap.get("client_full_name") or "").strip()
-    client_company_name = str(snap.get("client_company_name") or "").strip()
     parties_statement = _build_parties_statement(
         provider_company_name=str(st.get("provider_company_name") or "Pleerity Enterprise Ltd"),
         client_full_name=client_full_name,
@@ -87,11 +93,11 @@ def build_agreement_render_context(
         "onboarding_fee_line": (
             f"One-time onboarding fee: £{onboarding_minor / 100:.2f}" if onboarding_minor > 0 else "One-time onboarding fee: None"
         ),
-        "accepted_signatory_name": (accepted_signatory_name or "").strip()[:200],
+        "accepted_signatory_name": holder,
         "acceptance_timestamp": ts_display,
         "acceptance_electronic_record_line": acceptance_electronic_record_line,
         "acceptance_timestamp_utc": ts_utc,
-        "agreement_version": str(int(agreement_version_number or 1)),
+        "agreement_version": ver_str,
         "support_email": canonical_support_email(st),
     }
 
@@ -152,6 +158,9 @@ def validate_checkout_grade_render_context(
     if preview_mode:
         if ts != PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER:
             errors.append("preview_acceptance_timestamp_must_be_safe_sentence")
+        el = str(ctx.get("acceptance_electronic_record_line") or "").lower()
+        if "has not yet been recorded" not in el:
+            errors.append("preview_missing_pre_acceptance_electronic_copy")
     else:
         if not ts:
             errors.append("missing_acceptance_timestamp")
@@ -190,6 +199,21 @@ def validate_accepted_artifact_text(
         return False, errs
     if PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER in txt:
         errs.append("accepted_artifact_contains_preview_timestamp_placeholder")
+    tl = txt.lower()
+    for marker in (
+        "electronic acceptance has not yet been recorded",
+        "when you accept this agreement and continue to payment",
+        "accepted by account holder:",
+    ):
+        if marker in tl:
+            errs.append("accepted_artifact_contains_preview_electronic_wording")
+            break
+    el_ctx = str(render_context.get("acceptance_electronic_record_line") or "").lower()
+    ts_utc_ctx = str(render_context.get("acceptance_timestamp_utc") or "").strip()
+    if ts_utc_ctx and (
+        "has not yet been recorded" in el_ctx or "when you accept this agreement and continue to payment" in el_ctx
+    ):
+        errs.append("accepted_context_preview_electronic_line_with_persisted_timestamp")
     if "{{" in txt or "}}" in txt:
         errs.append("accepted_artifact_contains_unresolved_placeholder")
     if "where applicable" in txt.lower():

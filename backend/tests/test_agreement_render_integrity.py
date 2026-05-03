@@ -436,6 +436,58 @@ def test_preview_electronic_record_line_not_pasted_after_on():
         agreement_version_number=3,
     )
     line = str(ctx.get("acceptance_electronic_record_line") or "")
-    assert "not yet recorded" in line.lower()
+    assert "electronic acceptance has not yet been recorded" in line.lower()
+    assert "when you accept this agreement and continue to payment" in line.lower()
+    assert "accepted by account holder: samantha brown" in line.lower()
+    assert "agreement version: 3" in line.lower()
+    assert "was electronically accepted" not in line.lower()
     assert PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER not in line
     assert ctx.get("acceptance_timestamp") == PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER
+
+
+def test_executed_electronic_record_line_uses_persisted_timestamp_and_holder():
+    ctx = build_agreement_render_context(
+        commercial_snapshot=_snap(),
+        settings={"provider_email": "info@pleerityenterprise.co.uk"},
+        accepted_signatory_name="Ruth Ehijie",
+        acceptance_timestamp_display="2026-04-27T18:42:00Z",
+        agreement_version_number=4,
+    )
+    line = str(ctx.get("acceptance_electronic_record_line") or "")
+    assert line.lower().startswith("this agreement was electronically accepted by ruth ehijie on")
+    assert "27 april 2026" in line.lower() and "utc" in line.lower()
+    assert "agreement version: 4" in line.lower()
+    assert "not yet recorded" not in line.lower()
+
+
+def test_validate_accepted_artifact_rejects_preview_electronic_phrases_in_canonical():
+    ctx = build_agreement_render_context(
+        commercial_snapshot=_snap(),
+        settings={"provider_email": "info@pleerityenterprise.co.uk"},
+        accepted_signatory_name="Ruth Ehijie",
+        acceptance_timestamp_display="2026-04-27T18:42:00Z",
+        agreement_version_number=1,
+    )
+    bad_txt = "Parties. " + "Electronic acceptance has not yet been recorded. " + "Rest"
+    ok, errs = validate_accepted_artifact_text(canonical_text=bad_txt, render_context=ctx)
+    assert ok is False
+    assert "accepted_artifact_contains_preview_electronic_wording" in errs
+
+
+def test_validate_accepted_artifact_rejects_preview_context_line_when_timestamp_utc_set():
+    ctx = build_agreement_render_context(
+        commercial_snapshot=_snap(),
+        settings={"provider_email": "info@pleerityenterprise.co.uk"},
+        accepted_signatory_name="Ruth Ehijie",
+        acceptance_timestamp_display="2026-04-27T18:42:00Z",
+        agreement_version_number=1,
+    )
+    ctx["acceptance_electronic_record_line"] = (
+        "Electronic acceptance has not yet been recorded. When you accept this agreement and continue to payment, …"
+    )
+    ok, errs = validate_accepted_artifact_text(
+        canonical_text="This agreement was electronically accepted by Ruth Ehijie on 27 April 2026 at 18:42 UTC.",
+        render_context=ctx,
+    )
+    assert ok is False
+    assert "accepted_context_preview_electronic_line_with_persisted_timestamp" in errs

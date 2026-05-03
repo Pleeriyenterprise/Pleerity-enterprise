@@ -79,5 +79,6 @@ async def get_current_published_bundle(
 
 def acceptance_text_default(template_name: str) -> str:
     return (
-        f"I have read and agree to the {template_name} and understand it forms part of my subscription."
+        f"I have read the {template_name} above and agree to its terms. "
+        "Legal acceptance is recorded only after I continue and the confirmation step succeeds — not from this tick alone."
     )
