@@ -254,7 +254,7 @@ function nextRenewalFallbackLabel(bs, usageRefreshing) {
   if (st === 'stripe_error') return 'Could not load from Stripe';
   if (st === 'missing_period_end' || st === 'stale') return 'Not on file — contact support';
   const last = formatLastSyncedEnGb(bs.billing_last_synced_at);
-  if (bs.plan_status_display === 'Active') {
+  if (bs.plan_status_display === 'Paid subscription active' || bs.plan_status_display === 'Active') {
     return last ? `Unavailable (last billing sync ${last})` : 'Renewal date unavailable';
   }
   return '—';
@@ -262,6 +262,17 @@ function nextRenewalFallbackLabel(bs, usageRefreshing) {
 
 function nextRenewalEndPhrase(bs) {
   return nextRenewalPrimaryDisplay(bs) || 'the end of your billing period';
+}
+
+/** Paid-good-standing display states — used so "renewal soon" does not show during grace/retry/cancel. */
+function isPaidSubscriptionDisplayHealthy(bs) {
+  const b = bs?.billing_status_display;
+  if (!b) return false;
+  return (
+    b === 'Paid subscription active' ||
+    b === 'Paid — renewal billing due soon' ||
+    b === 'Active'
+  );
 }
 
 /** Portal API returns billing_status_display / plan_status_display (no internal lifecycle strings). */
@@ -698,7 +709,7 @@ const BillingPage = () => {
             {billingStatus?.has_subscription &&
               billingStatus?.renewal_soon &&
               !billingStatus?.cancel_at_period_end &&
-              billingStatus?.billing_status_display === 'Active' && (
+              isPaidSubscriptionDisplayHealthy(billingStatus) && (
                 <Alert className="border-teal-200 bg-teal-50/50" data-testid="billing-renewing-alert">
                   <Calendar className="w-4 h-4 text-teal-700" />
                   <AlertDescription className="text-teal-900 text-sm">
@@ -822,6 +833,32 @@ const BillingPage = () => {
                   <div className="sm:col-span-2">
                     <p className="text-gray-500">Renewal</p>
                     <p className="font-medium text-gray-800">{billingStatus.renewal_customer_copy}</p>
+                  </div>
+                )}
+                {billingStatus?.has_subscription &&
+                  Array.isArray(billingStatus.billing_operational_narrative_lines) &&
+                  billingStatus.billing_operational_narrative_lines.length > 0 && (
+                    <div className="sm:col-span-2 rounded-md border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-gray-500 text-sm mb-2">Operational summary</p>
+                      <ol className="list-decimal list-inside space-y-1 text-sm text-gray-800">
+                        {billingStatus.billing_operational_narrative_lines.map((line, idx) => (
+                          <li key={idx}>{line}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                {billingStatus?.has_subscription && billingStatus?.billing_sync_visibility_note && (
+                  <div className="sm:col-span-2">
+                    <p className="text-gray-500">Data freshness</p>
+                    <p
+                      className={`text-sm ${
+                        /incomplete|stripe_error|may be incomplete/i.test(billingStatus.billing_sync_visibility_note)
+                          ? 'text-amber-900'
+                          : 'text-gray-600'
+                      }`}
+                    >
+                      {billingStatus.billing_sync_visibility_note}
+                    </p>
                   </div>
                 )}
               </CardContent>

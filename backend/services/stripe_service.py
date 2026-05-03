@@ -24,8 +24,16 @@ from services.billing_period_utils import (
     period_start_from_stripe_unix,
 )
 from services.billing_stripe_sync_service import stripe_subscription_to_dict
-from services.billing_presentation import build_client_billing_payload
-from services.billing_presentation import lifecycle_status_label
+from services.billing_presentation import (
+    billing_status_display,
+    billing_sync_visibility_note,
+    build_client_billing_payload,
+    build_operational_billing_narrative_lines,
+    lifecycle_status_label,
+    payment_grace_display_bundle,
+    plan_status_display,
+    renewal_date_display_from_period_end_iso,
+)
 from services.billing_line_normalization import normalize_stripe_invoice_lines
 from services.plan_registry import (
     plan_registry, PlanCode, EntitlementStatus,
@@ -405,6 +413,10 @@ class StripeService:
                 "charge_automatically": None,
                 "billing_last_synced_at": None,
                 "billing_sync_state": "no_subscription",
+                "plan_status_display": None,
+                "billing_status_display": None,
+                "billing_sync_visibility_note": None,
+                "billing_operational_narrative_lines": [],
             }
 
         # Legacy rows without lifecycle: one-time reconcile (no version bump)
@@ -569,6 +581,57 @@ class StripeService:
                 last_invoice_failure_message=billing.get("last_invoice_failure_message"),
             )
 
+        cur_currency = str((plan_def or {}).get("currency") or "gbp")
+        g_iso = g_end.isoformat() if g_end else None
+        lp_at_iso = _billing_timestamp_iso(billing.get("last_payment_at"))
+        lp_pence = billing.get("last_payment_amount_pence")
+        grace_period_summary, last_payment_display = payment_grace_display_bundle(
+            grace_period_ends_at_iso=g_iso,
+            last_payment_at_iso=lp_at_iso,
+            last_payment_amount_pence=lp_pence,
+            currency=cur_currency,
+        )
+        renewal_display = renewal_date_display_from_period_end_iso(cpe_out)
+        open_inv = billing.get("open_invoice_status")
+        cancel_flag = bool(billing.get("cancel_at_period_end", False))
+        lsl_admin = lifecycle_status_label(
+            has_subscription=True,
+            cancel_at_period_end=cancel_flag,
+            billing_lifecycle_state=lifecycle_out,
+        )
+        psd_admin = plan_status_display(
+            has_subscription=True,
+            subscription_status=billing.get("subscription_status"),
+            billing_lifecycle_state=lifecycle_out,
+            cancel_at_period_end=cancel_flag,
+            open_invoice_status=open_inv,
+        )
+        bsd_admin = billing_status_display(
+            has_subscription=True,
+            subscription_status=billing.get("subscription_status"),
+            billing_lifecycle_state=lifecycle_out,
+            cancel_at_period_end=cancel_flag,
+        )
+        stripe_next_iso = _billing_timestamp_iso(billing.get("stripe_next_payment_attempt_at"))
+        sync_note_admin = billing_sync_visibility_note(
+            billing_sync_state=api_billing_sync_state,
+            billing_last_synced_at_iso=billing_last_iso,
+        )
+        narrative_admin = build_operational_billing_narrative_lines(
+            lifecycle_status_label=lsl_admin,
+            plan_status_display_str=psd_admin,
+            billing_status_display_str=bsd_admin,
+            billing_lifecycle_state=lifecycle_out,
+            last_payment_summary=last_payment_display,
+            open_invoice_status=open_inv,
+            stripe_next_payment_attempt_iso=stripe_next_iso,
+            cancel_at_period_end=cancel_flag,
+            next_renewal_date_display=renewal_display,
+            grace_period_summary=grace_period_summary,
+            billing_last_synced_at_iso=billing_last_iso,
+            billing_sync_state=api_billing_sync_state,
+        )
+
         return {
             "has_subscription": True,
             "stripe_subscription_id": billing.get("stripe_subscription_id"),
@@ -600,11 +663,12 @@ class StripeService:
             "last_invoice_failure_message": billing.get("last_invoice_failure_message"),
             "stripe_webhook_last_received_at": _billing_timestamp_iso(billing.get("stripe_webhook_last_received_at")),
             "stripe_webhook_last_event_type": billing.get("stripe_webhook_last_event_type"),
-                "lifecycle_status_label": lifecycle_status_label(
-                    has_subscription=True,
-                    cancel_at_period_end=bool(billing.get("cancel_at_period_end", False)),
-                    billing_lifecycle_state=lifecycle_out,
-                ),
+            "lifecycle_status_label": lsl_admin,
+            "plan_status_display": psd_admin,
+            "billing_status_display": bsd_admin,
+            "billing_sync_visibility_note": sync_note_admin,
+            "billing_operational_narrative_lines": narrative_admin,
+            "grace_period_summary": grace_period_summary,
         }
     
     async def cancel_subscription(

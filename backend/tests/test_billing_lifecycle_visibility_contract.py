@@ -121,6 +121,10 @@ async def test_admin_billing_snapshot_contract_fields_present():
     assert "billing_reconciliation_needed" in payload
     assert "billing_reconciliation_reason" in payload
     assert "billing_reconciliation_marked_at" in payload
+    assert "billing_operational_narrative_lines" in payload
+    assert "billing_sync_visibility_note" in payload
+    assert "billing_operational_narrative_lines" in payload
+    assert "billing_sync_visibility_note" in payload
 
 
 @pytest.mark.asyncio

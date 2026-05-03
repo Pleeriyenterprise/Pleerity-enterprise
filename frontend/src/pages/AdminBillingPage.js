@@ -63,8 +63,8 @@ function humanLifecycleLabel(sl) {
   if (lc === 'past_due') return 'Payment past due';
   if (lc === 'expired') return 'Subscription expired';
   if (lc === 'cancelled') return 'Subscription cancelled';
-  if (lc === 'renewing') return 'Active — renewal soon';
-  return 'Active';
+  if (lc === 'renewing') return 'Paid subscription — renewal date approaching';
+  return 'Paid subscription active';
 }
 
 const AdminBillingPage = () => {
@@ -786,7 +786,40 @@ const AdminBillingPage = () => {
                       Recovery path: compare Stripe and local state here, then use one safe sync/reconcile action. If
                       mismatch remains after refresh, this is <span className="font-semibold">Engineering escalation required</span>.
                     </div>
+                    {billingSnapshot.billing_sync_visibility_note && (
+                      <div
+                        className={`mb-3 rounded-md border p-2 text-xs ${
+                          /incomplete|stripe_error|may be incomplete/i.test(
+                            billingSnapshot.billing_sync_visibility_note
+                          )
+                            ? 'border-amber-200 bg-amber-50 text-amber-900'
+                            : 'border-slate-200 bg-white text-slate-700'
+                        }`}
+                      >
+                        <span className="font-semibold">Sync / data caution: </span>
+                        {billingSnapshot.billing_sync_visibility_note}
+                      </div>
+                    )}
+                    {Array.isArray(billingSnapshot.billing_operational_narrative_lines) &&
+                      billingSnapshot.billing_operational_narrative_lines.length > 0 && (
+                        <div className="mb-3 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-800">
+                          <p className="text-xs font-semibold text-slate-500 mb-2">Operational billing narrative</p>
+                          <ol className="list-decimal list-inside space-y-1 text-xs">
+                            {billingSnapshot.billing_operational_narrative_lines.map((line, idx) => (
+                              <li key={idx}>{line}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-500">Plan status (display)</p>
+                        <p className="font-medium">{billingSnapshot.plan_status_display || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Billing status (display)</p>
+                        <p className="font-medium">{billingSnapshot.billing_status_display || '—'}</p>
+                      </div>
                       <div>
                         <p className="text-gray-500">Next billing / period end</p>
                         <p className="font-medium">

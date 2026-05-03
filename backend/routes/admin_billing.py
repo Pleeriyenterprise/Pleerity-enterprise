@@ -293,6 +293,10 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
         stripe_svc = StripeService()
         sub_status = await stripe_svc.get_subscription_status(client_id, client_facing=False)
         snapshot["subscription_lifecycle"] = sub_status
+        snapshot["billing_operational_narrative_lines"] = sub_status.get("billing_operational_narrative_lines") or []
+        snapshot["billing_sync_visibility_note"] = sub_status.get("billing_sync_visibility_note")
+        snapshot["plan_status_display"] = sub_status.get("plan_status_display")
+        snapshot["billing_status_display"] = sub_status.get("billing_status_display")
         snapshot["billing_last_synced_at"] = sub_status.get("billing_last_synced_at")
         snapshot["billing_sync_state"] = sub_status.get("billing_sync_state")
         snapshot["retry_state_label"] = (
@@ -302,10 +306,11 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
         )
         snapshot["next_retry_at_utc"] = sub_status.get("stripe_next_payment_attempt_at")
         snapshot["grace_period_ends_at_utc"] = sub_status.get("grace_period_ends_at")
+        _bss = (sub_status.get("billing_sync_state") or "").lower()
         snapshot["stripe_sync_state_label"] = (
             "Up to date"
-            if (sub_status.get("billing_sync_state") or "").lower() == "ok"
-            else "Needs review"
+            if _bss == "ok"
+            else "Needs review — data may be incomplete; confirm in Stripe"
         )
         snapshot["stripe_sync_updated_at_utc"] = sub_status.get("billing_last_synced_at")
         snapshot["billing_reconciliation_needed"] = bool((billing or {}).get("billing_reconciliation_needed"))

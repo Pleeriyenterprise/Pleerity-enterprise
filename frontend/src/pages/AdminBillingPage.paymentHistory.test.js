@@ -134,7 +134,7 @@ describe('AdminBillingPage payment history states', () => {
             billing_reconciliation_needed: true,
             billing_reconciliation_reason: 'clients_update_failed_after_billing_sync',
             subscription_lifecycle: {
-              lifecycle_status_label: 'Active (cancels at period end)',
+              lifecycle_status_label: 'Cancelling at period end',
               canonical_entitlement_state: 'ENABLED',
               billing_lifecycle_state: 'CANCEL_AT_PERIOD_END',
             },
@@ -152,7 +152,7 @@ describe('AdminBillingPage payment history states', () => {
     const lifecycleCard = await screen.findByTestId('subscription-lifecycle-card');
     const inLifecycle = within(lifecycleCard);
     expect(inLifecycle.getByText('Lifecycle status')).toBeInTheDocument();
-    expect(inLifecycle.getByText('Active (cancels at period end)')).toBeInTheDocument();
+    expect(inLifecycle.getByText('Cancelling at period end')).toBeInTheDocument();
     expect(inLifecycle.getByText('Access state')).toBeInTheDocument();
     expect(inLifecycle.getByText('ENABLED')).toBeInTheDocument();
     expect(inLifecycle.getByText('Reconciliation needed')).toBeInTheDocument();
