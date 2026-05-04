@@ -238,8 +238,23 @@ HMO_SCORE_MULTIPLIER = 0.9  # HMO properties have stricter scoring (90% of norma
 
 
 def get_requirement_weight(requirement_type: str) -> float:
-    """Get the weight for a requirement type."""
-    return REQUIREMENT_TYPE_WEIGHTS.get(requirement_type.upper(), DEFAULT_REQUIREMENT_WEIGHT)
+    """
+    Map Phase-1 storage slugs (registry-canonical) to the same weight as their canonical type.
+    Legacy uppercase keys in REQUIREMENT_TYPE_WEIGHTS win first so smoke_alarm / co_alarm /
+    emergency_lighting behaviour stays unchanged.
+    """
+    from services.requirement_code_registry import normalize_requirement_code as reg_norm
+
+    raw = (requirement_type or "").strip()
+    if not raw:
+        return DEFAULT_REQUIREMENT_WEIGHT
+    raw_key = raw.upper().replace(" ", "_").replace("-", "_")
+    if raw_key in REQUIREMENT_TYPE_WEIGHTS:
+        return REQUIREMENT_TYPE_WEIGHTS[raw_key]
+    canon = reg_norm(raw)
+    if canon:
+        return REQUIREMENT_TYPE_WEIGHTS.get(canon.upper(), DEFAULT_REQUIREMENT_WEIGHT)
+    return DEFAULT_REQUIREMENT_WEIGHT
 
 
 async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:

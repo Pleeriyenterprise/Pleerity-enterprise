@@ -5,6 +5,41 @@ import {
 } from './requirementTakeActionResolver';
 
 describe('requirementTakeActionResolver', () => {
+  const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+  beforeEach(() => {
+    warnSpy.mockClear();
+  });
+
+  afterAll(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('warns when take_action envelope is missing (drift guard)', () => {
+    const req = {
+      requirement_id: 'r1',
+      property_id: 'p1',
+      requirement_code: 'gas_safety',
+      requirement_type: 'gas_safety',
+      compliance_requirement_class: 'DOCUMENT',
+    };
+    resolveRequirementAction(req, {});
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('job fallback uses evidence-first legionella label without Book', () => {
+    const req = {
+      requirement_id: 'r1',
+      property_id: 'p1',
+      requirement_code: 'legionella',
+      requirement_type: 'legionella',
+      compliance_requirement_class: 'JOB',
+    };
+    const out = resolveRequirementAction(req, {});
+    expect(out.primary_action_label).toContain('Upload completed legionella');
+    expect(out.primary_action_label).not.toMatch(/Book/i);
+  });
+
   it('uses API take_action primary when present', () => {
     const req = {
       take_action: {

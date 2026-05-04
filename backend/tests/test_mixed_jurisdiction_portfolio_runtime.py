@@ -219,11 +219,11 @@ async def test_mixed_england_scotland_portfolio_no_cross_property_or_jurisdictio
     assert "g-eng" in ids and "g-sct" in ids
     assert "rtr-sct" not in ids
     # One fire alias winner per property.
-    assert sum(1 for r in out if r["property_id"] == p_eng and str(r.get("canonical_code")) == "fire_detection") == 1
-    assert sum(1 for r in out if r["property_id"] == p_sct and str(r.get("canonical_code")) == "fire_detection") == 1
+    assert sum(1 for r in out if r["property_id"] == p_eng and str(r.get("canonical_code")) == "smoke_heat_alarms") == 1
+    assert sum(1 for r in out if r["property_id"] == p_sct and str(r.get("canonical_code")) == "smoke_heat_alarms") == 1
     assert "fa-eng" not in ids and "fd-eng" in ids  # winner has published enrichment on England
     _assert_attribution(out, props_by_id)
-    _assert_no_cross_property_dedupe(out, expect_per_code={"gas_safety": 2, "fire_detection": 2})
+    _assert_no_cross_property_dedupe(out, expect_per_code={"gas_safety": 2, "smoke_heat_alarms": 2})
     agg = _dashboard_style_aggregate(out)
     assert agg["total_requirements"] == len(out)
     assert agg["by_property"][p_eng] + agg["by_property"][p_sct] == agg["total_requirements"]

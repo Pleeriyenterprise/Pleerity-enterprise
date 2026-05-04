@@ -1,4 +1,8 @@
-from services.requirement_action_resolver import resolve_take_action_envelope, resolve_take_action_for_priority_action
+from services.requirement_action_resolver import (
+    enrich_take_action_envelope_for_client,
+    resolve_take_action_envelope,
+    resolve_take_action_for_priority_action,
+)
 
 
 def test_resolver_includes_registry_why_it_matters():
@@ -46,8 +50,7 @@ def test_envelope_guided_primary_when_multiple_evidence_modes():
     assert pri.get("kind") == "guided_evidence_resolution"
     assert pri.get("label") == "Add compliance evidence"
     assert pri.get("route") in (None, "")
-    sec = out["take_action"].get("secondary") or {}
-    assert sec.get("route") and "/documents" in sec["route"]
+    assert out["take_action"].get("secondary") in (None, {})
 
 
 def test_envelope_guided_label_registry_override():
@@ -107,6 +110,78 @@ def test_envelope_guided_metadata_incomplete_no_upload_primary():
     assert pri.get("kind") == "guided_evidence_resolution"
     assert pri.get("route") in (None, "")
     assert pri.get("intent") == "guided_evidence_unavailable"
+
+
+def test_how_to_rent_uses_guided_evidence_not_view_guidance_only():
+    from services.compliance_evidence_record_service import TENANT_DELIVERY_WORKFLOW
+
+    requirement = {
+        "requirement_id": "r1",
+        "property_id": "p1",
+        "requirement_type": "how_to_rent",
+        "requirement_code": "how_to_rent",
+        "compliance_requirement_class": "OBLIGATION",
+        "engine_informational": True,
+    }
+    out = resolve_take_action_envelope(requirement, property_id="p1", property_jurisdiction="England")
+    assert out["action_type"] == "DOCUMENT"
+    pri = out["take_action"]["primary"]
+    assert pri.get("kind") == "guided_evidence_resolution"
+    assert pri.get("label") == "Record How to Rent delivery"
+    sec = (out["take_action"] or {}).get("secondary") or {}
+    assert sec.get("label") == "Upload delivery proof"
+    rich = enrich_take_action_envelope_for_client(out, requirement)
+    assert rich.get("workflow_class") == TENANT_DELIVERY_WORKFLOW
+
+
+def test_right_to_rent_guided_declaration_envelope_and_alias_checks():
+    from services.compliance_evidence_record_service import GUIDED_DECLARATION_WORKFLOW
+
+    for rtype, rcode in (("right_to_rent", "right_to_rent"), ("right_to_rent_checks", "right_to_rent_checks")):
+        requirement = {
+            "requirement_id": "r1",
+            "property_id": "p1",
+            "requirement_type": rtype,
+            "requirement_code": rcode,
+            "compliance_requirement_class": "OBLIGATION",
+            "engine_informational": True,
+        }
+        out = resolve_take_action_envelope(requirement, property_id="p1", property_jurisdiction="England")
+        assert out["action_type"] == "DOCUMENT"
+        pri = out["take_action"]["primary"]
+        assert pri.get("kind") == "guided_evidence_resolution"
+        assert pri.get("label") == "Record Right to Rent check"
+        sec = (out["take_action"] or {}).get("secondary") or {}
+        assert sec.get("label") == "Upload supporting evidence"
+        rich = enrich_take_action_envelope_for_client(out, requirement)
+        assert rich.get("workflow_class") == GUIDED_DECLARATION_WORKFLOW
+
+
+def test_enrich_adds_workflow_class_and_guidance_target():
+    requirement = {
+        "requirement_id": "r1",
+        "property_id": "p1",
+        "requirement_type": "generic_ob",
+        "requirement_code": "generic_ob",
+        "compliance_requirement_class": "OBLIGATION",
+    }
+    env = resolve_take_action_envelope(requirement, property_id="p1")
+    rich = enrich_take_action_envelope_for_client(env, requirement)
+    assert rich.get("workflow_class") == "GUIDANCE_ONLY"
+    assert rich.get("guidance_target", {}).get("hash") == "compliance"
+
+
+def test_hmo_fire_single_primary_guided_no_secondary():
+    requirement = {
+        "requirement_id": "r1",
+        "property_id": "p1",
+        "requirement_type": "hmo_fire_risk",
+        "requirement_code": "hmo_fire_risk",
+        "compliance_requirement_class": "DOCUMENT",
+    }
+    out = resolve_take_action_envelope(requirement, property_id="p1", property_jurisdiction="England")
+    assert out["take_action"]["primary"].get("kind") == "guided_evidence_resolution"
+    assert out["take_action"].get("secondary") in (None, {})
 
 
 def test_envelope_document_only_when_single_document_mode():

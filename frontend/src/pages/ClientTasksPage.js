@@ -458,6 +458,13 @@ function TaskCard({
                 <span className="font-medium text-gray-800">Why it matters:</span> {requirementWhyLine}
               </p>
             ) : null}
+            {complianceUi &&
+            meta.evidence_completeness?.summary_label &&
+            meta.evidence_completeness.summary_label !== 'Complete' ? (
+              <p className="text-xs text-amber-900/90 leading-snug" data-testid="today-evidence-completeness-subtitle">
+                {meta.evidence_completeness.summary_label}
+              </p>
+            ) : null}
             {complianceUi && inboxTaskLinkedRequirementId(task) && onOpenRequirementIntel ? (
               <button
                 type="button"

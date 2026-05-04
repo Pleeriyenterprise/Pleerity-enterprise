@@ -42,6 +42,13 @@
       "category": "Fire safety",
       "upload_document_type": "Smoke/CO evidence"
     },
+    "smoke_heat_alarms": {
+      "display_label": "Smoke, heat and carbon monoxide alarms",
+      "short_label": "Smoke / heat / CO alarms",
+      "action_label": "Add compliance evidence",
+      "category": "Fire safety",
+      "upload_document_type": "Smoke/CO evidence"
+    },
     "deposit_pi": {
       "display_label": "Deposit protection",
       "short_label": "Deposit",
@@ -99,18 +106,18 @@
       "upload_document_type": "Other"
     },
     "fire_alarm": {
-      "display_label": "Fire alarm inspection",
-      "short_label": "Fire alarm",
-      "action_label": "Upload your fire alarm inspection certificate",
+      "display_label": "Smoke, heat and carbon monoxide alarms",
+      "short_label": "Smoke / heat / CO",
+      "action_label": "Add compliance evidence",
       "category": "Fire safety",
-      "upload_document_type": "Other"
+      "upload_document_type": "Smoke/CO evidence"
     },
     "fire_detection": {
-      "display_label": "Fire alarm inspection",
-      "short_label": "Fire detection",
-      "action_label": "Upload your fire alarm inspection certificate",
+      "display_label": "Smoke, heat and carbon monoxide alarms",
+      "short_label": "Smoke / heat / CO",
+      "action_label": "Add compliance evidence",
       "category": "Fire safety",
-      "upload_document_type": "Other"
+      "upload_document_type": "Smoke/CO evidence"
     },
     "gas_safety_certificate": {
       "display_label": "Gas Safety Certificate (CP12)",
@@ -166,12 +173,12 @@
     "Boiler Failure Risk": {
       "client_label": "Boiler reliability concern",
       "admin_label": "Boiler failure risk",
-      "recommended_action_client": "Book a qualified gas engineer to inspect the boiler and review servicing or replacement."
+      "recommended_action_client": "Arrange a qualified gas engineer inspection externally, or start a compliance job from Operations if your account uses jobs for inspections."
     },
     "Damp / Moisture Risk": {
       "client_label": "Damp or moisture concern",
       "admin_label": "Damp / moisture risk",
-      "recommended_action_client": "Arrange a damp inspection and plan work to fix the underlying cause."
+      "recommended_action_client": "Arrange a damp inspection externally and plan work to fix the underlying cause."
     },
     "Electrical Risk": {
       "client_label": "Electrical safety concern",
@@ -191,7 +198,7 @@
     "Compliance Churn Risk": {
       "client_label": "Compliance gaps detected",
       "admin_label": "Compliance churn risk",
-      "recommended_action_client": "Upload missing evidence and schedule renewals so obligations stay up to date."
+      "recommended_action_client": "Upload missing evidence and plan renewals so obligations stay up to date."
     },
     "Maintenance Frequency Risk": {
       "client_label": "Frequent maintenance issues detected",
@@ -291,8 +298,8 @@
   },
   "suggested_action_codes": {
     "create_issue": { "client_label": "Log an issue", "admin_label": "Create issue" },
-    "create_work_order": { "client_label": "Book a job", "admin_label": "Create work order" },
-    "schedule_inspection": { "client_label": "Schedule an inspection", "admin_label": "Schedule inspection" },
+    "create_work_order": { "client_label": "Create work order", "admin_label": "Create work order" },
+    "schedule_inspection": { "client_label": "Start inspection job", "admin_label": "Schedule inspection" },
     "send_contractor_reminder": { "client_label": "Nudge contractor", "admin_label": "Send contractor reminder" },
     "reassign_contractor": { "client_label": "Change contractor", "admin_label": "Reassign contractor" }
   }

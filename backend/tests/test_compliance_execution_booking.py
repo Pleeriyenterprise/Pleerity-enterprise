@@ -16,7 +16,7 @@ from services.work_order_execution_constants import (
 def test_normalize_requirement_code_maps_legacy():
     assert normalize_requirement_code("GAS_SAFETY") == "gas_safety"
     assert normalize_requirement_code("cp12") == "gas_safety"
-    assert normalize_requirement_code("fire_alarm") == "fire_detection"
+    assert normalize_requirement_code("fire_alarm") == "smoke_heat_alarms"
     assert normalize_requirement_code("EICR") == "eicr"
 
 

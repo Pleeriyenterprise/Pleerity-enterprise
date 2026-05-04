@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import apiClient, { clientAPI } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
@@ -269,6 +269,7 @@ export function PropertyDocumentsMissingRequirementList({
 export default function PropertyDetailPage() {
   const { propertyId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { openGuidedEvidence } = useGuidedEvidenceModal();
   const { hasFeature } = useEntitlements();
   const [activeTab, setActiveTab] = useState(TAB_OPERATING);
@@ -356,6 +357,26 @@ export default function PropertyDetailPage() {
   const [jurisdictionSaving, setJurisdictionSaving] = useState(false);
   /** True while user chose "Change jurisdiction" on an already property_explicit record; false when not explicit or after save/cancel. */
   const [jurisdictionEditing, setJurisdictionEditing] = useState(false);
+
+  useEffect(() => {
+    const raw = (location.hash || window.location.hash || '').replace(/^#/, '');
+    const firstSeg = raw.split('&')[0];
+    if (firstSeg === 'compliance') {
+      setActiveTab(TAB_COMPLIANCE);
+    }
+  }, [location.hash]);
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const raw = (window.location.hash || '').replace(/^#/, '');
+      const firstSeg = raw.split('&')[0];
+      if (firstSeg === 'compliance') {
+        setActiveTab(TAB_COMPLIANCE);
+      }
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -1488,6 +1509,7 @@ export default function PropertyDetailPage() {
             <button
               key={id}
               type="button"
+              data-testid={id === TAB_COMPLIANCE ? 'property-tab-compliance' : undefined}
               onClick={() => setActiveTab(id)}
               className={`flex items-center gap-2 px-3 sm:px-4 py-3 min-h-11 text-sm font-medium border-b-2 -mb-px transition-colors rounded-t-md ${
                 activeTab === id
@@ -1547,7 +1569,7 @@ export default function PropertyDetailPage() {
       {/* Tab: Compliance */}
       {activeTab === TAB_COMPLIANCE && (
         <>
-        <div className="space-y-6">
+        <div className="space-y-6" data-testid="property-compliance-panel">
           <Card className="border border-electric-teal/25 bg-electric-teal/[0.06]">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-midnight-blue">Compliance priority for this property</CardTitle>

@@ -6,7 +6,7 @@ import uuid
 from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, onboarding, portal, webhooks, client, client_read_api, admin, admin_client_lifecycle, admin_identity_lifecycle, documents, evidence_review, assistant, profile, properties, rules, compliance_governed_rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, client_billing, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, admin_compliance_registry, admin_compliance_truth, analytics, admin_generation_analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads, agreements_public, admin_client_agreements
-from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, client_compliance_evidence, compliance_delivery_audit, api_compliance_workflow, client_approvals, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre, admin_communications
+from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, client_compliance_evidence, compliance_delivery_audit, api_compliance_workflow, client_approvals, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre, admin_communications, requirement_workflow_audit_admin
 from utils.request_ip import get_client_ip as _client_ip
 
 # ClearForm - Separate Product Routes
@@ -1308,6 +1308,7 @@ app.include_router(admin_risk_leads.router)  # Admin: risk leads list, export, r
 app.include_router(observability.router)  # Admin: job-runs, incidents, score-events (observability)
 app.include_router(security_monitoring.router)  # Admin: security monitoring and incident detection
 app.include_router(control_centre.router)  # Admin: unified Control Centre snapshot
+app.include_router(requirement_workflow_audit_admin.router)  # Admin: workflow class drift (read-only)
 app.include_router(admin_communications.router)  # Admin: communications, templates, banners
 app.include_router(ops_compliance.router)  # Admin: Operations & Compliance (feature flags, plan usage)
 app.include_router(contractors.router)  # Admin: Contractors (Ops Contractor Network)

@@ -63,19 +63,25 @@ export function inferRequirementActionType(requirement) {
 
 function jobPrimaryLabel(requirement) {
   const code = normalizeRequirementCode(requirement?.requirement_code || requirement?.requirement_type || '');
-  if (code.includes('eicr') || code === 'electrical_safety') return 'Coordinate electrical inspection & upload EICR';
-  if (code.includes('gas') || ['cp12', 'gas_safety', 'gas_safety_certificate'].includes(code)) {
-    return 'Coordinate Gas Safety inspection & upload certificate';
+  if (code.includes('eicr') || code === 'electrical_safety') {
+    return 'Record external assessment evidence — upload EICR';
   }
-  if (code.includes('epc')) return 'Coordinate EPC assessment & upload certificate';
-  if (code.includes('fire') && code.includes('risk')) return 'Coordinate fire risk assessment & upload evidence';
-  if (code.includes('pat') || code.includes('portable_appliance')) return 'Coordinate PAT testing & upload evidence';
-  if (code.includes('legionella')) return 'Upload legionella risk assessment';
+  if (code.includes('gas') || ['cp12', 'gas_safety', 'gas_safety_certificate'].includes(code)) {
+    return 'Record external assessment evidence — upload Gas Safety certificate';
+  }
+  if (code.includes('epc')) return 'Record external assessment evidence — upload EPC';
+  if (code.includes('fire') && code.includes('risk')) return 'Add fire risk assessment evidence';
+  if (code.includes('pat') || code.includes('portable_appliance')) {
+    return 'Record external assessment evidence — upload PAT evidence';
+  }
+  if (code.includes('legionella')) return 'Upload completed legionella risk assessment';
   const disp = String(requirement?.display_label || '').trim();
-  if (disp && disp.toLowerCase() !== 'requirement') return `Coordinate inspection & upload evidence — ${disp}`;
+  if (disp && disp.toLowerCase() !== 'requirement') {
+    return `Record external assessment evidence — ${disp}`;
+  }
   const rl = requirementLabel(requirement?.requirement_code || requirement?.requirement_type || '');
-  if (rl && rl.toLowerCase() !== 'requirement') return `Coordinate inspection & upload evidence — ${rl}`;
-  return 'Coordinate inspection & upload compliance evidence';
+  if (rl && rl.toLowerCase() !== 'requirement') return `Record external assessment evidence — ${rl}`;
+  return 'Record external assessment evidence';
 }
 
 /**
@@ -122,6 +128,17 @@ function primaryIntentFromTakeActionPrimary(primary) {
 }
 
 export function resolveRequirementAction(requirement, _property = {}) {
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    requirement &&
+    typeof requirement === 'object' &&
+    !requirement.take_action
+  ) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[requirementTakeActionResolver] requirement missing server take_action envelope — using client fallback (prefer API enrichment).',
+    );
+  }
   if (!requirement || typeof requirement !== 'object') {
     return {
       actionType: REQUIREMENT_ACTION_TYPES.DOCUMENT,
@@ -278,7 +295,7 @@ export function resolveRequirementAction(requirement, _property = {}) {
         ? `/documents?property_id=${encodeURIComponent(String(pid))}`
         : '/documents';
   let docLabel = 'Upload document';
-  if (code.includes('legionella')) docLabel = 'Upload legionella risk assessment';
+  if (code.includes('legionella')) docLabel = 'Upload completed legionella risk assessment';
   else if (code.includes('gas') || ['cp12', 'gas_safety', 'gas_safety_certificate'].includes(code)) {
     docLabel = 'Upload valid gas safety certificate';
   } else if (code.includes('eicr') || code === 'electrical_safety') docLabel = 'Upload valid EICR certificate';

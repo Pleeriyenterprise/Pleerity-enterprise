@@ -347,8 +347,10 @@ def resolve_published_entry_for_requirement(
         plan_types_for_draft_canonical,
     )
     from services.compliance_registry_conditions import property_matches_registry_conditions
+    from services.requirement_code_registry import normalize_requirement_code
 
-    rt = (requirement_type or "").strip().lower()
+    raw_rt = (requirement_type or "").strip()
+    rt = (normalize_requirement_code(raw_rt) or raw_rt).strip().lower()
     best: Optional[Tuple[int, Dict[str, Any]]] = None
     for entry in published_registry_entries.values():
         if not isinstance(entry, dict):

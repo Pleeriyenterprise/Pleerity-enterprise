@@ -213,6 +213,31 @@ const FEATURE_MATRIX = {
   },
 };
 
+/**
+ * Static FEATURE_MATRIX is a marketing tier comparison only.
+ * For the signed-in client's current plan, feature on/off state comes from GET /client/entitlements when loaded.
+ */
+function isFeatureEnabledForBillingComparison(planCode, featureKey, currentPlan, entitlements) {
+  if (
+    planCode === currentPlan &&
+    entitlements?.features &&
+    Object.prototype.hasOwnProperty.call(entitlements.features, featureKey)
+  ) {
+    return Boolean(entitlements.features[featureKey].enabled);
+  }
+  const row = FEATURE_MATRIX[planCode];
+  return row ? Boolean(row[featureKey]) : false;
+}
+
+function featureCountForPlanBanner(planCode, currentPlan, entitlements) {
+  if (planCode === currentPlan && typeof entitlements?.feature_summary?.enabled === 'number') {
+    return entitlements.feature_summary.enabled;
+  }
+  const row = FEATURE_MATRIX[planCode];
+  if (!row) return 0;
+  return Object.values(row).filter(Boolean).length;
+}
+
 /** Stripe epoch or missing dates must not surface as 1970 in the UI */
 const MIN_VALID_RENEWAL_MS = 946684800000;
 
@@ -591,10 +616,6 @@ const BillingPage = () => {
     return 'downgrade';
   };
 
-  const getFeatureCount = (planCode) => {
-    const features = FEATURE_MATRIX[planCode];
-    return Object.values(features).filter(Boolean).length;
-  };
 
   if (loading) {
     return (
@@ -1127,7 +1148,8 @@ const BillingPage = () => {
                   {displayPlans.find((p) => p.code === currentPlan)?.name || currentPlan}
                 </h2>
                 <p className="text-sm text-gray-300 mt-1">
-                  {entitlements?.max_properties} properties • {getFeatureCount(currentPlan)} features enabled
+                  {entitlements?.max_properties} properties •{' '}
+                  {featureCountForPlanBanner(currentPlan, currentPlan, entitlements)} features enabled (your account)
                 </p>
               </div>
               <div className="text-right">
@@ -1217,7 +1239,10 @@ const BillingPage = () => {
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Check className="w-4 h-4 text-green-500" />
-                      <span><strong>{getFeatureCount(plan.code)}</strong> features</span>
+                      <span>
+                        <strong>{featureCountForPlanBanner(plan.code, currentPlan, entitlements)}</strong> features
+                        {plan.code === currentPlan ? ' (your account)' : ' (typical tier)'}
+                      </span>
                     </div>
                     {plan.code !== 'PLAN_1_SOLO' && (
                       <div className="flex items-center gap-2 text-sm">
@@ -1276,7 +1301,10 @@ const BillingPage = () => {
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden" data-testid="feature-matrix">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-midnight-blue">Feature Comparison</h2>
-            <p className="text-sm text-gray-500 mt-1">Compare all features across plans</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Compare typical tier inclusions across plans. For <strong>your current plan</strong> column, checkmarks reflect{' '}
+              <strong>your live account</strong> from the server (lifecycle and add-ons may differ from the static matrix).
+            </p>
           </div>
           
           {/* Header Row */}
@@ -1317,7 +1345,9 @@ const BillingPage = () => {
                     )}
                   </div>
                   {displayPlans.map((plan) => {
-                    const enabledCount = category.features.filter(f => FEATURE_MATRIX[plan.code][f.key]).length;
+                    const enabledCount = category.features.filter((f) =>
+                      isFeatureEnabledForBillingComparison(plan.code, f.key, currentPlan, entitlements)
+                    ).length;
                     return (
                       <div key={plan.code} className="text-center text-sm text-gray-500">
                         {enabledCount}/{category.features.length}
@@ -1342,7 +1372,12 @@ const BillingPage = () => {
                           <p className="text-xs text-gray-500">{feature.description}</p>
                         </div>
                         {displayPlans.map((plan) => {
-                          const isEnabled = FEATURE_MATRIX[plan.code][feature.key];
+                          const isEnabled = isFeatureEnabledForBillingComparison(
+                            plan.code,
+                            feature.key,
+                            currentPlan,
+                            entitlements
+                          );
                           return (
                             <div key={plan.code} className="flex items-center justify-center">
                               {isEnabled ? (

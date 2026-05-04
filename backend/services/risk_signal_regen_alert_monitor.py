@@ -14,6 +14,7 @@ from models import AuditAction
 from utils.audit import create_audit_log
 
 from services.incident_service import (
+    STATUS_OPEN,
     create_incident,
     SOURCE_RISK_REGEN_QUEUE,
     SEVERITY_P2,
@@ -54,10 +55,22 @@ async def run_risk_signal_regen_alert_monitor() -> Dict[str, Any]:
 
     db = database.get_db()
     existing = await db.incidents.find_one(
-        {"status": "open", "source": SOURCE_RISK_REGEN_QUEUE},
+        {"status": STATUS_OPEN, "source": SOURCE_RISK_REGEN_QUEUE},
         {"_id": 1},
     )
     if existing:
+        now = datetime.now(timezone.utc)
+        await db.incidents.update_one(
+            {"_id": existing["_id"], "status": STATUS_OPEN},
+            {
+                "$set": {
+                    "updated_at": now.isoformat(),
+                    "metadata.counts_by_status": counts,
+                    "metadata.last_regen_summary_at": now.isoformat(),
+                },
+                "$inc": {"metadata.regen_alert_monitor_ticks": 1},
+            },
+        )
         return {
             "attention_required": True,
             "counts_by_status": counts,

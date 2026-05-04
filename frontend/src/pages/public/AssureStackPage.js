@@ -31,8 +31,8 @@ const AssureStackPage = () => {
           </p>
           
           <p className="text-lg text-gray-500 max-w-2xl mx-auto mb-8">
-            Advanced 24/7 compliance monitoring and intelligent alerting system. 
-            Stay ahead of requirements with real-time tracking and proactive notifications.
+            Planned advanced compliance monitoring and intelligent alerting (not available yet — roadmap only).
+            Explore Compliance Vault Pro for structured compliance tracking today.
           </p>
 
           {/* Key Features Preview */}
@@ -45,12 +45,12 @@ const AssureStackPage = () => {
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <Bell className="w-8 h-8 text-electric-teal mx-auto mb-3" />
               <h3 className="font-semibold text-midnight-blue mb-2">Smart Alerts</h3>
-              <p className="text-sm text-gray-600">Intelligent notifications before issues arise</p>
+              <p className="text-sm text-gray-600">Planned: proactive notifications before issues arise</p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <Eye className="w-8 h-8 text-electric-teal mx-auto mb-3" />
-              <h3 className="font-semibold text-midnight-blue mb-2">Real-time Insights</h3>
-              <p className="text-sm text-gray-600">Live compliance dashboard and reporting</p>
+              <h3 className="font-semibold text-midnight-blue mb-2">Insights (planned)</h3>
+              <p className="text-sm text-gray-600">Dashboard-style reporting — subject to product design before launch</p>
             </div>
           </div>
 

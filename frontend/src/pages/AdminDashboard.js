@@ -77,7 +77,8 @@ import {
   Sparkles,
   CreditCard,
   Copy,
-  Upload
+  Upload,
+  Info
 } from 'lucide-react';
 
 /** Normalize API error detail (string or FastAPI validation array) for toast messages. */
@@ -3690,6 +3691,22 @@ const RulesManagement = () => {
 };
 
 // Email Templates Management Component
+const emailRuntimeBadgeClass = (source) => {
+  if (source === 'db_template') return 'bg-emerald-100 text-emerald-900';
+  if (source === 'code_built') return 'bg-slate-200 text-slate-800';
+  if (source === 'hybrid') return 'bg-amber-100 text-amber-900';
+  if (source === 'fallback_only') return 'bg-violet-100 text-violet-900';
+  return 'bg-gray-100 text-gray-700';
+};
+
+const emailRiskBadgeClass = (level) => {
+  if (level === 'low') return 'bg-sky-100 text-sky-900';
+  if (level === 'medium') return 'bg-amber-50 text-amber-900';
+  if (level === 'high') return 'bg-orange-100 text-orange-900';
+  if (level === 'immutable') return 'bg-red-100 text-red-900';
+  return 'bg-gray-100 text-gray-700';
+};
+
 const EmailTemplates = () => {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3697,6 +3714,7 @@ const EmailTemplates = () => {
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [previewHtml, setPreviewHtml] = useState(null);
+  const [detailTemplate, setDetailTemplate] = useState(null);
   const [formData, setFormData] = useState({
     alias: '',
     name: '',
@@ -3704,7 +3722,8 @@ const EmailTemplates = () => {
     html_body: '',
     text_body: '',
     available_variables: [],
-    notes: ''
+    notes: '',
+    is_active: true
   });
 
   useEffect(() => {
@@ -3748,7 +3767,8 @@ const EmailTemplates = () => {
     try {
       const payload = {
         ...formData,
-        available_variables: formData.available_variables.filter(v => v.trim())
+        available_variables: formData.available_variables.filter(v => v.trim()),
+        is_active: formData.is_active
       };
       
       if (editingTemplate) {
@@ -3775,7 +3795,8 @@ const EmailTemplates = () => {
       html_body: template.html_body,
       text_body: template.text_body,
       available_variables: template.available_variables || [],
-      notes: template.notes || ''
+      notes: template.notes || '',
+      is_active: template.is_active !== false
     });
     setEditingTemplate(template);
     setShowCreateForm(true);
@@ -3809,7 +3830,8 @@ const EmailTemplates = () => {
       html_body: '',
       text_body: '',
       available_variables: [],
-      notes: ''
+      notes: '',
+      is_active: true
     });
   };
 
@@ -3817,6 +3839,11 @@ const EmailTemplates = () => {
     const found = aliases.find(a => a.value === alias);
     return found ? found.label : alias;
   };
+
+  const contentLocked =
+    editingTemplate &&
+    editingTemplate.runtime_metadata &&
+    editingTemplate.runtime_metadata.admin_editable === false;
 
   if (loading) {
     return (
@@ -3858,11 +3885,73 @@ const EmailTemplates = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
+            {previewHtml.preview_disclaimer && (
+              <div className="px-4 pt-3">
+                <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  {previewHtml.preview_disclaimer}
+                </p>
+              </div>
+            )}
             <div className="p-4 bg-gray-100">
               <p className="text-sm text-gray-600 mb-2"><strong>Subject:</strong> {previewHtml.subject}</p>
             </div>
             <div className="p-4 overflow-y-auto max-h-[60vh]">
               <div dangerouslySetInnerHTML={{ __html: previewHtml.html_body }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Runtime detail modal */}
+      {detailTemplate && detailTemplate.runtime_metadata && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
+              <h3 className="text-lg font-semibold text-midnight-blue">Template runtime details</h3>
+              <button type="button" onClick={() => setDetailTemplate(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-3 text-sm text-gray-800">
+              {(() => {
+                const m = detailTemplate.runtime_metadata;
+                return (
+                  <>
+                    <p><span className="font-medium text-gray-600">Alias</span> {detailTemplate.alias}</p>
+                    <p><span className="font-medium text-gray-600">template_id</span> {detailTemplate.template_id}</p>
+                    <p><span className="font-medium text-gray-600">Runtime sender / pipeline</span> {m.runtime_sender_service}</p>
+                    <p><span className="font-medium text-gray-600">Runtime source</span> {m.runtime_source}</p>
+                    <p><span className="font-medium text-gray-600">Admin editable (body/subject)</span> {String(m.admin_editable)}</p>
+                    <p><span className="font-medium text-gray-600">Edit risk</span> {m.edit_risk_level}</p>
+                    <p><span className="font-medium text-gray-600">Legal / financial flow</span> {String(m.legal_or_financial_flow)}</p>
+                    <p><span className="font-medium text-gray-600">Uses template versioning</span> {String(m.uses_template_versioning)}</p>
+                    <p><span className="font-medium text-gray-600">Stores rendered snapshot</span> {String(m.stores_rendered_snapshot)}</p>
+                    <p><span className="font-medium text-gray-600">Changes affect</span> {m.changes_affect_future_sends_only ? 'Future sends only' : 'See notes'}</p>
+                    <p className="text-gray-700"><span className="font-medium text-gray-600">Past sends</span> {m.past_sent_emails_note}</p>
+                    <p className="text-gray-700"><span className="font-medium text-gray-600">Delivery log coverage</span> {m.delivery_log_coverage}</p>
+                    <p className="text-gray-700"><span className="font-medium text-gray-600">Attachment policy</span> {m.attachment_policy}</p>
+                    <p className="text-gray-700"><span className="font-medium text-gray-600">Placeholders</span> {m.placeholders_hint}</p>
+                    <p className="text-gray-700"><span className="font-medium text-gray-600">Runtime notes</span> {m.runtime_notes}</p>
+                    <p className="text-gray-700"><span className="font-medium text-gray-600">Recommended action</span> {m.recommended_admin_action}</p>
+                    <div>
+                      <span className="font-medium text-gray-600">notification template_keys</span>
+                      <ul className="list-disc pl-5 mt-1 font-mono text-xs break-all">
+                        {(m.template_keys || []).length ? (m.template_keys || []).map((k) => (
+                          <li key={k}>{k}</li>
+                        )) : <li className="text-gray-500">None in default seed map for this alias</li>}
+                      </ul>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-600">Tests (if referenced)</span>
+                      <ul className="list-disc pl-5 mt-1 text-xs">
+                        {(m.tests_covering || []).length ? (m.tests_covering || []).map((t) => (
+                          <li key={t}>{t}</li>
+                        )) : <li className="text-gray-500">No dedicated test pointers in metadata</li>}
+                      </ul>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -3882,6 +3971,12 @@ const EmailTemplates = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {contentLocked && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-950 text-sm p-3">
+                  Body and subject editing are disabled for this alias: production uses a code-built or hybrid path
+                  (see runtime badges on the card). You can still update notes and active status.
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Template Type</label>
@@ -3894,7 +3989,16 @@ const EmailTemplates = () => {
                   >
                     <option value="">Select type...</option>
                     {aliases.map(a => (
-                      <option key={a.value} value={a.value}>{a.label}</option>
+                      <option
+                        key={a.value}
+                        value={a.value}
+                        disabled={!editingTemplate && a.runtime_metadata && a.runtime_metadata.admin_editable === false}
+                      >
+                        {a.label}
+                        {!editingTemplate && a.runtime_metadata && a.runtime_metadata.admin_editable === false
+                          ? ' (locked alias)'
+                          : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -3904,12 +4008,24 @@ const EmailTemplates = () => {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                    disabled={contentLocked}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal disabled:bg-gray-100"
                     placeholder="e.g., Password Setup Email"
                     required
                   />
                 </div>
               </div>
+
+              {editingTemplate && (
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  />
+                  Active (template row participates when is_active and not superseded by code path)
+                </label>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Subject Line</label>
@@ -3917,7 +4033,8 @@ const EmailTemplates = () => {
                   type="text"
                   value={formData.subject}
                   onChange={(e) => setFormData({...formData, subject: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                  disabled={contentLocked}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal disabled:bg-gray-100"
                   placeholder="e.g., Set Your Password - Compliance Vault Pro"
                   required
                 />
@@ -3929,7 +4046,8 @@ const EmailTemplates = () => {
                 <textarea
                   value={formData.html_body}
                   onChange={(e) => setFormData({...formData, html_body: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal font-mono text-sm"
+                  disabled={contentLocked}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal font-mono text-sm disabled:bg-gray-100"
                   rows={10}
                   required
                 />
@@ -3940,7 +4058,8 @@ const EmailTemplates = () => {
                 <textarea
                   value={formData.text_body}
                   onChange={(e) => setFormData({...formData, text_body: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal font-mono text-sm"
+                  disabled={contentLocked}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal font-mono text-sm disabled:bg-gray-100"
                   rows={6}
                   required
                 />
@@ -3952,8 +4071,20 @@ const EmailTemplates = () => {
                   type="text"
                   value={formData.available_variables.join(', ')}
                   onChange={(e) => setFormData({...formData, available_variables: e.target.value.split(',').map(v => v.trim())})}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                  disabled={contentLocked}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal disabled:bg-gray-100"
                   placeholder="e.g., client_name, setup_link, company_name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Internal notes (admin only)</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal text-sm"
+                  rows={2}
+                  placeholder="Context for other admins — not sent to recipients"
                 />
               </div>
 
@@ -3980,11 +4111,41 @@ const EmailTemplates = () => {
 
       {/* Templates Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {(templates ?? []).map((template) => (
+        {(templates ?? []).map((template) => {
+          const rm = template.runtime_metadata;
+          return (
           <div 
             key={template.template_id} 
             className={`bg-white rounded-xl border border-gray-200 p-6 ${!template.is_active ? 'opacity-50' : ''}`}
           >
+            {rm && rm.db_visible_at_runtime === false && (
+              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-2 mb-3">
+                This row is visible in admin but is not used for body/subject at runtime for this alias (code-built path).
+              </p>
+            )}
+            {rm && rm.runtime_source === 'hybrid' && rm.db_visible_at_runtime && (
+              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-2 mb-3">
+                Hybrid alias: some sends bypass this database template. Open details for when the DB row applies.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {rm && (
+                <>
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${emailRuntimeBadgeClass(rm.runtime_source)}`}>
+                    {rm.runtime_source?.replace(/_/g, ' ')}
+                  </span>
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${emailRiskBadgeClass(rm.edit_risk_level)}`}>
+                    risk: {rm.edit_risk_level}
+                  </span>
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${rm.admin_editable ? 'bg-emerald-50 text-emerald-900' : 'bg-slate-200 text-slate-800'}`}>
+                    {rm.admin_editable ? 'body editable' : 'body locked'}
+                  </span>
+                  {rm.legal_or_financial_flow && (
+                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-50 text-orange-900">legal / financial</span>
+                  )}
+                </>
+              )}
+            </div>
             <div className="flex items-start justify-between mb-4">
               <div>
                 <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 mb-2 inline-block">
@@ -3993,6 +4154,14 @@ const EmailTemplates = () => {
                 <h3 className="text-lg font-semibold text-midnight-blue">{template.name}</h3>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDetailTemplate(template)}
+                  className="text-gray-400 hover:text-electric-teal"
+                  title="Runtime details"
+                >
+                  <Info className="w-4 h-4" />
+                </button>
                 <button
                   onClick={() => handlePreview(template.template_id)}
                   className="text-gray-400 hover:text-electric-teal"
@@ -4003,7 +4172,7 @@ const EmailTemplates = () => {
                 <button
                   onClick={() => handleEdit(template)}
                   className="text-electric-teal hover:text-teal-700"
-                  title="Edit"
+                  title={rm && rm.admin_editable === false ? 'Edit notes / active only (body locked)' : 'Edit'}
                 >
                   <Edit className="w-4 h-4" />
                 </button>
@@ -4037,7 +4206,8 @@ const EmailTemplates = () => {
               <p className="text-xs text-red-500 mt-3">Inactive</p>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {templates.length === 0 && (

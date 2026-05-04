@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from services.applicability_effective_resolver import resolve_applicability_read_model
+from services.requirement_code_registry import normalize_requirement_code as registry_normalize_requirement_code
 from services.applicability_provenance_constants import PIPELINE
 from services.applicability_state_parse import APPLICABILITY_VALUES, normalize_applicability_state
 
@@ -13,12 +14,22 @@ POLICY_CRITICALITY_VALUES = frozenset({"LOW", "MEDIUM", "HIGH", "CRITICAL"})
 
 
 def normalize_requirement_code(requirement_row: Dict[str, Any]) -> str:
+    """
+    Prefer registry canonical snake_case when ``requirement_code_registry`` recognises the slug.
+    Alias-normalisation only — does not imply workflow/scoring semantics beyond stable grouping keys.
+    """
     code = (
         requirement_row.get("requirement_code")
         or requirement_row.get("code")
         or requirement_row.get("requirement_type")
         or ""
     )
+    raw = str(code).strip()
+    if not raw:
+        return ""
+    canon = registry_normalize_requirement_code(raw)
+    if canon:
+        return canon
     return str(code).strip().lower()
 
 

@@ -34,16 +34,9 @@ const PLATFORMS = [
     primary: true,
   },
   {
-    id: 'clearform',
-    name: 'ClearForm',
-    description: 'AI-powered structured document generation.',
-    comingSoon: true,
-    primary: false,
-  },
-  {
     id: 'assurestack',
     name: 'AssureStack',
-    description: 'Continuous monitoring and risk oversight.',
+    description: 'Planned continuous monitoring and risk oversight — not available yet.',
     comingSoon: true,
     primary: false,
   },
@@ -168,7 +161,7 @@ const ServicesHubPageCMS = () => {
               </Card>
             ))}
 
-            {/* Secondary: ClearForm & AssureStack — single column of smaller cards */}
+            {/* Secondary: planned platforms — single column of smaller cards */}
             <div className="flex flex-col gap-6">
               {PLATFORMS.filter((p) => !p.primary).map((platform) => (
                 <Card

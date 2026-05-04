@@ -6,15 +6,34 @@ Phase-1 evidence modes only; no workflow engine. Policy is driven by published r
 """
 from __future__ import annotations
 
+from collections import defaultdict
 import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from services.requirement_code_registry import normalize_requirement_code
+
 logger = logging.getLogger(__name__)
 
 EVIDENCE_MODE_DOCUMENT_UPLOAD = "DOCUMENT_UPLOAD"
 EVIDENCE_MODE_STRUCTURED_DECLARATION = "STRUCTURED_DECLARATION"
+
+# Landlord registration–style obligations: structured registration details + optional supporting document.
+REGISTRATION_TRACKING_WORKFLOW = "REGISTRATION_TRACKING"
+REGISTRATION_TRACKING_REQUIREMENT_CODES = frozenset(
+    {
+        "landlord_registration",
+        "scotland_landlord_registration",
+        "landlord_registration_ni",
+        "rent_smart_wales",
+    }
+)
+
+# England & Wales How to Rent — structured delivery record + supporting proof (Phase 1).
+TENANT_DELIVERY_WORKFLOW = "TENANT_DELIVERY"
+# England Right to Rent — structured check record + supporting documents (Phase 1).
+GUIDED_DECLARATION_WORKFLOW = "GUIDED_DECLARATION"
 EVIDENCE_MODE_CONTRACTOR_CONFIRMATION = "CONTRACTOR_CONFIRMATION"
 EVIDENCE_MODE_INSPECTION_CHECKLIST = "INSPECTION_CHECKLIST"
 
@@ -42,6 +61,103 @@ DEFAULT_ALLOWED_SUPPORTING_UPLOAD_TYPES = [
     "image/webp",
 ]
 
+# How to Rent — structured delivery fields (England & Wales leaflet duty; planner applicability governs exposure).
+_HOW_TO_RENT_DELIVERY_SCHEMA: List[Dict[str, Any]] = [
+    {"id": "tenancy_start_date", "label": "Tenancy start date", "answer_type": "DATE", "required": True},
+    {
+        "id": "guide_version_or_publication_date",
+        "label": "Guide version or publication (date, edition, or description if date unknown)",
+        "answer_type": "TEXT",
+        "required": True,
+    },
+    {"id": "delivery_date", "label": "Delivery date", "answer_type": "DATE", "required": True},
+    {
+        "id": "delivery_method",
+        "label": "Delivery method",
+        "answer_type": "SELECT",
+        "required": True,
+        "choices": [
+            {"value": "email", "label": "Email"},
+            {"value": "hand_delivery", "label": "Hand delivery"},
+            {"value": "post", "label": "Post"},
+            {"value": "tenant_portal", "label": "Tenant portal"},
+            {"value": "other", "label": "Other"},
+        ],
+    },
+    {
+        "id": "tenant_recipient",
+        "label": "Tenant / recipient (name or description)",
+        "answer_type": "TEXT",
+        "required": True,
+    },
+    {
+        "id": "proof_of_delivery",
+        "label": "Proof of delivery — reference or notes (optional; attach a file using Upload delivery proof)",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "declaration_confirmed",
+        "label": "I confirm this delivery information is accurate to the best of my knowledge",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+]
+
+# Right to Rent (England) — structured check record; `right_to_rent_checks` resolves via the same defaults.
+_RIGHT_TO_RENT_CHECK_SCHEMA: List[Dict[str, Any]] = [
+    {"id": "tenant_name", "label": "Tenant / occupier checked (name)", "answer_type": "TEXT", "required": True},
+    {"id": "check_date", "label": "Check date", "answer_type": "DATE", "required": True},
+    {
+        "id": "document_type",
+        "label": "Document type used for the check",
+        "answer_type": "SELECT",
+        "required": True,
+        "choices": [
+            {"value": "passport", "label": "Passport"},
+            {"value": "biometric_residence_permit", "label": "Biometric residence permit"},
+            {"value": "online_check_share_code", "label": "Home Office online check (share code)"},
+            {"value": "driving_licence", "label": "Driving licence (where acceptable)"},
+            {"value": "other", "label": "Other (describe in notes if needed)"},
+        ],
+    },
+    {
+        "id": "document_reference",
+        "label": "Document reference (optional — e.g. share code, redacted ID reference)",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "right_to_rent_status",
+        "label": "Right to Rent outcome recorded",
+        "answer_type": "SELECT",
+        "required": True,
+        "choices": [
+            {"value": "unlimited", "label": "Unlimited right to rent"},
+            {"value": "time_limited", "label": "Time-limited right to rent"},
+            {"value": "not_verified", "label": "Not verified / no acceptable proof on file"},
+        ],
+    },
+    {
+        "id": "follow_up_required",
+        "label": "Follow-up required (e.g. before permission ends)",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+    {
+        "id": "follow_up_date",
+        "label": "Follow-up date (if applicable)",
+        "answer_type": "DATE",
+        "required": False,
+    },
+    {
+        "id": "declaration_confirmed",
+        "label": "I confirm this check record is accurate to the best of my knowledge",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+]
+
 # Product defaults until registry publishes explicit evidence_resolution (policy data, not UI).
 DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE: Dict[str, Dict[str, Any]] = {
     "smoke_heat_alarms": {
@@ -52,6 +168,7 @@ DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE: Dict[str, Dict[str, Any]] = {
             EVIDENCE_MODE_INSPECTION_CHECKLIST,
         ],
         "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+        "guided_primary_cta_label": "Add compliance evidence",
         "allow_medium_non_document_satisfaction": True,
         "allow_low_non_document_satisfaction": False,
     },
@@ -60,9 +177,19 @@ DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE: Dict[str, Dict[str, Any]] = {
             EVIDENCE_MODE_STRUCTURED_DECLARATION,
             EVIDENCE_MODE_DOCUMENT_UPLOAD,
         ],
-        "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+        "primary_resolution_workflow": GUIDED_DECLARATION_WORKFLOW,
+        "guided_primary_cta_label": "Record Right to Rent check",
+        "modal_title": "Record Right to Rent check",
         "allow_medium_non_document_satisfaction": True,
         "allow_low_non_document_satisfaction": False,
+        "supporting_upload_recommended": True,
+        "client_evidence_disclosure": (
+            "This records your Right to Rent check details for review on the platform. "
+            "It is not Home Office verification and does not replace legal advice or statutory processes."
+        ),
+        "checklist_schema_by_mode": {
+            EVIDENCE_MODE_STRUCTURED_DECLARATION: list(_RIGHT_TO_RENT_CHECK_SCHEMA),
+        },
     },
     "hmo_fire_risk": {
         "allowed_evidence_modes": [
@@ -84,7 +211,102 @@ DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE: Dict[str, Dict[str, Any]] = {
         "allow_medium_non_document_satisfaction": True,
         "allow_low_non_document_satisfaction": False,
     },
+    "how_to_rent": {
+        "allowed_evidence_modes": [
+            EVIDENCE_MODE_STRUCTURED_DECLARATION,
+            EVIDENCE_MODE_DOCUMENT_UPLOAD,
+        ],
+        "primary_resolution_workflow": TENANT_DELIVERY_WORKFLOW,
+        "guided_primary_cta_label": "Record How to Rent delivery",
+        "modal_title": "Record How to Rent delivery",
+        "allow_medium_non_document_satisfaction": True,
+        "allow_low_non_document_satisfaction": False,
+        "supporting_upload_recommended": True,
+        "client_evidence_disclosure": (
+            "This records your How to Rent delivery details for review on the platform. "
+            "It does not verify service with government or a court, and does not replace legal advice."
+        ),
+        "checklist_schema_by_mode": {
+            EVIDENCE_MODE_STRUCTURED_DECLARATION: list(_HOW_TO_RENT_DELIVERY_SCHEMA),
+        },
+    },
+    "deposit_pi": {
+        "allowed_evidence_modes": [
+            EVIDENCE_MODE_DOCUMENT_UPLOAD,
+            EVIDENCE_MODE_STRUCTURED_DECLARATION,
+        ],
+        "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+        "guided_primary_cta_label": "Add compliance evidence",
+        "allow_medium_non_document_satisfaction": True,
+        "allow_low_non_document_satisfaction": False,
+    },
+    "deposit_prescribed_info": {
+        "allowed_evidence_modes": [
+            EVIDENCE_MODE_DOCUMENT_UPLOAD,
+            EVIDENCE_MODE_STRUCTURED_DECLARATION,
+        ],
+        "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+        "guided_primary_cta_label": "Add compliance evidence",
+        "allow_medium_non_document_satisfaction": True,
+        "allow_low_non_document_satisfaction": False,
+    },
 }
+
+# Registration tracking defaults (per slug copy — safe for independent published-registry overrides).
+_REG_TRACK_DECLARATION_SCHEMA: List[Dict[str, Any]] = [
+    {
+        "id": "registration_number",
+        "label": "Registration number",
+        "answer_type": "TEXT",
+        "required": True,
+    },
+    {
+        "id": "issuing_authority",
+        "label": "Issuing authority",
+        "answer_type": "TEXT",
+        "required": True,
+    },
+    {
+        "id": "issue_date",
+        "label": "Issue date",
+        "answer_type": "DATE",
+        "required": False,
+    },
+    {
+        "id": "expiry_date",
+        "label": "Expiry date (if applicable)",
+        "answer_type": "DATE",
+        "required": False,
+    },
+    {
+        "id": "registration_status",
+        "label": "Registration status (active / pending / expired / unknown)",
+        "answer_type": "TEXT",
+        "required": True,
+    },
+    {
+        "id": "declaration_confirmed",
+        "label": "I confirm these registration details are accurate",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+]
+
+for _reg_slug in REGISTRATION_TRACKING_REQUIREMENT_CODES:
+    DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE[_reg_slug] = {
+        "allowed_evidence_modes": [
+            EVIDENCE_MODE_STRUCTURED_DECLARATION,
+            EVIDENCE_MODE_DOCUMENT_UPLOAD,
+        ],
+        "primary_resolution_workflow": REGISTRATION_TRACKING_WORKFLOW,
+        "guided_primary_cta_label": "Record registration details",
+        "allow_medium_non_document_satisfaction": True,
+        "allow_low_non_document_satisfaction": False,
+        "supporting_upload_recommended": True,
+        "checklist_schema_by_mode": {
+            EVIDENCE_MODE_STRUCTURED_DECLARATION: list(_REG_TRACK_DECLARATION_SCHEMA),
+        },
+    }
 
 
 def _norm_modes_list(raw: Any) -> List[str]:
@@ -120,6 +342,12 @@ def normalize_evidence_resolution_dict(er: Dict[str, Any]) -> Dict[str, Any]:
     gpl = str(er.get("guided_primary_cta_label") or "").strip()
     if gpl:
         out["guided_primary_cta_label"] = gpl
+    mt = str(er.get("modal_title") or "").strip()
+    if mt:
+        out["modal_title"] = mt
+    ced = str(er.get("client_evidence_disclosure") or "").strip()
+    if ced:
+        out["client_evidence_disclosure"] = ced
     return out
 
 
@@ -203,19 +431,53 @@ def _norm_checklist_schema_by_mode(raw: Any) -> Dict[str, List[Dict[str, Any]]]:
             answer_type = str(r.get("answer_type") or "YES_NO").strip().upper()
             if not label:
                 continue
-            if answer_type not in {"YES_NO", "PASS_FAIL", "TEXT", "NUMERIC", "OBSERVATION"}:
+            if answer_type not in {"YES_NO", "PASS_FAIL", "TEXT", "NUMERIC", "OBSERVATION", "DATE", "SELECT"}:
                 answer_type = "YES_NO"
-            normal_rows.append(
-                {
-                    "id": qid,
-                    "label": label,
-                    "answer_type": answer_type,
-                    "required": bool(r.get("required")),
-                }
-            )
+            row_dict: Dict[str, Any] = {
+                "id": qid,
+                "label": label,
+                "answer_type": answer_type,
+                "required": bool(r.get("required")),
+            }
+            if answer_type == "SELECT":
+                choices_raw = r.get("choices") if isinstance(r.get("choices"), list) else []
+                norm_choices: List[Dict[str, str]] = []
+                for c in choices_raw:
+                    if not isinstance(c, dict):
+                        continue
+                    v = str(c.get("value") or "").strip()
+                    if not v:
+                        continue
+                    norm_choices.append(
+                        {"value": v, "label": str(c.get("label") or "").strip() or v},
+                    )
+                row_dict["choices"] = norm_choices
+            normal_rows.append(row_dict)
         if normal_rows:
             out[mode_tok] = normal_rows
     return out
+
+
+def _default_evidence_resolution_lookup_keys(requirement_type: str, requirement_code: str) -> List[str]:
+    """Try canonical storage slug first (alias normalization), then raw slug (read-time only)."""
+    keys: List[str] = []
+    seen: set[str] = set()
+    for raw in (requirement_type, requirement_code):
+        raw = str(raw or "").strip()
+        if not raw:
+            continue
+        n = normalize_requirement_code(raw)
+        candidates = []
+        if n:
+            candidates.append(n)
+        slug = raw.lower().replace(" ", "_")
+        if slug and slug not in candidates:
+            candidates.append(slug)
+        for k in candidates:
+            if k not in seen:
+                seen.add(k)
+                keys.append(k)
+    return keys
 
 
 def effective_evidence_resolution(requirement: Dict[str, Any]) -> Dict[str, Any]:
@@ -223,9 +485,11 @@ def effective_evidence_resolution(requirement: Dict[str, Any]) -> Dict[str, Any]
     er = meta.get("evidence_resolution")
     if isinstance(er, dict) and _norm_modes_list(er.get("allowed_evidence_modes")):
         return normalize_evidence_resolution_dict(er)
-    rt = str(requirement.get("requirement_type") or "").strip().lower()
-    if rt in DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE:
-        return normalize_evidence_resolution_dict(DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE[rt])
+    rt = str(requirement.get("requirement_type") or "").strip()
+    rc = str(requirement.get("requirement_code") or "").strip()
+    for key in _default_evidence_resolution_lookup_keys(rt, rc):
+        if key in DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE:
+            return normalize_evidence_resolution_dict(DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE[key])
     return normalize_evidence_resolution_dict(
         {
             "allowed_evidence_modes": [EVIDENCE_MODE_DOCUMENT_UPLOAD],
@@ -243,17 +507,19 @@ def checklist_schema_for_mode(requirement: Dict[str, Any], mode: str) -> Dict[st
     schema = by_mode.get(mode_tok) if isinstance(by_mode.get(mode_tok), list) else None
     if schema:
         return {"items": schema, "fallback_used": False}
+    rt_raw = str(requirement.get("requirement_type") or requirement.get("requirement_code") or "").strip().lower()
+    rt_eff = normalize_requirement_code(rt_raw) or rt_raw
     return {
-        "items": _default_checklist_schema_for_requirement(
-            str(requirement.get("requirement_type") or "").strip().lower(),
-            mode_tok,
-        ),
+        "items": _default_checklist_schema_for_requirement(rt_eff, mode_tok),
         "fallback_used": True,
     }
 
 
 def _default_checklist_schema_for_requirement(requirement_type: str, mode: str) -> List[Dict[str, Any]]:
-    if mode == EVIDENCE_MODE_INSPECTION_CHECKLIST and requirement_type == "smoke_heat_alarms":
+    if mode == EVIDENCE_MODE_INSPECTION_CHECKLIST and (
+        requirement_type == "smoke_heat_alarms"
+        or normalize_requirement_code(requirement_type) == "smoke_heat_alarms"
+    ):
         return [
             {"id": "alarm_present", "label": "Alarm present in required location", "answer_type": "PASS_FAIL", "required": True},
             {"id": "alarm_tested", "label": "Alarm tested and operating", "answer_type": "PASS_FAIL", "required": True},
@@ -393,6 +659,29 @@ async def ensure_compliance_evidence_indexes(db) -> None:
     await coll.create_index("evidence_record_id", unique=True)
     await coll.create_index([("client_id", 1), ("property_id", 1), ("requirement_id", 1)])
     await coll.create_index([("requirement_id", 1), ("archived", 1)])
+
+
+async def batch_list_evidence_records_for_requirements(
+    db,
+    *,
+    client_id: str,
+    requirement_ids: List[str],
+    include_archived: bool = False,
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Map requirement_id -> evidence rows (read-only; used for completeness hints)."""
+    if not requirement_ids:
+        return {}
+    q: Dict[str, Any] = {"client_id": client_id, "requirement_id": {"$in": list(set(requirement_ids))}}
+    if not include_archived:
+        q["archived"] = {"$ne": True}
+    cur = _evidence_coll(db).find(q, {"_id": 0}).sort("created_at", -1).limit(2000)
+    rows = await cur.to_list(2000)
+    out: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for doc in rows:
+        rid = doc.get("requirement_id")
+        if rid:
+            out[str(rid)].append(doc)
+    return dict(out)
 
 
 async def list_evidence_records_for_requirement(

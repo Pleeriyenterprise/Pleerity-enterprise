@@ -347,6 +347,14 @@ const RequirementsPage = () => {
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-semibold text-midnight-blue">{req.display_label || requirementLabel(req.requirement_type || req.requirement_code) || 'Requirement'}</h3>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusConfig.className}`}>{statusConfig.text}</span>
+                {req.evidence_completeness?.summary_label && req.evidence_completeness.summary_label !== 'Complete' ? (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-900 border border-amber-200"
+                    data-testid={`evidence-completeness-${req.requirement_id}`}
+                  >
+                    {req.evidence_completeness.summary_label}
+                  </span>
+                ) : null}
                 {req.evidence_badge_label && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200" data-testid={`evidence-badge-${req.requirement_id}`}>
                     Document: {req.evidence_badge_label}
@@ -437,7 +445,7 @@ const RequirementsPage = () => {
                   data-testid={
                     ta.primary_action_handler === 'guided_evidence'
                       ? `requirements-guided-open-${req.requirement_id}`
-                      : `fix-compliance-${req.requirement_id}`
+                      : `requirement-primary-cta-${req.requirement_id}`
                   }
                 >
                   {ta.primary_action_label}

@@ -5,6 +5,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from './ui/label';
 import { toast } from '../utils/portalNotifications';
 
+/** YYYY-MM-DD for native date input; tolerates other stored strings without coercing. */
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function dateInputValueFromStored(raw) {
+  if (raw == null || raw === '') return '';
+  const s = String(raw).trim();
+  return ISO_DATE_RE.test(s) ? s : '';
+}
+
 /**
  * Guided "Resolve requirement" flow: loads allowed evidence modes from registry policy,
  * then submits non-document evidence via POST /client/properties/.../compliance-evidence.
@@ -95,6 +104,15 @@ export default function ComplianceEvidenceResolveModal({
   const modes = (info?.allowed_evidence_modes || []).filter((m) => m && m !== 'DOCUMENT_UPLOAD');
   const cta = info?.primary_client_cta || 'Add compliance evidence';
   const modalTitle = String(info?.modal_title || 'Add compliance evidence').trim() || 'Add compliance evidence';
+  const clientEvidenceDisclosure = String(info?.client_evidence_disclosure || '').trim();
+  const isTenantDelivery =
+    String(info?.primary_resolution_workflow || '')
+      .trim()
+      .toUpperCase() === 'TENANT_DELIVERY';
+  const isGuidedDeclaration =
+    String(info?.primary_resolution_workflow || '')
+      .trim()
+      .toUpperCase() === 'GUIDED_DECLARATION';
   const selectedMethod = (info?.guided_methods || []).find((x) => x.evidence_mode === selectedMode) || null;
   const selectedChecklistSchema = Array.isArray(selectedMethod?.checklist_schema) ? selectedMethod.checklist_schema : [];
 
@@ -121,6 +139,12 @@ export default function ComplianceEvidenceResolveModal({
       if (answerType === 'NUMERIC' && answer !== '' && answer != null) {
         const n = Number(answer);
         answer = Number.isFinite(n) ? n : null;
+      }
+      if (answerType === 'DATE' && answer !== '' && answer != null) {
+        answer = String(answer).trim();
+      }
+      if (answerType === 'SELECT' && answer !== '' && answer != null) {
+        answer = String(answer).trim();
       }
       out[key] = {
         answer: answer ?? null,
@@ -213,11 +237,30 @@ export default function ComplianceEvidenceResolveModal({
         <DialogHeader>
           <DialogTitle>{modalTitle}</DialogTitle>
           <DialogDescription>
-            Choose how you want to evidence this obligation. Uploading a certificate stays on the Documents page (or
-            use “Upload document” on the requirement when offered). Other methods create a compliance evidence record
-            for review.
+            {isTenantDelivery ? (
+              <>
+                Use structured delivery details as the main record. The Documents page (or “Upload delivery proof”
+                on the requirement) is for optional supporting files only.
+              </>
+            ) : isGuidedDeclaration ? (
+              <>
+                Use the structured check record as the main evidence. The Documents page (or “Upload supporting
+                evidence” on the requirement) is for optional supporting files only.
+              </>
+            ) : (
+              <>
+                Choose how you want to evidence this obligation. Uploading a certificate stays on the Documents page
+                (or use “Upload document” on the requirement when offered). Other methods create a compliance
+                evidence record for review.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
+        {clientEvidenceDisclosure ? (
+          <p className="text-sm text-gray-600 -mt-1 mb-1" data-testid="client-evidence-disclosure">
+            {clientEvidenceDisclosure}
+          </p>
+        ) : null}
         {loading ? (
           <p className="text-sm text-gray-600">Loading allowed methods…</p>
         ) : modes.length === 0 ? (
@@ -302,9 +345,19 @@ export default function ComplianceEvidenceResolveModal({
               </div>
             ) : null}
             <div className="space-y-2 border-t pt-3">
-              <p className="text-sm font-medium text-midnight-blue">Supporting evidence uploads</p>
+              <p className="text-sm font-medium text-midnight-blue">
+                {isTenantDelivery
+                  ? 'Upload delivery proof (optional)'
+                  : isGuidedDeclaration
+                    ? 'Upload supporting evidence (optional)'
+                    : 'Supporting evidence uploads'}
+              </p>
               <p className="text-xs text-gray-600">
-                Supporting files improve verification confidence and are linked to this evidence record.
+                {isTenantDelivery
+                  ? 'Attach emails, scans, or references that support your delivery record. These are reviewed as supporting material.'
+                  : isGuidedDeclaration
+                    ? 'Attach copies or scans that support your check record. These are reviewed as supporting material only.'
+                    : 'Supporting files improve verification confidence and are linked to this evidence record.'}
               </p>
               <input
                 type="file"
@@ -345,7 +398,7 @@ export default function ComplianceEvidenceResolveModal({
   );
 }
 
-function ChecklistEditor({ schema, values, onChange }) {
+export function ChecklistEditor({ schema, values, onChange }) {
   if (!Array.isArray(schema) || schema.length === 0) {
     return <p className="text-xs text-gray-500">No checklist schema configured.</p>;
   }
@@ -355,12 +408,20 @@ function ChecklistEditor({ schema, values, onChange }) {
         const id = String(row?.id || '');
         const type = String(row?.answer_type || 'YES_NO').toUpperCase();
         const value = values?.[id] || {};
+        const legacyDateField =
+          type === 'TEXT' &&
+          (id === 'issue_date' || id === 'expiry_date');
+        const isoForPicker = dateInputValueFromStored(value.answer);
+        const isDateRow = type === 'DATE' || legacyDateField;
+        const hasNonIsoDateAnswer =
+          isDateRow && value.answer != null && String(value.answer).trim() !== '' && !isoForPicker;
         return (
           <div key={id} className="space-y-1">
             <Label>{row.label}</Label>
             {(type === 'YES_NO' || type === 'PASS_FAIL') ? (
               <select
                 className="w-full border rounded-md p-2 text-sm"
+                data-testid={`checklist-field-${id}`}
                 value={value.answer ?? ''}
                 onChange={(e) => onChange(id, { answer: e.target.value })}
               >
@@ -369,9 +430,46 @@ function ChecklistEditor({ schema, values, onChange }) {
                 <option value={type === 'YES_NO' ? 'NO' : 'FAIL'}>{type === 'YES_NO' ? 'No' : 'Fail'}</option>
               </select>
             ) : null}
-            {type === 'TEXT' || type === 'OBSERVATION' ? (
+            {isDateRow && hasNonIsoDateAnswer ? (
               <textarea
                 className="w-full border rounded-md p-2 text-sm min-h-[60px]"
+                data-testid={`checklist-field-${id}`}
+                value={value.answer ?? ''}
+                onChange={(e) => onChange(id, { answer: e.target.value })}
+              />
+            ) : null}
+            {isDateRow && !hasNonIsoDateAnswer ? (
+              <input
+                type="date"
+                className="w-full border rounded-md p-2 text-sm"
+                data-testid={`checklist-field-${id}`}
+                value={isoForPicker}
+                onChange={(e) => onChange(id, { answer: e.target.value })}
+              />
+            ) : null}
+            {type === 'SELECT' && Array.isArray(row?.choices) && row.choices.length > 0 ? (
+              <select
+                className="w-full border rounded-md p-2 text-sm"
+                data-testid={`checklist-field-${id}`}
+                value={value.answer ?? ''}
+                onChange={(e) => onChange(id, { answer: e.target.value })}
+              >
+                <option value="">Select</option>
+                {row.choices.map((c) => {
+                  const v = String(c?.value ?? '').trim();
+                  const lab = String(c?.label ?? '').trim() || v;
+                  return (
+                    <option key={v} value={v}>
+                      {lab}
+                    </option>
+                  );
+                })}
+              </select>
+            ) : null}
+            {(type === 'TEXT' || type === 'OBSERVATION') && !legacyDateField ? (
+              <textarea
+                className="w-full border rounded-md p-2 text-sm min-h-[60px]"
+                data-testid={`checklist-field-${id}`}
                 value={value.answer ?? ''}
                 onChange={(e) => onChange(id, { answer: e.target.value })}
               />
@@ -380,6 +478,7 @@ function ChecklistEditor({ schema, values, onChange }) {
               <input
                 type="number"
                 className="w-full border rounded-md p-2 text-sm"
+                data-testid={`checklist-field-${id}`}
                 value={value.answer ?? ''}
                 onChange={(e) => onChange(id, { answer: e.target.value })}
               />

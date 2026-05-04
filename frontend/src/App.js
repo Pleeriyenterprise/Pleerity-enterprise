@@ -17,8 +17,7 @@ if (process.env.REACT_APP_BUILD_SHA) {
   console.log('[CVP] Build SHA:', process.env.REACT_APP_BUILD_SHA);
 }
 
-// ClearForm - Separate Product
-import ClearFormApp from './clearform/ClearFormApp';
+// ClearForm SPA is retained in-repo for internal/admin reuse only; public `/clearform/*` redirects (not in active use).
 
 // Public Website Pages (NEW)
 import {
@@ -282,7 +281,7 @@ function App() {
                   CLEARFORM - SEPARATE PRODUCT
                   Completely isolated from Pleerity
                   ======================================== */}
-              <Route path="/clearform/*" element={<ClearFormApp />} />
+              <Route path="/clearform/*" element={<Navigate to="/compliance-vault-pro" replace />} />
 
               {/* ========================================
                   PUBLIC WEBSITE ROUTES (NEW)

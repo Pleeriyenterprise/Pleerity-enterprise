@@ -43,7 +43,6 @@ import {
   Merge,
   Bot,
   FileText,
-  Upload,
 } from 'lucide-react';
 
 // Intent score colors
@@ -416,13 +415,6 @@ export default function AdminLeadsPage() {
           <Button variant="outline" onClick={fetchLeads}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => toast.info('CSV Import coming soon')}
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Import CSV
           </Button>
           <Button
             onClick={() => setCreateDialogOpen(true)}

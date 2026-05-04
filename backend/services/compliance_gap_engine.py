@@ -652,6 +652,9 @@ def gaps_to_priority_actions(gaps: List[ComplianceGap], requirement: Dict[str, A
             row["recommended_client_authority"] = "canonical_take_action"
         if requirement.get("action_type"):
             row["canonical_requirement_action_type"] = requirement.get("action_type")
+        ec_req = requirement.get("evidence_completeness")
+        if isinstance(ec_req, dict) and ec_req:
+            row["evidence_completeness"] = ec_req
         rm_req = requirement.get("registry_metadata")
         if isinstance(rm_req, dict) and rm_req:
             row["registry_metadata"] = rm_req

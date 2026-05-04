@@ -214,6 +214,133 @@ async def test_fallback_checklist_schema_is_flagged():
 
 
 @pytest.mark.asyncio
+async def test_how_to_rent_evidence_resolution_tenant_delivery_modal_and_schema():
+    db = MagicMock()
+    db.requirements.find_one = AsyncMock(
+        return_value={
+            "requirement_id": "r1",
+            "property_id": "p1",
+            "client_id": "c1",
+            "requirement_type": "how_to_rent",
+            "requirement_code": "how_to_rent",
+        }
+    )
+    with patch.object(route.database, "get_db", return_value=db):
+        out = await route.get_evidence_resolution(
+            property_id="p1",
+            requirement_id="r1",
+            request=_req(),
+            user={"client_id": "c1"},
+        )
+    assert out.get("modal_title") == "Record How to Rent delivery"
+    assert out.get("primary_client_cta") == "Record How to Rent delivery"
+    assert out.get("primary_resolution_workflow") == "TENANT_DELIVERY"
+    assert out.get("client_evidence_disclosure")
+    disc = str(out.get("client_evidence_disclosure") or "")
+    assert "review" in disc.lower()
+    assert "legal advice" in disc.lower()
+    methods = {m.get("evidence_mode"): m for m in (out.get("guided_methods") or [])}
+    sd = methods.get("STRUCTURED_DECLARATION")
+    assert sd
+    ids = [r.get("id") for r in (sd.get("checklist_schema") or [])]
+    for key in (
+        "tenancy_start_date",
+        "guide_version_or_publication_date",
+        "delivery_date",
+        "delivery_method",
+        "tenant_recipient",
+        "proof_of_delivery",
+        "declaration_confirmed",
+    ):
+        assert key in ids
+    dm = next((r for r in (sd.get("checklist_schema") or []) if r.get("id") == "delivery_method"), None)
+    assert dm and dm.get("answer_type") == "SELECT"
+    assert isinstance(dm.get("choices"), list) and len(dm.get("choices")) >= 2
+
+
+@pytest.mark.asyncio
+async def test_right_to_rent_evidence_resolution_guided_declaration_schema():
+    from services.compliance_evidence_record_service import GUIDED_DECLARATION_WORKFLOW
+
+    db = MagicMock()
+    db.requirements.find_one = AsyncMock(
+        return_value={
+            "requirement_id": "r1",
+            "property_id": "p1",
+            "client_id": "c1",
+            "requirement_type": "right_to_rent",
+            "requirement_code": "right_to_rent",
+        }
+    )
+    with patch.object(route.database, "get_db", return_value=db):
+        out = await route.get_evidence_resolution(
+            property_id="p1",
+            requirement_id="r1",
+            request=_req(),
+            user={"client_id": "c1"},
+        )
+    assert out.get("modal_title") == "Record Right to Rent check"
+    assert out.get("primary_client_cta") == "Record Right to Rent check"
+    assert out.get("primary_resolution_workflow") == GUIDED_DECLARATION_WORKFLOW
+    assert out.get("client_evidence_disclosure")
+    assert "home office" in str(out.get("client_evidence_disclosure") or "").lower()
+    methods = {m.get("evidence_mode"): m for m in (out.get("guided_methods") or [])}
+    sd = methods.get("STRUCTURED_DECLARATION")
+    assert sd
+    assert sd.get("checklist_schema_fallback_used") is False
+    ids = [r.get("id") for r in (sd.get("checklist_schema") or [])]
+    for key in (
+        "tenant_name",
+        "check_date",
+        "document_type",
+        "document_reference",
+        "right_to_rent_status",
+        "follow_up_required",
+        "follow_up_date",
+        "declaration_confirmed",
+    ):
+        assert key in ids
+    st = next((r for r in (sd.get("checklist_schema") or []) if r.get("id") == "right_to_rent_status"), None)
+    assert st and st.get("answer_type") == "SELECT"
+    assert isinstance(st.get("choices"), list) and len(st.get("choices")) == 3
+
+
+@pytest.mark.asyncio
+async def test_right_to_rent_checks_alias_evidence_resolution_route_matches_canonical():
+    from services.compliance_evidence_record_service import effective_evidence_resolution
+
+    canon = effective_evidence_resolution(
+        {"requirement_type": "right_to_rent", "requirement_code": "right_to_rent", "registry_metadata": {}}
+    )
+    alias_pol = effective_evidence_resolution(
+        {"requirement_type": "right_to_rent_checks", "requirement_code": "right_to_rent_checks", "registry_metadata": {}}
+    )
+    assert canon == alias_pol
+
+    db = MagicMock()
+    db.requirements.find_one = AsyncMock(
+        return_value={
+            "requirement_id": "r2",
+            "property_id": "p1",
+            "client_id": "c1",
+            "requirement_type": "right_to_rent_checks",
+            "requirement_code": "right_to_rent_checks",
+        }
+    )
+    with patch.object(route.database, "get_db", return_value=db):
+        out = await route.get_evidence_resolution(
+            property_id="p1",
+            requirement_id="r2",
+            request=_req(),
+            user={"client_id": "c1"},
+        )
+    assert out.get("primary_client_cta") == canon.get("guided_primary_cta_label")
+    sd = next(m for m in (out.get("guided_methods") or []) if m.get("evidence_mode") == "STRUCTURED_DECLARATION")
+    sd_canon = canon.get("checklist_schema_by_mode", {}).get("STRUCTURED_DECLARATION") or []
+    assert [r.get("id") for r in (sd.get("checklist_schema") or [])] == [r.get("id") for r in sd_canon]
+
+
+@pytest.mark.asyncio
 async def test_authority_sync_runs_after_evidence_creation_and_legacy_payload_works():
     db = MagicMock()
     db.requirements.find_one = AsyncMock(

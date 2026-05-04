@@ -184,8 +184,7 @@ _SPECS_BY_STORAGE_SLUG: Dict[str, _EngineSpec] = {
     "gas_safety": _SPECS_BY_SCORING_CODE["GAS_SAFETY"],
     "eicr": _SPECS_BY_SCORING_CODE["EICR"],
     "epc": _SPECS_BY_SCORING_CODE["EPC"],
-    "fire_alarm": _SPECS_BY_SCORING_CODE["FIRE_DETECTION"],
-    "fire_detection": _SPECS_BY_SCORING_CODE["FIRE_DETECTION"],
+    "smoke_heat_alarms": _SPECS_BY_SCORING_CODE["FIRE_DETECTION"],
     "legionella": _SPECS_BY_SCORING_CODE["LEGIONELLA"],
     "hmo_license": _LICENCE,
     "licence": _LICENCE,
@@ -203,8 +202,6 @@ _SPECS_BY_STORAGE_SLUG: Dict[str, _EngineSpec] = {
     "right_to_rent": _TENANCY_SOFT,
     "rent_smart_wales": _LANDLORD_REG,
     "landlord_registration_ni": _LANDLORD_REG,
-    "smoke_alarms": _SPECS_BY_SCORING_CODE["FIRE_DETECTION"],
-    "co_alarms": _SPECS_BY_SCORING_CODE["FIRE_DETECTION"],
     "fire_risk_assessment": _HMO_FIRE,
     "portable_appliance_test": _CERT,
     "emergency_lighting": _JOB_EXECUTION,
@@ -227,6 +224,11 @@ def _slug_key(raw: Optional[str]) -> str:
 def _base_spec_for_raw_code(raw: Optional[str]) -> _EngineSpec:
     if not raw:
         return _DEFAULT
+    from services.requirement_code_registry import normalize_requirement_code as _norm_store_slug
+
+    n = _norm_store_slug(str(raw).strip())
+    if n and n in _SPECS_BY_STORAGE_SLUG:
+        return _SPECS_BY_STORAGE_SLUG[n]
     s = _slug_key(raw)
     if s in _SPECS_BY_STORAGE_SLUG:
         return _SPECS_BY_STORAGE_SLUG[s]

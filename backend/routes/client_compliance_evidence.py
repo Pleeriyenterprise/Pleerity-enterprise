@@ -141,11 +141,16 @@ async def get_evidence_resolution(
         row["checklist_schema"] = schema.get("items") or []
         row["checklist_schema_fallback_used"] = bool(schema.get("fallback_used"))
     guided_label = str(policy.get("guided_primary_cta_label") or "").strip() or "Add compliance evidence"
+    modal_title = str(policy.get("modal_title") or "").strip() or guided_label
+    if not modal_title:
+        modal_title = "Add compliance evidence"
+    ced = str(policy.get("client_evidence_disclosure") or "").strip() or None
     return {
         "requirement_id": requirement_id,
         "property_id": property_id,
-        "modal_title": "Add compliance evidence",
+        "modal_title": modal_title,
         "primary_client_cta": guided_label,
+        "client_evidence_disclosure": ced,
         "primary_resolution_workflow": policy.get("primary_resolution_workflow"),
         "allowed_evidence_modes": modes,
         "guided_methods": methods,

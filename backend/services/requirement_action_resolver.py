@@ -4,9 +4,9 @@ separated from maintenance flows and aligned with compliance_requirement_class /
 
 Keep in sync with frontend/src/utils/requirementTakeActionResolver.js (labels and routes).
 
-JOB-class rows: envelope stays primary "coordinate inspection + property hash" plus optional secondary
-upload — multi-mode guided evidence resolution is intentionally not layered onto JOB workflows until
-product policy explicitly requires it (existing job envelopes unchanged).
+JOB-class rows: primary routes to the property compliance matrix to record external assessment and evidence;
+optional secondary document upload. Multi-mode DOCUMENT rows use a single guided primary (document upload
+is chosen inside the guided flow / Documents; no competing upload secondary on the same card).
 """
 from __future__ import annotations
 
@@ -18,11 +18,16 @@ logger = logging.getLogger(__name__)
 from services.compliance_requirement_engine import resolve_engine_payload_from_code, resolve_engine_payload_from_requirement_row
 from presentation.label_service import requirement_label
 from services.requirement_action_links import format_client_external_link, get_client_action_links_for_requirement_row
+from services.requirement_code_registry import normalize_requirement_code
+
 from services.compliance_evidence_record_service import (
     EVIDENCE_MODE_CONTRACTOR_CONFIRMATION,
     EVIDENCE_MODE_DOCUMENT_UPLOAD,
     EVIDENCE_MODE_INSPECTION_CHECKLIST,
     EVIDENCE_MODE_STRUCTURED_DECLARATION,
+    GUIDED_DECLARATION_WORKFLOW,
+    REGISTRATION_TRACKING_WORKFLOW,
+    TENANT_DELIVERY_WORKFLOW,
     effective_evidence_resolution,
 )
 
@@ -47,9 +52,26 @@ TAKE_ACTION_CONTRACT_VERSION = "requirement_take_action_v1"
 PROVENANCE_PUBLISHED_REGISTRY = "published_registry"
 PROVENANCE_ENGINE_DEFAULT = "engine_default"
 
+# Obligation-class tenancy codes that still use registry/policy-driven evidence (skip guidance-only routing).
+_TENANCY_EVIDENCE_FIRST_CODES = frozenset(
+    {"how_to_rent", "deposit_pi", "deposit_prescribed_info", "right_to_rent"}
+)
+
+
+def _tenancy_registry_evidence_overrides_informational(requirement: Dict[str, Any], policy: Dict[str, Any]) -> bool:
+    code = _norm_code(requirement)
+    canon = normalize_requirement_code(code) or code
+    if canon not in _TENANCY_EVIDENCE_FIRST_CODES:
+        return False
+    modes = [str(m or "").strip().upper() for m in (policy.get("allowed_evidence_modes") or []) if m]
+    return len(modes) >= 1
+
 
 def _norm_code(req_or_code: Any) -> str:
     if isinstance(req_or_code, dict):
+        cc = req_or_code.get("canonical_requirement_code")
+        if isinstance(cc, str) and cc.strip():
+            return str(cc).strip().lower().replace(" ", "_")
         c = req_or_code.get("requirement_code") or req_or_code.get("requirement_type") or ""
     else:
         c = req_or_code or ""
@@ -173,6 +195,12 @@ def _document_upload_primary_label(requirement: Dict[str, Any], meta: Dict[str, 
         return "Upload EICR Certificate"
     if "hmo" in code and "licen" in code:
         return "Upload HMO Licence"
+    if "legionella" in code:
+        return "Upload completed legionella risk assessment"
+    if code == "how_to_rent":
+        return "Upload delivery proof"
+    if code == "right_to_rent":
+        return "Upload supporting evidence"
     return fallback
 
 
@@ -183,31 +211,43 @@ def _guided_multi_mode_primary_label(policy: Dict[str, Any]) -> str:
     return "Add compliance evidence"
 
 
+def _is_registration_tracking_policy(policy: Dict[str, Any]) -> bool:
+    return str(policy.get("primary_resolution_workflow") or "").strip().upper() == REGISTRATION_TRACKING_WORKFLOW
+
+
+def _is_tenant_delivery_policy(policy: Dict[str, Any]) -> bool:
+    return str(policy.get("primary_resolution_workflow") or "").strip().upper() == TENANT_DELIVERY_WORKFLOW
+
+
+def _is_guided_declaration_workflow_policy(policy: Dict[str, Any]) -> bool:
+    return str(policy.get("primary_resolution_workflow") or "").strip().upper() == GUIDED_DECLARATION_WORKFLOW
+
+
 def job_primary_label(requirement: Dict[str, Any]) -> str:
     """
-    JOB-class primary CTA: coordinate externally arranged inspections and upload evidence.
-    Does not imply the platform books inspections (no marketplace scheduling here).
+    JOB-class primary CTA: evidence-first copy for off-platform professional work; platform does not
+    book inspections. Routes to property compliance context to record assessment and upload evidence.
     """
     code = _norm_code(requirement)
     if "eicr" in code or code == "electrical_safety":
-        return "Coordinate electrical inspection & upload EICR"
+        return "Record external assessment evidence — upload EICR"
     if "gas" in code or code in ("cp12", "gas_safety", "gas_safety_certificate"):
-        return "Coordinate Gas Safety inspection & upload certificate"
+        return "Record external assessment evidence — upload Gas Safety certificate"
     if "epc" in code:
-        return "Coordinate EPC assessment & upload certificate"
+        return "Record external assessment evidence — upload EPC"
     if "fire" in code and "risk" in code:
-        return "Coordinate fire risk assessment & upload evidence"
+        return "Add fire risk assessment evidence"
     if "pat" in code or "portable_appliance" in code:
-        return "Coordinate PAT testing & upload evidence"
+        return "Record external assessment evidence — upload PAT evidence"
     if "legionella" in code:
-        return "Coordinate Legionella assessment & upload evidence"
+        return "Upload completed legionella risk assessment"
     disp = str(requirement.get("display_label") or "").strip()
     if disp and disp.lower() not in ("requirement", ""):
-        return f"Coordinate inspection & upload evidence — {disp}"
+        return f"Record external assessment evidence — {disp}"
     rl = requirement_label(requirement.get("requirement_code") or requirement.get("requirement_type") or "")
     if rl and rl.lower() != "requirement":
-        return f"Coordinate inspection & upload evidence — {rl}"
-    return "Coordinate inspection & upload compliance evidence"
+        return f"Record external assessment evidence — {rl}"
+    return "Record external assessment evidence"
 
 
 def _engine(requirement: Dict[str, Any]) -> Dict[str, Any]:
@@ -262,6 +302,10 @@ def resolve_take_action_envelope(
         or str(eng.get("engine_client_visibility") or "").lower() == "informational"
         or ff == "obligation"
     )
+    policy_for_informational_gate = effective_evidence_resolution(requirement)
+    if informational and _tenancy_registry_evidence_overrides_informational(requirement, policy_for_informational_gate):
+        informational = False
+
     if informational:
         route = f"/properties/{pid}#compliance" if pid else "/requirements"
         supporting = _supporting_external_links(requirement, property_jurisdiction=property_jurisdiction)
@@ -436,7 +480,7 @@ def resolve_take_action_envelope(
             "take_action": ta_direct,
         }
 
-    # Multiple allowed evidence modes — one guided primary CTA; optional document secondary.
+    # Multiple allowed evidence modes — single guided primary; document paths live in guided modal / Documents.
     if len(ordered_modes) >= 2 and pid and rid and non_doc_modes:
         guided_label = _guided_multi_mode_primary_label(policy)
         ta_guided: Dict[str, Any] = {
@@ -449,20 +493,36 @@ def resolve_take_action_envelope(
                 "property_id": str(pid),
                 "requirement_id": str(rid),
             },
-            "secondary": (
-                {
-                    "label": upload_label,
-                    "route": doc_route,
-                    "kind": "navigate",
-                    "handler": "navigate",
-                    "external": False,
-                    "intent": INTENT_UPLOAD_EVIDENCE,
-                }
-                if has_doc_mode
-                else None
-            ),
+            "secondary": None,
             "supporting_external_links": supporting,
         }
+        if _is_registration_tracking_policy(policy) and has_doc_mode:
+            ta_guided["secondary"] = {
+                "label": "Upload registration evidence",
+                "route": doc_route,
+                "kind": "navigate",
+                "handler": "navigate",
+                "external": False,
+                "intent": INTENT_UPLOAD_EVIDENCE,
+            }
+        elif _is_tenant_delivery_policy(policy) and has_doc_mode:
+            ta_guided["secondary"] = {
+                "label": "Upload delivery proof",
+                "route": doc_route,
+                "kind": "navigate",
+                "handler": "navigate",
+                "external": False,
+                "intent": INTENT_UPLOAD_EVIDENCE,
+            }
+        elif _is_guided_declaration_workflow_policy(policy) and has_doc_mode:
+            ta_guided["secondary"] = {
+                "label": "Upload supporting evidence",
+                "route": doc_route,
+                "kind": "navigate",
+                "handler": "navigate",
+                "external": False,
+                "intent": INTENT_UPLOAD_EVIDENCE,
+            }
         _attach_take_action_contract_metadata(ta_guided, requirement)
         return {
             "action_type": ACTION_DOCUMENT,
@@ -572,3 +632,62 @@ def resolve_take_action_for_priority_action(
 def persist_default_action_type(requirement: Dict[str, Any]) -> str:
     """Value to set on new/updated requirement documents when action_type omitted."""
     return infer_action_type(requirement)
+
+
+def enrich_take_action_envelope_for_client(
+    env: Dict[str, Any],
+    requirement: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Attach workflow_class, allowed_evidence_modes, and guidance_target so clients can rely on server
+    metadata instead of duplicating policy inference.
+    """
+    merged: Dict[str, Any] = dict(env)
+    policy = effective_evidence_resolution(requirement)
+    merged["allowed_evidence_modes"] = _ordered_unique_evidence_modes(
+        [str(m or "").strip().upper() for m in (policy.get("allowed_evidence_modes") or []) if m]
+    )
+    wf = str(policy.get("primary_resolution_workflow") or "").strip()
+    at = env.get("action_type")
+    ta = env.get("take_action") or {}
+    pri = ta.get("primary") if isinstance(ta.get("primary"), dict) else {}
+    intent = str(pri.get("intent") or "").strip()
+
+    if intent == INTENT_VIEW_GUIDANCE:
+        merged["workflow_class"] = "GUIDANCE_ONLY"
+    elif isinstance(pri, dict) and pri.get("kind") in ("guided_evidence_resolution", "direct_evidence_action"):
+        wf_u = str(wf or "").strip().upper()
+        if wf_u == REGISTRATION_TRACKING_WORKFLOW:
+            merged["workflow_class"] = REGISTRATION_TRACKING_WORKFLOW
+        elif wf_u == TENANT_DELIVERY_WORKFLOW:
+            merged["workflow_class"] = TENANT_DELIVERY_WORKFLOW
+        elif wf_u == GUIDED_DECLARATION_WORKFLOW:
+            merged["workflow_class"] = GUIDED_DECLARATION_WORKFLOW
+        else:
+            merged["workflow_class"] = wf or "GUIDED_EVIDENCE_RESOLUTION"
+    elif at == ACTION_JOB:
+        merged["workflow_class"] = "EXTERNAL_ASSESSMENT_EVIDENCE"
+    elif str(wf or "").strip().upper() == REGISTRATION_TRACKING_WORKFLOW:
+        merged["workflow_class"] = REGISTRATION_TRACKING_WORKFLOW
+    elif str(wf or "").strip().upper() == TENANT_DELIVERY_WORKFLOW:
+        merged["workflow_class"] = TENANT_DELIVERY_WORKFLOW
+    elif str(wf or "").strip().upper() == GUIDED_DECLARATION_WORKFLOW:
+        merged["workflow_class"] = GUIDED_DECLARATION_WORKFLOW
+    elif wf:
+        merged["workflow_class"] = wf
+    else:
+        merged["workflow_class"] = "LEGACY_DOCUMENT_UPLOAD"
+
+    route = pri.get("route") if pri else None
+    if intent == INTENT_VIEW_GUIDANCE and route:
+        merged["guidance_target"] = {
+            "type": "property_compliance_tab",
+            "route": str(route),
+            "hash": "compliance",
+        }
+    elif intent == INTENT_VIEW_GUIDANCE:
+        merged["guidance_target"] = {"type": "requirements_list", "route": "/requirements"}
+    else:
+        merged["guidance_target"] = None
+
+    return merged

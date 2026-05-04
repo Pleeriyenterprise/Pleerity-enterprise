@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Tuple, Optional
 
 from database import database
 from services.incident_service import (
+    STATUS_OPEN,
     create_incident,
     SOURCE_JOB_MONITOR,
     SOURCE_HEARTBEAT,
@@ -29,6 +30,30 @@ from services.internal_alert_registry import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+async def _touch_persistent_incident_ticks(
+    db,
+    incident_oid,
+    now: datetime,
+    *,
+    snapshot: Optional[Dict[str, Any]] = None,
+) -> None:
+    """
+    While a watchdog condition stays true, bump metadata counters on the existing **open**
+    incident. Does not send email or change severity.
+    """
+    from bson import ObjectId
+
+    oid = incident_oid if isinstance(incident_oid, ObjectId) else ObjectId(str(incident_oid))
+    set_doc: Dict[str, Any] = {"updated_at": now.isoformat()}
+    if snapshot:
+        for k, v in snapshot.items():
+            set_doc[f"metadata.{k}"] = v
+    await db.incidents.update_one(
+        {"_id": oid, "status": STATUS_OPEN},
+        {"$set": set_doc, "$inc": {"metadata.sla_watchdog_condition_ticks": 1}},
+    )
 
 
 def _alert_type_from_incident(source: str, title: str) -> str:
@@ -196,7 +221,17 @@ async def run_sla_watchdog() -> Dict[str, Any]:
         except Exception:
             heartbeat_stale = True
     if heartbeat_stale:
-        existing = await db.incidents.find_one({"status": "open", "source": SOURCE_HEARTBEAT}, {"_id": 1})
+        existing = await db.incidents.find_one({"status": STATUS_OPEN, "source": SOURCE_HEARTBEAT}, {"_id": 1})
+        if existing:
+            await _touch_persistent_incident_ticks(
+                db,
+                existing["_id"],
+                now,
+                snapshot={
+                    "last_heartbeat_at_seen": str(last_hb),
+                    "last_watchdog_tick_reason": "heartbeat_stale",
+                },
+            )
         if not existing:
             incident_id = await create_incident(
                 severity=SEVERITY_P1,
@@ -221,7 +256,20 @@ async def run_sla_watchdog() -> Dict[str, Any]:
         "outcome_metrics.delivery_unknown": {"$gt": 0},
     })
     if delivery_stale_count > 0:
-        existing = await db.incidents.find_one({"status": "open", "source": SOURCE_DELIVERY_UNKNOWN}, {"_id": 1})
+        existing = await db.incidents.find_one(
+            {"status": STATUS_OPEN, "source": SOURCE_DELIVERY_UNKNOWN},
+            {"_id": 1},
+        )
+        if existing:
+            await _touch_persistent_incident_ticks(
+                db,
+                existing["_id"],
+                now,
+                snapshot={
+                    "last_stale_delivery_unknown_count": delivery_stale_count,
+                    "last_watchdog_tick_reason": "delivery_unknown_stale",
+                },
+            )
         if not existing:
             incident_id = await create_incident(
                 severity=SEVERITY_P2,
@@ -252,9 +300,20 @@ async def run_sla_watchdog() -> Dict[str, Any]:
             if next_run and (next_run - now).total_seconds() > GRACE_PERIOD_NEXT_RUN_FUTURE_SEC:
                 continue  # Not yet due since startup; no incident
             existing = await db.incidents.find_one(
-                {"status": "open", "related_job_name": job_name, "source": SOURCE_JOB_MONITOR},
-                {"_id": 1},
+                {"status": STATUS_OPEN, "related_job_name": job_name, "source": SOURCE_JOB_MONITOR},
+                {"_id": 1, "metadata": 1},
             )
+            if existing:
+                if not (existing.get("metadata") or {}).get("degraded_run"):
+                    await _touch_persistent_incident_ticks(
+                        db,
+                        existing["_id"],
+                        now,
+                        snapshot={
+                            "last_watchdog_tick_reason": "job_never_succeeded_still",
+                            "related_job_name": job_name,
+                        },
+                    )
             if not existing:
                 incident_id = await create_incident(
                     severity=severity,
@@ -287,9 +346,24 @@ async def run_sla_watchdog() -> Dict[str, Any]:
             # Within SLA window: if last run was degraded, create incident so admin sees repeated degraded runs
             if last_success.get("status") == STATUS_DEGRADED:
                 existing_degraded = await db.incidents.find_one(
-                    {"status": "open", "related_job_name": job_name, "source": SOURCE_JOB_MONITOR, "metadata.degraded_run": True},
+                    {
+                        "status": STATUS_OPEN,
+                        "related_job_name": job_name,
+                        "source": SOURCE_JOB_MONITOR,
+                        "metadata.degraded_run": True,
+                    },
                     {"_id": 1},
                 )
+                if existing_degraded:
+                    await _touch_persistent_incident_ticks(
+                        db,
+                        existing_degraded["_id"],
+                        now,
+                        snapshot={
+                            "last_degraded_finished_at_seen": finished_str,
+                            "last_watchdog_tick_reason": "degraded_still",
+                        },
+                    )
                 if not existing_degraded:
                     last_pure_success = await db[JOB_RUNS_COLLECTION].find_one(
                         {"job_name": job_name, "status": STATUS_SUCCESS},
@@ -325,10 +399,22 @@ async def run_sla_watchdog() -> Dict[str, Any]:
             continue
 
         existing = await db.incidents.find_one(
-            {"status": "open", "related_job_name": job_name, "source": SOURCE_JOB_MONITOR},
-            {"_id": 1},
+            {"status": STATUS_OPEN, "related_job_name": job_name, "source": SOURCE_JOB_MONITOR},
+            {"_id": 1, "metadata": 1},
         )
         if existing:
+            # Do not attach missed-SLA tick snapshots to the degraded-only incident (same job, open).
+            if not (existing.get("metadata") or {}).get("degraded_run"):
+                await _touch_persistent_incident_ticks(
+                    db,
+                    existing["_id"],
+                    now,
+                    snapshot={
+                        "last_delay_minutes_seen": round(delay_minutes, 2),
+                        "last_finished_at_seen": finished_str,
+                        "last_watchdog_tick_reason": "missed_sla_still",
+                    },
+                )
             continue
 
         incident_id = await create_incident(

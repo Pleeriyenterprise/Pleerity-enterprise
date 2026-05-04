@@ -263,6 +263,68 @@ export default function AdminControlCentrePage() {
           </section>
         ) : null}
 
+        {data?.compliance_workflow_audit ? (
+          <section className="space-y-3" data-testid="control-centre-workflow-audit">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+              Workflow inconsistencies detected
+            </h2>
+            <p className="text-sm text-gray-600">
+              Read-only comparison of decision-record reference classes vs resolver/evidence runtime (
+              {data.compliance_workflow_audit.diagnostic_note || 'sampled slice'}).
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-lg border border-amber-100 bg-amber-50/80 p-3">
+                <div className="text-xs font-medium text-amber-900 uppercase tracking-wide">Total flags</div>
+                <div className="mt-1 text-2xl font-bold tabular-nums text-amber-950">
+                  {data.compliance_workflow_audit.workflow_inconsistencies_detected ?? '—'}
+                </div>
+              </div>
+              {Object.entries(data.compliance_workflow_audit.grouped_by_severity || {}).map(([sev, n]) => (
+                <div key={sev} className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{sev}</div>
+                  <div className="mt-1 text-xl font-semibold tabular-nums text-gray-900">{n}</div>
+                </div>
+              ))}
+            </div>
+            {(data.compliance_workflow_audit.requirement_row_mismatches?.by_flag &&
+              Object.keys(data.compliance_workflow_audit.requirement_row_mismatches.by_flag).length > 0) ||
+            (data.compliance_workflow_audit.work_order_reference_mismatches || []).length > 0 ? (
+              <details className="text-sm">
+                <summary className="cursor-pointer font-medium text-indigo-600 select-none">
+                  Breakdown by mismatch type (sample)
+                </summary>
+                <div className="mt-2 rounded border border-gray-200 bg-gray-50 p-3 space-y-2">
+                  {Object.entries(data.compliance_workflow_audit.requirement_row_mismatches?.by_flag || {}).map(
+                    ([fid, count]) => (
+                      <div key={fid} className="flex justify-between gap-4 text-xs font-mono">
+                        <span className="text-gray-700">{fid}</span>
+                        <span className="text-gray-900">{count}</span>
+                      </div>
+                    ),
+                  )}
+                  {(data.compliance_workflow_audit.work_order_reference_mismatches || []).length > 0 ? (
+                    <div className="text-xs text-gray-700 pt-2 border-t border-gray-200">
+                      Work orders completed against non–REMEDIATION_JOB reference:{' '}
+                      {(data.compliance_workflow_audit.work_order_reference_mismatches || []).length} shown (capped).
+                    </div>
+                  ) : null}
+                </div>
+              </details>
+            ) : (
+              <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-md px-3 py-2">
+                No mismatches in this sampled snapshot.
+              </p>
+            )}
+            <p className="text-xs text-gray-500">
+              Full paginated export:{' '}
+              <code className="bg-gray-100 px-1 rounded">GET /api/admin/requirement-workflow-audit</code>
+              &nbsp;(also exposed as <code className="bg-gray-100 px-1 rounded">adminAPI.getRequirementWorkflowAudit</code>
+              ).
+            </p>
+          </section>
+        ) : null}
+
         {auto ? (
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">

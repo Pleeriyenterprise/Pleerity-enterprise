@@ -83,9 +83,12 @@ async def test_enrich_requirements_for_admin_uses_evidence_map(monkeypatch):
     assert out[0]["display_label"]
     assert out[0]["status_label"]
     assert out[0]["date_source"] == rt.DATE_SOURCE_VERIFIED_DOCUMENT
+    assert "workflow_class_reference" in out[0]
+    assert "workflow_mismatch_flags" in out[0]
 
 
 def test_enrich_requirement_dict_adds_presentation():
+    from services.requirement_workflow_audit import WORKFLOW_DIAGNOSTIC_PAYLOAD_KEYS
     from services.requirement_truth import EVIDENCE_MISSING, enrich_requirement_dict
 
     r = enrich_requirement_dict(
@@ -102,6 +105,60 @@ def test_enrich_requirement_dict_adds_presentation():
     assert r["date_source"] == "SYSTEM_ESTIMATED"
     assert "Estimated" in r["date_label"]
     assert r["evidence_badge_label"]
+    for k in WORKFLOW_DIAGNOSTIC_PAYLOAD_KEYS:
+        assert k not in r
+
+
+def test_enrich_right_to_rent_client_guided_declaration_disclosure():
+    from services.compliance_evidence_record_service import GUIDED_DECLARATION_WORKFLOW
+    from services.requirement_workflow_audit import WORKFLOW_DIAGNOSTIC_PAYLOAD_KEYS
+    from services.requirement_truth import EVIDENCE_MISSING, enrich_requirement_dict
+
+    r = enrich_requirement_dict(
+        {
+            "requirement_id": "r1",
+            "property_id": "p1",
+            "requirement_type": "right_to_rent",
+            "requirement_code": "right_to_rent",
+            "compliance_requirement_class": "OBLIGATION",
+            "due_date": "2026-04-01T00:00:00+00:00",
+            "expiry_source": "NONE",
+            "status": "PENDING",
+            "applicability": "REQUIRED",
+        },
+        EVIDENCE_MISSING,
+        audience="client",
+    )
+    assert r.get("workflow_class") == GUIDED_DECLARATION_WORKFLOW
+    assert "home office" in str(r.get("client_evidence_disclosure") or "").lower()
+    for k in WORKFLOW_DIAGNOSTIC_PAYLOAD_KEYS:
+        assert k not in r
+
+
+def test_enrich_how_to_rent_client_includes_disclosure_no_audit_diagnostics():
+    from services.requirement_workflow_audit import WORKFLOW_DIAGNOSTIC_PAYLOAD_KEYS
+    from services.requirement_truth import EVIDENCE_MISSING, enrich_requirement_dict
+
+    r = enrich_requirement_dict(
+        {
+            "requirement_id": "r1",
+            "property_id": "p1",
+            "requirement_type": "how_to_rent",
+            "requirement_code": "how_to_rent",
+            "compliance_requirement_class": "OBLIGATION",
+            "due_date": "2026-04-01T00:00:00+00:00",
+            "expiry_source": "NONE",
+            "status": "PENDING",
+            "applicability": "REQUIRED",
+        },
+        EVIDENCE_MISSING,
+        audience="client",
+    )
+    assert r.get("workflow_class") == "TENANT_DELIVERY"
+    assert r.get("client_evidence_disclosure")
+    assert "legal advice" in str(r.get("client_evidence_disclosure") or "").lower()
+    for k in WORKFLOW_DIAGNOSTIC_PAYLOAD_KEYS:
+        assert k not in r
 
 
 def test_evidence_state_awaiting_user_confirm_when_extraction_not_approved():

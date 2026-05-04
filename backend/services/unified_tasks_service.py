@@ -34,7 +34,11 @@ from services.requirement_code_registry import (
     normalize_requirement_code_strict,
 )
 from services.compliance_requirement_engine import resolve_engine_payload_from_code
-from services.requirement_action_resolver import resolve_take_action_for_priority_action, resolve_take_action_envelope
+from services.requirement_action_resolver import (
+    enrich_take_action_envelope_for_client,
+    resolve_take_action_envelope,
+    resolve_take_action_for_priority_action,
+)
 from services.requirement_client_runtime_surface import project_requirement_row_client_runtime
 from utils.compliance_fanout_log import compliance_fanout_extra
 
@@ -413,13 +417,21 @@ def _action_to_task(
                 syn["registry_metadata"] = {**(syn.get("registry_metadata") or {}), **rm}
             if a.get("display_label") is not None:
                 syn["display_label"] = a.get("display_label")
-            env_take = resolve_take_action_envelope(
+            env_take = enrich_take_action_envelope_for_client(
+                resolve_take_action_envelope(
+                    syn,
+                    property_id=prop_id,
+                    property_jurisdiction=a.get("jurisdiction"),
+                ),
                 syn,
-                property_id=prop_id,
-                property_jurisdiction=a.get("jurisdiction"),
             )
             task_metadata["take_action"] = env_take.get("take_action")
             task_metadata["requirement_action_type"] = env_take.get("action_type")
+            for k in ("workflow_class", "guidance_target", "allowed_evidence_modes"):
+                if env_take.get(k) is not None:
+                    task_metadata[k] = env_take[k]
+        if isinstance(a.get("evidence_completeness"), dict) and a.get("evidence_completeness"):
+            task_metadata["evidence_completeness"] = dict(a["evidence_completeness"])
 
     timing_label = None
     if overdue_days and overdue_days > 0:
@@ -664,14 +676,20 @@ async def _tenant_request_tasks(
                 )
                 if isinstance(req_row, dict) and req_row.get("requirement_id"):
                     pj = str(req_row.get("jurisdiction") or "").strip() or None
-                    env = resolve_take_action_envelope(
+                    env = enrich_take_action_envelope_for_client(
+                        resolve_take_action_envelope(
+                            req_row,
+                            property_id=prop_id,
+                            property_jurisdiction=pj,
+                        ),
                         req_row,
-                        property_id=prop_id,
-                        property_jurisdiction=pj,
                     )
                     ta = env.get("take_action")
                     if isinstance(ta, dict) and ta:
                         metadata["take_action"] = ta
+                        for k in ("workflow_class", "guidance_target", "allowed_evidence_modes"):
+                            if env.get(k) is not None:
+                                metadata[k] = env[k]
                         if not _canonical_take_action_is_standard_document_navigate(
                             ta, property_id=prop_id, requirement_id=req_id
                         ):

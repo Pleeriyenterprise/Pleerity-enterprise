@@ -988,6 +988,8 @@ export const adminAPI = {
     apiClient.post(`/admin/security/incidents/${encodeURIComponent(incidentKey)}/resolve`, note != null ? { note } : {}),
   /** Unified Control Centre (health, automation, security, revenue, engagement, alerts). */
   getControlCentreSnapshot: () => apiClient.get('/admin/control-centre/snapshot'),
+  /** Read-only workflow class drift diagnostics (decision-record reference vs resolver runtime). */
+  getRequirementWorkflowAudit: (params = {}) => apiClient.get('/admin/requirement-workflow-audit', { params }),
   /** Run a background job; pass a string job id or { job, client_id?, property_id? } for scoped runs (e.g. monthly_digest + client_id). */
   runJobNow: (jobOrBody) =>
     typeof jobOrBody === 'string'

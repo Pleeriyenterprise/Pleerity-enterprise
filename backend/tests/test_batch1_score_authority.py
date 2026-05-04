@@ -134,7 +134,10 @@ async def test_reconciliation_enqueue_idempotent():
 def test_job_primary_label_no_book_phrase():
     s = job_primary_label({"requirement_code": "gas_safety", "display_label": ""})
     assert "Book" not in s
-    assert "Coordinate" in s
+    assert "Record external assessment evidence" in s
+    leg = job_primary_label({"requirement_code": "legionella", "display_label": ""})
+    assert "Book" not in leg
+    assert "Upload completed legionella risk assessment" == leg
 
 
 def test_resolve_job_envelope_intent():

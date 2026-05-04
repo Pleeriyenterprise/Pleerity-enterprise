@@ -5,10 +5,44 @@ from middleware import admin_route_guard
 from models import EmailTemplate, EmailTemplateAlias, AuditAction
 from utils.audit import create_audit_log
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Dict, List, Optional
 import logging
 
+from services.email_template_runtime_metadata import (
+    get_email_alias_runtime_metadata,
+    is_admin_template_content_editable,
+    merge_runtime_metadata_into_template_row,
+    preview_disclaimer_for_alias,
+)
+
 logger = logging.getLogger(__name__)
+
+# Used by ORDER_* notification keys; not in EmailTemplateAlias but may exist as DB rows.
+_EXTRA_EMAIL_ALIASES: List[str] = ["order-intake-confirmation"]
+
+
+def _build_alias_catalog_entries() -> List[Dict[str, Any]]:
+    seen = set()
+    out: List[Dict[str, Any]] = []
+    for a in EmailTemplateAlias:
+        seen.add(a.value)
+        out.append(
+            {
+                "value": a.value,
+                "label": a.value.replace("-", " ").title(),
+                "runtime_metadata": get_email_alias_runtime_metadata(a.value),
+            }
+        )
+    for extra in _EXTRA_EMAIL_ALIASES:
+        if extra not in seen:
+            out.append(
+                {
+                    "value": extra,
+                    "label": extra.replace("-", " ").title(),
+                    "runtime_metadata": get_email_alias_runtime_metadata(extra),
+                }
+            )
+    return out
 
 router = APIRouter(prefix="/api/admin/templates", tags=["Admin - Email Templates"])
 
@@ -226,13 +260,15 @@ async def list_templates(request: Request, active_only: bool = True):
         if active_only:
             query["is_active"] = True
         
-        templates = await db.email_templates.find(
+        raw = await db.email_templates.find(
             query,
             {"_id": 0}
         ).sort("alias", 1).to_list(100)
-        
+
+        templates = [merge_runtime_metadata_into_template_row(t) for t in raw]
+
         total = await db.email_templates.count_documents(query)
-        
+
         return {
             "templates": templates,
             "total": total
@@ -248,15 +284,16 @@ async def list_templates(request: Request, active_only: bool = True):
 
 @router.get("/aliases")
 async def get_template_aliases(request: Request):
-    """Get available template aliases."""
+    """Get available template aliases with runtime metadata for admin UI."""
     await admin_route_guard(request)
-    
-    return {
-        "aliases": [
-            {"value": a.value, "label": a.value.replace("-", " ").title()}
-            for a in EmailTemplateAlias
-        ]
-    }
+    return {"aliases": _build_alias_catalog_entries()}
+
+
+@router.get("/runtime-catalog")
+async def get_email_template_runtime_catalog(request: Request):
+    """Full alias catalog with runtime metadata (same entries as /aliases, stable for admin tooling)."""
+    await admin_route_guard(request)
+    return {"aliases": _build_alias_catalog_entries()}
 
 
 @router.get("/{template_id}")
@@ -297,7 +334,25 @@ async def create_template(request: Request):
     
     try:
         body = await request.json()
-        
+
+        alias_raw = body.get("alias")
+        try:
+            EmailTemplateAlias(alias_raw)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid email template alias",
+            )
+
+        if not is_admin_template_content_editable(str(alias_raw)):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "This alias is code-built, hybrid with a dominant non-DB path, or otherwise locked. "
+                    "Creating database templates for it is disabled to avoid misleading admins."
+                ),
+            )
+
         # Check if template for this alias already exists
         existing = await db.email_templates.find_one(
             {"alias": body.get("alias")}
@@ -307,7 +362,7 @@ async def create_template(request: Request):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Template for alias '{body.get('alias')}' already exists. Use update instead."
             )
-        
+
         template = EmailTemplate(
             alias=EmailTemplateAlias(body.get("alias")),
             name=body.get("name"),
@@ -385,7 +440,30 @@ async def update_template(request: Request, template_id: str):
         for field in allowed_fields:
             if field in body:
                 update_fields[field] = body[field]
-        
+
+        alias_str = str(existing.get("alias") or "")
+        if not is_admin_template_content_editable(alias_str):
+            locked = {"name", "subject", "html_body", "text_body", "available_variables"}
+
+            def _field_changed(field: str, new_val: Any, old_val: Any) -> bool:
+                if field == "available_variables":
+                    return sorted(str(x) for x in (new_val or [])) != sorted(
+                        str(x) for x in (old_val or [])
+                    )
+                return new_val != old_val
+
+            attempted = [
+                f for f in locked if f in body and _field_changed(f, body[f], existing.get(f))
+            ]
+            if attempted:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        f"This alias is not admin-editable for body/subject ({', '.join(attempted)}). "
+                        "You may still update notes or is_active where applicable."
+                    ),
+                )
+
         update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
         
         await db.email_templates.update_one(
@@ -414,7 +492,7 @@ async def update_template(request: Request, template_id: str):
         
         return {
             "message": "Template updated successfully",
-            "template": updated
+            "template": merge_runtime_metadata_into_template_row(updated or {}),
         }
     
     except HTTPException:
@@ -597,11 +675,14 @@ async def preview_template(request: Request, template_id: str):
             text = text.replace(placeholder, str(value))
             subject = subject.replace(placeholder, str(value))
         
+        alias_str = str(template.get("alias") or "")
         return {
             "subject": subject,
             "html_body": html,
             "text_body": text,
-            "sample_data_used": data
+            "sample_data_used": data,
+            "preview_disclaimer": preview_disclaimer_for_alias(alias_str),
+            "runtime_metadata": get_email_alias_runtime_metadata(alias_str),
         }
     
     except HTTPException:

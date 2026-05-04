@@ -50,6 +50,30 @@ def test_v2_scores_valid_legal_docs_high():
     assert result["applicable_points"] > 0
 
 
+def test_v2_right_to_rent_not_applicable_wales_scotland_or_ni():
+    now = datetime.now(timezone.utc)
+    for juris in ("Wales", "Scotland", "Northern Ireland"):
+        prop = {
+            "property_id": "p1",
+            "jurisdiction": juris,
+            "tenancy_active": True,
+            "cert_gas_safety": "YES",
+            "has_gas_supply": True,
+        }
+        result = compute_property_score_v2(
+            property_doc=prop,
+            client_doc={"default_jurisdiction": juris},
+            requirements=[],
+            documents=[],
+            open_issues_count=0,
+            overdue_work_orders_count=0,
+            open_risks_count=0,
+            as_of=now,
+        )
+        r2r = next(r for r in result["requirement_breakdown"] if r["requirement_code"] == "RIGHT_TO_RENT")
+        assert r2r["applies_if"] is False
+
+
 def test_v2_normalizes_wales_to_england_wales_scoring_bucket():
     now = datetime.now(timezone.utc)
     result = compute_property_score_v2(

@@ -573,7 +573,7 @@ const AdminClientControlPanelPage = () => {
             : raw && typeof raw === 'object'
               ? raw.message || raw.error_code || 'Unable to start impersonation'
               : err?.message || 'Unable to start impersonation';
-        toast.error(typeof msg === 'string' ? msg : 'Unable to start impersonation');
+      toast.error(typeof msg === 'string' ? msg : 'Unable to start impersonation');
       }
     } finally {
       setIsBusy(false);

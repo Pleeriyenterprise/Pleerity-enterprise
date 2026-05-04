@@ -65,12 +65,12 @@ RECURRING_ISSUES_THRESHOLD = 3
 
 # Recommended actions (task §8)
 RECOMMENDED_ACTIONS = {
-    RISK_TYPE_BOILER_FAILURE: "Book a qualified gas engineer to inspect the boiler and review servicing or replacement.",
-    RISK_TYPE_DAMP_MOISTURE: "Arrange a damp inspection and plan work to fix the underlying cause.",
-    RISK_TYPE_ELECTRICAL: "Review your electrical certificate and arrange an inspection if it is due or out of date.",
+    RISK_TYPE_BOILER_FAILURE: "Arrange a qualified gas engineer inspection externally, or start a compliance job from Operations if your account uses jobs for inspections.",
+    RISK_TYPE_DAMP_MOISTURE: "Arrange a damp inspection externally and plan work to fix the underlying cause.",
+    RISK_TYPE_ELECTRICAL: "Review your electrical certificate and arrange an external inspection if it is due or out of date.",
     RISK_TYPE_RECURRING_REPAIRS: "Investigate the root cause instead of repeat patch repairs.",
     RISK_TYPE_SLA_BREACH: "Review open jobs with your contractor and re-prioritise anything that is overdue.",
-    RISK_TYPE_COMPLIANCE_CHURN: "Upload missing evidence and schedule renewals so obligations stay up to date.",
+    RISK_TYPE_COMPLIANCE_CHURN: "Upload missing evidence and plan renewals so obligations stay up to date.",
     RISK_TYPE_MAINTENANCE_FREQUENCY: "Review property condition and inspect assets that are generating repeat reports.",
     RISK_TYPE_CERTIFICATE_EXPIRY_SOON: "Renew the certificate before expiry and upload the new document with correct dates.",
 }
@@ -89,7 +89,7 @@ def _suggested_actions_for_signal(signal_category: str, risk_type: str) -> List[
     if signal_category == SIGNAL_CATEGORY_COMPLIANCE:
         actions.append(SUGGESTED_ACTION_SCHEDULE_INSPECTION)
         if risk_type == RISK_TYPE_CERTIFICATE_EXPIRY_SOON:
-            actions.append(SUGGESTED_ACTION_CREATE_WORK_ORDER)  # e.g. book gas safety
+            actions.append(SUGGESTED_ACTION_CREATE_WORK_ORDER)  # e.g. gas safety renewal job
         else:
             actions.append(SUGGESTED_ACTION_CREATE_ISSUE)
     elif signal_category == SIGNAL_CATEGORY_OPERATIONAL:

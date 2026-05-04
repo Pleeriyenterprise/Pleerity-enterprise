@@ -88,6 +88,9 @@ REQ_ALIASES = {
     "FIRE_RISK_ASSESSMENT": "FIRE_DETECTION",
     "FIRE_DOORS": "FIRE_DETECTION",
     "EMERGENCY_LIGHTING": "FIRE_DETECTION",
+    # Phase-1 storage slugs: align with requirement_code_registry (same uppercase scoring key as canonical).
+    "FIRE_ALARM": "FIRE_DETECTION",
+    "RIGHT_TO_RENT_CHECKS": "RIGHT_TO_RENT",
     "LEGIONELLA_RISK": "LEGIONELLA",
     "HMO_FIRE_RISK_EVIDENCE": "HMO_FIRE_RISK",
     "HMO_FIRE_RISK": "HMO_FIRE_RISK",
@@ -97,6 +100,10 @@ REQ_ALIASES = {
     "RENT_SMART_WALES": "RENT_SMART_WALES",
     "LANDLORD_REGISTRATION_NI": "LANDLORD_REGISTRATION_NI",
     "PORTABLE_APPLIANCE_TEST": "PORTABLE_APPLIANCE",
+    # Domestic alarm family (registry canonical smoke_heat_alarms); scoring bucket unchanged (FIRE_DETECTION).
+    "SMOKE_HEAT_ALARMS": "FIRE_DETECTION",
+    "SMOKE_ALARMS": "FIRE_DETECTION",
+    "CO_ALARMS": "FIRE_DETECTION",
 }
 
 REQ_TO_DOC_TYPE = {

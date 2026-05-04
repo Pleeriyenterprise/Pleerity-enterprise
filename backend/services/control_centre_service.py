@@ -33,6 +33,11 @@ from services.control_centre_no_expected_outcome_flag import (
 )
 from services.control_centre_outcome_aggregation import summarize_outcome_metrics_24h_by_family
 from services.operational_alert_presentation import build_operational_presentation_for_incident
+from services.compliance_registry_publish_service import fetch_active_published_registry_entries
+from services.requirement_workflow_audit import (
+    list_work_order_job_class_mismatches,
+    summarize_workflow_drift_from_requirements_sample,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -673,6 +678,17 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
         {"status": "resolved", "resolved_at": {"$gte": since_7d_res}}
     )
 
+    published_registry = await fetch_active_published_registry_entries(db)
+    drift_sample = await summarize_workflow_drift_from_requirements_sample(db, max_rows=120)
+    wo_ref_mismatches = await list_work_order_job_class_mismatches(
+        db,
+        published_entries=published_registry,
+        limit=80,
+    )
+    grouped_sev: Dict[str, int] = {k: int(v) for k, v in (drift_sample.get("by_severity") or {}).items()}
+    grouped_sev["HIGH"] = grouped_sev.get("HIGH", 0) + len(wo_ref_mismatches)
+    inconsistencies_n = int(drift_sample.get("mismatch_rows") or 0) + len(wo_ref_mismatches)
+
     return {
         "generated_at": now_iso,
         "access": {
@@ -754,5 +770,16 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
             "security_risk": "0–100 higher=worse from open security incidents, auth failures (7d audit window), JWT/token/document/webhook signals, threat detection counts.",
             "revenue_health": "100 minus penalties for past_due accounts, failed payments (30d), LIMITED entitlements, recent FAILED stripe_events. Visible only to ROLE_OWNER; other roles see null score and redacted revenue block.",
             "job_confidence": "Heuristic index from critical job states (healthy-like vs failed/degraded/missed) with point deductions; not a forecast.",
+        },
+        "compliance_workflow_audit": {
+            "read_only": True,
+            "diagnostic_note": (
+                "Sampled requirements (recent updated_at) plus recent compliance work orders. "
+                "Not exhaustive — use GET /api/admin/requirement-workflow-audit for paging."
+            ),
+            "workflow_inconsistencies_detected": inconsistencies_n,
+            "grouped_by_severity": grouped_sev,
+            "requirement_row_mismatches": drift_sample,
+            "work_order_reference_mismatches": wo_ref_mismatches[:16],
         },
     }

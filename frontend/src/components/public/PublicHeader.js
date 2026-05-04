@@ -10,7 +10,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from '../ui/navigation-menu';
-import { Menu, X, ChevronDown, FileText, Shield } from 'lucide-react';
+import { Menu, X, ChevronDown, Shield } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const PublicHeader = () => {
@@ -48,17 +48,9 @@ const PublicHeader = () => {
       comingSoon: false,
     },
     {
-      href: '/clearform',
-      label: 'ClearForm',
-      description: 'AI-powered document creation for individuals & small businesses',
-      icon: FileText,
-      badge: 'Coming Soon',
-      comingSoon: true,
-    },
-    {
       href: '/products/assurestack',
       label: 'AssureStack',
-      description: 'Always on. Always watching. (coming soon)',
+      description: 'Planned continuous monitoring — not available yet.',
       icon: Shield,
       badge: 'Coming Soon',
       comingSoon: true,

@@ -13,11 +13,21 @@ from presentation.label_service import (
     requirement_label,
 )
 from services.compliance_requirement_engine import resolve_engine_payload_from_requirement_row
-from services.requirement_action_resolver import infer_action_type, resolve_take_action_envelope
+from services.compliance_evidence_record_service import effective_evidence_resolution
+from services.requirement_action_resolver import (
+    enrich_take_action_envelope_for_client,
+    infer_action_type,
+    resolve_take_action_envelope,
+)
 from services.compliance_registry_publish_service import fetch_active_published_registry_entries
 from services.compliance_requirement_registry import (
     resolve_effective_why_it_matters,
     resolve_published_entry_for_requirement,
+)
+from services.requirement_code_registry import normalize_requirement_code
+from services.requirement_workflow_audit import (
+    apply_workflow_reference_audit,
+    strip_workflow_diagnostics_from_payload,
 )
 
 # --- Canonical enum values (stored on requirement documents and returned in APIs) ---
@@ -257,19 +267,28 @@ def enrich_requirement_dict(
     audience: str = "client",
     published_registry_entries: Optional[Dict[str, Any]] = None,
     property_doc: Optional[Dict[str, Any]] = None,
+    compliance_evidence_records: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
     Mutates a shallow copy: adds presentation + truth fields. Keeps all original keys.
+
+    Workflow drift diagnostics (``workflow_class_reference``, ``workflow_mismatch_*``) are
+    attached only when ``audience == "admin"``; client surfaces never receive them.
     """
     out = dict(requirement)
+    _raw_code = str(out.get("requirement_code") or out.get("requirement_type") or "").strip()
+    _canon = normalize_requirement_code(_raw_code)
+    if _canon:
+        out["canonical_requirement_code"] = _canon
     code = out.get("requirement_code") or out.get("requirement_type") or ""
+    _label_code = _canon or code
     date_source, evidence_state, confidence_state = resolve_truth_triple(out, live_evidence_state)
     out["date_source"] = date_source
     out["evidence_state"] = evidence_state
     out["confidence_state"] = confidence_state
 
     status_raw = (out.get("status") or "").strip().upper()
-    out["display_label"] = requirement_label(code, audience=audience)
+    out["display_label"] = requirement_label(_label_code, audience=audience)
     out["status_label"] = compliance_requirement_status_label(status_raw, audience=audience)
     date_label, helper = build_date_presentation(out, date_source, evidence_state)
     out["date_label"] = date_label
@@ -319,13 +338,55 @@ def enrich_requirement_dict(
     out.update(eng)
 
     out["action_type"] = infer_action_type(out)
-    take = resolve_take_action_envelope(
+    env_client = enrich_take_action_envelope_for_client(
+        resolve_take_action_envelope(
+            out,
+            property_id=out.get("property_id"),
+            property_jurisdiction=out.get("jurisdiction"),
+        ),
         out,
-        property_id=out.get("property_id"),
-        property_jurisdiction=out.get("jurisdiction"),
-    ).get("take_action")
+    )
+    take = env_client.get("take_action")
     out["take_action"] = take
     out["action_links"] = list((take or {}).get("supporting_external_links") or [])
+    for k in ("workflow_class", "guidance_target", "allowed_evidence_modes"):
+        if env_client.get(k) is not None:
+            out[k] = env_client[k]
+
+    if (audience or "client").strip().lower() != "admin":
+        _ced = str(effective_evidence_resolution(out).get("client_evidence_disclosure") or "").strip()
+        if _ced:
+            out["client_evidence_disclosure"] = _ced
+
+    from services.requirement_evidence_completeness import (
+        evaluate_domestic_alarm_completeness,
+        project_evidence_completeness_for_client,
+    )
+
+    if _canon == "smoke_heat_alarms":
+        comp_eval = evaluate_domestic_alarm_completeness(
+            out,
+            property_doc,
+            compliance_evidence_records if compliance_evidence_records is not None else [],
+        )
+        if (audience or "client").strip().lower() == "admin":
+            out["evidence_completeness"] = comp_eval
+        else:
+            out["evidence_completeness"] = project_evidence_completeness_for_client(comp_eval)
+    else:
+        out["evidence_completeness"] = None
+
+    aud = (audience or "client").strip().lower()
+    if aud == "admin":
+        s_stored = str(requirement.get("requirement_code") or requirement.get("requirement_type") or "").strip()
+        if s_stored:
+            out["requirement_code_stored"] = s_stored
+        apply_workflow_reference_audit(
+            out,
+            published_entry=published_entry if isinstance(published_entry, dict) else None,
+        )
+    else:
+        strip_workflow_diagnostics_from_payload(out)
 
     return out
 
@@ -384,6 +445,23 @@ async def enrich_requirements_for_client(
             if pid:
                 props_full[str(pid)] = p
 
+    domestic_rids = [
+        str(r["requirement_id"])
+        for r in requirements
+        if r.get("requirement_id")
+        and normalize_requirement_code(
+            str(r.get("requirement_code") or r.get("requirement_type") or "").strip()
+        )
+        == "smoke_heat_alarms"
+    ]
+    cer_by_rid: Dict[str, List[Dict[str, Any]]] = {}
+    if domestic_rids:
+        from services.compliance_evidence_record_service import batch_list_evidence_records_for_requirements
+
+        cer_by_rid = await batch_list_evidence_records_for_requirements(
+            db, client_id=client_id, requirement_ids=domestic_rids
+        )
+
     enriched = []
     for r in requirements:
         rid = r.get("requirement_id")
@@ -393,6 +471,7 @@ async def enrich_requirements_for_client(
             pid = rc.get("property_id")
             if pid and str(pid) in jur_by_prop:
                 rc["jurisdiction"] = jur_by_prop[str(pid)]
+        _cer = cer_by_rid.get(str(rid), []) if rid else []
         enriched.append(
             enrich_requirement_dict(
                 rc,
@@ -400,6 +479,7 @@ async def enrich_requirements_for_client(
                 audience="client",
                 published_registry_entries=published_entries,
                 property_doc=props_full.get(str(rc.get("property_id") or "")),
+                compliance_evidence_records=_cer,
             )
         )
     return enriched, build_presentation_meta(enriched)
@@ -454,6 +534,32 @@ async def enrich_requirements_for_admin(
             if pid:
                 by_client_props[cid][str(pid)] = portfolio_jurisdiction_label(p, client_docs.get(cid) or {})
 
+    props_full_by_key: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    for cid, pmap in by_client_props.items():
+        pids = list(pmap.keys())
+        cur_full = db.properties.find({"client_id": cid, "property_id": {"$in": pids}}, {"_id": 0})
+        async for p in cur_full:
+            pid = p.get("property_id")
+            if pid:
+                props_full_by_key[(str(cid), str(pid))] = p
+
+    domestic_by_client: Dict[str, List[str]] = defaultdict(list)
+    for r in requirements:
+        cid = r.get("client_id")
+        rid = r.get("requirement_id")
+        code = str(r.get("requirement_code") or r.get("requirement_type") or "").strip()
+        if cid and rid and normalize_requirement_code(code) == "smoke_heat_alarms":
+            domestic_by_client[str(cid)].append(str(rid))
+
+    cer_by_client_rid: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+    if domestic_by_client:
+        from services.compliance_evidence_record_service import batch_list_evidence_records_for_requirements
+
+        for cid, rids in domestic_by_client.items():
+            cer_by_client_rid[cid] = await batch_list_evidence_records_for_requirements(
+                db, client_id=cid, requirement_ids=rids
+            )
+
     out: List[Dict[str, Any]] = []
     for r in requirements:
         cid = r.get("client_id")
@@ -467,12 +573,18 @@ async def enrich_requirements_for_admin(
             jl = by_client_props.get(str(cid), {}).get(str(r.get("property_id")), "")
             if jl:
                 rc["jurisdiction"] = jl
+        cid_s = str(cid or "")
+        pid_s = str(r.get("property_id") or "")
+        _prop_doc = props_full_by_key.get((cid_s, pid_s)) if cid_s and pid_s else None
+        _cer = cer_by_client_rid.get(cid_s, {}).get(str(rid), []) if cid_s and rid else []
         out.append(
             enrich_requirement_dict(
                 rc,
                 ev,
                 audience="admin",
                 published_registry_entries=published_entries,
+                property_doc=_prop_doc,
+                compliance_evidence_records=_cer,
             )
         )
     return out

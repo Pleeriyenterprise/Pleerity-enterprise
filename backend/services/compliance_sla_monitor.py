@@ -21,6 +21,9 @@ SLA_MAX_FAILURES_CRIT = int(os.getenv("COMPLIANCE_RECALC_SLA_MAX_FAILURES_CRIT",
 ALERT_COOLDOWN_SECONDS = int(os.getenv("COMPLIANCE_RECALC_ALERT_COOLDOWN_SECONDS", "3600"))
 OPS_ALERT_EMAIL = os.getenv("OPS_ALERT_EMAIL", "").strip()
 
+# Fallback when env resolves to a non-positive or non-int value for email idempotency chunking only.
+DEFAULT_COMPLIANCE_RECALC_ALERT_IDEMPOTENCY_COOLDOWN_SECONDS = 3600
+
 # Alert types and severity
 ALERT_PENDING_STUCK = "PENDING_STUCK"
 ALERT_RUNNING_STUCK = "RUNNING_STUCK"
@@ -35,6 +38,35 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _cooldown_seconds_for_email_idempotency() -> int:
+    """
+    Cooldown used only for COMPLIANCE_SLA_ALERT idempotency chunking.
+    Must be a positive int before dividing into now.timestamp(); otherwise DB dedupe and email keys could diverge.
+    """
+    cd = ALERT_COOLDOWN_SECONDS
+    if type(cd) is not int or cd <= 0:
+        logger.warning(
+            "Invalid COMPLIANCE_RECALC_ALERT_COOLDOWN_SECONDS for email idempotency (%r); "
+            "using fallback %s seconds",
+            cd,
+            DEFAULT_COMPLIANCE_RECALC_ALERT_IDEMPOTENCY_COOLDOWN_SECONDS,
+        )
+        return DEFAULT_COMPLIANCE_RECALC_ALERT_IDEMPOTENCY_COOLDOWN_SECONDS
+    return cd
+
+
+def compliance_sla_alert_email_idempotency_key(
+    property_id: str, alert_type: str, severity: str, now: datetime
+) -> str:
+    """
+    Deterministic idempotency for COMPLIANCE_SLA_ALERT sends: scoped to property + alert + severity
+    and aligned to the same cooldown window used for DB dedupe (avoids cross-property hash collisions).
+    """
+    cooldown = _cooldown_seconds_for_email_idempotency()
+    chunk = int(now.timestamp() // cooldown)
+    return f"COMPLIANCE_SLA_ALERT_{property_id}_{alert_type}_{severity}_{chunk}"
+
+
 def _parse_iso(s: Optional[str]) -> Optional[datetime]:
     if not s:
         return None
@@ -47,7 +79,15 @@ def _parse_iso(s: Optional[str]) -> Optional[datetime]:
         return None
 
 
-async def _send_alert_email(alert_type: str, severity: str, property_id: str, body: str, subject: str) -> bool:
+async def _send_alert_email(
+    alert_type: str,
+    severity: str,
+    property_id: str,
+    body: str,
+    subject: str,
+    *,
+    now: Optional[datetime] = None,
+) -> bool:
     """Send email to OPS_ALERT_EMAIL via Postmark if configured. Returns True if sent."""
     if not OPS_ALERT_EMAIL:
         logger.warning("OPS_ALERT_EMAIL not set; compliance SLA alert not sent by email")
@@ -55,8 +95,11 @@ async def _send_alert_email(alert_type: str, severity: str, property_id: str, bo
     try:
         from services.notification_orchestrator import notification_orchestrator
         from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        idempotency_key = f"COMPLIANCE_SLA_ALERT_{now}_{hash(subject) % 10**8}"
+
+        now_dt = now or datetime.now(timezone.utc)
+        idempotency_key = compliance_sla_alert_email_idempotency_key(
+            property_id, alert_type, severity, now_dt
+        )
         result = await notification_orchestrator.send(
             template_key="COMPLIANCE_SLA_ALERT",
             client_id=None,
@@ -127,7 +170,7 @@ async def _upsert_alert_and_maybe_send(
     except Exception:
         body_text = repr(details)
     body_html = f"<p>Compliance recalc SLA alert.</p><pre>{body_text}</pre>"
-    await _send_alert_email(alert_type, severity, property_id, body_html, subject)
+    await _send_alert_email(alert_type, severity, property_id, body_html, subject, now=now)
 
 
 async def _resolve_alert(db, property_id: str, alert_type: str, client_id: str, now: datetime) -> None:

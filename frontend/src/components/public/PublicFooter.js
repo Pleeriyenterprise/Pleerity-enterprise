@@ -15,8 +15,7 @@ const PublicFooter = () => {
 
   const platformLinks = [
     { href: '/', label: 'Compliance Vault Pro' },
-    { href: '/clearform', label: 'ClearForm' },
-    { href: '/products/assurestack', label: 'AssureStack' },
+    { href: '/products/assurestack', label: 'AssureStack (coming soon)' },
   ];
 
   const serviceLinks = [
