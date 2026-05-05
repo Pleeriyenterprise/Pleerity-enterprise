@@ -4,6 +4,13 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Label } from './ui/label';
 import { toast } from '../utils/portalNotifications';
+import { validateDepositStructuredDeclarationFields } from '../utils/depositStructuredDeclarationValidation';
+import { validateLegionellaStructuredDeclarationFields } from '../utils/legionellaStructuredValidation';
+import { validateWalesOccupationContractStructuredDeclarationFields } from '../utils/walesOccupationContractStructuredValidation';
+import {
+  evaluateStructuredDeclarationConditionalRules,
+  RIGHT_TO_RENT_STRUCTURED_DECLARATION_CONDITIONAL_RULES,
+} from '../utils/structuredDeclarationConditionalValidation';
 
 /** YYYY-MM-DD for native date input; tolerates other stored strings without coercing. */
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -48,6 +55,7 @@ export default function ComplianceEvidenceResolveModal({
   const [supportingUploads, setSupportingUploads] = useState([]);
   const [supportingUploading, setSupportingUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [structuredValidationError, setStructuredValidationError] = useState('');
 
   const resetLocal = useCallback(() => {
     setInfo(null);
@@ -68,6 +76,7 @@ export default function ComplianceEvidenceResolveModal({
     setInspNotes('');
     setSupportingFiles([]);
     setSupportingUploads([]);
+    setStructuredValidationError('');
   }, []);
 
   useEffect(() => {
@@ -113,10 +122,22 @@ export default function ComplianceEvidenceResolveModal({
     String(info?.primary_resolution_workflow || '')
       .trim()
       .toUpperCase() === 'GUIDED_DECLARATION';
+  const reqSlug = String(requirement?.requirement_type || requirement?.requirement_code || '')
+    .trim()
+    .toLowerCase();
+  const reqJur = String(requirement?.jurisdiction || requirement?.property_jurisdiction || '')
+    .trim()
+    .toLowerCase();
+  const isRightToRentFamily = reqSlug === 'right_to_rent' || reqSlug === 'right_to_rent_checks';
+  const isDepositFamily =
+    reqSlug === 'deposit_pi' || reqSlug === 'deposit_prescribed_info' || reqSlug === 'tenancy_deposit_protection';
+  const isWalesOccupationFamily = reqSlug === 'wales_occupation_contract' || (reqSlug === 'occupation_contract' && reqJur === 'wales');
+  const isLegionella = reqSlug === 'legionella';
   const selectedMethod = (info?.guided_methods || []).find((x) => x.evidence_mode === selectedMode) || null;
   const selectedChecklistSchema = Array.isArray(selectedMethod?.checklist_schema) ? selectedMethod.checklist_schema : [];
 
   const setChecklistAnswer = (mode, id, patch) => {
+    if (mode === 'STRUCTURED_DECLARATION') setStructuredValidationError('');
     const targetSetter = mode === 'STRUCTURED_DECLARATION' ? setDeclFields : setInspAnswers;
     targetSetter((prev) => {
       const prior = prev?.[id] && typeof prev[id] === 'object' ? prev[id] : {};
@@ -191,9 +212,48 @@ export default function ComplianceEvidenceResolveModal({
     if (!propertyId || !rid || !selectedMode) return;
     let body = { evidence_mode: selectedMode };
     if (selectedMode === 'STRUCTURED_DECLARATION') {
+      const structuredPayload = toChecklistPayload(declFields, selectedChecklistSchema);
+      const rulesFromPolicy = info?.policy?.structured_declaration_conditional_rules;
+      const rules =
+        Array.isArray(rulesFromPolicy) && rulesFromPolicy.length > 0
+          ? rulesFromPolicy
+          : isGuidedDeclaration && isRightToRentFamily
+            ? RIGHT_TO_RENT_STRUCTURED_DECLARATION_CONDITIONAL_RULES
+            : null;
+      const condErr = evaluateStructuredDeclarationConditionalRules(rules, structuredPayload);
+      if (condErr) {
+        setStructuredValidationError(condErr);
+        toast.error(condErr);
+        return;
+      }
+      if (isDepositFamily) {
+        const depErr = validateDepositStructuredDeclarationFields(structuredPayload);
+        if (depErr) {
+          setStructuredValidationError(depErr);
+          toast.error(depErr);
+          return;
+        }
+      }
+      if (isWalesOccupationFamily) {
+        const walErr = validateWalesOccupationContractStructuredDeclarationFields(structuredPayload);
+        if (walErr) {
+          setStructuredValidationError(walErr);
+          toast.error(walErr);
+          return;
+        }
+      }
+      if (isLegionella) {
+        const legErr = validateLegionellaStructuredDeclarationFields(structuredPayload);
+        if (legErr) {
+          setStructuredValidationError(legErr);
+          toast.error(legErr);
+          return;
+        }
+      }
+      setStructuredValidationError('');
       body.structured_declaration = {
         declaration_statement: declStatement,
-        structured_fields: toChecklistPayload(declFields, selectedChecklistSchema),
+        structured_fields: structuredPayload,
       };
     } else if (selectedMode === 'CONTRACTOR_CONFIRMATION') {
       body.contractor_confirmation = {
@@ -225,7 +285,10 @@ export default function ComplianceEvidenceResolveModal({
       onOpenChange(false);
       onSubmitted?.();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Could not save evidence');
+      const d = e?.response?.data?.detail;
+      const msg =
+        typeof d === 'object' && d != null && d.message ? d.message : typeof d === 'string' ? d : 'Could not save evidence';
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -241,6 +304,21 @@ export default function ComplianceEvidenceResolveModal({
               <>
                 Use structured delivery details as the main record. The Documents page (or “Upload delivery proof”
                 on the requirement) is for optional supporting files only.
+              </>
+            ) : isGuidedDeclaration && isDepositFamily ? (
+              <>
+                Use the structured record for deposit protection and prescribed information. The Documents page (or
+                “Upload deposit evidence” on the requirement) is for optional supporting files only.
+              </>
+            ) : isGuidedDeclaration && isWalesOccupationFamily ? (
+              <>
+                Use the structured record as the main Wales occupation contract evidence. The Documents page (or
+                “Upload occupation contract” on the requirement) is for optional supporting files only.
+              </>
+            ) : isLegionella ? (
+              <>
+                Use the structured record as the main Legionella assessment evidence. The Documents page (or “Upload
+                assessment report” on the requirement) is for optional supporting files only.
               </>
             ) : isGuidedDeclaration ? (
               <>
@@ -259,6 +337,15 @@ export default function ComplianceEvidenceResolveModal({
         {clientEvidenceDisclosure ? (
           <p className="text-sm text-gray-600 -mt-1 mb-1" data-testid="client-evidence-disclosure">
             {clientEvidenceDisclosure}
+          </p>
+        ) : null}
+        {structuredValidationError ? (
+          <p
+            className="text-sm text-red-600 -mt-1 mb-1"
+            data-testid="structured-declaration-validation-error"
+            role="alert"
+          >
+            {structuredValidationError}
           </p>
         ) : null}
         {loading ? (

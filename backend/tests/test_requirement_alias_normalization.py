@@ -17,6 +17,63 @@ def test_normalize_three_documented_aliases():
     assert normalize_requirement_code("right_to_rent_checks") == "right_to_rent"
 
 
+def test_normalize_deposit_aliases_map_to_deposit_pi():
+    from services.requirement_code_registry import normalize_requirement_code
+
+    assert normalize_requirement_code("deposit_prescribed_info") == "deposit_pi"
+    assert normalize_requirement_code("tenancy_deposit_protection") == "deposit_pi"
+
+
+def test_effective_evidence_deposit_aliases_match_deposit_pi():
+    from services.compliance_evidence_record_service import effective_evidence_resolution
+
+    base = {"requirement_type": "deposit_pi", "registry_metadata": {}}
+    assert effective_evidence_resolution(base) == effective_evidence_resolution(
+        {"requirement_type": "deposit_prescribed_info", "registry_metadata": {}}
+    )
+    assert effective_evidence_resolution(base) == effective_evidence_resolution(
+        {"requirement_type": "tenancy_deposit_protection", "registry_metadata": {}}
+    )
+
+
+def test_effective_evidence_occupation_contract_wales_context_uses_wales_policy():
+    from services.compliance_evidence_record_service import effective_evidence_resolution
+
+    wal = effective_evidence_resolution(
+        {
+            "requirement_type": "wales_occupation_contract",
+            "requirement_code": "wales_occupation_contract",
+            "jurisdiction": "Wales",
+            "registry_metadata": {},
+        }
+    )
+    occ = effective_evidence_resolution(
+        {
+            "requirement_type": "occupation_contract",
+            "requirement_code": "occupation_contract",
+            "jurisdiction": "Wales",
+            "registry_metadata": {},
+        }
+    )
+    assert occ == wal
+    assert wal.get("primary_resolution_workflow") == "GUIDED_DECLARATION"
+
+
+def test_effective_evidence_occupation_contract_non_wales_stays_legacy_default():
+    from services.compliance_evidence_record_service import effective_evidence_resolution
+
+    occ = effective_evidence_resolution(
+        {
+            "requirement_type": "occupation_contract",
+            "requirement_code": "occupation_contract",
+            "jurisdiction": "England",
+            "registry_metadata": {},
+        }
+    )
+    assert occ.get("allowed_evidence_modes") == ["DOCUMENT_UPLOAD"]
+    assert occ.get("primary_resolution_workflow") == "LEGACY_DOCUMENT_UPLOAD"
+
+
 def test_engine_spec_fire_alarm_equals_fire_detection():
     from services.compliance_requirement_engine import resolve_engine_payload_from_requirement_row
 

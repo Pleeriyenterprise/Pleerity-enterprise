@@ -16,6 +16,10 @@ from services.requirement_code_registry import normalize_requirement_code
 
 logger = logging.getLogger(__name__)
 
+RIGHT_TO_RENT_FOLLOW_UP_DATE_REQUIRED_MESSAGE = (
+    "Enter a follow-up check date for time-limited Right to Rent checks."
+)
+
 EVIDENCE_MODE_DOCUMENT_UPLOAD = "DOCUMENT_UPLOAD"
 EVIDENCE_MODE_STRUCTURED_DECLARATION = "STRUCTURED_DECLARATION"
 
@@ -34,6 +38,7 @@ REGISTRATION_TRACKING_REQUIREMENT_CODES = frozenset(
 TENANT_DELIVERY_WORKFLOW = "TENANT_DELIVERY"
 # England Right to Rent — structured check record + supporting documents (Phase 1).
 GUIDED_DECLARATION_WORKFLOW = "GUIDED_DECLARATION"
+EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW = "EXTERNAL_ASSESSMENT_EVIDENCE"
 EVIDENCE_MODE_CONTRACTOR_CONFIRMATION = "CONTRACTOR_CONFIRMATION"
 EVIDENCE_MODE_INSPECTION_CHECKLIST = "INSPECTION_CHECKLIST"
 
@@ -158,6 +163,229 @@ _RIGHT_TO_RENT_CHECK_SCHEMA: List[Dict[str, Any]] = [
     },
 ]
 
+# Client/API metadata: conditional structured-declaration rules (evaluated by modal + enforced for R2R on POST).
+_RIGHT_TO_RENT_STRUCTURED_DECLARATION_CONDITIONAL_RULES: List[Dict[str, Any]] = [
+    {
+        "id": "follow_up_date_when_time_limited_or_follow_up",
+        "when_any": [
+            {"field": "right_to_rent_status", "equals": "time_limited"},
+            {"field": "follow_up_required", "equals": True},
+        ],
+        "require_non_empty_fields": ["follow_up_date"],
+        "message": RIGHT_TO_RENT_FOLLOW_UP_DATE_REQUIRED_MESSAGE,
+    },
+]
+
+# Tenancy deposit — Phase 1: protection + prescribed information in one structured record (UK applicability unchanged).
+_DEPOSIT_COMPLIANCE_SCHEMA: List[Dict[str, Any]] = [
+    {
+        "id": "deposit_taken",
+        "label": "Deposit taken from tenant",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+    {
+        "id": "deposit_amount",
+        "label": "Deposit amount",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "deposit_received_date",
+        "label": "Deposit received date",
+        "answer_type": "DATE",
+        "required": False,
+    },
+    {
+        "id": "scheme_name",
+        "label": "Protection scheme name",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "scheme_reference",
+        "label": "Scheme / custodial reference",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "protection_date",
+        "label": "Date deposit protected in scheme",
+        "answer_type": "DATE",
+        "required": False,
+    },
+    {
+        "id": "protection_confirmed",
+        "label": "I confirm the deposit is protected in an approved scheme as described",
+        "answer_type": "YES_NO",
+        "required": False,
+    },
+    {
+        "id": "prescribed_information_served",
+        "label": "Prescribed information served on the tenant",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+    {
+        "id": "prescribed_information_served_date",
+        "label": "Date prescribed information was served",
+        "answer_type": "DATE",
+        "required": False,
+    },
+    {
+        "id": "served_to",
+        "label": "Served to (tenant name or description)",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "service_method",
+        "label": "How prescribed information was served",
+        "answer_type": "SELECT",
+        "required": False,
+        "choices": [
+            {"value": "email", "label": "Email"},
+            {"value": "hand_delivery", "label": "Hand delivery"},
+            {"value": "post", "label": "Post"},
+            {"value": "tenant_portal", "label": "Tenant portal"},
+            {"value": "other", "label": "Other"},
+        ],
+    },
+    {
+        "id": "proof_of_service",
+        "label": "Proof of service — reference or notes (optional; you can also upload a file below)",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "declaration_confirmed",
+        "label": "I confirm this deposit compliance record is accurate to the best of my knowledge",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+]
+
+DEPOSIT_STRUCTURED_DECLARATION_INVALID = "DEPOSIT_STRUCTURED_DECLARATION_INVALID"
+DEPOSIT_DECLARATION_CONFIRMATION_REQUIRED_MESSAGE = (
+    "Confirm that your deposit compliance declaration is accurate to continue."
+)
+DEPOSIT_PROTECTION_FIELD_REQUIRED_MESSAGE = "Complete all deposit protection fields when a deposit is taken."
+DEPOSIT_PROTECTION_CONFIRM_REQUIRED_MESSAGE = (
+    "Confirm that the deposit is protected in an approved scheme when a deposit is taken."
+)
+DEPOSIT_PRESCRIBED_INFO_FIELD_REQUIRED_MESSAGE = (
+    "Complete prescribed information service details when you confirm information was served."
+)
+
+# Wales occupation contract — Phase 1 guided declaration + supporting upload (Wales-only duty).
+_WALES_OCCUPATION_CONTRACT_SCHEMA: List[Dict[str, Any]] = [
+    {
+        "id": "contract_type",
+        "label": "Contract type",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "occupation_contract_issued",
+        "label": "Occupation contract issued to contract-holder",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+    {
+        "id": "issue_date",
+        "label": "Issue date",
+        "answer_type": "DATE",
+        "required": False,
+    },
+    {
+        "id": "contract_holder_name",
+        "label": "Contract-holder name",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "service_method",
+        "label": "How the occupation contract was provided",
+        "answer_type": "SELECT",
+        "required": False,
+        "choices": [
+            {"value": "email", "label": "Email"},
+            {"value": "hand_delivery", "label": "Hand delivery"},
+            {"value": "post", "label": "Post"},
+            {"value": "tenant_portal", "label": "Tenant portal"},
+            {"value": "other", "label": "Other"},
+        ],
+    },
+    {
+        "id": "proof_reference",
+        "label": "Proof reference (optional)",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "declaration_confirmed",
+        "label": "I confirm this Wales occupation contract record is accurate to the best of my knowledge",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+]
+
+WALES_OCCUPATION_CONTRACT_STRUCTURED_DECLARATION_INVALID = "WALES_OCCUPATION_CONTRACT_STRUCTURED_DECLARATION_INVALID"
+WALES_OCCUPATION_CONTRACT_DECLARATION_REQUIRED_MESSAGE = (
+    "Confirm that your Wales occupation contract declaration is accurate to continue."
+)
+WALES_OCCUPATION_CONTRACT_ISSUED_FIELD_REQUIRED_MESSAGE = (
+    "Complete issue date, contract-holder name, and service method when the occupation contract is issued."
+)
+LEGIONELLA_DECLARATION_REQUIRED = "LEGIONELLA_DECLARATION_REQUIRED"
+LEGIONELLA_ASSESSMENT_DATE_REQUIRED = "LEGIONELLA_ASSESSMENT_DATE_REQUIRED"
+LEGIONELLA_RISK_LEVEL_REQUIRED = "LEGIONELLA_RISK_LEVEL_REQUIRED"
+LEGIONELLA_CONTROL_MEASURES_REQUIRED = "LEGIONELLA_CONTROL_MEASURES_REQUIRED"
+LEGIONELLA_ACTIONS_REQUIRED = "LEGIONELLA_ACTIONS_REQUIRED"
+LEGIONELLA_NEXT_REVIEW_REQUIRED = "LEGIONELLA_NEXT_REVIEW_REQUIRED"
+LEGIONELLA_DECLARATION_REQUIRED_MESSAGE = "Confirm that your Legionella assessment declaration is accurate to continue."
+LEGIONELLA_ASSESSMENT_DATE_REQUIRED_MESSAGE = "Enter the assessment date when an assessment is completed."
+LEGIONELLA_RISK_LEVEL_REQUIRED_MESSAGE = "Select the Legionella risk level for the completed assessment."
+LEGIONELLA_CONTROL_MEASURES_REQUIRED_MESSAGE = "Confirm whether control measures are in place for the completed assessment."
+LEGIONELLA_ACTIONS_REQUIRED_MESSAGE = "Confirm whether follow-up actions are required for the completed assessment."
+LEGIONELLA_NEXT_REVIEW_REQUIRED_MESSAGE = "Enter the next review date when actions are required."
+
+_LEGIONELLA_SCHEMA: List[Dict[str, Any]] = [
+    {"id": "assessment_completed", "label": "Assessment completed", "answer_type": "YES_NO", "required": True},
+    {"id": "assessment_date", "label": "Assessment date", "answer_type": "DATE", "required": True},
+    {
+        "id": "assessor_type",
+        "label": "Assessor type",
+        "answer_type": "SELECT",
+        "required": True,
+        "choices": [
+            {"value": "self", "label": "Self"},
+            {"value": "external", "label": "External"},
+        ],
+    },
+    {"id": "assessor_name", "label": "Assessor name (optional)", "answer_type": "TEXT", "required": False},
+    {
+        "id": "risk_level",
+        "label": "Risk level",
+        "answer_type": "SELECT",
+        "required": True,
+        "choices": [
+            {"value": "low", "label": "Low"},
+            {"value": "medium", "label": "Medium"},
+            {"value": "high", "label": "High"},
+        ],
+    },
+    {"id": "control_measures_in_place", "label": "Control measures in place", "answer_type": "YES_NO", "required": True},
+    {"id": "actions_required", "label": "Actions required", "answer_type": "YES_NO", "required": True},
+    {"id": "next_review_date", "label": "Next review date", "answer_type": "DATE", "required": False},
+    {
+        "id": "declaration_confirmed",
+        "label": "I confirm this Legionella assessment record is accurate to the best of my knowledge",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+]
+
 # Product defaults until registry publishes explicit evidence_resolution (policy data, not UI).
 DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE: Dict[str, Dict[str, Any]] = {
     "smoke_heat_alarms": {
@@ -190,6 +418,7 @@ DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE: Dict[str, Dict[str, Any]] = {
         "checklist_schema_by_mode": {
             EVIDENCE_MODE_STRUCTURED_DECLARATION: list(_RIGHT_TO_RENT_CHECK_SCHEMA),
         },
+        "structured_declaration_conditional_rules": list(_RIGHT_TO_RENT_STRUCTURED_DECLARATION_CONDITIONAL_RULES),
     },
     "hmo_fire_risk": {
         "allowed_evidence_modes": [
@@ -210,6 +439,26 @@ DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE: Dict[str, Dict[str, Any]] = {
         "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
         "allow_medium_non_document_satisfaction": True,
         "allow_low_non_document_satisfaction": False,
+    },
+    "legionella": {
+        "allowed_evidence_modes": [
+            EVIDENCE_MODE_STRUCTURED_DECLARATION,
+            EVIDENCE_MODE_DOCUMENT_UPLOAD,
+        ],
+        "primary_resolution_workflow": EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW,
+        "guided_primary_cta_label": "Record Legionella risk assessment",
+        "guided_secondary_upload_label": "Upload assessment report",
+        "modal_title": "Record Legionella risk assessment",
+        "allow_medium_non_document_satisfaction": True,
+        "allow_low_non_document_satisfaction": False,
+        "supporting_upload_recommended": True,
+        "client_evidence_disclosure": (
+            "This records your Legionella risk assessment for compliance tracking. "
+            "It does not replace professional or legal verification."
+        ),
+        "checklist_schema_by_mode": {
+            EVIDENCE_MODE_STRUCTURED_DECLARATION: list(_LEGIONELLA_SCHEMA),
+        },
     },
     "how_to_rent": {
         "allowed_evidence_modes": [
@@ -232,23 +481,43 @@ DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE: Dict[str, Dict[str, Any]] = {
     },
     "deposit_pi": {
         "allowed_evidence_modes": [
-            EVIDENCE_MODE_DOCUMENT_UPLOAD,
             EVIDENCE_MODE_STRUCTURED_DECLARATION,
+            EVIDENCE_MODE_DOCUMENT_UPLOAD,
         ],
-        "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
-        "guided_primary_cta_label": "Add compliance evidence",
+        "primary_resolution_workflow": GUIDED_DECLARATION_WORKFLOW,
+        "guided_primary_cta_label": "Record deposit compliance",
+        "guided_secondary_upload_label": "Upload deposit evidence",
+        "modal_title": "Record deposit compliance",
         "allow_medium_non_document_satisfaction": True,
         "allow_low_non_document_satisfaction": False,
+        "supporting_upload_recommended": True,
+        "client_evidence_disclosure": (
+            "This records your tenancy deposit protection and prescribed information details for review on the platform. "
+            "It is not legal verification, scheme validation, or a substitute for legal advice."
+        ),
+        "checklist_schema_by_mode": {
+            EVIDENCE_MODE_STRUCTURED_DECLARATION: list(_DEPOSIT_COMPLIANCE_SCHEMA),
+        },
     },
-    "deposit_prescribed_info": {
+    "wales_occupation_contract": {
         "allowed_evidence_modes": [
-            EVIDENCE_MODE_DOCUMENT_UPLOAD,
             EVIDENCE_MODE_STRUCTURED_DECLARATION,
+            EVIDENCE_MODE_DOCUMENT_UPLOAD,
         ],
-        "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
-        "guided_primary_cta_label": "Add compliance evidence",
+        "primary_resolution_workflow": GUIDED_DECLARATION_WORKFLOW,
+        "guided_primary_cta_label": "Record Wales occupation contract",
+        "guided_secondary_upload_label": "Upload occupation contract",
+        "modal_title": "Record Wales occupation contract",
         "allow_medium_non_document_satisfaction": True,
         "allow_low_non_document_satisfaction": False,
+        "supporting_upload_recommended": True,
+        "client_evidence_disclosure": (
+            "This records Wales occupation contract evidence for review on the platform. "
+            "It does not represent legal verification or replace legal advice."
+        ),
+        "checklist_schema_by_mode": {
+            EVIDENCE_MODE_STRUCTURED_DECLARATION: list(_WALES_OCCUPATION_CONTRACT_SCHEMA),
+        },
     },
 }
 
@@ -320,6 +589,153 @@ def _norm_modes_list(raw: Any) -> List[str]:
     return out
 
 
+def _structured_field_answer(structured_fields: Optional[Dict[str, Any]], field_id: str) -> Any:
+    if not isinstance(structured_fields, dict):
+        return None
+    row = structured_fields.get(field_id)
+    if isinstance(row, dict):
+        return row.get("answer")
+    return None
+
+
+def _truthy_yes_answer(value: Any) -> bool:
+    if value is True:
+        return True
+    if isinstance(value, str):
+        return value.strip().upper() in ("YES", "TRUE", "1", "Y")
+    return False
+
+
+def validate_right_to_rent_structured_declaration_fields(
+    structured_fields: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    """
+    Phase 1.1: require follow_up_date when status is time-limited or follow-up is required.
+    Applies only to ``right_to_rent`` / ``right_to_rent_checks`` (canonical) — not other declarations.
+    """
+    status = str(_structured_field_answer(structured_fields, "right_to_rent_status") or "").strip().lower()
+    follow_req = _truthy_yes_answer(_structured_field_answer(structured_fields, "follow_up_required"))
+    need_date = status == "time_limited" or follow_req
+    if not need_date:
+        return None
+    fu = _structured_field_answer(structured_fields, "follow_up_date")
+    if fu is None:
+        return RIGHT_TO_RENT_FOLLOW_UP_DATE_REQUIRED_MESSAGE
+    if isinstance(fu, str) and not fu.strip():
+        return RIGHT_TO_RENT_FOLLOW_UP_DATE_REQUIRED_MESSAGE
+    return None
+
+
+def _non_empty_structured_answer(structured_fields: Optional[Dict[str, Any]], field_id: str) -> bool:
+    v = _structured_field_answer(structured_fields, field_id)
+    if v is None:
+        return False
+    if isinstance(v, str):
+        return bool(v.strip())
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return True
+    return True
+
+
+def validate_deposit_structured_declaration_fields(
+    structured_fields: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    """
+    Phase 1 deposit guided declaration — conditional required fields. For new structured submissions only
+    (POST); legacy document-only evidence is unchanged.
+    """
+    if not _truthy_yes_answer(_structured_field_answer(structured_fields, "declaration_confirmed")):
+        return DEPOSIT_DECLARATION_CONFIRMATION_REQUIRED_MESSAGE
+    deposit_taken = _truthy_yes_answer(_structured_field_answer(structured_fields, "deposit_taken"))
+    if deposit_taken:
+        for fid in (
+            "deposit_amount",
+            "deposit_received_date",
+            "scheme_name",
+            "scheme_reference",
+            "protection_date",
+        ):
+            if not _non_empty_structured_answer(structured_fields, fid):
+                return DEPOSIT_PROTECTION_FIELD_REQUIRED_MESSAGE
+        if not _truthy_yes_answer(_structured_field_answer(structured_fields, "protection_confirmed")):
+            return DEPOSIT_PROTECTION_CONFIRM_REQUIRED_MESSAGE
+    served = _truthy_yes_answer(_structured_field_answer(structured_fields, "prescribed_information_served"))
+    if served:
+        for fid in ("prescribed_information_served_date", "served_to", "service_method"):
+            if not _non_empty_structured_answer(structured_fields, fid):
+                return DEPOSIT_PRESCRIBED_INFO_FIELD_REQUIRED_MESSAGE
+    return None
+
+
+def validate_wales_occupation_contract_structured_declaration_fields(
+    structured_fields: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    """
+    Phase 1 Wales occupation contract — conditional required fields on new structured submissions.
+    """
+    if not _truthy_yes_answer(_structured_field_answer(structured_fields, "declaration_confirmed")):
+        return WALES_OCCUPATION_CONTRACT_DECLARATION_REQUIRED_MESSAGE
+    issued = _truthy_yes_answer(_structured_field_answer(structured_fields, "occupation_contract_issued"))
+    if issued:
+        for fid in ("issue_date", "contract_holder_name", "service_method"):
+            if not _non_empty_structured_answer(structured_fields, fid):
+                return WALES_OCCUPATION_CONTRACT_ISSUED_FIELD_REQUIRED_MESSAGE
+    return None
+
+
+def validate_legionella_structured_declaration_fields(
+    structured_fields: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, str]]:
+    if not _truthy_yes_answer(_structured_field_answer(structured_fields, "declaration_confirmed")):
+        return {"code": LEGIONELLA_DECLARATION_REQUIRED, "message": LEGIONELLA_DECLARATION_REQUIRED_MESSAGE}
+
+    assessment_completed = _truthy_yes_answer(_structured_field_answer(structured_fields, "assessment_completed"))
+    if assessment_completed:
+        if not _non_empty_structured_answer(structured_fields, "assessment_date"):
+            return {"code": LEGIONELLA_ASSESSMENT_DATE_REQUIRED, "message": LEGIONELLA_ASSESSMENT_DATE_REQUIRED_MESSAGE}
+        if not _non_empty_structured_answer(structured_fields, "risk_level"):
+            return {"code": LEGIONELLA_RISK_LEVEL_REQUIRED, "message": LEGIONELLA_RISK_LEVEL_REQUIRED_MESSAGE}
+        if _structured_field_answer(structured_fields, "control_measures_in_place") is None:
+            return {
+                "code": LEGIONELLA_CONTROL_MEASURES_REQUIRED,
+                "message": LEGIONELLA_CONTROL_MEASURES_REQUIRED_MESSAGE,
+            }
+        if _structured_field_answer(structured_fields, "actions_required") is None:
+            return {"code": LEGIONELLA_ACTIONS_REQUIRED, "message": LEGIONELLA_ACTIONS_REQUIRED_MESSAGE}
+
+    actions_required = _truthy_yes_answer(_structured_field_answer(structured_fields, "actions_required"))
+    if actions_required and not _non_empty_structured_answer(structured_fields, "next_review_date"):
+        return {"code": LEGIONELLA_NEXT_REVIEW_REQUIRED, "message": LEGIONELLA_NEXT_REVIEW_REQUIRED_MESSAGE}
+    return None
+
+
+def _norm_structured_declaration_conditional_rules(raw: Any) -> List[Dict[str, Any]]:
+    if not isinstance(raw, list):
+        return []
+    out: List[Dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        iid = str(item.get("id") or "").strip()
+        msg = str(item.get("message") or "").strip()
+        when_any = item.get("when_any")
+        req = item.get("require_non_empty_fields")
+        if not iid or not msg or not isinstance(when_any, list) or not isinstance(req, list):
+            continue
+        wn: List[Dict[str, Any]] = []
+        for w in when_any:
+            if not isinstance(w, dict):
+                continue
+            f = str(w.get("field") or "").strip()
+            if not f:
+                continue
+            wn.append({"field": f, "equals": w.get("equals")})
+        rfs = [str(x).strip() for x in req if str(x).strip()]
+        if wn and rfs:
+            out.append({"id": iid, "when_any": wn, "require_non_empty_fields": rfs, "message": msg})
+    return out
+
+
 def normalize_evidence_resolution_dict(er: Dict[str, Any]) -> Dict[str, Any]:
     modes = _norm_modes_list(er.get("allowed_evidence_modes"))
     if not modes:
@@ -348,6 +764,12 @@ def normalize_evidence_resolution_dict(er: Dict[str, Any]) -> Dict[str, Any]:
     ced = str(er.get("client_evidence_disclosure") or "").strip()
     if ced:
         out["client_evidence_disclosure"] = ced
+    gsl = str(er.get("guided_secondary_upload_label") or "").strip()
+    if gsl:
+        out["guided_secondary_upload_label"] = gsl
+    nrules = _norm_structured_declaration_conditional_rules(er.get("structured_declaration_conditional_rules"))
+    if nrules:
+        out["structured_declaration_conditional_rules"] = nrules
     return out
 
 
@@ -490,6 +912,11 @@ def effective_evidence_resolution(requirement: Dict[str, Any]) -> Dict[str, Any]
     for key in _default_evidence_resolution_lookup_keys(rt, rc):
         if key in DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE:
             return normalize_evidence_resolution_dict(DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE[key])
+    # Wales-only safe aliasing for legacy/storage variants: occupation_contract uses Wales policy only in Wales context.
+    occ_slug = (normalize_requirement_code(rt) or normalize_requirement_code(rc) or "").strip().lower()
+    req_jur = str(requirement.get("jurisdiction") or requirement.get("property_jurisdiction") or "").strip().lower()
+    if occ_slug == "occupation_contract" and req_jur == "wales":
+        return normalize_evidence_resolution_dict(DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE["wales_occupation_contract"])
     return normalize_evidence_resolution_dict(
         {
             "allowed_evidence_modes": [EVIDENCE_MODE_DOCUMENT_UPLOAD],

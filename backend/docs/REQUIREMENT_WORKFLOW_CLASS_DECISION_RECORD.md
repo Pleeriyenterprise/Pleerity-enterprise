@@ -113,7 +113,7 @@ See §1.2. Normalization **must** remain the single entry point so aliases do no
 
 **Client copy:** Primary CTA — **“Record How to Rent delivery”**; secondary document path — **“Upload delivery proof”** (not “upload the guide” as the main action). Modal includes **client-safe disclosure**: records delivery details for platform review — **not** government/court verification or legal advice.
 
-**Explicit non-goals for Phase 1:** No change to compliance **scoring** formulas; no bulk Mongo migration; no tenant entity linkage; no deposit / prescribed information changes.
+**Explicit non-goals for Phase 1:** No change to compliance **scoring** formulas; no bulk Mongo migration; no tenant entity linkage.
 
 ### 2.8 Phase 1 — Right to Rent (`right_to_rent` / `right_to_rent_checks`) — `GUIDED_DECLARATION` (implemented)
 
@@ -131,6 +131,71 @@ See §1.2. Normalization **must** remain the single entry point so aliases do no
 
 **Explicit non-goals for Phase 1:** No scoring or `_applies_if` changes; no tenant entity linkage; no claim of statutory verification beyond record-keeping support.
 
+### 2.9 Phase 1 — Deposit protection & prescribed information (`deposit_pi` family) — `GUIDED_DECLARATION` (implemented)
+
+**Scope:** Tenancy deposit compliance **only where** existing catalog / planner applicability already exposes the obligation (`deposit_pi` from `DEPOSIT_PRESCRIBED_INFO` when `deposit_taken`, etc.). **No change** to jurisdiction applicability rules or scoring formulas.
+
+**Aliases (normalize to `deposit_pi`):** `deposit_prescribed_info`, `tenancy_deposit_protection`.
+
+**Runtime class:** `workflow_class` = **`GUIDED_DECLARATION`** when `primary_resolution_workflow` is **`GUIDED_DECLARATION`** on effective evidence policy.
+
+**Evidence modes (defaults):** **`STRUCTURED_DECLARATION`** first (primary — combined protection + prescribed information record), **`DOCUMENT_UPLOAD`** second (supporting only). Legacy document-only evidence remains valid for display; published overrides that allow **only** `DOCUMENT_UPLOAD` raise admin audit flag **`DEPOSIT_GUIDED_DECLARATION_DOCUMENT_ONLY`**.
+
+**Structured fields (two duties preserved in one checklist):** (A) deposit taken; amount; received date; scheme name; scheme reference; protection date; protection confirmed; (B) prescribed information served; served date; served to; service method; optional proof of service reference; (C) declaration confirmation.
+
+**Client copy:** Primary CTA — **“Record deposit compliance”**; modal title matches; secondary document path — **“Upload deposit evidence”**. **Client disclosure:** records deposit protection and prescribed information for platform review — **not** legal verification, scheme validation, or a substitute for legal advice.
+
+**Validation (new structured submissions):** Conditional required fields when `deposit_taken` = yes and when `prescribed_information_served` = yes; `declaration_confirmed` required. Does not bulk-migrate or invalidate legacy rows.
+
+**Explicit non-goals for Phase 1:** No tenant entity linkage; no per-nation schema branching beyond existing applicability; no claim of statutory verification.
+
+### 2.10 Phase 1 — Wales occupation contract (`wales_occupation_contract`; Wales-context `occupation_contract`) — `GUIDED_DECLARATION` (implemented)
+
+**Scope:** Wales-only occupation contract duty where existing catalog / planner applicability already exposes the requirement (`WALES_OCCUPATION_CONTRACT` for residential, active tenancy in Wales). No change to England/Scotland/NI applicability or scoring formulas.
+
+**Runtime class:** `workflow_class` = **`GUIDED_DECLARATION`** when `primary_resolution_workflow` is **`GUIDED_DECLARATION`** on effective evidence policy.
+
+**Evidence modes (defaults):** **`STRUCTURED_DECLARATION`** first (primary), **`DOCUMENT_UPLOAD`** second (supporting evidence only). Legacy document-only evidence remains display-safe; published overrides that allow only `DOCUMENT_UPLOAD` raise admin audit flag **`WALES_OCCUPATION_CONTRACT_GUIDED_DECLARATION_DOCUMENT_ONLY`**.
+
+**Structured fields:** contract type; occupation contract issued (yes/no); issue date; contract-holder name; service method (email/hand delivery/post/tenant portal/other); optional proof reference; declaration confirmed.
+
+**Client copy:** Primary CTA — **“Record Wales occupation contract”**; secondary document path — **“Upload occupation contract”**; modal title matches. Client disclosure states this records contract evidence for platform review and does not represent legal verification or legal advice.
+
+**Validation (new structured submissions):** declaration confirmation required; if occupation contract issued = yes, issue date + contract-holder name + service method required.
+
+### 2.11 Phase 1 — Legionella risk assessment (`legionella`) — `EXTERNAL_ASSESSMENT_EVIDENCE` (implemented)
+
+**Scope:** Assessment evidence capture only (assessment + outcome + follow-up actions) where existing planner/catalog exposes `legionella`. No scoring formula or jurisdiction applicability changes.
+
+**Runtime class:** `workflow_class` = **`EXTERNAL_ASSESSMENT_EVIDENCE`** when `primary_resolution_workflow` is **`EXTERNAL_ASSESSMENT_EVIDENCE`** on effective evidence policy.
+
+**Evidence modes (defaults):** **`STRUCTURED_DECLARATION`** first (primary assessment record), **`DOCUMENT_UPLOAD`** second (supporting report). Legacy document-only evidence remains display-safe; published overrides that allow only `DOCUMENT_UPLOAD` raise admin audit flag **`LEGIONELLA_EXTERNAL_ASSESSMENT_DOCUMENT_ONLY`**.
+
+**Structured fields:** assessment completed; assessment date; assessor type; assessor name (optional); risk level; control measures in place; actions required; next review date (conditional); declaration confirmed.
+
+**Client copy:** Primary CTA — **“Record Legionella risk assessment”**; secondary document path — **“Upload assessment report”**; modal title matches. Client disclosure states this is compliance tracking evidence and does not replace professional/legal verification.
+
+**Validation (new structured submissions):** declaration confirmation required; if assessment completed = yes, assessment date + risk level + control measures + actions required required; if actions required = yes, next review date required.
+
+### 2.12 Phase 1 — Active condition standards (`fitness_for_human_habitation`, `repairing_standard`) — guidance-led active standard behaviour (implemented)
+
+**Scope:** Condition-based standards are visible and actionable but are **not** document-evidence-primary workflows. No scoring formula changes, no jurisdiction-rule rewrites, and no new remediation authority.
+
+**Runtime class:** Keep `workflow_class` on the guidance family (`GUIDANCE_ONLY`) while using active-standard CTA behaviour and read-only operational signal projection.
+
+**CTA model:** Primary CTA avoids upload/book wording and routes to real operational surfaces. Approved labels include **“Manage related issues”**, **“Review property condition”**, or **“Review remediation progress”**. Secondary CTA may route to work-order progress or related operational views.
+
+**No false completion:** A single uploaded document (or inbox snooze/dismiss/reviewed) does not close these standards.
+
+**Read-only status projection:** Active-standard rows include a derived, read-only summary state from existing operational signals only: `active_issues_present`, `remediation_in_progress`, `no_open_condition_signals`, `unknown`.
+
+**Client disclosure:** “This standard is monitored through property condition, open issues, remediation work, and audit history. A single uploaded document does not prove this standard is met.”
+
+**Audit drift flags:** 
+- `CONDITION_STANDARD_DOCUMENT_UPLOAD_PRIMARY`
+- `CONDITION_STANDARD_MARKED_COMPLETE_WITHOUT_OPERATIONAL_SIGNALS`
+- `CONDITION_STANDARD_UNSUPPORTED_JURISDICTION`
+
 ---
 
 ## 3. Proposed workflow classes (definitions)
@@ -143,12 +208,12 @@ These are **client-facing workflow classes** (`client_workflow_class`). They **m
 | **MULTI_EVIDENCE** | Guided resolution: user adds evidence via **allowed modes only** (declaration, checklist, contractor confirmation, document as permitted inside policy — exact modes are **inputs**, not the class). | Complex obligations evidenced without forcing a single certificate. |
 | **GUIDED_DECLARATION** | Primary path is structured declaration / checklist (supporting document optional per policy). | Procedural compliance captured as structured, auditable evidence. |
 | **TENANT_DELIVERY** | Evidence that information was delivered to tenant(s) (delivery record, method, date, proof). **Requires** dedicated capture semantics (may extend beyond current four evidence modes). | Proof of delivery for statutory information duties. |
-| **EXTERNAL_REMEDIATION_TRACKING** | Landlord arranges assessment externally; platform records completion / uploads outcome — **no** implication that Pleerity performs or books regulated work. | External assessment evidenced without marketplace/scheduling claims. |
+| **EXTERNAL_ASSESSMENT_EVIDENCE** | Landlord records an external (or self-completed) assessment outcome and follow-up controls/actions; supporting report upload is secondary; **no** booking/contractor implication. | Real-world assessment evidence tracked as structured compliance data. |
 | **REMEDIATION_JOB** | Compliance-related work tracked through **operations** job/work-order lifecycle linked to requirement/property where applicable. | Operational remediation with SLA and completion proof. |
 | **GUIDANCE_ONLY** | No evidence submission path on client surface; education, applicability, or official links only. | Understanding obligation without implying a false action. |
 | **HIDDEN_SYSTEM** | Row exists for classification/scoring but **must not** drive a primary client CTA (suppress or admin-only). | Prevents misleading user actions on system rows. |
 
-**Strict separation (programme rule):** `DOCUMENT_UPLOAD`, `EXTERNAL_REMEDIATION_TRACKING`, and `REMEDIATION_JOB` **must not overlap** for the same requirement identity — **one** class, **one** primary entry point.
+**Strict separation (programme rule):** `DOCUMENT_UPLOAD`, `EXTERNAL_ASSESSMENT_EVIDENCE`, and `REMEDIATION_JOB` **must not overlap** for the same requirement identity — **one** class, **one** primary entry point.
 
 ---
 
@@ -184,13 +249,13 @@ These are **client-facing workflow classes** (`client_workflow_class`). They **m
 | hmo_fire_risk | Multi-mode defaults | MULTI_EVIDENCE | Overlap with fire_risk_assessment | Med | PR, RS | BLOCKED |
 | hmo_fire_risk_evidence | Same family as hmo_fire_risk | MULTI_EVIDENCE | Same | Med | PR, RS | BLOCKED |
 | right_to_rent | Phase 1: `GUIDED_DECLARATION` workflow, structured check schema, supporting upload secondary, disclosure; audit if registry document-only | GUIDED_DECLARATION | Follow-up validation rules may tighten later | Low | PR, RS, EV, AU | ALLOWED* (Phase 1) |
-| deposit_pi | Tenancy deposit family | GUIDED_DECLARATION **or** MULTI_EVIDENCE | **§5.4** jurisdiction | **Critical** | PR, Legal | BLOCKED |
-| deposit_prescribed_info | Same family | GUIDED_DECLARATION **or** MULTI_EVIDENCE | **§5.4** | **Critical** | PR, Legal | BLOCKED |
+| deposit_pi | Phase 1: `GUIDED_DECLARATION`, structured protection + PI checklist, supporting upload; aliases normalize; audit if registry document-only | GUIDED_DECLARATION | **§5.4** broader legal/nation copy | Med | PR, RS, EV, AU | ALLOWED* (Phase 1) |
+| deposit_prescribed_info | Alias → `deposit_pi` | GUIDED_DECLARATION | **§5.4** | Med | PR, RS | ALLOWED* (Phase 1) |
 | how_to_rent | Phase 1: `TENANT_DELIVERY` — structured delivery record + supporting upload; disclosure copy; audit if registry forces document-only | TENANT_DELIVERY | **§5.5** — Phase 1 subset implemented; broader programme items remain open | Med (legacy / overrides) | PR, RS, EV, AU | ALLOWED* (Phase 1) |
 | tenancy_agreement | Obligation-style retention | GUIDED_DECLARATION **or** DOCUMENT_UPLOAD | Product choice | Med | PR | BLOCKED |
-| occupation_contract | Wales | GUIDED_DECLARATION | None vs wales_occupation_contract | Low | PR | ALLOWED* |
-| wales_occupation_contract | Wales | GUIDED_DECLARATION | Duplicate messaging vs occupation_contract | Low | PR | ALLOWED* |
-| legionella | DOCUMENT engine | EXTERNAL_REMEDIATION_TRACKING **or** DOCUMENT_UPLOAD | **§5.6** | Med | PR, RS, Copy | BLOCKED |
+| occupation_contract | Wales-context alias only; use same guided policy in Wales context | GUIDED_DECLARATION | Avoid non-Wales leakage | Low | PR, RS, AU | ALLOWED* (Phase 1) |
+| wales_occupation_contract | Phase 1: `GUIDED_DECLARATION`, structured occupation-contract record + supporting upload; audit if registry document-only | GUIDED_DECLARATION | None (Wales-only scope) | Low | PR, RS, EV, AU | ALLOWED* (Phase 1) |
+| legionella | Phase 1: `EXTERNAL_ASSESSMENT_EVIDENCE`, structured assessment record + supporting report upload; audit if registry document-only | EXTERNAL_ASSESSMENT_EVIDENCE | None (narrow Phase 1) | Low | PR, RS, EV, AU | ALLOWED* (Phase 1) |
 | emergency_lighting | JOB execution | REMEDIATION_JOB | **§5.7** feedback loop | Med | OP, RS, SC | BLOCKED |
 | fire_extinguisher | JOB execution | REMEDIATION_JOB | **§5.7** | Med | OP, RS | BLOCKED |
 | communal_cleaning | JOB execution | REMEDIATION_JOB | **§5.7** | Med | OP, RS | BLOCKED |
@@ -211,7 +276,7 @@ These are **client-facing workflow classes** (`client_workflow_class`). They **m
 | **5.3** | **`fire_risk_assessment` vs `hmo_fire_risk`** | Distinct obligations vs merged product narrative; avoid duplicate competing CTAs for same property. |
 | **5.4** | **Deposit / prescribed information jurisdiction model** | Per-nation `client_workflow_class` and evidence modes (England vs Wales vs Scotland vs NI); legal review. |
 | **5.5** | **How to Rent tenant delivery model** | **Phase 1 (narrow)** implemented: defaults + resolver + `TENANT_DELIVERY` class + structured schema + CTAs + audit flag for document-only published overrides. **Remaining:** tenant linkage, expanded proof types, or cross-border product scope beyond jurisdiction rules — require separate approval. |
-| **5.6** | **Legionella: document vs external remediation tracking** | Pick primary class; forbid booking/scheduling language; align copy with EXTERNAL_REMEDIATION_TRACKING if chosen. |
+| **5.6** | **Legionella broader programme scope** | Phase 1 implemented for evidence-first assessment capture; remaining out-of-scope items (integrations, advanced remediation workflows) require separate approval. |
 | **5.7** | **Job-based requirements and compliance feedback loop** | Whether JOB slugs appear as requirement CTAs at all vs operations-only; how job completion links to evidence verification and score (no “job done = compliant” without evidence path). |
 | **5.8** | **System classification visibility** | HIDDEN_SYSTEM vs GUIDANCE_ONLY for tenants; admin visibility only vs full hide. |
 

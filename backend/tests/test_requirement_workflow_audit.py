@@ -91,6 +91,129 @@ def test_right_to_rent_guided_declaration_document_only_flag():
     assert any(f.get("id") == "RIGHT_TO_RENT_GUIDED_DECLARATION_DOCUMENT_ONLY" for f in flags)
 
 
+def test_deposit_pi_guided_declaration_document_only_flag():
+    from services.compliance_evidence_record_service import EVIDENCE_MODE_DOCUMENT_UPLOAD
+    from services.requirement_workflow_audit import WC_GUIDED_DECLARATION, compute_workflow_mismatch_flags
+
+    enriched = {
+        "requirement_code": "deposit_pi",
+        "requirement_type": "deposit_pi",
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "action_type": "DOCUMENT",
+        "allowed_evidence_modes": [EVIDENCE_MODE_DOCUMENT_UPLOAD],
+        "take_action": {"primary": {"intent": "upload_evidence", "kind": "navigate"}},
+    }
+    flags = compute_workflow_mismatch_flags(
+        enriched,
+        reference_class=WC_GUIDED_DECLARATION,
+        reference_source="decision_record_fallback",
+    )
+    assert any(f.get("id") == "DEPOSIT_GUIDED_DECLARATION_DOCUMENT_ONLY" for f in flags)
+
+
+def test_wales_occupation_contract_guided_declaration_document_only_flag():
+    from services.compliance_evidence_record_service import EVIDENCE_MODE_DOCUMENT_UPLOAD
+    from services.requirement_workflow_audit import WC_GUIDED_DECLARATION, compute_workflow_mismatch_flags
+
+    enriched = {
+        "requirement_code": "wales_occupation_contract",
+        "requirement_type": "wales_occupation_contract",
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "action_type": "DOCUMENT",
+        "allowed_evidence_modes": [EVIDENCE_MODE_DOCUMENT_UPLOAD],
+        "take_action": {"primary": {"intent": "upload_evidence", "kind": "navigate"}},
+    }
+    flags = compute_workflow_mismatch_flags(
+        enriched,
+        reference_class=WC_GUIDED_DECLARATION,
+        reference_source="decision_record_fallback",
+    )
+    assert any(f.get("id") == "WALES_OCCUPATION_CONTRACT_GUIDED_DECLARATION_DOCUMENT_ONLY" for f in flags)
+
+
+def test_legionella_external_assessment_document_only_flag():
+    from services.compliance_evidence_record_service import EVIDENCE_MODE_DOCUMENT_UPLOAD
+    from services.requirement_workflow_audit import WC_EXTERNAL_ASSESSMENT_EVIDENCE, compute_workflow_mismatch_flags
+
+    enriched = {
+        "requirement_code": "legionella",
+        "requirement_type": "legionella",
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "action_type": "DOCUMENT",
+        "allowed_evidence_modes": [EVIDENCE_MODE_DOCUMENT_UPLOAD],
+        "take_action": {"primary": {"intent": "upload_evidence", "kind": "navigate"}},
+    }
+    flags = compute_workflow_mismatch_flags(
+        enriched,
+        reference_class=WC_EXTERNAL_ASSESSMENT_EVIDENCE,
+        reference_source="decision_record_fallback",
+    )
+    assert any(f.get("id") == "LEGIONELLA_EXTERNAL_ASSESSMENT_DOCUMENT_ONLY" for f in flags)
+
+
+def test_condition_standard_document_upload_primary_flag():
+    from services.compliance_evidence_record_service import EVIDENCE_MODE_DOCUMENT_UPLOAD
+    from services.requirement_workflow_audit import WC_GUIDANCE_ONLY, compute_workflow_mismatch_flags
+
+    enriched = {
+        "requirement_code": "fitness_for_human_habitation",
+        "requirement_type": "fitness_for_human_habitation",
+        "jurisdiction": "England",
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "action_type": "DOCUMENT",
+        "allowed_evidence_modes": [EVIDENCE_MODE_DOCUMENT_UPLOAD],
+        "take_action": {"primary": {"intent": "upload_evidence", "kind": "navigate", "label": "Upload certificate"}},
+    }
+    flags = compute_workflow_mismatch_flags(
+        enriched,
+        reference_class=WC_GUIDANCE_ONLY,
+        reference_source="decision_record_fallback",
+    )
+    assert any(f.get("id") == "CONDITION_STANDARD_DOCUMENT_UPLOAD_PRIMARY" for f in flags)
+
+
+def test_condition_standard_marked_complete_without_operational_signals_flag():
+    from services.requirement_workflow_audit import WC_GUIDANCE_ONLY, compute_workflow_mismatch_flags
+
+    enriched = {
+        "requirement_code": "repairing_standard",
+        "requirement_type": "repairing_standard",
+        "jurisdiction": "Scotland",
+        "status": "COMPLIANT",
+        "workflow_class": "GUIDANCE_ONLY",
+        "action_type": "OBLIGATION",
+        "allowed_evidence_modes": ["DOCUMENT_UPLOAD"],
+        "take_action": {"primary": {"intent": "view_guidance", "kind": "navigate"}},
+        "active_standard_status_summary": {"state": "unknown", "signal_counts": {}, "read_only": True},
+    }
+    flags = compute_workflow_mismatch_flags(
+        enriched,
+        reference_class=WC_GUIDANCE_ONLY,
+        reference_source="decision_record_fallback",
+    )
+    assert any(f.get("id") == "CONDITION_STANDARD_MARKED_COMPLETE_WITHOUT_OPERATIONAL_SIGNALS" for f in flags)
+
+
+def test_condition_standard_unsupported_jurisdiction_flag():
+    from services.requirement_workflow_audit import WC_GUIDANCE_ONLY, compute_workflow_mismatch_flags
+
+    enriched = {
+        "requirement_code": "repairing_standard",
+        "requirement_type": "repairing_standard",
+        "jurisdiction": "England",
+        "workflow_class": "GUIDANCE_ONLY",
+        "action_type": "OBLIGATION",
+        "allowed_evidence_modes": ["DOCUMENT_UPLOAD"],
+        "take_action": {"primary": {"intent": "view_guidance", "kind": "navigate"}},
+    }
+    flags = compute_workflow_mismatch_flags(
+        enriched,
+        reference_class=WC_GUIDANCE_ONLY,
+        reference_source="decision_record_fallback",
+    )
+    assert any(f.get("id") == "CONDITION_STANDARD_UNSUPPORTED_JURISDICTION" for f in flags)
+
+
 def test_guided_declaration_runtime_family_aligns_reference():
     from services.compliance_evidence_record_service import (
         EVIDENCE_MODE_DOCUMENT_UPLOAD,

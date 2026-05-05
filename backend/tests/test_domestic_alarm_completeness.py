@@ -5,7 +5,10 @@ from services.compliance_evidence_record_service import (
     EVIDENCE_MODE_INSPECTION_CHECKLIST,
     EVIDENCE_MODE_STRUCTURED_DECLARATION,
 )
-from services.requirement_evidence_completeness import evaluate_domestic_alarm_completeness
+from services.requirement_evidence_completeness import (
+    _record_covers_co,
+    evaluate_domestic_alarm_completeness,
+)
 from services.requirement_truth import EVIDENCE_MISSING, enrich_requirement_dict
 from services.requirement_workflow_audit import apply_workflow_reference_audit
 
@@ -28,6 +31,59 @@ def _co_declaration_ok():
         "evidence_record_id": "cer_2",
         "evidence_payload": {"declaration_statement": "x", "structured_fields": {"note": "carbon monoxide alarm checked"}},
     }
+
+
+def test_record_covers_co_rejects_test_count_and_generic_text():
+    """Unit guard: CO detection must not use bare ``co`` substring on keys or values."""
+    rec = {
+        "evidence_mode": EVIDENCE_MODE_INSPECTION_CHECKLIST,
+        "evidence_payload": {
+            "checklist_answers": {
+                "test_count": {"answer": "3"},
+                "observations": {"answer": "no concerns", "notes": "completed"},
+            },
+        },
+    }
+    assert _record_covers_co(rec) is False
+
+
+def test_inspection_test_count_does_not_count_as_co_evidence():
+    """Regression: ``co`` substring in ``test_count`` / ``concerns`` must not satisfy CO."""
+    rec = {
+        "evidence_mode": EVIDENCE_MODE_INSPECTION_CHECKLIST,
+        "evidence_record_id": "cer_x",
+        "evidence_payload": {
+            "checklist_answers": {
+                "test_count": "3",
+                "alarm_present": "PASS",
+                "observations": {"answer": "no concerns", "notes": "completed"},
+            },
+            "inspection_date": "2026-01-01",
+            "responsible_person": "Tester",
+        },
+    }
+    req = {"requirement_type": "smoke_heat_alarms"}
+    prop = {"has_fuel_burning_appliance": True}
+    out = evaluate_domestic_alarm_completeness(req, prop, [rec])
+    assert out["is_complete"] is False
+    assert any(m["key"] == "co_alarm" for m in out["missing_components"])
+
+
+def test_inspection_co_alarm_field_still_counts_as_co_evidence():
+    smoke = _smoke_checklist_ok()
+    co_inspection = {
+        "evidence_mode": EVIDENCE_MODE_INSPECTION_CHECKLIST,
+        "evidence_record_id": "cer_y",
+        "evidence_payload": {
+            "checklist_answers": {"co_alarm_tested": {"answer": True}},
+            "inspection_date": "2026-01-01",
+            "responsible_person": "Tester",
+        },
+    }
+    req = {"requirement_type": "smoke_heat_alarms"}
+    prop = {"has_fuel_burning_appliance": True}
+    out = evaluate_domestic_alarm_completeness(req, prop, [smoke, co_inspection])
+    assert out["is_complete"] is True
 
 
 def test_co_required_smoke_only_is_incomplete():

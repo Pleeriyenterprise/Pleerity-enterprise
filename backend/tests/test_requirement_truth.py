@@ -161,6 +161,103 @@ def test_enrich_how_to_rent_client_includes_disclosure_no_audit_diagnostics():
         assert k not in r
 
 
+def test_enrich_active_standard_includes_disclosure_and_read_only_summary():
+    from services.requirement_truth import EVIDENCE_MISSING, enrich_requirement_dict
+
+    r = enrich_requirement_dict(
+        {
+            "requirement_id": "r-active-1",
+            "property_id": "p1",
+            "requirement_type": "fitness_for_human_habitation",
+            "requirement_code": "fitness_for_human_habitation",
+            "compliance_requirement_class": "OBLIGATION",
+            "status": "PENDING",
+            "applicability": "REQUIRED",
+            "active_standard_status_summary": {
+                "state": "active_issues_present",
+                "signal_counts": {
+                    "open_issues": 2,
+                    "open_work_orders": 1,
+                    "open_risk_signals": 1,
+                    "open_compliance_gaps": 1,
+                },
+            },
+        },
+        EVIDENCE_MISSING,
+        audience="client",
+    )
+    assert "single uploaded document does not prove this standard is met" in str(
+        r.get("client_evidence_disclosure") or ""
+    ).lower()
+    summary = r.get("active_standard_status_summary") or {}
+    assert summary.get("state") == "active_issues_present"
+    assert summary.get("read_only") is True
+
+
+@pytest.mark.asyncio
+async def test_enrich_requirements_for_client_active_standard_signal_projection(monkeypatch):
+    from services import requirement_truth as rt
+
+    async def fake_load(db, client_id, requirement_ids):
+        return {rid: rt.EVIDENCE_MISSING for rid in requirement_ids}
+
+    monkeypatch.setattr(rt, "load_evidence_state_by_requirement_id", fake_load)
+    monkeypatch.setattr(rt, "fetch_active_published_registry_entries", AsyncMock(return_value=None))
+
+    class _Cursor:
+        def __init__(self, rows):
+            self._rows = list(rows)
+
+        async def to_list(self, _n):
+            return list(self._rows)
+
+        def __aiter__(self):
+            self._it = iter(self._rows)
+            return self
+
+        async def __anext__(self):
+            try:
+                return next(self._it)
+            except StopIteration:
+                raise StopAsyncIteration
+
+    class _CountDB:
+        def __init__(self):
+            self.clients = type("C", (), {"find_one": AsyncMock(return_value={"default_jurisdiction": "England"})})()
+            self.documents = type("D", (), {"find": lambda *a, **k: _Cursor([])})()
+            self.properties = type(
+                "P",
+                (),
+                {
+                    "find": lambda *a, **k: _Cursor(
+                        [{"property_id": "p1", "client_id": "c1", "jurisdiction": "England"}]
+                    )
+                },
+            )()
+            self.maintenance_issues = type("MI", (), {"count_documents": AsyncMock(return_value=1)})()
+            self.work_orders = type("WO", (), {"count_documents": AsyncMock(return_value=0)})()
+            self.risk_signals = type("RS", (), {"count_documents": AsyncMock(return_value=0)})()
+            self.compliance_gaps = type("CG", (), {"count_documents": AsyncMock(return_value=0)})()
+
+    db = _CountDB()
+    rows = [
+        {
+            "client_id": "c1",
+            "property_id": "p1",
+            "requirement_id": "r1",
+            "requirement_type": "fitness_for_human_habitation",
+            "requirement_code": "fitness_for_human_habitation",
+            "status": "PENDING",
+            "applicability": "REQUIRED",
+            "compliance_requirement_class": "OBLIGATION",
+        }
+    ]
+    enriched, _meta = await rt.enrich_requirements_for_client(db, "c1", rows)
+    assert enriched
+    summary = enriched[0].get("active_standard_status_summary") or {}
+    assert summary.get("state") == "active_issues_present"
+
+
 def test_evidence_state_awaiting_user_confirm_when_extraction_not_approved():
     from services.requirement_truth import EVIDENCE_AWAITING_USER_CONFIRM, evidence_state_from_documents
 

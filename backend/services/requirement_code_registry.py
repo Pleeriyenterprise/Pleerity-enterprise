@@ -47,6 +47,8 @@ DOCUMENTED_LOW_RISK_ALIAS_SLUGS: FrozenSet[str] = frozenset(
         "smoke_alarms",
         "co_alarms",
         "right_to_rent_checks",
+        "deposit_prescribed_info",
+        "tenancy_deposit_protection",
     }
 )
 
@@ -97,6 +99,8 @@ _LEGACY_ALIASES: Dict[str, str] = {
     "property_licence": "property_licence",
     "selective_license": "selective_license",
     "deposit_pi": "deposit_pi",
+    "deposit_prescribed_info": "deposit_pi",
+    "tenancy_deposit_protection": "deposit_pi",
     "right_to_rent": "right_to_rent",
     "right_to_rent_checks": "right_to_rent",
     "rent_smart_wales": "rent_smart_wales",

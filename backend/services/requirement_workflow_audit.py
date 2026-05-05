@@ -52,6 +52,7 @@ WC_REGISTRATION_TRACKING = "REGISTRATION_TRACKING"
 WC_TENANT_DELIVERY = "TENANT_DELIVERY"
 WC_REMEDIATION_JOB = "REMEDIATION_JOB"
 WC_EXTERNAL_REMEDIATION_TRACKING = "EXTERNAL_REMEDIATION_TRACKING"
+WC_EXTERNAL_ASSESSMENT_EVIDENCE = "EXTERNAL_ASSESSMENT_EVIDENCE"
 WC_GUIDANCE_ONLY = "GUIDANCE_ONLY"
 WC_HIDDEN_SYSTEM = "HIDDEN_SYSTEM"
 WC_UNKNOWN = "UNKNOWN"
@@ -74,7 +75,7 @@ _FALLBACK_REFERENCE_BY_CANONICAL: Dict[str, str] = {
     "fire_risk_assessment": WC_MULTI_EVIDENCE,
     "hmo_fire_risk": WC_MULTI_EVIDENCE,
     "hmo_fire_risk_evidence": WC_MULTI_EVIDENCE,
-    "legionella": WC_EXTERNAL_REMEDIATION_TRACKING,
+    "legionella": WC_EXTERNAL_ASSESSMENT_EVIDENCE,
     "right_to_rent": WC_GUIDED_DECLARATION,
     "deposit_pi": WC_GUIDED_DECLARATION,
     "deposit_prescribed_info": WC_GUIDED_DECLARATION,
@@ -82,6 +83,8 @@ _FALLBACK_REFERENCE_BY_CANONICAL: Dict[str, str] = {
     "occupation_contract": WC_GUIDED_DECLARATION,
     "wales_occupation_contract": WC_GUIDED_DECLARATION,
     "how_to_rent": WC_TENANT_DELIVERY,
+    "fitness_for_human_habitation": WC_GUIDANCE_ONLY,
+    "repairing_standard": WC_GUIDANCE_ONLY,
     "emergency_lighting": WC_REMEDIATION_JOB,
     "fire_extinguisher": WC_REMEDIATION_JOB,
     "communal_cleaning": WC_REMEDIATION_JOB,
@@ -89,6 +92,7 @@ _FALLBACK_REFERENCE_BY_CANONICAL: Dict[str, str] = {
     "hmo_classification": WC_HIDDEN_SYSTEM,
     "property_classification": WC_HIDDEN_SYSTEM,
 }
+_ACTIVE_STANDARD_CANONICAL = frozenset({"fitness_for_human_habitation", "repairing_standard"})
 
 
 def _slug_raw_code(raw: str) -> str:
@@ -153,6 +157,8 @@ def _reference_family(ref: str) -> str:
         return "guidance"
     if r in (WC_DOCUMENT_UPLOAD, WC_EXTERNAL_REMEDIATION_TRACKING):
         return "document"
+    if r in (WC_EXTERNAL_ASSESSMENT_EVIDENCE,):
+        return "guided"
     if r in (WC_MULTI_EVIDENCE, WC_GUIDED_DECLARATION, WC_TENANT_DELIVERY, WC_REGISTRATION_TRACKING):
         return "guided"
     return "unknown"
@@ -168,7 +174,7 @@ def _runtime_family(enriched: Dict[str, Any]) -> str:
     if wf == "GUIDANCE_ONLY":
         return "guidance"
     if wf == "EXTERNAL_ASSESSMENT_EVIDENCE":
-        return "job"
+        return "guided"
     if wf == "LEGACY_DOCUMENT_UPLOAD":
         return "document"
     if wf in (
@@ -220,6 +226,11 @@ def compute_workflow_mismatch_flags(
     doc_only = len(norm_modes) == 1 and norm_modes[0] == EVIDENCE_MODE_DOCUMENT_UPLOAD
 
     ref = reference_class.upper()
+    req_jur = str(enriched.get("jurisdiction") or enriched.get("property_jurisdiction") or "").strip().lower()
+    take = enriched.get("take_action") if isinstance(enriched.get("take_action"), dict) else {}
+    pri = take.get("primary") if isinstance(take.get("primary"), dict) else {}
+    primary_intent = str(pri.get("intent") or "").strip().lower()
+    primary_label = str(pri.get("label") or "").strip().lower()
     if ref == WC_REGISTRATION_TRACKING and doc_only:
         flags.append(
             {
@@ -244,6 +255,71 @@ def compute_workflow_mismatch_flags(
                 "detail": "Right to Rent expects STRUCTURED_DECLARATION + DOCUMENT_UPLOAD but only DOCUMENT_UPLOAD is allowed (published registry override or legacy evidence_resolution)",
             }
         )
+    if ref == WC_GUIDED_DECLARATION and doc_only and canon == "deposit_pi":
+        flags.append(
+            {
+                "id": "DEPOSIT_GUIDED_DECLARATION_DOCUMENT_ONLY",
+                "severity": "HIGH",
+                "detail": "Deposit compliance expects STRUCTURED_DECLARATION + DOCUMENT_UPLOAD but only DOCUMENT_UPLOAD is allowed (published registry override or legacy evidence_resolution)",
+            }
+        )
+    if ref == WC_GUIDED_DECLARATION and doc_only and canon in ("wales_occupation_contract", "occupation_contract"):
+        flags.append(
+            {
+                "id": "WALES_OCCUPATION_CONTRACT_GUIDED_DECLARATION_DOCUMENT_ONLY",
+                "severity": "HIGH",
+                "detail": "Wales occupation contract expects STRUCTURED_DECLARATION + DOCUMENT_UPLOAD but only DOCUMENT_UPLOAD is allowed (published registry override or legacy evidence_resolution)",
+            }
+        )
+    if ref == WC_EXTERNAL_ASSESSMENT_EVIDENCE and doc_only and canon == "legionella":
+        flags.append(
+            {
+                "id": "LEGIONELLA_EXTERNAL_ASSESSMENT_DOCUMENT_ONLY",
+                "severity": "HIGH",
+                "detail": "Legionella external assessment evidence expects STRUCTURED_DECLARATION + DOCUMENT_UPLOAD but only DOCUMENT_UPLOAD is allowed (published registry override or legacy evidence_resolution)",
+            }
+        )
+    canon_or_slug = canon or stored_slug
+    if canon_or_slug in _ACTIVE_STANDARD_CANONICAL:
+        if doc_only or primary_intent == "upload_evidence" or ("upload" in primary_label and "issue" not in primary_label):
+            flags.append(
+                {
+                    "id": "CONDITION_STANDARD_DOCUMENT_UPLOAD_PRIMARY",
+                    "severity": "HIGH",
+                    "detail": "Condition standards must not resolve to document-upload-primary CTA.",
+                }
+            )
+        if canon_or_slug == "repairing_standard" and req_jur and req_jur != "scotland":
+            flags.append(
+                {
+                    "id": "CONDITION_STANDARD_UNSUPPORTED_JURISDICTION",
+                    "severity": "HIGH",
+                    "detail": f"repairing_standard surfaced outside Scotland (jurisdiction={req_jur!r}).",
+                }
+            )
+        if canon_or_slug == "fitness_for_human_habitation" and req_jur == "scotland":
+            flags.append(
+                {
+                    "id": "CONDITION_STANDARD_UNSUPPORTED_JURISDICTION",
+                    "severity": "HIGH",
+                    "detail": "fitness_for_human_habitation surfaced in Scotland where planner support is not expected.",
+                }
+            )
+        status_upper = str(enriched.get("status") or "").strip().upper()
+        if requirement_status_appears_satisfied_top_level(enriched) or status_upper in ("COMPLIANT", "VALID"):
+            summary = (
+                enriched.get("active_standard_status_summary")
+                if isinstance(enriched.get("active_standard_status_summary"), dict)
+                else {}
+            )
+            if str(summary.get("state") or "").strip().lower() in ("", "unknown"):
+                flags.append(
+                    {
+                        "id": "CONDITION_STANDARD_MARKED_COMPLETE_WITHOUT_OPERATIONAL_SIGNALS",
+                        "severity": "HIGH",
+                        "detail": "Condition standard appears satisfied but has unknown operational signal summary.",
+                    }
+                )
     if ref == WC_MULTI_EVIDENCE and doc_only:
         # Domestic alarm family: authoritative class is MULTI_EVIDENCE; avoid drift noise while legacy rows catch up.
         if normalize_requirement_code(raw_code) != "smoke_heat_alarms":

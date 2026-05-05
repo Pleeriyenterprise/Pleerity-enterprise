@@ -29,6 +29,7 @@ from services.requirement_workflow_audit import (
     apply_workflow_reference_audit,
     strip_workflow_diagnostics_from_payload,
 )
+from services.maintenance_issues_service import OPEN_ISSUE_STATUSES
 
 # --- Canonical enum values (stored on requirement documents and returned in APIs) ---
 
@@ -50,6 +51,91 @@ ESTIMATED_NOTICE_TEXT = (
     "We've created estimated compliance dates based on standard regulatory cycles and your property setup. "
     "Upload your documents to confirm dates and improve accuracy."
 )
+
+ACTIVE_STANDARD_CODES = frozenset(
+    {
+        "fitness_for_human_habitation",
+        "repairing_standard",
+    }
+)
+ACTIVE_STANDARD_DISCLOSURE = (
+    "This standard is monitored through property condition, open issues, remediation work, and audit history. "
+    "A single uploaded document does not prove this standard is met."
+)
+ACTIVE_STANDARD_STATE_ACTIVE_ISSUES_PRESENT = "active_issues_present"
+ACTIVE_STANDARD_STATE_REMEDIATION_IN_PROGRESS = "remediation_in_progress"
+ACTIVE_STANDARD_STATE_NO_OPEN_CONDITION_SIGNALS = "no_open_condition_signals"
+ACTIVE_STANDARD_STATE_UNKNOWN = "unknown"
+
+
+def _is_active_standard_code(raw_code: str) -> bool:
+    canon = normalize_requirement_code(raw_code) or str(raw_code or "").strip().lower().replace(" ", "_")
+    return canon in ACTIVE_STANDARD_CODES
+
+
+def _derive_active_standard_state(signal_counts: Dict[str, int]) -> str:
+    if not isinstance(signal_counts, dict):
+        return ACTIVE_STANDARD_STATE_UNKNOWN
+    issue_count = int(signal_counts.get("open_issues", 0) or 0)
+    gap_count = int(signal_counts.get("open_compliance_gaps", 0) or 0)
+    wo_count = int(signal_counts.get("open_work_orders", 0) or 0)
+    risk_count = int(signal_counts.get("open_risk_signals", 0) or 0)
+    if issue_count > 0 or gap_count > 0 or risk_count > 0:
+        return ACTIVE_STANDARD_STATE_ACTIVE_ISSUES_PRESENT
+    if wo_count > 0:
+        return ACTIVE_STANDARD_STATE_REMEDIATION_IN_PROGRESS
+    if issue_count == 0 and gap_count == 0 and wo_count == 0 and risk_count == 0:
+        return ACTIVE_STANDARD_STATE_NO_OPEN_CONDITION_SIGNALS
+    return ACTIVE_STANDARD_STATE_UNKNOWN
+
+
+async def _load_active_standard_signal_summary_by_property(
+    db,
+    client_id: str,
+    property_ids: List[str],
+) -> Dict[str, Dict[str, Any]]:
+    out: Dict[str, Dict[str, Any]] = {}
+    for pid in [str(x or "").strip() for x in property_ids if str(x or "").strip()]:
+        open_issues = int(
+            await db.maintenance_issues.count_documents(
+                {"client_id": client_id, "property_id": pid, "status": {"$in": list(OPEN_ISSUE_STATUSES)}}
+            )
+        )
+        open_work_orders = int(
+            await db.work_orders.count_documents(
+                {
+                    "client_id": client_id,
+                    "property_id": pid,
+                    "status": {"$nin": ["completed", "closed", "cancelled", "COMPLETED", "CLOSED", "CANCELLED"]},
+                }
+            )
+        )
+        open_risk_signals = int(
+            await db.risk_signals.count_documents(
+                {
+                    "client_id": client_id,
+                    "property_id": pid,
+                    "status": {"$nin": ["resolved", "RESOLVED"]},
+                }
+            )
+        )
+        open_compliance_gaps = int(
+            await db.compliance_gaps.count_documents(
+                {"client_id": client_id, "property_id": pid, "status": "open"}
+            )
+        )
+        signal_counts = {
+            "open_issues": open_issues,
+            "open_work_orders": open_work_orders,
+            "open_risk_signals": open_risk_signals,
+            "open_compliance_gaps": open_compliance_gaps,
+        }
+        out[pid] = {
+            "state": _derive_active_standard_state(signal_counts),
+            "signal_counts": signal_counts,
+            "read_only": True,
+        }
+    return out
 
 
 def _status_upper(st: Optional[str]) -> str:
@@ -278,6 +364,7 @@ def enrich_requirement_dict(
     out = dict(requirement)
     _raw_code = str(out.get("requirement_code") or out.get("requirement_type") or "").strip()
     _canon = normalize_requirement_code(_raw_code)
+    _is_active_standard = _is_active_standard_code(_raw_code)
     if _canon:
         out["canonical_requirement_code"] = _canon
     code = out.get("requirement_code") or out.get("requirement_type") or ""
@@ -357,6 +444,8 @@ def enrich_requirement_dict(
         _ced = str(effective_evidence_resolution(out).get("client_evidence_disclosure") or "").strip()
         if _ced:
             out["client_evidence_disclosure"] = _ced
+        if _is_active_standard:
+            out["client_evidence_disclosure"] = ACTIVE_STANDARD_DISCLOSURE
 
     from services.requirement_evidence_completeness import (
         evaluate_domestic_alarm_completeness,
@@ -375,6 +464,9 @@ def enrich_requirement_dict(
             out["evidence_completeness"] = project_evidence_completeness_for_client(comp_eval)
     else:
         out["evidence_completeness"] = None
+
+    if _is_active_standard and isinstance(out.get("active_standard_status_summary"), dict):
+        out["active_standard_status_summary"]["read_only"] = True
 
     aud = (audience or "client").strip().lower()
     if aud == "admin":
@@ -444,6 +536,17 @@ async def enrich_requirements_for_client(
             pid = p.get("property_id")
             if pid:
                 props_full[str(pid)] = p
+    active_standard_props = {
+        str(r.get("property_id") or "")
+        for r in requirements
+        if _is_active_standard_code(str(r.get("requirement_code") or r.get("requirement_type") or ""))
+        and str(r.get("property_id") or "").strip()
+    }
+    active_summary_by_prop = await _load_active_standard_signal_summary_by_property(
+        db,
+        client_id=client_id,
+        property_ids=sorted(active_standard_props),
+    ) if active_standard_props else {}
 
     domestic_rids = [
         str(r["requirement_id"])
@@ -472,6 +575,12 @@ async def enrich_requirements_for_client(
             if pid and str(pid) in jur_by_prop:
                 rc["jurisdiction"] = jur_by_prop[str(pid)]
         _cer = cer_by_rid.get(str(rid), []) if rid else []
+        pid = str(rc.get("property_id") or "").strip()
+        if pid and _is_active_standard_code(str(rc.get("requirement_code") or rc.get("requirement_type") or "")):
+            rc["active_standard_status_summary"] = active_summary_by_prop.get(
+                pid,
+                {"state": ACTIVE_STANDARD_STATE_UNKNOWN, "signal_counts": {}, "read_only": True},
+            )
         enriched.append(
             enrich_requirement_dict(
                 rc,
@@ -542,6 +651,22 @@ async def enrich_requirements_for_admin(
             pid = p.get("property_id")
             if pid:
                 props_full_by_key[(str(cid), str(pid))] = p
+    active_props_by_client: Dict[str, set[str]] = defaultdict(set)
+    for r in requirements:
+        cid = str(r.get("client_id") or "").strip()
+        pid = str(r.get("property_id") or "").strip()
+        code = str(r.get("requirement_code") or r.get("requirement_type") or "")
+        if cid and pid and _is_active_standard_code(code):
+            active_props_by_client[cid].add(pid)
+    active_summary_by_client_prop: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    for cid, pids in active_props_by_client.items():
+        rows = await _load_active_standard_signal_summary_by_property(
+            db,
+            client_id=cid,
+            property_ids=sorted(pids),
+        )
+        for pid, summary in rows.items():
+            active_summary_by_client_prop[(cid, pid)] = summary
 
     domestic_by_client: Dict[str, List[str]] = defaultdict(list)
     for r in requirements:
@@ -577,6 +702,11 @@ async def enrich_requirements_for_admin(
         pid_s = str(r.get("property_id") or "")
         _prop_doc = props_full_by_key.get((cid_s, pid_s)) if cid_s and pid_s else None
         _cer = cer_by_client_rid.get(cid_s, {}).get(str(rid), []) if cid_s and rid else []
+        if cid_s and pid_s and _is_active_standard_code(str(rc.get("requirement_code") or rc.get("requirement_type") or "")):
+            rc["active_standard_status_summary"] = active_summary_by_client_prop.get(
+                (cid_s, pid_s),
+                {"state": ACTIVE_STANDARD_STATE_UNKNOWN, "signal_counts": {}, "read_only": True},
+            )
         out.append(
             enrich_requirement_dict(
                 rc,

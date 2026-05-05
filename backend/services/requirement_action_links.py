@@ -50,6 +50,7 @@ _STORAGE_SLUG_TO_REGISTRY: Dict[str, str] = {
     "landlord_registration_ni": "LANDLORD_REGISTRATION_NI",
     "fit_for_habitation": "FIT_FOR_HABITATION",
     "wales_occupation_contract": "WALES_OCCUPATION_CONTRACT",
+    "occupation_contract": "WALES_OCCUPATION_CONTRACT",
     "tenancy_agreement": "WALES_OCCUPATION_CONTRACT",
 }
 

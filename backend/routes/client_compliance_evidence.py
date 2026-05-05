@@ -15,12 +15,19 @@ from middleware import client_route_guard
 from models import AuditAction
 from services.compliance_evidence_record_service import (
     ALL_EVIDENCE_MODES,
+    DEPOSIT_STRUCTURED_DECLARATION_INVALID,
+    validate_legionella_structured_declaration_fields,
+    WALES_OCCUPATION_CONTRACT_STRUCTURED_DECLARATION_INVALID,
     apply_verification_decision,
     checklist_schema_for_mode,
     create_compliance_evidence_record,
     effective_evidence_resolution,
     guided_method_ui_rows_for_modes,
+    validate_deposit_structured_declaration_fields,
+    validate_right_to_rent_structured_declaration_fields,
+    validate_wales_occupation_contract_structured_declaration_fields,
 )
+from services.requirement_code_registry import normalize_requirement_code
 from services.compliance_recalc_queue import (
     ACTOR_CLIENT,
     TRIGGER_DOC_STATUS_CHANGED,
@@ -31,6 +38,10 @@ from utils.audit import create_audit_log
 from utils.request_ip import get_client_ip
 
 router = APIRouter(prefix="/api/client", tags=["client-compliance-evidence"])
+
+
+def _is_wales_context_requirement(req_row: Dict[str, Any]) -> bool:
+    return str(req_row.get("jurisdiction") or req_row.get("property_jurisdiction") or "").strip().lower() == "wales"
 
 
 async def _require_user(request: Request) -> Dict[str, Any]:
@@ -194,6 +205,50 @@ async def post_compliance_evidence(
             "declaration_statement": sd.declaration_statement,
             "structured_fields": sd.structured_fields or {},
         }
+        raw_code = str(req.get("requirement_type") or req.get("requirement_code") or "").strip()
+        canon_code = normalize_requirement_code(raw_code)
+        if canon_code == "right_to_rent":
+            r2r_err = validate_right_to_rent_structured_declaration_fields(payload.get("structured_fields") or {})
+            if r2r_err:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": "RIGHT_TO_RENT_FOLLOW_UP_DATE_REQUIRED",
+                        "message": r2r_err,
+                    },
+                )
+        elif canon_code == "deposit_pi":
+            dep_err = validate_deposit_structured_declaration_fields(payload.get("structured_fields") or {})
+            if dep_err:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": DEPOSIT_STRUCTURED_DECLARATION_INVALID,
+                        "message": dep_err,
+                    },
+                )
+        elif canon_code == "wales_occupation_contract" or (
+            canon_code == "occupation_contract" and _is_wales_context_requirement(req)
+        ):
+            wal_err = validate_wales_occupation_contract_structured_declaration_fields(payload.get("structured_fields") or {})
+            if wal_err:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": WALES_OCCUPATION_CONTRACT_STRUCTURED_DECLARATION_INVALID,
+                        "message": wal_err,
+                    },
+                )
+        elif canon_code == "legionella":
+            leg_err = validate_legionella_structured_declaration_fields(payload.get("structured_fields") or {})
+            if leg_err:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": str(leg_err.get("code") or "LEGIONELLA_DECLARATION_REQUIRED"),
+                        "message": str(leg_err.get("message") or "Legionella structured declaration is incomplete."),
+                    },
+                )
     elif mode == "CONTRACTOR_CONFIRMATION":
         if not body.contractor_confirmation:
             raise HTTPException(status_code=400, detail="contractor_confirmation required")

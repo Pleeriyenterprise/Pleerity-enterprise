@@ -23,6 +23,7 @@ from services.requirement_code_registry import normalize_requirement_code
 from services.compliance_evidence_record_service import (
     EVIDENCE_MODE_CONTRACTOR_CONFIRMATION,
     EVIDENCE_MODE_DOCUMENT_UPLOAD,
+    EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW,
     EVIDENCE_MODE_INSPECTION_CHECKLIST,
     EVIDENCE_MODE_STRUCTURED_DECLARATION,
     GUIDED_DECLARATION_WORKFLOW,
@@ -54,13 +55,25 @@ PROVENANCE_ENGINE_DEFAULT = "engine_default"
 
 # Obligation-class tenancy codes that still use registry/policy-driven evidence (skip guidance-only routing).
 _TENANCY_EVIDENCE_FIRST_CODES = frozenset(
-    {"how_to_rent", "deposit_pi", "deposit_prescribed_info", "right_to_rent"}
+    {"how_to_rent", "deposit_pi", "deposit_prescribed_info", "right_to_rent", "wales_occupation_contract"}
+)
+_ACTIVE_STANDARD_CODES = frozenset(
+    {
+        "fitness_for_human_habitation",
+        "repairing_standard",
+    }
 )
 
 
 def _tenancy_registry_evidence_overrides_informational(requirement: Dict[str, Any], policy: Dict[str, Any]) -> bool:
     code = _norm_code(requirement)
     canon = normalize_requirement_code(code) or code
+    # `occupation_contract` is treated as Wales-context alias only; never force evidence-first outside Wales.
+    if canon == "occupation_contract":
+        req_jur = str(requirement.get("jurisdiction") or requirement.get("property_jurisdiction") or "").strip().lower()
+        if req_jur != "wales":
+            return False
+        canon = "wales_occupation_contract"
     if canon not in _TENANCY_EVIDENCE_FIRST_CODES:
         return False
     modes = [str(m or "").strip().upper() for m in (policy.get("allowed_evidence_modes") or []) if m]
@@ -76,6 +89,11 @@ def _norm_code(req_or_code: Any) -> str:
     else:
         c = req_or_code or ""
     return str(c).strip().lower().replace(" ", "_")
+
+
+def _is_active_condition_standard(requirement: Dict[str, Any]) -> bool:
+    canon = normalize_requirement_code(_norm_code(requirement)) or _norm_code(requirement)
+    return canon in _ACTIVE_STANDARD_CODES
 
 
 def infer_action_type(requirement: Dict[str, Any]) -> str:
@@ -196,7 +214,7 @@ def _document_upload_primary_label(requirement: Dict[str, Any], meta: Dict[str, 
     if "hmo" in code and "licen" in code:
         return "Upload HMO Licence"
     if "legionella" in code:
-        return "Upload completed legionella risk assessment"
+        return "Upload assessment report"
     if code == "how_to_rent":
         return "Upload delivery proof"
     if code == "right_to_rent":
@@ -223,6 +241,13 @@ def _is_guided_declaration_workflow_policy(policy: Dict[str, Any]) -> bool:
     return str(policy.get("primary_resolution_workflow") or "").strip().upper() == GUIDED_DECLARATION_WORKFLOW
 
 
+def _is_external_assessment_evidence_workflow_policy(policy: Dict[str, Any]) -> bool:
+    return (
+        str(policy.get("primary_resolution_workflow") or "").strip().upper()
+        == EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW
+    )
+
+
 def job_primary_label(requirement: Dict[str, Any]) -> str:
     """
     JOB-class primary CTA: evidence-first copy for off-platform professional work; platform does not
@@ -240,7 +265,7 @@ def job_primary_label(requirement: Dict[str, Any]) -> str:
     if "pat" in code or "portable_appliance" in code:
         return "Record external assessment evidence — upload PAT evidence"
     if "legionella" in code:
-        return "Upload completed legionella risk assessment"
+        return "Record Legionella risk assessment"
     disp = str(requirement.get("display_label") or "").strip()
     if disp and disp.lower() not in ("requirement", ""):
         return f"Record external assessment evidence — {disp}"
@@ -302,9 +327,43 @@ def resolve_take_action_envelope(
         or str(eng.get("engine_client_visibility") or "").lower() == "informational"
         or ff == "obligation"
     )
-    policy_for_informational_gate = effective_evidence_resolution(requirement)
-    if informational and _tenancy_registry_evidence_overrides_informational(requirement, policy_for_informational_gate):
+    req_for_gate = {
+        **requirement,
+        "property_jurisdiction": property_jurisdiction or requirement.get("property_jurisdiction"),
+    }
+    policy_for_informational_gate = effective_evidence_resolution(req_for_gate)
+    if informational and _tenancy_registry_evidence_overrides_informational(req_for_gate, policy_for_informational_gate):
         informational = False
+
+    if _is_active_condition_standard(req_for_gate):
+        issues_route = f"/operations/issues?property_id={pid}" if pid else "/operations/issues"
+        wo_route = f"/operations/work-orders?property_id={pid}" if pid else "/operations/work-orders"
+        supporting = _supporting_external_links(requirement, property_jurisdiction=property_jurisdiction)
+        why_fields = _registry_why_it_matters(requirement)
+        ta_active = {
+            "primary": {
+                "label": "Manage related issues",
+                "route": issues_route,
+                "kind": "navigate",
+                "handler": "navigate",
+                "intent": INTENT_VIEW_GUIDANCE,
+            },
+            "secondary": {
+                "label": "Review remediation progress",
+                "route": wo_route,
+                "kind": "navigate",
+                "handler": "navigate",
+                "external": False,
+                "intent": INTENT_MAINTENANCE,
+            },
+            "supporting_external_links": supporting,
+        }
+        _attach_take_action_contract_metadata(ta_active, requirement)
+        return {
+            "action_type": ACTION_OBLIGATION,
+            **why_fields,
+            "take_action": ta_active,
+        }
 
     if informational:
         route = f"/properties/{pid}#compliance" if pid else "/requirements"
@@ -515,8 +574,19 @@ def resolve_take_action_envelope(
                 "intent": INTENT_UPLOAD_EVIDENCE,
             }
         elif _is_guided_declaration_workflow_policy(policy) and has_doc_mode:
+            sec_lbl = str(policy.get("guided_secondary_upload_label") or "").strip() or "Upload supporting evidence"
             ta_guided["secondary"] = {
-                "label": "Upload supporting evidence",
+                "label": sec_lbl,
+                "route": doc_route,
+                "kind": "navigate",
+                "handler": "navigate",
+                "external": False,
+                "intent": INTENT_UPLOAD_EVIDENCE,
+            }
+        elif _is_external_assessment_evidence_workflow_policy(policy) and has_doc_mode:
+            sec_lbl = str(policy.get("guided_secondary_upload_label") or "").strip() or "Upload assessment report"
+            ta_guided["secondary"] = {
+                "label": sec_lbl,
                 "route": doc_route,
                 "kind": "navigate",
                 "handler": "navigate",
@@ -663,6 +733,8 @@ def enrich_take_action_envelope_for_client(
             merged["workflow_class"] = TENANT_DELIVERY_WORKFLOW
         elif wf_u == GUIDED_DECLARATION_WORKFLOW:
             merged["workflow_class"] = GUIDED_DECLARATION_WORKFLOW
+        elif wf_u == EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW:
+            merged["workflow_class"] = EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW
         else:
             merged["workflow_class"] = wf or "GUIDED_EVIDENCE_RESOLUTION"
     elif at == ACTION_JOB:
@@ -673,6 +745,8 @@ def enrich_take_action_envelope_for_client(
         merged["workflow_class"] = TENANT_DELIVERY_WORKFLOW
     elif str(wf or "").strip().upper() == GUIDED_DECLARATION_WORKFLOW:
         merged["workflow_class"] = GUIDED_DECLARATION_WORKFLOW
+    elif str(wf or "").strip().upper() == EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW:
+        merged["workflow_class"] = EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW
     elif wf:
         merged["workflow_class"] = wf
     else:

@@ -157,6 +157,93 @@ def test_right_to_rent_guided_declaration_envelope_and_alias_checks():
         assert rich.get("workflow_class") == GUIDED_DECLARATION_WORKFLOW
 
 
+def test_deposit_pi_guided_declaration_envelope_secondary_upload_label():
+    from services.compliance_evidence_record_service import GUIDED_DECLARATION_WORKFLOW
+
+    for rtype, rcode in (
+        ("deposit_pi", "deposit_pi"),
+        ("deposit_prescribed_info", "deposit_prescribed_info"),
+        ("tenancy_deposit_protection", "tenancy_deposit_protection"),
+    ):
+        requirement = {
+            "requirement_id": "r1",
+            "property_id": "p1",
+            "requirement_type": rtype,
+            "requirement_code": rcode,
+            "compliance_requirement_class": "OBLIGATION",
+            "engine_informational": True,
+        }
+        out = resolve_take_action_envelope(requirement, property_id="p1", property_jurisdiction="England")
+        assert out["action_type"] == "DOCUMENT"
+        pri = out["take_action"]["primary"]
+        assert pri.get("kind") == "guided_evidence_resolution"
+        assert pri.get("label") == "Record deposit compliance"
+        sec = (out["take_action"] or {}).get("secondary") or {}
+        assert sec.get("label") == "Upload deposit evidence"
+        rich = enrich_take_action_envelope_for_client(out, requirement)
+        assert rich.get("workflow_class") == GUIDED_DECLARATION_WORKFLOW
+
+
+def test_wales_occupation_contract_guided_declaration_ctas():
+    from services.compliance_evidence_record_service import GUIDED_DECLARATION_WORKFLOW
+
+    for rtype, rcode in (("wales_occupation_contract", "wales_occupation_contract"), ("occupation_contract", "occupation_contract")):
+        requirement = {
+            "requirement_id": "r1",
+            "property_id": "p1",
+            "jurisdiction": "Wales",
+            "requirement_type": rtype,
+            "requirement_code": rcode,
+            "compliance_requirement_class": "OBLIGATION",
+            "engine_informational": True,
+        }
+        out = resolve_take_action_envelope(requirement, property_id="p1", property_jurisdiction="Wales")
+        assert out["action_type"] == "DOCUMENT"
+        pri = out["take_action"]["primary"]
+        assert pri.get("kind") == "guided_evidence_resolution"
+        assert pri.get("label") == "Record Wales occupation contract"
+        sec = (out["take_action"] or {}).get("secondary") or {}
+        assert sec.get("label") == "Upload occupation contract"
+        rich = enrich_take_action_envelope_for_client(out, requirement)
+        assert rich.get("workflow_class") == GUIDED_DECLARATION_WORKFLOW
+
+
+def test_occupation_contract_non_wales_does_not_force_guided_evidence():
+    requirement = {
+        "requirement_id": "r1",
+        "property_id": "p1",
+        "jurisdiction": "England",
+        "requirement_type": "occupation_contract",
+        "requirement_code": "occupation_contract",
+        "compliance_requirement_class": "OBLIGATION",
+        "engine_informational": True,
+    }
+    out = resolve_take_action_envelope(requirement, property_id="p1", property_jurisdiction="England")
+    assert out["action_type"] == "OBLIGATION"
+    pri = out["take_action"]["primary"]
+    assert pri.get("intent") == "view_guidance"
+
+
+def test_legionella_external_assessment_guided_ctas():
+    requirement = {
+        "requirement_id": "r1",
+        "property_id": "p1",
+        "requirement_type": "legionella",
+        "requirement_code": "legionella",
+        "compliance_requirement_class": "DOCUMENT",
+    }
+    out = resolve_take_action_envelope(requirement, property_id="p1", property_jurisdiction="England")
+    assert out["action_type"] == "DOCUMENT"
+    pri = out["take_action"]["primary"]
+    assert pri.get("kind") == "guided_evidence_resolution"
+    assert pri.get("label") == "Record Legionella risk assessment"
+    sec = (out["take_action"] or {}).get("secondary") or {}
+    assert sec.get("label") == "Upload assessment report"
+
+    rich = enrich_take_action_envelope_for_client(out, requirement)
+    assert rich.get("workflow_class") == "EXTERNAL_ASSESSMENT_EVIDENCE"
+
+
 def test_enrich_adds_workflow_class_and_guidance_target():
     requirement = {
         "requirement_id": "r1",
@@ -169,6 +256,42 @@ def test_enrich_adds_workflow_class_and_guidance_target():
     rich = enrich_take_action_envelope_for_client(env, requirement)
     assert rich.get("workflow_class") == "GUIDANCE_ONLY"
     assert rich.get("guidance_target", {}).get("hash") == "compliance"
+
+
+def test_active_condition_standard_cta_is_not_upload_primary():
+    requirement = {
+        "requirement_id": "r-active-1",
+        "property_id": "p1",
+        "requirement_type": "fitness_for_human_habitation",
+        "requirement_code": "fitness_for_human_habitation",
+        "compliance_requirement_class": "OBLIGATION",
+        "engine_informational": True,
+    }
+    out = resolve_take_action_envelope(requirement, property_id="p1", property_jurisdiction="England")
+    pri = out["take_action"]["primary"]
+    assert pri.get("label") == "Manage related issues"
+    assert "/operations/issues" in str(pri.get("route") or "")
+    assert "upload" not in str(pri.get("label") or "").lower()
+    sec = (out["take_action"] or {}).get("secondary") or {}
+    assert "work-orders" in str(sec.get("route") or "")
+    rich = enrich_take_action_envelope_for_client(out, requirement)
+    assert rich.get("workflow_class") == "GUIDANCE_ONLY"
+
+
+def test_active_condition_standard_repairing_standard_no_upload_primary():
+    requirement = {
+        "requirement_id": "r-active-2",
+        "property_id": "p2",
+        "jurisdiction": "Scotland",
+        "requirement_type": "repairing_standard",
+        "requirement_code": "repairing_standard",
+        "compliance_requirement_class": "OBLIGATION",
+        "engine_informational": True,
+    }
+    out = resolve_take_action_envelope(requirement, property_id="p2", property_jurisdiction="Scotland")
+    pri = out["take_action"]["primary"]
+    assert "upload" not in str(pri.get("label") or "").lower()
+    assert "/operations/issues" in str(pri.get("route") or "")
 
 
 def test_hmo_fire_single_primary_guided_no_secondary():

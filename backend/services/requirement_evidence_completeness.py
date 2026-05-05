@@ -5,7 +5,6 @@ Does not enforce compliance, alter scoring, or replace evidence authority.
 """
 from __future__ import annotations
 
-import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from services.compliance_evidence_record_service import (
@@ -55,6 +54,64 @@ def _checklist_answers(rec: Dict[str, Any]) -> Dict[str, Any]:
     return ca if isinstance(ca, dict) else {}
 
 
+# Checklist field ids / snake_case tokens that indicate CO coverage (never use bare ``"co" in key`` — false positives on e.g. ``test_count``).
+_CO_CHECKLIST_KEY_MARKERS: Tuple[str, ...] = (
+    "co_alarm",
+    "carbon_monoxide",
+    "carbon_monoxide_alarm",
+    "co_detector",
+    "monoxide_alarm",
+)
+
+# Phrases in free text that indicate CO evidence (avoid two-letter ``co`` substring — matches inside ``concerns``, ``count``, etc.).
+_CO_TEXT_PHRASES: Tuple[str, ...] = (
+    "carbon monoxide",
+    "co alarm",
+    "co_alarm",
+    "carbon monoxide alarm",
+    "co detector",
+    " monoxide ",
+)
+
+
+def _text_indicates_co_evidence(text: str) -> bool:
+    t = (text or "").lower()
+    return any(p in t for p in _CO_TEXT_PHRASES)
+
+
+def _checklist_key_indicates_co(key: str) -> bool:
+    lk = str(key or "").lower().replace("-", "_")
+    return any(m in lk for m in _CO_CHECKLIST_KEY_MARKERS)
+
+
+def _checklist_value_text_co_evidence(val: Any) -> bool:
+    """True when a stored answer clearly refers to CO alarms (not substring ``co``)."""
+    if isinstance(val, str):
+        return _text_indicates_co_evidence(val)
+    if isinstance(val, dict):
+        for sub in ("answer", "notes", "observation"):
+            inner = val.get(sub)
+            if isinstance(inner, str) and _text_indicates_co_evidence(inner):
+                return True
+    return False
+
+
+def _checklist_key_suggests_smoke_alarm_evidence(key: str) -> bool:
+    """
+    True when a checklist field id plausibly relates to smoke / general alarm inspection evidence.
+    CO-specific keys are excluded via ``_checklist_key_indicates_co`` (never use bare ``\"co\" in key`` —
+    false negatives on e.g. ``codec_alarm``, false positives tying unrelated keys to CO elsewhere).
+    """
+    if _checklist_key_indicates_co(key):
+        return False
+    lk = str(key or "").lower().replace("-", "_")
+    if any(m in lk for m in ("smoke", "heat", "fire_alarm", "smoke_alarm", "smoke_detector")):
+        return True
+    if "alarm" in lk:
+        return True
+    return False
+
+
 def _record_covers_smoke(rec: Dict[str, Any]) -> bool:
     mode = _norm_status(rec.get("evidence_mode"))
     text = _flatten_text_from_record(rec)
@@ -63,8 +120,7 @@ def _record_covers_smoke(rec: Dict[str, Any]) -> bool:
     if mode == EVIDENCE_MODE_INSPECTION_CHECKLIST:
         ca = _checklist_answers(rec)
         for key in ca:
-            lk = str(key).lower()
-            if "alarm" in lk and "co" not in lk and "carbon" not in lk:
+            if _checklist_key_suggests_smoke_alarm_evidence(key):
                 return True
         if ca.get("alarm_present") in ("PASS", "pass", True):
             return True
@@ -77,24 +133,15 @@ def _record_covers_smoke(rec: Dict[str, Any]) -> bool:
 
 def _record_covers_co(rec: Dict[str, Any]) -> bool:
     text = _flatten_text_from_record(rec)
-    if any(
-        k in text
-        for k in (
-            "carbon monoxide",
-            "co alarm",
-            "co_alarm",
-            "carbon monoxide alarm",
-        )
-    ):
+    if _text_indicates_co_evidence(text):
         return True
     mode = _norm_status(rec.get("evidence_mode"))
     if mode == EVIDENCE_MODE_INSPECTION_CHECKLIST:
         ca = _checklist_answers(rec)
         for key, val in ca.items():
-            lk = str(key).lower()
-            if "co" in lk or "carbon" in lk:
+            if _checklist_key_indicates_co(key):
                 return True
-            if isinstance(val, str) and ("co" in val.lower() or "carbon" in val.lower()):
+            if _checklist_value_text_co_evidence(val):
                 return True
     return False
 
