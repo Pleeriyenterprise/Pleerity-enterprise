@@ -25,6 +25,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   inboxTitleForDisplay,
+  requirementDisplayTitle,
   requirementLabel,
   inboxSourceTypeLabel,
   inboxTimelineActionLabel,
@@ -245,7 +246,8 @@ function todayDecisionLayerTitle(task) {
   if (task.source_type === 'work_order') {
     const jobLine = String(task.description || '').trim();
     if (code) {
-      const name = requirementLabel(code);
+      const name =
+        requirementDisplayTitle(meta.requirement_display, 'compact') || requirementLabel(code);
       if (stateFromTiming) return `${name} — ${stateFromTiming}`;
       if (od || u === 'overdue') return `${name} — overdue`;
       if (u === 'due_soon' || u === 'high') return `${name} — due soon`;
@@ -257,7 +259,8 @@ function todayDecisionLayerTitle(task) {
 
   if (task.source_type === 'risk_signal') {
     if (code) {
-      const name = requirementLabel(code);
+      const name =
+        requirementDisplayTitle(meta.requirement_display, 'compact') || requirementLabel(code);
       return stateFromTiming ? `${name} — ${stateFromTiming}` : `${name} — needs review`;
     }
     const d = String(task.description || '').trim();
@@ -993,12 +996,17 @@ export default function ClientTasksPage() {
     (task) => {
       const rid = inboxTaskLinkedRequirementId(task);
       if (!rid) return;
+      const meta = task.metadata || {};
+      const rd = meta.requirement_display;
       const seed =
         inboxRequirementById.get(String(rid)) ||
         ({
           requirement_id: String(rid),
           property_id: task.property_id,
-          display_label: task.title,
+          display_label:
+            requirementDisplayTitle(rd, 'detail') ||
+            requirementDisplayTitle(rd, 'compact') ||
+            task.title,
         });
       setRequirementIntelModal({
         requirementId: String(rid),

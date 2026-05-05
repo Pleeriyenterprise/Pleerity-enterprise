@@ -234,10 +234,15 @@ async def get_property_compliance_detail(
             kpis["compliant"] += 1
         weighted_sum += weight * score
         weight_sum += weight
+        rd = row.get("requirement_display") if isinstance(row.get("requirement_display"), dict) else {}
+        legacy_title = row.get("display_name") or row.get("display_label") or row.get("description") or code
+        compact = (rd.get("short_name") or rd.get("canonical_name") or "").strip() or legacy_title
+        detail = (rd.get("canonical_name") or "").strip() or legacy_title
         matrix.append({
             "requirement_code": code,
-            "display_name": row.get("display_name") or row.get("display_label") or row.get("description") or code,
-            "title": row.get("display_name") or row.get("display_label") or row.get("description") or code,
+            "display_name": compact,
+            "title": detail,
+            "requirement_display": rd if rd else None,
             "status": status,
             "numeric_score": score,
             "criticality": criticality,

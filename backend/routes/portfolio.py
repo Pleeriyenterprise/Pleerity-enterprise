@@ -400,15 +400,22 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
                 },
             )
         from services.catalog_compliance import _days_to_expiry, _requirement_numeric_score
+        from services.requirement_truth import enrich_requirements_for_client
+
+        requirements, _fb_pres = await enrich_requirements_for_client(db, client_id, requirements)
         matrix = []
         for r_raw in requirements:
             r = project_requirement_row_client_runtime(r_raw)
             due_raw = r.get("due_date")
             days = _days_to_expiry(due_raw)
             cs = (r.get("status") or "PENDING")
+            rd = r_raw.get("requirement_display") if isinstance(r_raw.get("requirement_display"), dict) else {}
+            legacy_title = r.get("description") or r.get("requirement_type")
             matrix.append({
                 "requirement_code": r.get("requirement_type"),
-                "title": r.get("description") or r.get("requirement_type"),
+                "title": (rd.get("canonical_name") or "").strip() or legacy_title,
+                "display_name": (rd.get("short_name") or rd.get("canonical_name") or "").strip() or legacy_title,
+                "requirement_display": rd if rd else None,
                 "status": cs,
                 "numeric_score": _requirement_numeric_score(cs, due_raw),
                 "criticality": "MED",

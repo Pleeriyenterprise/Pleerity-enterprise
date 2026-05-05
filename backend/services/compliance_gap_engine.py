@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from presentation.label_service import requirement_label
+from presentation.requirement_display_contract import compact_display_for_requirement_row
 from services.compliance_expiry_policy import resolve_expiring_soon_days_for_requirement
 from services.compliance_score import get_requirement_weight
 from services.policy_field_normalizer import resolve_policy_facts
@@ -205,7 +205,7 @@ def derive_gaps_from_legacy_requirement_row(
     pid = requirement.get("property_id") or ""
     cid = requirement.get("client_id") or ""
     code = _req_code(requirement)
-    disp = requirement_label(code) if code else "Compliance item"
+    disp = compact_display_for_requirement_row(requirement, code)
     req_url = _url_frag_property_req(pid, code) or "/documents"
     due = requirement.get("due_date")
     due_s = str(due) if due else None
@@ -292,7 +292,7 @@ def derive_gaps_from_authority(
     pid = str(requirement.get("property_id") or "")
     cid = str(requirement.get("client_id") or "")
     code = _req_code(requirement)
-    disp = requirement_label(code) if code else "Compliance item"
+    disp = compact_display_for_requirement_row(requirement, code)
     req_url = _url_frag_property_req(pid, code) or "/documents"
     eff_exp = _parse_dt(ea.get("effective_expiry_date"))
     eff_exp_s = ea.get("effective_expiry_date")
@@ -549,7 +549,7 @@ def infer_compliance_gaps_for_requirement(
     if st in ("NOT_REQUIRED",):
         return []
     code = _req_code(requirement)
-    disp = requirement_label(code) if code else "Compliance item"
+    disp = compact_display_for_requirement_row(requirement, code)
     pid = str(requirement.get("property_id") or "")
     cid = str(requirement.get("client_id") or "")
     return [
@@ -660,5 +660,8 @@ def gaps_to_priority_actions(gaps: List[ComplianceGap], requirement: Dict[str, A
             row["registry_metadata"] = rm_req
         if requirement.get("display_label") is not None:
             row["display_label"] = requirement.get("display_label")
+        rd = requirement.get("requirement_display")
+        if isinstance(rd, dict) and rd:
+            row["requirement_display"] = rd
         out.append(row)
     return out

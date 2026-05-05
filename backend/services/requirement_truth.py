@@ -534,6 +534,9 @@ def enrich_requirement_dict(
         )
     else:
         strip_workflow_diagnostics_from_payload(out)
+        from presentation.requirement_display_contract import build_requirement_display
+
+        out["requirement_display"] = build_requirement_display(out, audience=audience)
 
     return out
 

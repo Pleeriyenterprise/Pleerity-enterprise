@@ -443,6 +443,7 @@ def test_enrich_admin_includes_workflow_class_reference():
     assert r.get("workflow_class_reference_source") == "decision_record_fallback"
     assert "workflow_runtime_behaviour" in r
     assert isinstance(r.get("workflow_mismatch_flags"), list)
+    assert r.get("requirement_display") is None
 
 
 def test_enrich_client_omits_workflow_diagnostics():

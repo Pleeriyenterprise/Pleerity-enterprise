@@ -28,7 +28,7 @@ import {
 } from '../components/ui/accordion';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import EmptyState from '../components/EmptyState';
-import { requirementLabel } from '../domain/presentDomain';
+import { requirementDisplayTitle, requirementLabel } from '../domain/presentDomain';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { PortalLoadingPanel } from '../components/client/ClientPortalPatterns';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
@@ -254,7 +254,10 @@ const RequirementsPage = () => {
     if (attentionScopedOnly && !isRequirementIncludedInAttentionViews(req)) return false;
     // Search filter
     const property = getPropertyById(req.property_id);
-    const reqLabel = requirementLabel(req.requirement_type || req.requirement_code || '');
+    const reqLabel =
+      requirementDisplayTitle(req.requirement_display, 'compact') ||
+      requirementDisplayTitle(req.requirement_display, 'detail') ||
+      requirementLabel(req.requirement_type || req.requirement_code || '');
     const propertyLabel = getPropertyDisplayName(property).toLowerCase();
     const matchesSearch = searchTerm === '' ||
       req.requirement_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -345,7 +348,13 @@ const RequirementsPage = () => {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-midnight-blue">{req.display_label || requirementLabel(req.requirement_type || req.requirement_code) || 'Requirement'}</h3>
+                <h3 className="font-semibold text-midnight-blue">
+                  {requirementDisplayTitle(req.requirement_display, 'compact') ||
+                    requirementDisplayTitle(req.requirement_display, 'detail') ||
+                    req.display_label ||
+                    requirementLabel(req.requirement_type || req.requirement_code) ||
+                    'Requirement'}
+                </h3>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusConfig.className}`}>{statusConfig.text}</span>
                 {req.evidence_completeness?.summary_label && req.evidence_completeness.summary_label !== 'Complete' ? (
                   <span

@@ -57,6 +57,7 @@ import {
   workOrderKindClientLabel,
 } from '../utils/jobWorkflowUi';
 import {
+  requirementDisplayTitle,
   requirementLabel,
   normalizeRequirementCode,
   documentTypeLabel,
@@ -1036,6 +1037,8 @@ export default function PropertyDetailPage() {
   };
   const isMatrixRow = (r) => r.title != null || r.requirement_code != null;
   const rowTitle = (r) =>
+    requirementDisplayTitle(r?.requirement_display, 'detail') ||
+    requirementDisplayTitle(r?.requirement_display, 'compact') ||
     r?.title ||
     (r?.requirement_code || r?.requirement_type
       ? requirementLabel(r.requirement_code || r.requirement_type)
@@ -2040,7 +2043,8 @@ export default function PropertyDetailPage() {
                               <td className="p-3 font-medium text-midnight-blue">{rowTitle(r)}</td>
                               <td className="p-3 text-gray-600">
                                 {r.requirement_code || r.requirement_type
-                                  ? requirementLabel(r.requirement_code || r.requirement_type)
+                                  ? requirementDisplayTitle(r.requirement_display, 'compact') ||
+                                    requirementLabel(r.requirement_code || r.requirement_type)
                                   : '—'}
                               </td>
                               <td className="p-3">

@@ -2,7 +2,12 @@
  * Client Command Center — pure helpers for verdict copy, job attention ranking, and stuck signals.
  * Keeps UI pages from accumulating a second business-rules layer; aligns with API field names.
  */
-import { operationalExceptionLabel, inboxTitleForDisplay, requirementLabel } from '../domain/presentDomain';
+import {
+  operationalExceptionLabel,
+  inboxTitleForDisplay,
+  requirementDisplayTitle,
+  requirementLabel,
+} from '../domain/presentDomain';
 import { compareTopPriority, normalizeTaskForTopPriorityRanking } from './clientTopPriorityRanking';
 import {
   clientInboxJobCtaLabel,
@@ -439,6 +444,8 @@ export function sanitizeCommandCenterCtaLabel(primaryLabel, task) {
 }
 
 function requirementSpecificName(task, meta) {
+  const fromDisp = requirementDisplayTitle(meta?.requirement_display, 'compact');
+  if (fromDisp) return fromDisp;
   const code =
     meta.requirement_type ||
     meta.requirement_code ||
@@ -799,11 +806,12 @@ export function commandCenterRequirementIntelContext(task, inboxRequirementById)
     return { canOpen: false, requirementId: null, seed: null, fallbackHint: hint };
   }
   const meta = task?.metadata && typeof task.metadata === 'object' ? task.metadata : {};
+  const rd = meta.requirement_display && typeof meta.requirement_display === 'object' ? meta.requirement_display : null;
   const baseSeed = {
     requirement_id: String(rid),
     property_id: task.property_id,
     property_label: task.property_label,
-    display_label: task.title,
+    display_label: requirementDisplayTitle(rd, 'detail') || requirementDisplayTitle(rd, 'compact') || task.title,
     property_jurisdiction: task.property_jurisdiction || task.jurisdiction || meta.property_jurisdiction || meta.jurisdiction,
   };
   const fromMap = inboxRequirementById instanceof Map ? inboxRequirementById.get(String(rid)) : null;

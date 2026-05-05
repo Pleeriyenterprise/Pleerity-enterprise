@@ -471,7 +471,10 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             client_doc=client_row,
             properties=properties,
         )
-        requirements = [project_requirement_row_client_runtime(r) for r in raw_requirements]
+        from services.requirement_truth import enrich_requirements_for_client
+
+        enriched_portal, _portal_pres = await enrich_requirements_for_client(db, client_id, list(raw_requirements))
+        requirements = [project_requirement_row_client_runtime(r) for r in enriched_portal]
         portal_reqs = [r for r in requirements if client_portal_surface_visible_row(r)]
         portal_req_ids = {r.get("requirement_id") for r in portal_reqs if r.get("requirement_id")}
         _counts = compute_client_portal_requirement_stats(portal_reqs)
@@ -782,7 +785,12 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
 
             prop = prop_map.get(pid, {})
             s = r.get("status")
-            req_name = r.get("description") or (r.get("requirement_type") or "Requirement").replace("_", " ")
+            rd = r.get("requirement_display") if isinstance(r.get("requirement_display"), dict) else {}
+            req_name = (
+                (rd.get("short_name") or rd.get("canonical_name") or "").strip()
+                or r.get("description")
+                or (r.get("requirement_type") or "Requirement").replace("_", " ")
+            )
             evidence = rid in req_ids_with_any_doc
             window_days = resolve_expiring_soon_days_for_requirement(
                 r,
@@ -836,6 +844,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "property_name": prop.get("nickname") or prop.get("address_line_1") or pid,
                 "requirement_id": rid,
                 "requirement_name": req_name,
+                "requirement_display": rd if rd else None,
                 "status": display_status,
                 "date_used": r.get("due_date"),
                 "date_confidence": "UNKNOWN",

@@ -38,6 +38,7 @@ import {
 } from '../utils/requirementTakeActionResolver';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
+import { requirementDisplayTitle } from '../domain/presentDomain';
 import { complianceRequirementStatusLabel } from '../domain/presentDomain';
 import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
 import { getTrackedRequirementsForProperty } from '../utils/portalRequirementAttention';
@@ -174,6 +175,16 @@ function ScoreDriverRemediationActions({ driver, requirements, navigate, openGui
         </Button>
       ) : null}
     </div>
+  );
+}
+
+function scoreDriverRequirementTitle(d) {
+  if (!d || typeof d !== 'object') return '—';
+  return (
+    requirementDisplayTitle(d.requirement_display, 'compact') ||
+    requirementDisplayTitle(d.requirement_display, 'detail') ||
+    d.requirement_name ||
+    '—'
   );
 }
 
@@ -766,7 +777,7 @@ const ComplianceScorePage = () => {
                       <tbody>
                         {(driversFilterPropertyId ? scoreData.drivers.filter(d => d.property_id === driversFilterPropertyId) : scoreData.drivers).map((d, idx) => (
                           <tr key={scoreDriverRowReactKey(d, idx)} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="py-3 pr-2">{d.requirement_name || '—'}</td>
+                            <td className="py-3 pr-2">{scoreDriverRequirementTitle(d)}</td>
                             <td className="py-3 pr-2">{d.property_name || d.property_id || '—'}</td>
                             <td className="py-3 pr-2">
                               <span className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -809,7 +820,7 @@ const ComplianceScorePage = () => {
                 <div className="md:hidden space-y-3" data-testid="score-drivers-cards-mobile">
                   {(driversFilterPropertyId ? scoreData.drivers.filter(d => d.property_id === driversFilterPropertyId) : scoreData.drivers).map((d, idx) => (
                     <div key={scoreDriverRowReactKey(d, idx)} className="p-4 border rounded-lg bg-gray-50 space-y-3">
-                      <p className="font-medium text-midnight-blue">{d.requirement_name || '—'}</p>
+                      <p className="font-medium text-midnight-blue">{scoreDriverRequirementTitle(d)}</p>
                       <p className="text-sm text-gray-600">{d.property_name || d.property_id}</p>
                       <p className="text-sm">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${

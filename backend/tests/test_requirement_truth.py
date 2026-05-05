@@ -102,6 +102,11 @@ def test_enrich_requirement_dict_adds_presentation():
         EVIDENCE_MISSING,
     )
     assert r["display_label"]
+    rd = r.get("requirement_display")
+    assert isinstance(rd, dict)
+    assert rd.get("canonical_name") == "Gas Safety Certificate (CP12)"
+    assert rd.get("short_name") == "Gas Safety"
+    assert rd.get("primary_cta_label")
     assert r["date_source"] == "SYSTEM_ESTIMATED"
     assert "Estimated" in r["date_label"]
     assert r["evidence_badge_label"]

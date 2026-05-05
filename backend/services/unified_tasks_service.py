@@ -31,6 +31,7 @@ from services.catalog_compliance import get_portfolio_compliance_from_catalog
 from services import client_task_state_service as client_task_state
 from services.requirement_code_registry import (
     is_bookable_compliance_requirement,
+    normalize_requirement_code,
     normalize_requirement_code_strict,
 )
 from services.compliance_requirement_engine import resolve_engine_payload_from_code
@@ -435,6 +436,19 @@ def _action_to_task(
                     task_metadata[k] = env_take[k]
         if isinstance(a.get("evidence_completeness"), dict) and a.get("evidence_completeness"):
             task_metadata["evidence_completeness"] = dict(a["evidence_completeness"])
+        if isinstance(a.get("requirement_display"), dict) and a.get("requirement_display"):
+            task_metadata["requirement_display"] = dict(a["requirement_display"])
+        else:
+            from presentation.requirement_display_contract import build_requirement_display
+
+            _canon = normalize_requirement_code(str(task_metadata.get("requirement_code") or "").strip())
+            syn_rd = {
+                "requirement_code": task_metadata.get("requirement_code"),
+                "requirement_type": task_metadata.get("requirement_type") or task_metadata.get("requirement_code"),
+                "canonical_requirement_code": _canon,
+                "take_action": task_metadata.get("take_action"),
+            }
+            task_metadata["requirement_display"] = build_requirement_display(syn_rd, audience="client")
 
     timing_label = None
     if overdue_days and overdue_days > 0:

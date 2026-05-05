@@ -39,6 +39,27 @@ export function requirementLabel(code, audience = 'client') {
   return titleFromSnake(key);
 }
 
+/**
+ * Titles from API `requirement_display` (backend-owned). Returns null when absent.
+ * @param {'compact'|'detail'} mode compact = cards/tasks/drivers; detail = full official name
+ */
+export function requirementDisplayTitle(display, mode = 'compact') {
+  const d = display && typeof display === 'object' ? display : null;
+  if (!d) return null;
+  const cn = String(d.canonical_name || '').trim();
+  const sn = String(d.short_name || '').trim();
+  if (mode === 'detail') return cn || sn || null;
+  return sn || cn || null;
+}
+
+/** Body copy only — never concatenate into titles. */
+export function requirementDisplayDescription(display) {
+  const d = display && typeof display === 'object' ? display : null;
+  if (!d) return null;
+  const s = String(d.description || '').trim();
+  return s || null;
+}
+
 export function requirementActionPhrase(code) {
   const key = normalizeRequirementCode(code);
   const req = key ? (data.requirement_codes || {})[key] : null;
