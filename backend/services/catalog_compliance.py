@@ -12,6 +12,10 @@ from services.requirement_client_runtime_surface import (
     filter_requirement_rows_for_client_runtime_surfaces,
     project_requirement_row_client_runtime,
 )
+from services.requirement_read_model_guard import (
+    filter_rows_to_canonical_requirement_ids,
+    get_canonical_requirement_ids_for_property,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -154,6 +158,21 @@ async def get_property_compliance_detail(
 
     enriched, _presentation = await enrich_requirements_for_client(db, client_id, reqs)
     enriched = [r for r in enriched if r.get("client_surface_visible", True)]
+    canonical_ids = await get_canonical_requirement_ids_for_property(client_id, property_id, db=db)
+    enriched, dropped = filter_rows_to_canonical_requirement_ids(enriched, canonical_ids)
+    for d in dropped:
+        logger.warning(
+            "catalog_compliance: dropped non-canonical requirement row before matrix projection",
+            extra={
+                "client_id": client_id,
+                "property_id": property_id,
+                "requirement_id": d.get("requirement_id"),
+                "requirement_code": d.get("requirement_code"),
+                "requirement_type": d.get("requirement_type"),
+                "source": d.get("source"),
+                "reason": d.get("reason"),
+            },
+        )
     catalog_items = await _load_catalog(db)
     catalog_by_code = {
         str(x.get("code") or "").strip().lower(): x

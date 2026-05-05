@@ -104,6 +104,94 @@ async def test_tenant_request_tasks_enter_unified_priority_stream():
     assert "tenant_request:tr1" in all_ids
 
 
+@pytest.mark.asyncio
+async def test_requirement_like_task_reclassified_when_requirement_id_not_canonical():
+    action = {
+        "action_type": "missing_document",
+        "related_property_id": "p1",
+        "related_requirement_id": "r-missing",
+        "requirement_code": "gas_safety",
+        "title": "Missing gas certificate",
+        "description": "Upload gas safety evidence.",
+        "recommended_action_label": "Upload document",
+        "recommended_url": "/documents?property_id=p1&requirement_id=r-missing",
+        "severity": "high",
+        "priority": 80,
+    }
+    with patch("services.unified_tasks_service.fetch_client_priority_actions", new=AsyncMock(return_value=[action])), patch(
+        "services.unified_tasks_service.get_canonical_requirement_ids_map_for_properties",
+        new=AsyncMock(return_value={"p1": set()}),
+    ), patch("services.unified_tasks_service._tenant_message_tasks", new=AsyncMock(return_value=[])), patch(
+        "services.unified_tasks_service._tenant_request_tasks", new=AsyncMock(return_value=[])
+    ), patch(
+        "services.unified_tasks_service._recently_completed_tasks", new=AsyncMock(return_value=[])
+    ), patch(
+        "services.unified_tasks_service._load_property_labels", new=AsyncMock(return_value={"p1": "Property 1"})
+    ), patch(
+        "services.unified_tasks_service._freshness_block", new=AsyncMock(return_value={})
+    ), patch(
+        "services.client_task_state_service.load_active_overrides", new=AsyncMock(return_value={})
+    ), patch(
+        "services.client_task_state_service.list_recent_activity", new=AsyncMock(return_value=[])
+    ), patch(
+        "services.client_task_state_service.count_activity_since", new=AsyncMock(return_value=0)
+    ), patch(
+        "services.client_task_state_service.list_hidden_inbox_items", new=AsyncMock(return_value=[])
+    ):
+        out = await uts.get_unified_tasks_for_client("phase21-client")
+    rows = out["tasks"]["urgent"] + out["tasks"]["upcoming"] + out["tasks"]["in_progress"]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.get("source_type") == "priority_action"
+    assert row.get("requirement_id") in (None, "")
+    meta = row.get("metadata") or {}
+    assert isinstance(meta.get("canonical_guard"), dict)
+    assert meta["canonical_guard"].get("reclassified") is True
+
+
+@pytest.mark.asyncio
+async def test_requirement_like_task_keeps_requirement_source_when_canonical_valid():
+    action = {
+        "action_type": "missing_document",
+        "related_property_id": "p1",
+        "related_requirement_id": "r-valid",
+        "requirement_code": "gas_safety",
+        "title": "Missing gas certificate",
+        "description": "Upload gas safety evidence.",
+        "recommended_action_label": "Upload document",
+        "recommended_url": "/documents?property_id=p1&requirement_id=r-valid",
+        "severity": "high",
+        "priority": 80,
+    }
+    with patch("services.unified_tasks_service.fetch_client_priority_actions", new=AsyncMock(return_value=[action])), patch(
+        "services.unified_tasks_service.get_canonical_requirement_ids_map_for_properties",
+        new=AsyncMock(return_value={"p1": {"r-valid"}}),
+    ), patch("services.unified_tasks_service._tenant_message_tasks", new=AsyncMock(return_value=[])), patch(
+        "services.unified_tasks_service._tenant_request_tasks", new=AsyncMock(return_value=[])
+    ), patch(
+        "services.unified_tasks_service._recently_completed_tasks", new=AsyncMock(return_value=[])
+    ), patch(
+        "services.unified_tasks_service._load_property_labels", new=AsyncMock(return_value={"p1": "Property 1"})
+    ), patch(
+        "services.unified_tasks_service._freshness_block", new=AsyncMock(return_value={})
+    ), patch(
+        "services.client_task_state_service.load_active_overrides", new=AsyncMock(return_value={})
+    ), patch(
+        "services.client_task_state_service.list_recent_activity", new=AsyncMock(return_value=[])
+    ), patch(
+        "services.client_task_state_service.count_activity_since", new=AsyncMock(return_value=0)
+    ), patch(
+        "services.client_task_state_service.list_hidden_inbox_items", new=AsyncMock(return_value=[])
+    ):
+        out = await uts.get_unified_tasks_for_client("phase21-client")
+    rows = out["tasks"]["urgent"] + out["tasks"]["upcoming"] + out["tasks"]["in_progress"]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.get("source_type") == "requirement"
+    assert row.get("requirement_id") == "r-valid"
+    assert not isinstance((row.get("metadata") or {}).get("canonical_guard"), dict)
+
+
 def test_priority_actions_endpoint_matches_command_center_urgent(client, override_client_guard):
     urgent = [{"id": "u1", "title": "t1"}, {"id": "u2", "title": "t2"}]
     payload = {

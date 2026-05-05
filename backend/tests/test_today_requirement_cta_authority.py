@@ -272,3 +272,25 @@ def test_unified_primary_fields_for_guided_resolution():
     assert pri_type == "guided_evidence_resolution"
     assert url == ""
     assert "Resolve" in label or "evidence" in label.lower()
+
+
+def test_orphan_reclassified_task_not_rendered_as_requirement_take_action():
+    task = {
+        "id": "requirement:orphan-r1",
+        "source_type": "priority_action",
+        "source_entity_id": "orphan-r1",
+        "source_id": "orphan-r1",
+        "property_id": "p1",
+        "primary_action_type": "view_details",
+        "primary_action_label": "View details",
+        "primary_action_url": "/requirements?property_id=p1",
+        "metadata": {
+            "action_type": "missing_document",
+            "requirement_code": "gas_safety",
+            "canonical_guard": {"reclassified": True},
+        },
+    }
+    actions = build_business_actions_for_task(task)
+    ids = {a.get("id") for a in actions}
+    assert "take_action_primary" not in ids
+    assert "open_primary" in ids

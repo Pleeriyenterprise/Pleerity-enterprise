@@ -1726,9 +1726,32 @@ async def get_property_requirements(request: Request, property_id: str):
         )
 
         from services.requirement_truth import enrich_requirements_for_client
+        from services.requirement_read_model_guard import (
+            filter_rows_to_canonical_requirement_ids,
+            get_canonical_requirement_ids_for_property,
+        )
 
         enriched, presentation = await enrich_requirements_for_client(db, user["client_id"], requirements)
         enriched = [r for r in enriched if r.get("client_surface_visible", True)]
+        canonical_ids = await get_canonical_requirement_ids_for_property(
+            user["client_id"],
+            property_id,
+            db=db,
+        )
+        enriched, dropped = filter_rows_to_canonical_requirement_ids(enriched, canonical_ids)
+        for d in dropped:
+            logger.warning(
+                "property_requirements: dropped non-canonical requirement row",
+                extra={
+                    "client_id": user["client_id"],
+                    "property_id": property_id,
+                    "requirement_id": d.get("requirement_id"),
+                    "requirement_code": d.get("requirement_code"),
+                    "requirement_type": d.get("requirement_type"),
+                    "source": d.get("source"),
+                    "reason": d.get("reason"),
+                },
+            )
         return {"requirements": enriched, "presentation": presentation}
     
     except HTTPException:

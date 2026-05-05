@@ -9,7 +9,7 @@ restore) merged server-side; snoozed section + habit metrics from activity.
 from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 import logging
 
 from database import database
@@ -39,6 +39,7 @@ from services.requirement_action_resolver import (
     resolve_take_action_envelope,
     resolve_take_action_for_priority_action,
 )
+from services.requirement_read_model_guard import get_canonical_requirement_ids_map_for_properties
 from services.requirement_client_runtime_surface import project_requirement_row_client_runtime
 from utils.compliance_fanout_log import compliance_fanout_extra
 
@@ -946,6 +947,94 @@ def _sort_tasks(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     )
 
 
+def _task_requirement_identity(task: Dict[str, Any]) -> Tuple[str, str]:
+    meta = task.get("metadata") if isinstance(task.get("metadata"), dict) else {}
+    pid = str(task.get("property_id") or meta.get("related_property_id") or "").strip()
+    rid = str(
+        task.get("requirement_id")
+        or task.get("source_entity_id")
+        or task.get("source_id")
+        or meta.get("requirement_id")
+        or ""
+    ).strip()
+    return pid, rid
+
+
+async def _enforce_canonical_requirement_task_guard(
+    *,
+    client_id: str,
+    tasks: List[Dict[str, Any]],
+    db: Any,
+) -> List[Dict[str, Any]]:
+    """
+    Priority-1 trust guard:
+    If a task is requirement-like, it must map to a canonical materialised requirement_id for that property.
+    Invalid rows are reclassified as diagnostics (not requirement cards) and kept visible.
+    """
+    if not tasks:
+        return tasks
+    candidate_idx: List[int] = []
+    property_ids: Set[str] = set()
+    for i, t in enumerate(tasks):
+        st = str(t.get("source_type") or "").strip().lower()
+        if st != "requirement":
+            continue
+        pid, _rid = _task_requirement_identity(t)
+        if pid:
+            property_ids.add(pid)
+        candidate_idx.append(i)
+    if not candidate_idx:
+        return tasks
+
+    canonical_map = await get_canonical_requirement_ids_map_for_properties(client_id, property_ids, db=db)
+
+    out: List[Dict[str, Any]] = []
+    for i, t in enumerate(tasks):
+        if i not in candidate_idx:
+            out.append(t)
+            continue
+        pid, rid = _task_requirement_identity(t)
+        valid = bool(pid and rid and rid in (canonical_map.get(pid) or set()))
+        if valid:
+            out.append(t)
+            continue
+
+        tt = dict(t)
+        md = dict(tt.get("metadata") or {})
+        # Keep signal visible, but stop presenting it as a canonical requirement card.
+        tt["source_type"] = "priority_action"
+        tt["source_entity_type"] = "priority_action"
+        tt.pop("requirement_id", None)
+        md.pop("requirement_id", None)
+        md.pop("take_action", None)
+        md.pop("requirement_action_type", None)
+        md["canonical_guard"] = {
+            "reclassified": True,
+            "reason": "missing_or_noncanonical_requirement_id",
+            "property_id": pid or None,
+            "requirement_id": rid or None,
+        }
+        tt["metadata"] = md
+        if not str(tt.get("primary_action_label") or "").strip():
+            tt["primary_action_label"] = "View details"
+        if not str(tt.get("primary_action_type") or "").strip():
+            tt["primary_action_type"] = "view_details"
+        out.append(tt)
+        logger.warning(
+            "unified_tasks: requirement-like task reclassified by canonical guard",
+            extra=compliance_fanout_extra(
+                op="canonical_requirement_guard",
+                stage="partial",
+                client_id=client_id,
+                property_id=pid or None,
+                requirement_id=rid or None,
+                correlation_id=str(tt.get("id") or ""),
+                trigger_reason="orphan_requirement_like_task",
+            ),
+        )
+    return out
+
+
 async def get_unified_tasks_for_client(
     client_id: str,
     property_id_filter: Optional[str] = None,
@@ -958,6 +1047,7 @@ async def get_unified_tasks_for_client(
     Prioritization: impact_score (overdue, SLA, engine priority) then urgency tier then title.
     """
     now = datetime.now(timezone.utc)
+    db = database.get_db()
     actions = await fetch_client_priority_actions(client_id, property_id_filter, raw_limit)
     prop_ids = [a.get("related_property_id") for a in actions if a.get("related_property_id")]
     property_labels = await _load_property_labels(client_id, [str(x) for x in prop_ids if x])
@@ -981,6 +1071,12 @@ async def get_unified_tasks_for_client(
             continue
         seen.add(tr["id"])
         tasks.append(tr)
+
+    tasks = await _enforce_canonical_requirement_task_guard(
+        client_id=client_id,
+        tasks=tasks,
+        db=db,
+    )
 
     overrides = await client_task_state.load_active_overrides(client_id, portal_user_id=portal_user_id)
     visible, snoozed = client_task_state.partition_tasks_by_override(tasks, overrides, now)

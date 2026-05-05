@@ -30,11 +30,14 @@ class _FakeCursor:
     def __init__(self, items: List[Dict[str, Any]]):
         self._items = [dict(x) for x in items]
 
-    async def to_list(self, _limit: int):
+    async def to_list(self, _limit: int = 0, **kwargs):
         return [dict(x) for x in self._items]
 
     def __aiter__(self):
         self._it = iter(self._items)
+        return self
+
+    def sort(self, *_args, **_kwargs):
         return self
 
     async def __anext__(self):
@@ -76,6 +79,8 @@ class _FakeDB:
         self.clients = _Collection([client_doc])
         self.properties = _Collection(properties)
         self.requirements = _Collection(requirements)
+        self.requirements_catalog = _Collection([])
+        self.documents = _Collection([])
 
 
 def _prop(pid: str, jurisdiction: str) -> Dict[str, Any]:
@@ -120,7 +125,9 @@ def _override_client_guard(mixed_user):
 
     app.dependency_overrides[middleware_client_route_guard] = _fake_guard
     app.dependency_overrides[acw._require_client] = _fake_guard
-    with patch("routes.client.client_route_guard", new=AsyncMock(return_value=mixed_user)):
+    with patch("routes.client.client_route_guard", new=AsyncMock(return_value=mixed_user)), patch(
+        "routes.portfolio.client_route_guard", new=AsyncMock(return_value=mixed_user)
+    ):
         yield
     app.dependency_overrides.pop(middleware_client_route_guard, None)
     app.dependency_overrides.pop(acw._require_client, None)
@@ -304,3 +311,77 @@ def test_command_center_route_requirement_backed_urgent_actions_preserve_attribu
     assert sum(1 for u in urgent if u.get("canonical_code") == "gas_safety") == 2
     assert body.get("compliance_status_summary", {}).get("total_requirements") == 2
     assert not any(u.get("property_id") == P_WAL and u.get("jurisdiction") == "England" for u in urgent)
+
+
+def test_property_requirements_ids_align_with_client_requirements_set(client, _override_client_guard):
+    props = [_prop(P_ENG, "England"), _prop(P_WAL, "Wales")]
+    rows = [
+        _req("eng-gas", P_ENG, "gas_safety", "England"),
+        _req("eng-r2r", P_ENG, "right_to_rent", "England"),
+        _req("wal-gas", P_WAL, "gas_safety", "Wales"),
+    ]
+    fake_db = _FakeDB({"client_id": CLIENT_ID, "default_jurisdiction": "England"}, props, rows)
+    with patch("routes.client.database.get_db", return_value=fake_db), patch(
+        "services.requirement_truth.fetch_active_published_registry_entries", new_callable=AsyncMock, return_value={}
+    ), patch(
+        "services.requirement_truth.load_evidence_state_by_requirement_id", new_callable=AsyncMock, return_value={}
+    ):
+        all_res = client.get("/api/client/requirements")
+        prop_res = client.get(f"/api/client/properties/{P_ENG}/requirements")
+    assert all_res.status_code == 200
+    assert prop_res.status_code == 200
+    all_ids = {str(r.get("requirement_id")) for r in (all_res.json().get("requirements") or []) if r.get("property_id") == P_ENG}
+    prop_ids = {str(r.get("requirement_id")) for r in (prop_res.json().get("requirements") or [])}
+    assert prop_ids
+    assert prop_ids == all_ids
+
+
+def test_property_requirements_route_excludes_noncanonical_ids_and_logs(client, _override_client_guard, caplog):
+    props = [_prop(P_ENG, "England")]
+    rows = [
+        _req("eng-gas", P_ENG, "gas_safety", "England"),
+        _req("eng-r2r", P_ENG, "right_to_rent", "England"),
+    ]
+    fake_db = _FakeDB({"client_id": CLIENT_ID, "default_jurisdiction": "England"}, props, rows)
+    with patch("routes.client.database.get_db", return_value=fake_db), patch(
+        "services.requirement_truth.fetch_active_published_registry_entries", new_callable=AsyncMock, return_value={}
+    ), patch(
+        "services.requirement_truth.load_evidence_state_by_requirement_id", new_callable=AsyncMock, return_value={}
+    ), patch(
+        "services.requirement_read_model_guard.get_canonical_requirement_ids_for_property",
+        new=AsyncMock(return_value={"eng-gas"}),
+    ):
+        res = client.get(f"/api/client/properties/{P_ENG}/requirements")
+    assert res.status_code == 200
+    ids = {str(r.get("requirement_id")) for r in (res.json().get("requirements") or [])}
+    assert ids == {"eng-gas"}
+    assert any("dropped non-canonical requirement row" in rec.message for rec in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_property_compliance_detail_matrix_excludes_noncanonical_ids():
+    props = [_prop(P_ENG, "England")]
+    rows = [
+        _req("eng-gas", P_ENG, "gas_safety", "England"),
+        _req("eng-r2r", P_ENG, "right_to_rent", "England"),
+    ]
+    fake_db = _FakeDB({"client_id": CLIENT_ID, "default_jurisdiction": "England"}, props, rows)
+    with patch("services.catalog_compliance.database.get_db", return_value=fake_db), patch(
+        "services.requirement_truth.enrich_requirements_for_client",
+        new=AsyncMock(return_value=(rows, {})),
+    ), patch(
+        "services.catalog_compliance.filter_requirement_rows_for_client_runtime_surfaces",
+        new=AsyncMock(return_value=rows),
+    ), patch(
+        "services.catalog_compliance._load_catalog",
+        new=AsyncMock(return_value=[]),
+    ), patch(
+        "services.catalog_compliance.get_canonical_requirement_ids_for_property",
+        new=AsyncMock(return_value={"eng-gas"}),
+    ):
+        from services.catalog_compliance import get_property_compliance_detail
+
+        detail = await get_property_compliance_detail(CLIENT_ID, P_ENG)
+    matrix = (detail or {}).get("matrix") or []
+    ids = {str(r.get("requirement_id")) for r in matrix}
+    assert ids == {"eng-gas"}

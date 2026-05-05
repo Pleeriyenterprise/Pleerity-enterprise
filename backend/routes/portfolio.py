@@ -372,6 +372,10 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
             {"_id": 0},
         ).to_list(200)
         from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+        from services.requirement_read_model_guard import (
+            filter_rows_to_canonical_requirement_ids,
+            get_canonical_requirement_ids_for_property,
+        )
 
         requirements = await filter_requirement_rows_for_client_runtime_surfaces(
             db,
@@ -380,6 +384,21 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
             client_doc=client_doc,
             properties=[prop_full],
         )
+        canonical_ids = await get_canonical_requirement_ids_for_property(client_id, property_id, db=db)
+        requirements, dropped = filter_rows_to_canonical_requirement_ids(requirements, canonical_ids)
+        for d in dropped:
+            logger.warning(
+                "portfolio.compliance-detail fallback: dropped non-canonical requirement row",
+                extra={
+                    "client_id": client_id,
+                    "property_id": property_id,
+                    "requirement_id": d.get("requirement_id"),
+                    "requirement_code": d.get("requirement_code"),
+                    "requirement_type": d.get("requirement_type"),
+                    "source": d.get("source"),
+                    "reason": d.get("reason"),
+                },
+            )
         from services.catalog_compliance import _days_to_expiry, _requirement_numeric_score
         matrix = []
         for r_raw in requirements:

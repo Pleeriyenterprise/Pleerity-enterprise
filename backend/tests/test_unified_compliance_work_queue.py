@@ -233,3 +233,25 @@ def test_closure_summary_user_risk_signal_clarifies_not_compliance_closure():
     assert "risk signal" in msg.lower()
     assert "acknowledg" in msg.lower() or "dismiss" in msg.lower()
     assert "compliance" in msg.lower()
+
+
+def test_orphan_reclassified_item_not_rendered_as_requirement_source(client, override_client_guard):
+    t = _task(
+        "requirement:orphan-r1",
+        source_type="priority_action",
+        urgency_level="high",
+        primary_url="/requirements?property_id=p1",
+        metadata={"canonical_guard": {"reclassified": True}},
+        title="Missing compliance evidence",
+    )
+    bundle = _base_unified_bundle_with_tasks(urgent=[t])
+    with patch(
+        "services.unified_compliance_work_queue_service.get_unified_tasks_for_client",
+        new_callable=AsyncMock,
+        return_value=bundle,
+    ):
+        r = client.get("/api/client/work-queue")
+    assert r.status_code == 200
+    item = r.json()["items"][0]
+    assert item["source_system"] != "requirement"
+    assert "requirement_id" not in (item.get("related_ids") or {})
