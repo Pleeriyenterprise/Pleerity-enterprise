@@ -29,7 +29,7 @@ async def get_canonical_requirement_ids_for_property(
     pid = str(property_id or "").strip()
     if not cid or not pid:
         return set()
-    dbh = db or database.get_db()
+    dbh = db if db is not None else database.get_db()
 
     prop = await dbh.properties.find_one(
         {"client_id": cid, "property_id": pid},
@@ -74,7 +74,7 @@ async def get_canonical_requirement_ids_map_for_properties(
     Batched convenience wrapper for multiple properties.
     """
     out: Dict[str, Set[str]] = {}
-    dbh = db or database.get_db()
+    dbh = db if db is not None else database.get_db()
     for pid in {str(x or "").strip() for x in (property_ids or set()) if str(x or "").strip()}:
         out[pid] = await get_canonical_requirement_ids_for_property(client_id, pid, db=dbh)
     return out

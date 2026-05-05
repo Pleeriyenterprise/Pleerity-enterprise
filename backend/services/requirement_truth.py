@@ -30,6 +30,7 @@ from services.requirement_workflow_audit import (
     strip_workflow_diagnostics_from_payload,
 )
 from services.maintenance_issues_service import OPEN_ISSUE_STATUSES
+from services.compliance_expiry_policy import get_default_expiring_soon_days
 
 # --- Canonical enum values (stored on requirement documents and returned in APIs) ---
 
@@ -278,6 +279,60 @@ def _parse_due_date_value(due: Any) -> Optional[date]:
 def _format_gb_date(d: date) -> str:
     months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
     return f"{d.day} {months[d.month - 1]} {d.year}"
+
+
+def requirement_has_active_negative_actionability(
+    requirement: Dict[str, Any],
+    *,
+    now: Optional[datetime] = None,
+    expiring_window_days: Optional[int] = None,
+) -> bool:
+    """
+    Read-model lifecycle predicate (not a scoring/status authority):
+    True only when a requirement row has active negative actionability for
+    Needs Attention / Today / Score Drivers surfaces.
+    """
+    row = dict(requirement or {})
+    status = _status_upper(row.get("status"))
+    if status in {"OVERDUE", "EXPIRED", "MISSING", "MISSING_EVIDENCE", "NEEDS_REVIEW"}:
+        return True
+    if status in {"PENDING", "EXPIRING_SOON", "AWAITING_USER_CONFIRM", "INCOMPLETE"}:
+        return True
+
+    ev = _status_upper(row.get("evidence_state"))
+    if ev in {"MISSING", "AWAITING_USER_CONFIRM", "MISMATCH_FLAGGED", "UPLOADED_UNVERIFIED"}:
+        return True
+
+    comp = row.get("evidence_completeness") if isinstance(row.get("evidence_completeness"), dict) else {}
+    try:
+        if int(comp.get("required_missing_count") or 0) > 0:
+            return True
+    except Exception:
+        pass
+    try:
+        if float(comp.get("completion_percent") or 100.0) < 100.0:
+            return True
+    except Exception:
+        pass
+
+    active_summary = row.get("active_standard_status_summary") if isinstance(row.get("active_standard_status_summary"), dict) else {}
+    signals = active_summary.get("signal_counts") if isinstance(active_summary.get("signal_counts"), dict) else {}
+    if any(int(signals.get(k) or 0) > 0 for k in ("open_issues", "open_work_orders", "open_risk_signals", "open_compliance_gaps")):
+        return True
+
+    if status in {"VALID", "COMPLIANT", "VERIFIED", "NOT_REQUIRED", "NOT_APPLICABLE", "RESOLVED"}:
+        window = int(expiring_window_days if expiring_window_days is not None else get_default_expiring_soon_days())
+        ref = now or datetime.now(timezone.utc)
+        for key in ("due_date", "expiry_date", "follow_up_date", "next_review_date"):
+            dt = _parse_due_date_value(row.get(key))
+            if dt is None:
+                continue
+            days = (dt - ref.date()).days
+            if 0 <= days <= window:
+                return True
+        return False
+
+    return False
 
 
 def build_date_presentation(

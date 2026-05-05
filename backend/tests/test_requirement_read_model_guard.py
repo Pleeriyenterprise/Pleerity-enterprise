@@ -7,6 +7,7 @@ import pytest
 from services.requirement_read_model_guard import (
     filter_rows_to_canonical_requirement_ids,
     get_canonical_requirement_ids_for_property,
+    get_canonical_requirement_ids_map_for_properties,
 )
 
 
@@ -52,6 +53,16 @@ class _FakeDB:
         )
 
 
+class _MotorLikeDatabaseNoBool(_FakeDB):
+    """Mimics PyMongo/Motor: truth-value testing is forbidden on Database objects."""
+
+    def __bool__(self):
+        raise NotImplementedError(
+            "Database objects do not implement truth value testing or bool(). "
+            "Please compare with None instead."
+        )
+
+
 @pytest.mark.asyncio
 async def test_get_canonical_requirement_ids_for_property_returns_filtered_ids():
     db = _FakeDB()
@@ -65,6 +76,38 @@ async def test_get_canonical_requirement_ids_for_property_returns_filtered_ids()
     ):
         out = await get_canonical_requirement_ids_for_property("c1", "p1", db=db)
     assert out == {"r1", "r2"}
+
+
+@pytest.mark.asyncio
+async def test_get_canonical_requirement_ids_does_not_truth_test_db_passed_motor_like():
+    """Passing a db handle must not use `if db` / `db or` — Motor Database forbids bool()."""
+    db = _MotorLikeDatabaseNoBool()
+    filtered = [
+        {"requirement_id": "r1"},
+        {"requirement_id": "r2"},
+    ]
+    with patch(
+        "services.requirement_read_model_guard.filter_requirement_rows_for_client_runtime_surfaces",
+        new=AsyncMock(return_value=filtered),
+    ):
+        out = await get_canonical_requirement_ids_for_property("c1", "p1", db=db)
+    assert out == {"r1", "r2"}
+
+
+@pytest.mark.asyncio
+async def test_get_canonical_requirement_ids_map_for_properties_does_not_truth_test_db():
+    db = _MotorLikeDatabaseNoBool()
+    filtered = [{"requirement_id": "r1"}]
+    with patch(
+        "services.requirement_read_model_guard.filter_requirement_rows_for_client_runtime_surfaces",
+        new=AsyncMock(return_value=filtered),
+    ):
+        out = await get_canonical_requirement_ids_map_for_properties(
+            "c1",
+            {"p1"},
+            db=db,
+        )
+    assert out == {"p1": {"r1"}}
 
 
 def test_filter_rows_to_canonical_requirement_ids_drops_missing_and_noncanonical_rows():

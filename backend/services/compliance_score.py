@@ -60,6 +60,10 @@ from services.compliance_rules_registry import (
     property_jurisdiction_requirement_flags,
     resolve_portfolio_jurisdiction,
 )
+from services.requirement_code_registry import normalize_requirement_code
+from services.requirement_read_model_guard import get_canonical_requirement_ids_map_for_properties
+from services.requirement_truth import requirement_has_active_negative_actionability
+from services.compliance_expiry_policy import resolve_expiring_soon_days_for_requirement
 import logging
 
 logger = logging.getLogger(__name__)
@@ -682,26 +686,143 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "overdue": overdue,
             },
         }
-        drivers = []
-        for r in portal_reqs:
-            s = r.get("status")
-            if s in ("COMPLIANT", "VALID"):
+        property_ids_set = {str(p.get("property_id") or "").strip() for p in properties if str(p.get("property_id") or "").strip()}
+        canonical_ids_map = await get_canonical_requirement_ids_map_for_properties(
+            client_id,
+            property_ids_set,
+            db=db,
+        )
+        canonical_rows_by_property: Dict[str, List[Dict[str, Any]]] = {}
+        for rr in portal_reqs:
+            pid = str(rr.get("property_id") or "").strip()
+            rid = str(rr.get("requirement_id") or "").strip()
+            if not pid or not rid:
                 continue
-            pid = r.get("property_id")
+            if rid not in (canonical_ids_map.get(pid) or set()):
+                continue
+            canonical_rows_by_property.setdefault(pid, []).append(rr)
+
+        drivers = []
+        seen_driver_keys = set()
+        for r in portal_reqs:
+            pid = str(r.get("property_id") or "").strip()
+            rid = str(r.get("requirement_id") or "").strip()
+            if not pid:
+                logger.warning(
+                    "compliance_score: dropped driver row without property_id",
+                    extra={
+                        "client_id": client_id,
+                        "property_id": None,
+                        "raw_requirement_code": r.get("requirement_code") or r.get("canonical_code") or r.get("requirement_type"),
+                        "requirement_type": r.get("requirement_type"),
+                        "reason": "missing_property_id_for_driver",
+                    },
+                )
+                continue
+
+            canonical_ids_for_property = canonical_ids_map.get(pid) or set()
+            if rid:
+                if rid not in canonical_ids_for_property:
+                    logger.warning(
+                        "compliance_score: dropped non-canonical score driver row",
+                        extra={
+                            "client_id": client_id,
+                            "property_id": pid,
+                            "requirement_id": rid,
+                            "raw_requirement_code": r.get("requirement_code") or r.get("canonical_code") or r.get("requirement_type"),
+                            "requirement_type": r.get("requirement_type"),
+                            "reason": "noncanonical_requirement_id",
+                        },
+                    )
+                    continue
+            else:
+                code = normalize_requirement_code(
+                    r.get("canonical_code") or r.get("requirement_code") or r.get("requirement_type")
+                )
+                code_matches = set()
+                for cand in canonical_rows_by_property.get(pid, []):
+                    cand_code = normalize_requirement_code(
+                        cand.get("canonical_code") or cand.get("requirement_code") or cand.get("requirement_type")
+                    )
+                    cand_rid = str(cand.get("requirement_id") or "").strip()
+                    if cand_code and cand_rid and cand_code == code:
+                        code_matches.add(cand_rid)
+                if len(code_matches) == 1:
+                    rid = next(iter(code_matches))
+                elif len(code_matches) == 0:
+                    logger.warning(
+                        "compliance_score: dropped score driver row without canonical match",
+                        extra={
+                            "client_id": client_id,
+                            "property_id": pid,
+                            "requirement_id": None,
+                            "raw_requirement_code": r.get("requirement_code") or r.get("canonical_code") or r.get("requirement_type"),
+                            "requirement_type": r.get("requirement_type"),
+                            "reason": "no_canonical_match",
+                        },
+                    )
+                    continue
+                else:
+                    logger.warning(
+                        "compliance_score: dropped score driver row with ambiguous canonical matches",
+                        extra={
+                            "client_id": client_id,
+                            "property_id": pid,
+                            "requirement_id": None,
+                            "raw_requirement_code": r.get("requirement_code") or r.get("canonical_code") or r.get("requirement_type"),
+                            "requirement_type": r.get("requirement_type"),
+                            "reason": "ambiguous_match",
+                        },
+                    )
+                    continue
+
+            key = (pid, rid)
+            if key in seen_driver_keys:
+                continue
+
             prop = prop_map.get(pid, {})
+            s = r.get("status")
             req_name = r.get("description") or (r.get("requirement_type") or "Requirement").replace("_", " ")
-            evidence = r.get("requirement_id") in req_ids_with_any_doc
+            evidence = rid in req_ids_with_any_doc
+            window_days = resolve_expiring_soon_days_for_requirement(
+                r,
+                property_doc=prop if isinstance(prop, dict) else None,
+                client_doc=client_row if isinstance(client_row, dict) else None,
+            )
+            if not requirement_has_active_negative_actionability(
+                r,
+                now=now,
+                expiring_window_days=window_days,
+            ):
+                continue
+
+            take_action = r.get("take_action") if isinstance(r.get("take_action"), dict) else None
             actions = []
-            if not evidence:
-                actions.append("UPLOAD")
-            if s in ("OVERDUE", "EXPIRED"):
-                actions.append("VIEW")
-            elif s == "EXPIRING_SOON":
-                actions.append("VIEW")
-            if evidence and s in ("PENDING", "EXPIRING_SOON"):
-                actions.append("CONFIRM")
-            if not actions and s not in ("COMPLIANT",):
-                actions.append("VIEW")
+            if take_action and isinstance(take_action.get("primary"), dict):
+                primary_kind = str((take_action.get("primary") or {}).get("kind") or "").strip().lower()
+                kind_to_action = {
+                    "upload_document": "UPLOAD",
+                    "view_requirement": "VIEW",
+                    "guided_evidence_resolution": "VIEW",
+                    "record_external_assessment": "VIEW",
+                    "log_maintenance_issue": "VIEW",
+                    "open_guidance": "VIEW",
+                }
+                mapped = kind_to_action.get(primary_kind)
+                if mapped:
+                    actions.append(mapped)
+            else:
+                if not evidence:
+                    actions.append("UPLOAD")
+                if s in ("OVERDUE", "EXPIRED"):
+                    actions.append("VIEW")
+                elif s == "EXPIRING_SOON":
+                    actions.append("VIEW")
+                if evidence and s in ("PENDING", "EXPIRING_SOON"):
+                    actions.append("CONFIRM")
+                if not actions and s not in ("COMPLIANT",):
+                    actions.append("VIEW")
+
             display_status = s
             if s == "EXPIRED":
                 display_status = "OVERDUE"
@@ -709,17 +830,25 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 display_status = "MISSING_EVIDENCE"
             elif s == "PENDING" and evidence:
                 display_status = "NEEDS_CONFIRMATION"
+
             drivers.append({
                 "property_id": pid,
                 "property_name": prop.get("nickname") or prop.get("address_line_1") or pid,
-                "requirement_id": r.get("requirement_id"),
+                "requirement_id": rid,
                 "requirement_name": req_name,
                 "status": display_status,
                 "date_used": r.get("due_date"),
                 "date_confidence": "UNKNOWN",
                 "evidence_uploaded": evidence,
                 "actions": list(dict.fromkeys(actions)) if actions else ["VIEW"],
+                "take_action": take_action,
             })
+            seen_driver_keys.add(key)
+        if not drivers and portal_reqs:
+            logger.warning(
+                "compliance_score: all candidate score drivers filtered by canonical guard",
+                extra={"client_id": client_id, "reason": "all_drivers_filtered_noncanonical_or_nonnegative"},
+            )
         aggregated_actions = []
         for p in properties:
             for action in (p.get("compliance_top_next_actions") or []):

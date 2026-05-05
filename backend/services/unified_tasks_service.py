@@ -41,6 +41,8 @@ from services.requirement_action_resolver import (
 )
 from services.requirement_read_model_guard import get_canonical_requirement_ids_map_for_properties
 from services.requirement_client_runtime_surface import project_requirement_row_client_runtime
+from services.requirement_truth import requirement_has_active_negative_actionability
+from services.compliance_expiry_policy import resolve_expiring_soon_days_for_requirement
 from utils.compliance_fanout_log import compliance_fanout_extra
 
 logger = logging.getLogger(__name__)
@@ -987,6 +989,32 @@ async def _enforce_canonical_requirement_task_guard(
         return tasks
 
     canonical_map = await get_canonical_requirement_ids_map_for_properties(client_id, property_ids, db=db)
+    client_doc: Dict[str, Any] = {}
+    prop_by_id: Dict[str, Dict[str, Any]] = {}
+    row_by_requirement_id: Dict[str, Dict[str, Any]] = {}
+    try:
+        client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
+        props = await db.properties.find(
+            {"client_id": client_id, "property_id": {"$in": list(property_ids)}},
+            {"_id": 0, "property_id": 1, "jurisdiction": 1, "tenancy_active": 1, "furnished": 1, "is_hmo": 1},
+        ).to_list(length=max(1, len(property_ids) * 2))
+        prop_by_id = {str(p.get("property_id") or "").strip(): p for p in props if str(p.get("property_id") or "").strip()}
+        candidate_requirement_ids: Set[str] = set()
+        for i in candidate_idx:
+            pid, rid = _task_requirement_identity(tasks[i])
+            if pid and rid and rid in (canonical_map.get(pid) or set()):
+                candidate_requirement_ids.add(rid)
+        requirement_rows = await db.requirements.find(
+            {"client_id": client_id, "requirement_id": {"$in": list(candidate_requirement_ids)}},
+            {"_id": 0},
+        ).to_list(length=max(1, len(candidate_requirement_ids) * 2))
+        for rr in requirement_rows:
+            rid = str(rr.get("requirement_id") or "").strip()
+            pid = str(rr.get("property_id") or "").strip()
+            if rid and pid and rid in (canonical_map.get(pid) or set()):
+                row_by_requirement_id[rid] = project_requirement_row_client_runtime(rr)
+    except Exception as e:
+        logger.debug("unified_tasks: lifecycle requirement row load skipped: %s", e)
 
     out: List[Dict[str, Any]] = []
     for i, t in enumerate(tasks):
@@ -996,6 +1024,31 @@ async def _enforce_canonical_requirement_task_guard(
         pid, rid = _task_requirement_identity(t)
         valid = bool(pid and rid and rid in (canonical_map.get(pid) or set()))
         if valid:
+            req_row = row_by_requirement_id.get(rid)
+            if isinstance(req_row, dict):
+                window_days = resolve_expiring_soon_days_for_requirement(
+                    req_row,
+                    property_doc=prop_by_id.get(pid) if isinstance(prop_by_id.get(pid), dict) else None,
+                    client_doc=client_doc if isinstance(client_doc, dict) else None,
+                )
+                if not requirement_has_active_negative_actionability(
+                    req_row,
+                    now=datetime.now(timezone.utc),
+                    expiring_window_days=window_days,
+                ):
+                    logger.info(
+                        "unified_tasks: dropped non-actionable requirement task by lifecycle guard",
+                        extra=compliance_fanout_extra(
+                            op="requirement_lifecycle_guard",
+                            stage="partial",
+                            client_id=client_id,
+                            property_id=pid or None,
+                            requirement_id=rid or None,
+                            correlation_id=str(t.get("id") or ""),
+                            trigger_reason="non_actionable_valid_requirement",
+                        ),
+                    )
+                    continue
             out.append(t)
             continue
 

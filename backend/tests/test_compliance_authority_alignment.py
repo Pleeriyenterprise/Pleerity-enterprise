@@ -62,6 +62,12 @@ def _make_db_mock(properties: list, requirements: list, documents: list, *, clie
     db = MagicMock()
     db.properties = MagicMock()
     db.properties.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(side_effect=_props)))
+    async def _prop_find_one(query, projection=None):
+        for p in props_out:
+            if all(p.get(k) == v for k, v in (query or {}).items()):
+                return dict(p)
+        return None
+    db.properties.find_one = AsyncMock(side_effect=_prop_find_one)
     db.requirements = MagicMock()
     db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(side_effect=_reqs)))
     db.documents = MagicMock()
@@ -282,3 +288,379 @@ async def test_property_compliance_stats_use_portal_projection_counts():
     assert st.get("pending") == 1
     assert st.get("missing_evidence") == 1
     assert st.get("compliant") == 1
+
+
+@pytest.mark.asyncio
+async def test_score_drivers_filtered_to_canonical_subset_and_score_unchanged():
+    from services.compliance_score import calculate_compliance_score
+
+    now = datetime.now(timezone.utc)
+    due = (now + timedelta(days=180)).isoformat()
+    properties = [{"property_id": "p1", "client_id": "c1", "is_hmo": False, "compliance_score": 80}]
+    requirements = [
+        {
+            "requirement_id": "r-valid",
+            "property_id": "p1",
+            "requirement_type": "EICR",
+            "status": "COMPLIANT",
+            "due_date": due,
+            "client_surface_visible": True,
+        },
+        {
+            "requirement_id": "r-expired",
+            "property_id": "p1",
+            "requirement_type": "GAS_SAFETY",
+            "status": "EXPIRED",
+            "due_date": (now - timedelta(days=3)).isoformat(),
+            "client_surface_visible": True,
+        },
+        {
+            "requirement_id": "r-orphan",
+            "property_id": "p1",
+            "requirement_type": "EPC",
+            "status": "EXPIRED",
+            "due_date": (now - timedelta(days=2)).isoformat(),
+            "client_surface_visible": True,
+        },
+    ]
+    db = _make_db_mock(properties, requirements, [])
+    _eff = {
+        "base_portfolio_risk_state": "Low Risk",
+        "effective_portfolio_risk_state": "Low Risk",
+        "risk_override_reasons": [],
+        "critical_property_count": 0,
+        "high_risk_gap_count": 0,
+        "unknown_or_stale_property_count": 0,
+        "attention_required": False,
+        "critical_property_escalation": False,
+        "suppress_positive_headline": False,
+    }
+    _override_bundle = {
+        "legacy_override_output": _eff,
+        "policy_override_output": _eff,
+        "effective_override_output": _eff,
+    }
+
+    with patch("services.compliance_score.database.get_db", return_value=db), patch(
+        "services.catalog_compliance.get_portfolio_compliance_from_catalog",
+        new_callable=AsyncMock,
+        return_value=None,
+    ), patch(
+        "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+        new_callable=AsyncMock,
+        return_value={"by_kind": {}, "by_severity": {}, "total_open": 0, "policy": {}},
+    ), patch(
+        "services.compliance_score.build_portfolio_override_outputs",
+        new_callable=AsyncMock,
+        return_value=_override_bundle,
+    ), patch(
+        "services.compliance_score.get_canonical_requirement_ids_map_for_properties",
+        new_callable=AsyncMock,
+        return_value={"p1": {"r-valid", "r-expired"}},
+    ):
+        result = await calculate_compliance_score("c1")
+
+    assert result.get("score") == 80
+    drivers = result.get("drivers") or []
+    ids = {(d.get("property_id"), d.get("requirement_id")) for d in drivers}
+    assert ("p1", "r-expired") in ids
+    assert ("p1", "r-valid") not in ids
+    assert ("p1", "r-orphan") not in ids
+
+
+@pytest.mark.asyncio
+async def test_score_drivers_missing_id_requires_property_and_unique_code_match():
+    from services.compliance_score import calculate_compliance_score
+
+    now = datetime.now(timezone.utc)
+    properties = [{"property_id": "p1", "client_id": "c1", "is_hmo": False, "compliance_score": 75}]
+    requirements = [
+        {
+            "requirement_id": "r-gas",
+            "property_id": "p1",
+            "requirement_type": "gas_safety",
+            "status": "EXPIRED",
+            "due_date": (now - timedelta(days=1)).isoformat(),
+            "client_surface_visible": True,
+        },
+        {
+            "requirement_id": "",
+            "property_id": "p1",
+            "requirement_type": "gas_safety_certificate",
+            "status": "EXPIRED",
+            "due_date": (now - timedelta(days=2)).isoformat(),
+            "client_surface_visible": True,
+        },
+        {
+            "requirement_id": "",
+            "property_id": "",
+            "requirement_type": "gas_safety_certificate",
+            "status": "EXPIRED",
+            "due_date": (now - timedelta(days=2)).isoformat(),
+            "client_surface_visible": True,
+        },
+    ]
+    db = _make_db_mock(properties, requirements, [])
+    _eff = {
+        "base_portfolio_risk_state": "Low Risk",
+        "effective_portfolio_risk_state": "Low Risk",
+        "risk_override_reasons": [],
+        "critical_property_count": 0,
+        "high_risk_gap_count": 0,
+        "unknown_or_stale_property_count": 0,
+        "attention_required": False,
+        "critical_property_escalation": False,
+        "suppress_positive_headline": False,
+    }
+    _override_bundle = {
+        "legacy_override_output": _eff,
+        "policy_override_output": _eff,
+        "effective_override_output": _eff,
+    }
+
+    with patch("services.compliance_score.database.get_db", return_value=db), patch(
+        "services.catalog_compliance.get_portfolio_compliance_from_catalog",
+        new_callable=AsyncMock,
+        return_value=None,
+    ), patch(
+        "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+        new_callable=AsyncMock,
+        return_value={"by_kind": {}, "by_severity": {}, "total_open": 0, "policy": {}},
+    ), patch(
+        "services.compliance_score.build_portfolio_override_outputs",
+        new_callable=AsyncMock,
+        return_value=_override_bundle,
+    ), patch(
+        "services.compliance_score.get_canonical_requirement_ids_map_for_properties",
+        new_callable=AsyncMock,
+        return_value={"p1": {"r-gas"}},
+    ):
+        result = await calculate_compliance_score("c1")
+
+    drivers = result.get("drivers") or []
+    ids = [(d.get("property_id"), d.get("requirement_id")) for d in drivers]
+    assert ("p1", "r-gas") in ids
+    assert all(d.get("property_id") for d in drivers)
+
+
+@pytest.mark.asyncio
+async def test_score_drivers_ambiguous_and_cross_property_aliases_excluded_or_scoped():
+    from services.compliance_score import calculate_compliance_score
+
+    now = datetime.now(timezone.utc)
+    properties = [
+        {"property_id": "p1", "client_id": "c1", "is_hmo": False, "compliance_score": 70},
+        {"property_id": "p2", "client_id": "c1", "is_hmo": False, "compliance_score": 70},
+    ]
+    requirements = [
+        {
+            "requirement_id": "r1a",
+            "property_id": "p1",
+            "requirement_type": "smoke_heat_alarms",
+            "status": "EXPIRED",
+            "due_date": (now - timedelta(days=4)).isoformat(),
+            "client_surface_visible": True,
+        },
+        {
+            "requirement_id": "r1b",
+            "property_id": "p1",
+            "requirement_type": "smoke_alarms",
+            "status": "EXPIRED",
+            "due_date": (now - timedelta(days=4)).isoformat(),
+            "client_surface_visible": True,
+        },
+        {
+            "requirement_id": "",
+            "property_id": "p1",
+            "requirement_type": "co_alarms",
+            "status": "EXPIRED",
+            "due_date": (now - timedelta(days=4)).isoformat(),
+            "client_surface_visible": True,
+        },
+        {
+            "requirement_id": "r2",
+            "property_id": "p2",
+            "requirement_type": "gas_safety",
+            "status": "EXPIRED",
+            "due_date": (now - timedelta(days=2)).isoformat(),
+            "client_surface_visible": True,
+        },
+        {
+            "requirement_id": "",
+            "property_id": "p2",
+            "requirement_type": "gas_safety_certificate",
+            "status": "EXPIRED",
+            "due_date": (now - timedelta(days=2)).isoformat(),
+            "client_surface_visible": True,
+        },
+    ]
+    db = _make_db_mock(properties, requirements, [])
+    _eff = {
+        "base_portfolio_risk_state": "Moderate Risk",
+        "effective_portfolio_risk_state": "Moderate Risk",
+        "risk_override_reasons": [],
+        "critical_property_count": 0,
+        "high_risk_gap_count": 0,
+        "unknown_or_stale_property_count": 0,
+        "attention_required": False,
+        "critical_property_escalation": False,
+        "suppress_positive_headline": False,
+    }
+    _override_bundle = {
+        "legacy_override_output": _eff,
+        "policy_override_output": _eff,
+        "effective_override_output": _eff,
+    }
+
+    with patch("services.compliance_score.database.get_db", return_value=db), patch(
+        "services.catalog_compliance.get_portfolio_compliance_from_catalog",
+        new_callable=AsyncMock,
+        return_value=None,
+    ), patch(
+        "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+        new_callable=AsyncMock,
+        return_value={"by_kind": {}, "by_severity": {}, "total_open": 0, "policy": {}},
+    ), patch(
+        "services.compliance_score.build_portfolio_override_outputs",
+        new_callable=AsyncMock,
+        return_value=_override_bundle,
+    ), patch(
+        "services.compliance_score.get_canonical_requirement_ids_map_for_properties",
+        new_callable=AsyncMock,
+        return_value={"p1": {"r1a", "r1b"}, "p2": {"r2"}},
+    ):
+        result = await calculate_compliance_score("c1")
+
+    drivers = result.get("drivers") or []
+    keys = {(d.get("property_id"), d.get("requirement_id")) for d in drivers}
+    # p1 missing-id alias maps to multiple canonical rows -> excluded
+    assert ("p1", "r1a") in keys or ("p1", "r1b") in keys
+    # p2 missing-id alias maps to the unique p2 canonical row; must not cross-match to p1
+    assert ("p2", "r2") in keys
+    assert sum(1 for d in drivers if d.get("property_id") == "p2" and d.get("requirement_id") == "r2") == 1
+    assert all(k[0] in {"p1", "p2"} for k in keys)
+
+
+@pytest.mark.asyncio
+async def test_score_drivers_empty_when_property_has_no_canonical_requirements():
+    from services.compliance_score import calculate_compliance_score
+
+    now = datetime.now(timezone.utc)
+    properties = [{"property_id": "eng-1", "client_id": "c1", "is_hmo": False, "compliance_score": 66}]
+    requirements = [
+        {
+            "requirement_id": "wales-occupation-contract",
+            "property_id": "eng-1",
+            "requirement_type": "wales_occupation_contract",
+            "status": "EXPIRED",
+            "due_date": (now - timedelta(days=5)).isoformat(),
+            "client_surface_visible": True,
+        }
+    ]
+    db = _make_db_mock(properties, requirements, [])
+    _eff = {
+        "base_portfolio_risk_state": "High Risk",
+        "effective_portfolio_risk_state": "High Risk",
+        "risk_override_reasons": [],
+        "critical_property_count": 0,
+        "high_risk_gap_count": 0,
+        "unknown_or_stale_property_count": 0,
+        "attention_required": True,
+        "critical_property_escalation": False,
+        "suppress_positive_headline": False,
+    }
+    _override_bundle = {
+        "legacy_override_output": _eff,
+        "policy_override_output": _eff,
+        "effective_override_output": _eff,
+    }
+    with patch("services.compliance_score.database.get_db", return_value=db), patch(
+        "services.catalog_compliance.get_portfolio_compliance_from_catalog",
+        new_callable=AsyncMock,
+        return_value=None,
+    ), patch(
+        "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+        new_callable=AsyncMock,
+        return_value={"by_kind": {}, "by_severity": {}, "total_open": 0, "policy": {}},
+    ), patch(
+        "services.compliance_score.build_portfolio_override_outputs",
+        new_callable=AsyncMock,
+        return_value=_override_bundle,
+    ), patch(
+        "services.compliance_score.get_canonical_requirement_ids_map_for_properties",
+        new_callable=AsyncMock,
+        return_value={"eng-1": set()},
+    ):
+        result = await calculate_compliance_score("c1")
+    assert result.get("score") == 66
+    assert result.get("drivers") == []
+
+
+@pytest.mark.asyncio
+async def test_score_drivers_due_window_reappears_but_future_due_hidden():
+    from services.compliance_score import calculate_compliance_score
+
+    now = datetime.now(timezone.utc)
+    properties = [{"property_id": "p1", "client_id": "c1", "is_hmo": False, "compliance_score": 81}]
+    requirements = [
+        {
+            "requirement_id": "r-future",
+            "property_id": "p1",
+            "requirement_type": "gas_safety",
+            "status": "VALID",
+            "due_date": (now + timedelta(days=120)).isoformat(),
+            "evidence_state": "VERIFIED",
+            "client_surface_visible": True,
+        },
+        {
+            "requirement_id": "r-due",
+            "property_id": "p1",
+            "requirement_type": "gas_safety",
+            "status": "VALID",
+            "due_date": (now + timedelta(days=5)).isoformat(),
+            "evidence_state": "VERIFIED",
+            "client_surface_visible": True,
+        },
+    ]
+    db = _make_db_mock(properties, requirements, [])
+    _eff = {
+        "base_portfolio_risk_state": "Low Risk",
+        "effective_portfolio_risk_state": "Low Risk",
+        "risk_override_reasons": [],
+        "critical_property_count": 0,
+        "high_risk_gap_count": 0,
+        "unknown_or_stale_property_count": 0,
+        "attention_required": False,
+        "critical_property_escalation": False,
+        "suppress_positive_headline": False,
+    }
+    _override_bundle = {
+        "legacy_override_output": _eff,
+        "policy_override_output": _eff,
+        "effective_override_output": _eff,
+    }
+    with patch("services.compliance_score.database.get_db", return_value=db), patch(
+        "services.catalog_compliance.get_portfolio_compliance_from_catalog",
+        new_callable=AsyncMock,
+        return_value=None,
+    ), patch(
+        "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+        new_callable=AsyncMock,
+        return_value={"by_kind": {}, "by_severity": {}, "total_open": 0, "policy": {}},
+    ), patch(
+        "services.compliance_score.build_portfolio_override_outputs",
+        new_callable=AsyncMock,
+        return_value=_override_bundle,
+    ), patch(
+        "services.compliance_score.get_canonical_requirement_ids_map_for_properties",
+        new_callable=AsyncMock,
+        return_value={"p1": {"r-future", "r-due"}},
+    ), patch(
+        "services.compliance_score.resolve_expiring_soon_days_for_requirement",
+        return_value=30,
+    ):
+        result = await calculate_compliance_score("c1")
+    assert result.get("score") == 81
+    ids = {(d.get("property_id"), d.get("requirement_id")) for d in (result.get("drivers") or [])}
+    assert ("p1", "r-due") in ids
+    assert ("p1", "r-future") not in ids

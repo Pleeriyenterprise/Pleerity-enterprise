@@ -306,3 +306,38 @@ def test_detect_requirement_document_mismatch_no_false_positive_when_type_blank(
     is_mm, reason = detect_requirement_document_mismatch(req, {"document_type": ""})
     assert is_mm is False
     assert reason is None
+
+
+def test_requirement_negative_actionability_excludes_valid_without_deadlines():
+    from services.requirement_truth import requirement_has_active_negative_actionability
+
+    row = {
+        "status": "VALID",
+        "evidence_state": "VERIFIED",
+        "due_date": None,
+        "follow_up_date": None,
+    }
+    assert requirement_has_active_negative_actionability(row, expiring_window_days=60) is False
+
+
+def test_requirement_negative_actionability_includes_expired_and_due_soon_followup():
+    from datetime import datetime, timedelta, timezone
+    from services.requirement_truth import requirement_has_active_negative_actionability
+
+    now = datetime.now(timezone.utc)
+    expired = {"status": "EXPIRED"}
+    assert requirement_has_active_negative_actionability(expired, now=now, expiring_window_days=60) is True
+
+    followup_due_soon = {
+        "status": "VALID",
+        "evidence_state": "VERIFIED",
+        "follow_up_date": (now + timedelta(days=10)).isoformat(),
+    }
+    assert requirement_has_active_negative_actionability(followup_due_soon, now=now, expiring_window_days=30) is True
+
+    followup_future = {
+        "status": "VALID",
+        "evidence_state": "VERIFIED",
+        "follow_up_date": (now + timedelta(days=90)).isoformat(),
+    }
+    assert requirement_has_active_negative_actionability(followup_future, now=now, expiring_window_days=30) is False
