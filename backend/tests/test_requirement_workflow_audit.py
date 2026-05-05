@@ -151,6 +151,47 @@ def test_legionella_external_assessment_document_only_flag():
     assert any(f.get("id") == "LEGIONELLA_EXTERNAL_ASSESSMENT_DOCUMENT_ONLY" for f in flags)
 
 
+def test_lead_testing_external_assessment_document_only_flag():
+    from services.compliance_evidence_record_service import EVIDENCE_MODE_DOCUMENT_UPLOAD
+    from services.requirement_workflow_audit import WC_EXTERNAL_ASSESSMENT_EVIDENCE, compute_workflow_mismatch_flags
+
+    enriched = {
+        "requirement_code": "lead_testing",
+        "requirement_type": "lead_testing",
+        "jurisdiction": "Scotland",
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "action_type": "DOCUMENT",
+        "allowed_evidence_modes": [EVIDENCE_MODE_DOCUMENT_UPLOAD],
+        "take_action": {"primary": {"intent": "upload_evidence", "kind": "navigate"}},
+    }
+    flags = compute_workflow_mismatch_flags(
+        enriched,
+        reference_class=WC_EXTERNAL_ASSESSMENT_EVIDENCE,
+        reference_source="decision_record_fallback",
+    )
+    assert any(f.get("id") == "LEAD_TESTING_EXTERNAL_ASSESSMENT_DOCUMENT_ONLY" for f in flags)
+
+
+def test_lead_testing_unsupported_jurisdiction_flag():
+    from services.requirement_workflow_audit import WC_EXTERNAL_ASSESSMENT_EVIDENCE, compute_workflow_mismatch_flags
+
+    enriched = {
+        "requirement_code": "lead_testing",
+        "requirement_type": "lead_testing",
+        "jurisdiction": "England",
+        "workflow_class": "EXTERNAL_ASSESSMENT_EVIDENCE",
+        "action_type": "DOCUMENT",
+        "allowed_evidence_modes": ["STRUCTURED_DECLARATION", "DOCUMENT_UPLOAD"],
+        "take_action": {"primary": {"intent": "guided_evidence_resolution", "kind": "guided_evidence_resolution"}},
+    }
+    flags = compute_workflow_mismatch_flags(
+        enriched,
+        reference_class=WC_EXTERNAL_ASSESSMENT_EVIDENCE,
+        reference_source="decision_record_fallback",
+    )
+    assert any(f.get("id") == "LEAD_TESTING_UNSUPPORTED_JURISDICTION" for f in flags)
+
+
 def test_condition_standard_document_upload_primary_flag():
     from services.compliance_evidence_record_service import EVIDENCE_MODE_DOCUMENT_UPLOAD
     from services.requirement_workflow_audit import WC_GUIDANCE_ONLY, compute_workflow_mismatch_flags

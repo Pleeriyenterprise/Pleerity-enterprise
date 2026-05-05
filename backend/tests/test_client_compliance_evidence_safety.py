@@ -528,6 +528,50 @@ async def test_legionella_evidence_resolution_external_assessment_schema():
 
 
 @pytest.mark.asyncio
+async def test_lead_testing_evidence_resolution_external_assessment_schema():
+    db = MagicMock()
+    db.requirements.find_one = AsyncMock(
+        return_value={
+            "requirement_id": "rlead",
+            "property_id": "p1",
+            "client_id": "c1",
+            "jurisdiction": "Scotland",
+            "requirement_type": "lead_testing",
+            "requirement_code": "lead_testing",
+        }
+    )
+    with patch.object(route.database, "get_db", return_value=db):
+        out = await route.get_evidence_resolution(
+            property_id="p1",
+            requirement_id="rlead",
+            request=_req(),
+            user={"client_id": "c1"},
+        )
+    assert out.get("modal_title") == "Record lead risk assessment"
+    assert out.get("primary_client_cta") == "Record lead risk assessment"
+    assert out.get("primary_resolution_workflow") == "EXTERNAL_ASSESSMENT_EVIDENCE"
+    modes = [m.get("evidence_mode") for m in (out.get("guided_methods") or [])]
+    assert modes[0] == "STRUCTURED_DECLARATION"
+    assert "DOCUMENT_UPLOAD" in modes
+    methods = {m.get("evidence_mode"): m for m in (out.get("guided_methods") or [])}
+    sd = methods.get("STRUCTURED_DECLARATION")
+    assert sd and sd.get("checklist_schema_fallback_used") is False
+    ids = [r.get("id") for r in (sd.get("checklist_schema") or [])]
+    for key in (
+        "assessment_completed",
+        "assessment_date",
+        "assessment_type",
+        "risk_level",
+        "lead_present",
+        "actions_required",
+        "actions_taken",
+        "next_review_date",
+        "declaration_confirmed",
+    ):
+        assert key in ids
+
+
+@pytest.mark.asyncio
 async def test_right_to_rent_checks_alias_evidence_resolution_route_matches_canonical():
     from services.compliance_evidence_record_service import effective_evidence_resolution
 
@@ -1022,6 +1066,17 @@ def _legionella_requirement_row():
     }
 
 
+def _lead_testing_requirement_row():
+    return {
+        "requirement_id": "rlead",
+        "property_id": "p1",
+        "client_id": "c1",
+        "jurisdiction": "Scotland",
+        "requirement_type": "lead_testing",
+        "requirement_code": "lead_testing",
+    }
+
+
 @pytest.mark.asyncio
 async def test_post_legionella_rejects_missing_assessment_date_when_completed():
     db = MagicMock()
@@ -1127,6 +1182,77 @@ async def test_post_legionella_valid_structured_submission_passes():
                     )
     assert out["ok"] is True
     create_mock.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_post_lead_testing_rejects_missing_assessment_date_when_completed():
+    db = MagicMock()
+    db.requirements.find_one = AsyncMock(return_value=_lead_testing_requirement_row())
+    create_mock = AsyncMock()
+    body = route.CreateEvidenceRequest(
+        evidence_mode="STRUCTURED_DECLARATION",
+        structured_declaration=route.StructuredDeclarationBody(
+            declaration_statement="Lead assessment record",
+            structured_fields={
+                "assessment_completed": {"answer": True},
+                "assessment_date": {"answer": ""},
+                "assessment_type": {"answer": "water_test"},
+                "risk_level": {"answer": "medium"},
+                "lead_present": {"answer": True},
+                "actions_required": {"answer": False},
+                "declaration_confirmed": {"answer": True},
+            },
+        ),
+    )
+    with patch.object(route.database, "get_db", return_value=db):
+        with patch.object(route, "create_compliance_evidence_record", create_mock):
+            with pytest.raises(HTTPException) as ei:
+                await route.post_compliance_evidence(
+                    property_id="p1",
+                    requirement_id="rlead",
+                    body=body,
+                    request=_req(),
+                    user={"client_id": "c1", "portal_user_id": "u1"},
+                )
+    assert ei.value.status_code == 400
+    assert ei.value.detail["code"] == "LEAD_TESTING_ASSESSMENT_DATE_REQUIRED"
+    create_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_post_lead_testing_rejects_next_review_when_actions_required():
+    db = MagicMock()
+    db.requirements.find_one = AsyncMock(return_value=_lead_testing_requirement_row())
+    create_mock = AsyncMock()
+    body = route.CreateEvidenceRequest(
+        evidence_mode="STRUCTURED_DECLARATION",
+        structured_declaration=route.StructuredDeclarationBody(
+            declaration_statement="Lead assessment record",
+            structured_fields={
+                "assessment_completed": {"answer": True},
+                "assessment_date": {"answer": "2026-04-01"},
+                "assessment_type": {"answer": "full_assessment"},
+                "risk_level": {"answer": "high"},
+                "lead_present": {"answer": True},
+                "actions_required": {"answer": True},
+                "next_review_date": {"answer": ""},
+                "declaration_confirmed": {"answer": True},
+            },
+        ),
+    )
+    with patch.object(route.database, "get_db", return_value=db):
+        with patch.object(route, "create_compliance_evidence_record", create_mock):
+            with pytest.raises(HTTPException) as ei:
+                await route.post_compliance_evidence(
+                    property_id="p1",
+                    requirement_id="rlead",
+                    body=body,
+                    request=_req(),
+                    user={"client_id": "c1", "portal_user_id": "u1"},
+                )
+    assert ei.value.status_code == 400
+    assert ei.value.detail["code"] == "LEAD_TESTING_NEXT_REVIEW_REQUIRED"
+    create_mock.assert_not_called()
 
 
 @pytest.mark.asyncio

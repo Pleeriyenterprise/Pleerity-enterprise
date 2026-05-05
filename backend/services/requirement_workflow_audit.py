@@ -76,6 +76,7 @@ _FALLBACK_REFERENCE_BY_CANONICAL: Dict[str, str] = {
     "hmo_fire_risk": WC_MULTI_EVIDENCE,
     "hmo_fire_risk_evidence": WC_MULTI_EVIDENCE,
     "legionella": WC_EXTERNAL_ASSESSMENT_EVIDENCE,
+    "lead_testing": WC_EXTERNAL_ASSESSMENT_EVIDENCE,
     "right_to_rent": WC_GUIDED_DECLARATION,
     "deposit_pi": WC_GUIDED_DECLARATION,
     "deposit_prescribed_info": WC_GUIDED_DECLARATION,
@@ -277,6 +278,22 @@ def compute_workflow_mismatch_flags(
                 "id": "LEGIONELLA_EXTERNAL_ASSESSMENT_DOCUMENT_ONLY",
                 "severity": "HIGH",
                 "detail": "Legionella external assessment evidence expects STRUCTURED_DECLARATION + DOCUMENT_UPLOAD but only DOCUMENT_UPLOAD is allowed (published registry override or legacy evidence_resolution)",
+            }
+        )
+    if ref == WC_EXTERNAL_ASSESSMENT_EVIDENCE and doc_only and canon == "lead_testing":
+        flags.append(
+            {
+                "id": "LEAD_TESTING_EXTERNAL_ASSESSMENT_DOCUMENT_ONLY",
+                "severity": "HIGH",
+                "detail": "Lead testing external assessment evidence expects STRUCTURED_DECLARATION + DOCUMENT_UPLOAD but only DOCUMENT_UPLOAD is allowed (published registry override or legacy evidence_resolution)",
+            }
+        )
+    if (canon or stored_slug) in ("lead_testing", "lead_testing_scotland") and req_jur and req_jur != "scotland":
+        flags.append(
+            {
+                "id": "LEAD_TESTING_UNSUPPORTED_JURISDICTION",
+                "severity": "HIGH",
+                "detail": f"lead_testing surfaced outside Scotland (jurisdiction={req_jur!r}).",
             }
         )
     canon_or_slug = canon or stored_slug

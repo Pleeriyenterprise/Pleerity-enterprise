@@ -84,6 +84,30 @@ def test_scenario_scotland_landlord_registration_present():
     assert reg.compliance_requirement_class == REQUIREMENT_CLASS_DOCUMENT
 
 
+def test_scotland_lead_testing_plan_row_only_when_condition_matches():
+    prop_yes = {
+        "property_id": "p-sct-lead-yes",
+        "jurisdiction": "Scotland",
+        "property_type": "flat",
+        "tenancy_active": True,
+        "building_age_years": 70,
+    }
+    plan_yes = build_requirement_plan_for_property(prop_yes, {})
+    lead = next((x for x in plan_yes if x.requirement_type == "lead_testing"), None)
+    assert lead is not None
+    assert lead.compliance_requirement_class == REQUIREMENT_CLASS_DOCUMENT
+
+    prop_no = {
+        "property_id": "p-sct-lead-no",
+        "jurisdiction": "Scotland",
+        "property_type": "flat",
+        "tenancy_active": True,
+        "building_age_years": 25,
+    }
+    plan_no = build_requirement_plan_for_property(prop_no, {})
+    assert all(x.requirement_type != "lead_testing" for x in plan_no)
+
+
 def test_scenario_wales_no_active_tenancy_excludes_occupation_contract():
     prop = {
         "property_id": "p-wls-1",

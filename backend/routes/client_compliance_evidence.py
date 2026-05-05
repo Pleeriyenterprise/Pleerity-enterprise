@@ -16,6 +16,7 @@ from models import AuditAction
 from services.compliance_evidence_record_service import (
     ALL_EVIDENCE_MODES,
     DEPOSIT_STRUCTURED_DECLARATION_INVALID,
+    validate_lead_testing_structured_declaration_fields,
     validate_legionella_structured_declaration_fields,
     WALES_OCCUPATION_CONTRACT_STRUCTURED_DECLARATION_INVALID,
     apply_verification_decision,
@@ -247,6 +248,16 @@ async def post_compliance_evidence(
                     detail={
                         "code": str(leg_err.get("code") or "LEGIONELLA_DECLARATION_REQUIRED"),
                         "message": str(leg_err.get("message") or "Legionella structured declaration is incomplete."),
+                    },
+                )
+        elif canon_code == "lead_testing":
+            lead_err = validate_lead_testing_structured_declaration_fields(payload.get("structured_fields") or {})
+            if lead_err:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": str(lead_err.get("code") or "LEAD_TESTING_DECLARATION_REQUIRED"),
+                        "message": str(lead_err.get("message") or "Lead testing structured declaration is incomplete."),
                     },
                 )
     elif mode == "CONTRACTOR_CONFIRMATION":

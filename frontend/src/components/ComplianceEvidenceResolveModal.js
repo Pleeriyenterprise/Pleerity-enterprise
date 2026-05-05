@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from './ui/label';
 import { toast } from '../utils/portalNotifications';
 import { validateDepositStructuredDeclarationFields } from '../utils/depositStructuredDeclarationValidation';
+import { normalizeRequirementCode } from '../domain/presentDomain';
+import { validateLeadTestingStructuredDeclarationFields } from '../utils/leadTestingStructuredValidation';
 import { validateLegionellaStructuredDeclarationFields } from '../utils/legionellaStructuredValidation';
 import { validateWalesOccupationContractStructuredDeclarationFields } from '../utils/walesOccupationContractStructuredValidation';
 import {
@@ -125,6 +127,7 @@ export default function ComplianceEvidenceResolveModal({
   const reqSlug = String(requirement?.requirement_type || requirement?.requirement_code || '')
     .trim()
     .toLowerCase();
+  const canonicalReqCode = normalizeRequirementCode(requirement?.requirement_code || requirement?.requirement_type || '');
   const reqJur = String(requirement?.jurisdiction || requirement?.property_jurisdiction || '')
     .trim()
     .toLowerCase();
@@ -133,6 +136,7 @@ export default function ComplianceEvidenceResolveModal({
     reqSlug === 'deposit_pi' || reqSlug === 'deposit_prescribed_info' || reqSlug === 'tenancy_deposit_protection';
   const isWalesOccupationFamily = reqSlug === 'wales_occupation_contract' || (reqSlug === 'occupation_contract' && reqJur === 'wales');
   const isLegionella = reqSlug === 'legionella';
+  const isLeadTesting = canonicalReqCode === 'lead_testing';
   const selectedMethod = (info?.guided_methods || []).find((x) => x.evidence_mode === selectedMode) || null;
   const selectedChecklistSchema = Array.isArray(selectedMethod?.checklist_schema) ? selectedMethod.checklist_schema : [];
 
@@ -221,11 +225,8 @@ export default function ComplianceEvidenceResolveModal({
             ? RIGHT_TO_RENT_STRUCTURED_DECLARATION_CONDITIONAL_RULES
             : null;
       const condErr = evaluateStructuredDeclarationConditionalRules(rules, structuredPayload);
-      if (condErr) {
-        setStructuredValidationError(condErr);
-        toast.error(condErr);
-        return;
-      }
+      const mergedErrors = [];
+      if (condErr) mergedErrors.push(condErr);
       if (isDepositFamily) {
         const depErr = validateDepositStructuredDeclarationFields(structuredPayload);
         if (depErr) {
@@ -245,10 +246,20 @@ export default function ComplianceEvidenceResolveModal({
       if (isLegionella) {
         const legErr = validateLegionellaStructuredDeclarationFields(structuredPayload);
         if (legErr) {
-          setStructuredValidationError(legErr);
-          toast.error(legErr);
-          return;
+          mergedErrors.push(legErr);
         }
+      }
+      if (isLeadTesting) {
+        const leadErr = validateLeadTestingStructuredDeclarationFields(structuredPayload);
+        if (leadErr) {
+          mergedErrors.push(leadErr);
+        }
+      }
+      if (mergedErrors.length > 0) {
+        const mergedMessage = mergedErrors.join('\n');
+        setStructuredValidationError(mergedMessage);
+        toast.error(mergedMessage);
+        return;
       }
       setStructuredValidationError('');
       body.structured_declaration = {

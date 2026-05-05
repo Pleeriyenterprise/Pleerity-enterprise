@@ -30,6 +30,7 @@ from services.requirement_catalog import (
     HMO_FIRE_RISK,
     HMO_FIRE_RISK_EVIDENCE,
     LANDLORD_REGISTRATION_NI,
+    LEAD_TESTING,
     PORTABLE_APPLIANCE_TEST,
     PROPERTY_LICENCE,
     RENT_SMART_WALES,
@@ -557,6 +558,17 @@ def build_requirement_plan_for_property(
             fw,
             REQUIREMENT_CLASS_DOCUMENT,
             catalog_keys=(SCOTLAND_LANDLORD_REGISTRATION,),
+        )
+
+    if LEAD_TESTING in applicable:
+        add(
+            "lead_testing",
+            "lead_testing",
+            "Lead risk assessment (Scotland)",
+            365,
+            30,
+            REQUIREMENT_CLASS_DOCUMENT,
+            catalog_keys=(LEAD_TESTING,),
         )
 
     if WALES_OCCUPATION_CONTRACT in applicable:

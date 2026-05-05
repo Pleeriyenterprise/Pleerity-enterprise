@@ -34,6 +34,7 @@ RIGHT_TO_RENT = "RIGHT_TO_RENT"
 RENT_SMART_WALES = "RENT_SMART_WALES"
 LANDLORD_REGISTRATION_NI = "LANDLORD_REGISTRATION_NI"
 PORTABLE_APPLIANCE_TEST = "PORTABLE_APPLIANCE_TEST"
+LEAD_TESTING = "LEAD_TESTING"
 
 # Evidence mapping: requirement key -> document_type (for scoring pipeline)
 REQUIREMENT_KEY_TO_DOCUMENT_TYPE: Dict[str, str] = {
@@ -90,6 +91,7 @@ def get_applicable_requirements(property_doc: dict, client_doc: Optional[dict] =
     - RENT_SMART_WALES: residential Wales with an active tenancy.
     - LANDLORD_REGISTRATION_NI: residential Northern Ireland.
     - PORTABLE_APPLIANCE_TEST: residential, active tenancy, and furnished.
+    - LEAD_TESTING: residential Scotland only, when tenancy_active is true and building_age_years > 50.
     """
     applicable: List[str] = []
     is_commercial = _is_commercial(property_doc)
@@ -128,6 +130,12 @@ def get_applicable_requirements(property_doc: dict, client_doc: Optional[dict] =
         juris = resolve_portfolio_jurisdiction(property_doc, client_doc).effective_label
         if not is_commercial and juris == "Scotland":
             applicable.append(SCOTLAND_LANDLORD_REGISTRATION)
+            try:
+                building_age_years = int(property_doc.get("building_age_years"))
+            except (TypeError, ValueError):
+                building_age_years = None
+            if _str_truthy(property_doc.get("tenancy_active")) and isinstance(building_age_years, int) and building_age_years > 50:
+                applicable.append(LEAD_TESTING)
         if not is_commercial and juris == "Wales" and _str_truthy(property_doc.get("tenancy_active")):
             applicable.append(WALES_OCCUPATION_CONTRACT)
             applicable.append(RENT_SMART_WALES)
@@ -163,6 +171,7 @@ _EXPLAINABLE_CATALOG_KEYS: tuple = (
     RENT_SMART_WALES,
     LANDLORD_REGISTRATION_NI,
     PORTABLE_APPLIANCE_TEST,
+    LEAD_TESTING,
 )
 
 
@@ -214,6 +223,8 @@ def explain_catalog_keys_for_property(
                 reason = f"Residential Northern Ireland (effective jurisdiction={juris!r})."
             elif key == PORTABLE_APPLIANCE_TEST:
                 reason = "Residential with tenancy_active and furnished."
+            elif key == LEAD_TESTING:
+                reason = "Residential Scotland with tenancy_active true and building_age_years greater than 50."
             else:
                 reason = "Applicable under catalog rules for this property."
         else:
@@ -254,6 +265,8 @@ def explain_catalog_keys_for_property(
                 reason = f"Excluded: not Northern Ireland ({juris!r})."
             elif key == PORTABLE_APPLIANCE_TEST:
                 reason = "Excluded: tenancy_active and furnished not both true."
+            elif key == LEAD_TESTING:
+                reason = "Excluded: not Scotland residential with tenancy_active true and building_age_years > 50."
             else:
                 reason = "Excluded for this property configuration."
         out.append({"catalog_key": key, "included": included, "reason": reason})

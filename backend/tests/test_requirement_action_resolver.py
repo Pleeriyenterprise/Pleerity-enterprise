@@ -244,6 +244,27 @@ def test_legionella_external_assessment_guided_ctas():
     assert rich.get("workflow_class") == "EXTERNAL_ASSESSMENT_EVIDENCE"
 
 
+def test_lead_testing_external_assessment_guided_ctas():
+    requirement = {
+        "requirement_id": "r-lead-1",
+        "property_id": "p1",
+        "requirement_type": "lead_testing",
+        "requirement_code": "lead_testing",
+        "jurisdiction": "Scotland",
+        "compliance_requirement_class": "DOCUMENT",
+    }
+    out = resolve_take_action_envelope(requirement, property_id="p1", property_jurisdiction="Scotland")
+    assert out["action_type"] == "DOCUMENT"
+    pri = out["take_action"]["primary"]
+    assert pri.get("kind") == "guided_evidence_resolution"
+    assert pri.get("label") == "Record lead risk assessment"
+    sec = (out["take_action"] or {}).get("secondary") or {}
+    assert sec.get("label") == "Upload test report"
+
+    rich = enrich_take_action_envelope_for_client(out, requirement)
+    assert rich.get("workflow_class") == "EXTERNAL_ASSESSMENT_EVIDENCE"
+
+
 def test_enrich_adds_workflow_class_and_guidance_target():
     requirement = {
         "requirement_id": "r1",

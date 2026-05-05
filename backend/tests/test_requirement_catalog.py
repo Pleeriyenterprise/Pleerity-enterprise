@@ -18,6 +18,7 @@ from services.requirement_catalog import (
     DEPOSIT_PRESCRIBED_INFO,
     HMO_FIRE_RISK_EVIDENCE,
     SCOTLAND_LANDLORD_REGISTRATION,
+    LEAD_TESTING,
     WALES_OCCUPATION_CONTRACT,
     REQUIREMENT_KEY_TO_DOCUMENT_TYPE,
 )
@@ -150,6 +151,16 @@ class TestJurisdictionSpecificCatalog:
         prop = {"jurisdiction": "Scotland", "property_type": "commercial"}
         applicable = get_applicable_requirements(prop)
         assert SCOTLAND_LANDLORD_REGISTRATION not in applicable
+
+    def test_scotland_lead_testing_requires_explicit_applicability_signals(self):
+        prop = {"jurisdiction": "Scotland", "property_type": "flat", "tenancy_active": True, "building_age_years": 60}
+        applicable = get_applicable_requirements(prop)
+        assert LEAD_TESTING in applicable
+
+    def test_scotland_lead_testing_not_blanket_without_condition(self):
+        prop = {"jurisdiction": "Scotland", "property_type": "flat", "tenancy_active": True, "building_age_years": 20}
+        applicable = get_applicable_requirements(prop)
+        assert LEAD_TESTING not in applicable
 
     def test_wales_occupation_contract_with_tenancy(self):
         prop = {"jurisdiction": "Wales", "property_type": "house", "tenancy_active": True}

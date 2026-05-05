@@ -35,6 +35,7 @@ CANONICAL_REQUIREMENT_CODES: FrozenSet[str] = frozenset(
         "landlord_registration_ni",
         "how_to_rent",
         "tenancy_agreement",
+        "lead_testing",
     }
 )
 
@@ -49,6 +50,7 @@ DOCUMENTED_LOW_RISK_ALIAS_SLUGS: FrozenSet[str] = frozenset(
         "right_to_rent_checks",
         "deposit_prescribed_info",
         "tenancy_deposit_protection",
+        "lead_testing_scotland",
     }
 )
 
@@ -113,6 +115,8 @@ _LEGACY_ALIASES: Dict[str, str] = {
     "hmo_fire_risk_evidence": "hmo_fire_risk_evidence",
     "occupation_contract": "occupation_contract",
     "wales_occupation_contract": "wales_occupation_contract",
+    "lead_testing": "lead_testing",
+    "lead_testing_scotland": "lead_testing",
 }
 
 

@@ -90,6 +90,16 @@ def test_effective_evidence_right_to_rent_checks_matches_right_to_rent():
     assert effective_evidence_resolution(r) == effective_evidence_resolution(c)
 
 
+def test_effective_evidence_lead_testing_scotland_alias_matches_lead_testing():
+    from services.compliance_evidence_record_service import effective_evidence_resolution
+    from services.requirement_code_registry import normalize_requirement_code
+
+    assert normalize_requirement_code("lead_testing_scotland") == "lead_testing"
+    base = {"requirement_type": "lead_testing", "registry_metadata": {}}
+    alias = {"requirement_type": "lead_testing_scotland", "registry_metadata": {}}
+    assert effective_evidence_resolution(base) == effective_evidence_resolution(alias)
+
+
 def test_enrich_client_display_label_alias_matches_canonical():
     from services.requirement_truth import EVIDENCE_MISSING, enrich_requirement_dict
 

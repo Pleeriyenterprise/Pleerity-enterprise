@@ -196,6 +196,26 @@ See §1.2. Normalization **must** remain the single entry point so aliases do no
 - `CONDITION_STANDARD_MARKED_COMPLETE_WITHOUT_OPERATIONAL_SIGNALS`
 - `CONDITION_STANDARD_UNSUPPORTED_JURISDICTION`
 
+### 2.13 Phase 1 — Scotland lead testing (`lead_testing`, `lead_testing_scotland`) — `EXTERNAL_ASSESSMENT_EVIDENCE` (implemented)
+
+**Scope:** Scotland-only lead-risk assessment evidence capture where planner or published registry conditions explicitly materialise the requirement. No UK-wide rollout, no scoring formula changes, and no Repairing Standard closure changes in Phase 1.
+
+**Materialisation guard:** Must not appear as blanket Scotland exposure. Row is expected only when a Scotland-scoped published registry entry applies, or explicit planner property conditions indicate applicability (current planner guard: active tenancy + `building_age_years > 50`), or existing runtime rows already exist.
+
+**Runtime class:** `workflow_class` = **`EXTERNAL_ASSESSMENT_EVIDENCE`** when `primary_resolution_workflow` is **`EXTERNAL_ASSESSMENT_EVIDENCE`** on effective evidence policy.
+
+**Evidence modes (defaults):** **`STRUCTURED_DECLARATION`** first (primary assessment record), **`DOCUMENT_UPLOAD`** second (supporting report). Legacy document-only evidence remains display-safe; published overrides that allow only `DOCUMENT_UPLOAD` raise admin audit flag **`LEAD_TESTING_EXTERNAL_ASSESSMENT_DOCUMENT_ONLY`**.
+
+**Structured fields:** assessment completed; assessment date (conditional); assessment type (conditional); risk level (conditional); lead present (conditional); actions required (conditional); actions taken (optional); next review date (conditional on actions required); declaration confirmed.
+
+**Client copy:** Primary CTA — **“Record lead risk assessment”**; secondary document path — **“Upload test report”**; modal title matches. Client disclosure states this records lead assessment evidence and does not itself prove Repairing Standard compliance or legal verification.
+
+**Validation (new structured submissions):** declaration confirmation required; if assessment completed = yes, assessment date + assessment type + risk level + lead present + actions required required; if actions required = yes, next review date required.
+
+**Audit drift flags:**
+- `LEAD_TESTING_EXTERNAL_ASSESSMENT_DOCUMENT_ONLY`
+- `LEAD_TESTING_UNSUPPORTED_JURISDICTION`
+
 ---
 
 ## 3. Proposed workflow classes (definitions)

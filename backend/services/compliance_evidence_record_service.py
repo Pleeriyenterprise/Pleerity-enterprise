@@ -349,6 +349,20 @@ LEGIONELLA_RISK_LEVEL_REQUIRED_MESSAGE = "Select the Legionella risk level for t
 LEGIONELLA_CONTROL_MEASURES_REQUIRED_MESSAGE = "Confirm whether control measures are in place for the completed assessment."
 LEGIONELLA_ACTIONS_REQUIRED_MESSAGE = "Confirm whether follow-up actions are required for the completed assessment."
 LEGIONELLA_NEXT_REVIEW_REQUIRED_MESSAGE = "Enter the next review date when actions are required."
+LEAD_TESTING_DECLARATION_REQUIRED = "LEAD_TESTING_DECLARATION_REQUIRED"
+LEAD_TESTING_ASSESSMENT_DATE_REQUIRED = "LEAD_TESTING_ASSESSMENT_DATE_REQUIRED"
+LEAD_TESTING_ASSESSMENT_TYPE_REQUIRED = "LEAD_TESTING_ASSESSMENT_TYPE_REQUIRED"
+LEAD_TESTING_RISK_LEVEL_REQUIRED = "LEAD_TESTING_RISK_LEVEL_REQUIRED"
+LEAD_TESTING_LEAD_PRESENT_REQUIRED = "LEAD_TESTING_LEAD_PRESENT_REQUIRED"
+LEAD_TESTING_ACTIONS_REQUIRED = "LEAD_TESTING_ACTIONS_REQUIRED"
+LEAD_TESTING_NEXT_REVIEW_REQUIRED = "LEAD_TESTING_NEXT_REVIEW_REQUIRED"
+LEAD_TESTING_DECLARATION_REQUIRED_MESSAGE = "Confirm that your lead risk assessment declaration is accurate to continue."
+LEAD_TESTING_ASSESSMENT_DATE_REQUIRED_MESSAGE = "Enter the assessment date when an assessment is completed."
+LEAD_TESTING_ASSESSMENT_TYPE_REQUIRED_MESSAGE = "Select the assessment type for the completed lead assessment."
+LEAD_TESTING_RISK_LEVEL_REQUIRED_MESSAGE = "Select the lead risk level for the completed assessment."
+LEAD_TESTING_LEAD_PRESENT_REQUIRED_MESSAGE = "Confirm whether lead is present for the completed assessment."
+LEAD_TESTING_ACTIONS_REQUIRED_MESSAGE = "Confirm whether follow-up actions are required for the completed assessment."
+LEAD_TESTING_NEXT_REVIEW_REQUIRED_MESSAGE = "Enter the next review date when actions are required."
 
 _LEGIONELLA_SCHEMA: List[Dict[str, Any]] = [
     {"id": "assessment_completed", "label": "Assessment completed", "answer_type": "YES_NO", "required": True},
@@ -381,6 +395,45 @@ _LEGIONELLA_SCHEMA: List[Dict[str, Any]] = [
     {
         "id": "declaration_confirmed",
         "label": "I confirm this Legionella assessment record is accurate to the best of my knowledge",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+]
+
+_LEAD_TESTING_SCHEMA: List[Dict[str, Any]] = [
+    {"id": "assessment_completed", "label": "Assessment completed", "answer_type": "YES_NO", "required": True},
+    {"id": "assessment_date", "label": "Assessment date", "answer_type": "DATE", "required": True},
+    {
+        "id": "assessment_type",
+        "label": "Assessment type",
+        "answer_type": "SELECT",
+        "required": True,
+        "choices": [
+            {"value": "water_test", "label": "Water test"},
+            {"value": "paint_or_materials", "label": "Paint or materials"},
+            {"value": "full_assessment", "label": "Full assessment"},
+            {"value": "other", "label": "Other"},
+        ],
+    },
+    {
+        "id": "risk_level",
+        "label": "Risk level",
+        "answer_type": "SELECT",
+        "required": True,
+        "choices": [
+            {"value": "low", "label": "Low"},
+            {"value": "medium", "label": "Medium"},
+            {"value": "high", "label": "High"},
+            {"value": "unknown", "label": "Unknown"},
+        ],
+    },
+    {"id": "lead_present", "label": "Lead present", "answer_type": "YES_NO", "required": True},
+    {"id": "actions_required", "label": "Actions required", "answer_type": "YES_NO", "required": True},
+    {"id": "actions_taken", "label": "Actions taken (optional)", "answer_type": "YES_NO", "required": False},
+    {"id": "next_review_date", "label": "Next review date", "answer_type": "DATE", "required": False},
+    {
+        "id": "declaration_confirmed",
+        "label": "I confirm this lead risk assessment record is accurate to the best of my knowledge",
         "answer_type": "YES_NO",
         "required": True,
     },
@@ -458,6 +511,26 @@ DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE: Dict[str, Dict[str, Any]] = {
         ),
         "checklist_schema_by_mode": {
             EVIDENCE_MODE_STRUCTURED_DECLARATION: list(_LEGIONELLA_SCHEMA),
+        },
+    },
+    "lead_testing": {
+        "allowed_evidence_modes": [
+            EVIDENCE_MODE_STRUCTURED_DECLARATION,
+            EVIDENCE_MODE_DOCUMENT_UPLOAD,
+        ],
+        "primary_resolution_workflow": EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW,
+        "guided_primary_cta_label": "Record lead risk assessment",
+        "guided_secondary_upload_label": "Upload test report",
+        "modal_title": "Record lead risk assessment",
+        "allow_medium_non_document_satisfaction": True,
+        "allow_low_non_document_satisfaction": False,
+        "supporting_upload_recommended": True,
+        "client_evidence_disclosure": (
+            "This records lead risk assessment evidence for compliance tracking. "
+            "It does not itself prove Repairing Standard compliance or legal verification."
+        ),
+        "checklist_schema_by_mode": {
+            EVIDENCE_MODE_STRUCTURED_DECLARATION: list(_LEAD_TESTING_SCHEMA),
         },
     },
     "how_to_rent": {
@@ -706,6 +779,31 @@ def validate_legionella_structured_declaration_fields(
     actions_required = _truthy_yes_answer(_structured_field_answer(structured_fields, "actions_required"))
     if actions_required and not _non_empty_structured_answer(structured_fields, "next_review_date"):
         return {"code": LEGIONELLA_NEXT_REVIEW_REQUIRED, "message": LEGIONELLA_NEXT_REVIEW_REQUIRED_MESSAGE}
+    return None
+
+
+def validate_lead_testing_structured_declaration_fields(
+    structured_fields: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, str]]:
+    if not _truthy_yes_answer(_structured_field_answer(structured_fields, "declaration_confirmed")):
+        return {"code": LEAD_TESTING_DECLARATION_REQUIRED, "message": LEAD_TESTING_DECLARATION_REQUIRED_MESSAGE}
+
+    assessment_completed = _truthy_yes_answer(_structured_field_answer(structured_fields, "assessment_completed"))
+    if assessment_completed:
+        if not _non_empty_structured_answer(structured_fields, "assessment_date"):
+            return {"code": LEAD_TESTING_ASSESSMENT_DATE_REQUIRED, "message": LEAD_TESTING_ASSESSMENT_DATE_REQUIRED_MESSAGE}
+        if not _non_empty_structured_answer(structured_fields, "assessment_type"):
+            return {"code": LEAD_TESTING_ASSESSMENT_TYPE_REQUIRED, "message": LEAD_TESTING_ASSESSMENT_TYPE_REQUIRED_MESSAGE}
+        if not _non_empty_structured_answer(structured_fields, "risk_level"):
+            return {"code": LEAD_TESTING_RISK_LEVEL_REQUIRED, "message": LEAD_TESTING_RISK_LEVEL_REQUIRED_MESSAGE}
+        if _structured_field_answer(structured_fields, "lead_present") is None:
+            return {"code": LEAD_TESTING_LEAD_PRESENT_REQUIRED, "message": LEAD_TESTING_LEAD_PRESENT_REQUIRED_MESSAGE}
+        if _structured_field_answer(structured_fields, "actions_required") is None:
+            return {"code": LEAD_TESTING_ACTIONS_REQUIRED, "message": LEAD_TESTING_ACTIONS_REQUIRED_MESSAGE}
+
+    actions_required = _truthy_yes_answer(_structured_field_answer(structured_fields, "actions_required"))
+    if actions_required and not _non_empty_structured_answer(structured_fields, "next_review_date"):
+        return {"code": LEAD_TESTING_NEXT_REVIEW_REQUIRED, "message": LEAD_TESTING_NEXT_REVIEW_REQUIRED_MESSAGE}
     return None
 
 

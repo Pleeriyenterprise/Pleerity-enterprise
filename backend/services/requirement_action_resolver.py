@@ -215,6 +215,8 @@ def _document_upload_primary_label(requirement: Dict[str, Any], meta: Dict[str, 
         return "Upload HMO Licence"
     if "legionella" in code:
         return "Upload assessment report"
+    if code in ("lead_testing", "lead_testing_scotland"):
+        return "Upload test report"
     if code == "how_to_rent":
         return "Upload delivery proof"
     if code == "right_to_rent":
@@ -266,6 +268,8 @@ def job_primary_label(requirement: Dict[str, Any]) -> str:
         return "Record external assessment evidence — upload PAT evidence"
     if "legionella" in code:
         return "Record Legionella risk assessment"
+    if code in ("lead_testing", "lead_testing_scotland"):
+        return "Record lead risk assessment"
     disp = str(requirement.get("display_label") or "").strip()
     if disp and disp.lower() not in ("requirement", ""):
         return f"Record external assessment evidence — {disp}"
