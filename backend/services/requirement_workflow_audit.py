@@ -23,6 +23,7 @@ from services.requirement_code_registry import (
     normalize_requirement_code,
 )
 from services.requirement_evidence_completeness import requirement_status_appears_satisfied_top_level
+from services.workflow_behaviour_governance import governance_augment_mismatch_flags
 
 logger = logging.getLogger(__name__)
 
@@ -380,6 +381,15 @@ def compute_workflow_mismatch_flags(
                 "detail": f"reference_family={rf} runtime_family={tf}; runtime={describe_runtime_behaviour(enriched)}",
             }
         )
+
+    existing_ids = frozenset(str(f.get("id") or "") for f in flags if f.get("id"))
+    flags.extend(
+        governance_augment_mismatch_flags(
+            enriched,
+            reference_class=ref,
+            existing_flag_ids=existing_ids,
+        )
+    )
 
     return flags
 

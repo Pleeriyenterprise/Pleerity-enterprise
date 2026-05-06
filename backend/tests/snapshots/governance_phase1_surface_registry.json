@@ -1,0 +1,128 @@
+{
+  "audit_pipeline": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": true,
+    "consumes_reporting_semantics": true,
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": true,
+    "enforcement_level": "STRICT",
+    "uses_local_fallback_logic": false
+  },
+  "command_centre": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": false,
+    "consumes_workflow_contract": false,
+    "enforcement_level": "NONE",
+    "uses_local_fallback_logic": true
+  },
+  "frontend_cta": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": true,
+    "enforcement_level": "PARTIAL",
+    "uses_local_fallback_logic": true
+  },
+  "frontend_status": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": false,
+    "enforcement_level": "PARTIAL",
+    "uses_local_fallback_logic": true
+  },
+  "gap_engine": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": false,
+    "enforcement_level": "PARTIAL",
+    "uses_local_fallback_logic": true
+  },
+  "needs_attention": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": true,
+    "enforcement_level": "PARTIAL",
+    "uses_local_fallback_logic": true
+  },
+  "property_compliance_matrix": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": true,
+    "enforcement_level": "PARTIAL",
+    "uses_local_fallback_logic": true
+  },
+  "reminder_generation": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": false,
+    "consumes_workflow_contract": false,
+    "enforcement_level": "NONE",
+    "uses_local_fallback_logic": true
+  },
+  "reports_exports": {
+    "allows_noncanonical_requirement_rows": true,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": false,
+    "enforcement_level": "PARTIAL",
+    "uses_local_fallback_logic": true
+  },
+  "requirements_list": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": true,
+    "enforcement_level": "PARTIAL",
+    "uses_local_fallback_logic": true
+  },
+  "resolver": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": false,
+    "consumes_workflow_contract": true,
+    "enforcement_level": "PARTIAL",
+    "uses_local_fallback_logic": true
+  },
+  "score_drivers": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": false,
+    "enforcement_level": "PARTIAL",
+    "uses_local_fallback_logic": true
+  },
+  "today_tasks": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": true,
+    "enforcement_level": "PARTIAL",
+    "uses_local_fallback_logic": true
+  },
+  "work_queue": {
+    "allows_noncanonical_requirement_rows": false,
+    "consumes_execution_semantics": false,
+    "consumes_reporting_semantics": false,
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": true,
+    "enforcement_level": "PARTIAL",
+    "uses_local_fallback_logic": true
+  }
+}

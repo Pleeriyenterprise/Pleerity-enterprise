@@ -1,0 +1,82 @@
+{
+  "overall": "OK",
+  "parts": [
+    {
+      "results": [
+        {
+          "severity": "OK",
+          "surface": "workflow_contract_coverage",
+          "violations": [],
+          "warnings": []
+        }
+      ],
+      "summary": "OK"
+    },
+    {
+      "results": [
+        {
+          "severity": "OK",
+          "surface": "surface_governance_alignment",
+          "violations": [],
+          "warnings": []
+        }
+      ],
+      "summary": "OK"
+    },
+    {
+      "results": [
+        {
+          "severity": "OK",
+          "surface": "document_upload_expiry_semantics",
+          "violations": [],
+          "warnings": []
+        }
+      ],
+      "summary": "OK"
+    },
+    {
+      "results": [
+        {
+          "severity": "OK",
+          "surface": "external_assessment_non_remediation",
+          "violations": [],
+          "warnings": []
+        }
+      ],
+      "summary": "OK"
+    },
+    {
+      "results": [
+        {
+          "severity": "OK",
+          "surface": "condition_standard_upload_only",
+          "violations": [],
+          "warnings": []
+        }
+      ],
+      "summary": "OK"
+    },
+    {
+      "results": [
+        {
+          "severity": "OK",
+          "surface": "guided_declaration_score_semantics",
+          "violations": [],
+          "warnings": []
+        }
+      ],
+      "summary": "OK"
+    },
+    {
+      "results": [
+        {
+          "severity": "OK",
+          "surface": "forbidden_generic_blocking_copy",
+          "violations": [],
+          "warnings": []
+        }
+      ],
+      "summary": "OK"
+    }
+  ]
+}
