@@ -16,6 +16,7 @@ from models import AuditAction
 from services.compliance_evidence_record_service import (
     ALL_EVIDENCE_MODES,
     DEPOSIT_STRUCTURED_DECLARATION_INVALID,
+    TENANCY_AGREEMENT_STRUCTURED_DECLARATION_INVALID,
     validate_lead_testing_structured_declaration_fields,
     validate_legionella_structured_declaration_fields,
     WALES_OCCUPATION_CONTRACT_STRUCTURED_DECLARATION_INVALID,
@@ -27,6 +28,7 @@ from services.compliance_evidence_record_service import (
     validate_deposit_structured_declaration_fields,
     validate_right_to_rent_structured_declaration_fields,
     validate_wales_occupation_contract_structured_declaration_fields,
+    validate_tenancy_agreement_structured_declaration_fields,
 )
 from services.requirement_code_registry import normalize_requirement_code
 from services.compliance_recalc_queue import (
@@ -238,6 +240,16 @@ async def post_compliance_evidence(
                     detail={
                         "code": WALES_OCCUPATION_CONTRACT_STRUCTURED_DECLARATION_INVALID,
                         "message": wal_err,
+                    },
+                )
+        elif canon_code == "tenancy_agreement":
+            ta_err = validate_tenancy_agreement_structured_declaration_fields(payload.get("structured_fields") or {})
+            if ta_err:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": TENANCY_AGREEMENT_STRUCTURED_DECLARATION_INVALID,
+                        "message": ta_err,
                     },
                 )
         elif canon_code == "legionella":

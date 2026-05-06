@@ -27,6 +27,43 @@ export const EVIDENCE_STATUS_CONFIG = {
 const NO_DOC_CHIP = { icon: FileText, text: 'No document uploaded', className: 'bg-gray-100 text-gray-700 border-gray-200' };
 const VERIFY_CHIP = { icon: Clock, text: 'Awaiting verification', className: 'bg-amber-100 text-amber-800 border-amber-200' };
 
+function _workflowClass(row) {
+  return String(row?.workflow_class || '').trim().toUpperCase();
+}
+
+function _requirementCode(row) {
+  return String(row?.canonical_requirement_code || row?.canonical_code || row?.requirement_code || row?.requirement_type || '')
+    .trim()
+    .toLowerCase();
+}
+
+function _isActiveStandardRow(row) {
+  const wf = _workflowClass(row);
+  const code = _requirementCode(row);
+  if (wf === 'ACTIVE_STANDARD') return true;
+  return code === 'fitness_for_human_habitation' || code === 'repairing_standard';
+}
+
+function _tenancyAgreementStatusText(row) {
+  const code = _requirementCode(row);
+  if (code !== 'tenancy_agreement') return '';
+  return String(row?.tenancy_agreement_status_text || '').trim();
+}
+
+export function workflowAwareMissingEvidenceLabel(row) {
+  const wf = _workflowClass(row);
+  const tenancyStatus = _tenancyAgreementStatusText(row);
+  if (tenancyStatus) return tenancyStatus;
+  if (_isActiveStandardRow(row)) return 'Condition status needs review';
+  if (wf === 'GUIDANCE_ONLY') return 'Guidance item — review recommended';
+  if (wf === 'GUIDED_DECLARATION') return 'Declaration not recorded — action required';
+  if (wf === 'TENANT_DELIVERY') return 'Delivery record missing — action required';
+  if (wf === 'REGISTRATION_TRACKING') return 'Registration details not recorded — action required';
+  if (wf === 'EXTERNAL_ASSESSMENT_EVIDENCE') return 'Assessment not recorded — action required';
+  if (wf === 'MULTI_EVIDENCE') return 'Required evidence incomplete';
+  return 'Evidence missing — action required';
+}
+
 /**
  * @param {string} status
  * @param {object} [row] requirement row with optional evidence_doc_id
@@ -34,9 +71,10 @@ const VERIFY_CHIP = { icon: Clock, text: 'Awaiting verification', className: 'bg
 export function getEvidenceStatus(status, row) {
   const key = (status || '').toUpperCase().trim();
   const linked = !!(row && row.evidence_doc_id);
+  const tenancyStatus = _tenancyAgreementStatusText(row);
   if (key === 'PENDING' && linked) return { ...VERIFY_CHIP, subline: awaitingVerificationSubline() };
   if (key === 'MISSING' || key === 'MISSING_EVIDENCE' || (key === 'PENDING' && !linked)) {
-    return { ...NO_DOC_CHIP, subline: 'Missing document — blocking compliance.' };
+    return { ...NO_DOC_CHIP, subline: workflowAwareMissingEvidenceLabel(row) };
   }
   if (key === 'PENDING_VERIFICATION') {
     const cfg = EVIDENCE_STATUS_CONFIG.PENDING_VERIFICATION;
@@ -46,5 +84,7 @@ export function getEvidenceStatus(status, row) {
     const cfg = EVIDENCE_STATUS_CONFIG[key] || EVIDENCE_STATUS_CONFIG.OVERDUE;
     return { ...cfg, subline: 'Overdue — affecting compliance.' };
   }
-  return EVIDENCE_STATUS_CONFIG[key] || EVIDENCE_STATUS_CONFIG.PENDING;
+  const base = EVIDENCE_STATUS_CONFIG[key] || EVIDENCE_STATUS_CONFIG.PENDING;
+  if (tenancyStatus && (key === 'VALID' || key === 'COMPLIANT')) return { ...base, subline: tenancyStatus };
+  return base;
 }

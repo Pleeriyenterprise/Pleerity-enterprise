@@ -4,6 +4,7 @@
 import { resolveRequirementAction } from './requirementTakeActionResolver';
 import { isRequirementMissingDocument } from './propertyDocumentsMatrix';
 import { pickCanonicalWhyItMattersShort } from './requirementCanonicalNarrative';
+import { workflowAwareMissingEvidenceLabel } from './evidenceStatus';
 
 /**
  * Inline compliance narrative (short why + next step) — same canonical "why" source as RequirementIntelligenceModal.
@@ -67,10 +68,13 @@ export function complianceWhatChangedLine(req) {
 /** Standardised status nouns for the obligations matrix. */
 export function complianceObligationStatusLabel(r) {
   const s = String(r?.status || '').toUpperCase();
+  const code = String(r?.canonical_requirement_code || r?.requirement_code || r?.requirement_type || '').trim().toLowerCase();
+  const tenancyStatus = String(r?.tenancy_agreement_status_text || '').trim();
+  if (code === 'tenancy_agreement' && tenancyStatus) return tenancyStatus;
   if (['NOT_APPLICABLE', 'NOT_REQUIRED', 'WAIVED'].includes(s)) return 'Not applicable';
   if (['OVERDUE', 'EXPIRED'].includes(s)) return 'Overdue';
   if (s === 'EXPIRING_SOON') return 'Expiring';
-  if (isRequirementMissingDocument(r)) return 'No document uploaded';
+  if (isRequirementMissingDocument(r)) return workflowAwareMissingEvidenceLabel(r);
   return 'Valid';
 }
 

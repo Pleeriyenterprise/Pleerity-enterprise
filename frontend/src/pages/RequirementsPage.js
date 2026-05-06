@@ -768,7 +768,13 @@ const RequirementsPage = () => {
                 return Object.entries(byReqType).map(([reqType, reqs]) => (
                   <AccordionItem key={reqType} value={reqType} data-testid={`accordion-requirement-${reqType}`}>
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <span className="font-medium text-midnight-blue">{reqType === 'Other' ? 'Other' : requirementLabel(reqType)}</span>
+                      <span className="font-medium text-midnight-blue">
+                        {reqType === 'Other'
+                          ? 'Other'
+                          : requirementDisplayTitle(reqs?.[0]?.requirement_display, 'compact') ||
+                            requirementDisplayTitle(reqs?.[0]?.requirement_display, 'detail') ||
+                            requirementLabel(reqType)}
+                      </span>
                       <span className="text-sm text-gray-500 font-normal ml-2">({reqs.length})</span>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">

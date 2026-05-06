@@ -60,6 +60,25 @@ export function requirementDisplayDescription(display) {
   return s || null;
 }
 
+/**
+ * Unified requirement title selection per surface.
+ * requirement_display is authoritative when present; legacy fields are defensive fallback only.
+ * @param {Record<string, unknown>|null|undefined} row
+ * @param {'compact'|'detail'} mode
+ */
+export function requirementTitleFromRow(row, mode = 'compact') {
+  const r = row && typeof row === 'object' ? row : {};
+  const display = r.requirement_display && typeof r.requirement_display === 'object' ? r.requirement_display : null;
+  const fromDisplay = requirementDisplayTitle(display, mode);
+  if (fromDisplay) return fromDisplay;
+  const code = r.requirement_code || r.requirement_type || r.code;
+  const fallbackLabel = code ? requirementLabel(code) : null;
+  if (mode === 'detail') {
+    return String(r.title || fallbackLabel || r.display_label || r.description || r.name || 'Requirement');
+  }
+  return String(fallbackLabel || r.display_label || r.title || r.description || r.name || 'Requirement');
+}
+
 export function requirementActionPhrase(code) {
   const key = normalizeRequirementCode(code);
   const req = key ? (data.requirement_codes || {})[key] : null;

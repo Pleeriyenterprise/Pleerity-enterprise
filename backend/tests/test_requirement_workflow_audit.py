@@ -131,6 +131,26 @@ def test_wales_occupation_contract_guided_declaration_document_only_flag():
     assert any(f.get("id") == "WALES_OCCUPATION_CONTRACT_GUIDED_DECLARATION_DOCUMENT_ONLY" for f in flags)
 
 
+def test_tenancy_agreement_guided_declaration_document_only_flag():
+    from services.compliance_evidence_record_service import EVIDENCE_MODE_DOCUMENT_UPLOAD
+    from services.requirement_workflow_audit import WC_GUIDED_DECLARATION, compute_workflow_mismatch_flags
+
+    enriched = {
+        "requirement_code": "tenancy_agreement",
+        "requirement_type": "tenancy_agreement",
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "action_type": "DOCUMENT",
+        "allowed_evidence_modes": [EVIDENCE_MODE_DOCUMENT_UPLOAD],
+        "take_action": {"primary": {"intent": "upload_evidence", "kind": "navigate"}},
+    }
+    flags = compute_workflow_mismatch_flags(
+        enriched,
+        reference_class=WC_GUIDED_DECLARATION,
+        reference_source="decision_record_fallback",
+    )
+    assert any(f.get("id") == "TENANCY_AGREEMENT_GUIDED_DECLARATION_DOCUMENT_ONLY" for f in flags)
+
+
 def test_legionella_external_assessment_document_only_flag():
     from services.compliance_evidence_record_service import EVIDENCE_MODE_DOCUMENT_UPLOAD
     from services.requirement_workflow_audit import WC_EXTERNAL_ASSESSMENT_EVIDENCE, compute_workflow_mismatch_flags

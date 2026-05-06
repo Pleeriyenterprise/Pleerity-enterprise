@@ -55,7 +55,14 @@ PROVENANCE_ENGINE_DEFAULT = "engine_default"
 
 # Obligation-class tenancy codes that still use registry/policy-driven evidence (skip guidance-only routing).
 _TENANCY_EVIDENCE_FIRST_CODES = frozenset(
-    {"how_to_rent", "deposit_pi", "deposit_prescribed_info", "right_to_rent", "wales_occupation_contract"}
+    {
+        "how_to_rent",
+        "deposit_pi",
+        "deposit_prescribed_info",
+        "right_to_rent",
+        "wales_occupation_contract",
+        "tenancy_agreement",
+    }
 )
 _ACTIVE_STANDARD_CODES = frozenset(
     {

@@ -52,6 +52,21 @@ _DISPLAY_OVERRIDES: Dict[str, Dict[str, str]] = {
         "short_name": "Legionella",
         "description": "",
     },
+    "occupation_contract": {
+        "canonical_name": "Occupation Contract (Wales)",
+        "short_name": "Occupation Contract",
+        "description": "",
+    },
+    "wales_occupation_contract": {
+        "canonical_name": "Occupation Contract (Wales)",
+        "short_name": "Occupation Contract",
+        "description": "",
+    },
+    "scotland_landlord_registration": {
+        "canonical_name": "Landlord Registration (Scotland)",
+        "short_name": "Scottish Landlord Registration",
+        "description": "",
+    },
     "gas_safety": {
         "canonical_name": "Gas Safety Certificate (CP12)",
         "short_name": "Gas Safety",

@@ -208,6 +208,28 @@ def test_wales_occupation_contract_guided_declaration_ctas():
         assert rich.get("workflow_class") == GUIDED_DECLARATION_WORKFLOW
 
 
+def test_tenancy_agreement_guided_declaration_ctas():
+    from services.compliance_evidence_record_service import GUIDED_DECLARATION_WORKFLOW
+
+    requirement = {
+        "requirement_id": "r1",
+        "property_id": "p1",
+        "requirement_type": "tenancy_agreement",
+        "requirement_code": "tenancy_agreement",
+        "compliance_requirement_class": "OBLIGATION",
+        "engine_informational": True,
+    }
+    out = resolve_take_action_envelope(requirement, property_id="p1", property_jurisdiction="England")
+    assert out["action_type"] == "DOCUMENT"
+    pri = out["take_action"]["primary"]
+    assert pri.get("kind") == "guided_evidence_resolution"
+    assert pri.get("label") == "Record tenancy agreement"
+    sec = (out["take_action"] or {}).get("secondary") or {}
+    assert sec.get("label") == "Upload signed agreement"
+    rich = enrich_take_action_envelope_for_client(out, requirement)
+    assert rich.get("workflow_class") == GUIDED_DECLARATION_WORKFLOW
+
+
 def test_occupation_contract_non_wales_does_not_force_guided_evidence():
     requirement = {
         "requirement_id": "r1",

@@ -272,6 +272,14 @@ def compute_workflow_mismatch_flags(
                 "detail": "Wales occupation contract expects STRUCTURED_DECLARATION + DOCUMENT_UPLOAD but only DOCUMENT_UPLOAD is allowed (published registry override or legacy evidence_resolution)",
             }
         )
+    if ref == WC_GUIDED_DECLARATION and doc_only and canon == "tenancy_agreement":
+        flags.append(
+            {
+                "id": "TENANCY_AGREEMENT_GUIDED_DECLARATION_DOCUMENT_ONLY",
+                "severity": "HIGH",
+                "detail": "Tenancy agreement expects STRUCTURED_DECLARATION + DOCUMENT_UPLOAD but only DOCUMENT_UPLOAD is allowed (published registry override or legacy evidence_resolution)",
+            }
+        )
     if ref == WC_EXTERNAL_ASSESSMENT_EVIDENCE and doc_only and canon == "legionella":
         flags.append(
             {

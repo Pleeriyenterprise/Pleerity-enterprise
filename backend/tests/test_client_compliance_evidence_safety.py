@@ -483,6 +483,45 @@ async def test_occupation_contract_wales_context_uses_same_wales_schema():
 
 
 @pytest.mark.asyncio
+async def test_tenancy_agreement_evidence_resolution_guided_declaration_schema():
+    db = MagicMock()
+    db.requirements.find_one = AsyncMock(
+        return_value={
+            "requirement_id": "rta",
+            "property_id": "p1",
+            "client_id": "c1",
+            "requirement_type": "tenancy_agreement",
+            "requirement_code": "tenancy_agreement",
+        }
+    )
+    with patch.object(route.database, "get_db", return_value=db):
+        out = await route.get_evidence_resolution(
+            property_id="p1",
+            requirement_id="rta",
+            request=_req(),
+            user={"client_id": "c1"},
+        )
+    assert out.get("modal_title") == "Record tenancy agreement"
+    assert out.get("primary_client_cta") == "Record tenancy agreement"
+    assert out.get("primary_resolution_workflow") == "GUIDED_DECLARATION"
+    methods = {m.get("evidence_mode"): m for m in (out.get("guided_methods") or [])}
+    sd = methods.get("STRUCTURED_DECLARATION")
+    assert sd
+    ids = [r.get("id") for r in (sd.get("checklist_schema") or [])]
+    for key in (
+        "agreement_exists",
+        "agreement_type",
+        "tenancy_start_date",
+        "tenant_or_occupier_name",
+        "signed_by_parties",
+        "rent_amount",
+        "fixed_term_end_date",
+        "declaration_confirmed",
+    ):
+        assert key in ids
+
+
+@pytest.mark.asyncio
 async def test_legionella_evidence_resolution_external_assessment_schema():
     db = MagicMock()
     db.requirements.find_one = AsyncMock(
@@ -1075,6 +1114,89 @@ def _lead_testing_requirement_row():
         "requirement_type": "lead_testing",
         "requirement_code": "lead_testing",
     }
+
+
+def _tenancy_agreement_requirement_row():
+    return {
+        "requirement_id": "rta",
+        "property_id": "p1",
+        "client_id": "c1",
+        "requirement_type": "tenancy_agreement",
+        "requirement_code": "tenancy_agreement",
+        "registry_metadata": {
+            "evidence_resolution": {
+                "allowed_evidence_modes": ["STRUCTURED_DECLARATION", "DOCUMENT_UPLOAD"],
+            }
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_post_tenancy_agreement_rejects_missing_declaration_confirmation():
+    db = MagicMock()
+    db.requirements.find_one = AsyncMock(return_value=_tenancy_agreement_requirement_row())
+    create_mock = AsyncMock()
+    body = route.CreateEvidenceRequest(
+        evidence_mode="STRUCTURED_DECLARATION",
+        structured_declaration=route.StructuredDeclarationBody(
+            declaration_statement="Tenancy agreement record",
+            structured_fields={
+                "agreement_exists": {"answer": True},
+                "agreement_type": {"answer": "AST"},
+                "tenancy_start_date": {"answer": "2026-04-01"},
+                "tenant_or_occupier_name": {"answer": "Tenant One"},
+                "signed_by_parties": {"answer": True},
+                "declaration_confirmed": {"answer": False},
+            },
+        ),
+    )
+    with patch.object(route.database, "get_db", return_value=db):
+        with patch.object(route, "create_compliance_evidence_record", create_mock):
+            with pytest.raises(HTTPException) as ei:
+                await route.post_compliance_evidence(
+                    property_id="p1",
+                    requirement_id="rta",
+                    body=body,
+                    request=_req(),
+                    user={"client_id": "c1", "portal_user_id": "u1"},
+                )
+    assert ei.value.status_code == 400
+    assert ei.value.detail["code"] == "TENANCY_AGREEMENT_STRUCTURED_DECLARATION_INVALID"
+    create_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_post_tenancy_agreement_requires_fields_when_agreement_exists_yes():
+    db = MagicMock()
+    db.requirements.find_one = AsyncMock(return_value=_tenancy_agreement_requirement_row())
+    create_mock = AsyncMock()
+    body = route.CreateEvidenceRequest(
+        evidence_mode="STRUCTURED_DECLARATION",
+        structured_declaration=route.StructuredDeclarationBody(
+            declaration_statement="Tenancy agreement record",
+            structured_fields={
+                "agreement_exists": {"answer": True},
+                "agreement_type": {"answer": ""},
+                "tenancy_start_date": {"answer": "2026-04-01"},
+                "tenant_or_occupier_name": {"answer": "Tenant One"},
+                "signed_by_parties": {"answer": True},
+                "declaration_confirmed": {"answer": True},
+            },
+        ),
+    )
+    with patch.object(route.database, "get_db", return_value=db):
+        with patch.object(route, "create_compliance_evidence_record", create_mock):
+            with pytest.raises(HTTPException) as ei:
+                await route.post_compliance_evidence(
+                    property_id="p1",
+                    requirement_id="rta",
+                    body=body,
+                    request=_req(),
+                    user={"client_id": "c1", "portal_user_id": "u1"},
+                )
+    assert ei.value.status_code == 400
+    assert ei.value.detail["code"] == "TENANCY_AGREEMENT_STRUCTURED_DECLARATION_INVALID"
+    create_mock.assert_not_called()
 
 
 @pytest.mark.asyncio

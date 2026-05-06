@@ -9,6 +9,7 @@ import { normalizeRequirementCode } from '../domain/presentDomain';
 import { validateLeadTestingStructuredDeclarationFields } from '../utils/leadTestingStructuredValidation';
 import { validateLegionellaStructuredDeclarationFields } from '../utils/legionellaStructuredValidation';
 import { validateWalesOccupationContractStructuredDeclarationFields } from '../utils/walesOccupationContractStructuredValidation';
+import { validateTenancyAgreementStructuredDeclarationFields } from '../utils/tenancyAgreementStructuredValidation';
 import {
   evaluateStructuredDeclarationConditionalRules,
   RIGHT_TO_RENT_STRUCTURED_DECLARATION_CONDITIONAL_RULES,
@@ -137,6 +138,7 @@ export default function ComplianceEvidenceResolveModal({
   const isWalesOccupationFamily = reqSlug === 'wales_occupation_contract' || (reqSlug === 'occupation_contract' && reqJur === 'wales');
   const isLegionella = reqSlug === 'legionella';
   const isLeadTesting = canonicalReqCode === 'lead_testing';
+  const isTenancyAgreement = canonicalReqCode === 'tenancy_agreement';
   const selectedMethod = (info?.guided_methods || []).find((x) => x.evidence_mode === selectedMode) || null;
   const selectedChecklistSchema = Array.isArray(selectedMethod?.checklist_schema) ? selectedMethod.checklist_schema : [];
 
@@ -255,6 +257,12 @@ export default function ComplianceEvidenceResolveModal({
           mergedErrors.push(leadErr);
         }
       }
+      if (isTenancyAgreement) {
+        const taErr = validateTenancyAgreementStructuredDeclarationFields(structuredPayload);
+        if (taErr) {
+          mergedErrors.push(taErr);
+        }
+      }
       if (mergedErrors.length > 0) {
         const mergedMessage = mergedErrors.join('\n');
         setStructuredValidationError(mergedMessage);
@@ -330,6 +338,11 @@ export default function ComplianceEvidenceResolveModal({
               <>
                 Use the structured record as the main Legionella assessment evidence. The Documents page (or “Upload
                 assessment report” on the requirement) is for optional supporting files only.
+              </>
+            ) : isGuidedDeclaration && isTenancyAgreement ? (
+              <>
+                Use the structured tenancy record as the primary evidence. The Documents page (or "Upload signed
+                agreement" on the requirement) is for optional supporting files only.
               </>
             ) : isGuidedDeclaration ? (
               <>
@@ -446,6 +459,8 @@ export default function ComplianceEvidenceResolveModal({
               <p className="text-sm font-medium text-midnight-blue">
                 {isTenantDelivery
                   ? 'Upload delivery proof (optional)'
+                  : isGuidedDeclaration && isTenancyAgreement
+                    ? 'Upload signed agreement (optional)'
                   : isGuidedDeclaration
                     ? 'Upload supporting evidence (optional)'
                     : 'Supporting evidence uploads'}
@@ -453,6 +468,8 @@ export default function ComplianceEvidenceResolveModal({
               <p className="text-xs text-gray-600">
                 {isTenantDelivery
                   ? 'Attach emails, scans, or references that support your delivery record. These are reviewed as supporting material.'
+                  : isGuidedDeclaration && isTenancyAgreement
+                    ? 'Attach the signed agreement copy as supporting material after recording tenancy details.'
                   : isGuidedDeclaration
                     ? 'Attach copies or scans that support your check record. These are reviewed as supporting material only.'
                     : 'Supporting files improve verification confidence and are linked to this evidence record.'}

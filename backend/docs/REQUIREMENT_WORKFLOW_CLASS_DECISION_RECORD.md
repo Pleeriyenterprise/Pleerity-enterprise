@@ -216,6 +216,20 @@ See §1.2. Normalization **must** remain the single entry point so aliases do no
 - `LEAD_TESTING_EXTERNAL_ASSESSMENT_DOCUMENT_ONLY`
 - `LEAD_TESTING_UNSUPPORTED_JURISDICTION`
 
+### 2.14 Phase 1 — Tenancy agreement (`tenancy_agreement`) — `GUIDED_DECLARATION` (implemented)
+
+**Scope:** Tenancy agreement record-keeping where existing planner/catalog already materialises `tenancy_agreement`. No scoring formula changes, no jurisdiction-rule changes, and no tenant entity linkage in Phase 1.
+
+**Runtime class:** `workflow_class` = **`GUIDED_DECLARATION`** when `primary_resolution_workflow` is **`GUIDED_DECLARATION`** on effective evidence policy.
+
+**Evidence modes (defaults):** **`STRUCTURED_DECLARATION`** first (primary tenancy record), **`DOCUMENT_UPLOAD`** second (supporting signed-agreement copy only). This is **not** a certificate-style workflow. Legacy document-only evidence remains display-safe; published overrides that allow only `DOCUMENT_UPLOAD` raise admin audit flag **`TENANCY_AGREEMENT_GUIDED_DECLARATION_DOCUMENT_ONLY`**.
+
+**Structured fields:** agreement exists; agreement type; tenancy start date; tenant/occupier name; signed by parties; optional rent amount; optional fixed-term end date; declaration confirmed.
+
+**Client copy:** Primary CTA — **“Record tenancy agreement”**; secondary document path — **“Upload signed agreement”**; modal title matches. Client disclosure states this is platform compliance tracking and does not replace legal verification/advice.
+
+**Validation (new structured submissions):** declaration confirmation required; if agreement exists = yes, agreement type + tenancy start date + tenant/occupier name + signed-by-parties required.
+
 ---
 
 ## 3. Proposed workflow classes (definitions)

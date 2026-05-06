@@ -32,6 +32,26 @@ def test_hmo_licence_variants_share_display():
     assert a["short_name"] == "HMO Licensing"
 
 
+def test_wales_occupation_contract_display_is_canonical():
+    ta = {"primary": {"label": "Record delivery", "kind": "guided_evidence_resolution"}, "secondary": None}
+    a = build_requirement_display({"requirement_type": "occupation_contract", "take_action": ta})
+    b = build_requirement_display({"requirement_type": "wales_occupation_contract", "take_action": ta})
+    assert a["canonical_name"] == "Occupation Contract (Wales)"
+    assert b["canonical_name"] == "Occupation Contract (Wales)"
+    assert a["short_name"] == b["short_name"] == "Occupation Contract"
+
+
+def test_scotland_landlord_registration_display_is_consistent():
+    d = build_requirement_display(
+        {
+            "requirement_type": "scotland_landlord_registration",
+            "take_action": {"primary": {"label": "Review registration", "kind": "view_requirement"}, "secondary": None},
+        }
+    )
+    assert d["canonical_name"] == "Landlord Registration (Scotland)"
+    assert d["short_name"] == "Scottish Landlord Registration"
+
+
 def test_hmo_fire_description_not_in_title():
     row = {
         "requirement_type": "hmo_fire_risk_evidence",

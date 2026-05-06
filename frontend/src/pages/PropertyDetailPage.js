@@ -57,7 +57,7 @@ import {
   workOrderKindClientLabel,
 } from '../utils/jobWorkflowUi';
 import {
-  requirementDisplayTitle,
+  requirementTitleFromRow,
   requirementLabel,
   normalizeRequirementCode,
   documentTypeLabel,
@@ -67,6 +67,7 @@ import {
   predictiveIssueStatusLabel,
 } from '../domain/presentDomain';
 import {
+  buildNeedsAttentionSubset,
   isRequirementMissingDocument,
   listRequirementsMissingDocumentsSorted,
   sortRequirementsCriticalityThenTitle,
@@ -1036,16 +1037,8 @@ export default function PropertyDetailPage() {
     return diff;
   };
   const isMatrixRow = (r) => r.title != null || r.requirement_code != null;
-  const rowTitle = (r) =>
-    requirementDisplayTitle(r?.requirement_display, 'detail') ||
-    requirementDisplayTitle(r?.requirement_display, 'compact') ||
-    r?.title ||
-    (r?.requirement_code || r?.requirement_type
-      ? requirementLabel(r.requirement_code || r.requirement_type)
-      : null) ||
-    r?.description ||
-    r?.name ||
-    '—';
+  const rowTitle = (r) => requirementTitleFromRow(r, 'detail');
+  const rowCompactTitle = (r) => requirementTitleFromRow(r, 'compact');
   const rowExpiry = (r) => r.expiry_date || r.due_date;
   const rowDays = (r) => (r.days_to_expiry != null ? r.days_to_expiry : daysLeft(rowExpiry(r)));
   const rowReqId = (r) => r.requirement_id || r.id;
@@ -1144,19 +1137,15 @@ export default function PropertyDetailPage() {
   /** Same urgent rules as before, sorted like the obligations matrix (single source: `requirements`). */
   const urgentRequirementsOrdered = useMemo(() => {
     const scoped = getTrackedRequirementsForProperty(propertyId, requirements);
-    const filtered = scoped.filter((r) => {
-      const s = (r.status || '').toUpperCase();
-      const awaitingVerification = s === 'PENDING' && !!r.evidence_doc_id;
-      return (
-        s === 'OVERDUE' ||
-        s === 'EXPIRED' ||
-        (s === 'EXPIRING_SOON' && (r.days_to_expiry == null || r.days_to_expiry <= 30)) ||
-        isRequirementMissingDocument(r) ||
-        awaitingVerification
-      );
-    });
-    return sortRequirementsAttentionOrder(filtered, (r) => r.expiry_date || r.due_date);
+    return sortRequirementsAttentionOrder(scoped, (r) => r.expiry_date || r.due_date);
   }, [propertyId, requirements]);
+  const NEEDS_ATTENTION_CAP = 8;
+  const urgentNeedsAttention = useMemo(
+    () => buildNeedsAttentionSubset(urgentRequirementsOrdered, (r) => r.expiry_date || r.due_date, NEEDS_ATTENTION_CAP),
+    [urgentRequirementsOrdered],
+  );
+  const urgentRequirementsCapped = urgentNeedsAttention.items;
+  const urgentRequirementsOverflow = urgentNeedsAttention.overflowCount;
 
   /** Same filter and order as Compliance → Missing documents (PENDING / MISSING, criticality first). */
   const requirementsMissingDocuments = useMemo(
@@ -1599,7 +1588,7 @@ export default function PropertyDetailPage() {
                       </span>
                     </div>
                     <p className="font-medium text-midnight-blue leading-snug">
-                      {compliancePriorityRecommendedNext(requirements, urgentRequirementsOrdered, rowTitle)}
+                      {compliancePriorityRecommendedNext(requirements, urgentRequirementsCapped, rowTitle)}
                     </p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button type="button" variant={complianceStatusFilter === '' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === '' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('')}>
@@ -1865,16 +1854,16 @@ export default function PropertyDetailPage() {
                 </Card>
               )}
 
-              {urgentRequirementsOrdered.length > 0 && (
+              {urgentNeedsAttention.total > 0 && (
                 <Card className="border-amber-200 bg-amber-50/30">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Needs attention now</CardTitle>
                     <CardDescription>
-                      The same requirements as in the table below — filtered to overdue, expiring within 30 days, no document on file, or awaiting confirmation.
+                      Priority subset only — overdue, expired, high-risk missing evidence, expiring soon, follow-up due, then incomplete required evidence.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {urgentRequirementsOrdered.slice(0, 10).map((r, i) => {
+                    {urgentRequirementsCapped.map((r, i) => {
                       const complianceDomId = rowReqId(r) || `rc:${propertyId}:${normalizeRequirementCode(r.requirement_code || r.requirement_type || `u${i}`)}`;
                       const rid = String(complianceDomId);
                       const statusUi = getStatus(r);
@@ -1890,7 +1879,7 @@ export default function PropertyDetailPage() {
                         <div key={rid} className="rounded border border-amber-200 bg-white overflow-hidden">
                           <div className="flex flex-wrap items-center justify-between gap-2 p-3">
                             <div className="min-w-0">
-                              <p className="font-medium text-midnight-blue">{rowTitle(r)}</p>
+                              <p className="font-medium text-midnight-blue">{rowCompactTitle(r)}</p>
                               <p className="text-sm text-gray-600 mt-0.5">
                                 <span className="font-medium text-midnight-blue">{stdStatus}</span>
                                 <span className="text-gray-400"> · </span>
@@ -1995,6 +1984,22 @@ export default function PropertyDetailPage() {
                         </div>
                       );
                     })}
+                    {urgentRequirementsOverflow > 0 ? (
+                      <p className="text-sm text-gray-700 pt-1">
+                        {urgentRequirementsOverflow} more requirements need evidence.{' '}
+                        <button
+                          type="button"
+                          className="text-electric-teal font-medium hover:underline"
+                          onClick={() => {
+                            setComplianceStatusFilter('');
+                            const el = document.querySelector('[data-testid="property-compliance-panel"]');
+                            el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }}
+                        >
+                          View all requirements.
+                        </button>
+                      </p>
+                    ) : null}
                   </CardContent>
                 </Card>
               )}
@@ -2042,10 +2047,7 @@ export default function PropertyDetailPage() {
                             >
                               <td className="p-3 font-medium text-midnight-blue">{rowTitle(r)}</td>
                               <td className="p-3 text-gray-600">
-                                {r.requirement_code || r.requirement_type
-                                  ? requirementDisplayTitle(r.requirement_display, 'compact') ||
-                                    requirementLabel(r.requirement_code || r.requirement_type)
-                                  : '—'}
+                                {r.requirement_display?.category_label || r.category || '—'}
                               </td>
                               <td className="p-3">
                                 <div>

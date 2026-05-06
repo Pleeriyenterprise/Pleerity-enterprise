@@ -143,6 +143,41 @@ def _status_upper(st: Optional[str]) -> str:
     return (st or "").strip().upper()
 
 
+def _truthy_yes(v: Any) -> bool:
+    return str(v or "").strip().lower() in {"yes", "true", "1", "y"}
+
+
+def _structured_answer(structured_fields: Dict[str, Any], field_id: str) -> Any:
+    if not isinstance(structured_fields, dict):
+        return None
+    node = structured_fields.get(field_id)
+    if isinstance(node, dict):
+        return node.get("answer")
+    return None
+
+
+def _derive_tenancy_agreement_status_text(records: List[Dict[str, Any]]) -> str:
+    active = [r for r in (records or []) if str(r.get("status") or "").strip().upper() not in {"REJECTED", "ARCHIVED"}]
+    has_upload = any(str(r.get("evidence_mode") or "").strip().upper() == "DOCUMENT_UPLOAD" for r in active)
+    structured = [
+        r
+        for r in active
+        if str(r.get("evidence_mode") or "").strip().upper() == "STRUCTURED_DECLARATION"
+    ]
+    if not structured:
+        return "Agreement not recorded — action required"
+    latest = structured[0]
+    payload = latest.get("evidence_payload") if isinstance(latest.get("evidence_payload"), dict) else {}
+    fields = payload.get("structured_fields") if isinstance(payload.get("structured_fields"), dict) else {}
+    if not _truthy_yes(_structured_answer(fields, "agreement_exists")):
+        return "Agreement not recorded — action required"
+    if not has_upload:
+        return "Supporting agreement not uploaded"
+    if _truthy_yes(_structured_answer(fields, "signed_by_parties")):
+        return "Agreement recorded — signed"
+    return "Agreement recorded — unsigned"
+
+
 def evidence_state_from_document_statuses(statuses: List[str]) -> str:
     """Aggregate document statuses for one requirement_id (status strings only; legacy callers)."""
     if not statuses:
@@ -519,6 +554,10 @@ def enrich_requirement_dict(
             out["evidence_completeness"] = project_evidence_completeness_for_client(comp_eval)
     else:
         out["evidence_completeness"] = None
+    if _canon == "tenancy_agreement":
+        out["tenancy_agreement_status_text"] = _derive_tenancy_agreement_status_text(
+            compliance_evidence_records if compliance_evidence_records is not None else []
+        )
 
     if _is_active_standard and isinstance(out.get("active_standard_status_summary"), dict):
         out["active_standard_status_summary"]["read_only"] = True
@@ -606,21 +645,21 @@ async def enrich_requirements_for_client(
         property_ids=sorted(active_standard_props),
     ) if active_standard_props else {}
 
-    domestic_rids = [
+    evidence_rids = [
         str(r["requirement_id"])
         for r in requirements
         if r.get("requirement_id")
         and normalize_requirement_code(
             str(r.get("requirement_code") or r.get("requirement_type") or "").strip()
         )
-        == "smoke_heat_alarms"
+        in {"smoke_heat_alarms", "tenancy_agreement"}
     ]
     cer_by_rid: Dict[str, List[Dict[str, Any]]] = {}
-    if domestic_rids:
+    if evidence_rids:
         from services.compliance_evidence_record_service import batch_list_evidence_records_for_requirements
 
         cer_by_rid = await batch_list_evidence_records_for_requirements(
-            db, client_id=client_id, requirement_ids=domestic_rids
+            db, client_id=client_id, requirement_ids=evidence_rids
         )
 
     enriched = []
@@ -726,19 +765,19 @@ async def enrich_requirements_for_admin(
         for pid, summary in rows.items():
             active_summary_by_client_prop[(cid, pid)] = summary
 
-    domestic_by_client: Dict[str, List[str]] = defaultdict(list)
+    evidence_by_client: Dict[str, List[str]] = defaultdict(list)
     for r in requirements:
         cid = r.get("client_id")
         rid = r.get("requirement_id")
         code = str(r.get("requirement_code") or r.get("requirement_type") or "").strip()
-        if cid and rid and normalize_requirement_code(code) == "smoke_heat_alarms":
-            domestic_by_client[str(cid)].append(str(rid))
+        if cid and rid and normalize_requirement_code(code) in {"smoke_heat_alarms", "tenancy_agreement"}:
+            evidence_by_client[str(cid)].append(str(rid))
 
     cer_by_client_rid: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
-    if domestic_by_client:
+    if evidence_by_client:
         from services.compliance_evidence_record_service import batch_list_evidence_records_for_requirements
 
-        for cid, rids in domestic_by_client.items():
+        for cid, rids in evidence_by_client.items():
             cer_by_client_rid[cid] = await batch_list_evidence_records_for_requirements(
                 db, client_id=cid, requirement_ids=rids
             )

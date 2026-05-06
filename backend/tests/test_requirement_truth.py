@@ -166,6 +166,38 @@ def test_enrich_how_to_rent_client_includes_disclosure_no_audit_diagnostics():
         assert k not in r
 
 
+def test_enrich_tenancy_agreement_projects_status_text_from_structured_record():
+    from services.requirement_truth import EVIDENCE_MISSING, enrich_requirement_dict
+
+    r = enrich_requirement_dict(
+        {
+            "requirement_id": "r-ta",
+            "property_id": "p1",
+            "requirement_type": "tenancy_agreement",
+            "requirement_code": "tenancy_agreement",
+            "compliance_requirement_class": "OBLIGATION",
+            "status": "COMPLIANT",
+            "applicability": "REQUIRED",
+        },
+        EVIDENCE_MISSING,
+        audience="client",
+        compliance_evidence_records=[
+            {
+                "evidence_mode": "STRUCTURED_DECLARATION",
+                "status": "SUBMITTED",
+                "evidence_payload": {
+                    "structured_fields": {
+                        "agreement_exists": {"answer": True},
+                        "signed_by_parties": {"answer": False},
+                    }
+                },
+            }
+        ],
+    )
+    assert r.get("workflow_class") == "GUIDED_DECLARATION"
+    assert r.get("tenancy_agreement_status_text") == "Supporting agreement not uploaded"
+
+
 def test_enrich_active_standard_includes_disclosure_and_read_only_summary():
     from services.requirement_truth import EVIDENCE_MISSING, enrich_requirement_dict
 

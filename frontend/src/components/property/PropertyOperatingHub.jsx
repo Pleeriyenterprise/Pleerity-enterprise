@@ -5,7 +5,7 @@ import { toast } from '@/utils/portalNotifications';
 import { clientAPI } from '../../api/client';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { requirementLabel } from '../../domain/presentDomain';
+import { requirementTitleFromRow } from '../../domain/presentDomain';
 import { getEvidenceStatus } from '../../utils/evidenceStatus';
 import { humanRiskType, humanSeverity, humanAction } from '../../utils/riskPresentation';
 import { buildEntityRoute, resolveClientPortalPath, resolveDocumentsPath } from '../../utils/clientPortalNavigation';
@@ -54,13 +54,7 @@ function rowReqId(r) {
 }
 
 function rowTitle(r) {
-  return (
-    r?.title ||
-    (r?.requirement_code || r?.requirement_type ? requirementLabel(r.requirement_code || r.requirement_type) : null) ||
-    r?.description ||
-    r?.name ||
-    '—'
-  );
+  return requirementTitleFromRow(r, 'compact');
 }
 
 function rowDays(r) {

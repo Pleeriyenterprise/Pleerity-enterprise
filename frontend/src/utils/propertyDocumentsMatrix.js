@@ -2,7 +2,7 @@
  * Single source of truth for property Compliance ↔ Documents matrix behaviour:
  * missing-document detection, criticality ordering, and shared sorts.
  */
-import { requirementLabel } from '../domain/presentDomain';
+import { requirementTitleFromRow } from '../domain/presentDomain';
 
 /**
  * True when a file still needs to be supplied (not awaiting verification on an uploaded file).
@@ -23,13 +23,7 @@ export function requirementCriticalityRank(r) {
 }
 
 function defaultRowTitle(r) {
-  return (
-    r?.title ||
-    (r?.requirement_code || r?.requirement_type ? requirementLabel(r.requirement_code || r.requirement_type) : null) ||
-    r?.description ||
-    r?.name ||
-    '—'
-  );
+  return requirementTitleFromRow(r, 'detail');
 }
 
 /**
@@ -54,10 +48,18 @@ export function listRequirementsMissingDocumentsSorted(requirements) {
  */
 export function requirementAttentionStatusRank(r) {
   const u = String(r?.status || '').toUpperCase();
-  if (u === 'OVERDUE' || u === 'EXPIRED') return 0;
-  if (isRequirementMissingDocument(r)) return 1;
-  if (u === 'PENDING' && r?.evidence_doc_id) return 2;
+  const isHighRiskMissingEvidence = isRequirementMissingDocument(r) && requirementCriticalityRank(r) === 0;
+  const wf = String(r?.workflow_class || '').toUpperCase();
+  const evidenceSummary = String(r?.evidence_completeness?.summary_label || '').toUpperCase();
+  const incompleteRequiredEvidence =
+    wf === 'MULTI_EVIDENCE' || (evidenceSummary && evidenceSummary !== 'COMPLETE');
+  if (u === 'OVERDUE') return 0;
+  if (u === 'EXPIRED' || u === 'FAILED') return 1;
+  if (isHighRiskMissingEvidence) return 2;
   if (u === 'EXPIRING_SOON') return 3;
+  if (u === 'PENDING' && r?.evidence_doc_id) return 4;
+  if (incompleteRequiredEvidence) return 5;
+  if (isRequirementMissingDocument(r)) return 6;
   return 9;
 }
 
@@ -69,4 +71,37 @@ export function sortRequirementsAttentionOrder(requirements, rowExpiry) {
       requirementCriticalityRank(a) - requirementCriticalityRank(b) ||
       String(exp(a)).localeCompare(String(exp(b))),
   );
+}
+
+/**
+ * Needs-attention priority subset (not the full register).
+ * Order: overdue, expired, high-risk missing evidence, expiring soon,
+ * follow-up due, incomplete required evidence, then remaining missing evidence.
+ */
+export function buildNeedsAttentionSubset(requirements, rowExpiry, cap = 8) {
+  const filtered = (Array.isArray(requirements) ? requirements : []).filter((r) => {
+    const s = String(r?.status || '').toUpperCase();
+    const followUpDue = s === 'PENDING' && !!r?.evidence_doc_id;
+    const wf = String(r?.workflow_class || '').toUpperCase();
+    const evidenceSummary = String(r?.evidence_completeness?.summary_label || '').toUpperCase();
+    const incompleteRequiredEvidence =
+      wf === 'MULTI_EVIDENCE' || (evidenceSummary && evidenceSummary !== 'COMPLETE');
+    return (
+      s === 'OVERDUE' ||
+      s === 'EXPIRED' ||
+      s === 'FAILED' ||
+      s === 'EXPIRING_SOON' ||
+      isRequirementMissingDocument(r) ||
+      followUpDue ||
+      incompleteRequiredEvidence
+    );
+  });
+  const ordered = sortRequirementsAttentionOrder(filtered, rowExpiry);
+  const normalizedCap = Math.max(1, Number(cap || 8));
+  const items = ordered.slice(0, normalizedCap);
+  return {
+    items,
+    total: ordered.length,
+    overflowCount: Math.max(0, ordered.length - items.length),
+  };
 }

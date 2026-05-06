@@ -337,6 +337,64 @@ WALES_OCCUPATION_CONTRACT_DECLARATION_REQUIRED_MESSAGE = (
 WALES_OCCUPATION_CONTRACT_ISSUED_FIELD_REQUIRED_MESSAGE = (
     "Complete issue date, contract-holder name, and service method when the occupation contract is issued."
 )
+TENANCY_AGREEMENT_STRUCTURED_DECLARATION_INVALID = "TENANCY_AGREEMENT_STRUCTURED_DECLARATION_INVALID"
+TENANCY_AGREEMENT_DECLARATION_REQUIRED_MESSAGE = (
+    "Confirm that your tenancy agreement declaration is accurate to continue."
+)
+TENANCY_AGREEMENT_DETAILS_REQUIRED_MESSAGE = (
+    "Complete agreement type, tenancy start date, tenant/occupier name, and signed-by-parties when an agreement exists."
+)
+
+_TENANCY_AGREEMENT_SCHEMA: List[Dict[str, Any]] = [
+    {
+        "id": "agreement_exists",
+        "label": "Tenancy agreement exists",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+    {
+        "id": "agreement_type",
+        "label": "Agreement type",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "tenancy_start_date",
+        "label": "Tenancy start date",
+        "answer_type": "DATE",
+        "required": False,
+    },
+    {
+        "id": "tenant_or_occupier_name",
+        "label": "Tenant / occupier name",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "signed_by_parties",
+        "label": "Signed by parties",
+        "answer_type": "YES_NO",
+        "required": False,
+    },
+    {
+        "id": "rent_amount",
+        "label": "Rent amount (optional)",
+        "answer_type": "TEXT",
+        "required": False,
+    },
+    {
+        "id": "fixed_term_end_date",
+        "label": "Fixed term end date (optional)",
+        "answer_type": "DATE",
+        "required": False,
+    },
+    {
+        "id": "declaration_confirmed",
+        "label": "I confirm this tenancy agreement record is accurate to the best of my knowledge",
+        "answer_type": "YES_NO",
+        "required": True,
+    },
+]
 LEGIONELLA_DECLARATION_REQUIRED = "LEGIONELLA_DECLARATION_REQUIRED"
 LEGIONELLA_ASSESSMENT_DATE_REQUIRED = "LEGIONELLA_ASSESSMENT_DATE_REQUIRED"
 LEGIONELLA_RISK_LEVEL_REQUIRED = "LEGIONELLA_RISK_LEVEL_REQUIRED"
@@ -592,6 +650,26 @@ DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE: Dict[str, Dict[str, Any]] = {
             EVIDENCE_MODE_STRUCTURED_DECLARATION: list(_WALES_OCCUPATION_CONTRACT_SCHEMA),
         },
     },
+    "tenancy_agreement": {
+        "allowed_evidence_modes": [
+            EVIDENCE_MODE_STRUCTURED_DECLARATION,
+            EVIDENCE_MODE_DOCUMENT_UPLOAD,
+        ],
+        "primary_resolution_workflow": GUIDED_DECLARATION_WORKFLOW,
+        "guided_primary_cta_label": "Record tenancy agreement",
+        "guided_secondary_upload_label": "Upload signed agreement",
+        "modal_title": "Record tenancy agreement",
+        "allow_medium_non_document_satisfaction": True,
+        "allow_low_non_document_satisfaction": False,
+        "supporting_upload_recommended": True,
+        "client_evidence_disclosure": (
+            "This records tenancy agreement details for platform compliance tracking. "
+            "It does not replace legal advice or constitute legal verification."
+        ),
+        "checklist_schema_by_mode": {
+            EVIDENCE_MODE_STRUCTURED_DECLARATION: list(_TENANCY_AGREEMENT_SCHEMA),
+        },
+    },
 }
 
 # Registration tracking defaults (per slug copy — safe for independent published-registry overrides).
@@ -753,6 +831,21 @@ def validate_wales_occupation_contract_structured_declaration_fields(
         for fid in ("issue_date", "contract_holder_name", "service_method"):
             if not _non_empty_structured_answer(structured_fields, fid):
                 return WALES_OCCUPATION_CONTRACT_ISSUED_FIELD_REQUIRED_MESSAGE
+    return None
+
+
+def validate_tenancy_agreement_structured_declaration_fields(
+    structured_fields: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    if not _truthy_yes_answer(_structured_field_answer(structured_fields, "declaration_confirmed")):
+        return TENANCY_AGREEMENT_DECLARATION_REQUIRED_MESSAGE
+    agreement_exists = _truthy_yes_answer(_structured_field_answer(structured_fields, "agreement_exists"))
+    if agreement_exists:
+        for fid in ("agreement_type", "tenancy_start_date", "tenant_or_occupier_name"):
+            if not _non_empty_structured_answer(structured_fields, fid):
+                return TENANCY_AGREEMENT_DETAILS_REQUIRED_MESSAGE
+        if _structured_field_answer(structured_fields, "signed_by_parties") is None:
+            return TENANCY_AGREEMENT_DETAILS_REQUIRED_MESSAGE
     return None
 
 
