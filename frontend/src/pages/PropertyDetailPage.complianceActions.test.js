@@ -66,9 +66,9 @@ describe('PropertyDetailPage compliance action surfaces', () => {
       primary: {
         label: 'Resolve requirement',
         route: null,
-        kind: 'guided',
+        kind: 'guided_evidence_resolution',
         handler: 'guided_evidence',
-        intent: 'guided_evidence',
+        intent: 'guided_evidence_resolution',
         property_id: 'prop-1',
         requirement_id: 'req-guided',
       },
@@ -106,14 +106,14 @@ describe('PropertyDetailPage compliance action surfaces', () => {
     expect(mockOpenGuidedEvidence).toHaveBeenCalledTimes(2);
   });
 
-  it('does not silently fall back to upload when guided metadata is broken', async () => {
+  it('uses row property/requirement ids when guided primary omits metadata (parity with Requirements page)', async () => {
     const brokenGuided = {
       primary: {
         label: 'Resolve requirement',
         route: null,
-        kind: 'guided',
+        kind: 'guided_evidence_resolution',
         handler: 'guided_evidence',
-        intent: 'guided_evidence',
+        intent: 'guided_evidence_resolution',
       },
     };
 
@@ -128,8 +128,39 @@ describe('PropertyDetailPage compliance action surfaces', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Compliance' }));
 
     const matrixAction = await screen.findByTestId('compliance-matrix-action-req-broken');
-    expect(matrixAction).toBeDisabled();
+    expect(matrixAction).not.toBeDisabled();
     expect(matrixAction).toHaveTextContent('Resolve requirement');
+
+    fireEvent.click(matrixAction);
+    await waitFor(() => {
+      expect(mockOpenGuidedEvidence).toHaveBeenCalled();
+    });
+  });
+
+  it('disables guided CTA when property and requirement context are both missing from the row', async () => {
+    const brokenGuided = {
+      primary: {
+        label: 'Resolve requirement',
+        route: null,
+        kind: 'guided_evidence_resolution',
+        handler: 'guided_evidence',
+        intent: 'guided_evidence_resolution',
+      },
+    };
+    const row = { ...makeRequirement('req-broken', brokenGuided), property_id: undefined, requirement_id: undefined };
+
+    jest.spyOn(clientAPI, 'getComplianceDetail').mockResolvedValue({
+      data: { matrix: [row], kpis: {}, property_score: 0 },
+    });
+    jest.spyOn(clientAPI, 'getPropertyRequirements').mockResolvedValue({
+      data: { requirements: [row] },
+    });
+
+    render(<PropertyDetailPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Compliance' }));
+
+    const matrixAction = await screen.findByTestId('compliance-matrix-action-undefined');
+    expect(matrixAction).toBeDisabled();
 
     fireEvent.click(matrixAction);
     await waitFor(() => {

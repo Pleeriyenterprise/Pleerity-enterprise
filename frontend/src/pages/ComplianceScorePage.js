@@ -32,10 +32,12 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../com
 import { Skeleton } from '../components/ui/skeleton';
 import { recordClientPortalInteraction, resolveClientPortalPath } from '../utils/clientPortalNavigation';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
+import { requirementUsesServerTakeActionPrimary } from '../utils/requirementTakeActionResolver';
 import {
-  resolveRequirementAction,
-  requirementUsesServerTakeActionPrimary,
-} from '../utils/requirementTakeActionResolver';
+  executeRequirementPrimaryCta,
+  GUIDED_CTA_UNAVAILABLE_TITLE,
+  resolveRequirementActionWithRowContext,
+} from '../utils/requirementCtaParity';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 import { requirementDisplayTitle } from '../domain/presentDomain';
@@ -96,32 +98,25 @@ function ScoreDriverRemediationActions({ driver, requirements, navigate, openGui
     );
   }
 
-  const ta = resolveRequirementAction(req, {});
+  const ta = resolveRequirementActionWithRowContext(req, propertyId || null);
 
   const onPrimary = (e) => {
     e.stopPropagation();
-    if (ta.primary_action_handler === 'guided_evidence') {
-      openGuidedEvidence({
-        propertyId: propertyId,
-        requirementId: String(req.requirement_id),
-        requirement: req,
-        initialEvidenceMode: ta.guided_initial_evidence_mode || undefined,
-      });
-      return;
-    }
-    if (ta.primary_action_handler === 'external' && ta.primary_route) {
-      window.open(ta.primary_route, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    const route = ta.primary_route;
-    if (route) {
-      const target = resolveClientPortalPath(route, '/properties');
-      recordClientPortalInteraction('compliance_score_driver_canonical_primary', {
-        property_id: propertyId,
-        requirement_id: String(req.requirement_id),
-      });
-      navigate(target);
-    }
+    if (ta.primary_action_handler === 'guided_evidence_error') return;
+    executeRequirementPrimaryCta({
+      requirement: req,
+      pagePropertyId: propertyId || null,
+      navigate: (to) => {
+        const raw = typeof to === 'string' ? to : to?.pathname;
+        recordClientPortalInteraction('compliance_score_driver_canonical_primary', {
+          property_id: propertyId,
+          requirement_id: String(req.requirement_id),
+        });
+        navigate(resolveClientPortalPath(raw, '/properties'));
+      },
+      openGuidedEvidence,
+      guidedInitialOverride: ta.guided_initial_evidence_mode || undefined,
+    });
   };
 
   const onSecondary = (e) => {
@@ -143,7 +138,7 @@ function ScoreDriverRemediationActions({ driver, requirements, navigate, openGui
           variant="outline"
           size="sm"
           disabled
-          title="Guided resolution unavailable — missing property or requirement context."
+          title={GUIDED_CTA_UNAVAILABLE_TITLE}
           className="border-gray-200 text-gray-500 cursor-not-allowed"
           data-testid="score-driver-canonical-primary"
         >

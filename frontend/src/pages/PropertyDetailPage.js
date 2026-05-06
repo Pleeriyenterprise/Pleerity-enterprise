@@ -85,7 +85,11 @@ import {
   complianceObligationStatusLabel,
   compliancePriorityRecommendedNext,
 } from '../utils/complianceObligationPresent';
-import { resolveRequirementAction } from '../utils/requirementTakeActionResolver';
+import {
+  executeRequirementPrimaryCta,
+  GUIDED_CTA_UNAVAILABLE_TITLE,
+  resolveRequirementActionWithRowContext,
+} from '../utils/requirementCtaParity';
 import {
   clientFacingVerificationLabel,
   effectiveEvidenceReviewState,
@@ -170,7 +174,9 @@ export function PropertyDocumentsMissingRequirementList({
   rowTitle,
   rowReqId,
   maxItems = 25,
-  onOpenGuidedEvidence,
+  /** Same contract as GuidedEvidenceModalContext.openGuidedEvidence */
+  openGuidedEvidenceModal,
+  onSubmitted,
 }) {
   if (!items?.length) return null;
   const truncated = maxItems != null && items.length > maxItems;
@@ -186,7 +192,11 @@ export function PropertyDocumentsMissingRequirementList({
           rid && propertyId
             ? buildEntityRoute({ requirement_id: rid, property_id: propertyId, mode: 'requirement' }, '')
             : '';
-        const ta = resolveRequirementAction(r, {});
+        const ta = resolveRequirementActionWithRowContext(r, propertyId);
+        const docsHref = resolveDocumentsPath(propertyId, {
+          ...uploadQuery,
+          ...(ta.primary_intent === 'upload_evidence' ? { focus: 'upload' } : {}),
+        });
         return (
           <li
             key={rid || code || 'row'}
@@ -197,41 +207,29 @@ export function PropertyDocumentsMissingRequirementList({
               <p className="text-xs text-gray-500 mt-1">{getEvidenceStatus(r.status, r).text}</p>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
-              {ta.primary_action_handler === 'guided_evidence' && onOpenGuidedEvidence && rid ? (
-                <Button
-                  type="button"
-                  className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-10"
-                  onClick={() =>
-                    onOpenGuidedEvidence(r, { initialEvidenceMode: ta.guided_initial_evidence_mode || undefined })
-                  }
-                >
-                  {ta.primary_action_label}
-                </Button>
-              ) : ta.primary_action_handler === 'guided_evidence_error' ? (
-                <Button
-                  type="button"
-                  disabled
-                  title="Guided resolution unavailable — missing property or requirement context."
-                  className="bg-electric-teal/40 text-white min-h-10 cursor-not-allowed"
-                >
-                  {ta.primary_action_label}
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-10"
-                  onClick={() => {
-                    if (ta.primary_action_handler === 'external' && ta.primary_route) {
-                      window.open(ta.primary_route, '_blank', 'noopener,noreferrer');
-                      return;
-                    }
-                    const route = ta.primary_route;
-                    if (route) navigate(route);
-                  }}
-                >
-                  {ta.primary_action_label}
-                </Button>
-              )}
+              <Button
+                type="button"
+                className={
+                  ta.primary_action_handler === 'guided_evidence_error'
+                    ? 'bg-electric-teal/40 text-white min-h-10 cursor-not-allowed'
+                    : 'bg-electric-teal text-white hover:bg-electric-teal/90 min-h-10'
+                }
+                disabled={ta.primary_action_handler === 'guided_evidence_error'}
+                title={ta.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined}
+                onClick={() => {
+                  if (ta.primary_action_handler === 'guided_evidence_error') return;
+                  const { handled } = executeRequirementPrimaryCta({
+                    requirement: r,
+                    pagePropertyId: propertyId,
+                    navigate,
+                    openGuidedEvidence: openGuidedEvidenceModal,
+                    onSubmitted,
+                  });
+                  if (!handled && docsHref) navigate(docsHref);
+                }}
+              >
+                {ta.primary_action_label}
+              </Button>
               {ta.secondary_action?.route ? (
                 <Button
                   type="button"
@@ -347,6 +345,8 @@ export default function PropertyDetailPage() {
   const [complianceExplainabilityLoading, setComplianceExplainabilityLoading] = useState(false);
   const [priorityUrgentRaw, setPriorityUrgentRaw] = useState([]);
   const [urgentExplainOpenId, setUrgentExplainOpenId] = useState(null);
+  /** Deep-link: `/properties/:id?open=resolve&requirement_id=…` opens compliance tab + guided flow when data is ready. */
+  const [pendingComplianceResolve, setPendingComplianceResolve] = useState(null);
   const [operatingFeedItems, setOperatingFeedItems] = useState([]);
   const [operatingFeedLoading, setOperatingFeedLoading] = useState(false);
 
@@ -422,6 +422,34 @@ export default function PropertyDetailPage() {
       setRefreshing(false);
     }
   }, [propertyId]);
+
+  useEffect(() => {
+    const q = new URLSearchParams(location.search || '');
+    if (q.get('open') !== 'resolve') return;
+    const rid = q.get('requirement_id');
+    if (!rid || !propertyId) return;
+    const evMode = q.get('evidence_mode');
+    setActiveTab(TAB_COMPLIANCE);
+    setPendingComplianceResolve({ requirementId: rid, initialEvidenceMode: evMode || null });
+  }, [location.search, propertyId]);
+
+  useEffect(() => {
+    if (!pendingComplianceResolve || !propertyId) return;
+    const { requirementId, initialEvidenceMode } = pendingComplianceResolve;
+    if (!requirements.length) return;
+    const row = requirements.find((r) => String(r.requirement_id || r.id || '') === String(requirementId));
+    setPendingComplianceResolve(null);
+    navigate({ pathname: `/properties/${propertyId}`, search: '', hash: location.hash || '' }, { replace: true });
+    if (!row) return;
+    executeRequirementPrimaryCta({
+      requirement: row,
+      pagePropertyId: propertyId,
+      navigate,
+      openGuidedEvidence,
+      onSubmitted: fetchData,
+      guidedInitialOverride: initialEvidenceMode || null,
+    });
+  }, [pendingComplianceResolve, requirements, propertyId, navigate, location.hash, openGuidedEvidence, fetchData]);
 
   useEffect(() => {
     if (property?.property_id !== propertyId) return;
@@ -561,6 +589,8 @@ export default function PropertyDetailPage() {
     const aligned = filterInboxTasksForTrackedRequirements(priorityUrgentRaw, map);
     return { actions: aligned, total: aligned.length };
   }, [priorityUrgentRaw, requirements]);
+
+  const operatingHubPriorityRequirementsById = useMemo(() => requirementMapFromList(requirements), [requirements]);
 
   const loadAssets = useCallback(() => {
     if (!propertyId || (!hasFeature('maintenance_workflows') && !hasFeature('predictive_maintenance'))) return;
@@ -1042,6 +1072,25 @@ export default function PropertyDetailPage() {
   const rowExpiry = (r) => r.expiry_date || r.due_date;
   const rowDays = (r) => (r.days_to_expiry != null ? r.days_to_expiry : daysLeft(rowExpiry(r)));
   const rowReqId = (r) => r.requirement_id || r.id;
+
+  const runCompliancePrimaryCta = React.useCallback(
+    (r) => {
+      const taPre = resolveRequirementActionWithRowContext(r, propertyId);
+      const docsHref = resolveDocumentsPath(propertyId, {
+        requirement_id: rowReqId(r),
+        ...(taPre.primary_intent === 'upload_evidence' ? { focus: 'upload' } : {}),
+      });
+      const { handled } = executeRequirementPrimaryCta({
+        requirement: r,
+        pagePropertyId: propertyId,
+        navigate,
+        openGuidedEvidence,
+        onSubmitted: fetchData,
+      });
+      if (!handled && docsHref) navigate(docsHref);
+    },
+    [propertyId, navigate, openGuidedEvidence, fetchData],
+  );
 
   const evidenceDocStatusLabel = (doc) => {
     const reviewState = effectiveEvidenceReviewState(doc);
@@ -1555,6 +1604,7 @@ export default function PropertyDetailPage() {
           }}
           onPlanRestrictedJobError={(err, ctx) => openPlanRestrictedJobGate(err, setPlanJobGate, ctx)}
           onRefreshAfterEvidence={fetchData}
+          priorityTaskRequirementsById={operatingHubPriorityRequirementsById}
         />
       )}
 
@@ -1859,7 +1909,7 @@ export default function PropertyDetailPage() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Needs attention now</CardTitle>
                     <CardDescription>
-                      Priority subset only — overdue, expired, high-risk missing evidence, expiring soon, follow-up due, then incomplete required evidence.
+                      Operational triage (max {NEEDS_ATTENTION_CAP}) — statutory blockers first, then operational workflows, then supporting evidence. Same primary actions as the full matrix.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
@@ -1868,7 +1918,7 @@ export default function PropertyDetailPage() {
                       const rid = String(complianceDomId);
                       const statusUi = getStatus(r);
                       const stdStatus = complianceObligationStatusLabel(r);
-                      const taRow = resolveRequirementAction(r, {});
+                      const taRow = resolveRequirementActionWithRowContext(r, propertyId);
                       const explainOpen = urgentExplainOpenId === rid;
                       const explainPayload = canonicalComplianceInlineNarrative(r);
                       const docsHref = resolveDocumentsPath(propertyId, {
@@ -1927,22 +1977,11 @@ export default function PropertyDetailPage() {
                                 data-testid={taRow.primary_action_handler === 'guided_evidence' ? `compliance-urgent-guided-${rowReqId(r)}` : undefined}
                                 disabled={taRow.primary_action_handler === 'guided_evidence_error'}
                                 title={
-                                  taRow.primary_action_handler === 'guided_evidence_error'
-                                    ? 'Guided resolution unavailable — missing property or requirement context.'
-                                    : undefined
+                                  taRow.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined
                                 }
                                 onClick={() => {
                                   if (taRow.primary_action_handler === 'guided_evidence_error') return;
-                                  if (taRow.primary_action_handler === 'guided_evidence') {
-                                    openGuidedEvidence({
-                                      propertyId,
-                                      requirement: r,
-                                      onSubmitted: fetchData,
-                                      initialEvidenceMode: taRow.guided_initial_evidence_mode || undefined,
-                                    });
-                                    return;
-                                  }
-                                  navigate(taRow.primary_route || docsHref);
+                                  runCompliancePrimaryCta(r);
                                 }}
                               >
                                 {taRow.primary_action_label}
@@ -1986,7 +2025,7 @@ export default function PropertyDetailPage() {
                     })}
                     {urgentRequirementsOverflow > 0 ? (
                       <p className="text-sm text-gray-700 pt-1">
-                        {urgentRequirementsOverflow} more requirements need evidence.{' '}
+                        {urgentRequirementsOverflow} more requirements need review.{' '}
                         <button
                           type="button"
                           className="text-electric-teal font-medium hover:underline"
@@ -1996,7 +2035,7 @@ export default function PropertyDetailPage() {
                             el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                           }}
                         >
-                          View all requirements.
+                          View full compliance matrix.
                         </button>
                       </p>
                     ) : null}
@@ -2029,7 +2068,7 @@ export default function PropertyDetailPage() {
                         const impact = complianceImpactLabel(r);
                         const hasEvidence = !!r.evidence_doc_id;
                         const stdStatus = complianceObligationStatusLabel(r);
-                        const taRow = resolveRequirementAction(r, {});
+                        const taRow = resolveRequirementActionWithRowContext(r, propertyId);
                         const complianceDomId = rowReqId(r) || `rc:${propertyId}:${normalizeRequirementCode(r.requirement_code || r.requirement_type || `t${idx}`)}`;
                         const isMissing = isRequirementMissingDocument(r);
                         const explainPayload = canonicalComplianceInlineNarrative(r);
@@ -2074,23 +2113,12 @@ export default function PropertyDetailPage() {
                                     data-testid={`compliance-matrix-action-${rowReqId(r)}`}
                                     disabled={taRow.primary_action_handler === 'guided_evidence_error'}
                                     title={
-                                      taRow.primary_action_handler === 'guided_evidence_error'
-                                        ? 'Guided resolution unavailable — missing property or requirement context.'
-                                        : undefined
+                                      taRow.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined
                                     }
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (taRow.primary_action_handler === 'guided_evidence_error') return;
-                                      if (taRow.primary_action_handler === 'guided_evidence') {
-                                        openGuidedEvidence({
-                                          propertyId,
-                                          requirement: r,
-                                          onSubmitted: fetchData,
-                                          initialEvidenceMode: taRow.guided_initial_evidence_mode || undefined,
-                                        });
-                                        return;
-                                      }
-                                      navigate(taRow.primary_route || docsHref);
+                                      runCompliancePrimaryCta(r);
                                     }}
                                   >
                                     {taRow.primary_intent === 'upload_evidence' && taRow.primary_action_handler === 'navigate' ? (
@@ -2171,22 +2199,11 @@ export default function PropertyDetailPage() {
                                         variant="outline"
                                         disabled={taRow.primary_action_handler === 'guided_evidence_error'}
                                         title={
-                                          taRow.primary_action_handler === 'guided_evidence_error'
-                                            ? 'Guided resolution unavailable — missing property or requirement context.'
-                                            : undefined
+                                          taRow.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined
                                         }
                                         onClick={() => {
                                           if (taRow.primary_action_handler === 'guided_evidence_error') return;
-                                          if (taRow.primary_action_handler === 'guided_evidence') {
-                                            openGuidedEvidence({
-                                              propertyId,
-                                              requirement: r,
-                                              onSubmitted: fetchData,
-                                              initialEvidenceMode: taRow.guided_initial_evidence_mode || undefined,
-                                            });
-                                            return;
-                                          }
-                                          navigate(taRow.primary_route || docsHref);
+                                          runCompliancePrimaryCta(r);
                                         }}
                                       >
                                         {taRow.primary_action_label}
@@ -2227,7 +2244,7 @@ export default function PropertyDetailPage() {
                   const hasEvidence = !!r.evidence_doc_id;
                   const isMissing = isRequirementMissingDocument(r);
                   const stdStatus = complianceObligationStatusLabel(r);
-                  const taRow = resolveRequirementAction(r, {});
+                  const taRow = resolveRequirementActionWithRowContext(r, propertyId);
                   const complianceDomId = rowReqId(r) || `rc:${propertyId}:${normalizeRequirementCode(r.requirement_code || r.requirement_type || `m${idx}`)}`;
                   const docsHref = resolveDocumentsPath(propertyId, {
                     requirement_id: rowReqId(r),
@@ -2249,22 +2266,11 @@ export default function PropertyDetailPage() {
                           className="text-electric-teal border-electric-teal min-h-9"
                           disabled={taRow.primary_action_handler === 'guided_evidence_error'}
                           title={
-                            taRow.primary_action_handler === 'guided_evidence_error'
-                              ? 'Guided resolution unavailable — missing property or requirement context.'
-                              : undefined
+                            taRow.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined
                           }
                           onClick={() => {
                             if (taRow.primary_action_handler === 'guided_evidence_error') return;
-                            if (taRow.primary_action_handler === 'guided_evidence') {
-                              openGuidedEvidence({
-                                propertyId,
-                                requirement: r,
-                                onSubmitted: fetchData,
-                                initialEvidenceMode: taRow.guided_initial_evidence_mode || undefined,
-                              });
-                              return;
-                            }
-                            navigate(taRow.primary_route || docsHref);
+                            runCompliancePrimaryCta(r);
                           }}
                         >
                           {taRow.primary_action_label}
@@ -2987,12 +2993,13 @@ export default function PropertyDetailPage() {
                     rowTitle={rowTitle}
                     rowReqId={rowReqId}
                     maxItems={12}
-                    onOpenGuidedEvidence={(r, opts) =>
+                    onSubmitted={fetchData}
+                    openGuidedEvidenceModal={(p) =>
                       openGuidedEvidence({
                         propertyId,
-                        requirement: r,
-                        onSubmitted: fetchData,
-                        initialEvidenceMode: opts?.initialEvidenceMode,
+                        requirement: p.requirement,
+                        onSubmitted: p.onSubmitted || fetchData,
+                        initialEvidenceMode: p.initialEvidenceMode,
                       })
                     }
                   />

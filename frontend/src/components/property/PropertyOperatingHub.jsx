@@ -8,10 +8,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { requirementTitleFromRow } from '../../domain/presentDomain';
 import { getEvidenceStatus } from '../../utils/evidenceStatus';
 import { humanRiskType, humanSeverity, humanAction } from '../../utils/riskPresentation';
-import { buildEntityRoute, resolveClientPortalPath, resolveDocumentsPath } from '../../utils/clientPortalNavigation';
+import {
+  buildEntityRoute,
+  recordClientPortalInteraction,
+  resolveClientPortalPath,
+  resolveDocumentsPath,
+} from '../../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../../utils/ctaRegistry';
 import { useGuidedEvidenceModal } from '../../context/GuidedEvidenceModalContext';
-import { resolveRequirementAction } from '../../utils/requirementTakeActionResolver';
+import {
+  executeRequirementPrimaryCta,
+  GUIDED_CTA_UNAVAILABLE_TITLE,
+  resolveRequirementActionWithRowContext,
+} from '../../utils/requirementCtaParity';
+import { buildRequirementShapedRowFromPriorityTask } from '../../utils/taskRequirementRowAdapter';
+import { inboxTaskLinkedRequirementId } from '../../utils/portalRequirementAttention';
 import { resolveRiskSignalPrimaryKey } from '../../utils/primaryActionResolver';
 import { PORTAL_COPY } from '../../utils/clientPortalCopy';
 import { cn } from '../../lib/utils';
@@ -87,6 +98,8 @@ export default function PropertyOperatingHub({
   onCreateWoFromRiskDescription,
   onPlanRestrictedJobError,
   onRefreshAfterEvidence,
+  /** Map from {@link requirementMapFromList} — merges full requirement rows into priority-task CTAs. */
+  priorityTaskRequirementsById = null,
 }) {
   const navigate = useNavigate();
   const { openGuidedEvidence } = useGuidedEvidenceModal();
@@ -140,16 +153,16 @@ export default function PropertyOperatingHub({
                       : null) ||
                     action.primary_action_label ||
                     PORTAL_COPY.viewDetails;
-                  return (
-                    <li key={action.task_id || action.id} className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-midnight-blue">{action.title}</p>
-                        {action.description ? <p className="text-xs text-gray-600 mt-1 line-clamp-3">{action.description}</p> : null}
-                      </div>
+                  const reqRow = buildRequirementShapedRowFromPriorityTask(action, priorityTaskRequirementsById);
+                  const taReq = reqRow ? resolveRequirementActionWithRowContext(reqRow, propertyId) : null;
+
+                  const legacyPrimary = (
+                    <>
                       {cta.guidedEvidence ? (
                         <Button
                           type="button"
                           className={cn(portalPrimaryButtonClass, 'inline-flex w-full sm:w-auto justify-center shrink-0')}
+                          data-testid="property-priority-action-legacy-guided"
                           onClick={(e) => {
                             e.stopPropagation();
                             openGuidedEvidence({
@@ -166,13 +179,100 @@ export default function PropertyOperatingHub({
                         <Link
                           to={resolveClientPortalPath(cta.route, propertyId ? `/properties/${propertyId}` : '/properties')}
                           className={cn(portalPrimaryButtonClass, 'inline-flex w-full sm:w-auto justify-center no-underline shrink-0')}
+                          data-testid="property-priority-action-legacy-link"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {label}
                         </Link>
                       ) : (
-                        <span className="text-xs text-gray-500">No route — open Compliance or Jobs & issues.</span>
+                        <span
+                          className="text-xs text-gray-500"
+                          data-testid="property-priority-action-legacy-none"
+                        >
+                          No route — open Compliance or Jobs & issues.
+                        </span>
                       )}
+                    </>
+                  );
+
+                  const primaryControl =
+                    reqRow && taReq ? (
+                      taReq.primary_action_handler === 'guided_evidence_error' ? (
+                        <Button
+                          type="button"
+                          disabled
+                          title={GUIDED_CTA_UNAVAILABLE_TITLE}
+                          className={cn(
+                            portalPrimaryButtonClass,
+                            'inline-flex w-full sm:w-auto justify-center shrink-0 opacity-60 cursor-not-allowed',
+                          )}
+                          data-testid="property-priority-action-requirement-disabled"
+                          data-requirement-cta-parity="1"
+                        >
+                          {label}
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          className={cn(portalPrimaryButtonClass, 'inline-flex w-full sm:w-auto justify-center shrink-0')}
+                          data-testid="property-priority-action-requirement-primary"
+                          data-requirement-cta-parity="1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            recordClientPortalInteraction('operating_hub_do_this_next_requirement_primary', {
+                              property_id: propertyId,
+                              requirement_id: inboxTaskLinkedRequirementId(action),
+                              task_id: action.id || action.task_id,
+                            });
+                            const { handled } = executeRequirementPrimaryCta({
+                              requirement: reqRow,
+                              pagePropertyId: propertyId,
+                              navigate: (to) =>
+                                navigate(
+                                  resolveClientPortalPath(typeof to === 'string' ? to : to.pathname, '/properties'),
+                                ),
+                              openGuidedEvidence,
+                              onSubmitted: onRefreshAfterEvidence,
+                              guidedInitialOverride: taReq.guided_initial_evidence_mode || undefined,
+                            });
+                            if (!handled) {
+                              if (cta.guidedEvidence) {
+                                openGuidedEvidence({
+                                  propertyId: cta.guidedEvidence.propertyId,
+                                  requirementId: cta.guidedEvidence.requirementId,
+                                  onSubmitted: onRefreshAfterEvidence,
+                                  initialEvidenceMode: cta.guidedEvidence.initialEvidenceMode || undefined,
+                                });
+                              } else if (cta.route) {
+                                navigate(
+                                  resolveClientPortalPath(
+                                    cta.route,
+                                    propertyId ? `/properties/${propertyId}` : '/properties',
+                                  ),
+                                );
+                              }
+                            }
+                          }}
+                        >
+                          {label}
+                        </Button>
+                      )
+                    ) : (
+                      legacyPrimary
+                    );
+
+                  return (
+                    <li
+                      key={action.task_id || action.id}
+                      className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-midnight-blue">{action.title}</p>
+                        {action.description ? (
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-3">{action.description}</p>
+                        ) : null}
+                      </div>
+                      {primaryControl}
                     </li>
                   );
                 })}
@@ -352,25 +452,24 @@ export default function PropertyOperatingHub({
               const est = r.date_source === 'SYSTEM_ESTIMATED';
               const needsDocument = isRequirementMissingDocument(r);
               const rid = rowReqId(r);
-              const ta = resolveRequirementAction(r, {});
+              const ta = resolveRequirementActionWithRowContext(r, propertyId);
               const docsHref = resolveDocumentsPath(propertyId, rid ? { requirement_id: rid } : {});
               const reqHref = buildEntityRoute({ requirement_id: rid, property_id: propertyId, mode: 'requirement' }, '');
               const primaryClick = () => {
                 if (ta.primary_action_handler === 'guided_evidence_error') return;
-                if (ta.primary_action_handler === 'external' && ta.primary_route) {
-                  window.open(ta.primary_route, '_blank', 'noopener,noreferrer');
-                  return;
+                const { handled } = executeRequirementPrimaryCta({
+                  requirement: r,
+                  pagePropertyId: propertyId,
+                  navigate: (to) =>
+                    navigate(resolveClientPortalPath(typeof to === 'string' ? to : to.pathname, '/properties')),
+                  openGuidedEvidence,
+                  onSubmitted: onRefreshAfterEvidence,
+                  guidedInitialOverride: ta.guided_initial_evidence_mode || undefined,
+                });
+                if (!handled) {
+                  const route = ta.primary_route || docsHref;
+                  if (route) navigate(resolveClientPortalPath(route, '/properties'));
                 }
-                if (ta.primary_action_handler === 'guided_evidence') {
-                  openGuidedEvidence({
-                    propertyId,
-                    requirement: r,
-                    onSubmitted: onRefreshAfterEvidence,
-                    initialEvidenceMode: ta.guided_initial_evidence_mode || undefined,
-                  });
-                  return;
-                }
-                navigate(ta.primary_route || docsHref);
               };
               return (
                 <li key={rowReqId(r) || r.requirement_code} className="rounded-xl border border-gray-200 bg-white p-4 min-w-0 shadow-sm">
@@ -406,11 +505,7 @@ export default function PropertyOperatingHub({
                       type="button"
                       className={cn(portalPrimaryButtonClass, 'w-full sm:w-auto justify-center')}
                       disabled={ta.primary_action_handler === 'guided_evidence_error'}
-                      title={
-                        ta.primary_action_handler === 'guided_evidence_error'
-                          ? 'Guided resolution unavailable — missing property or requirement context.'
-                          : undefined
-                      }
+                      title={ta.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined}
                       onClick={primaryClick}
                     >
                       {ta.primary_intent === 'upload_evidence' && ta.primary_action_handler === 'navigate' ? (

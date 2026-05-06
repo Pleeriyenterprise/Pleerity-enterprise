@@ -36,7 +36,11 @@ import RequirementIntelligenceModal from '../components/client/RequirementIntell
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import { REQUIREMENTS_PAGE_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
-import { resolveRequirementAction } from '../utils/requirementTakeActionResolver';
+import {
+  executeRequirementPrimaryCta,
+  GUIDED_CTA_UNAVAILABLE_TITLE,
+  resolveRequirementActionWithRowContext,
+} from '../utils/requirementCtaParity';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
 
@@ -297,7 +301,7 @@ const RequirementsPage = () => {
 
   const renderRequirementRow = (req) => {
     const property = getPropertyById(req.property_id);
-    const takeActionResolved = resolveRequirementAction(req, property);
+    const takeActionResolved = resolveRequirementActionWithRowContext(req, null);
     const statusConfig = getStatusConfig(req);
     const StatusIcon = statusConfig.icon;
     const daysUntil = getDaysUntilDue(req.due_date);
@@ -423,34 +427,22 @@ const RequirementsPage = () => {
               const primaryError = ta.primary_action_handler === 'guided_evidence_error';
               const onPrimary = () => {
                 if (primaryError) return;
-                if (ta.primary_action_handler === 'guided_evidence') {
-                  openGuidedEvidence({
-                    propertyId: req.property_id,
-                    requirement: req,
-                    initialEvidenceMode: ta.guided_initial_evidence_mode || undefined,
-                  });
-                  return;
-                }
-                if (!ta.primary_route) {
+                const { handled } = executeRequirementPrimaryCta({
+                  requirement: req,
+                  pagePropertyId: null,
+                  navigate,
+                  openGuidedEvidence,
+                });
+                if (!handled && !ta.primary_route) {
                   openViewRequirementModal(req);
-                  return;
                 }
-                if (ta.primary_action_handler === 'external') {
-                  window.open(ta.primary_route, '_blank', 'noopener,noreferrer');
-                  return;
-                }
-                navigate(ta.primary_route);
               };
               return (
                 <Button
                   className="w-full min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90 text-midnight-blue font-semibold"
                   onClick={onPrimary}
                   disabled={primaryError}
-                  title={
-                    primaryError
-                      ? 'This obligation is configured for guided resolution but required property or requirement context is missing. Use supporting links or contact support if this persists.'
-                      : undefined
-                  }
+                  title={primaryError ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined}
                   data-testid={
                     ta.primary_action_handler === 'guided_evidence'
                       ? `requirements-guided-open-${req.requirement_id}`

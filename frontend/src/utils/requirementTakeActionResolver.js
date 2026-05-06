@@ -153,7 +153,16 @@ export function resolveRequirementAction(requirement, _property = {}) {
   if (requirement.take_action && typeof requirement.take_action === 'object' && requirement.take_action.primary) {
     const ta = requirement.take_action;
     const sec = ta.secondary || null;
-    const prim = ta.primary;
+    const primBase = ta.primary && typeof ta.primary === 'object' ? ta.primary : {};
+    const prim = { ...primBase };
+    const pidRow = requirement.property_id;
+    const ridRow = requirement.requirement_id || requirement.id;
+    if (!String(prim.property_id || prim.propertyId || '').trim() && pidRow) {
+      prim.property_id = String(pidRow);
+    }
+    if (!String(prim.requirement_id || prim.requirementId || '').trim() && ridRow) {
+      prim.requirement_id = String(ridRow);
+    }
     const isServerUnavailable =
       prim.handler === 'guided_evidence_unavailable' || prim.metadata_incomplete === true;
     const isDirectEvidence =
@@ -184,8 +193,8 @@ export function resolveRequirementAction(requirement, _property = {}) {
             : opensEvidenceModal
               ? 'guided_evidence'
               : 'navigate',
-      primary_route: ta.primary.route != null && ta.primary.route !== '' ? String(ta.primary.route) : null,
-      primary_intent: primaryIntentFromTakeActionPrimary(ta.primary),
+      primary_route: prim.route != null && prim.route !== '' ? String(prim.route) : null,
+      primary_intent: primaryIntentFromTakeActionPrimary(prim),
       guided_initial_evidence_mode: guidedInitial,
       secondary_action: sec
         ? {

@@ -39,5 +39,36 @@ describe('buildNeedsAttentionSubset', () => {
       'incomplete',
     ]);
   });
+
+  it('orders urgency tier 1 before tier 2 before tier 3', () => {
+    const rows = [
+      req('pat', 'MISSING', { requirement_code: 'portable_appliance_test' }),
+      req('leg', 'MISSING', { requirement_code: 'legionella' }),
+      req('gas', 'MISSING', { requirement_code: 'gas_safety' }),
+    ];
+    const out = buildNeedsAttentionSubset(rows, (r) => r.due_date, 8);
+    expect(out.items.map((r) => r.requirement_id)).toEqual(['gas', 'leg', 'pat']);
+  });
+
+  it('defers tier 3 rows when the cap is filled by tier 1 and tier 2', () => {
+    const rows = [
+      ...Array.from({ length: 5 }).map((_, i) => req(`gas${i}`, 'MISSING', { requirement_code: 'gas_safety' })),
+      ...Array.from({ length: 5 }).map((_, i) => req(`leg${i}`, 'MISSING', { requirement_code: 'legionella' })),
+      req('pat', 'MISSING', { requirement_code: 'portable_appliance_test' }),
+    ];
+    const out = buildNeedsAttentionSubset(rows, (r) => r.due_date, 8);
+    expect(out.items).toHaveLength(8);
+    expect(out.items.some((r) => r.requirement_id === 'pat')).toBe(false);
+    expect(out.overflowCount).toBeGreaterThan(0);
+  });
+
+  it('excludes VALID/COMPLIANT rows with no follow-up and complete evidence', () => {
+    const rows = [
+      req('ok', 'VALID', { evidence_completeness: { summary_label: 'COMPLETE' } }),
+      req('bad', 'MISSING', { requirement_code: 'eicr' }),
+    ];
+    const out = buildNeedsAttentionSubset(rows, (r) => r.due_date, 8);
+    expect(out.items.map((r) => r.requirement_id)).toEqual(['bad']);
+  });
 });
 
