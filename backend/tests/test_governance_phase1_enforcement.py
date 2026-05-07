@@ -119,3 +119,63 @@ def test_validate_workflow_contract_coverage_structure():
     r0 = out["results"][0]
     assert set(r0) == {"surface", "severity", "violations", "warnings"}
     assert r0["surface"] == "workflow_contract_coverage"
+
+
+def test_reminder_generation_registry_upgraded_to_partial():
+    from services.governance_coverage_registry import GOVERNANCE_SURFACE_REGISTRY
+
+    row = GOVERNANCE_SURFACE_REGISTRY["reminder_generation"]
+    assert row["enforcement_level"] == "PARTIAL"
+    assert row["consumes_workflow_contract"] is True
+    assert row["consumes_requirement_display_contract"] is True
+
+
+def test_command_centre_registry_upgraded_to_partial():
+    from services.governance_coverage_registry import GOVERNANCE_SURFACE_REGISTRY
+
+    row = GOVERNANCE_SURFACE_REGISTRY["command_centre"]
+    assert row["enforcement_level"] == "PARTIAL"
+    assert row["consumes_workflow_contract"] is True
+    assert row["consumes_requirement_display_contract"] is True
+
+
+def test_validate_command_centre_requirement_backed_rows_flags_missing_contracts():
+    from services.governance_validation_engine import validate_command_centre_requirement_backed_rows
+
+    out = validate_command_centre_requirement_backed_rows(
+        [
+            {
+                "source_type": "requirement",
+                "title": "Missing document - blocking compliance",
+                "primary_action_label": "Start compliance action",
+                "metadata": {},
+            }
+        ]
+    )
+    assert out["summary"] == "FAIL"
+    ids = set(out["results"][0]["violations"])
+    assert any("missing_canonical_requirement_id" in x for x in ids)
+    assert any("missing_requirement_display" in x for x in ids)
+    assert any("missing_take_action" in x for x in ids)
+    assert any("forbidden_generic_wording" in x for x in ids)
+
+
+def test_validate_command_centre_requirement_backed_rows_flags_local_cta_fallback():
+    from services.governance_validation_engine import validate_command_centre_requirement_backed_rows
+
+    out = validate_command_centre_requirement_backed_rows(
+        [
+            {
+                "source_type": "requirement",
+                "requirement_id": "r-1",
+                "primary_action_label": "Start compliance action",
+                "metadata": {
+                    "requirement_display": {"short_name": "Gas safety", "canonical_name": "Gas safety certificate"},
+                    "take_action": {"primary": {"label": "Upload compliance evidence"}},
+                },
+            }
+        ]
+    )
+    assert out["summary"] == "WARN"
+    warns = set(out["results"][0]["warnings"])
+    assert any("local_cta_fallback_with_resolver_take_action" in x for x in warns)

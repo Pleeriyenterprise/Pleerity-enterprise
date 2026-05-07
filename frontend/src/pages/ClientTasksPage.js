@@ -90,6 +90,11 @@ import {
   inboxTaskLinkedRequirementId,
   requirementMapFromList,
 } from '../utils/portalRequirementAttention';
+import { buildRequirementShapedRowFromPriorityTask } from '../utils/taskRequirementRowAdapter';
+import {
+  combineEvidenceSummaryWithResolvedSubline,
+  projectResolvedRequirementSemantics,
+} from '../utils/resolvedRequirementViewModel';
 import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 
@@ -331,6 +336,7 @@ function TaskCard({
   complianceBookingBusyId,
   showComplianceBooking,
   enableTriage,
+  inboxRequirementById,
 }) {
   const navigate = useNavigate();
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -342,6 +348,13 @@ function TaskCard({
   const shaped = shapeTodayBusinessActions(task, task.business_actions, showComplianceBooking);
   const workflow = shaped.workflow;
   const complianceUi = workflow === 'compliance';
+  const mergedComplianceRow =
+    complianceUi && inboxRequirementById instanceof Map
+      ? buildRequirementShapedRowFromPriorityTask(task, inboxRequirementById)
+      : null;
+  const complianceResolved = mergedComplianceRow
+    ? projectResolvedRequirementSemantics(mergedComplianceRow, { pagePropertyId: task.property_id })
+    : null;
   const ordered = dedupeActionsByPrimaryPath(shaped.ordered);
   const primaryAct = ordered[0];
   const maxSecondarySlots = workflow === 'issue_risk' && showRiskInline && sid ? 1 : 2;
@@ -465,7 +478,11 @@ function TaskCard({
             meta.evidence_completeness?.summary_label &&
             meta.evidence_completeness.summary_label !== 'Complete' ? (
               <p className="text-xs text-amber-900/90 leading-snug" data-testid="today-evidence-completeness-subtitle">
-                {meta.evidence_completeness.summary_label}
+                {combineEvidenceSummaryWithResolvedSubline(
+                  meta.evidence_completeness.summary_label,
+                  complianceResolved,
+                  mergedComplianceRow?.status ?? meta.requirement_status ?? task.status,
+                )}
               </p>
             ) : null}
             {complianceUi && inboxTaskLinkedRequirementId(task) && onOpenRequirementIntel ? (
@@ -781,6 +798,7 @@ function SectionBlock({
   showComplianceBooking,
   emptyHint,
   enableTriage,
+  inboxRequirementById,
   defaultCollapsed = false,
   urgentShowMoreLimit = null,
 }) {
@@ -842,6 +860,7 @@ function SectionBlock({
                 complianceBookingBusyId={complianceBookingBusyId}
                 showComplianceBooking={showComplianceBooking}
                 enableTriage={enableTriage}
+                inboxRequirementById={inboxRequirementById}
               />
             ))}
           </div>
@@ -1604,6 +1623,7 @@ export default function ClientTasksPage() {
                     complianceBookingBusyId={complianceBookingBusyId}
                     showComplianceBooking={showComplianceBooking}
                     enableTriage
+                    inboxRequirementById={inboxRequirementById}
                   />
                 ))}
               </div>
@@ -1624,6 +1644,7 @@ export default function ClientTasksPage() {
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage
+            inboxRequirementById={inboxRequirementById}
             urgentShowMoreLimit={5}
             emptyHint={
               topPriorityTasks.length > 0
@@ -1646,6 +1667,7 @@ export default function ClientTasksPage() {
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage
+            inboxRequirementById={inboxRequirementById}
             defaultCollapsed
             emptyHint="No upcoming items in this view."
           />
@@ -1664,6 +1686,7 @@ export default function ClientTasksPage() {
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage
+            inboxRequirementById={inboxRequirementById}
             defaultCollapsed
             emptyHint="No in-progress items—approvals and issues surface here when active."
           />
@@ -1720,6 +1743,7 @@ export default function ClientTasksPage() {
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage={false}
+            inboxRequirementById={inboxRequirementById}
             emptyHint="Recent requirement and invoice milestones will show here."
           />
           {payload?.activity_feed?.length > 0 && (

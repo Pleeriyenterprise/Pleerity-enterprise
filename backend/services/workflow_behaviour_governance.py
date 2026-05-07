@@ -972,8 +972,16 @@ def governance_augment_mismatch_flags(
     ec_raw = enriched.get("evidence_completeness")
     ec: Dict[str, Any] = ec_raw if isinstance(ec_raw, dict) else {}
 
-    # Umbrella: document-only where governance forbids treating upload as sufficient primary path.
-    if doc_only and caps.get("must_not_complete_from_document_only"):
+    primary_family = infer_primary_cta_family(enriched)
+    allowed_primary_families: FrozenSet[str] = caps.get("allowed_primary_cta_families") or frozenset()
+    runtime_primary_cta_allowed = bool(
+        primary_family and allowed_primary_families and primary_family in allowed_primary_families
+    )
+
+    # Umbrella: document-only where governance forbids treating upload as sufficient completion path.
+    # When the resolver already exposes an allowed primary CTA family (e.g. condition-standard issues primary,
+    # multi-evidence guided primary), legacy document-only *policy modes* must not emit a HIGH collapse signal.
+    if doc_only and caps.get("must_not_complete_from_document_only") and not runtime_primary_cta_allowed:
         semantic_collapse_risk = True
         extra.append(
             {
@@ -1016,7 +1024,7 @@ def governance_augment_mismatch_flags(
             }
         )
 
-    family = infer_primary_cta_family(enriched)
+    family = primary_family
     prohibited: FrozenSet[str] = caps.get("prohibited_primary_cta_families") or frozenset()
     if family and prohibited and family in prohibited:
         semantic_collapse_risk = True

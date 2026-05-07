@@ -159,7 +159,7 @@ describe('ClientCommandCenterPage requirement intel', () => {
     expect(mockOpenGuidedEvidence).toHaveBeenCalledWith(
       expect.objectContaining({
         propertyId: 'p-cc-1',
-        requirementId: 'req-cc-1',
+        requirement: expect.objectContaining({ requirement_id: 'req-cc-1' }),
       }),
     );
   });

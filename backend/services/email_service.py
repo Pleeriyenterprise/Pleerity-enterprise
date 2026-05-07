@@ -78,6 +78,93 @@ def _notification_preferences_url(model: Dict[str, Any]) -> str:
         return base + "/settings/notifications"
     return ""
 
+
+def _safe_reminder_semantic_line(group_key: str, semantic_line: str) -> str:
+    line = str(semantic_line or "").strip()
+    low = line.lower()
+    forbidden_fragments = (
+        "blocking compliance",
+        "externally verified",
+        "legally validated",
+        "verified",
+        "certified",
+        "operationally safe",
+        "remediated",
+        "remediation complete",
+        "upload complete",
+        "document-complete",
+        "document complete",
+        "upload-only complete",
+    )
+    if any(f in low for f in forbidden_fragments):
+        if group_key == "declaration_reminders":
+            return "Declaration details need review and update"
+        if group_key == "assessment_reminders":
+            return "Assessment review due and follow-up actions require attention"
+        if group_key == "condition_reminders":
+            return "Property condition issues require review"
+        if group_key == "certificate_reminders":
+            return "Evidence renewal is due"
+        return "Compliance action required"
+    return line
+
+
+def _build_grouped_reminder_sections_html(model: Dict[str, Any]) -> str:
+    heading_map = [
+        ("certificate_reminders", "Certificates & Expiring Evidence"),
+        ("declaration_reminders", "Declarations & Tenancy Records"),
+        ("assessment_reminders", "Assessments & Reviews"),
+        ("condition_reminders", "Property Conditions & Remediation"),
+        ("other_reminders", "Other Compliance Actions"),
+    ]
+    blocks: List[str] = []
+    for key, heading in heading_map:
+        rows = model.get(key) if isinstance(model.get(key), list) else []
+        if not rows:
+            continue
+        items = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            label = str(row.get("type") or row.get("detail_type") or "Compliance item").strip() or "Compliance item"
+            semantic = _safe_reminder_semantic_line(key, str(row.get("semantic_line") or "").strip())
+            label_h = html_module.escape(label)
+            semantic_h = html_module.escape(semantic) if semantic else ""
+            if semantic_h:
+                items.append(f"<li><strong>{label_h}</strong> — {semantic_h}</li>")
+            else:
+                items.append(f"<li><strong>{label_h}</strong></li>")
+        if not items:
+            continue
+        blocks.append(
+            f"<h4 style=\"margin: 16px 0 8px; color: #0B1D3A;\">{html_module.escape(heading)}</h4><ul style=\"margin: 0 0 10px 18px; color: #334155;\">{''.join(items)}</ul>"
+        )
+    return "".join(blocks)
+
+
+def _build_grouped_reminder_sections_text(model: Dict[str, Any]) -> str:
+    heading_map = [
+        ("certificate_reminders", "Certificates & Expiring Evidence"),
+        ("declaration_reminders", "Declarations & Tenancy Records"),
+        ("assessment_reminders", "Assessments & Reviews"),
+        ("condition_reminders", "Property Conditions & Remediation"),
+        ("other_reminders", "Other Compliance Actions"),
+    ]
+    out: List[str] = []
+    for key, heading in heading_map:
+        rows = model.get(key) if isinstance(model.get(key), list) else []
+        if not rows:
+            continue
+        out.append(f"{heading}:")
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            label = str(row.get("type") or row.get("detail_type") or "Compliance item").strip() or "Compliance item"
+            semantic = _safe_reminder_semantic_line(key, str(row.get("semantic_line") or "").strip())
+            out.append(f"- {label}" + (f" — {semantic}" if semantic else ""))
+        out.append("")
+    return "\n".join(out).strip()
+
 # Aliases that must not show "Manage notification preferences" (system_critical).
 SYSTEM_CRITICAL_ALIASES = {
     EmailTemplateAlias.PASSWORD_SETUP,
@@ -901,7 +988,13 @@ class EmailService:
                 urgency_line = f"<p><strong>This requirement is {'overdue' if days_overdue == 0 else f'{days_overdue} days overdue'}.</strong></p>"
             else:
                 urgency_line = f"<p><strong>{days_remaining}</strong> days remaining to complete this requirement.</p>"
-            body = f"<p>This is a reminder that <strong>{req_name}</strong> for your property at <strong>{prop_addr}</strong> is due on <strong>{due_date}</strong>.</p>{urgency_line}"
+            grouped_sections_html = _build_grouped_reminder_sections_html(model)
+            grouped_block = f"{grouped_sections_html}" if grouped_sections_html else ""
+            body = (
+                f"<p>This is a reminder that <strong>{req_name}</strong> for your property at <strong>{prop_addr}</strong> is due on <strong>{due_date}</strong>.</p>"
+                f"{urgency_line}"
+                f"{grouped_block}"
+            )
             greeting = f"Hello {model.get('client_name', 'Valued Customer')},"
             return _customer_email_html(
                 model,
@@ -1835,6 +1928,8 @@ WHAT THIS MEANS:
                 urgency_line = f"This requirement is {'overdue' if days_overdue == 0 else f'{days_overdue} days overdue'}."
             else:
                 urgency_line = f"{days_remaining} days remaining to complete this requirement."
+            grouped_sections_text = _build_grouped_reminder_sections_text(model)
+            grouped_block = f"\n\n{grouped_sections_text}" if grouped_sections_text else ""
             return f"""
 Compliance Action Required
 =========================
@@ -1845,6 +1940,7 @@ Hello {model.get('client_name', 'Valued Customer')},
 This is a reminder that {req_name} for your property at {prop_addr} is due on {due_date}.
 
 {urgency_line}
+{grouped_block}
 
 View in Portal: {model.get('portal_link', '#')}
 {footer}

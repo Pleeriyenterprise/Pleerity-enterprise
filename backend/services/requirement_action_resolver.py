@@ -338,6 +338,10 @@ def resolve_take_action_envelope(
         or str(eng.get("engine_client_visibility") or "").lower() == "informational"
         or ff == "obligation"
     )
+    # Persisted / inferred action_type wins over engine obligation posture: external-assessment specs use
+    # fulfillment_mode=obligation while rows may still be DOCUMENT for guided evidence (e.g. lead_testing).
+    if action_type in (ACTION_DOCUMENT, ACTION_JOB, ACTION_MAINTENANCE):
+        informational = False
     req_for_gate = {
         **requirement,
         "property_jurisdiction": property_jurisdiction or requirement.get("property_jurisdiction"),
@@ -747,9 +751,16 @@ def enrich_take_action_envelope_for_client(
         elif wf_u == EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW:
             merged["workflow_class"] = EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW
         else:
-            merged["workflow_class"] = wf or "GUIDED_EVIDENCE_RESOLUTION"
+            modes_list = merged.get("allowed_evidence_modes") or []
+            pub_cwc = str(policy.get("client_workflow_class") or "").strip().upper()
+            if pub_cwc == "MULTI_EVIDENCE":
+                merged["workflow_class"] = "MULTI_EVIDENCE"
+            elif isinstance(modes_list, list) and len(modes_list) >= 2 and wf_u in ("", "GUIDED_EVIDENCE_RESOLUTION"):
+                merged["workflow_class"] = "MULTI_EVIDENCE"
+            else:
+                merged["workflow_class"] = wf or "GUIDED_EVIDENCE_RESOLUTION"
     elif at == ACTION_JOB:
-        merged["workflow_class"] = "EXTERNAL_ASSESSMENT_EVIDENCE"
+        merged["workflow_class"] = "REMEDIATION_JOB"
     elif str(wf or "").strip().upper() == REGISTRATION_TRACKING_WORKFLOW:
         merged["workflow_class"] = REGISTRATION_TRACKING_WORKFLOW
     elif str(wf or "").strip().upper() == TENANT_DELIVERY_WORKFLOW:

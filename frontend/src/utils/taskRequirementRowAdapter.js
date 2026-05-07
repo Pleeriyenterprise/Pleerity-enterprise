@@ -40,7 +40,8 @@ function taskMetadataFieldsForRequirementRow(meta) {
 /**
  * When a priority task is requirement-backed and carries resolver metadata, returns an object compatible
  * with {@link resolveRequirementAction} / {@link executeRequirementPrimaryCta}. Otherwise null (caller keeps
- * {@link resolveTaskCta}).
+ * {@link resolveTaskCta}). For workflow/evidence/CTA projection, prefer {@link projectResolvedRequirementFromPriorityTask}
+ * in resolvedRequirementViewModel (thin wrapper over this builder).
  *
  * @param {Record<string, unknown>|null|undefined} task
  * @param {Map<string, Record<string, unknown>>|null|undefined} requirementsById from {@link requirementMapFromList}

@@ -113,5 +113,7 @@ def test_controlled_options_include_evidence_resolution_controls():
     payload = controlled_field_options_payload()
     assert "evidence_modes" in payload
     assert "evidence_resolution_workflows" in payload
-    assert "allowed_upload_types" in payload
+    assert "client_workflow_classes" in payload
+    assert any(x["value"] == "MULTI_EVIDENCE" for x in payload["client_workflow_classes"])
+    assert any(x["value"] == "MULTI_EVIDENCE" for x in payload["client_workflow_classes"])
     assert any(x["value"] == "DOCUMENT_UPLOAD" for x in payload["evidence_modes"])

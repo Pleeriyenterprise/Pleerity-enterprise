@@ -1,4 +1,4 @@
-import { buildNeedsAttentionSubset } from './propertyDocumentsMatrix';
+import { buildNeedsAttentionSubset, requirementAttentionStatusRank } from './propertyDocumentsMatrix';
 
 function req(id, status, extra = {}) {
   return {
@@ -7,6 +7,7 @@ function req(id, status, extra = {}) {
     requirement_code: id,
     criticality: 'MED',
     due_date: `2026-01-${String(10 + Number(id.replace(/\D/g, '') || 0)).padStart(2, '0')}T00:00:00+00:00`,
+    take_action: { primary: { route: `/properties/p/requirements/${id}`, label: 'Act' } },
     ...extra,
   };
 }
@@ -38,6 +39,13 @@ describe('buildNeedsAttentionSubset', () => {
       'followup',
       'incomplete',
     ]);
+  });
+
+  it('treats legacy GUIDED_EVIDENCE_RESOLUTION like MULTI_EVIDENCE for attention-status rank (incomplete evidence)', () => {
+    const legacy = req('legacy-guided', 'VALID', { workflow_class: 'GUIDED_EVIDENCE_RESOLUTION' });
+    const multi = req('multi', 'VALID', { workflow_class: 'MULTI_EVIDENCE' });
+    expect(requirementAttentionStatusRank(legacy)).toBe(requirementAttentionStatusRank(multi));
+    expect(requirementAttentionStatusRank(legacy)).toBe(5);
   });
 
   it('orders urgency tier 1 before tier 2 before tier 3', () => {

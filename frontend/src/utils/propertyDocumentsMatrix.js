@@ -3,6 +3,12 @@
  * missing-document detection, criticality ordering, and shared sorts.
  */
 import { normalizeRequirementCode, requirementTitleFromRow } from '../domain/presentDomain';
+import { isMultiEvidenceStyleWorkflow } from './workflowSemantics';
+
+/** Same predicate as {@link projectResolvedRequirementSemantics}.is_multi_evidence_style — avoids resolver churn in hot loops. */
+function incompleteMultiEvidenceFamily(r) {
+  return isMultiEvidenceStyleWorkflow(r?.workflow_class);
+}
 
 /**
  * True when a file still needs to be supplied (not awaiting verification on an uploaded file).
@@ -49,10 +55,9 @@ export function listRequirementsMissingDocumentsSorted(requirements) {
 export function requirementAttentionStatusRank(r) {
   const u = String(r?.status || '').toUpperCase();
   const isHighRiskMissingEvidence = isRequirementMissingDocument(r) && requirementCriticalityRank(r) === 0;
-  const wf = String(r?.workflow_class || '').toUpperCase();
   const evidenceSummary = String(r?.evidence_completeness?.summary_label || '').toUpperCase();
   const incompleteRequiredEvidence =
-    wf === 'MULTI_EVIDENCE' || (evidenceSummary && evidenceSummary !== 'COMPLETE');
+    incompleteMultiEvidenceFamily(r) || (evidenceSummary && evidenceSummary !== 'COMPLETE');
   if (u === 'OVERDUE') return 0;
   if (u === 'EXPIRED' || u === 'FAILED') return 1;
   if (isHighRiskMissingEvidence) return 2;
@@ -108,10 +113,9 @@ export function isRequirementExcludedFromNeedsAttention(r) {
   const s = String(r?.status || '').toUpperCase();
   if (['NOT_APPLICABLE', 'NOT_REQUIRED', 'WAIVED'].includes(s)) return true;
   const followUpDue = s === 'PENDING' && !!r?.evidence_doc_id;
-  const wf = String(r?.workflow_class || '').toUpperCase();
   const evidenceSummary = String(r?.evidence_completeness?.summary_label || '').toUpperCase();
   const incompleteRequiredEvidence =
-    wf === 'MULTI_EVIDENCE' || (evidenceSummary && evidenceSummary !== 'COMPLETE');
+    incompleteMultiEvidenceFamily(r) || (evidenceSummary && evidenceSummary !== 'COMPLETE');
   if (['COMPLIANT', 'VALID'].includes(s)) {
     if (followUpDue || incompleteRequiredEvidence) return false;
     return true;
@@ -129,10 +133,9 @@ export function buildNeedsAttentionSubset(requirements, rowExpiry, cap = 8) {
     if (isRequirementExcludedFromNeedsAttention(r)) return false;
     const s = String(r?.status || '').toUpperCase();
     const followUpDue = s === 'PENDING' && !!r?.evidence_doc_id;
-    const wf = String(r?.workflow_class || '').toUpperCase();
     const evidenceSummary = String(r?.evidence_completeness?.summary_label || '').toUpperCase();
     const incompleteRequiredEvidence =
-      wf === 'MULTI_EVIDENCE' || (evidenceSummary && evidenceSummary !== 'COMPLETE');
+      incompleteMultiEvidenceFamily(r) || (evidenceSummary && evidenceSummary !== 'COMPLETE');
     return (
       s === 'OVERDUE' ||
       s === 'EXPIRED' ||

@@ -44,7 +44,7 @@ import {
   Info,
 } from 'lucide-react';
 import UpgradePrompt, { getFeatureDisplayInfo } from '../components/UpgradePrompt';
-import { getEvidenceStatus } from '../utils/evidenceStatus';
+import { projectResolvedRequirementSemantics } from '../utils/resolvedRequirementViewModel';
 import { formatRiskLabel } from '../utils/riskLabel';
 import { humanRiskType, humanSeverity, humanAction, humanizeRiskReasonBullet } from '../utils/riskPresentation';
 import { presentPropertyTimelineItem, presentScoreChangeReason } from '../utils/timelinePresent';
@@ -88,7 +88,6 @@ import {
 import {
   executeRequirementPrimaryCta,
   GUIDED_CTA_UNAVAILABLE_TITLE,
-  resolveRequirementActionWithRowContext,
 } from '../utils/requirementCtaParity';
 import {
   clientFacingVerificationLabel,
@@ -192,7 +191,8 @@ export function PropertyDocumentsMissingRequirementList({
           rid && propertyId
             ? buildEntityRoute({ requirement_id: rid, property_id: propertyId, mode: 'requirement' }, '')
             : '';
-        const ta = resolveRequirementActionWithRowContext(r, propertyId);
+        const sem = projectResolvedRequirementSemantics(r, { pagePropertyId: propertyId });
+        const ta = sem.cta;
         const docsHref = resolveDocumentsPath(propertyId, {
           ...uploadQuery,
           ...(ta.primary_intent === 'upload_evidence' ? { focus: 'upload' } : {}),
@@ -204,7 +204,7 @@ export function PropertyDocumentsMissingRequirementList({
           >
             <div className="min-w-0">
               <p className="font-medium text-midnight-blue leading-snug">{rowTitle(r)}</p>
-              <p className="text-xs text-gray-500 mt-1">{getEvidenceStatus(r.status, r).text}</p>
+              <p className="text-xs text-gray-500 mt-1">{sem.evidenceStatusForStatus(r.status).text}</p>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
               <Button
@@ -1075,7 +1075,7 @@ export default function PropertyDetailPage() {
 
   const runCompliancePrimaryCta = React.useCallback(
     (r) => {
-      const taPre = resolveRequirementActionWithRowContext(r, propertyId);
+      const taPre = projectResolvedRequirementSemantics(r, { pagePropertyId: propertyId }).cta;
       const docsHref = resolveDocumentsPath(propertyId, {
         requirement_id: rowReqId(r),
         ...(taPre.primary_intent === 'upload_evidence' ? { focus: 'upload' } : {}),
@@ -1918,7 +1918,7 @@ export default function PropertyDetailPage() {
                       const rid = String(complianceDomId);
                       const statusUi = getStatus(r);
                       const stdStatus = complianceObligationStatusLabel(r);
-                      const taRow = resolveRequirementActionWithRowContext(r, propertyId);
+                      const taRow = projectResolvedRequirementSemantics(r, { pagePropertyId: propertyId }).cta;
                       const explainOpen = urgentExplainOpenId === rid;
                       const explainPayload = canonicalComplianceInlineNarrative(r);
                       const docsHref = resolveDocumentsPath(propertyId, {
@@ -2068,7 +2068,7 @@ export default function PropertyDetailPage() {
                         const impact = complianceImpactLabel(r);
                         const hasEvidence = !!r.evidence_doc_id;
                         const stdStatus = complianceObligationStatusLabel(r);
-                        const taRow = resolveRequirementActionWithRowContext(r, propertyId);
+                        const taRow = projectResolvedRequirementSemantics(r, { pagePropertyId: propertyId }).cta;
                         const complianceDomId = rowReqId(r) || `rc:${propertyId}:${normalizeRequirementCode(r.requirement_code || r.requirement_type || `t${idx}`)}`;
                         const isMissing = isRequirementMissingDocument(r);
                         const explainPayload = canonicalComplianceInlineNarrative(r);
@@ -2244,7 +2244,7 @@ export default function PropertyDetailPage() {
                   const hasEvidence = !!r.evidence_doc_id;
                   const isMissing = isRequirementMissingDocument(r);
                   const stdStatus = complianceObligationStatusLabel(r);
-                  const taRow = resolveRequirementActionWithRowContext(r, propertyId);
+                  const taRow = projectResolvedRequirementSemantics(r, { pagePropertyId: propertyId }).cta;
                   const complianceDomId = rowReqId(r) || `rc:${propertyId}:${normalizeRequirementCode(r.requirement_code || r.requirement_type || `m${idx}`)}`;
                   const docsHref = resolveDocumentsPath(propertyId, {
                     requirement_id: rowReqId(r),

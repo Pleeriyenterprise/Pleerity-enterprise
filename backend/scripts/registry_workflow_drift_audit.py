@@ -43,8 +43,26 @@ from services.requirement_workflow_audit import (
 )
 JURISDICTIONS = ("england", "scotland", "wales", "northern_ireland")
 
+# Decision-record section 5.8: internal classification rows are not first-class workflow obligations on this grid.
+_SYSTEM_WORKFLOW_AUDIT_EXCLUDE = frozenset({"hmo_classification", "property_classification"})
+
 # Canonical registry union decision-record fallbacks (condition standards, jobs, system rows).
-_AUDIT_REQUIREMENT_CODES = sorted(set(CANONICAL_REQUIREMENT_CODES) | set(_FALLBACK_REFERENCE_BY_CANONICAL.keys()))
+_AUDIT_REQUIREMENT_CODES = sorted(
+    (set(CANONICAL_REQUIREMENT_CODES) | set(_FALLBACK_REFERENCE_BY_CANONICAL.keys()))
+    - _SYSTEM_WORKFLOW_AUDIT_EXCLUDE
+)
+
+
+def _jurisdictions_for_code(code: str) -> Tuple[str, ...]:
+    """Restrict synthetic scenarios to jurisdictions where the obligation is plausibly materialised."""
+    canon = normalize_requirement_code(code) or code
+    if canon in ("lead_testing", "lead_testing_scotland"):
+        return ("scotland",)
+    if canon == "repairing_standard":
+        return ("scotland",)
+    if canon == "fitness_for_human_habitation":
+        return tuple(j for j in JURISDICTIONS if j != "scotland")
+    return JURISDICTIONS
 
 # workflow audit flag id -> (drift_category, default_severity)
 _FLAG_CATEGORY: Dict[str, Tuple[str, str]] = {
@@ -183,7 +201,7 @@ def run_audit() -> Dict[str, Any]:
     scenarios: List[Dict[str, Any]] = []
 
     for code in _AUDIT_REQUIREMENT_CODES:
-        for jur in JURISDICTIONS:
+        for jur in _jurisdictions_for_code(code):
             row = _audit_one(code, jur)
             scenarios.append(row["scenario"])
             findings.extend(row["findings"])
@@ -212,7 +230,9 @@ def run_audit() -> Dict[str, Any]:
     coverage = _build_governance_coverage_analysis(unique)
     return {
         "methodology": (
-            "Synthetic requirement rows per canonical code × jurisdiction; "
+            "Synthetic requirement rows per canonical code × jurisdiction (grid trimmed for Scotland-only "
+            "repairing/lead-testing, non-Scotland fitness, and excludes system classification slugs per "
+            "decision-record section 5.8); "
             "effective_evidence_resolution + resolve_take_action_envelope + enrich_take_action_envelope_for_client; "
             "compute_workflow_mismatch_flags with decision-record reference (no published registry overlay); "
             "explicit policy-vs-reference checks; engine vs external-assessment heuristic for lead_testing."
@@ -239,6 +259,9 @@ def _audit_one(code: str, jurisdiction: str) -> Dict[str, Any]:
         "property_jurisdiction": jurisdiction,
     }
     base.update(eng)
+    # Typical surfaced rows use DOCUMENT class so the client envelope matches external-assessment semantics.
+    if canon in ("lead_testing", "lead_testing_scotland"):
+        base["compliance_requirement_class"] = "DOCUMENT"
 
     policy = effective_evidence_resolution(base)
     env = resolve_take_action_envelope(
@@ -254,7 +277,7 @@ def _audit_one(code: str, jurisdiction: str) -> Dict[str, Any]:
     client = enrich_take_action_envelope_for_client(env, merged)
     enriched = {**merged, **client}
 
-    ref, ref_src = resolve_workflow_class_reference(code, published_entry=None)
+    ref, ref_src = resolve_workflow_class_reference(code, published_entry=None, jurisdiction=jurisdiction)
     runtime_wf = str(enriched.get("workflow_class") or "").strip()
     modes = enriched.get("allowed_evidence_modes") or []
 
@@ -359,7 +382,13 @@ def _audit_one(code: str, jurisdiction: str) -> Dict[str, Any]:
     if ref not in (WC_UNKNOWN,) and nw_ref != nw_rt:
         # MULTI_EVIDENCE vs GUIDED_EVIDENCE_RESOLUTION is a known resolver label — downgrade if smoke alarms
         sev = "MEDIUM"
-        if canon == "smoke_heat_alarms" and ref == WC_MULTI_EVIDENCE and runtime_wf in ("GUIDED_EVIDENCE_RESOLUTION",):
+        _multi_guided_codes = (
+            "smoke_heat_alarms",
+            "fire_risk_assessment",
+            "hmo_fire_risk",
+            "hmo_fire_risk_evidence",
+        )
+        if ref == WC_MULTI_EVIDENCE and runtime_wf in ("GUIDED_EVIDENCE_RESOLUTION",) and canon in _multi_guided_codes:
             sev = "LOW"
         findings.append(
             _finding(

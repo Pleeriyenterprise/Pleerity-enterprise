@@ -3,7 +3,7 @@ import { getEvidenceStatus, workflowAwareMissingEvidenceLabel } from './evidence
 describe('workflowAwareMissingEvidenceLabel', () => {
   it('maps workflow classes to required copy', () => {
     expect(workflowAwareMissingEvidenceLabel({ workflow_class: 'DOCUMENT_UPLOAD' })).toBe(
-      'Evidence missing — action required',
+      'Certificate or evidence document missing — action required',
     );
     expect(workflowAwareMissingEvidenceLabel({ workflow_class: 'GUIDED_DECLARATION' })).toBe(
       'Declaration not recorded — action required',
@@ -39,6 +39,17 @@ describe('workflowAwareMissingEvidenceLabel', () => {
 });
 
 describe('getEvidenceStatus', () => {
+  it('uses multi-evidence chip text when workflow_class is MULTI_EVIDENCE', () => {
+    const s = getEvidenceStatus('PENDING', { workflow_class: 'MULTI_EVIDENCE', evidence_doc_id: null });
+    expect(s.text).toBe('Evidence incomplete');
+    expect(s.subline).toBe('Required evidence incomplete');
+  });
+
+  it('uses assessment chip for EXTERNAL_ASSESSMENT_EVIDENCE', () => {
+    const s = getEvidenceStatus('MISSING', { workflow_class: 'EXTERNAL_ASSESSMENT_EVIDENCE' });
+    expect(s.text).toBe('Assessment incomplete');
+  });
+
   it('uses workflow-aware subline for missing evidence states', () => {
     const s = getEvidenceStatus('PENDING', { workflow_class: 'GUIDED_DECLARATION', evidence_doc_id: null });
     expect(s.subline).toBe('Declaration not recorded — action required');

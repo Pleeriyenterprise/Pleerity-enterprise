@@ -141,6 +141,34 @@ describe('requirementTakeActionResolver', () => {
     expect(out.secondary_action?.route).toContain('/documents');
   });
 
+  it('fallback does not treat engine obligation posture as guidance when class is DOCUMENT (external assessment parity)', () => {
+    const req = {
+      requirement_id: 'r1',
+      property_id: 'p1',
+      requirement_code: 'lead_testing',
+      requirement_type: 'lead_testing',
+      compliance_requirement_class: 'DOCUMENT',
+      engine_fulfillment_mode: 'obligation',
+      engine_informational: true,
+    };
+    const out = resolveRequirementAction(req, {});
+    expect(out.primary_intent).toBe('upload_evidence');
+    expect(out.primary_action_label).not.toMatch(/view guidance/i);
+  });
+
+  it('registry primary_action_mode hidden infers obligation and shows no upload primary in fallback', () => {
+    const req = {
+      requirement_id: 'r1',
+      property_id: 'p1',
+      requirement_code: 'x',
+      compliance_requirement_class: 'DOCUMENT',
+      registry_metadata: { primary_action_mode: 'hidden' },
+    };
+    const out = resolveRequirementAction(req, {});
+    expect(out.actionType).toBe('OBLIGATION');
+    expect(out.primary_intent).toBe('view_guidance');
+  });
+
   it('document-only take_action keeps direct upload handler', () => {
     const req = {
       take_action: {

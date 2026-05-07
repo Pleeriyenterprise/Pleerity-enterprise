@@ -19,7 +19,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { getEvidenceStatus } from '../utils/evidenceStatus';
+import { projectResolvedRequirementSemantics } from '../utils/resolvedRequirementViewModel';
 import {
   Accordion,
   AccordionContent,
@@ -39,7 +39,6 @@ import { isRequirementIncludedInAttentionViews } from '../utils/portalRequiremen
 import {
   executeRequirementPrimaryCta,
   GUIDED_CTA_UNAVAILABLE_TITLE,
-  resolveRequirementActionWithRowContext,
 } from '../utils/requirementCtaParity';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
@@ -132,8 +131,9 @@ const RequirementsPage = () => {
   };
 
   /** Use full requirement row so evidence state (e.g. linked doc + pending) matches Property surfaces; no inferred fields. */
-  const getStatusConfig = (req) => {
-    const config = getEvidenceStatus(req.status, req);
+  const getStatusConfig = (req, semOpt) => {
+    const sem = semOpt || projectResolvedRequirementSemantics(req, { pagePropertyId: null });
+    const config = sem.evidenceStatusForStatus(req.status);
     const color = config.className.includes('green') ? 'green' : config.className.includes('amber') ? 'amber' : config.className.includes('red') ? 'red' : config.className.includes('blue') ? 'blue' : 'gray';
     return { ...config, color };
   };
@@ -301,8 +301,9 @@ const RequirementsPage = () => {
 
   const renderRequirementRow = (req) => {
     const property = getPropertyById(req.property_id);
-    const takeActionResolved = resolveRequirementActionWithRowContext(req, null);
-    const statusConfig = getStatusConfig(req);
+    const sem = projectResolvedRequirementSemantics(req, { pagePropertyId: null });
+    const takeActionResolved = sem.cta;
+    const statusConfig = getStatusConfig(req, sem);
     const StatusIcon = statusConfig.icon;
     const daysUntil = getDaysUntilDue(req.due_date);
     const docCount = documentCountByRequirementId[req.requirement_id] || 0;

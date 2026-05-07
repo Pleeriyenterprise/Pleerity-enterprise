@@ -82,7 +82,6 @@ _FALLBACK_REFERENCE_BY_CANONICAL: Dict[str, str] = {
     "deposit_pi": WC_GUIDED_DECLARATION,
     "deposit_prescribed_info": WC_GUIDED_DECLARATION,
     "tenancy_agreement": WC_GUIDED_DECLARATION,
-    "occupation_contract": WC_GUIDED_DECLARATION,
     "wales_occupation_contract": WC_GUIDED_DECLARATION,
     "how_to_rent": WC_TENANT_DELIVERY,
     "fitness_for_human_habitation": WC_GUIDANCE_ONLY,
@@ -127,12 +126,19 @@ def resolve_workflow_class_reference(
     requirement_code_raw: str,
     *,
     published_entry: Optional[Dict[str, Any]] = None,
+    jurisdiction: Optional[str] = None,
 ) -> Tuple[str, str]:
     """Return (reference_class, source) where source is registry | decision_record_fallback | unknown."""
     reg = extract_registry_workflow_class_reference(published_entry)
     if reg:
         return reg, "registry"
     canon = normalize_requirement_code(requirement_code_raw) or _slug_raw_code(requirement_code_raw)
+    # occupation_contract storage slug: Wales statutory occupation-contract workflow only in Wales; elsewhere informational.
+    if canon == "occupation_contract":
+        jur = str(jurisdiction or "").strip().lower()
+        if jur == "wales":
+            return WC_GUIDED_DECLARATION, "decision_record_fallback"
+        return WC_GUIDANCE_ONLY, "decision_record_fallback"
     if canon and canon in _FALLBACK_REFERENCE_BY_CANONICAL:
         return _FALLBACK_REFERENCE_BY_CANONICAL[canon], "decision_record_fallback"
     return WC_UNKNOWN, "unknown"
@@ -182,6 +188,7 @@ def _runtime_family(enriched: Dict[str, Any]) -> str:
     if wf in (
         "GUIDED_EVIDENCE_RESOLUTION",
         "DIRECT_EVIDENCE_ACTION",
+        WC_MULTI_EVIDENCE,
         WC_REGISTRATION_TRACKING,
         WC_TENANT_DELIVERY,
         WC_GUIDED_DECLARATION,
@@ -307,7 +314,10 @@ def compute_workflow_mismatch_flags(
         )
     canon_or_slug = canon or stored_slug
     if canon_or_slug in _ACTIVE_STANDARD_CANONICAL:
-        if doc_only or primary_intent == "upload_evidence" or ("upload" in primary_label and "issue" not in primary_label):
+        upload_primary_runtime = primary_intent == "upload_evidence" or (
+            "upload" in primary_label and "issue" not in primary_label
+        )
+        if upload_primary_runtime:
             flags.append(
                 {
                     "id": "CONDITION_STANDARD_DOCUMENT_UPLOAD_PRIMARY",
@@ -416,7 +426,11 @@ def apply_workflow_reference_audit(
     Logs warnings when mismatches are present (drift visibility).
     """
     raw = str(out.get("requirement_code") or out.get("requirement_type") or "").strip()
-    ref, src = resolve_workflow_class_reference(raw, published_entry=published_entry)
+    ref, src = resolve_workflow_class_reference(
+        raw,
+        published_entry=published_entry,
+        jurisdiction=str(out.get("jurisdiction") or out.get("property_jurisdiction") or ""),
+    )
     out["workflow_class_reference"] = ref
     out["workflow_class_reference_source"] = src
     out["workflow_runtime_behaviour"] = describe_runtime_behaviour(out)
@@ -574,7 +588,11 @@ async def list_work_order_job_class_mismatches(
             property_doc=None,
             enforce_conditions=False,
         )
-        ref, src = resolve_workflow_class_reference(code, published_entry=pub if isinstance(pub, dict) else None)
+        ref, src = resolve_workflow_class_reference(
+            code,
+            published_entry=pub if isinstance(pub, dict) else None,
+            jurisdiction=str(req.get("jurisdiction") or req.get("property_jurisdiction") or ""),
+        )
         if ref == WC_REMEDIATION_JOB:
             continue
         out.append(

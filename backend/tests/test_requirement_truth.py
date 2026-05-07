@@ -267,6 +267,43 @@ def test_enrich_active_standard_unresolved_uses_operational_wording_not_verified
         assert forbidden not in lower
 
 
+def test_enrich_multi_evidence_incomplete_uses_partial_wording_not_completion_terms():
+    from services.requirement_truth import EVIDENCE_VERIFIED, enrich_requirement_dict
+
+    r = enrich_requirement_dict(
+        {
+            "requirement_id": "r-multi-1",
+            "property_id": "p1",
+            "requirement_type": "smoke_heat_alarms",
+            "requirement_code": "smoke_heat_alarms",
+            "compliance_requirement_class": "DOCUMENT",
+            "status": "COMPLIANT",
+            "applicability": "REQUIRED",
+            "registry_metadata": {"evidence_resolution": {"co_alarm_required": True}},
+        },
+        EVIDENCE_VERIFIED,
+        audience="client",
+        property_doc={"has_fuel_burning_appliance": True},
+        compliance_evidence_records=[
+            {
+                "evidence_mode": "CONTRACTOR_CONFIRMATION",
+                "status": "SUBMITTED",
+                "evidence_payload": {"component": "smoke_alarm", "notes": "smoke alarm tested"},
+            }
+        ],
+    )
+    lower = " ".join(
+        [
+            str(r.get("status_label") or ""),
+            str(r.get("evidence_badge_label") or ""),
+            str((r.get("evidence_completeness") or {}).get("summary_label") or ""),
+        ]
+    ).lower()
+    assert "incomplete" in lower or "required" in lower or "partial" in lower
+    for forbidden_phrase in (" evidence complete", "fully complete", "compliant", "verified", "resolved"):
+        assert forbidden_phrase not in lower
+
+
 @pytest.mark.asyncio
 async def test_enrich_requirements_for_client_active_standard_signal_projection(monkeypatch):
     from services import requirement_truth as rt

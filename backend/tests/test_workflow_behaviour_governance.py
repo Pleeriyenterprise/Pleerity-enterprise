@@ -367,6 +367,57 @@ def test_multi_evidence_must_not_collapse_document_only():
     assert workflow_document_only_is_governance_violation(WC_MULTI_EVIDENCE) is True
 
 
+def test_condition_standard_doc_only_policy_no_upload_primary_no_high_cta_flag():
+    """Document-only evidence policy with guidance/resolver-safe primary must not emit upload-primary CTA drift."""
+    from services.compliance_evidence_record_service import EVIDENCE_MODE_DOCUMENT_UPLOAD
+    from services.requirement_workflow_audit import WC_GUIDANCE_ONLY, compute_workflow_mismatch_flags
+
+    enriched = {
+        "requirement_code": "fitness_for_human_habitation",
+        "requirement_type": "fitness_for_human_habitation",
+        "jurisdiction": "England",
+        "workflow_class": "GUIDANCE_ONLY",
+        "action_type": "OBLIGATION",
+        "allowed_evidence_modes": [EVIDENCE_MODE_DOCUMENT_UPLOAD],
+        "take_action": {
+            "primary": {
+                "intent": "view_guidance",
+                "kind": "navigate",
+                "label": "Manage related issues",
+            }
+        },
+    }
+    flags = compute_workflow_mismatch_flags(
+        enriched,
+        reference_class=WC_GUIDANCE_ONLY,
+        reference_source="decision_record_fallback",
+    )
+    assert not any(f.get("id") == "CONDITION_STANDARD_DOCUMENT_UPLOAD_PRIMARY" for f in flags)
+
+
+def test_document_only_governance_respects_allowed_primary_cta_condition_standard():
+    """Legacy document-only modes with allowed primary (view guidance) must not raise document-only umbrella HIGH."""
+    from services.compliance_evidence_record_service import EVIDENCE_MODE_DOCUMENT_UPLOAD
+    from services.workflow_behaviour_governance import CONDITION_STANDARD_ACTIVE_STANDARD, governance_augment_mismatch_flags
+
+    enriched = {
+        "requirement_code": "fitness_for_human_habitation",
+        "requirement_type": "fitness_for_human_habitation",
+        "workflow_class": "GUIDANCE_ONLY",
+        "action_type": "OBLIGATION",
+        "allowed_evidence_modes": [EVIDENCE_MODE_DOCUMENT_UPLOAD],
+        "take_action": {
+            "primary": {"intent": "view_guidance", "kind": "navigate", "label": "Manage related issues"},
+        },
+    }
+    flags = governance_augment_mismatch_flags(
+        enriched,
+        reference_class=CONDITION_STANDARD_ACTIVE_STANDARD,
+        existing_flag_ids=frozenset(),
+    )
+    assert not any(f.get("id") == "WORKFLOW_DOCUMENT_ONLY_GOVERNANCE_VIOLATION" for f in flags)
+
+
 def test_document_only_governance_flag_on_tenant_delivery():
     from services.compliance_evidence_record_service import EVIDENCE_MODE_DOCUMENT_UPLOAD
     from services.requirement_workflow_audit import WC_TENANT_DELIVERY, compute_workflow_mismatch_flags

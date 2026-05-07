@@ -25,6 +25,7 @@ from services.compliance_requirement_registry import (
     resolve_published_entry_for_requirement,
 )
 from services.requirement_code_registry import normalize_requirement_code
+from services.requirement_evidence_authority import external_assessment_structured_followup_status
 from services.requirement_workflow_audit import (
     apply_workflow_reference_audit,
     strip_workflow_diagnostics_from_payload,
@@ -108,6 +109,14 @@ def _active_standard_runtime_copy(summary: Dict[str, Any], has_supporting_eviden
             return ("Condition status needs review", "Supporting evidence recorded")
         return ("Operational follow-up required", "Operational follow-up required")
     return ("Condition status under operational review", "Supporting evidence recorded")
+
+
+def _multi_evidence_runtime_copy(is_complete: bool, has_uploaded_component: bool) -> Tuple[str, str]:
+    if is_complete:
+        return ("Evidence components complete", "Evidence complete")
+    if has_uploaded_component:
+        return ("Required evidence incomplete", "Partial evidence recorded")
+    return ("Additional evidence still required", "Further evidence required before completion")
 
 
 async def _load_active_standard_signal_summary_by_property(
@@ -572,12 +581,90 @@ def enrich_requirement_dict(
             out["evidence_completeness"] = comp_eval
         else:
             out["evidence_completeness"] = project_evidence_completeness_for_client(comp_eval)
+        runtime_status_label, runtime_evidence_badge = _multi_evidence_runtime_copy(
+            is_complete=bool(comp_eval.get("is_complete")),
+            has_uploaded_component=bool((comp_eval.get("signals_detected") or {}).get("smoke_alarm_records") or 0)
+            or bool((comp_eval.get("signals_detected") or {}).get("co_alarm_records") or 0),
+        )
+        if not bool(comp_eval.get("is_complete")):
+            # Multi-evidence rows stay action-needed until required components are complete.
+            out["status_label"] = runtime_status_label
+            out["evidence_badge_label"] = runtime_evidence_badge
     else:
         out["evidence_completeness"] = None
+
+    if _canon in ("legionella", "lead_testing"):
+        pol = effective_evidence_resolution(out)
+        fu_status = external_assessment_structured_followup_status(
+            out,
+            compliance_evidence_records if compliance_evidence_records is not None else [],
+            evidence_policy=pol,
+        )
+        if fu_status is True or fu_status is None:
+            if (audience or "client").strip().lower() != "admin":
+                out["status_label"] = "Assessment recorded — follow-up required"
+                out["evidence_badge_label"] = "Remediation or follow-up may remain open"
+
     if _canon == "tenancy_agreement":
         out["tenancy_agreement_status_text"] = _derive_tenancy_agreement_status_text(
             compliance_evidence_records if compliance_evidence_records is not None else []
         )
+
+    _wc_upper = str(out.get("workflow_class") or "").strip().upper()
+    _audience_lower = (audience or "client").strip().lower()
+    if _wc_upper == "GUIDED_DECLARATION" and _audience_lower != "admin":
+        recs = compliance_evidence_records if compliance_evidence_records is not None else []
+        active_recs = [
+            r
+            for r in recs
+            if str(r.get("archived") or "").lower() not in ("true", "1")
+            and str(r.get("status") or "").upper() not in ("REJECTED", "ARCHIVED")
+        ]
+        if active_recs:
+            skip_declaration_wording = False
+            if _canon == "tenancy_agreement":
+                ta_txt = _derive_tenancy_agreement_status_text(recs)
+                ta_lower = ta_txt.lower()
+                # Only skip when no declaration of agreement exists; "supporting … not uploaded" still means a declaration was recorded.
+                if "agreement not recorded" in ta_lower or "action required" in ta_lower:
+                    skip_declaration_wording = True
+            if not skip_declaration_wording:
+                out["status_label"] = "Declaration recorded"
+                out["evidence_badge_label"] = "Supporting evidence on file — not externally verified"
+
+    if _wc_upper == "REGISTRATION_TRACKING" and _audience_lower != "admin":
+        recs = compliance_evidence_records if compliance_evidence_records is not None else []
+        active_recs = [
+            r
+            for r in recs
+            if str(r.get("archived") or "").lower() not in ("true", "1")
+            and str(r.get("status") or "").upper() not in ("REJECTED", "ARCHIVED")
+        ]
+        if active_recs:
+            out["status_label"] = "Registration details recorded"
+            out["evidence_badge_label"] = "Authority confirmation not verified externally"
+
+    if _wc_upper == "TENANT_DELIVERY" and _audience_lower != "admin":
+        recs = compliance_evidence_records if compliance_evidence_records is not None else []
+        active_recs = [
+            r
+            for r in recs
+            if str(r.get("archived") or "").lower() not in ("true", "1")
+            and str(r.get("status") or "").upper() not in ("REJECTED", "ARCHIVED")
+        ]
+        if active_recs:
+            out["status_label"] = "Delivery recorded"
+            out["evidence_badge_label"] = "Tenant receipt not independently confirmed"
+
+    _ea_blob = out.get("evidence_authority") if isinstance(out.get("evidence_authority"), dict) else {}
+    _ea_sr = str(_ea_blob.get("state_reason") or "")
+    if (
+        _wc_upper in ("DOCUMENT_UPLOAD", "LEGACY_DOCUMENT_UPLOAD")
+        and _audience_lower != "admin"
+        and _ea_sr == "document_upload_missing_required_expiry_semantics"
+    ):
+        out["status_label"] = "Certificate on file — expiry review required"
+        out["evidence_badge_label"] = "Current validity not confirmed"
 
     if _is_active_standard and isinstance(out.get("active_standard_status_summary"), dict):
         out["active_standard_status_summary"]["read_only"] = True

@@ -255,6 +255,206 @@ def validate_governed_document_row_modes(enriched: Dict[str, Any]) -> Dict[str, 
     return {"summary": sev, "results": [_result("governed_document_row_modes", severity=sev, violations=violations)]}
 
 
+def validate_command_centre_requirement_backed_rows(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Command-centre Phase 2 diagnostics (audit-only):
+    - requirement rows should carry canonical requirement_id
+    - requirement rows should carry requirement_display contract
+    - requirement rows should carry resolver-enriched metadata.take_action
+    - forbid generic missing-document compliance wording
+    - flag local CTA fallback when resolver take_action primary label exists
+    """
+    violations: List[str] = []
+    warnings: List[str] = []
+    for idx, row in enumerate(rows or []):
+        if not isinstance(row, dict):
+            continue
+        st = str(row.get("source_type") or "").strip().lower()
+        if st != "requirement":
+            continue
+        md = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        rid = (
+            row.get("requirement_id")
+            or md.get("requirement_id")
+            or md.get("linked_property_requirement_id")
+            or md.get("related_requirement_id")
+        )
+        if rid is None or not str(rid).strip():
+            violations.append(f"command_centre_missing_canonical_requirement_id:row[{idx}]")
+
+        rd = md.get("requirement_display")
+        if not isinstance(rd, dict) or not rd:
+            violations.append(f"command_centre_missing_requirement_display:row[{idx}]")
+
+        take = md.get("take_action")
+        if not isinstance(take, dict) or not take:
+            violations.append(f"command_centre_missing_take_action:row[{idx}]")
+        else:
+            pri = take.get("primary") if isinstance(take.get("primary"), dict) else {}
+            ta_label = str(pri.get("label") or "").strip().lower()
+            row_label = str(row.get("primary_action_label") or "").strip().lower()
+            if ta_label and row_label and ta_label != row_label:
+                warnings.append(f"command_centre_local_cta_fallback_with_resolver_take_action:row[{idx}]")
+
+        generic = "missing document - blocking compliance"
+        generic2 = "missing document — blocking compliance"
+        haystack = " ".join(
+            [
+                str(row.get("title") or ""),
+                str(row.get("description") or ""),
+                str(row.get("primary_action_label") or ""),
+                str(md.get("timing_label") or ""),
+            ]
+        ).lower()
+        if generic in haystack or generic2 in haystack:
+            violations.append(f"command_centre_forbidden_generic_wording:row[{idx}]")
+
+    sev = "FAIL" if violations else ("WARN" if warnings else "OK")
+    return {
+        "summary": sev,
+        "results": [
+            _result(
+                "command_centre_requirement_backed_alignment",
+                severity=sev,
+                violations=violations,
+                warnings=warnings,
+            )
+        ],
+    }
+
+
+def validate_reminder_generation_semantics(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Reminder-generation Phase 2 diagnostics (audit-only).
+    """
+    violations: List[str] = []
+    warnings: List[str] = []
+    for idx, row in enumerate(rows or []):
+        if not isinstance(row, dict):
+            continue
+        md = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        st = str(row.get("source_type") or md.get("source_type") or "").strip().lower()
+        if st and st != "requirement":
+            continue
+        rd = md.get("requirement_display")
+        if not isinstance(rd, dict) or not rd:
+            violations.append(f"reminder_missing_requirement_display:row[{idx}]")
+
+        workflow_class = str(
+            md.get("workflow_class")
+            or row.get("workflow_class")
+            or md.get("primary_resolution_workflow")
+            or ""
+        ).strip().upper()
+        semantic_line = str(row.get("semantic_line") or md.get("semantic_line") or "").strip().lower()
+        hay = " ".join(
+            [
+                str(row.get("type") or ""),
+                str(row.get("detail_type") or ""),
+                str(row.get("semantic_line") or ""),
+                str(row.get("subject") or ""),
+                str(row.get("message") or ""),
+            ]
+        ).lower()
+
+        if "blocking compliance" in hay:
+            violations.append(f"reminder_forbidden_generic_blocking_copy:row[{idx}]")
+
+        if workflow_class == WC_GUIDED_DECLARATION and any(x in hay for x in ("verified", "externally verified", "verification passed")):
+            violations.append(f"reminder_declaration_presented_as_verified:row[{idx}]")
+
+        if workflow_class == WC_EXTERNAL_ASSESSMENT_EVIDENCE and any(
+            x in hay for x in ("operationally safe", "remediation complete", "resolved remediation")
+        ):
+            violations.append(f"reminder_assessment_presented_as_operationally_resolved:row[{idx}]")
+
+        if (
+            workflow_class in (CONDITION_STANDARD_ACTIVE_STANDARD, "CONDITION_STANDARD")
+            and any(x in hay for x in ("upload complete", "document complete", "upload-only complete"))
+        ):
+            violations.append(f"reminder_condition_standard_presented_as_upload_complete:row[{idx}]")
+
+        if workflow_class == WC_GUIDED_DECLARATION and semantic_line and "declaration" not in semantic_line:
+            warnings.append(f"reminder_semantics_inconsistent_with_workflow:row[{idx}]:guided_declaration")
+        if workflow_class == WC_EXTERNAL_ASSESSMENT_EVIDENCE and semantic_line and "assessment" not in semantic_line:
+            warnings.append(f"reminder_semantics_inconsistent_with_workflow:row[{idx}]:external_assessment")
+        if workflow_class in (CONDITION_STANDARD_ACTIVE_STANDARD, "CONDITION_STANDARD") and semantic_line and "condition" not in semantic_line:
+            warnings.append(f"reminder_semantics_inconsistent_with_workflow:row[{idx}]:condition_standard")
+
+    sev = "FAIL" if violations else ("WARN" if warnings else "OK")
+    return {
+        "summary": sev,
+        "results": [
+            _result(
+                "reminder_generation_semantics_alignment",
+                severity=sev,
+                violations=violations,
+                warnings=warnings,
+            )
+        ],
+    }
+
+
+def validate_reminder_narrative_groups(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Audit-only checks for Phase 2B grouped reminder narrative context.
+    """
+    violations: List[str] = []
+    warnings: List[str] = []
+    if not isinstance(payload, dict):
+        return {
+            "summary": "FAIL",
+            "results": [_result("reminder_narrative_groups_alignment", severity="FAIL", violations=["invalid_payload"], warnings=[])],
+        }
+    groups = {
+        "certificate_reminders": payload.get("certificate_reminders") or [],
+        "declaration_reminders": payload.get("declaration_reminders") or [],
+        "assessment_reminders": payload.get("assessment_reminders") or [],
+        "condition_reminders": payload.get("condition_reminders") or [],
+        "other_reminders": payload.get("other_reminders") or [],
+    }
+    for gk, rows in groups.items():
+        if not isinstance(rows, list):
+            violations.append(f"invalid_group_type:{gk}")
+            continue
+        for idx, row in enumerate(rows):
+            if not isinstance(row, dict):
+                continue
+            bucket = str(row.get("workflow_semantics_bucket") or "").strip().upper()
+            line = str(row.get("semantic_line") or "").strip().lower()
+            hay = " ".join([str(row.get("type") or ""), str(row.get("detail_type") or ""), line]).lower()
+
+            if "blocking compliance" in hay:
+                violations.append(f"forbidden_blocking_compliance_wording:{gk}[{idx}]")
+            if "verified" in hay and gk == "declaration_reminders":
+                violations.append(f"declaration_framed_as_verified:{gk}[{idx}]")
+            if any(x in hay for x in ("operationally safe", "remediation complete", "resolved remediation")) and gk == "assessment_reminders":
+                violations.append(f"assessment_framed_as_resolved_or_safe:{gk}[{idx}]")
+            if any(x in hay for x in ("upload complete", "document complete", "upload-only complete")) and gk == "condition_reminders":
+                violations.append(f"condition_standard_framed_as_document_complete:{gk}[{idx}]")
+
+            if gk == "certificate_reminders" and bucket in ("CONDITION_STANDARD", CONDITION_STANDARD_ACTIVE_STANDARD):
+                violations.append(f"condition_standard_in_certificate_group:{gk}[{idx}]")
+            if gk == "declaration_reminders" and bucket and bucket != WC_GUIDED_DECLARATION:
+                warnings.append(f"mixed_workflow_semantics_in_group:{gk}[{idx}]:{bucket}")
+            if gk == "assessment_reminders" and bucket and bucket != WC_EXTERNAL_ASSESSMENT_EVIDENCE:
+                warnings.append(f"mixed_workflow_semantics_in_group:{gk}[{idx}]:{bucket}")
+            if gk == "condition_reminders" and bucket and bucket not in ("CONDITION_STANDARD", CONDITION_STANDARD_ACTIVE_STANDARD):
+                warnings.append(f"mixed_workflow_semantics_in_group:{gk}[{idx}]:{bucket}")
+    sev = "FAIL" if violations else ("WARN" if warnings else "OK")
+    return {
+        "summary": sev,
+        "results": [
+            _result(
+                "reminder_narrative_groups_alignment",
+                severity=sev,
+                violations=violations,
+                warnings=warnings,
+            )
+        ],
+    }
+
+
 def snapshot_governance_surface_registry() -> str:
     """Stable JSON snapshot for tests (sorted keys)."""
     payload = {k: GOVERNANCE_SURFACE_REGISTRY[k] for k in sorted(GOVERNANCE_SURFACE_REGISTRY)}
@@ -263,6 +463,51 @@ def snapshot_governance_surface_registry() -> str:
 
 def snapshot_workflow_capability_keys() -> str:
     return json.dumps(sorted(list_governance_workflow_keys()), default=str)
+
+
+def validate_registry_workflow_semantics_smoke() -> Dict[str, Any]:
+    """
+    CI guard: registry workflow semantics module remains internally consistent
+    (allowed primary workflows cover product defaults; smoke validations behave).
+    """
+    violations: List[str] = []
+    from services.registry_workflow_semantics import (
+        ALLOWED_PRIMARY_RESOLUTION_WORKFLOWS,
+        validate_evidence_resolution_workflow_semantics,
+    )
+    from services.compliance_evidence_record_service import (
+        EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW,
+        GUIDED_DECLARATION_WORKFLOW,
+    )
+
+    for required in (
+        "GUIDED_EVIDENCE_RESOLUTION",
+        GUIDED_DECLARATION_WORKFLOW,
+        EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW,
+    ):
+        if required not in ALLOWED_PRIMARY_RESOLUTION_WORKFLOWS:
+            violations.append(f"missing_default_primary_workflow:{required}")
+
+    errs_ok, _ = validate_evidence_resolution_workflow_semantics(
+        {
+            "allowed_evidence_modes": ["STRUCTURED_DECLARATION", "DOCUMENT_UPLOAD"],
+            "primary_resolution_workflow": GUIDED_DECLARATION_WORKFLOW,
+        }
+    )
+    if errs_ok:
+        violations.append(f"valid_guided_declaration_rejected:{errs_ok}")
+
+    bad_ext, _ = validate_evidence_resolution_workflow_semantics(
+        {
+            "allowed_evidence_modes": ["DOCUMENT_UPLOAD"],
+            "primary_resolution_workflow": EXTERNAL_ASSESSMENT_EVIDENCE_WORKFLOW,
+        }
+    )
+    if not bad_ext:
+        violations.append("expected_external_assessment_document_only_blocked")
+
+    sev = "FAIL" if violations else "OK"
+    return {"summary": sev, "results": [_result("registry_workflow_semantics_smoke", severity=sev, violations=violations)]}
 
 
 def run_phase1_ci_bundle() -> Dict[str, Any]:
@@ -275,6 +520,7 @@ def run_phase1_ci_bundle() -> Dict[str, Any]:
         validate_condition_standard_upload_only_forbidden(),
         validate_guided_declaration_moderate_score_semantics(),
         validate_no_forbidden_generic_blocking_copy_in_repo(),
+        validate_registry_workflow_semantics_smoke(),
     ]
     failed = any(p.get("summary") == "FAIL" for p in parts)
     return {"overall": "FAIL" if failed else "OK", "parts": parts}

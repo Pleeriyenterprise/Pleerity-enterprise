@@ -77,6 +77,17 @@
         }
       ],
       "summary": "OK"
+    },
+    {
+      "results": [
+        {
+          "severity": "OK",
+          "surface": "registry_workflow_semantics_smoke",
+          "violations": [],
+          "warnings": []
+        }
+      ],
+      "summary": "OK"
     }
   ]
 }

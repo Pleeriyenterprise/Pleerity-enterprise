@@ -2,9 +2,12 @@
  * Compliance requirement status chips for UI (documents vs requirements).
  * Backend statuses: COMPLIANT, VALID, EXPIRING_SOON, OVERDUE, PENDING, MISSING, FAILED, etc.
  * PENDING is split by whether a document is already linked: no file vs awaiting verification.
+ *
+ * Prefer `workflow_class` from API enrichment when present — aligns with backend resolver semantics.
  */
 import { CheckCircle, Clock, AlertTriangle, XCircle, FileText, HelpCircle } from 'lucide-react';
 import { documentVerificationAwaitingSubline } from '../domain/presentDomain';
+import { isConditionStandardWorkflowHint, isMultiEvidenceStyleWorkflow } from './workflowSemantics';
 
 function awaitingVerificationSubline() {
   const s = documentVerificationAwaitingSubline();
@@ -25,6 +28,22 @@ export const EVIDENCE_STATUS_CONFIG = {
 };
 
 const NO_DOC_CHIP = { icon: FileText, text: 'No document uploaded', className: 'bg-gray-100 text-gray-700 border-gray-200' };
+/** Certificate-style DOCUMENT_UPLOAD workflows — avoid implying operational remediation closure. */
+const CERTIFICATE_GAP_CHIP = {
+  icon: FileText,
+  text: 'Certificate evidence missing',
+  className: 'bg-gray-100 text-gray-700 border-gray-200',
+};
+const MULTI_COMPONENT_CHIP = {
+  icon: FileText,
+  text: 'Evidence incomplete',
+  className: 'bg-gray-100 text-gray-700 border-gray-200',
+};
+const ASSESSMENT_GAP_CHIP = {
+  icon: FileText,
+  text: 'Assessment incomplete',
+  className: 'bg-gray-100 text-gray-700 border-gray-200',
+};
 const VERIFY_CHIP = { icon: Clock, text: 'Awaiting verification', className: 'bg-amber-100 text-amber-800 border-amber-200' };
 
 function _workflowClass(row) {
@@ -38,10 +57,7 @@ function _requirementCode(row) {
 }
 
 function _isActiveStandardRow(row) {
-  const wf = _workflowClass(row);
-  const code = _requirementCode(row);
-  if (wf === 'ACTIVE_STANDARD') return true;
-  return code === 'fitness_for_human_habitation' || code === 'repairing_standard';
+  return isConditionStandardWorkflowHint(row?.workflow_class, row);
 }
 
 function _tenancyAgreementStatusText(row) {
@@ -55,12 +71,15 @@ export function workflowAwareMissingEvidenceLabel(row) {
   const tenancyStatus = _tenancyAgreementStatusText(row);
   if (tenancyStatus) return tenancyStatus;
   if (_isActiveStandardRow(row)) return 'Condition status needs review';
+  if (wf === 'DOCUMENT_UPLOAD' || wf === 'LEGACY_DOCUMENT_UPLOAD') {
+    return 'Certificate or evidence document missing — action required';
+  }
   if (wf === 'GUIDANCE_ONLY') return 'Guidance item — review recommended';
   if (wf === 'GUIDED_DECLARATION') return 'Declaration not recorded — action required';
   if (wf === 'TENANT_DELIVERY') return 'Delivery record missing — action required';
   if (wf === 'REGISTRATION_TRACKING') return 'Registration details not recorded — action required';
   if (wf === 'EXTERNAL_ASSESSMENT_EVIDENCE') return 'Assessment not recorded — action required';
-  if (wf === 'MULTI_EVIDENCE') return 'Required evidence incomplete';
+  if (isMultiEvidenceStyleWorkflow(wf)) return 'Required evidence incomplete';
   return 'Evidence missing — action required';
 }
 
@@ -74,7 +93,12 @@ export function getEvidenceStatus(status, row) {
   const tenancyStatus = _tenancyAgreementStatusText(row);
   if (key === 'PENDING' && linked) return { ...VERIFY_CHIP, subline: awaitingVerificationSubline() };
   if (key === 'MISSING' || key === 'MISSING_EVIDENCE' || (key === 'PENDING' && !linked)) {
-    return { ...NO_DOC_CHIP, subline: workflowAwareMissingEvidenceLabel(row) };
+    const wf = _workflowClass(row);
+    let chip = NO_DOC_CHIP;
+    if (isMultiEvidenceStyleWorkflow(wf)) chip = MULTI_COMPONENT_CHIP;
+    else if (wf === 'EXTERNAL_ASSESSMENT_EVIDENCE') chip = ASSESSMENT_GAP_CHIP;
+    else if (wf === 'DOCUMENT_UPLOAD' || wf === 'LEGACY_DOCUMENT_UPLOAD') chip = CERTIFICATE_GAP_CHIP;
+    return { ...chip, subline: workflowAwareMissingEvidenceLabel(row) };
   }
   if (key === 'PENDING_VERIFICATION') {
     const cfg = EVIDENCE_STATUS_CONFIG.PENDING_VERIFICATION;

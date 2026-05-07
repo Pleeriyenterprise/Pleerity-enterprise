@@ -50,10 +50,22 @@ GUIDED_DECLARATION_TENANCY = WorkflowScenario(
     requirement_type="tenancy_agreement",
     expected_workflow_class=WC_GUIDED_DECLARATION,
 )
+GUIDED_DECLARATION_DEPOSIT_PI = WorkflowScenario(
+    key="guided_declaration_deposit_pi",
+    requirement_code="deposit_pi",
+    requirement_type="deposit_pi",
+    expected_workflow_class=WC_GUIDED_DECLARATION,
+)
 EXTERNAL_ASSESSMENT_LEGIONELLA = WorkflowScenario(
     key="external_assessment_legionella",
     requirement_code="legionella",
     requirement_type="legionella",
+    expected_workflow_class=WC_EXTERNAL_ASSESSMENT_EVIDENCE,
+)
+EXTERNAL_ASSESSMENT_LEAD = WorkflowScenario(
+    key="external_assessment_lead_testing",
+    requirement_code="lead_testing",
+    requirement_type="lead_testing",
     expected_workflow_class=WC_EXTERNAL_ASSESSMENT_EVIDENCE,
 )
 CONDITION_STANDARD_FITNESS = WorkflowScenario(
@@ -84,6 +96,12 @@ REGISTRATION_TRACKING_LANDLORD = WorkflowScenario(
     key="registration_tracking_landlord_registration",
     requirement_code="landlord_registration",
     requirement_type="landlord_registration",
+    expected_workflow_class=WC_REGISTRATION_TRACKING,
+)
+REGISTRATION_TRACKING_RENT_SMART_WALES = WorkflowScenario(
+    key="registration_tracking_rent_smart_wales",
+    requirement_code="rent_smart_wales",
+    requirement_type="rent_smart_wales",
     expected_workflow_class=WC_REGISTRATION_TRACKING,
 )
 
@@ -128,7 +146,7 @@ def build_two_property_requirements(
         "property_id": "prop-B",
         "requirement_id": f"{scenario.key}-B",
     }
-    if scenario.expected_workflow_class == WC_GUIDED_DECLARATION:
+    if scenario.expected_workflow_class in (WC_GUIDED_DECLARATION, WC_TENANT_DELIVERY):
         req_a["compliance_requirement_class"] = "OBLIGATION"
         req_a["engine_informational"] = True
         req_b["compliance_requirement_class"] = "OBLIGATION"
@@ -143,6 +161,8 @@ def apply_phase2_scenario_defaults(scenario: WorkflowScenario, requirement: Dict
     out = dict(requirement)
     if scenario.requirement_code == "repairing_standard":
         out["jurisdiction"] = "Scotland"
+    if scenario.requirement_code == "rent_smart_wales":
+        out["jurisdiction"] = "Wales"
     if scenario.expected_workflow_class == CONDITION_STANDARD_ACTIVE_STANDARD:
         out["compliance_requirement_class"] = "OBLIGATION"
         out["engine_informational"] = True
@@ -168,6 +188,21 @@ def build_property_a_evidence_record(scenario: WorkflowScenario, requirement_a: 
             "evidence_payload": {"certificate_number": "GAS-CP12-A", "expiry_date": "2027-01-15"},
         }
     if scenario.expected_workflow_class == WC_GUIDED_DECLARATION:
+        if scenario.requirement_code == "deposit_pi":
+            return {
+                **base,
+                "evidence_mode": EVIDENCE_MODE_STRUCTURED_DECLARATION,
+                "evidence_confidence_level": "MEDIUM",
+                "evidence_payload": {
+                    "declaration_statement": "Deposit prescribed information declaration (harness).",
+                    "structured_fields": {
+                        "deposit_taken": {"answer": True},
+                        "prescribed_information_served": {"answer": True},
+                        "declaration_confirmed": {"answer": True},
+                    },
+                },
+                "linked_document_ids": [],
+            }
         return {
             **base,
             "evidence_mode": EVIDENCE_MODE_STRUCTURED_DECLARATION,
@@ -177,6 +212,40 @@ def build_property_a_evidence_record(scenario: WorkflowScenario, requirement_a: 
                 "structured_fields": {
                     "agreement_exists": {"answer": True},
                     "signed_by_parties": {"answer": True},
+                },
+            },
+            "linked_document_ids": [],
+        }
+    if scenario.expected_workflow_class == WC_REGISTRATION_TRACKING:
+        return {
+            **base,
+            "evidence_mode": EVIDENCE_MODE_STRUCTURED_DECLARATION,
+            "evidence_confidence_level": "MEDIUM",
+            "evidence_payload": {
+                "declaration_statement": "Registration details recorded (harness).",
+                "structured_fields": {
+                    "registration_number": {"answer": "REG-HARNESS-A"},
+                    "issuing_authority": {"answer": "Harness issuing authority"},
+                    "registration_status": {"answer": "active"},
+                    "declaration_confirmed": {"answer": True},
+                },
+            },
+            "linked_document_ids": [],
+        }
+    if scenario.expected_workflow_class == WC_TENANT_DELIVERY:
+        return {
+            **base,
+            "evidence_mode": EVIDENCE_MODE_STRUCTURED_DECLARATION,
+            "evidence_confidence_level": "MEDIUM",
+            "evidence_payload": {
+                "declaration_statement": "How to Rent delivery recorded (harness).",
+                "structured_fields": {
+                    "tenancy_start_date": {"answer": "2026-01-01"},
+                    "guide_version_or_publication_date": {"answer": "2025 edition"},
+                    "delivery_date": {"answer": "2026-01-02"},
+                    "delivery_method": {"answer": "email"},
+                    "tenant_recipient": {"answer": "Harness Tenant"},
+                    "declaration_confirmed": {"answer": True},
                 },
             },
             "linked_document_ids": [],
@@ -272,6 +341,12 @@ def build_property_a_verified_document(requirement_a: Dict[str, Any]) -> Dict[st
     }
 
 
+def build_property_a_verified_document_no_expiry(requirement_a: Dict[str, Any]) -> Dict[str, Any]:
+    d = dict(build_property_a_verified_document(requirement_a))
+    d.pop("expiry_date", None)
+    return d
+
+
 def scoped_records_for_requirement(
     records: List[Dict[str, Any]], requirement: Dict[str, Any]
 ) -> List[Dict[str, Any]]:
@@ -292,13 +367,31 @@ def preview_requirement_authority_with_scoped_records(
     return preview_authority(requirement, [], evidence_records=scoped, evidence_policy=policy)
 
 
+def preview_requirement_authority_with_scoped_records_and_property_context(
+    requirement: Dict[str, Any], records: List[Dict[str, Any]], property_context: Dict[str, Any]
+) -> Dict[str, Any]:
+    policy = effective_evidence_resolution(requirement)
+    scoped = scoped_records_for_requirement(records, requirement)
+    return preview_authority(
+        requirement,
+        [],
+        property_doc=property_context,
+        evidence_records=scoped,
+        evidence_policy=policy,
+    )
+
+
 def enrich_requirement_projection(
     requirement: Dict[str, Any], authority_preview: Dict[str, Any], records: List[Dict[str, Any]], *, audience: str = "client"
 ) -> Dict[str, Any]:
+    req = dict(requirement)
+    ev_auth = authority_preview.get("evidence_authority")
+    if isinstance(ev_auth, dict):
+        req["evidence_authority"] = ev_auth
     mirror_status = str((authority_preview.get("mirror") or {}).get("status") or "").upper()
     live_state = EVIDENCE_VERIFIED if mirror_status == RequirementStatus.COMPLIANT.value else EVIDENCE_MISSING
     return enrich_requirement_dict(
-        requirement,
+        req,
         live_state,
         audience=audience,
         compliance_evidence_records=scoped_records_for_requirement(records, requirement),

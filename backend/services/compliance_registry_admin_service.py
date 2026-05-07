@@ -194,6 +194,15 @@ def validate_registry_draft(doc: Dict[str, Any]) -> List[str]:
     if rt == "JOB" and cls.get("requires_job") is False:
         errs.append("JOB normally expects requires_job true")
 
+    cwc_cls = str(cls.get("client_workflow_class") or "").strip().upper()
+    if cwc_cls:
+        from services.registry_workflow_semantics import is_allowed_client_workflow_class
+
+        if not is_allowed_client_workflow_class(cwc_cls):
+            errs.append(
+                f"classification.client_workflow_class is not a recognised governance workflow key: {cwc_cls!r}"
+            )
+
     jur = doc.get("jurisdiction") if isinstance(doc.get("jurisdiction"), dict) else {}
     dj = jur.get("display_jurisdictions")
     if dj is not None and not isinstance(dj, list):
@@ -304,16 +313,22 @@ def validate_registry_draft(doc: Dict[str, Any]) -> List[str]:
                     errs.append(f"evidence_resolution.allowed_evidence_modes[{i}] is not a recognised mode")
                 elif tok not in modes_norm:
                     modes_norm.append(tok)
-        prw = str(er.get("primary_resolution_workflow") or "").strip()
-        if prw and prw not in {
-            "GUIDED_EVIDENCE_RESOLUTION",
-            "LEGACY_DOCUMENT_UPLOAD",
-            "DIRECT_EVIDENCE_ACTION",
-        }:
-            errs.append(
-                "evidence_resolution.primary_resolution_workflow must be one of "
-                "GUIDED_EVIDENCE_RESOLUTION, DIRECT_EVIDENCE_ACTION, LEGACY_DOCUMENT_UPLOAD"
+        prw = str(er.get("primary_resolution_workflow") or "").strip().upper()
+        from services.registry_workflow_semantics import (
+            merge_registry_governance_review_fields,
+            validate_evidence_resolution_workflow_semantics,
+        )
+
+        wf_errs, wf_warnings = validate_evidence_resolution_workflow_semantics(er)
+        errs.extend(wf_errs)
+        if wf_warnings:
+            merge_registry_governance_review_fields(
+                doc,
+                [f"governance.registry_workflow:{w}" for w in wf_warnings],
             )
+            gov = doc.get("governance") if isinstance(doc.get("governance"), dict) else {}
+            needs_review = list(gov.get("needs_review_fields") or [])
+
         if prw == "LEGACY_DOCUMENT_UPLOAD" and "DOCUMENT_UPLOAD" not in set(modes_norm):
             errs.append(
                 "evidence_resolution.primary_resolution_workflow=LEGACY_DOCUMENT_UPLOAD requires "

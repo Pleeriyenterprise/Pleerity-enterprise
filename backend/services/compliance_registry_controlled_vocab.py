@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from services.registry_workflow_semantics import ALLOWED_PRIMARY_RESOLUTION_WORKFLOWS
+
 # --- Identity category (governed product taxonomy) ---
 
 REGISTRY_IDENTITY_CATEGORIES: Tuple[str, ...] = (
@@ -74,11 +76,7 @@ REGISTRY_EVIDENCE_MODES: Tuple[str, ...] = (
 )
 REGISTRY_EVIDENCE_MODE_SET: Set[str] = set(REGISTRY_EVIDENCE_MODES)
 
-REGISTRY_EVIDENCE_WORKFLOWS: Tuple[str, ...] = (
-    "LEGACY_DOCUMENT_UPLOAD",
-    "DIRECT_EVIDENCE_ACTION",
-    "GUIDED_EVIDENCE_RESOLUTION",
-)
+REGISTRY_EVIDENCE_WORKFLOWS: Tuple[str, ...] = tuple(sorted(ALLOWED_PRIMARY_RESOLUTION_WORKFLOWS))
 REGISTRY_EVIDENCE_WORKFLOW_SET: Set[str] = set(REGISTRY_EVIDENCE_WORKFLOWS)
 
 REGISTRY_ALLOWED_UPLOAD_TYPES: Tuple[str, ...] = (
@@ -231,6 +229,9 @@ def normalise_registry_draft_for_storage(doc: Dict[str, Any]) -> List[str]:
             cls["requirement_type"] = rt
         cr = str(cls.get("criticality") or "MEDIUM").strip().upper()
         cls["criticality"] = cr
+        cwc = str(cls.get("client_workflow_class") or "").strip().upper()
+        if cwc:
+            cls["client_workflow_class"] = cwc
         doc["classification"] = cls
 
     jur = doc.get("jurisdiction") if isinstance(doc.get("jurisdiction"), dict) else {}
@@ -268,7 +269,10 @@ def normalise_registry_draft_for_storage(doc: Dict[str, Any]) -> List[str]:
             er["allowed_evidence_modes"] = [str(x).strip().upper() for x in modes if str(x or "").strip()]
         prw = str(er.get("primary_resolution_workflow") or "").strip()
         if prw:
-            er["primary_resolution_workflow"] = prw.replace(" ", "_")
+            er["primary_resolution_workflow"] = prw.replace(" ", "_").upper()
+        cwc_er = str(er.get("client_workflow_class") or "").strip().upper()
+        if cwc_er:
+            er["client_workflow_class"] = cwc_er
         doc["evidence_resolution"] = er
 
     links = doc.get("action_links")
@@ -309,6 +313,9 @@ def normalise_registry_draft_for_storage(doc: Dict[str, Any]) -> List[str]:
 
 def controlled_field_options_payload() -> Dict[str, Any]:
     """JSON-serialisable option sets + display hints for the admin editor."""
+    from services.workflow_behaviour_governance import list_governance_workflow_keys
+
+    gwf = sorted(list_governance_workflow_keys())
     return {
         "identity_categories": [
             {"value": c, "label": human_label_for_category(c)} for c in REGISTRY_IDENTITY_CATEGORIES
@@ -331,6 +338,9 @@ def controlled_field_options_payload() -> Dict[str, Any]:
         ],
         "evidence_resolution_workflows": [
             {"value": w, "label": w.replace("_", " ").title()} for w in REGISTRY_EVIDENCE_WORKFLOWS
+        ],
+        "client_workflow_classes": [
+            {"value": k, "label": k.replace("_", " ").title()} for k in gwf
         ],
         "allowed_upload_types": [
             {"value": t, "label": t} for t in REGISTRY_ALLOWED_UPLOAD_TYPES

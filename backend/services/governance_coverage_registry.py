@@ -39,13 +39,13 @@ GOVERNANCE_SURFACE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "enforcement_level": "PARTIAL",
     },
     "command_centre": {
-        "consumes_workflow_contract": False,
-        "consumes_requirement_display_contract": False,
+        "consumes_workflow_contract": True,
+        "consumes_requirement_display_contract": True,
         "consumes_reporting_semantics": False,
         "consumes_execution_semantics": False,
         "uses_local_fallback_logic": True,
         "allows_noncanonical_requirement_rows": False,
-        "enforcement_level": "NONE",
+        "enforcement_level": "PARTIAL",
     },
     "today_tasks": {
         "consumes_workflow_contract": True,
@@ -120,13 +120,13 @@ GOVERNANCE_SURFACE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "enforcement_level": "PARTIAL",
     },
     "reminder_generation": {
-        "consumes_workflow_contract": False,
-        "consumes_requirement_display_contract": False,
+        "consumes_workflow_contract": True,
+        "consumes_requirement_display_contract": True,
         "consumes_reporting_semantics": False,
         "consumes_execution_semantics": False,
         "uses_local_fallback_logic": True,
         "allows_noncanonical_requirement_rows": False,
-        "enforcement_level": "NONE",
+        "enforcement_level": "PARTIAL",
     },
     "gap_engine": {
         "consumes_workflow_contract": False,

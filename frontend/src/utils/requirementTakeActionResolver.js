@@ -2,6 +2,9 @@
  * Unified Take Action — one primary CTA per requirement, compliance vs maintenance separated.
  * External reference links come from API (`take_action.supporting_external_links` or `action_links`), not hardcoded here.
  * Keep aligned with backend/services/requirement_action_resolver.py (labels, routes).
+ *
+ * Phase 1 semantic alignment: prefer API `take_action` + `workflow_class`; client fallback mirrors backend
+ * informational vs DOCUMENT/JOB/MAINTENANCE gating and registry `primary_action_mode: hidden`.
  */
 
 import { normalizeRequirementCode, requirementLabel } from '../domain/presentDomain';
@@ -52,6 +55,10 @@ export function inferRequirementActionType(requirement) {
   if (!requirement || typeof requirement !== 'object') return REQUIREMENT_ACTION_TYPES.DOCUMENT;
   const stored = String(requirement.action_type || '').toUpperCase();
   if (Object.values(REQUIREMENT_ACTION_TYPES).includes(stored)) return stored;
+  const meta = requirement.registry_metadata && typeof requirement.registry_metadata === 'object' ? requirement.registry_metadata : {};
+  if (String(meta.primary_action_mode || '').trim().toLowerCase() === 'hidden') {
+    return REQUIREMENT_ACTION_TYPES.OBLIGATION;
+  }
   const cls = String(requirement.compliance_requirement_class || requirement.requirement_class || '').toUpperCase();
   if (cls === 'JOB') return REQUIREMENT_ACTION_TYPES.JOB;
   if (cls === 'OBLIGATION' || cls === 'SYSTEM') return REQUIREMENT_ACTION_TYPES.OBLIGATION;
@@ -238,14 +245,37 @@ export function resolveRequirementAction(requirement, _property = {}) {
   const hashFrag = code ? `#req=${encodeURIComponent(code)}` : '';
   const cls = String(requirement.compliance_requirement_class || '').toUpperCase();
   const ff = String(requirement.engine_fulfillment_mode || requirement.fulfillment_mode || '').toLowerCase();
-  const informational =
+  let informational =
     cls === 'OBLIGATION' ||
     cls === 'SYSTEM' ||
     requirement.engine_informational === true ||
     String(requirement.engine_client_visibility || '').toLowerCase() === 'informational' ||
     ff === 'obligation';
 
+  // Match backend infer_action_type + informational gate: DOCUMENT/JOB/MAINTENANCE win over obligation posture.
+  const inferredActionType = inferRequirementActionType(requirement);
+  if (
+    inferredActionType === REQUIREMENT_ACTION_TYPES.DOCUMENT ||
+    inferredActionType === REQUIREMENT_ACTION_TYPES.JOB ||
+    inferredActionType === REQUIREMENT_ACTION_TYPES.MAINTENANCE
+  ) {
+    informational = false;
+  }
+
   const supporting = supportingExternalLinksFromRequirement(requirement);
+
+  const metaRm = requirement.registry_metadata && typeof requirement.registry_metadata === 'object' ? requirement.registry_metadata : {};
+  if (String(metaRm.primary_action_mode || '').trim().toLowerCase() === 'hidden') {
+    return {
+      actionType: REQUIREMENT_ACTION_TYPES.OBLIGATION,
+      primary_action_label: 'View guidance',
+      primary_action_handler: 'navigate',
+      primary_route: pid ? `/properties/${pid}#compliance` : '/requirements',
+      primary_intent: 'view_guidance',
+      secondary_action: null,
+      supporting_external_links: supporting,
+    };
+  }
 
   if (informational) {
     return {

@@ -27,14 +27,29 @@ from datetime import datetime, timezone, date
 from typing import Any, Dict, List, Optional, Tuple
 
 from models import DocumentStatus, RequirementStatus
+from services.requirement_code_registry import normalize_requirement_code
+from services.requirement_evidence_completeness import evaluate_domestic_alarm_completeness
 from utils.compliance_fanout_log import compliance_fanout_extra
 from models.evidence_review import EvidenceReviewState
 from services.evidence_document_match_engine import document_blocks_verified_satisfaction
 from services.evidence_review_config import is_feature_evidence_review_v2
 from services.evidence_review_migration import effective_evidence_review_state
-from services.requirement_workflow_audit import resolve_workflow_class_reference
+from services.requirement_workflow_audit import (
+    WC_DOCUMENT_UPLOAD,
+    WC_EXTERNAL_ASSESSMENT_EVIDENCE,
+    WC_GUIDED_DECLARATION,
+    WC_REGISTRATION_TRACKING,
+    WC_TENANT_DELIVERY,
+    resolve_workflow_class_reference,
+)
 from services.workflow_behaviour_governance import (
+    SCORE_MODEL_ASSESSMENT_CONDITIONAL,
+    SCORE_MODEL_DECLARATION_CONFIDENCE,
+    SCORE_MODEL_DELIVERY_RECORD,
+    SCORE_MODEL_DIRECT_CERTIFICATE,
     SCORE_MODEL_OPERATIONAL_CONVERGENCE,
+    SCORE_MODEL_MULTI_COMPONENT,
+    SCORE_MODEL_REGISTRATION_RECORD,
     get_workflow_capabilities,
     resolve_governance_capability_key,
 )
@@ -59,6 +74,99 @@ SCOPE_PORTFOLIO = "PORTFOLIO"
 SCOPE_INTAKE_STAGING = "INTAKE_STAGING"
 # Backfill / ops: explicit quarantine when ownership cannot be inferred (never treat as property evidence)
 SCOPE_UNRESOLVED = "UNRESOLVED"
+
+_EXTERNAL_ASSESSMENT_CANONICAL = frozenset({"legionella", "lead_testing"})
+
+
+def _structured_field_answer(structured_fields: Dict[str, Any], field_id: str) -> Any:
+    if not isinstance(structured_fields, dict):
+        return None
+    node = structured_fields.get(field_id)
+    if isinstance(node, dict):
+        return node.get("answer")
+    return None
+
+
+def _truthy_yes_answer(val: Any) -> bool:
+    return str(val or "").strip().lower() in {"yes", "true", "1", "y"}
+
+
+def _evidence_record_matches_requirement_scope(rec: Dict[str, Any], requirement: Dict[str, Any]) -> bool:
+    rid = str(requirement.get("requirement_id") or "")
+    pid = str(requirement.get("property_id") or "")
+    if rid and str(rec.get("requirement_id") or "") != rid:
+        return False
+    if pid and str(rec.get("property_id") or "") != pid:
+        return False
+    return bool(rid or pid)
+
+
+def external_assessment_structured_followup_status(
+    requirement: Dict[str, Any],
+    evidence_records: Optional[List[Dict[str, Any]]],
+    *,
+    evidence_policy: Optional[Dict[str, Any]] = None,
+) -> Optional[bool]:
+    """
+    Structured assessment follow-up for legionella / lead_testing only.
+
+    Returns:
+        True  — actions_required unknown or yes → remediation/follow-up not closed for projection.
+        False — structured record declares actions_required no → allow satisfied-style projection.
+        None  — no qualifying structured non-document evidence (e.g. document-only) → treat as unresolved at guards.
+    """
+    raw_code = str(requirement.get("requirement_code") or requirement.get("requirement_type") or "").strip()
+    canon = normalize_requirement_code(raw_code) or raw_code.lower().replace(" ", "_")
+    if canon not in _EXTERNAL_ASSESSMENT_CANONICAL:
+        return False
+
+    from services.compliance_evidence_record_service import (
+        EVIDENCE_MODE_STRUCTURED_DECLARATION,
+        active_sorted_evidence_candidates,
+        effective_evidence_resolution,
+        non_document_record_satisfies_policy,
+    )
+    from services.compliance_status_authority import is_critical_safety_or_legal_obligation
+
+    policy = evidence_policy if evidence_policy is not None else effective_evidence_resolution(requirement)
+    is_critical = is_critical_safety_or_legal_obligation(requirement)
+    candidates = active_sorted_evidence_candidates(evidence_records or [])
+
+    def _followup_from_fields(fields: Dict[str, Any]) -> Optional[bool]:
+        ar = _structured_field_answer(fields, "actions_required")
+        if ar is None:
+            return True
+        if _truthy_yes_answer(ar):
+            return True
+        return False
+
+    for rec in candidates:
+        if not _evidence_record_matches_requirement_scope(rec, requirement):
+            continue
+        if not non_document_record_satisfies_policy(
+            record=rec,
+            requirement=requirement,
+            policy=policy,
+            is_critical_obligation=is_critical,
+        ):
+            continue
+        payload = rec.get("evidence_payload") if isinstance(rec.get("evidence_payload"), dict) else {}
+        fields = payload.get("structured_fields") if isinstance(payload.get("structured_fields"), dict) else {}
+        return _followup_from_fields(fields)
+
+    # Scoped structured rows may carry follow-up signals even when policy satisfaction is deferred (tests / edge loads).
+    for rec in candidates:
+        if not _evidence_record_matches_requirement_scope(rec, requirement):
+            continue
+        if str(rec.get("evidence_mode") or "").strip().upper() != EVIDENCE_MODE_STRUCTURED_DECLARATION:
+            continue
+        payload = rec.get("evidence_payload") if isinstance(rec.get("evidence_payload"), dict) else {}
+        fields = payload.get("structured_fields") if isinstance(payload.get("structured_fields"), dict) else {}
+        if "actions_required" not in fields:
+            continue
+        return _followup_from_fields(fields)
+
+    return None
 
 
 def _parse_dt(val: Any) -> Optional[datetime]:
@@ -201,7 +309,11 @@ def _apply_evidence_governance_extensions(
     state = str(b.get("state") or "")
     eff_doc_id = b.get("effective_verified_document_id")
     raw_code = str(requirement.get("requirement_code") or requirement.get("requirement_type") or "").strip()
-    ref_class, _ = resolve_workflow_class_reference(raw_code, published_entry=None)
+    ref_class, _ = resolve_workflow_class_reference(
+        raw_code,
+        published_entry=None,
+        jurisdiction=str(requirement.get("jurisdiction") or requirement.get("property_jurisdiction") or ""),
+    )
     gov_key = resolve_governance_capability_key(reference_class=ref_class, enriched=requirement)
     caps = get_workflow_capabilities(gov_key)
     summary = (
@@ -215,6 +327,7 @@ def _apply_evidence_governance_extensions(
     )
     summary_state = str(summary.get("state") or "").strip().lower()
     unresolved_operational_state = unresolved_signal_count > 0 or summary_state in ("", "unknown")
+    canon = normalize_requirement_code(raw_code) or raw_code.lower().replace(" ", "_")
 
     def _enforce_operational_followup_guard() -> None:
         if str(caps.get("score_impact_model") or "") != SCORE_MODEL_OPERATIONAL_CONVERGENCE:
@@ -226,6 +339,99 @@ def _apply_evidence_governance_extensions(
         # Keep supporting evidence identifiers while blocking false completion semantics.
         b["state"] = EA_UPLOADED_UNCONFIRMED
         b["state_reason"] = "operational_followup_required_condition_standard"
+        m["status"] = RequirementStatus.PENDING.value
+        m["evidence_state"] = EA_UPLOADED_UNCONFIRMED
+
+    def _enforce_multi_evidence_completeness_guard() -> None:
+        if str(caps.get("score_impact_model") or "") != SCORE_MODEL_MULTI_COMPONENT:
+            return
+        if canon != "smoke_heat_alarms":
+            return
+        comp = evaluate_domestic_alarm_completeness(requirement, property_doc, evidence_records or [])
+        if comp.get("evaluated") is not True or comp.get("is_complete") is True:
+            return
+        # Preserve uploaded component evidence while preventing incomplete multi-evidence from projecting complete.
+        b["state"] = EA_UPLOADED_UNCONFIRMED
+        b["state_reason"] = "multi_evidence_components_incomplete"
+        b["evidence_completeness"] = comp
+        m["status"] = RequirementStatus.PENDING.value
+        m["evidence_state"] = EA_UPLOADED_UNCONFIRMED
+
+    def _enforce_external_assessment_followup_guard() -> None:
+        if ref_class != WC_EXTERNAL_ASSESSMENT_EVIDENCE:
+            return
+        if str(caps.get("score_impact_model") or "") != SCORE_MODEL_ASSESSMENT_CONDITIONAL:
+            return
+        if not bool(caps.get("may_leave_remediation_open")):
+            return
+        if canon not in _EXTERNAL_ASSESSMENT_CANONICAL:
+            return
+        open_status = external_assessment_structured_followup_status(
+            requirement, evidence_records, evidence_policy=evidence_policy
+        )
+        if open_status is False:
+            return
+        b["state"] = EA_UPLOADED_UNCONFIRMED
+        b["state_reason"] = "external_assessment_remediation_or_followup_unresolved"
+        m["status"] = RequirementStatus.PENDING.value
+        m["evidence_state"] = EA_UPLOADED_UNCONFIRMED
+
+    def _enforce_guided_declaration_confidence_guard() -> None:
+        # Declarations and supporting uploads are not independent / statutory verification (governance: declaration_confidence).
+        if ref_class != WC_GUIDED_DECLARATION:
+            return
+        if str(caps.get("score_impact_model") or "") != SCORE_MODEL_DECLARATION_CONFIDENCE:
+            return
+        if str(b.get("state") or "") != EA_VERIFIED_CURRENT:
+            return
+        b["state"] = EA_UPLOADED_UNCONFIRMED
+        b["state_reason"] = "guided_declaration_not_independently_verified"
+        m["status"] = RequirementStatus.PENDING.value
+        m["evidence_state"] = EA_UPLOADED_UNCONFIRMED
+
+    def _enforce_registration_tracking_record_guard() -> None:
+        # Platform-held registration facts are not live regulator/government confirmation (governance: registration_record).
+        if ref_class != WC_REGISTRATION_TRACKING:
+            return
+        if str(caps.get("score_impact_model") or "") != SCORE_MODEL_REGISTRATION_RECORD:
+            return
+        if str(b.get("state") or "") != EA_VERIFIED_CURRENT:
+            return
+        b["state"] = EA_UPLOADED_UNCONFIRMED
+        b["state_reason"] = "registration_tracking_regulator_confirmation_not_verified"
+        m["status"] = RequirementStatus.PENDING.value
+        m["evidence_state"] = EA_UPLOADED_UNCONFIRMED
+
+    def _enforce_tenant_delivery_record_guard() -> None:
+        # Delivery records are not independent proof of tenant receipt or legal service (governance: delivery_record).
+        if ref_class != WC_TENANT_DELIVERY:
+            return
+        if str(caps.get("score_impact_model") or "") != SCORE_MODEL_DELIVERY_RECORD:
+            return
+        if str(b.get("state") or "") != EA_VERIFIED_CURRENT:
+            return
+        b["state"] = EA_UPLOADED_UNCONFIRMED
+        b["state_reason"] = "tenant_delivery_tenant_confirmation_not_verified"
+        m["status"] = RequirementStatus.PENDING.value
+        m["evidence_state"] = EA_UPLOADED_UNCONFIRMED
+
+    def _enforce_document_upload_certificate_validity_guard() -> None:
+        # Certificate workflows may only project satisfied/current when authoritative expiry/validity exists (governance: direct_certificate + expiry).
+        if ref_class != WC_DOCUMENT_UPLOAD:
+            return
+        if str(caps.get("score_impact_model") or "") != SCORE_MODEL_DIRECT_CERTIFICATE:
+            return
+        if not bool(caps.get("supports_expiry_tracking")):
+            return
+        if str(b.get("state") or "") != EA_VERIFIED_CURRENT:
+            return
+        eff = b.get("effective_expiry_date")
+        if eff is not None and str(eff).strip():
+            return
+        if b.get("effective_expiry_is_null") is not True:
+            return
+        b["state"] = EA_UPLOADED_UNCONFIRMED
+        b["state_reason"] = "document_upload_missing_required_expiry_semantics"
         m["status"] = RequirementStatus.PENDING.value
         m["evidence_state"] = EA_UPLOADED_UNCONFIRMED
 
@@ -250,6 +456,12 @@ def _apply_evidence_governance_extensions(
     if state == EA_VERIFIED_CURRENT and eff_doc_id:
         _fill_document_governance()
         _enforce_operational_followup_guard()
+        _enforce_multi_evidence_completeness_guard()
+        _enforce_external_assessment_followup_guard()
+        _enforce_guided_declaration_confidence_guard()
+        _enforce_registration_tracking_record_guard()
+        _enforce_tenant_delivery_record_guard()
+        _enforce_document_upload_certificate_validity_guard()
         return b, m
 
     is_critical = is_critical_safety_or_legal_obligation(requirement)
@@ -305,6 +517,12 @@ def _apply_evidence_governance_extensions(
         m["due_date"] = mirror_due
         m["evidence_state"] = EA_VERIFIED_CURRENT
         _enforce_operational_followup_guard()
+        _enforce_multi_evidence_completeness_guard()
+        _enforce_external_assessment_followup_guard()
+        _enforce_guided_declaration_confidence_guard()
+        _enforce_registration_tracking_record_guard()
+        _enforce_tenant_delivery_record_guard()
+        _enforce_document_upload_certificate_validity_guard()
         return b, m
 
     _fill_document_governance()
@@ -318,6 +536,12 @@ def _apply_evidence_governance_extensions(
             b["evidence_confidence_level"] = str(top.get("evidence_confidence_level"))
             b["non_document_verification_status"] = str(top.get("verification_status"))
             b["primary_evidence_record_id"] = top.get("evidence_record_id")
+    # Document-only / deferred policy satisfaction: structured assessment signals must still block false completion.
+    _enforce_external_assessment_followup_guard()
+    _enforce_guided_declaration_confidence_guard()
+    _enforce_registration_tracking_record_guard()
+    _enforce_tenant_delivery_record_guard()
+    _enforce_document_upload_certificate_validity_guard()
     return b, m
 
 

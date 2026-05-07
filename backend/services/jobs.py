@@ -22,6 +22,7 @@ from services.reminder_truth_service import (
     get_reminder_cooldown_hours,
 )
 from presentation.label_service import requirement_label
+from services.requirement_code_registry import normalize_requirement_code
 
 ROOT_DIR = Path(__file__).parent.parent
 load_dotenv(ROOT_DIR / '.env')
@@ -44,11 +45,148 @@ def effective_digest_calendar_day(day_preference: int, when: datetime) -> int:
 
 
 def _reminder_item_label_from_req(current_req: dict) -> str:
+    rd = current_req.get("requirement_display") if isinstance(current_req.get("requirement_display"), dict) else {}
+    short_name = str(rd.get("short_name") or "").strip()
+    if short_name:
+        return short_name
     desc = (current_req.get("description") or "").strip()
     if desc:
         return desc
     code = current_req.get("code") or current_req.get("requirement_type") or current_req.get("requirement_code")
     return requirement_label(code) if code else "Certificate"
+
+
+def _requirement_detail_label_from_req(current_req: dict) -> str:
+    rd = current_req.get("requirement_display") if isinstance(current_req.get("requirement_display"), dict) else {}
+    canonical_name = str(rd.get("canonical_name") or "").strip()
+    if canonical_name:
+        return canonical_name
+    return _reminder_item_label_from_req(current_req)
+
+
+def _infer_reminder_workflow_bucket(current_req: dict) -> str:
+    """
+    Governance fallback order:
+    1) workflow_class
+    2) primary_resolution_workflow
+    3) effective_evidence_resolution / allowed_evidence_modes
+    4) normalized requirement code family
+    5) safe generic fallback
+    """
+    wfc = str(current_req.get("workflow_class") or "").strip().upper()
+    if wfc:
+        if "CONDITION_STANDARD" in wfc or wfc == "ACTIVE_STANDARD":
+            return "CONDITION_STANDARD"
+        return wfc
+
+    primary_resolution = str(current_req.get("primary_resolution_workflow") or "").strip().upper()
+    if primary_resolution:
+        if "CONDITION_STANDARD" in primary_resolution or primary_resolution == "ACTIVE_STANDARD":
+            return "CONDITION_STANDARD"
+        return primary_resolution
+
+    eff = current_req.get("effective_evidence_resolution")
+    effective_modes = []
+    if isinstance(eff, dict):
+        mode = str(eff.get("workflow") or eff.get("mode") or "").strip().upper()
+        if mode:
+            effective_modes.append(mode)
+        allowed = eff.get("allowed_evidence_modes")
+        if isinstance(allowed, list):
+            effective_modes.extend([str(x or "").strip().upper() for x in allowed if x])
+    allowed_modes = current_req.get("allowed_evidence_modes")
+    if isinstance(allowed_modes, list):
+        effective_modes.extend([str(x or "").strip().upper() for x in allowed_modes if x])
+    emodes = {m for m in effective_modes if m}
+    if "STRUCTURED_DECLARATION" in emodes:
+        return "GUIDED_DECLARATION"
+    if "EXTERNAL_ASSESSMENT_EVIDENCE" in emodes:
+        return "EXTERNAL_ASSESSMENT_EVIDENCE"
+    if "DOCUMENT_UPLOAD" in emodes and len(emodes) == 1:
+        return "DOCUMENT_UPLOAD"
+    if len(emodes) > 1:
+        return "MULTI_EVIDENCE"
+
+    raw_code = str(current_req.get("requirement_code") or current_req.get("requirement_type") or current_req.get("code") or "").strip()
+    canon = normalize_requirement_code(raw_code) or raw_code.lower().replace("-", "_").replace(" ", "_")
+    if canon in ("fitness_for_human_habitation", "repairing_standard"):
+        return "CONDITION_STANDARD"
+    if canon in ("tenancy_agreement", "deposit_protection", "deposit_protection_scheme"):
+        return "GUIDED_DECLARATION"
+    if "legionella" in canon or "assessment" in canon:
+        return "EXTERNAL_ASSESSMENT_EVIDENCE"
+    if canon:
+        return "DOCUMENT_UPLOAD"
+    return "GENERIC"
+
+
+def _workflow_aware_reminder_line(current_req: dict, *, classification: str, days_until_due: int) -> str:
+    bucket = _infer_reminder_workflow_bucket(current_req)
+    if bucket == "GUIDED_DECLARATION":
+        if classification == "overdue":
+            return "Declaration details are overdue and need review"
+        return "Declaration has not been recorded — action required"
+    if bucket == "EXTERNAL_ASSESSMENT_EVIDENCE":
+        if classification == "overdue":
+            return "Assessment review is overdue — follow-up actions may remain unresolved"
+        return "Assessment review due — follow-up actions require review"
+    if bucket == "CONDITION_STANDARD":
+        if classification == "overdue":
+            return "Property condition issues require review — outstanding remediation activity detected"
+        return "Property condition issues require review"
+    if bucket == "MULTI_EVIDENCE":
+        if classification == "overdue":
+            return "Required evidence is overdue and incomplete"
+        return "Required evidence incomplete — action required"
+    # Safe default path for DOCUMENT_UPLOAD + GENERIC.
+    if classification == "overdue":
+        return f"Evidence required before expiry (overdue by {abs(int(days_until_due))} days)"
+    if int(days_until_due) <= 7:
+        return "Inspection due soon"
+    return "Evidence required before expiry"
+
+
+def _group_key_for_workflow_bucket(bucket: str) -> str:
+    b = str(bucket or "").strip().upper()
+    if b in ("DOCUMENT_UPLOAD", "MULTI_EVIDENCE", "REGISTRATION_TRACKING", "TENANT_DELIVERY"):
+        return "certificate_reminders"
+    if b == "GUIDED_DECLARATION":
+        return "declaration_reminders"
+    if b == "EXTERNAL_ASSESSMENT_EVIDENCE":
+        return "assessment_reminders"
+    if b in ("CONDITION_STANDARD", "CONDITION_STANDARD_ACTIVE_STANDARD"):
+        return "condition_reminders"
+    return "other_reminders"
+
+
+def _build_grouped_reminder_context(expiring: List[Dict[str, Any]], overdue: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Group reminder items by semantic workflow meaning for Phase 2B narrative alignment.
+    Legacy expiring/overdue arrays remain unchanged; this is additive context only.
+    """
+    grouped: Dict[str, List[Dict[str, Any]]] = {
+        "certificate_reminders": [],
+        "declaration_reminders": [],
+        "assessment_reminders": [],
+        "condition_reminders": [],
+        "other_reminders": [],
+    }
+    for row in list(overdue or []) + list(expiring or []):
+        bucket = str(row.get("workflow_semantics_bucket") or "").strip().upper()
+        gk = _group_key_for_workflow_bucket(bucket)
+        grouped[gk].append(
+            {
+                "type": row.get("type"),
+                "detail_type": row.get("detail_type") or row.get("type"),
+                "semantic_line": row.get("semantic_line"),
+                "workflow_semantics_bucket": bucket or "GENERIC",
+                "property_address": row.get("property_address"),
+                "due_date": row.get("due_date"),
+                "days_overdue": row.get("days_overdue"),
+                "days_remaining": row.get("days_remaining"),
+            }
+        )
+    return grouped
 
 
 def _format_digest_inbox_activity_lines(activity_feed, limit: int = 5):
@@ -237,12 +375,21 @@ class JobScheduler:
 
                     if days_until_due < 0:
                         prop_addr = properties_map.get(current_req.get("property_id"), "Your property")
+                        compact_title = _reminder_item_label_from_req(current_req)
+                        detail_title = _requirement_detail_label_from_req(current_req)
                         overdue_requirements.append({
-                            "type": _reminder_item_label_from_req(current_req),
+                            "type": compact_title,
                             "code": current_req.get("code") or current_req.get("requirement_type") or "",
                             "due_date": due_date.strftime("%d %B %Y"),
                             "days_overdue": -days_until_due,
                             "property_address": prop_addr,
+                            "detail_type": detail_title,
+                            "semantic_line": _workflow_aware_reminder_line(
+                                current_req,
+                                classification="overdue",
+                                days_until_due=days_until_due,
+                            ),
+                            "workflow_semantics_bucket": _infer_reminder_workflow_bucket(current_req),
                             "__state_key": truth.get("state_key"),
                         })
                         reminder_refs.append({
@@ -254,13 +401,22 @@ class JobScheduler:
                         properties_status_changed.add(current_req.get("property_id"))
                     elif 0 <= days_until_due <= reminder_days:
                         prop_addr = properties_map.get(current_req.get("property_id"), "Your property")
+                        compact_title = _reminder_item_label_from_req(current_req)
+                        detail_title = _requirement_detail_label_from_req(current_req)
                         expiring_requirements.append({
-                            "type": _reminder_item_label_from_req(current_req),
+                            "type": compact_title,
                             "code": current_req.get("code") or current_req.get("requirement_type") or "",
                             "due_date": due_date.strftime("%d %B %Y"),
                             "days_remaining": days_until_due,
                             "status": "URGENT" if days_until_due <= 7 else "WARNING",
                             "property_address": prop_addr,
+                            "detail_type": detail_title,
+                            "semantic_line": _workflow_aware_reminder_line(
+                                current_req,
+                                classification="expiring",
+                                days_until_due=days_until_due,
+                            ),
+                            "workflow_semantics_bucket": _infer_reminder_workflow_bucket(current_req),
                             "__state_key": truth.get("state_key"),
                         })
                         reminder_refs.append({
@@ -878,6 +1034,14 @@ class JobScheduler:
                 "portal_link": portal_link,
                 "company_name": client.get("company_name") or "Pleerity Enterprise Ltd",
             }
+            grouped = _build_grouped_reminder_context(expiring, overdue)
+            # Phase 2B additive narrative context for existing template key; keep legacy arrays untouched.
+            context.update(grouped)
+            context["certificate_reminders_json"] = json.dumps(grouped["certificate_reminders"])
+            context["declaration_reminders_json"] = json.dumps(grouped["declaration_reminders"])
+            context["assessment_reminders_json"] = json.dumps(grouped["assessment_reminders"])
+            context["condition_reminders_json"] = json.dumps(grouped["condition_reminders"])
+            context["other_reminders_json"] = json.dumps(grouped["other_reminders"])
             if recipient_email:
                 context["recipient"] = recipient_email
             if reminder_refs is not None:

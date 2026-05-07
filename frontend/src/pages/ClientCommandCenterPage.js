@@ -16,6 +16,7 @@ import { recordClientPortalInteraction, resolveClientPortalPath } from '../utils
 import { resolveTaskCta } from '../utils/ctaRegistry';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { workOrderStatusLabel } from '../domain/presentDomain';
+import * as requirementCtaParity from '../utils/requirementCtaParity';
 import {
   workOrderKindClientLabel,
   clientInboxJobCtaLabel,
@@ -48,6 +49,7 @@ import {
   filterInboxTasksForTrackedRequirements,
   requirementMapFromList,
 } from '../utils/portalRequirementAttention';
+import { buildRequirementShapedRowFromPriorityTask } from '../utils/taskRequirementRowAdapter';
 import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import {
@@ -372,6 +374,26 @@ export default function ClientCommandCenterPage() {
   });
 
   const onUrgentClick = (t) => {
+    const reqRow = buildRequirementShapedRowFromPriorityTask(t, inboxRequirementById);
+    if (reqRow) {
+      recordClientPortalInteraction('command_center_requirement_primary', {
+        task_id: t.id || t.task_id,
+        requirement_id: reqRow.requirement_id || t.requirement_id || null,
+        property_id: reqRow.property_id || t.property_id || null,
+      });
+      const { handled } = requirementCtaParity.executeRequirementPrimaryCta({
+        requirement: reqRow,
+        // Command Centre keeps modal-first guided behavior for requirement-backed global/inbox tasks.
+        pagePropertyId: reqRow.property_id ? String(reqRow.property_id) : null,
+        navigate: (to) => {
+          const target = resolveClientPortalPath(typeof to === 'string' ? to : to?.pathname, '/today');
+          navigate(target);
+        },
+        openGuidedEvidence,
+      });
+      if (handled) return;
+    }
+
     const cta = resolveTaskCta(t, 'primary');
     if (cta.guidedEvidence) {
       openGuidedEvidence({

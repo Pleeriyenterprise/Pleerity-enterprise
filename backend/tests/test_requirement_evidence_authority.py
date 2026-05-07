@@ -9,6 +9,7 @@ from services.requirement_evidence_authority import (
     EA_MISMATCH_FLAGGED,
     EA_MISSING,
     EA_REJECTED,
+    EA_UPLOADED_UNCONFIRMED,
     EA_VERIFIED_CURRENT,
     EA_VERIFIED_EXPIRED,
     SCOPE_INTAKE_STAGING,
@@ -120,6 +121,29 @@ def test_preview_verified_current():
     assert out["evidence_authority"]["state"] == EA_VERIFIED_CURRENT
 
 
+def test_document_upload_verified_without_expiry_blocks_compliant_projection():
+    req = _req(requirement_type="gas_safety", requirement_code="gas_safety")
+    out = preview_authority(req, [_doc(status=DocumentStatus.VERIFIED.value)])
+    assert out["mirror"]["status"] == RequirementStatus.PENDING.value
+    assert out["evidence_authority"]["state"] == EA_UPLOADED_UNCONFIRMED
+    assert out["evidence_authority"]["state_reason"] == "document_upload_missing_required_expiry_semantics"
+
+
+def test_document_upload_verified_without_doc_expiry_uses_requirement_confirmed_expiry():
+    fut = (datetime.now(timezone.utc) + timedelta(days=200)).isoformat()
+    req = _req(
+        requirement_type="gas_safety",
+        requirement_code="gas_safety",
+        confirmed_expiry_date=fut,
+    )
+    out = preview_authority(req, [_doc(status=DocumentStatus.VERIFIED.value)])
+    assert out["evidence_authority"]["state"] == EA_VERIFIED_CURRENT
+    assert out["mirror"]["status"] in (
+        RequirementStatus.COMPLIANT.value,
+        RequirementStatus.EXPIRING_SOON.value,
+    )
+
+
 def test_preview_verified_current_naive_iso_string_expiry_mirror_days_no_typeerror():
     """Naive ISO strings (no offset) must normalize to UTC before (eff_expiry - now).days."""
     fut = datetime.now(timezone.utc) + timedelta(days=200)
@@ -192,4 +216,233 @@ def test_condition_standard_verified_document_stays_pending_when_operational_fol
     assert out["evidence_authority"]["effective_verified_document_id"] == "d1"
     assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
     assert out["evidence_authority"]["state_reason"] == "operational_followup_required_condition_standard"
+    assert out["mirror"]["status"] == RequirementStatus.PENDING.value
+
+
+def test_external_assessment_verified_document_stays_pending_without_structured_assessment_record():
+    fut = (datetime.now(timezone.utc) + timedelta(days=200)).isoformat()
+    req = _req(
+        requirement_type="legionella",
+        requirement_code="legionella",
+    )
+    out = preview_authority(
+        req,
+        [_doc(status=DocumentStatus.VERIFIED.value, expiry_date=fut)],
+        evidence_records=[],
+    )
+    assert out["evidence_authority"]["effective_verified_document_id"] == "d1"
+    assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
+    assert out["evidence_authority"]["state_reason"] == "external_assessment_remediation_or_followup_unresolved"
+    assert out["mirror"]["status"] == RequirementStatus.PENDING.value
+
+
+def test_guided_declaration_structured_row_blocks_certificate_style_authority():
+    req = _req(
+        requirement_type="tenancy_agreement",
+        requirement_code="tenancy_agreement",
+        compliance_requirement_class="OBLIGATION",
+        engine_informational=True,
+    )
+    structured = {
+        "evidence_record_id": "cer-ta-1",
+        "client_id": "c1",
+        "property_id": "p1",
+        "requirement_id": "r1",
+        "verification_status": "VERIFIED",
+        "included_in_active_compliance": True,
+        "archived": False,
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "evidence_confidence_level": "MEDIUM",
+        "evidence_payload": {
+            "structured_fields": {
+                "agreement_exists": {"answer": True},
+                "signed_by_parties": {"answer": True},
+            },
+        },
+        "linked_document_ids": [],
+    }
+    out = preview_authority(req, [], evidence_records=[structured])
+    assert out["mirror"]["status"] == RequirementStatus.PENDING.value
+    assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
+    assert out["evidence_authority"]["state_reason"] == "guided_declaration_not_independently_verified"
+
+
+def test_registration_tracking_structured_row_blocks_authority_style_projection():
+    req = _req(
+        requirement_type="landlord_registration",
+        requirement_code="landlord_registration",
+    )
+    structured = {
+        "evidence_record_id": "cer-lr-1",
+        "client_id": "c1",
+        "property_id": "p1",
+        "requirement_id": "r1",
+        "verification_status": "VERIFIED",
+        "included_in_active_compliance": True,
+        "archived": False,
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "evidence_confidence_level": "MEDIUM",
+        "evidence_payload": {
+            "structured_fields": {
+                "registration_number": {"answer": "LRN-UNIT-1"},
+                "issuing_authority": {"answer": "Test authority"},
+                "registration_status": {"answer": "active"},
+                "declaration_confirmed": {"answer": True},
+            },
+        },
+        "linked_document_ids": [],
+    }
+    out = preview_authority(req, [], evidence_records=[structured])
+    assert out["mirror"]["status"] == RequirementStatus.PENDING.value
+    assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
+    assert out["evidence_authority"]["state_reason"] == "registration_tracking_regulator_confirmation_not_verified"
+
+
+def test_tenant_delivery_structured_row_blocks_confirmation_style_authority():
+    req = _req(
+        requirement_type="how_to_rent",
+        requirement_code="how_to_rent",
+        compliance_requirement_class="OBLIGATION",
+        engine_informational=True,
+    )
+    structured = {
+        "evidence_record_id": "cer-h2r-1",
+        "client_id": "c1",
+        "property_id": "p1",
+        "requirement_id": "r1",
+        "verification_status": "VERIFIED",
+        "included_in_active_compliance": True,
+        "archived": False,
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "evidence_confidence_level": "MEDIUM",
+        "evidence_payload": {
+            "structured_fields": {
+                "tenancy_start_date": {"answer": "2026-01-01"},
+                "guide_version_or_publication_date": {"answer": "2025 edition"},
+                "delivery_date": {"answer": "2026-01-02"},
+                "delivery_method": {"answer": "email"},
+                "tenant_recipient": {"answer": "Unit tenant"},
+                "declaration_confirmed": {"answer": True},
+            },
+        },
+        "linked_document_ids": [],
+    }
+    out = preview_authority(req, [], evidence_records=[structured])
+    assert out["mirror"]["status"] == RequirementStatus.PENDING.value
+    assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
+    assert out["evidence_authority"]["state_reason"] == "tenant_delivery_tenant_confirmation_not_verified"
+
+
+def test_tenant_delivery_verified_supporting_document_stays_pending():
+    fut = (datetime.now(timezone.utc) + timedelta(days=200)).isoformat()
+    req = _req(
+        requirement_type="how_to_rent",
+        requirement_code="how_to_rent",
+        compliance_requirement_class="OBLIGATION",
+        engine_informational=True,
+    )
+    out = preview_authority(
+        req,
+        [_doc(status=DocumentStatus.VERIFIED.value, expiry_date=fut)],
+        evidence_records=[],
+    )
+    assert out["mirror"]["status"] == RequirementStatus.PENDING.value
+    assert out["evidence_authority"]["state_reason"] == "tenant_delivery_tenant_confirmation_not_verified"
+
+
+def test_registration_tracking_verified_supporting_document_stays_pending():
+    fut = (datetime.now(timezone.utc) + timedelta(days=200)).isoformat()
+    req = _req(
+        requirement_type="landlord_registration",
+        requirement_code="landlord_registration",
+    )
+    out = preview_authority(
+        req,
+        [_doc(status=DocumentStatus.VERIFIED.value, expiry_date=fut)],
+        evidence_records=[],
+    )
+    assert out["mirror"]["status"] == RequirementStatus.PENDING.value
+    assert out["evidence_authority"]["state_reason"] == "registration_tracking_regulator_confirmation_not_verified"
+
+
+def test_guided_declaration_verified_supporting_document_stays_pending():
+    fut = (datetime.now(timezone.utc) + timedelta(days=200)).isoformat()
+    req = _req(
+        requirement_type="tenancy_agreement",
+        requirement_code="tenancy_agreement",
+        compliance_requirement_class="OBLIGATION",
+        engine_informational=True,
+    )
+    out = preview_authority(
+        req,
+        [_doc(status=DocumentStatus.VERIFIED.value, expiry_date=fut)],
+        evidence_records=[],
+    )
+    assert out["mirror"]["status"] == RequirementStatus.PENDING.value
+    assert out["evidence_authority"]["state_reason"] == "guided_declaration_not_independently_verified"
+
+
+def test_external_assessment_allows_compliant_mirror_when_structured_record_declares_no_actions():
+    fut = (datetime.now(timezone.utc) + timedelta(days=200)).isoformat()
+    req = _req(
+        requirement_type="legionella",
+        requirement_code="legionella",
+    )
+    structured = {
+        "evidence_record_id": "cer-leg-1",
+        "client_id": "c1",
+        "property_id": "p1",
+        "requirement_id": "r1",
+        "verification_status": "VERIFIED",
+        "included_in_active_compliance": True,
+        "archived": False,
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "evidence_confidence_level": "HIGH",
+        "evidence_payload": {
+            "structured_fields": {
+                "actions_required": {"answer": False},
+                "assessment_completed": {"answer": True},
+            }
+        },
+    }
+    out = preview_authority(
+        req,
+        [_doc(status=DocumentStatus.VERIFIED.value, expiry_date=fut)],
+        evidence_records=[structured],
+    )
+    assert out["mirror"]["status"] == RequirementStatus.COMPLIANT.value
+    assert out["evidence_authority"]["state"] == EA_VERIFIED_CURRENT
+
+
+def test_multi_evidence_partial_components_stay_pending_when_co_component_missing():
+    fut = (datetime.now(timezone.utc) + timedelta(days=200)).isoformat()
+    req = _req(
+        requirement_type="smoke_heat_alarms",
+        requirement_code="smoke_heat_alarms",
+        registry_metadata={"evidence_resolution": {"co_alarm_required": True}},
+    )
+    partial_smoke_only = {
+        "evidence_record_id": "cer-smoke-only",
+        "client_id": "c1",
+        "property_id": "p1",
+        "requirement_id": "r1",
+        "verification_status": "VERIFIED",
+        "included_in_active_compliance": True,
+        "archived": False,
+        "evidence_mode": "CONTRACTOR_CONFIRMATION",
+        "evidence_confidence_level": "MEDIUM",
+        "evidence_payload": {"component": "smoke_alarm", "notes": "smoke alarm tested and recorded"},
+    }
+    out = preview_authority(
+        req,
+        [_doc(status=DocumentStatus.VERIFIED.value, expiry_date=fut)],
+        property_doc={"has_fuel_burning_appliance": True},
+        evidence_records=[partial_smoke_only],
+    )
+    assert out["evidence_authority"]["effective_verified_document_id"] == "d1"
+    assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
+    assert out["evidence_authority"]["state_reason"] == "multi_evidence_components_incomplete"
+    comp = out["evidence_authority"].get("evidence_completeness") or {}
+    assert comp.get("evaluated") is True
+    assert comp.get("is_complete") is False
     assert out["mirror"]["status"] == RequirementStatus.PENDING.value

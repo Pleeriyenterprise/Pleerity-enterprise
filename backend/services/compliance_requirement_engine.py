@@ -121,6 +121,18 @@ _TENANCY_SOFT = _EngineSpec(
     calendar_overdue_in_inbox=False,
 )
 
+# External assessment workflows (lead / hazards): obligation posture — not certificate/document fulfillment semantics.
+_EXTERNAL_ASSESSMENT_OBLIGATION = _EngineSpec(
+    requirement_category=CATEGORY_SAFETY,
+    client_visibility=VISIBILITY_INFORMATIONAL,
+    requirement_class=REQUIREMENT_CLASS_OBLIGATION,
+    fulfillment_mode=FULFILLMENT_OBLIGATION,
+    creates_compliance_job=False,
+    requires_document_evidence=False,
+    include_in_priority_stream=False,
+    calendar_overdue_in_inbox=False,
+)
+
 _HMO_FIRE = _EngineSpec(
     requirement_category=CATEGORY_SAFETY,
     client_visibility=VISIBILITY_ACTIONABLE,
@@ -186,6 +198,8 @@ _SPECS_BY_STORAGE_SLUG: Dict[str, _EngineSpec] = {
     "epc": _SPECS_BY_SCORING_CODE["EPC"],
     "smoke_heat_alarms": _SPECS_BY_SCORING_CODE["FIRE_DETECTION"],
     "legionella": _SPECS_BY_SCORING_CODE["LEGIONELLA"],
+    "lead_testing": _EXTERNAL_ASSESSMENT_OBLIGATION,
+    "lead_testing_scotland": _EXTERNAL_ASSESSMENT_OBLIGATION,
     "hmo_license": _LICENCE,
     "licence": _LICENCE,
     "property_licence": _LICENCE,

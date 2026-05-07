@@ -551,6 +551,17 @@ DEFAULT_EVIDENCE_RESOLUTION_BY_REQUIREMENT_TYPE: Dict[str, Dict[str, Any]] = {
         "allow_medium_non_document_satisfaction": True,
         "allow_low_non_document_satisfaction": False,
     },
+    # Aligns with decision-record MULTI_EVIDENCE for HMO fire risk assessment (parity with hmo_fire_risk family).
+    "fire_risk_assessment": {
+        "allowed_evidence_modes": [
+            EVIDENCE_MODE_DOCUMENT_UPLOAD,
+            EVIDENCE_MODE_CONTRACTOR_CONFIRMATION,
+            EVIDENCE_MODE_INSPECTION_CHECKLIST,
+        ],
+        "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+        "allow_medium_non_document_satisfaction": True,
+        "allow_low_non_document_satisfaction": False,
+    },
     "legionella": {
         "allowed_evidence_modes": [
             EVIDENCE_MODE_STRUCTURED_DECLARATION,
@@ -961,6 +972,12 @@ def normalize_evidence_resolution_dict(er: Dict[str, Any]) -> Dict[str, Any]:
     nrules = _norm_structured_declaration_conditional_rules(er.get("structured_declaration_conditional_rules"))
     if nrules:
         out["structured_declaration_conditional_rules"] = nrules
+    cwc = str(er.get("client_workflow_class") or "").strip().upper()
+    if cwc:
+        from services.registry_workflow_semantics import is_allowed_client_workflow_class
+
+        if is_allowed_client_workflow_class(cwc):
+            out["client_workflow_class"] = cwc
     return out
 
 

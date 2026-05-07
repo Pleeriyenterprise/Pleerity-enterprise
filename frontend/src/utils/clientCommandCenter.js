@@ -8,6 +8,7 @@ import {
   requirementDisplayTitle,
   requirementLabel,
 } from '../domain/presentDomain';
+import { missingEvidenceLabelFromPriorityTaskMeta } from './resolvedRequirementViewModel';
 import { compareTopPriority, normalizeTaskForTopPriorityRanking } from './clientTopPriorityRanking';
 import {
   clientInboxJobCtaLabel,
@@ -444,8 +445,13 @@ export function sanitizeCommandCenterCtaLabel(primaryLabel, task) {
 }
 
 function requirementSpecificName(task, meta) {
-  const fromDisp = requirementDisplayTitle(meta?.requirement_display, 'compact');
+  const display = meta?.requirement_display && typeof meta.requirement_display === 'object' ? meta.requirement_display : null;
+  const fromDisp = display && String(display.short_name || '').trim() ? String(display.short_name).trim() : '';
   if (fromDisp) return fromDisp;
+  const fromCompact = requirementDisplayTitle(display, 'compact');
+  if (fromCompact) return fromCompact;
+  const fromDetail = requirementDisplayTitle(display, 'detail');
+  if (fromDetail) return fromDetail;
   const code =
     meta.requirement_type ||
     meta.requirement_code ||
@@ -485,6 +491,10 @@ export function commandCenterWhyThisMattersLine(task) {
     return `${label} due soon — review before it becomes overdue${impactClause || ''}`;
   }
   if (at === 'missing_document') {
+    if (st === 'requirement') {
+      const wfAware = missingEvidenceLabelFromPriorityTaskMeta(meta);
+      return `${label} — ${wfAware}${impactClause || ''}`;
+    }
     return `${label} — document missing; upload to lift your score${impactClause || ''}`;
   }
   if (at === 'work_order_sla_breached') {

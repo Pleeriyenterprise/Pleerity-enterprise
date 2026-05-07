@@ -12,9 +12,9 @@
     "allows_noncanonical_requirement_rows": false,
     "consumes_execution_semantics": false,
     "consumes_reporting_semantics": false,
-    "consumes_requirement_display_contract": false,
-    "consumes_workflow_contract": false,
-    "enforcement_level": "NONE",
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": true,
+    "enforcement_level": "PARTIAL",
     "uses_local_fallback_logic": true
   },
   "frontend_cta": {
@@ -66,9 +66,9 @@
     "allows_noncanonical_requirement_rows": false,
     "consumes_execution_semantics": false,
     "consumes_reporting_semantics": false,
-    "consumes_requirement_display_contract": false,
-    "consumes_workflow_contract": false,
-    "enforcement_level": "NONE",
+    "consumes_requirement_display_contract": true,
+    "consumes_workflow_contract": true,
+    "enforcement_level": "PARTIAL",
     "uses_local_fallback_logic": true
   },
   "reports_exports": {
