@@ -161,3 +161,35 @@ def test_preview_scope_mismatch_flags():
     )
     out = preview_authority(_req(), [bad])
     assert out["evidence_authority"]["state"] == EA_MISMATCH_FLAGGED
+
+
+def test_condition_standard_verified_document_stays_pending_when_operational_followup_open():
+    fut = (datetime.now(timezone.utc) + timedelta(days=200)).isoformat()
+    req = _req(
+        requirement_type="fitness_for_human_habitation",
+        requirement_code="fitness_for_human_habitation",
+        active_standard_status_summary={
+            "state": "active_issues_present",
+            "signal_counts": {
+                "open_issues": 1,
+                "open_work_orders": 1,
+                "open_risk_signals": 0,
+                "open_compliance_gaps": 1,
+            },
+            "read_only": True,
+        },
+    )
+    out = preview_authority(
+        req,
+        [
+            _doc(
+                status=DocumentStatus.VERIFIED.value,
+                expiry_date=fut,
+            )
+        ],
+        evidence_records=[],
+    )
+    assert out["evidence_authority"]["effective_verified_document_id"] == "d1"
+    assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
+    assert out["evidence_authority"]["state_reason"] == "operational_followup_required_condition_standard"
+    assert out["mirror"]["status"] == RequirementStatus.PENDING.value

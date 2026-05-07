@@ -231,6 +231,42 @@ def test_enrich_active_standard_includes_disclosure_and_read_only_summary():
     assert summary.get("read_only") is True
 
 
+def test_enrich_active_standard_unresolved_uses_operational_wording_not_verified_language():
+    from services.requirement_truth import EVIDENCE_VERIFIED, enrich_requirement_dict
+
+    r = enrich_requirement_dict(
+        {
+            "requirement_id": "r-active-2",
+            "property_id": "p1",
+            "requirement_type": "fitness_for_human_habitation",
+            "requirement_code": "fitness_for_human_habitation",
+            "compliance_requirement_class": "OBLIGATION",
+            "status": "PENDING",
+            "applicability": "REQUIRED",
+            "active_standard_status_summary": {
+                "state": "active_issues_present",
+                "signal_counts": {
+                    "open_issues": 1,
+                    "open_work_orders": 1,
+                    "open_risk_signals": 0,
+                    "open_compliance_gaps": 1,
+                },
+            },
+        },
+        EVIDENCE_VERIFIED,
+        audience="client",
+    )
+    lower = " ".join(
+        [
+            str(r.get("status_label") or ""),
+            str(r.get("evidence_badge_label") or ""),
+        ]
+    ).lower()
+    assert "review" in lower or "follow-up" in lower
+    for forbidden in ("verified", "compliant", "safe", "resolved", "remediated"):
+        assert forbidden not in lower
+
+
 @pytest.mark.asyncio
 async def test_enrich_requirements_for_client_active_standard_signal_projection(monkeypatch):
     from services import requirement_truth as rt

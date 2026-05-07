@@ -90,6 +90,26 @@ def _derive_active_standard_state(signal_counts: Dict[str, int]) -> str:
     return ACTIVE_STANDARD_STATE_UNKNOWN
 
 
+def _active_standard_has_unresolved_operational_state(summary: Dict[str, Any]) -> bool:
+    if not isinstance(summary, dict):
+        return True
+    state = str(summary.get("state") or "").strip().lower()
+    if state in ("", ACTIVE_STANDARD_STATE_UNKNOWN):
+        return True
+    signals = summary.get("signal_counts") if isinstance(summary.get("signal_counts"), dict) else {}
+    return any(
+        int(signals.get(k) or 0) > 0 for k in ("open_issues", "open_work_orders", "open_risk_signals", "open_compliance_gaps")
+    )
+
+
+def _active_standard_runtime_copy(summary: Dict[str, Any], has_supporting_evidence: bool) -> Tuple[str, str]:
+    if _active_standard_has_unresolved_operational_state(summary):
+        if has_supporting_evidence:
+            return ("Condition status needs review", "Supporting evidence recorded")
+        return ("Operational follow-up required", "Operational follow-up required")
+    return ("Condition status under operational review", "Supporting evidence recorded")
+
+
 async def _load_active_standard_signal_summary_by_property(
     db,
     client_id: str,
@@ -561,6 +581,17 @@ def enrich_requirement_dict(
 
     if _is_active_standard and isinstance(out.get("active_standard_status_summary"), dict):
         out["active_standard_status_summary"]["read_only"] = True
+        runtime_status_label, runtime_evidence_badge = _active_standard_runtime_copy(
+            out["active_standard_status_summary"],
+            has_supporting_evidence=evidence_state in (
+                EVIDENCE_VERIFIED,
+                EVIDENCE_UPLOADED_UNVERIFIED,
+                EVIDENCE_AWAITING_USER_CONFIRM,
+            ),
+        )
+        # Condition standards are operational-convergence workflows: uploads are supporting, not closure semantics.
+        out["status_label"] = runtime_status_label
+        out["evidence_badge_label"] = runtime_evidence_badge
 
     aud = (audience or "client").strip().lower()
     if aud == "admin":

@@ -32,6 +32,12 @@ from models.evidence_review import EvidenceReviewState
 from services.evidence_document_match_engine import document_blocks_verified_satisfaction
 from services.evidence_review_config import is_feature_evidence_review_v2
 from services.evidence_review_migration import effective_evidence_review_state
+from services.requirement_workflow_audit import resolve_workflow_class_reference
+from services.workflow_behaviour_governance import (
+    SCORE_MODEL_OPERATIONAL_CONVERGENCE,
+    get_workflow_capabilities,
+    resolve_governance_capability_key,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +200,34 @@ def _apply_evidence_governance_extensions(
     m = dict(mirror)
     state = str(b.get("state") or "")
     eff_doc_id = b.get("effective_verified_document_id")
+    raw_code = str(requirement.get("requirement_code") or requirement.get("requirement_type") or "").strip()
+    ref_class, _ = resolve_workflow_class_reference(raw_code, published_entry=None)
+    gov_key = resolve_governance_capability_key(reference_class=ref_class, enriched=requirement)
+    caps = get_workflow_capabilities(gov_key)
+    summary = (
+        requirement.get("active_standard_status_summary")
+        if isinstance(requirement.get("active_standard_status_summary"), dict)
+        else {}
+    )
+    signals = summary.get("signal_counts") if isinstance(summary.get("signal_counts"), dict) else {}
+    unresolved_signal_count = sum(
+        int(signals.get(k) or 0) for k in ("open_issues", "open_work_orders", "open_risk_signals", "open_compliance_gaps")
+    )
+    summary_state = str(summary.get("state") or "").strip().lower()
+    unresolved_operational_state = unresolved_signal_count > 0 or summary_state in ("", "unknown")
+
+    def _enforce_operational_followup_guard() -> None:
+        if str(caps.get("score_impact_model") or "") != SCORE_MODEL_OPERATIONAL_CONVERGENCE:
+            return
+        if not bool(caps.get("must_not_complete_from_document_only")):
+            return
+        if not unresolved_operational_state:
+            return
+        # Keep supporting evidence identifiers while blocking false completion semantics.
+        b["state"] = EA_UPLOADED_UNCONFIRMED
+        b["state_reason"] = "operational_followup_required_condition_standard"
+        m["status"] = RequirementStatus.PENDING.value
+        m["evidence_state"] = EA_UPLOADED_UNCONFIRMED
 
     def _fill_document_governance() -> None:
         pst = (primary.get("status") or "").upper() if primary else ""
@@ -215,6 +249,7 @@ def _apply_evidence_governance_extensions(
 
     if state == EA_VERIFIED_CURRENT and eff_doc_id:
         _fill_document_governance()
+        _enforce_operational_followup_guard()
         return b, m
 
     is_critical = is_critical_safety_or_legal_obligation(requirement)
@@ -269,6 +304,7 @@ def _apply_evidence_governance_extensions(
         m["status"] = mirror_status
         m["due_date"] = mirror_due
         m["evidence_state"] = EA_VERIFIED_CURRENT
+        _enforce_operational_followup_guard()
         return b, m
 
     _fill_document_governance()
