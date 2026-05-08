@@ -22,6 +22,7 @@ from services.requirement_client_runtime_surface import (
     compute_client_portal_requirement_stats,
 )
 from services.scoring_semantics_v1 import attach_semantics_contract, headline_score_display_for_export
+from services.semantic_state_precedence_adapter import REPORT_EXPORT, observe_consumer_precedence_delta
 
 logger = logging.getLogger(__name__)
 
@@ -273,6 +274,22 @@ class ReportingService:
             proj = project_requirement_row_client_runtime(req)
             if not client_portal_surface_visible_row(proj):
                 continue
+            try:
+                sem = proj.get("semantic_state") or (
+                    (proj.get("evidence_authority") or {}).get("semantic_state")
+                    if isinstance(proj.get("evidence_authority"), dict)
+                    else None
+                )
+                if sem:
+                    observe_consumer_precedence_delta(
+                        REPORT_EXPORT,
+                        str(sem),
+                        property_id=str(req.get("property_id") or ""),
+                        requirement_id=str(req.get("requirement_id") or ""),
+                    )
+            except Exception:
+                # Observe-only hook: never affect report generation.
+                pass
             prop = prop_map.get(req.get("property_id"), {})
             docs = doc_map.get(req.get("requirement_id"), [])
             _att = jurisdiction_attribution_for_property(prop or {}, client_doc)

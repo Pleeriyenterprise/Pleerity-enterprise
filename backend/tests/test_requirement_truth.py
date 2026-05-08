@@ -114,6 +114,24 @@ def test_enrich_requirement_dict_adds_presentation():
         assert k not in r
 
 
+def test_enrich_requirement_dict_passes_through_authority_semantic_state():
+    from services.requirement_truth import EVIDENCE_MISSING, enrich_requirement_dict
+
+    r = enrich_requirement_dict(
+        {
+            "requirement_id": "r-semantics-1",
+            "property_id": "p1",
+            "requirement_type": "gas_safety",
+            "status": "PENDING",
+            "applicability": "REQUIRED",
+            "evidence_authority": {"state": "UPLOADED_UNCONFIRMED", "semantic_state": "EXPIRY_REVIEW_REQUIRED"},
+        },
+        EVIDENCE_MISSING,
+        audience="client",
+    )
+    assert r.get("semantic_state") == "EXPIRY_REVIEW_REQUIRED"
+
+
 def test_enrich_right_to_rent_client_guided_declaration_disclosure():
     from services.compliance_evidence_record_service import GUIDED_DECLARATION_WORKFLOW
     from services.requirement_workflow_audit import WORKFLOW_DIAGNOSTIC_PAYLOAD_KEYS

@@ -1,0 +1,2920 @@
+{
+  "audit_only": true,
+  "consumer_simplification_policies": {
+    "CLIENT_STATUS_CHIP": {
+      "chip_safe_wording": [
+        "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+        "otherwise use neutral non-compliant tokens",
+        "never chip-map to compliant/current without disclosure"
+      ],
+      "disclosure_strictness": "STRICT",
+      "export_safe_wording": [],
+      "maximum_simplification_allowed": "NONE",
+      "score_safe_wording": [],
+      "wording_strictness": "STRICT"
+    },
+    "PORTFOLIO_SCORE": {
+      "chip_safe_wording": [],
+      "disclosure_strictness": "STANDARD",
+      "export_safe_wording": [],
+      "maximum_simplification_allowed": "LOW",
+      "score_safe_wording": [
+        "score reflects recorded signals not operational closure",
+        "do not imply all obligations satisfied",
+        "defer single-word compliance labels"
+      ],
+      "wording_strictness": "STRICT"
+    },
+    "REPORT_EXPORT": {
+      "chip_safe_wording": [],
+      "disclosure_strictness": "STRICT",
+      "export_safe_wording": [
+        "use full disclosure lines from contract",
+        "avoid headline-only compliance claims",
+        "pair numeric facts with disclosure class"
+      ],
+      "maximum_simplification_allowed": "LOW",
+      "score_safe_wording": [],
+      "wording_strictness": "STRICT"
+    }
+  },
+  "copy_governance_classifications": [
+    "ALLOWED_WORDING",
+    "CONTEXT_REQUIRED",
+    "DISCLAIMER_REQUIRED",
+    "PROHIBITED_WORDING",
+    "HUMAN_REVIEW_RECOMMENDED"
+  ],
+  "copy_governance_summary": {
+    "CONTEXT_REQUIRED": 3,
+    "DISCLAIMER_REQUIRED": 22,
+    "PROHIBITED_WORDING": 14
+  },
+  "disclosure_classifications": [
+    "NO_DISCLOSURE_REQUIRED",
+    "FOLLOWUP_PENDING_DISCLOSURE",
+    "PARTIAL_COMPLETENESS_DISCLOSURE",
+    "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE",
+    "EXPIRY_REVIEW_DISCLOSURE",
+    "OPERATIONALLY_OPEN_DISCLOSURE",
+    "HUMAN_CONFIRMATION_DISCLOSURE",
+    "UNKNOWN_DISCLOSURE_REQUIREMENT"
+  ],
+  "export_blocked_states": [
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "MISSING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_state": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "MISSING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_state": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_state": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_state": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_state": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "MISSING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_state": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_state": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_state": "VERIFIED_EXPIRED"
+    }
+  ],
+  "export_readiness_summary": {
+    "EXPORT_BLOCKED_PENDING_GOVERNANCE": 7,
+    "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT": 21,
+    "EXPORT_READY": 1,
+    "EXPORT_READY_WITH_CONTEXT": 6,
+    "EXPORT_READY_WITH_DISCLOSURE": 4
+  },
+  "highest_risk_semantic_states": [
+    "COMPLETENESS_PENDING",
+    "DECLARATION_RECORDED",
+    "MISSING",
+    "OPERATIONALLY_OPEN",
+    "PARTIALLY_COMPLETE",
+    "REGISTRATION_RECORDED",
+    "TENANT_DELIVERY_RECORDED",
+    "UPLOADED_UNCONFIRMED"
+  ],
+  "non_blocking": true,
+  "phase": "Reporting Semantic Governance Phase 2 \u2014 Copy / Disclosure Contract",
+  "phase2_contract_consumers": [
+    "REPORT_EXPORT",
+    "PORTFOLIO_SCORE",
+    "CLIENT_STATUS_CHIP"
+  ],
+  "prohibited_wording_matrix": [
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "closed",
+        "completed",
+        "passed",
+        "resolved"
+      ],
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "closed",
+        "completed",
+        "passed",
+        "resolved"
+      ],
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "closed",
+        "completed",
+        "passed",
+        "resolved"
+      ],
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "audit-ready",
+        "complete",
+        "compliant"
+      ],
+      "semantic_state": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "audit-ready",
+        "complete",
+        "compliant"
+      ],
+      "semantic_state": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "audit-ready",
+        "complete",
+        "compliant"
+      ],
+      "semantic_state": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "compliant",
+        "current certificate",
+        "fully compliant",
+        "verified"
+      ],
+      "semantic_state": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "compliant",
+        "current certificate",
+        "fully compliant",
+        "verified"
+      ],
+      "semantic_state": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "compliant",
+        "current certificate",
+        "fully compliant",
+        "verified"
+      ],
+      "semantic_state": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "compliant",
+        "current",
+        "up to date",
+        "valid"
+      ],
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "compliant",
+        "current",
+        "up to date",
+        "valid"
+      ],
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "compliant",
+        "current",
+        "up to date",
+        "valid"
+      ],
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "closed",
+        "completed",
+        "passed",
+        "resolved"
+      ],
+      "semantic_state": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "closed",
+        "completed",
+        "passed",
+        "resolved"
+      ],
+      "semantic_state": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "closed",
+        "completed",
+        "passed",
+        "resolved"
+      ],
+      "semantic_state": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "current",
+        "passed",
+        "verified"
+      ],
+      "semantic_state": "MISSING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "current",
+        "passed",
+        "verified"
+      ],
+      "semantic_state": "MISSING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "current",
+        "passed",
+        "verified"
+      ],
+      "semantic_state": "MISSING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "closed",
+        "complete",
+        "compliant",
+        "resolved"
+      ],
+      "semantic_state": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "closed",
+        "complete",
+        "compliant",
+        "resolved"
+      ],
+      "semantic_state": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "closed",
+        "complete",
+        "compliant",
+        "resolved"
+      ],
+      "semantic_state": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "closed",
+        "complete",
+        "compliant",
+        "resolved"
+      ],
+      "semantic_state": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "closed",
+        "complete",
+        "compliant",
+        "resolved"
+      ],
+      "semantic_state": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "closed",
+        "complete",
+        "compliant",
+        "resolved"
+      ],
+      "semantic_state": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "compliant",
+        "fully compliant",
+        "verified outcome"
+      ],
+      "semantic_state": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "compliant",
+        "fully compliant",
+        "verified outcome"
+      ],
+      "semantic_state": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "compliant",
+        "fully compliant",
+        "verified outcome"
+      ],
+      "semantic_state": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "all obligations closed",
+        "compliant",
+        "resolved"
+      ],
+      "semantic_state": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "all obligations closed",
+        "compliant",
+        "resolved"
+      ],
+      "semantic_state": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "all obligations closed",
+        "compliant",
+        "resolved"
+      ],
+      "semantic_state": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "compliant",
+        "current certificate",
+        "fully compliant",
+        "verified"
+      ],
+      "semantic_state": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "compliant",
+        "current certificate",
+        "fully compliant",
+        "verified"
+      ],
+      "semantic_state": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "compliant",
+        "current certificate",
+        "fully compliant",
+        "verified"
+      ],
+      "semantic_state": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "guaranteed field condition",
+        "independently audited",
+        "legal warranty"
+      ],
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "guaranteed field condition",
+        "independently audited",
+        "legal warranty"
+      ],
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "guaranteed field condition",
+        "independently audited",
+        "legal warranty"
+      ],
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "prohibited_wording": [
+        "compliant",
+        "current",
+        "up to date",
+        "valid now"
+      ],
+      "semantic_state": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "compliant",
+        "current",
+        "up to date",
+        "valid now"
+      ],
+      "semantic_state": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "compliant",
+        "current",
+        "up to date",
+        "valid now"
+      ],
+      "semantic_state": "VERIFIED_EXPIRED"
+    }
+  ],
+  "remaining_runtime_convergence_limitation": "Inferred vs deterministic confirmation cannot be proven without runtime traces; audit uses declared propagation contracts only.",
+  "remaining_state_model_limitation": "Confirmation topology is synthesized from the propagation audit matrix; it does not observe actual acknowledgement payloads, webhook receipts, or human attestation records.",
+  "reporting_semantic_copy_contract_matrix": [
+    {
+      "allowed_wording": [
+        "assessment action pending",
+        "follow-up outstanding",
+        "remediation may still be required"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "closed",
+        "completed",
+        "passed",
+        "resolved"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "follow-up type and owner if known"
+      ],
+      "required_disclosures": [
+        "FOLLOWUP_PENDING_DISCLOSURE"
+      ],
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "suppress open follow-up"
+      ],
+      "unsafe_wording_exposures": [
+        "FOLLOWUP_SUPPRESSION_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "assessment action pending",
+        "follow-up outstanding",
+        "remediation may still be required"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_DISCLOSURE",
+      "prohibited_wording": [
+        "closed",
+        "completed",
+        "passed",
+        "resolved"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "follow-up type and owner if known"
+      ],
+      "required_disclosures": [
+        "FOLLOWUP_PENDING_DISCLOSURE"
+      ],
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "trust_risk": "MODERATE_TRUST_RISK",
+      "unsafe_simplifications": [
+        "suppress open follow-up"
+      ],
+      "unsafe_wording_exposures": [
+        "FOLLOWUP_SUPPRESSION_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "assessment action pending",
+        "follow-up outstanding",
+        "remediation may still be required"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_DISCLOSURE",
+      "prohibited_wording": [
+        "closed",
+        "completed",
+        "passed",
+        "resolved"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "follow-up type and owner if known"
+      ],
+      "required_disclosures": [
+        "FOLLOWUP_PENDING_DISCLOSURE"
+      ],
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "suppress open follow-up"
+      ],
+      "unsafe_wording_exposures": [
+        "FOLLOWUP_SUPPRESSION_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "awaiting further evidence",
+        "completeness pending"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "audit-ready",
+        "complete",
+        "compliant"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "what is missing at high level"
+      ],
+      "required_disclosures": [
+        "PARTIAL_COMPLETENESS_DISCLOSURE"
+      ],
+      "semantic_state": "COMPLETENESS_PENDING",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "treat as complete for scoring"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "awaiting further evidence",
+        "completeness pending"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "prohibited_wording": [
+        "audit-ready",
+        "complete",
+        "compliant"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "what is missing at high level"
+      ],
+      "required_disclosures": [
+        "PARTIAL_COMPLETENESS_DISCLOSURE"
+      ],
+      "semantic_state": "COMPLETENESS_PENDING",
+      "trust_risk": "MODERATE_TRUST_RISK",
+      "unsafe_simplifications": [
+        "treat as complete for scoring"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "awaiting further evidence",
+        "completeness pending"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "prohibited_wording": [
+        "audit-ready",
+        "complete",
+        "compliant"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "what is missing at high level"
+      ],
+      "required_disclosures": [
+        "PARTIAL_COMPLETENESS_DISCLOSURE"
+      ],
+      "semantic_state": "COMPLETENESS_PENDING",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "treat as complete for scoring"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "declarant attestation recorded",
+        "declaration on file",
+        "self-declared"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "compliant",
+        "current certificate",
+        "fully compliant",
+        "verified"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "declaration is not third-party verification"
+      ],
+      "required_disclosures": [
+        "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE"
+      ],
+      "semantic_state": "DECLARATION_RECORDED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "map declaration to compliance badge"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "declarant attestation recorded",
+        "declaration on file",
+        "self-declared"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "prohibited_wording": [
+        "compliant",
+        "current certificate",
+        "fully compliant",
+        "verified"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "declaration is not third-party verification"
+      ],
+      "required_disclosures": [
+        "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE"
+      ],
+      "semantic_state": "DECLARATION_RECORDED",
+      "trust_risk": "CRITICAL_TRUST_RISK",
+      "unsafe_simplifications": [
+        "map declaration to compliance badge"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "declarant attestation recorded",
+        "declaration on file",
+        "self-declared"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "prohibited_wording": [
+        "compliant",
+        "current certificate",
+        "fully compliant",
+        "verified"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "declaration is not third-party verification"
+      ],
+      "required_disclosures": [
+        "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE"
+      ],
+      "semantic_state": "DECLARATION_RECORDED",
+      "trust_risk": "CRITICAL_TRUST_RISK",
+      "unsafe_simplifications": [
+        "map declaration to compliance badge"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "expiry review required",
+        "renewal or review pending",
+        "validity requires review"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "compliant",
+        "current",
+        "up to date",
+        "valid"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [
+        "review basis"
+      ],
+      "required_disclosures": [
+        "EXPIRY_REVIEW_DISCLOSURE"
+      ],
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "valid until stated without review flag"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "CURRENT_LANGUAGE_EXPOSURE",
+        "EXPIRY_VALIDITY_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "expiry review required",
+        "renewal or review pending",
+        "validity requires review"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "compliant",
+        "current",
+        "up to date",
+        "valid"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [
+        "review basis"
+      ],
+      "required_disclosures": [
+        "EXPIRY_REVIEW_DISCLOSURE"
+      ],
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "valid until stated without review flag"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "CURRENT_LANGUAGE_EXPOSURE",
+        "EXPIRY_VALIDITY_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "expiry review required",
+        "renewal or review pending",
+        "validity requires review"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "compliant",
+        "current",
+        "up to date",
+        "valid"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [
+        "review basis"
+      ],
+      "required_disclosures": [
+        "EXPIRY_REVIEW_DISCLOSURE"
+      ],
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "valid until stated without review flag"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "CURRENT_LANGUAGE_EXPOSURE",
+        "EXPIRY_VALIDITY_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "action needed",
+        "follow-up required",
+        "pending response"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "closed",
+        "completed",
+        "passed",
+        "resolved"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "follow-up visibility"
+      ],
+      "required_disclosures": [
+        "FOLLOWUP_PENDING_DISCLOSURE"
+      ],
+      "semantic_state": "FOLLOWUP_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "hide pending follow-up"
+      ],
+      "unsafe_wording_exposures": [
+        "FOLLOWUP_SUPPRESSION_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "action needed",
+        "follow-up required",
+        "pending response"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_DISCLOSURE",
+      "prohibited_wording": [
+        "closed",
+        "completed",
+        "passed",
+        "resolved"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "follow-up visibility"
+      ],
+      "required_disclosures": [
+        "FOLLOWUP_PENDING_DISCLOSURE"
+      ],
+      "semantic_state": "FOLLOWUP_REQUIRED",
+      "trust_risk": "MODERATE_TRUST_RISK",
+      "unsafe_simplifications": [
+        "hide pending follow-up"
+      ],
+      "unsafe_wording_exposures": [
+        "FOLLOWUP_SUPPRESSION_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "action needed",
+        "follow-up required",
+        "pending response"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_DISCLOSURE",
+      "prohibited_wording": [
+        "closed",
+        "completed",
+        "passed",
+        "resolved"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "follow-up visibility"
+      ],
+      "required_disclosures": [
+        "FOLLOWUP_PENDING_DISCLOSURE"
+      ],
+      "semantic_state": "FOLLOWUP_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "hide pending follow-up"
+      ],
+      "unsafe_wording_exposures": [
+        "FOLLOWUP_SUPPRESSION_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "awaiting record",
+        "no submission on file",
+        "not recorded"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "current",
+        "passed",
+        "verified"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "absence of evidence must be explicit"
+      ],
+      "required_disclosures": [
+        "UNKNOWN_DISCLOSURE_REQUIREMENT"
+      ],
+      "semantic_state": "MISSING",
+      "trust_risk": "CRITICAL_TRUST_RISK",
+      "unsafe_simplifications": [
+        "omit missing state",
+        "treat as compliant by default"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "CURRENT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "awaiting record",
+        "no submission on file",
+        "not recorded"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "current",
+        "passed",
+        "verified"
+      ],
+      "representation_safety": "UNKNOWN_REPRESENTATION_SAFETY",
+      "required_contexts": [
+        "absence of evidence must be explicit"
+      ],
+      "required_disclosures": [
+        "UNKNOWN_DISCLOSURE_REQUIREMENT"
+      ],
+      "semantic_state": "MISSING",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "omit missing state",
+        "treat as compliant by default"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "CURRENT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "awaiting record",
+        "no submission on file",
+        "not recorded"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "current",
+        "passed",
+        "verified"
+      ],
+      "representation_safety": "UNKNOWN_REPRESENTATION_SAFETY",
+      "required_contexts": [
+        "absence of evidence must be explicit"
+      ],
+      "required_disclosures": [
+        "UNKNOWN_DISCLOSURE_REQUIREMENT"
+      ],
+      "semantic_state": "MISSING",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "omit missing state",
+        "treat as compliant by default"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "CURRENT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "not closed operationally",
+        "operationally open",
+        "work in progress"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "closed",
+        "complete",
+        "compliant",
+        "resolved"
+      ],
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "required_contexts": [
+        "operational state differs from documentary state"
+      ],
+      "required_disclosures": [
+        "OPERATIONALLY_OPEN_DISCLOSURE"
+      ],
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "show as done in rollup"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "OPERATIONAL_CLOSURE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "not closed operationally",
+        "operationally open",
+        "work in progress"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "closed",
+        "complete",
+        "compliant",
+        "resolved"
+      ],
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "required_contexts": [
+        "operational state differs from documentary state"
+      ],
+      "required_disclosures": [
+        "OPERATIONALLY_OPEN_DISCLOSURE"
+      ],
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "trust_risk": "CRITICAL_TRUST_RISK",
+      "unsafe_simplifications": [
+        "show as done in rollup"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "OPERATIONAL_CLOSURE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "not closed operationally",
+        "operationally open",
+        "work in progress"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "closed",
+        "complete",
+        "compliant",
+        "resolved"
+      ],
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "required_contexts": [
+        "operational state differs from documentary state"
+      ],
+      "required_disclosures": [
+        "OPERATIONALLY_OPEN_DISCLOSURE"
+      ],
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "show as done in rollup"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "OPERATIONAL_CLOSURE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "additional evidence required",
+        "incomplete submission",
+        "partially complete"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "closed",
+        "complete",
+        "compliant",
+        "resolved"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "list outstanding requirements where space allows"
+      ],
+      "required_disclosures": [
+        "PARTIAL_COMPLETENESS_DISCLOSURE"
+      ],
+      "semantic_state": "PARTIALLY_COMPLETE",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "done",
+        "green status"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "additional evidence required",
+        "incomplete submission",
+        "partially complete"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "prohibited_wording": [
+        "closed",
+        "complete",
+        "compliant",
+        "resolved"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "list outstanding requirements where space allows"
+      ],
+      "required_disclosures": [
+        "PARTIAL_COMPLETENESS_DISCLOSURE"
+      ],
+      "semantic_state": "PARTIALLY_COMPLETE",
+      "trust_risk": "CRITICAL_TRUST_RISK",
+      "unsafe_simplifications": [
+        "done",
+        "green status"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "additional evidence required",
+        "incomplete submission",
+        "partially complete"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "prohibited_wording": [
+        "closed",
+        "complete",
+        "compliant",
+        "resolved"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "list outstanding requirements where space allows"
+      ],
+      "required_disclosures": [
+        "PARTIAL_COMPLETENESS_DISCLOSURE"
+      ],
+      "semantic_state": "PARTIALLY_COMPLETE",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "done",
+        "green status"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "registration recorded",
+        "registry event captured"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "compliant",
+        "fully compliant",
+        "verified outcome"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "registration \u2260 operational closure"
+      ],
+      "required_disclosures": [
+        "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE"
+      ],
+      "semantic_state": "REGISTRATION_RECORDED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "registration implies compliance"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "registration recorded",
+        "registry event captured"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "prohibited_wording": [
+        "compliant",
+        "fully compliant",
+        "verified outcome"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "registration \u2260 operational closure"
+      ],
+      "required_disclosures": [
+        "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE"
+      ],
+      "semantic_state": "REGISTRATION_RECORDED",
+      "trust_risk": "CRITICAL_TRUST_RISK",
+      "unsafe_simplifications": [
+        "registration implies compliance"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "registration recorded",
+        "registry event captured"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "prohibited_wording": [
+        "compliant",
+        "fully compliant",
+        "verified outcome"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "registration \u2260 operational closure"
+      ],
+      "required_disclosures": [
+        "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE"
+      ],
+      "semantic_state": "REGISTRATION_RECORDED",
+      "trust_risk": "CRITICAL_TRUST_RISK",
+      "unsafe_simplifications": [
+        "registration implies compliance"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "delivery event recorded",
+        "handover recorded"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "all obligations closed",
+        "compliant",
+        "resolved"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "delivery record may omit follow-up work"
+      ],
+      "required_disclosures": [
+        "PARTIAL_COMPLETENESS_DISCLOSURE"
+      ],
+      "semantic_state": "TENANT_DELIVERY_RECORDED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "tenant delivered = complete compliance"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "delivery event recorded",
+        "handover recorded"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "prohibited_wording": [
+        "all obligations closed",
+        "compliant",
+        "resolved"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "delivery record may omit follow-up work"
+      ],
+      "required_disclosures": [
+        "PARTIAL_COMPLETENESS_DISCLOSURE"
+      ],
+      "semantic_state": "TENANT_DELIVERY_RECORDED",
+      "trust_risk": "CRITICAL_TRUST_RISK",
+      "unsafe_simplifications": [
+        "tenant delivered = complete compliance"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "delivery event recorded",
+        "handover recorded"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "prohibited_wording": [
+        "all obligations closed",
+        "compliant",
+        "resolved"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "delivery record may omit follow-up work"
+      ],
+      "required_disclosures": [
+        "PARTIAL_COMPLETENESS_DISCLOSURE"
+      ],
+      "semantic_state": "TENANT_DELIVERY_RECORDED",
+      "trust_risk": "CRITICAL_TRUST_RISK",
+      "unsafe_simplifications": [
+        "tenant delivered = complete compliance"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "awaiting confirmation",
+        "not yet attested",
+        "uploaded pending review"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "PROHIBITED_WORDING",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "compliant",
+        "current certificate",
+        "fully compliant",
+        "verified"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [
+        "upload does not equal verification"
+      ],
+      "required_disclosures": [
+        "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE"
+      ],
+      "semantic_state": "UPLOADED_UNCONFIRMED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "treat upload as proof"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "SEMANTIC_COLLAPSE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "awaiting confirmation",
+        "not yet attested",
+        "uploaded pending review"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "prohibited_wording": [
+        "compliant",
+        "current certificate",
+        "fully compliant",
+        "verified"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "upload does not equal verification"
+      ],
+      "required_disclosures": [
+        "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE"
+      ],
+      "semantic_state": "UPLOADED_UNCONFIRMED",
+      "trust_risk": "MODERATE_TRUST_RISK",
+      "unsafe_simplifications": [
+        "treat upload as proof"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "awaiting confirmation",
+        "not yet attested",
+        "uploaded pending review"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "prohibited_wording": [
+        "compliant",
+        "current certificate",
+        "fully compliant",
+        "verified"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "upload does not equal verification"
+      ],
+      "required_disclosures": [
+        "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE"
+      ],
+      "semantic_state": "UPLOADED_UNCONFIRMED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "treat upload as proof"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "meets declared verification standard",
+        "on file as verified",
+        "verified current"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "CONTEXT_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "guaranteed field condition",
+        "independently audited",
+        "legal warranty"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "verification scope and date if shown"
+      ],
+      "required_disclosures": [
+        "NO_DISCLOSURE_REQUIRED"
+      ],
+      "semantic_state": "VERIFIED_CURRENT",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "collapse to score without evidence line"
+      ],
+      "unsafe_wording_exposures": []
+    },
+    {
+      "allowed_wording": [
+        "meets declared verification standard",
+        "on file as verified",
+        "verified current"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "CONTEXT_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "prohibited_wording": [
+        "guaranteed field condition",
+        "independently audited",
+        "legal warranty"
+      ],
+      "representation_safety": "SAFE_FOR_DIRECT_REPRESENTATION",
+      "required_contexts": [
+        "verification scope and date if shown"
+      ],
+      "required_disclosures": [
+        "NO_DISCLOSURE_REQUIRED"
+      ],
+      "semantic_state": "VERIFIED_CURRENT",
+      "trust_risk": "LOW_TRUST_RISK",
+      "unsafe_simplifications": [
+        "collapse to score without evidence line"
+      ],
+      "unsafe_wording_exposures": []
+    },
+    {
+      "allowed_wording": [
+        "meets declared verification standard",
+        "on file as verified",
+        "verified current"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "CONTEXT_REQUIRED",
+      "export_readiness": "EXPORT_READY",
+      "prohibited_wording": [
+        "guaranteed field condition",
+        "independently audited",
+        "legal warranty"
+      ],
+      "representation_safety": "SAFE_FOR_DIRECT_REPRESENTATION",
+      "required_contexts": [
+        "verification scope and date if shown"
+      ],
+      "required_disclosures": [
+        "NO_DISCLOSURE_REQUIRED"
+      ],
+      "semantic_state": "VERIFIED_CURRENT",
+      "trust_risk": "LOW_TRUST_RISK",
+      "unsafe_simplifications": [
+        "collapse to score without evidence line"
+      ],
+      "unsafe_wording_exposures": []
+    },
+    {
+      "allowed_wording": [
+        "expired verification",
+        "past validity window",
+        "renewal required"
+      ],
+      "consumer": "CLIENT_STATUS_CHIP",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [
+          "short labels only when VERIFIED_CURRENT and export_readiness EXPORT_READY",
+          "otherwise use neutral non-compliant tokens",
+          "never chip-map to compliant/current without disclosure"
+        ],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "NONE",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "compliant",
+        "current",
+        "up to date",
+        "valid now"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [
+        "expiry basis must be visible"
+      ],
+      "required_disclosures": [
+        "EXPIRY_REVIEW_DISCLOSURE"
+      ],
+      "semantic_state": "VERIFIED_EXPIRED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "label as current certificate"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "CURRENT_LANGUAGE_EXPOSURE",
+        "EXPIRY_VALIDITY_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "expired verification",
+        "past validity window",
+        "renewal required"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STANDARD",
+        "export_safe_wording": [],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [
+          "score reflects recorded signals not operational closure",
+          "do not imply all obligations satisfied",
+          "defer single-word compliance labels"
+        ],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "compliant",
+        "current",
+        "up to date",
+        "valid now"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [
+        "expiry basis must be visible"
+      ],
+      "required_disclosures": [
+        "EXPIRY_REVIEW_DISCLOSURE"
+      ],
+      "semantic_state": "VERIFIED_EXPIRED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "label as current certificate"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "CURRENT_LANGUAGE_EXPOSURE",
+        "EXPIRY_VALIDITY_EXPOSURE"
+      ]
+    },
+    {
+      "allowed_wording": [
+        "expired verification",
+        "past validity window",
+        "renewal required"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "consumer_simplification_policy": {
+        "chip_safe_wording": [],
+        "disclosure_strictness": "STRICT",
+        "export_safe_wording": [
+          "use full disclosure lines from contract",
+          "avoid headline-only compliance claims",
+          "pair numeric facts with disclosure class"
+        ],
+        "maximum_simplification_allowed": "LOW",
+        "score_safe_wording": [],
+        "wording_strictness": "STRICT"
+      },
+      "copy_governance_primary": "DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "compliant",
+        "current",
+        "up to date",
+        "valid now"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [
+        "expiry basis must be visible"
+      ],
+      "required_disclosures": [
+        "EXPIRY_REVIEW_DISCLOSURE"
+      ],
+      "semantic_state": "VERIFIED_EXPIRED",
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "label as current certificate"
+      ],
+      "unsafe_wording_exposures": [
+        "COMPLIANT_LANGUAGE_EXPOSURE",
+        "CURRENT_LANGUAGE_EXPOSURE",
+        "EXPIRY_VALIDITY_EXPOSURE"
+      ]
+    }
+  ],
+  "representation_safety_classifications": [
+    "SAFE_FOR_DIRECT_REPRESENTATION",
+    "SAFE_WITH_CONTEXT",
+    "SAFE_WITH_DISCLAIMER",
+    "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+    "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+    "UNSAFE_FOR_CURRENT_LANGUAGE",
+    "UNKNOWN_REPRESENTATION_SAFETY"
+  ],
+  "representation_safety_summary": {
+    "SAFE_FOR_DIRECT_REPRESENTATION": 2,
+    "SAFE_WITH_CONTEXT": 6,
+    "SAFE_WITH_DISCLAIMER": 6,
+    "UNKNOWN_REPRESENTATION_SAFETY": 2,
+    "UNSAFE_FOR_COMPLIANT_LANGUAGE": 3,
+    "UNSAFE_FOR_CURRENT_LANGUAGE": 6,
+    "UNSAFE_FOR_SIMPLIFIED_REPORTING": 14
+  },
+  "runtime_behavior_changed": false,
+  "safest_reporting_states": [
+    "VERIFIED_CURRENT"
+  ],
+  "scope": "deterministic wording and disclosure governance; audit-only",
+  "semantic_transitions": [
+    "MISSING",
+    "VERIFIED_CURRENT",
+    "VERIFIED_EXPIRED",
+    "UPLOADED_UNCONFIRMED",
+    "PARTIALLY_COMPLETE",
+    "DECLARATION_RECORDED",
+    "REGISTRATION_RECORDED",
+    "TENANT_DELIVERY_RECORDED",
+    "ASSESSMENT_FOLLOWUP_REQUIRED",
+    "OPERATIONALLY_OPEN",
+    "FOLLOWUP_REQUIRED",
+    "COMPLETENESS_PENDING",
+    "EXPIRY_REVIEW_REQUIRED"
+  ],
+  "semantic_wording_contracts_by_state": {
+    "ASSESSMENT_FOLLOWUP_REQUIRED": {
+      "allowed_wording": [
+        "follow-up outstanding",
+        "remediation may still be required",
+        "assessment action pending"
+      ],
+      "export_readiness": "EXPORT_READY_WITH_DISCLOSURE",
+      "prohibited_wording": [
+        "passed",
+        "completed",
+        "resolved",
+        "closed"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "follow-up type and owner if known"
+      ],
+      "required_disclosures": [
+        "FOLLOWUP_PENDING_DISCLOSURE"
+      ],
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "suppress open follow-up"
+      ]
+    },
+    "COMPLETENESS_PENDING": {
+      "allowed_wording": [
+        "completeness pending",
+        "awaiting further evidence"
+      ],
+      "export_readiness": "EXPORT_READY_WITH_DISCLOSURE",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "audit-ready"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "what is missing at high level"
+      ],
+      "required_disclosures": [
+        "PARTIAL_COMPLETENESS_DISCLOSURE"
+      ],
+      "trust_risk": "MODERATE_TRUST_RISK",
+      "unsafe_simplifications": [
+        "treat as complete for scoring"
+      ]
+    },
+    "DECLARATION_RECORDED": {
+      "allowed_wording": [
+        "self-declared",
+        "declaration on file",
+        "declarant attestation recorded"
+      ],
+      "export_readiness": "EXPORT_READY_WITH_DISCLOSURE",
+      "prohibited_wording": [
+        "compliant",
+        "verified",
+        "fully compliant",
+        "current certificate"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "declaration is not third-party verification"
+      ],
+      "required_disclosures": [
+        "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE"
+      ],
+      "trust_risk": "MODERATE_TRUST_RISK",
+      "unsafe_simplifications": [
+        "map declaration to compliance badge"
+      ]
+    },
+    "EXPIRY_REVIEW_REQUIRED": {
+      "allowed_wording": [
+        "expiry review required",
+        "validity requires review",
+        "renewal or review pending"
+      ],
+      "export_readiness": "EXPORT_READY_WITH_DISCLOSURE",
+      "prohibited_wording": [
+        "current",
+        "valid",
+        "compliant",
+        "up to date"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [
+        "review basis"
+      ],
+      "required_disclosures": [
+        "EXPIRY_REVIEW_DISCLOSURE"
+      ],
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "valid until stated without review flag"
+      ]
+    },
+    "FOLLOWUP_REQUIRED": {
+      "allowed_wording": [
+        "follow-up required",
+        "pending response",
+        "action needed"
+      ],
+      "export_readiness": "EXPORT_READY_WITH_DISCLOSURE",
+      "prohibited_wording": [
+        "resolved",
+        "closed",
+        "passed",
+        "completed"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "follow-up visibility"
+      ],
+      "required_disclosures": [
+        "FOLLOWUP_PENDING_DISCLOSURE"
+      ],
+      "trust_risk": "MODERATE_TRUST_RISK",
+      "unsafe_simplifications": [
+        "hide pending follow-up"
+      ]
+    },
+    "MISSING": {
+      "allowed_wording": [
+        "not recorded",
+        "no submission on file",
+        "awaiting record"
+      ],
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "compliant",
+        "complete",
+        "current",
+        "verified",
+        "passed"
+      ],
+      "representation_safety": "UNKNOWN_REPRESENTATION_SAFETY",
+      "required_contexts": [
+        "absence of evidence must be explicit"
+      ],
+      "required_disclosures": [
+        "UNKNOWN_DISCLOSURE_REQUIREMENT"
+      ],
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "treat as compliant by default",
+        "omit missing state"
+      ]
+    },
+    "OPERATIONALLY_OPEN": {
+      "allowed_wording": [
+        "operationally open",
+        "work in progress",
+        "not closed operationally"
+      ],
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "prohibited_wording": [
+        "compliant",
+        "complete",
+        "resolved",
+        "closed"
+      ],
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "required_contexts": [
+        "operational state differs from documentary state"
+      ],
+      "required_disclosures": [
+        "OPERATIONALLY_OPEN_DISCLOSURE"
+      ],
+      "trust_risk": "HIGH_TRUST_RISK",
+      "unsafe_simplifications": [
+        "show as done in rollup"
+      ]
+    },
+    "PARTIALLY_COMPLETE": {
+      "allowed_wording": [
+        "partially complete",
+        "additional evidence required",
+        "incomplete submission"
+      ],
+      "export_readiness": "EXPORT_READY_WITH_DISCLOSURE",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "resolved",
+        "closed"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "list outstanding requirements where space allows"
+      ],
+      "required_disclosures": [
+        "PARTIAL_COMPLETENESS_DISCLOSURE"
+      ],
+      "trust_risk": "MODERATE_TRUST_RISK",
+      "unsafe_simplifications": [
+        "green status",
+        "done"
+      ]
+    },
+    "REGISTRATION_RECORDED": {
+      "allowed_wording": [
+        "registration recorded",
+        "registry event captured"
+      ],
+      "export_readiness": "EXPORT_READY_WITH_DISCLOSURE",
+      "prohibited_wording": [
+        "compliant",
+        "verified outcome",
+        "fully compliant"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "registration \u2260 operational closure"
+      ],
+      "required_disclosures": [
+        "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE"
+      ],
+      "trust_risk": "MODERATE_TRUST_RISK",
+      "unsafe_simplifications": [
+        "registration implies compliance"
+      ]
+    },
+    "TENANT_DELIVERY_RECORDED": {
+      "allowed_wording": [
+        "delivery event recorded",
+        "handover recorded"
+      ],
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "prohibited_wording": [
+        "compliant",
+        "resolved",
+        "all obligations closed"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "delivery record may omit follow-up work"
+      ],
+      "required_disclosures": [
+        "PARTIAL_COMPLETENESS_DISCLOSURE"
+      ],
+      "trust_risk": "MODERATE_TRUST_RISK",
+      "unsafe_simplifications": [
+        "tenant delivered = complete compliance"
+      ]
+    },
+    "UPLOADED_UNCONFIRMED": {
+      "allowed_wording": [
+        "uploaded pending review",
+        "awaiting confirmation",
+        "not yet attested"
+      ],
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "prohibited_wording": [
+        "verified",
+        "compliant",
+        "fully compliant",
+        "current certificate"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "upload does not equal verification"
+      ],
+      "required_disclosures": [
+        "NOT_INDEPENDENTLY_VERIFIED_DISCLOSURE"
+      ],
+      "trust_risk": "MODERATE_TRUST_RISK",
+      "unsafe_simplifications": [
+        "treat upload as proof"
+      ]
+    },
+    "VERIFIED_CURRENT": {
+      "allowed_wording": [
+        "verified current",
+        "meets declared verification standard",
+        "on file as verified"
+      ],
+      "export_readiness": "EXPORT_READY",
+      "prohibited_wording": [
+        "guaranteed field condition",
+        "independently audited",
+        "legal warranty"
+      ],
+      "representation_safety": "SAFE_FOR_DIRECT_REPRESENTATION",
+      "required_contexts": [
+        "verification scope and date if shown"
+      ],
+      "required_disclosures": [
+        "NO_DISCLOSURE_REQUIRED"
+      ],
+      "trust_risk": "LOW_TRUST_RISK",
+      "unsafe_simplifications": [
+        "collapse to score without evidence line"
+      ]
+    },
+    "VERIFIED_EXPIRED": {
+      "allowed_wording": [
+        "expired verification",
+        "past validity window",
+        "renewal required"
+      ],
+      "export_readiness": "EXPORT_READY_WITH_DISCLOSURE",
+      "prohibited_wording": [
+        "current",
+        "valid now",
+        "compliant",
+        "up to date"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [
+        "expiry basis must be visible"
+      ],
+      "required_disclosures": [
+        "EXPIRY_REVIEW_DISCLOSURE"
+      ],
+      "trust_risk": "MODERATE_TRUST_RISK",
+      "unsafe_simplifications": [
+        "label as current certificate"
+      ]
+    }
+  },
+  "trust_risk_rankings": [
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "MISSING",
+      "trust_risk": "CRITICAL_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "DECLARATION_RECORDED",
+      "trust_risk": "CRITICAL_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "trust_risk": "CRITICAL_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "PARTIALLY_COMPLETE",
+      "trust_risk": "CRITICAL_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "REGISTRATION_RECORDED",
+      "trust_risk": "CRITICAL_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "TENANT_DELIVERY_RECORDED",
+      "trust_risk": "CRITICAL_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "DECLARATION_RECORDED",
+      "trust_risk": "CRITICAL_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "REGISTRATION_RECORDED",
+      "trust_risk": "CRITICAL_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "TENANT_DELIVERY_RECORDED",
+      "trust_risk": "CRITICAL_TRUST_RISK"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "COMPLETENESS_PENDING",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "DECLARATION_RECORDED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "semantic_state": "FOLLOWUP_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "PARTIALLY_COMPLETE",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "REGISTRATION_RECORDED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "TENANT_DELIVERY_RECORDED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_state": "UPLOADED_UNCONFIRMED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "semantic_state": "VERIFIED_CURRENT",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "semantic_state": "VERIFIED_EXPIRED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "UNKNOWN_REPRESENTATION_SAFETY",
+      "semantic_state": "MISSING",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "semantic_state": "VERIFIED_EXPIRED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "semantic_state": "COMPLETENESS_PENDING",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "semantic_state": "FOLLOWUP_REQUIRED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "UNKNOWN_REPRESENTATION_SAFETY",
+      "semantic_state": "MISSING",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "semantic_state": "PARTIALLY_COMPLETE",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "semantic_state": "UPLOADED_UNCONFIRMED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "semantic_state": "VERIFIED_EXPIRED",
+      "trust_risk": "HIGH_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "trust_risk": "MODERATE_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "semantic_state": "COMPLETENESS_PENDING",
+      "trust_risk": "MODERATE_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "semantic_state": "FOLLOWUP_REQUIRED",
+      "trust_risk": "MODERATE_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "semantic_state": "UPLOADED_UNCONFIRMED",
+      "trust_risk": "MODERATE_TRUST_RISK"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "SAFE_FOR_DIRECT_REPRESENTATION",
+      "semantic_state": "VERIFIED_CURRENT",
+      "trust_risk": "LOW_TRUST_RISK"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "SAFE_FOR_DIRECT_REPRESENTATION",
+      "semantic_state": "VERIFIED_CURRENT",
+      "trust_risk": "LOW_TRUST_RISK"
+    }
+  ],
+  "trust_risk_summary": {
+    "CRITICAL_TRUST_RISK": 9,
+    "HIGH_TRUST_RISK": 24,
+    "LOW_TRUST_RISK": 2,
+    "MODERATE_TRUST_RISK": 4
+  },
+  "unsafe_wording_exposure_summary": {
+    "COMPLIANT_LANGUAGE_EXPOSURE": 30,
+    "CURRENT_LANGUAGE_EXPOSURE": 9,
+    "EXPIRY_VALIDITY_EXPOSURE": 6,
+    "FOLLOWUP_SUPPRESSION_EXPOSURE": 6,
+    "OPERATIONAL_CLOSURE_EXPOSURE": 3,
+    "SEMANTIC_COLLAPSE_EXPOSURE": 16
+  }
+}

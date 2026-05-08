@@ -398,6 +398,11 @@ def _action_to_task(
     if is_req_stream and prop_id and related_rid:
         task_metadata["requirement_id"] = related_rid
         task_metadata["property_jurisdiction"] = a.get("jurisdiction")
+        if a.get("semantic_state") is not None:
+            task_metadata["semantic_state"] = a.get("semantic_state")
+        for k in ("workflow_class", "guidance_target", "allowed_evidence_modes"):
+            if a.get(k) is not None:
+                task_metadata[k] = a.get(k)
         if isinstance(a.get("registry_metadata"), dict) and a.get("registry_metadata"):
             task_metadata["registry_metadata"] = dict(a["registry_metadata"])
         if isinstance(a.get("canonical_take_action"), dict) and a.get("canonical_take_action"):
@@ -436,6 +441,8 @@ def _action_to_task(
                     task_metadata[k] = env_take[k]
         if isinstance(a.get("evidence_completeness"), dict) and a.get("evidence_completeness"):
             task_metadata["evidence_completeness"] = dict(a["evidence_completeness"])
+        if isinstance(a.get("evidence_authority"), dict) and a.get("evidence_authority"):
+            task_metadata["evidence_authority"] = dict(a["evidence_authority"])
         if isinstance(a.get("requirement_display"), dict) and a.get("requirement_display"):
             task_metadata["requirement_display"] = dict(a["requirement_display"])
         else:
@@ -707,6 +714,14 @@ async def _tenant_request_tasks(
                         for k in ("workflow_class", "guidance_target", "allowed_evidence_modes"):
                             if env.get(k) is not None:
                                 metadata[k] = env[k]
+                        # Convergence pass-through: preserve requirement-facing semantic contract fields
+                        # that are already available on canonical requirement rows.
+                        for key in ("semantic_state", "requirement_display", "evidence_authority", "evidence_completeness"):
+                            val = req_row.get(key)
+                            if isinstance(val, dict) and val:
+                                metadata[key] = dict(val)
+                            elif key == "semantic_state" and val is not None:
+                                metadata[key] = val
                         if not _canonical_take_action_is_standard_document_navigate(
                             ta, property_id=prop_id, requirement_id=req_id
                         ):

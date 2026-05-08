@@ -151,4 +151,42 @@ describe('RequirementIntelligenceModal', () => {
     expect(screen.queryByText('Wales must not render')).not.toBeInTheDocument();
     expect(screen.queryByText('Flat fallback')).not.toBeInTheDocument();
   });
+
+  it('uses resolved evidence semantics for guided declaration rows', async () => {
+    clientAPI.getRequirementWorkflow.mockResolvedValue({
+      data: {
+        requirement: {
+          requirement_id: 'req-gd',
+          property_id: 'prop-gd',
+          display_label: 'Right to rent',
+          workflow_class: 'GUIDED_DECLARATION',
+          status: 'MISSING',
+          workflow_status: 'ACTION_REQUIRED',
+          compliance_state: 'MISSING',
+          take_action: {
+            primary: {
+              label: 'Record declaration',
+              route: '/properties/prop-gd?open=resolve&requirement_id=req-gd',
+              handler: 'guided_evidence',
+            },
+            supporting_external_links: [],
+          },
+        },
+        active_compliance_job: null,
+      },
+    });
+
+    render(
+      wrap(<RequirementIntelligenceModal open requirementId="req-gd" seedRequirement={null} onClose={noop} onNavigate={noop} />),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('requirement-intel-loading')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('requirement-intel-evidence-label')).toHaveTextContent(
+      'Declaration not recorded — action required',
+    );
+    expect(screen.getByTestId('requirement-intel-primary-cta')).toHaveTextContent('Record declaration');
+  });
 });

@@ -32,12 +32,11 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../com
 import { Skeleton } from '../components/ui/skeleton';
 import { recordClientPortalInteraction, resolveClientPortalPath } from '../utils/clientPortalNavigation';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
-import { requirementUsesServerTakeActionPrimary } from '../utils/requirementTakeActionResolver';
 import {
   executeRequirementPrimaryCta,
   GUIDED_CTA_UNAVAILABLE_TITLE,
-  resolveRequirementActionWithRowContext,
 } from '../utils/requirementCtaParity';
+import { projectResolvedRequirementSemantics } from '../utils/resolvedRequirementViewModel';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 import { requirementDisplayTitle } from '../domain/presentDomain';
@@ -61,6 +60,17 @@ function scoreDriverStatusLabel(raw) {
   return lbl && lbl !== '—' ? lbl : 'Needs attention';
 }
 
+function scoreDriverEvidenceLabel(driver, requirements) {
+  const req = findRequirementRowForScoreDriver(requirements, driver);
+  const hasTakeAction = !!(req && typeof req.take_action === 'object');
+  if (req && hasTakeAction) {
+    const sem = projectResolvedRequirementSemantics(req, { pagePropertyId: driver?.property_id || null });
+    const status = req.status || driver?.status || 'PENDING';
+    return sem.evidenceStatusForStatus(status).text;
+  }
+  return driver?.evidence_uploaded ? 'Uploaded' : 'Not uploaded';
+}
+
 /**
  * Score-driver remediation: only `take_action.primary` shapes that pass
  * {@link requirementUsesServerTakeActionPrimary} may render actionable labels/routes.
@@ -68,7 +78,10 @@ function scoreDriverStatusLabel(raw) {
  */
 function ScoreDriverRemediationActions({ driver, requirements, navigate, openGuidedEvidence }) {
   const req = findRequirementRowForScoreDriver(requirements, driver);
-  const hasCanonical = !!(req && requirementUsesServerTakeActionPrimary(req));
+  const hasTakeAction = !!(req && typeof req.take_action === 'object');
+  const sem =
+    req && hasTakeAction ? projectResolvedRequirementSemantics(req, { pagePropertyId: driver?.property_id || null }) : null;
+  const hasCanonical = !!sem?.server_take_action_primary;
   const propertyId = driver?.property_id != null ? String(driver.property_id).trim() : '';
 
   if (!hasCanonical) {
@@ -98,7 +111,7 @@ function ScoreDriverRemediationActions({ driver, requirements, navigate, openGui
     );
   }
 
-  const ta = resolveRequirementActionWithRowContext(req, propertyId || null);
+  const ta = sem.cta;
 
   const onPrimary = (e) => {
     e.stopPropagation();
@@ -796,7 +809,7 @@ const ComplianceScorePage = () => {
                                 </Tooltip>
                               )}
                             </td>
-                            <td className="py-3 pr-2">{d.evidence_uploaded ? 'Uploaded' : 'Not uploaded'}</td>
+                            <td className="py-3 pr-2">{scoreDriverEvidenceLabel(d, requirements)}</td>
                             <td className="py-3 pl-2">
                               <ScoreDriverRemediationActions
                                 driver={d}
@@ -828,7 +841,7 @@ const ComplianceScorePage = () => {
                           {scoreDriverStatusLabel(d.status)}
                         </span>
                         {' · '}
-                        {d.date_used ? new Date(d.date_used).toLocaleDateString() : '—'} · {d.evidence_uploaded ? 'Uploaded' : 'Not uploaded'}
+                        {d.date_used ? new Date(d.date_used).toLocaleDateString() : '—'} · {scoreDriverEvidenceLabel(d, requirements)}
                       </p>
                       <div className="flex flex-col gap-2 pt-1">
                         <ScoreDriverRemediationActions

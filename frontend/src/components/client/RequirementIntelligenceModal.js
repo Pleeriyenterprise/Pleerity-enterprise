@@ -14,6 +14,7 @@ import {
 import { formatRiskLabel } from '../../utils/riskLabel';
 import { resolveDocumentsPath } from '../../utils/clientPortalNavigation';
 import { useGuidedEvidenceModal } from '../../context/GuidedEvidenceModalContext';
+import { projectResolvedRequirementSemantics } from '../../utils/resolvedRequirementViewModel';
 
 function formatIntelDate(value) {
   if (value == null || value === '') return null;
@@ -118,7 +119,19 @@ export default function RequirementIntelligenceModal({
     [payload],
   );
   const supportingLinks = useMemo(() => (merged ? mergeRequirementSupportingLinks(merged) : []), [merged]);
-  const resolved = useMemo(() => resolveRequirementAction(merged, {}), [merged]);
+  const resolvedSemantics = useMemo(() => {
+    if (!merged || typeof merged.take_action !== 'object') return null;
+    return projectResolvedRequirementSemantics(merged, { pagePropertyId: merged?.property_id || null });
+  }, [merged]);
+  const resolved = useMemo(
+    () => (merged ? resolvedSemantics?.cta || resolveRequirementAction(merged, {}) : null),
+    [merged, resolvedSemantics],
+  );
+  const statusEvidenceLine = useMemo(() => {
+    if (!merged) return statusSummary.evidenceLine;
+    const fromSemantics = resolvedSemantics?.evidenceStatusForStatus(merged.status || merged.compliance_state || 'PENDING')?.subline;
+    return fromSemantics || statusSummary.evidenceLine;
+  }, [merged, resolvedSemantics, statusSummary.evidenceLine]);
 
   const displayTitle = useMemo(() => {
     if (!merged) return 'Requirement';
@@ -146,6 +159,7 @@ export default function RequirementIntelligenceModal({
   const rid = merged?.requirement_id ? String(merged.requirement_id) : '';
 
   const primaryHandler = () => {
+    if (!resolved) return;
     if (resolved.primary_action_handler === 'external' && resolved.primary_route) {
       window.open(resolved.primary_route, '_blank', 'noopener,noreferrer');
       return;
@@ -164,7 +178,7 @@ export default function RequirementIntelligenceModal({
   const docsView = pid && rid ? resolveDocumentsPath(pid, { requirement_id: rid }) : pid ? resolveDocumentsPath(pid) : '/documents';
   const docsUpload =
     pid && rid ? resolveDocumentsPath(pid, { requirement_id: rid, focus: 'upload' }) : docsView;
-  const primaryLabel = String(resolved.primary_action_label || '').trim() || 'Take action';
+  const primaryLabel = String(resolved?.primary_action_label || '').trim() || 'Take action';
 
   const showUploadSecondary =
     Boolean(pid && rid) &&
@@ -221,11 +235,11 @@ export default function RequirementIntelligenceModal({
                       </dd>
                     </div>
                   ) : null}
-                  {statusSummary.evidenceLine ? (
+                  {statusEvidenceLine ? (
                     <div>
                       <dt className="text-gray-500 text-xs">Evidence</dt>
                       <dd className="font-medium text-gray-900" data-testid="requirement-intel-evidence-label">
-                        {statusSummary.evidenceLine}
+                        {statusEvidenceLine}
                       </dd>
                     </div>
                   ) : null}
@@ -371,6 +385,7 @@ export default function RequirementIntelligenceModal({
                   className="w-full sm:w-auto min-h-11 bg-midnight-blue hover:bg-midnight-blue/90 text-white"
                   onClick={primaryHandler}
                   disabled={
+                    !resolved ||
                     resolved.primary_action_handler === 'guided_evidence_error' ||
                     (!resolved.primary_route &&
                       resolved.primary_action_handler !== 'external' &&

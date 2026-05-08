@@ -1,0 +1,60 @@
+{
+  "phase": "Semantic-State Consumer Precedence Adapters Phase 5",
+  "scope": "observe-only runtime hook points",
+  "target_consumers": [
+    "REMINDER_ENGINE",
+    "REPORT_EXPORT",
+    "PORTFOLIO_SCORE"
+  ],
+  "audit_mode": true,
+  "runtime_behavior_changed": false,
+  "runtime_enforcement": false,
+  "event_collection": {
+    "type": "in_memory_non_blocking_collector",
+    "failure_mode": "swallow_and_record_observation_error"
+  },
+  "matrix": [
+    {
+      "consumer": "REMINDER_ENGINE",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "delta_frequency": "HIGH",
+      "highest_impact": "WIDESPREAD_COLLAPSE_DELTA",
+      "runtime_behavior_changed": false
+    },
+    {
+      "consumer": "REMINDER_ENGINE",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "delta_frequency": "HIGH",
+      "highest_impact": "WIDESPREAD_COLLAPSE_DELTA",
+      "runtime_behavior_changed": false
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "delta_frequency": "MEDIUM",
+      "highest_impact": "HIGH_DELTA",
+      "runtime_behavior_changed": false
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "delta_frequency": "MEDIUM",
+      "highest_impact": "HIGH_DELTA",
+      "runtime_behavior_changed": false
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "PARTIALLY_COMPLETE",
+      "delta_frequency": "MEDIUM",
+      "highest_impact": "HIGH_DELTA",
+      "runtime_behavior_changed": false
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "delta_frequency": "MEDIUM",
+      "highest_impact": "HIGH_DELTA",
+      "runtime_behavior_changed": false
+    }
+  ]
+}

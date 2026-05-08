@@ -1,0 +1,3680 @@
+{
+  "audit_only": true,
+  "collapse_risk_summary": {
+    "DECLARATION_VERIFICATION_COLLAPSE": 18,
+    "EXPIRY_CURRENTNESS_COLLAPSE": 12,
+    "FOLLOWUP_RESOLUTION_COLLAPSE": 12,
+    "MULTI_STATE_COLLAPSE": 7,
+    "NO_COLLAPSE_RISK": 6,
+    "OPERATIONAL_OPEN_COLLAPSE": 6,
+    "PARTIAL_COMPLETENESS_COLLAPSE": 11,
+    "REPORTING_SIMPLIFICATION_COLLAPSE": 6
+  },
+  "compliant_language_blocked_states": [
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    }
+  ],
+  "current_language_blocked_states": [
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    }
+  ],
+  "disclaimer_classifications": [
+    "NO_DISCLAIMER_REQUIRED",
+    "FOLLOWUP_PENDING_DISCLAIMER",
+    "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+    "PARTIAL_COMPLETENESS_DISCLAIMER",
+    "EXPIRY_REVIEW_DISCLAIMER",
+    "OPERATIONALLY_OPEN_DISCLAIMER",
+    "HUMAN_CONFIRMATION_REQUIRED_DISCLAIMER",
+    "UNKNOWN_DISCLAIMER_REQUIREMENT"
+  ],
+  "disclaimer_required_states": [
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclaimer_requirement": "OPERATIONALLY_OPEN_DISCLAIMER",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "disclaimer_requirement": "OPERATIONALLY_OPEN_DISCLAIMER",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclaimer_requirement": "OPERATIONALLY_OPEN_DISCLAIMER",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "disclaimer_requirement": "OPERATIONALLY_OPEN_DISCLAIMER",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclaimer_requirement": "OPERATIONALLY_OPEN_DISCLAIMER",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "semantic_transition": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "disclaimer_requirement": "OPERATIONALLY_OPEN_DISCLAIMER",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    }
+  ],
+  "disclaimer_requirement_summary": {
+    "EXPIRY_REVIEW_DISCLAIMER": 12,
+    "FOLLOWUP_PENDING_DISCLAIMER": 12,
+    "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER": 18,
+    "NO_DISCLAIMER_REQUIRED": 6,
+    "OPERATIONALLY_OPEN_DISCLAIMER": 6,
+    "PARTIAL_COMPLETENESS_DISCLAIMER": 24
+  },
+  "export_blocked_states": [
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "semantic_transition": "VERIFIED_EXPIRED"
+    }
+  ],
+  "export_readiness_classifications": [
+    "EXPORT_READY",
+    "EXPORT_READY_WITH_CONTEXT",
+    "EXPORT_READY_WITH_DISCLAIMER",
+    "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+    "EXPORT_BLOCKED_PENDING_GOVERNANCE"
+  ],
+  "export_readiness_summary": {
+    "EXPORT_BLOCKED_PENDING_GOVERNANCE": 7,
+    "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT": 30,
+    "EXPORT_READY": 3,
+    "EXPORT_READY_WITH_CONTEXT": 26,
+    "EXPORT_READY_WITH_DISCLAIMER": 12
+  },
+  "governance_blocker_classifications": [
+    "SEMANTIC_REPRESENTATION_BLOCKER",
+    "COMPLIANT_LANGUAGE_BLOCKER",
+    "CURRENT_LANGUAGE_BLOCKER",
+    "FOLLOWUP_VISIBILITY_BLOCKER",
+    "PARTIAL_COMPLETENESS_BLOCKER",
+    "VERIFICATION_CONTEXT_BLOCKER",
+    "EXPIRY_AMBIGUITY_BLOCKER",
+    "REPORT_TRUST_BLOCKER",
+    "UNKNOWN_REPORTING_BLOCKER"
+  ],
+  "governance_blocker_summary": {
+    "COMPLIANT_LANGUAGE_BLOCKER": 75,
+    "CURRENT_LANGUAGE_BLOCKER": 75,
+    "EXPIRY_AMBIGUITY_BLOCKER": 12,
+    "FOLLOWUP_VISIBILITY_BLOCKER": 12,
+    "PARTIAL_COMPLETENESS_BLOCKER": 11,
+    "REPORT_TRUST_BLOCKER": 37,
+    "SEMANTIC_REPRESENTATION_BLOCKER": 16,
+    "UNKNOWN_REPORTING_BLOCKER": 3,
+    "VERIFICATION_CONTEXT_BLOCKER": 24
+  },
+  "highest_reporting_risk_states": [
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "DASHBOARD_SUMMARY",
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "PROPERTY_SUMMARY",
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "MISSING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED"
+    }
+  ],
+  "language_governance_classifications": [
+    "SAFE_FOR_COMPLIANT_WORDING",
+    "SAFE_FOR_CURRENT_WORDING",
+    "REQUIRES_QUALIFIED_LANGUAGE",
+    "REQUIRES_OPERATIONAL_CONTEXT",
+    "REQUIRES_VERIFICATION_CONTEXT",
+    "REQUIRES_FOLLOWUP_CONTEXT",
+    "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+    "MUST_NOT_USE_CURRENT_LANGUAGE"
+  ],
+  "non_blocking": true,
+  "phase": "Reporting Semantic Governance Audit Phase 1",
+  "remaining_runtime_convergence_limitation": "Inferred vs deterministic confirmation cannot be proven without runtime traces; audit uses declared propagation contracts only.",
+  "remaining_state_model_limitation": "Confirmation topology is synthesized from the propagation audit matrix; it does not observe actual acknowledgement payloads, webhook receipts, or human attestation records.",
+  "reporting_governance_consumers": [
+    "REPORT_EXPORT",
+    "PORTFOLIO_SCORE",
+    "DASHBOARD_SUMMARY",
+    "PROPERTY_SUMMARY",
+    "REQUIREMENT_LIST",
+    "CLIENT_STATUS_CHIP"
+  ],
+  "reporting_governance_matrix": [
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_DISCLAIMER",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "closed",
+        "resolved"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "FOLLOWUP_VISIBILITY_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "REQUIRES_FOLLOWUP_CONTEXT"
+      ],
+      "semantic_collapse_risk": "FOLLOWUP_RESOLUTION_COLLAPSE",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_DISCLAIMER",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [
+        "closed",
+        "resolved"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "FOLLOWUP_VISIBILITY_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "REQUIRES_FOLLOWUP_CONTEXT"
+      ],
+      "semantic_collapse_risk": "FOLLOWUP_RESOLUTION_COLLAPSE",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_DISCLAIMER",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "closed",
+        "resolved"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "FOLLOWUP_VISIBILITY_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "REQUIRES_FOLLOWUP_CONTEXT"
+      ],
+      "semantic_collapse_risk": "FOLLOWUP_RESOLUTION_COLLAPSE",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_DISCLAIMER",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "closed",
+        "resolved"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "FOLLOWUP_VISIBILITY_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "REQUIRES_FOLLOWUP_CONTEXT"
+      ],
+      "semantic_collapse_risk": "FOLLOWUP_RESOLUTION_COLLAPSE",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_DISCLAIMER",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "closed",
+        "resolved"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "FOLLOWUP_VISIBILITY_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "REQUIRES_FOLLOWUP_CONTEXT"
+      ],
+      "semantic_collapse_risk": "FOLLOWUP_RESOLUTION_COLLAPSE",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_DISCLAIMER",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [
+        "closed",
+        "resolved"
+      ],
+      "report_trust_risk": "LOW_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "FOLLOWUP_VISIBILITY_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "REQUIRES_FOLLOWUP_CONTEXT"
+      ],
+      "semantic_collapse_risk": "FOLLOWUP_RESOLUTION_COLLAPSE",
+      "semantic_transition": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "PARTIAL_COMPLETENESS_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "PARTIAL_COMPLETENESS_COLLAPSE",
+      "semantic_transition": "COMPLETENESS_PENDING",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "PARTIAL_COMPLETENESS_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "PARTIAL_COMPLETENESS_COLLAPSE",
+      "semantic_transition": "COMPLETENESS_PENDING",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "PARTIAL_COMPLETENESS_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "PARTIAL_COMPLETENESS_COLLAPSE",
+      "semantic_transition": "COMPLETENESS_PENDING",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "PARTIAL_COMPLETENESS_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "PARTIAL_COMPLETENESS_COLLAPSE",
+      "semantic_transition": "COMPLETENESS_PENDING",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "PARTIAL_COMPLETENESS_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "PARTIAL_COMPLETENESS_COLLAPSE",
+      "semantic_transition": "COMPLETENESS_PENDING",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "PARTIAL_COMPLETENESS_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "PARTIAL_COMPLETENESS_COLLAPSE",
+      "semantic_transition": "COMPLETENESS_PENDING",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "DECLARATION_RECORDED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "DECLARATION_RECORDED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "MULTI_STATE_COLLAPSE",
+      "semantic_transition": "DECLARATION_RECORDED",
+      "triage_confirmation_gap_classification": "BLOCKED_FOR_RUNTIME_CONFIRMATION_ENFORCEMENT",
+      "triage_unsafe_to_implement": true
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "DECLARATION_RECORDED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "MULTI_STATE_COLLAPSE",
+      "semantic_transition": "DECLARATION_RECORDED",
+      "triage_confirmation_gap_classification": "BLOCKED_FOR_RUNTIME_CONFIRMATION_ENFORCEMENT",
+      "triage_unsafe_to_implement": true
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "DECLARATION_RECORDED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "current",
+        "live status",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "EXPIRY_AMBIGUITY_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [],
+      "semantic_collapse_risk": "EXPIRY_CURRENTNESS_COLLAPSE",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [
+        "current",
+        "live status",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "EXPIRY_AMBIGUITY_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [],
+      "semantic_collapse_risk": "EXPIRY_CURRENTNESS_COLLAPSE",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "current",
+        "live status",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "EXPIRY_AMBIGUITY_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [],
+      "semantic_collapse_risk": "EXPIRY_CURRENTNESS_COLLAPSE",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "current",
+        "live status",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "EXPIRY_AMBIGUITY_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [],
+      "semantic_collapse_risk": "EXPIRY_CURRENTNESS_COLLAPSE",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "current",
+        "live status",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "EXPIRY_AMBIGUITY_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [],
+      "semantic_collapse_risk": "EXPIRY_CURRENTNESS_COLLAPSE",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [
+        "current",
+        "live status",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "EXPIRY_AMBIGUITY_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [],
+      "semantic_collapse_risk": "EXPIRY_CURRENTNESS_COLLAPSE",
+      "semantic_transition": "EXPIRY_REVIEW_REQUIRED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_DISCLAIMER",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "closed",
+        "resolved"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "FOLLOWUP_VISIBILITY_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "REQUIRES_FOLLOWUP_CONTEXT"
+      ],
+      "semantic_collapse_risk": "FOLLOWUP_RESOLUTION_COLLAPSE",
+      "semantic_transition": "FOLLOWUP_REQUIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_DISCLAIMER",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [
+        "closed",
+        "resolved"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "FOLLOWUP_VISIBILITY_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "REQUIRES_FOLLOWUP_CONTEXT"
+      ],
+      "semantic_collapse_risk": "FOLLOWUP_RESOLUTION_COLLAPSE",
+      "semantic_transition": "FOLLOWUP_REQUIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_DISCLAIMER",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "closed",
+        "resolved"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "FOLLOWUP_VISIBILITY_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "REQUIRES_FOLLOWUP_CONTEXT"
+      ],
+      "semantic_collapse_risk": "FOLLOWUP_RESOLUTION_COLLAPSE",
+      "semantic_transition": "FOLLOWUP_REQUIRED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_DISCLAIMER",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "closed",
+        "resolved"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "FOLLOWUP_VISIBILITY_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "REQUIRES_FOLLOWUP_CONTEXT"
+      ],
+      "semantic_collapse_risk": "FOLLOWUP_RESOLUTION_COLLAPSE",
+      "semantic_transition": "FOLLOWUP_REQUIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_DISCLAIMER",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "closed",
+        "resolved"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "FOLLOWUP_VISIBILITY_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "REQUIRES_FOLLOWUP_CONTEXT"
+      ],
+      "semantic_collapse_risk": "FOLLOWUP_RESOLUTION_COLLAPSE",
+      "semantic_transition": "FOLLOWUP_REQUIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "FOLLOWUP_PENDING_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_DISCLAIMER",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [
+        "closed",
+        "resolved"
+      ],
+      "report_trust_risk": "LOW_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "FOLLOWUP_VISIBILITY_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_DISCLAIMER",
+      "required_contexts": [
+        "REQUIRES_FOLLOWUP_CONTEXT"
+      ],
+      "semantic_collapse_risk": "FOLLOWUP_RESOLUTION_COLLAPSE",
+      "semantic_transition": "FOLLOWUP_REQUIRED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "REPORTING_SIMPLIFICATION_COLLAPSE",
+      "semantic_transition": "MISSING",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "REPORTING_SIMPLIFICATION_COLLAPSE",
+      "semantic_transition": "MISSING",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "UNKNOWN_REPORTING_BLOCKER"
+      ],
+      "representation_safety": "UNKNOWN_REPRESENTATION_SAFETY",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "REPORTING_SIMPLIFICATION_COLLAPSE",
+      "semantic_transition": "MISSING",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "REPORTING_SIMPLIFICATION_COLLAPSE",
+      "semantic_transition": "MISSING",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "UNKNOWN_REPORTING_BLOCKER"
+      ],
+      "representation_safety": "UNKNOWN_REPRESENTATION_SAFETY",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "REPORTING_SIMPLIFICATION_COLLAPSE",
+      "semantic_transition": "MISSING",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "UNKNOWN_REPORTING_BLOCKER"
+      ],
+      "representation_safety": "UNKNOWN_REPRESENTATION_SAFETY",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "REPORTING_SIMPLIFICATION_COLLAPSE",
+      "semantic_transition": "MISSING",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "OPERATIONALLY_OPEN_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "fully compliant"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "required_contexts": [
+        "REQUIRES_OPERATIONAL_CONTEXT"
+      ],
+      "semantic_collapse_risk": "OPERATIONAL_OPEN_COLLAPSE",
+      "semantic_transition": "OPERATIONALLY_OPEN",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "OPERATIONALLY_OPEN_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "fully compliant"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "required_contexts": [
+        "REQUIRES_OPERATIONAL_CONTEXT"
+      ],
+      "semantic_collapse_risk": "OPERATIONAL_OPEN_COLLAPSE",
+      "semantic_transition": "OPERATIONALLY_OPEN",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "OPERATIONALLY_OPEN_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "fully compliant"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "required_contexts": [
+        "REQUIRES_OPERATIONAL_CONTEXT"
+      ],
+      "semantic_collapse_risk": "OPERATIONAL_OPEN_COLLAPSE",
+      "semantic_transition": "OPERATIONALLY_OPEN",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "OPERATIONALLY_OPEN_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "fully compliant"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "required_contexts": [
+        "REQUIRES_OPERATIONAL_CONTEXT"
+      ],
+      "semantic_collapse_risk": "OPERATIONAL_OPEN_COLLAPSE",
+      "semantic_transition": "OPERATIONALLY_OPEN",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "OPERATIONALLY_OPEN_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "fully compliant"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "required_contexts": [
+        "REQUIRES_OPERATIONAL_CONTEXT"
+      ],
+      "semantic_collapse_risk": "OPERATIONAL_OPEN_COLLAPSE",
+      "semantic_transition": "OPERATIONALLY_OPEN",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "OPERATIONALLY_OPEN_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [
+        "complete",
+        "compliant",
+        "fully compliant"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+      "required_contexts": [
+        "REQUIRES_OPERATIONAL_CONTEXT"
+      ],
+      "semantic_collapse_risk": "OPERATIONAL_OPEN_COLLAPSE",
+      "semantic_transition": "OPERATIONALLY_OPEN",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "PARTIAL_COMPLETENESS_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "PARTIAL_COMPLETENESS_COLLAPSE",
+      "semantic_transition": "PARTIALLY_COMPLETE",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "PARTIAL_COMPLETENESS_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "PARTIAL_COMPLETENESS_COLLAPSE",
+      "semantic_transition": "PARTIALLY_COMPLETE",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "MULTI_STATE_COLLAPSE",
+      "semantic_transition": "PARTIALLY_COMPLETE",
+      "triage_confirmation_gap_classification": "BLOCKED_FOR_RUNTIME_CONFIRMATION_ENFORCEMENT",
+      "triage_unsafe_to_implement": true
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "PARTIAL_COMPLETENESS_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "PARTIAL_COMPLETENESS_COLLAPSE",
+      "semantic_transition": "PARTIALLY_COMPLETE",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "PARTIAL_COMPLETENESS_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "PARTIAL_COMPLETENESS_COLLAPSE",
+      "semantic_transition": "PARTIALLY_COMPLETE",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "PARTIAL_COMPLETENESS_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "PARTIAL_COMPLETENESS_COLLAPSE",
+      "semantic_transition": "PARTIALLY_COMPLETE",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "REGISTRATION_RECORDED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "REGISTRATION_RECORDED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "MULTI_STATE_COLLAPSE",
+      "semantic_transition": "REGISTRATION_RECORDED",
+      "triage_confirmation_gap_classification": "BLOCKED_FOR_RUNTIME_CONFIRMATION_ENFORCEMENT",
+      "triage_unsafe_to_implement": true
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "REGISTRATION_RECORDED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "MULTI_STATE_COLLAPSE",
+      "semantic_transition": "REGISTRATION_RECORDED",
+      "triage_confirmation_gap_classification": "BLOCKED_FOR_RUNTIME_CONFIRMATION_ENFORCEMENT",
+      "triage_unsafe_to_implement": true
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "REGISTRATION_RECORDED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "MULTI_STATE_COLLAPSE",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED",
+      "triage_confirmation_gap_classification": "BLOCKED_FOR_RUNTIME_CONFIRMATION_ENFORCEMENT",
+      "triage_unsafe_to_implement": true
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "PARTIAL_COMPLETENESS_DISCLAIMER",
+      "export_readiness": "EXPORT_BLOCKED_PENDING_GOVERNANCE",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "CRITICAL_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "MULTI_STATE_COLLAPSE",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED",
+      "triage_confirmation_gap_classification": "BLOCKED_FOR_RUNTIME_CONFIRMATION_ENFORCEMENT",
+      "triage_unsafe_to_implement": true
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "TENANT_DELIVERY_RECORDED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "MUST_NOT_USE_COMPLIANT_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "audit-ready",
+        "certified compliant",
+        "compliant",
+        "current",
+        "fully compliant",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "REPORT_TRUST_BLOCKER",
+        "SEMANTIC_REPRESENTATION_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+      "required_contexts": [],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "UPLOADED_UNCONFIRMED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "UPLOADED_UNCONFIRMED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "UPLOADED_UNCONFIRMED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "UPLOADED_UNCONFIRMED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "UPLOADED_UNCONFIRMED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NOT_INDEPENDENTLY_VERIFIED_DISCLAIMER",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [
+        "field-verified",
+        "independently verified"
+      ],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "VERIFICATION_CONTEXT_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "DECLARATION_VERIFICATION_COLLAPSE",
+      "semantic_transition": "UPLOADED_UNCONFIRMED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NO_DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "NO_COLLAPSE_RISK",
+      "semantic_transition": "VERIFIED_CURRENT",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NO_DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "NO_COLLAPSE_RISK",
+      "semantic_transition": "VERIFIED_CURRENT",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": true,
+      "compliant_language_governance": "SAFE_FOR_COMPLIANT_WORDING",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": true,
+      "current_language_governance": "SAFE_FOR_CURRENT_WORDING",
+      "disclaimer_requirement": "NO_DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [],
+      "report_trust_risk": "LOW_TRUST_RISK",
+      "reporting_governance_blocked": false,
+      "reporting_governance_blockers": [],
+      "representation_safety": "SAFE_FOR_DIRECT_REPRESENTATION",
+      "required_contexts": [],
+      "semantic_collapse_risk": "NO_COLLAPSE_RISK",
+      "semantic_transition": "VERIFIED_CURRENT",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "disclaimer_requirement": "NO_DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY_WITH_CONTEXT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [],
+      "report_trust_risk": "MODERATE_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER"
+      ],
+      "representation_safety": "SAFE_WITH_CONTEXT",
+      "required_contexts": [
+        "REQUIRES_VERIFICATION_CONTEXT"
+      ],
+      "semantic_collapse_risk": "NO_COLLAPSE_RISK",
+      "semantic_transition": "VERIFIED_CURRENT",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": true,
+      "compliant_language_governance": "SAFE_FOR_COMPLIANT_WORDING",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": true,
+      "current_language_governance": "SAFE_FOR_CURRENT_WORDING",
+      "disclaimer_requirement": "NO_DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [],
+      "report_trust_risk": "LOW_TRUST_RISK",
+      "reporting_governance_blocked": false,
+      "reporting_governance_blockers": [],
+      "representation_safety": "SAFE_FOR_DIRECT_REPRESENTATION",
+      "required_contexts": [],
+      "semantic_collapse_risk": "NO_COLLAPSE_RISK",
+      "semantic_transition": "VERIFIED_CURRENT",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": true,
+      "compliant_language_governance": "SAFE_FOR_COMPLIANT_WORDING",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": true,
+      "current_language_governance": "SAFE_FOR_CURRENT_WORDING",
+      "disclaimer_requirement": "NO_DISCLAIMER_REQUIRED",
+      "export_readiness": "EXPORT_READY",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [],
+      "report_trust_risk": "LOW_TRUST_RISK",
+      "reporting_governance_blocked": false,
+      "reporting_governance_blockers": [],
+      "representation_safety": "SAFE_FOR_DIRECT_REPRESENTATION",
+      "required_contexts": [],
+      "semantic_collapse_risk": "NO_COLLAPSE_RISK",
+      "semantic_transition": "VERIFIED_CURRENT",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "current",
+        "live status",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "EXPIRY_AMBIGUITY_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [],
+      "semantic_collapse_risk": "EXPIRY_CURRENTNESS_COLLAPSE",
+      "semantic_transition": "VERIFIED_EXPIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "DASHBOARD_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "DASHBOARD_SUMMARY",
+      "prohibited_wording": [
+        "current",
+        "live status",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "EXPIRY_AMBIGUITY_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [],
+      "semantic_collapse_risk": "EXPIRY_CURRENTNESS_COLLAPSE",
+      "semantic_transition": "VERIFIED_EXPIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PORTFOLIO_SCORE",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PORTFOLIO_SCORE",
+      "prohibited_wording": [
+        "current",
+        "live status",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "EXPIRY_AMBIGUITY_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [],
+      "semantic_collapse_risk": "EXPIRY_CURRENTNESS_COLLAPSE",
+      "semantic_transition": "VERIFIED_EXPIRED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "PROPERTY_SUMMARY",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "PROPERTY_SUMMARY",
+      "prohibited_wording": [
+        "current",
+        "live status",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "EXPIRY_AMBIGUITY_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [],
+      "semantic_collapse_risk": "EXPIRY_CURRENTNESS_COLLAPSE",
+      "semantic_transition": "VERIFIED_EXPIRED",
+      "triage_confirmation_gap_classification": "ACKNOWLEDGEMENT_GAP",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REPORT_EXPORT",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "REPORT_EXPORT",
+      "prohibited_wording": [
+        "current",
+        "live status",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "EXPIRY_AMBIGUITY_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [],
+      "semantic_collapse_risk": "EXPIRY_CURRENTNESS_COLLAPSE",
+      "semantic_transition": "VERIFIED_EXPIRED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    },
+    {
+      "compliant_language_allowed": false,
+      "compliant_language_governance": "REQUIRES_QUALIFIED_LANGUAGE",
+      "consumer": "REQUIREMENT_LIST",
+      "current_language_allowed": false,
+      "current_language_governance": "MUST_NOT_USE_CURRENT_LANGUAGE",
+      "disclaimer_requirement": "EXPIRY_REVIEW_DISCLAIMER",
+      "export_readiness": "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT",
+      "governance_triage_source_consumer": "REQUIREMENT_LIST",
+      "prohibited_wording": [
+        "current",
+        "live status",
+        "up to date"
+      ],
+      "report_trust_risk": "HIGH_TRUST_RISK",
+      "reporting_governance_blocked": true,
+      "reporting_governance_blockers": [
+        "COMPLIANT_LANGUAGE_BLOCKER",
+        "CURRENT_LANGUAGE_BLOCKER",
+        "EXPIRY_AMBIGUITY_BLOCKER",
+        "REPORT_TRUST_BLOCKER"
+      ],
+      "representation_safety": "UNSAFE_FOR_CURRENT_LANGUAGE",
+      "required_contexts": [],
+      "semantic_collapse_risk": "EXPIRY_CURRENTNESS_COLLAPSE",
+      "semantic_transition": "VERIFIED_EXPIRED",
+      "triage_confirmation_gap_classification": "CONFIRMATION_CONTRACT_SATISFIED",
+      "triage_unsafe_to_implement": false
+    }
+  ],
+  "reporting_readiness_summary": {
+    "EXPORT_BLOCKED_PENDING_GOVERNANCE": 7,
+    "EXPORT_NOT_READY_FOR_SIMPLIFIED_OUTPUT": 30,
+    "EXPORT_READY": 3,
+    "EXPORT_READY_WITH_CONTEXT": 26,
+    "EXPORT_READY_WITH_DISCLAIMER": 12
+  },
+  "representation_safety_classifications": [
+    "SAFE_FOR_DIRECT_REPRESENTATION",
+    "SAFE_WITH_CONTEXT",
+    "SAFE_WITH_DISCLAIMER",
+    "UNSAFE_FOR_SIMPLIFIED_REPORTING",
+    "UNSAFE_FOR_COMPLIANT_LANGUAGE",
+    "UNSAFE_FOR_CURRENT_LANGUAGE",
+    "UNKNOWN_REPRESENTATION_SAFETY"
+  ],
+  "representation_safety_summary": {
+    "SAFE_FOR_DIRECT_REPRESENTATION": 3,
+    "SAFE_WITH_CONTEXT": 26,
+    "SAFE_WITH_DISCLAIMER": 12,
+    "UNKNOWN_REPRESENTATION_SAFETY": 3,
+    "UNSAFE_FOR_COMPLIANT_LANGUAGE": 6,
+    "UNSAFE_FOR_CURRENT_LANGUAGE": 12,
+    "UNSAFE_FOR_SIMPLIFIED_REPORTING": 16
+  },
+  "runtime_behavior_changed": false,
+  "safest_reporting_states": [
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "representation_safety": "SAFE_FOR_DIRECT_REPRESENTATION",
+      "semantic_transition": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "representation_safety": "SAFE_FOR_DIRECT_REPRESENTATION",
+      "semantic_transition": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "REQUIREMENT_LIST",
+      "representation_safety": "SAFE_FOR_DIRECT_REPRESENTATION",
+      "semantic_transition": "VERIFIED_CURRENT"
+    }
+  ],
+  "scope": "audit-only semantic representation governance for reporting/export surfaces",
+  "semantic_collapse_classifications": [
+    "NO_COLLAPSE_RISK",
+    "PARTIAL_COMPLETENESS_COLLAPSE",
+    "DECLARATION_VERIFICATION_COLLAPSE",
+    "FOLLOWUP_RESOLUTION_COLLAPSE",
+    "EXPIRY_CURRENTNESS_COLLAPSE",
+    "OPERATIONAL_OPEN_COLLAPSE",
+    "REPORTING_SIMPLIFICATION_COLLAPSE",
+    "MULTI_STATE_COLLAPSE",
+    "UNKNOWN_COLLAPSE_RISK"
+  ],
+  "semantic_transitions": [
+    "MISSING",
+    "VERIFIED_CURRENT",
+    "VERIFIED_EXPIRED",
+    "UPLOADED_UNCONFIRMED",
+    "PARTIALLY_COMPLETE",
+    "DECLARATION_RECORDED",
+    "REGISTRATION_RECORDED",
+    "TENANT_DELIVERY_RECORDED",
+    "ASSESSMENT_FOLLOWUP_REQUIRED",
+    "OPERATIONALLY_OPEN",
+    "FOLLOWUP_REQUIRED",
+    "COMPLETENESS_PENDING",
+    "EXPIRY_REVIEW_REQUIRED"
+  ],
+  "trust_risk_classifications": [
+    "LOW_TRUST_RISK",
+    "MODERATE_TRUST_RISK",
+    "HIGH_TRUST_RISK",
+    "CRITICAL_TRUST_RISK"
+  ],
+  "trust_risk_summary": {
+    "CRITICAL_TRUST_RISK": 10,
+    "HIGH_TRUST_RISK": 27,
+    "LOW_TRUST_RISK": 5,
+    "MODERATE_TRUST_RISK": 36
+  }
+}

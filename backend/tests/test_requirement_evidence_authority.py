@@ -19,6 +19,16 @@ from services.requirement_evidence_authority import (
     normalize_document_evidence_scope,
     preview_authority,
 )
+from services.semantic_state_model import (
+    ASSESSMENT_FOLLOWUP_REQUIRED,
+    DECLARATION_RECORDED,
+    EXPIRY_REVIEW_REQUIRED,
+    OPERATIONALLY_OPEN,
+    PARTIALLY_COMPLETE,
+    REGISTRATION_RECORDED,
+    TENANT_DELIVERY_RECORDED,
+    VERIFIED_CURRENT,
+)
 
 
 def _req(**kwargs):
@@ -119,6 +129,7 @@ def test_preview_verified_current():
     fut = (datetime.now(timezone.utc) + timedelta(days=200)).isoformat()
     out = preview_authority(_req(), [_doc(status=DocumentStatus.VERIFIED.value, expiry_date=fut)])
     assert out["evidence_authority"]["state"] == EA_VERIFIED_CURRENT
+    assert out["evidence_authority"]["semantic_state"] == VERIFIED_CURRENT
 
 
 def test_document_upload_verified_without_expiry_blocks_compliant_projection():
@@ -127,6 +138,7 @@ def test_document_upload_verified_without_expiry_blocks_compliant_projection():
     assert out["mirror"]["status"] == RequirementStatus.PENDING.value
     assert out["evidence_authority"]["state"] == EA_UPLOADED_UNCONFIRMED
     assert out["evidence_authority"]["state_reason"] == "document_upload_missing_required_expiry_semantics"
+    assert out["evidence_authority"]["semantic_state"] == EXPIRY_REVIEW_REQUIRED
 
 
 def test_document_upload_verified_without_doc_expiry_uses_requirement_confirmed_expiry():
@@ -216,6 +228,7 @@ def test_condition_standard_verified_document_stays_pending_when_operational_fol
     assert out["evidence_authority"]["effective_verified_document_id"] == "d1"
     assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
     assert out["evidence_authority"]["state_reason"] == "operational_followup_required_condition_standard"
+    assert out["evidence_authority"]["semantic_state"] == OPERATIONALLY_OPEN
     assert out["mirror"]["status"] == RequirementStatus.PENDING.value
 
 
@@ -233,6 +246,7 @@ def test_external_assessment_verified_document_stays_pending_without_structured_
     assert out["evidence_authority"]["effective_verified_document_id"] == "d1"
     assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
     assert out["evidence_authority"]["state_reason"] == "external_assessment_remediation_or_followup_unresolved"
+    assert out["evidence_authority"]["semantic_state"] == ASSESSMENT_FOLLOWUP_REQUIRED
     assert out["mirror"]["status"] == RequirementStatus.PENDING.value
 
 
@@ -265,6 +279,7 @@ def test_guided_declaration_structured_row_blocks_certificate_style_authority():
     assert out["mirror"]["status"] == RequirementStatus.PENDING.value
     assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
     assert out["evidence_authority"]["state_reason"] == "guided_declaration_not_independently_verified"
+    assert out["evidence_authority"]["semantic_state"] == DECLARATION_RECORDED
 
 
 def test_registration_tracking_structured_row_blocks_authority_style_projection():
@@ -296,6 +311,7 @@ def test_registration_tracking_structured_row_blocks_authority_style_projection(
     assert out["mirror"]["status"] == RequirementStatus.PENDING.value
     assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
     assert out["evidence_authority"]["state_reason"] == "registration_tracking_regulator_confirmation_not_verified"
+    assert out["evidence_authority"]["semantic_state"] == REGISTRATION_RECORDED
 
 
 def test_tenant_delivery_structured_row_blocks_confirmation_style_authority():
@@ -331,6 +347,7 @@ def test_tenant_delivery_structured_row_blocks_confirmation_style_authority():
     assert out["mirror"]["status"] == RequirementStatus.PENDING.value
     assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
     assert out["evidence_authority"]["state_reason"] == "tenant_delivery_tenant_confirmation_not_verified"
+    assert out["evidence_authority"]["semantic_state"] == TENANT_DELIVERY_RECORDED
 
 
 def test_tenant_delivery_verified_supporting_document_stays_pending():
@@ -442,6 +459,7 @@ def test_multi_evidence_partial_components_stay_pending_when_co_component_missin
     assert out["evidence_authority"]["effective_verified_document_id"] == "d1"
     assert out["evidence_authority"]["state"] == "UPLOADED_UNCONFIRMED"
     assert out["evidence_authority"]["state_reason"] == "multi_evidence_components_incomplete"
+    assert out["evidence_authority"]["semantic_state"] == PARTIALLY_COMPLETE
     comp = out["evidence_authority"].get("evidence_completeness") or {}
     assert comp.get("evaluated") is True
     assert comp.get("is_complete") is False

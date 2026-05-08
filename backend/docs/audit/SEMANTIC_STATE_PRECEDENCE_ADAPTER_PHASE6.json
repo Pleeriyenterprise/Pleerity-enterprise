@@ -1,0 +1,72 @@
+{
+  "phase": "Semantic-State Consumer Precedence Adapters Phase 6",
+  "scope": "read-only audit summary/export layer",
+  "target_consumers": [
+    "REMINDER_ENGINE",
+    "REPORT_EXPORT",
+    "PORTFOLIO_SCORE"
+  ],
+  "audit_mode": true,
+  "runtime_behavior_changed": false,
+  "runtime_enforcement": false,
+  "collector_source": "existing_in_memory_observe_only_events",
+  "helpers": {
+    "summary": [
+      "get_semantic_delta_summary",
+      "get_semantic_delta_summary_by_consumer",
+      "get_semantic_delta_summary_by_semantic_state",
+      "get_semantic_delta_summary_by_impact"
+    ],
+    "export": [
+      "build_semantic_delta_export_snapshot",
+      "build_semantic_delta_rollout_summary"
+    ],
+    "filters": [
+      "consumer",
+      "semantic_state",
+      "delta_impact",
+      "delta_detected",
+      "high_impact_only",
+      "collapse_risk_only",
+      "since_iso",
+      "until_iso"
+    ]
+  },
+  "rollout_signals": [
+    "LOW_RISK_FIRST_MIGRATION",
+    "HIGH_COLLAPSE_HIGH_PRIORITY",
+    "BEHAVIORALLY_RISKY_TO_SWITCH",
+    "INSUFFICIENT_SAMPLE_VOLUME"
+  ],
+  "snapshot_matrix": [
+    {
+      "consumer": "REMINDER_ENGINE",
+      "event_count": 6,
+      "delta_count": 6,
+      "highest_impact": "WIDESPREAD_COLLAPSE_DELTA",
+      "rollout_signal": "HIGH_COLLAPSE_HIGH_PRIORITY",
+      "runtime_behavior_changed": false
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "event_count": 3,
+      "delta_count": 2,
+      "highest_impact": "HIGH_DELTA",
+      "rollout_signal": "INSUFFICIENT_SAMPLE_VOLUME",
+      "runtime_behavior_changed": false
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "event_count": 0,
+      "delta_count": 0,
+      "highest_impact": "NO_DELTA",
+      "rollout_signal": "INSUFFICIENT_SAMPLE_VOLUME",
+      "runtime_behavior_changed": false
+    }
+  ],
+  "notes": [
+    "Phase 6 remains helper-only/read-only and introduces no endpoint or persistence.",
+    "Runtime-selected interpretation remains legacy unless future enforcement phase explicitly enables semantic mode.",
+    "Snapshot is deterministic and intended for audit export consumption only."
+  ]
+}

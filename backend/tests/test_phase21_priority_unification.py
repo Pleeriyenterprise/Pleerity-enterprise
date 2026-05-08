@@ -7,6 +7,7 @@ from middleware import client_route_guard as middleware_client_route_guard
 from server import app
 from services.command_center_service import _slim_task, get_command_center_bundle
 from services import unified_tasks_service as uts
+from datetime import datetime, timezone
 
 
 @pytest.fixture
@@ -67,6 +68,80 @@ def test_slim_task_contains_cta_model_fields():
     assert t["source_id"] == "req1"
     assert t["primary_cta"]["action_type"] == "upload_evidence"
     assert t["primary_cta"]["route"] == "/documents?property_id=p1&requirement_id=req1"
+
+
+def test_slim_task_preserves_converged_requirement_semantics_only_for_requirement_rows():
+    requirement_task = _slim_task(
+        {
+            "id": "requirement:req1",
+            "source_type": "requirement",
+            "source_id": "req1",
+            "title": "Requirement row",
+            "metadata": {
+                "workflow_class": "MULTI_EVIDENCE",
+                "take_action": {"primary": {"kind": "guided_evidence_resolution", "label": "Resolve evidence"}},
+                "requirement_display": {"short_name": "Gas Safety"},
+                "evidence_authority": {"state": "MISSING"},
+                "evidence_completeness": {"is_incomplete": True},
+                "guidance_target": "evidence_resolution",
+                "allowed_evidence_modes": ["document_upload", "declaration"],
+            },
+        }
+    )
+    assert requirement_task.get("workflow_class") == "MULTI_EVIDENCE"
+    assert isinstance(requirement_task.get("take_action"), dict)
+    assert isinstance(requirement_task.get("requirement_display"), dict)
+    assert isinstance(requirement_task.get("evidence_authority"), dict)
+    assert isinstance(requirement_task.get("evidence_completeness"), dict)
+    assert requirement_task.get("guidance_target") == "evidence_resolution"
+    assert requirement_task.get("allowed_evidence_modes") == ["document_upload", "declaration"]
+
+    operational_task = _slim_task(
+        {
+            "id": "work_order:wo1",
+            "source_type": "work_order",
+            "source_id": "wo1",
+            "title": "Operational row",
+            "metadata": {
+                "workflow_class": "MULTI_EVIDENCE",
+                "take_action": {"primary": {"kind": "guided_evidence_resolution"}},
+                "evidence_authority": {"state": "MISSING"},
+            },
+        }
+    )
+    assert "workflow_class" not in operational_task
+    assert "take_action" not in operational_task
+    assert "evidence_authority" not in operational_task
+
+
+def test_action_to_task_preserves_converged_requirement_semantic_metadata():
+    action = {
+        "action_type": "missing_document",
+        "related_property_id": "p1",
+        "related_requirement_id": "r1",
+        "requirement_code": "gas_safety",
+        "title": "Missing gas certificate",
+        "description": "Upload missing evidence.",
+        "recommended_action_label": "Upload document",
+        "recommended_url": "/documents?property_id=p1&requirement_id=r1",
+        "severity": "high",
+        "priority": 88,
+        "canonical_take_action": {"primary": {"kind": "guided_evidence_resolution", "label": "Resolve evidence"}},
+        "workflow_class": "MULTI_EVIDENCE",
+        "guidance_target": "evidence_resolution",
+        "allowed_evidence_modes": ["document_upload", "declaration"],
+        "requirement_display": {"short_name": "Gas Safety"},
+        "evidence_authority": {"state": "MISSING"},
+        "evidence_completeness": {"is_incomplete": True},
+    }
+    task = uts._action_to_task(action, {"p1": "Property 1"}, datetime.now(timezone.utc))
+    md = task.get("metadata") or {}
+    assert task.get("source_type") == "requirement"
+    assert md.get("workflow_class") == "MULTI_EVIDENCE"
+    assert isinstance(md.get("take_action"), dict)
+    assert isinstance(md.get("requirement_display"), dict)
+    assert isinstance(md.get("evidence_authority"), dict)
+    assert isinstance(md.get("evidence_completeness"), dict)
 
 
 @pytest.mark.asyncio

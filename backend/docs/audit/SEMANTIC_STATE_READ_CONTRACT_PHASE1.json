@@ -1,0 +1,76 @@
+{
+  "phase": "Semantic-State Read Contract Audit Phase 1",
+  "scope": "consumer interpretation audit only",
+  "non_blocking": true,
+  "matrix": [
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "module": "services/compliance_score.py",
+      "interpretation_mode": "USES_COMBINED_MODEL",
+      "semantic_state_aware": false,
+      "risk": [
+        "LEGACY_COMPATIBILITY",
+        "SEMANTIC_COLLAPSE_RISK",
+        "PARTIAL_COMPLETENESS_RISK",
+        "DECLARATION_VERIFICATION_COLLAPSE",
+        "ASSESSMENT_FOLLOWUP_COLLAPSE",
+        "EXPIRY_REVIEW_COLLAPSE",
+        "OPERATIONAL_CONVERGENCE_RISK"
+      ]
+    },
+    {
+      "consumer": "REMINDER_ENGINE",
+      "module": "services/reminder_truth_service.py",
+      "interpretation_mode": "USES_LEGACY_STATUS_ONLY",
+      "semantic_state_aware": false,
+      "risk": [
+        "LEGACY_COMPATIBILITY",
+        "SEMANTIC_COLLAPSE_RISK",
+        "PARTIAL_COMPLETENESS_RISK",
+        "DECLARATION_VERIFICATION_COLLAPSE",
+        "ASSESSMENT_FOLLOWUP_COLLAPSE",
+        "EXPIRY_REVIEW_COLLAPSE",
+        "OPERATIONAL_CONVERGENCE_RISK"
+      ]
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "module": "services/reporting_service.py + services/pdf_report_builder.py",
+      "interpretation_mode": "USES_COMBINED_MODEL",
+      "semantic_state_aware": false,
+      "risk": [
+        "LEGACY_COMPATIBILITY",
+        "SEMANTIC_COLLAPSE_RISK",
+        "PARTIAL_COMPLETENESS_RISK",
+        "DECLARATION_VERIFICATION_COLLAPSE",
+        "ASSESSMENT_FOLLOWUP_COLLAPSE",
+        "EXPIRY_REVIEW_COLLAPSE",
+        "OPERATIONAL_CONVERGENCE_RISK"
+      ]
+    },
+    {
+      "consumer": "COMMAND_CENTER",
+      "module": "services/command_center_service.py",
+      "interpretation_mode": "USES_COMBINED_MODEL",
+      "semantic_state_aware": false,
+      "risk": [
+        "LEGACY_COMPATIBILITY",
+        "SEMANTIC_COLLAPSE_RISK",
+        "PARTIAL_COMPLETENESS_RISK",
+        "DECLARATION_VERIFICATION_COLLAPSE",
+        "ASSESSMENT_FOLLOWUP_COLLAPSE",
+        "EXPIRY_REVIEW_COLLAPSE",
+        "OPERATIONAL_CONVERGENCE_RISK"
+      ]
+    },
+    {
+      "consumer": "WORKFLOW_OUTCOME_HARNESS",
+      "module": "tests/test_workflow_outcome_enforcement.py",
+      "interpretation_mode": "USES_COMBINED_MODEL",
+      "semantic_state_aware": true,
+      "risk": [
+        "SAFE"
+      ]
+    }
+  ]
+}

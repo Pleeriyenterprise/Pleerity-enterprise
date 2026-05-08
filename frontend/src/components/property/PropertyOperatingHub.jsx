@@ -6,7 +6,6 @@ import { clientAPI } from '../../api/client';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { requirementTitleFromRow } from '../../domain/presentDomain';
-import { getEvidenceStatus } from '../../utils/evidenceStatus';
 import { humanRiskType, humanSeverity, humanAction } from '../../utils/riskPresentation';
 import {
   buildEntityRoute,
@@ -19,7 +18,6 @@ import { useGuidedEvidenceModal } from '../../context/GuidedEvidenceModalContext
 import {
   executeRequirementPrimaryCta,
   GUIDED_CTA_UNAVAILABLE_TITLE,
-  resolveRequirementActionWithRowContext,
 } from '../../utils/requirementCtaParity';
 import { buildRequirementShapedRowFromPriorityTask } from '../../utils/taskRequirementRowAdapter';
 import { inboxTaskLinkedRequirementId } from '../../utils/portalRequirementAttention';
@@ -28,6 +26,10 @@ import { PORTAL_COPY } from '../../utils/clientPortalCopy';
 import { cn } from '../../lib/utils';
 import { humanizeOperatingFeedItems } from '../../utils/propertyOperatingActivityCopy';
 import { isRequirementMissingDocument } from '../../utils/propertyDocumentsMatrix';
+import {
+  projectResolvedRequirementFromPriorityTask,
+  projectResolvedRequirementSemantics,
+} from '../../utils/resolvedRequirementViewModel';
 import {
   PortalLoadingPanel,
   portalPrimaryButtonClass,
@@ -153,8 +155,13 @@ export default function PropertyOperatingHub({
                       : null) ||
                     action.primary_action_label ||
                     PORTAL_COPY.viewDetails;
+                  const semTaskReq = projectResolvedRequirementFromPriorityTask(
+                    action,
+                    priorityTaskRequirementsById,
+                    propertyId,
+                  );
                   const reqRow = buildRequirementShapedRowFromPriorityTask(action, priorityTaskRequirementsById);
-                  const taReq = reqRow ? resolveRequirementActionWithRowContext(reqRow, propertyId) : null;
+                  const taReq = semTaskReq?.cta || null;
 
                   const legacyPrimary = (
                     <>
@@ -225,7 +232,7 @@ export default function PropertyOperatingHub({
                               task_id: action.id || action.task_id,
                             });
                             const { handled } = executeRequirementPrimaryCta({
-                              requirement: reqRow,
+                              requirement: reqRow || {},
                               pagePropertyId: propertyId,
                               navigate: (to) =>
                                 navigate(
@@ -445,14 +452,15 @@ export default function PropertyOperatingHub({
         ) : (
           <ul className="space-y-3">
             {hubPrioritizedRequirements.map((r) => {
-              const statusUi = getEvidenceStatus(r.status, r);
+              const sem = projectResolvedRequirementSemantics(r, { pagePropertyId: propertyId });
+              const statusUi = sem.evidenceStatusForStatus(r.status);
               const Icon = statusUi.icon;
               const linked = !!r.evidence_doc_id;
               const due = rowExpiry(r);
               const est = r.date_source === 'SYSTEM_ESTIMATED';
               const needsDocument = isRequirementMissingDocument(r);
               const rid = rowReqId(r);
-              const ta = resolveRequirementActionWithRowContext(r, propertyId);
+              const ta = sem.cta;
               const docsHref = resolveDocumentsPath(propertyId, rid ? { requirement_id: rid } : {});
               const reqHref = buildEntityRoute({ requirement_id: rid, property_id: propertyId, mode: 'requirement' }, '');
               const primaryClick = () => {

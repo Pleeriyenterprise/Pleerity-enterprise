@@ -414,6 +414,7 @@ def test_runtime_hardening_condition_standard_upload_only_never_projects_complia
     assert preview_b["mirror"]["status"] != RequirementStatus.COMPLIANT.value
     assert preview_a["evidence_authority"].get("effective_verified_document_id") == verified_doc_a["document_id"]
     assert preview_a["evidence_authority"].get("state_reason") == "operational_followup_required_condition_standard"
+    assert preview_a["evidence_authority"].get("semantic_state") == "OPERATIONALLY_OPEN"
 
     lowered = " ".join(
         [
@@ -456,6 +457,7 @@ def test_runtime_hardening_multi_evidence_partial_components_block_compliant_pro
     assert preview_a["mirror"]["status"] != RequirementStatus.COMPLIANT.value
     assert preview_b["mirror"]["status"] != RequirementStatus.COMPLIANT.value
     assert preview_a["evidence_authority"].get("state_reason") == "multi_evidence_components_incomplete"
+    assert preview_a["evidence_authority"].get("semantic_state") == "PARTIALLY_COMPLETE"
     comp = preview_a["evidence_authority"].get("evidence_completeness") or {}
     assert comp.get("evaluated") is True
     assert comp.get("is_complete") is False
@@ -510,6 +512,7 @@ def test_runtime_hardening_external_assessment_blocks_compliant_when_follow_up_u
     assert preview_a["mirror"]["status"] != RequirementStatus.COMPLIANT.value
     assert preview_b["mirror"]["status"] != RequirementStatus.COMPLIANT.value
     assert preview_a["evidence_authority"].get("state_reason") == "external_assessment_remediation_or_followup_unresolved"
+    assert preview_a["evidence_authority"].get("semantic_state") == "ASSESSMENT_FOLLOWUP_REQUIRED"
     assert preview_a["evidence_authority"].get("primary_evidence_record_id") == evidence_a["evidence_record_id"]
 
     lowered = " ".join(
@@ -549,6 +552,7 @@ def test_runtime_hardening_guided_declaration_blocks_certificate_style_projectio
     assert preview_a["mirror"]["status"] != RequirementStatus.COMPLIANT.value
     assert preview_b["mirror"]["status"] != RequirementStatus.COMPLIANT.value
     assert preview_a["evidence_authority"].get("state_reason") == "guided_declaration_not_independently_verified"
+    assert preview_a["evidence_authority"].get("semantic_state") == "DECLARATION_RECORDED"
     assert preview_a["evidence_authority"].get("primary_evidence_record_id") == evidence_a["evidence_record_id"]
     assert scoped_records_for_requirement(all_records, req_a)[0].get("evidence_record_id") == evidence_a["evidence_record_id"]
 
@@ -611,6 +615,7 @@ def test_runtime_hardening_registration_tracking_blocks_authority_style_projecti
     assert preview_a["mirror"]["status"] != RequirementStatus.COMPLIANT.value
     assert preview_b["mirror"]["status"] != RequirementStatus.COMPLIANT.value
     assert preview_a["evidence_authority"].get("state_reason") == "registration_tracking_regulator_confirmation_not_verified"
+    assert preview_a["evidence_authority"].get("semantic_state") == "REGISTRATION_RECORDED"
     assert preview_a["evidence_authority"].get("primary_evidence_record_id") == evidence_a["evidence_record_id"]
     assert scoped_records_for_requirement(all_records, req_a)[0].get("evidence_record_id") == evidence_a["evidence_record_id"]
 
@@ -675,6 +680,7 @@ def test_runtime_hardening_tenant_delivery_blocks_confirmation_style_projection(
     assert preview_a["mirror"]["status"] != RequirementStatus.COMPLIANT.value
     assert preview_b["mirror"]["status"] != RequirementStatus.COMPLIANT.value
     assert preview_a["evidence_authority"].get("state_reason") == "tenant_delivery_tenant_confirmation_not_verified"
+    assert preview_a["evidence_authority"].get("semantic_state") == "TENANT_DELIVERY_RECORDED"
     assert preview_a["evidence_authority"].get("primary_evidence_record_id") == evidence_a["evidence_record_id"]
     assert scoped_records_for_requirement(all_records, req_a)[0].get("evidence_record_id") == evidence_a["evidence_record_id"]
 
@@ -731,6 +737,7 @@ def test_runtime_hardening_document_upload_missing_expiry_blocks_compliant_and_c
 
     assert preview_a["mirror"]["status"] != RequirementStatus.COMPLIANT.value
     assert preview_a["evidence_authority"].get("state_reason") == "document_upload_missing_required_expiry_semantics"
+    assert preview_a["evidence_authority"].get("semantic_state") == "EXPIRY_REVIEW_REQUIRED"
     assert preview_b["mirror"]["status"] != RequirementStatus.COMPLIANT.value
 
     lowered = " ".join(

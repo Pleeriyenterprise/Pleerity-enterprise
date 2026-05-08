@@ -5,6 +5,12 @@ import { resolveRequirementAction } from './requirementTakeActionResolver';
 import { isRequirementMissingDocument } from './propertyDocumentsMatrix';
 import { pickCanonicalWhyItMattersShort } from './requirementCanonicalNarrative';
 import { workflowAwareMissingEvidenceLabel } from './evidenceStatus';
+import { projectResolvedRequirementSemantics } from './resolvedRequirementViewModel';
+
+function resolvedProjectionForRequirementRow(r) {
+  if (!r || typeof r !== 'object' || typeof r.take_action !== 'object') return null;
+  return projectResolvedRequirementSemantics(r, { pagePropertyId: r?.property_id || null });
+}
 
 /**
  * Inline compliance narrative (short why + next step) — same canonical "why" source as RequirementIntelligenceModal.
@@ -13,7 +19,8 @@ import { workflowAwareMissingEvidenceLabel } from './evidenceStatus';
  */
 export function canonicalComplianceInlineNarrative(req) {
   const whyShort = pickCanonicalWhyItMattersShort(req);
-  const ta = resolveRequirementAction(req, {});
+  const sem = resolvedProjectionForRequirementRow(req);
+  const ta = sem?.cta || resolveRequirementAction(req, {});
   const next =
     ta.primary_action_handler !== 'none' && String(ta.primary_action_label || '').trim()
       ? String(ta.primary_action_label).trim()
@@ -68,19 +75,21 @@ export function complianceWhatChangedLine(req) {
 /** Standardised status nouns for the obligations matrix. */
 export function complianceObligationStatusLabel(r) {
   const s = String(r?.status || '').toUpperCase();
+  const sem = resolvedProjectionForRequirementRow(r);
   const code = String(r?.canonical_requirement_code || r?.requirement_code || r?.requirement_type || '').trim().toLowerCase();
   const tenancyStatus = String(r?.tenancy_agreement_status_text || '').trim();
   if (code === 'tenancy_agreement' && tenancyStatus) return tenancyStatus;
   if (['NOT_APPLICABLE', 'NOT_REQUIRED', 'WAIVED'].includes(s)) return 'Not applicable';
   if (['OVERDUE', 'EXPIRED'].includes(s)) return 'Overdue';
   if (s === 'EXPIRING_SOON') return 'Expiring';
-  if (isRequirementMissingDocument(r)) return workflowAwareMissingEvidenceLabel(r);
+  if (isRequirementMissingDocument(r)) return sem?.missing_evidence_label || workflowAwareMissingEvidenceLabel(r);
   return 'Valid';
 }
 
 /** Standardised primary action — delegates to unified Take Action resolver (single CTA contract). */
 export function complianceObligationPrimaryAction(r) {
-  const ta = resolveRequirementAction(r, {});
+  const sem = resolvedProjectionForRequirementRow(r);
+  const ta = sem?.cta || resolveRequirementAction(r, {});
   let verb = 'upload';
   if (ta.primary_action_handler === 'guided_evidence') verb = 'resolve';
   if (ta.primary_action_handler === 'guided_evidence_error') verb = 'unavailable';

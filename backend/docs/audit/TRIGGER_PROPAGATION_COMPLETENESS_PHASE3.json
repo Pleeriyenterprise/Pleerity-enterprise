@@ -1,0 +1,1049 @@
+{
+  "audit_only": true,
+  "blocked_consumers_detail": [
+    {
+      "blocker_reasons": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL",
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH",
+        "NO_OPERATIONAL_FOLLOWTHROUGH"
+      ],
+      "consumer": "PRIORITY_ACTIONS",
+      "rollout_state": "BLOCKED"
+    },
+    {
+      "blocker_reasons": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL",
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH",
+        "NO_OPERATIONAL_FOLLOWTHROUGH",
+        "SEMANTIC_COLLAPSE_RISK"
+      ],
+      "consumer": "REMINDER_ENGINE",
+      "rollout_state": "BLOCKED"
+    },
+    {
+      "blocker_reasons": [
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH",
+        "NO_OPERATIONAL_FOLLOWTHROUGH"
+      ],
+      "consumer": "SLA_ESCALATION_PATHS",
+      "rollout_state": "BLOCKED"
+    }
+  ],
+  "consumer_rollout_profiles": [
+    {
+      "blocked_transition_count": 13,
+      "blocker_reasons": [
+        "CACHE_INVALIDATION_UNKNOWN",
+        "LOW_CONFIDENCE_PATH",
+        "NO_DIRECT_PROPAGATION",
+        "UNKNOWN_REFRESH_GUARANTEE"
+      ],
+      "consumer": "CACHE_INVALIDATION_REFRESH",
+      "criticality_mix": {
+        "ANALYTICS_ONLY": 13
+      },
+      "high_risk_gap_count": 13,
+      "highest_criticality": "ANALYTICS_ONLY",
+      "minimum_evidence_detail": {
+        "consumer": "CACHE_INVALIDATION_REFRESH",
+        "critical_transition_non_unknown_rows": 0,
+        "minimum_evidence_met": false,
+        "non_unknown_confidence_rows": 0,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": false,
+      "overall_waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY",
+      "recommended_next_action": "Expand audited coverage, confidence, or observe-path evidence before promotion.",
+      "rollout_state": "INSUFFICIENT_EVIDENCE",
+      "semantic_collapse_risk_count": 0,
+      "supporting_rollout_state": "NOT_ELIGIBLE",
+      "unknown_refresh_count": 13,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "CACHE_INVALIDATION_UNKNOWN",
+          "propagation_criticality": "ANALYTICS_ONLY",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY"
+        },
+        {
+          "blocker_reason": "LOW_CONFIDENCE_PATH",
+          "propagation_criticality": "ANALYTICS_ONLY",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY"
+        },
+        {
+          "blocker_reason": "NO_DIRECT_PROPAGATION",
+          "propagation_criticality": "ANALYTICS_ONLY",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY"
+        },
+        {
+          "blocker_reason": "UNKNOWN_REFRESH_GUARANTEE",
+          "propagation_criticality": "ANALYTICS_ONLY",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 0,
+      "blocker_reasons": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL"
+      ],
+      "consumer": "COMMAND_CENTER",
+      "criticality_mix": {
+        "UX_CRITICAL": 13
+      },
+      "high_risk_gap_count": 0,
+      "highest_criticality": "UX_CRITICAL",
+      "minimum_evidence_detail": {
+        "consumer": "COMMAND_CENTER",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY",
+      "recommended_next_action": "Eligible for staged semantic-aware rollout planning subject to program governance.",
+      "rollout_state": "READY",
+      "semantic_collapse_risk_count": 0,
+      "supporting_rollout_state": null,
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "DERIVED_ONLY_NO_PUSH_SIGNAL",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 0,
+      "blocker_reasons": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL"
+      ],
+      "consumer": "DASHBOARD_SUMMARY",
+      "criticality_mix": {
+        "UX_CRITICAL": 13
+      },
+      "high_risk_gap_count": 0,
+      "highest_criticality": "UX_CRITICAL",
+      "minimum_evidence_detail": {
+        "consumer": "DASHBOARD_SUMMARY",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY",
+      "recommended_next_action": "Eligible for staged semantic-aware rollout planning subject to program governance.",
+      "rollout_state": "READY",
+      "semantic_collapse_risk_count": 0,
+      "supporting_rollout_state": null,
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "DERIVED_ONLY_NO_PUSH_SIGNAL",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 0,
+      "blocker_reasons": [
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH"
+      ],
+      "consumer": "NOTIFICATION_EMAIL_PATHS",
+      "criticality_mix": {
+        "COMPLIANCE_CRITICAL": 3,
+        "SAFETY_CRITICAL": 2,
+        "UX_CRITICAL": 8
+      },
+      "high_risk_gap_count": 12,
+      "highest_criticality": "SAFETY_CRITICAL",
+      "minimum_evidence_detail": {
+        "consumer": "NOTIFICATION_EMAIL_PATHS",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW",
+      "recommended_next_action": "Continue monitoring; maintain audit matrix updates as contracts evolve.",
+      "rollout_state": "CONDITIONAL",
+      "semantic_collapse_risk_count": 0,
+      "supporting_rollout_state": null,
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "FRAGMENTED_MULTI_SOURCE_REFRESH",
+          "propagation_criticality": "COMPLIANCE_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        },
+        {
+          "blocker_reason": "FRAGMENTED_MULTI_SOURCE_REFRESH",
+          "propagation_criticality": "SAFETY_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        },
+        {
+          "blocker_reason": "FRAGMENTED_MULTI_SOURCE_REFRESH",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "LOW_CONFIDENCE_PATH",
+          "propagation_criticality": "COMPLIANCE_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        },
+        {
+          "blocker_reason": "LOW_CONFIDENCE_PATH",
+          "propagation_criticality": "SAFETY_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        },
+        {
+          "blocker_reason": "LOW_CONFIDENCE_PATH",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 0,
+      "blocker_reasons": [
+        "SEMANTIC_COLLAPSE_RISK"
+      ],
+      "consumer": "PORTFOLIO_SCORE",
+      "criticality_mix": {
+        "ANALYTICS_ONLY": 13
+      },
+      "high_risk_gap_count": 0,
+      "highest_criticality": "ANALYTICS_ONLY",
+      "minimum_evidence_detail": {
+        "consumer": "PORTFOLIO_SCORE",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY",
+      "recommended_next_action": "Continue monitoring; maintain audit matrix updates as contracts evolve.",
+      "rollout_state": "CONDITIONAL",
+      "semantic_collapse_risk_count": 4,
+      "supporting_rollout_state": "OBSERVE_ONLY",
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "SEMANTIC_COLLAPSE_RISK",
+          "propagation_criticality": "ANALYTICS_ONLY",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 3,
+      "blocker_reasons": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL",
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH",
+        "NO_OPERATIONAL_FOLLOWTHROUGH"
+      ],
+      "consumer": "PRIORITY_ACTIONS",
+      "criticality_mix": {
+        "OPERATIONAL_CRITICAL": 13
+      },
+      "high_risk_gap_count": 3,
+      "highest_criticality": "OPERATIONAL_CRITICAL",
+      "minimum_evidence_detail": {
+        "consumer": "PRIORITY_ACTIONS",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW",
+      "recommended_next_action": "Resolve high-impact blocked transitions or narrow semantic rollout scope before enforcement.",
+      "rollout_state": "BLOCKED",
+      "semantic_collapse_risk_count": 0,
+      "supporting_rollout_state": null,
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "DERIVED_ONLY_NO_PUSH_SIGNAL",
+          "propagation_criticality": "OPERATIONAL_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        },
+        {
+          "blocker_reason": "FRAGMENTED_MULTI_SOURCE_REFRESH",
+          "propagation_criticality": "OPERATIONAL_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        },
+        {
+          "blocker_reason": "LOW_CONFIDENCE_PATH",
+          "propagation_criticality": "OPERATIONAL_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "NO_OPERATIONAL_FOLLOWTHROUGH",
+          "propagation_criticality": "OPERATIONAL_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 0,
+      "blocker_reasons": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL"
+      ],
+      "consumer": "PROPERTY_SUMMARY",
+      "criticality_mix": {
+        "UX_CRITICAL": 13
+      },
+      "high_risk_gap_count": 0,
+      "highest_criticality": "UX_CRITICAL",
+      "minimum_evidence_detail": {
+        "consumer": "PROPERTY_SUMMARY",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY",
+      "recommended_next_action": "Eligible for staged semantic-aware rollout planning subject to program governance.",
+      "rollout_state": "READY",
+      "semantic_collapse_risk_count": 0,
+      "supporting_rollout_state": null,
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "DERIVED_ONLY_NO_PUSH_SIGNAL",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 0,
+      "blocker_reasons": [],
+      "consumer": "REGENERATION_RECALC_PATHS",
+      "criticality_mix": {
+        "ANALYTICS_ONLY": 13
+      },
+      "high_risk_gap_count": 0,
+      "highest_criticality": "ANALYTICS_ONLY",
+      "minimum_evidence_detail": {
+        "consumer": "REGENERATION_RECALC_PATHS",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY",
+      "recommended_next_action": "Eligible for staged semantic-aware rollout planning subject to program governance.",
+      "rollout_state": "READY",
+      "semantic_collapse_risk_count": 0,
+      "supporting_rollout_state": null,
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": []
+    },
+    {
+      "blocked_transition_count": 3,
+      "blocker_reasons": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL",
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH",
+        "NO_OPERATIONAL_FOLLOWTHROUGH",
+        "SEMANTIC_COLLAPSE_RISK"
+      ],
+      "consumer": "REMINDER_ENGINE",
+      "criticality_mix": {
+        "COMPLIANCE_CRITICAL": 3,
+        "SAFETY_CRITICAL": 2,
+        "UX_CRITICAL": 8
+      },
+      "high_risk_gap_count": 6,
+      "highest_criticality": "SAFETY_CRITICAL",
+      "minimum_evidence_detail": {
+        "consumer": "REMINDER_ENGINE",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_NOT_ALLOWED",
+      "recommended_next_action": "Resolve high-impact blocked transitions or narrow semantic rollout scope before enforcement.",
+      "rollout_state": "BLOCKED",
+      "semantic_collapse_risk_count": 4,
+      "supporting_rollout_state": "OBSERVE_ONLY",
+      "unknown_refresh_count": 0,
+      "waiver_eligible": false,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "DERIVED_ONLY_NO_PUSH_SIGNAL",
+          "propagation_criticality": "COMPLIANCE_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        },
+        {
+          "blocker_reason": "DERIVED_ONLY_NO_PUSH_SIGNAL",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "FRAGMENTED_MULTI_SOURCE_REFRESH",
+          "propagation_criticality": "SAFETY_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        },
+        {
+          "blocker_reason": "FRAGMENTED_MULTI_SOURCE_REFRESH",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "LOW_CONFIDENCE_PATH",
+          "propagation_criticality": "COMPLIANCE_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        },
+        {
+          "blocker_reason": "LOW_CONFIDENCE_PATH",
+          "propagation_criticality": "SAFETY_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        },
+        {
+          "blocker_reason": "LOW_CONFIDENCE_PATH",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "NO_OPERATIONAL_FOLLOWTHROUGH",
+          "propagation_criticality": "COMPLIANCE_CRITICAL",
+          "waiver_policy": "WAIVER_NOT_ALLOWED"
+        },
+        {
+          "blocker_reason": "NO_OPERATIONAL_FOLLOWTHROUGH",
+          "propagation_criticality": "SAFETY_CRITICAL",
+          "waiver_policy": "WAIVER_NOT_ALLOWED"
+        },
+        {
+          "blocker_reason": "SEMANTIC_COLLAPSE_RISK",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 0,
+      "blocker_reasons": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL",
+        "SEMANTIC_COLLAPSE_RISK"
+      ],
+      "consumer": "REPORT_EXPORT",
+      "criticality_mix": {
+        "COMPLIANCE_CRITICAL": 13
+      },
+      "high_risk_gap_count": 0,
+      "highest_criticality": "COMPLIANCE_CRITICAL",
+      "minimum_evidence_detail": {
+        "consumer": "REPORT_EXPORT",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW",
+      "recommended_next_action": "Continue monitoring; maintain audit matrix updates as contracts evolve.",
+      "rollout_state": "CONDITIONAL",
+      "semantic_collapse_risk_count": 3,
+      "supporting_rollout_state": "OBSERVE_ONLY",
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "DERIVED_ONLY_NO_PUSH_SIGNAL",
+          "propagation_criticality": "COMPLIANCE_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "SEMANTIC_COLLAPSE_RISK",
+          "propagation_criticality": "COMPLIANCE_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 0,
+      "blocker_reasons": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL"
+      ],
+      "consumer": "REQUIREMENT_LIST",
+      "criticality_mix": {
+        "UX_CRITICAL": 13
+      },
+      "high_risk_gap_count": 0,
+      "highest_criticality": "UX_CRITICAL",
+      "minimum_evidence_detail": {
+        "consumer": "REQUIREMENT_LIST",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY",
+      "recommended_next_action": "Eligible for staged semantic-aware rollout planning subject to program governance.",
+      "rollout_state": "READY",
+      "semantic_collapse_risk_count": 0,
+      "supporting_rollout_state": null,
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "DERIVED_ONLY_NO_PUSH_SIGNAL",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 0,
+      "blocker_reasons": [
+        "SEMANTIC_COLLAPSE_RISK"
+      ],
+      "consumer": "SCORE_DRIVERS",
+      "criticality_mix": {
+        "ANALYTICS_ONLY": 13
+      },
+      "high_risk_gap_count": 0,
+      "highest_criticality": "ANALYTICS_ONLY",
+      "minimum_evidence_detail": {
+        "consumer": "SCORE_DRIVERS",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY",
+      "recommended_next_action": "Continue monitoring; maintain audit matrix updates as contracts evolve.",
+      "rollout_state": "CONDITIONAL",
+      "semantic_collapse_risk_count": 1,
+      "supporting_rollout_state": null,
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "SEMANTIC_COLLAPSE_RISK",
+          "propagation_criticality": "ANALYTICS_ONLY",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 3,
+      "blocker_reasons": [
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH",
+        "NO_OPERATIONAL_FOLLOWTHROUGH"
+      ],
+      "consumer": "SLA_ESCALATION_PATHS",
+      "criticality_mix": {
+        "OPERATIONAL_CRITICAL": 2,
+        "UX_CRITICAL": 11
+      },
+      "high_risk_gap_count": 13,
+      "highest_criticality": "OPERATIONAL_CRITICAL",
+      "minimum_evidence_detail": {
+        "consumer": "SLA_ESCALATION_PATHS",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW",
+      "recommended_next_action": "Resolve high-impact blocked transitions or narrow semantic rollout scope before enforcement.",
+      "rollout_state": "BLOCKED",
+      "semantic_collapse_risk_count": 0,
+      "supporting_rollout_state": null,
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "FRAGMENTED_MULTI_SOURCE_REFRESH",
+          "propagation_criticality": "OPERATIONAL_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        },
+        {
+          "blocker_reason": "FRAGMENTED_MULTI_SOURCE_REFRESH",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "LOW_CONFIDENCE_PATH",
+          "propagation_criticality": "OPERATIONAL_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "LOW_CONFIDENCE_PATH",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "NO_OPERATIONAL_FOLLOWTHROUGH",
+          "propagation_criticality": "OPERATIONAL_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW"
+        },
+        {
+          "blocker_reason": "NO_OPERATIONAL_FOLLOWTHROUGH",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 0,
+      "blocker_reasons": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL",
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH"
+      ],
+      "consumer": "TODAY_VIEW",
+      "criticality_mix": {
+        "UX_CRITICAL": 13
+      },
+      "high_risk_gap_count": 1,
+      "highest_criticality": "UX_CRITICAL",
+      "minimum_evidence_detail": {
+        "consumer": "TODAY_VIEW",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY",
+      "recommended_next_action": "Proceed with UX-weighted rollout gates; keep action-driving surfaces on stricter profiles.",
+      "rollout_state": "CONDITIONAL",
+      "semantic_collapse_risk_count": 0,
+      "supporting_rollout_state": null,
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "DERIVED_ONLY_NO_PUSH_SIGNAL",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "FRAGMENTED_MULTI_SOURCE_REFRESH",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "LOW_CONFIDENCE_PATH",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        }
+      ]
+    },
+    {
+      "blocked_transition_count": 0,
+      "blocker_reasons": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL",
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH"
+      ],
+      "consumer": "UNIFIED_TASKS",
+      "criticality_mix": {
+        "UX_CRITICAL": 13
+      },
+      "high_risk_gap_count": 1,
+      "highest_criticality": "UX_CRITICAL",
+      "minimum_evidence_detail": {
+        "consumer": "UNIFIED_TASKS",
+        "critical_transition_non_unknown_rows": 4,
+        "minimum_evidence_met": true,
+        "non_unknown_confidence_rows": 13,
+        "observed_delta_events_count": 0,
+        "row_count": 13
+      },
+      "minimum_evidence_met": true,
+      "overall_waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY",
+      "recommended_next_action": "Proceed with UX-weighted rollout gates; keep action-driving surfaces on stricter profiles.",
+      "rollout_state": "CONDITIONAL",
+      "semantic_collapse_risk_count": 0,
+      "supporting_rollout_state": null,
+      "unknown_refresh_count": 0,
+      "waiver_eligible": true,
+      "waiver_policy_by_blocker": [
+        {
+          "blocker_reason": "DERIVED_ONLY_NO_PUSH_SIGNAL",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "FRAGMENTED_MULTI_SOURCE_REFRESH",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        },
+        {
+          "blocker_reason": "LOW_CONFIDENCE_PATH",
+          "propagation_criticality": "UX_CRITICAL",
+          "waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY"
+        }
+      ]
+    }
+  ],
+  "grouped_summaries": {
+    "blockers_by_consumer": {
+      "CACHE_INVALIDATION_REFRESH": [
+        "CACHE_INVALIDATION_UNKNOWN",
+        "LOW_CONFIDENCE_PATH",
+        "NO_DIRECT_PROPAGATION",
+        "UNKNOWN_REFRESH_GUARANTEE"
+      ],
+      "COMMAND_CENTER": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL"
+      ],
+      "DASHBOARD_SUMMARY": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL"
+      ],
+      "NOTIFICATION_EMAIL_PATHS": [
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH"
+      ],
+      "PORTFOLIO_SCORE": [
+        "SEMANTIC_COLLAPSE_RISK"
+      ],
+      "PRIORITY_ACTIONS": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL",
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH",
+        "NO_OPERATIONAL_FOLLOWTHROUGH"
+      ],
+      "PROPERTY_SUMMARY": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL"
+      ],
+      "REGENERATION_RECALC_PATHS": [],
+      "REMINDER_ENGINE": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL",
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH",
+        "NO_OPERATIONAL_FOLLOWTHROUGH",
+        "SEMANTIC_COLLAPSE_RISK"
+      ],
+      "REPORT_EXPORT": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL",
+        "SEMANTIC_COLLAPSE_RISK"
+      ],
+      "REQUIREMENT_LIST": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL"
+      ],
+      "SCORE_DRIVERS": [
+        "SEMANTIC_COLLAPSE_RISK"
+      ],
+      "SLA_ESCALATION_PATHS": [
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH",
+        "NO_OPERATIONAL_FOLLOWTHROUGH"
+      ],
+      "TODAY_VIEW": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL",
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH"
+      ],
+      "UNIFIED_TASKS": [
+        "DERIVED_ONLY_NO_PUSH_SIGNAL",
+        "FRAGMENTED_MULTI_SOURCE_REFRESH",
+        "LOW_CONFIDENCE_PATH"
+      ]
+    },
+    "consumers_blocked_from_semantic_aware_rollout": [
+      "PRIORITY_ACTIONS",
+      "REMINDER_ENGINE",
+      "SLA_ESCALATION_PATHS"
+    ],
+    "consumers_by_highest_criticality": {
+      "ANALYTICS_ONLY": [
+        "CACHE_INVALIDATION_REFRESH",
+        "PORTFOLIO_SCORE",
+        "REGENERATION_RECALC_PATHS",
+        "SCORE_DRIVERS"
+      ],
+      "COMPLIANCE_CRITICAL": [
+        "REPORT_EXPORT"
+      ],
+      "OPERATIONAL_CRITICAL": [
+        "PRIORITY_ACTIONS",
+        "SLA_ESCALATION_PATHS"
+      ],
+      "SAFETY_CRITICAL": [
+        "NOTIFICATION_EMAIL_PATHS",
+        "REMINDER_ENGINE"
+      ],
+      "UX_CRITICAL": [
+        "COMMAND_CENTER",
+        "DASHBOARD_SUMMARY",
+        "PROPERTY_SUMMARY",
+        "REQUIREMENT_LIST",
+        "TODAY_VIEW",
+        "UNIFIED_TASKS"
+      ]
+    },
+    "consumers_by_rollout_state": {
+      "BLOCKED": [
+        "PRIORITY_ACTIONS",
+        "REMINDER_ENGINE",
+        "SLA_ESCALATION_PATHS"
+      ],
+      "CONDITIONAL": [
+        "NOTIFICATION_EMAIL_PATHS",
+        "PORTFOLIO_SCORE",
+        "REPORT_EXPORT",
+        "SCORE_DRIVERS",
+        "TODAY_VIEW",
+        "UNIFIED_TASKS"
+      ],
+      "INSUFFICIENT_EVIDENCE": [
+        "CACHE_INVALIDATION_REFRESH"
+      ],
+      "READY": [
+        "COMMAND_CENTER",
+        "DASHBOARD_SUMMARY",
+        "PROPERTY_SUMMARY",
+        "REGENERATION_RECALC_PATHS",
+        "REQUIREMENT_LIST"
+      ]
+    },
+    "consumers_conditional": [
+      "NOTIFICATION_EMAIL_PATHS",
+      "PORTFOLIO_SCORE",
+      "REPORT_EXPORT",
+      "SCORE_DRIVERS",
+      "TODAY_VIEW",
+      "UNIFIED_TASKS"
+    ],
+    "consumers_insufficient_evidence": [
+      "CACHE_INVALIDATION_REFRESH"
+    ],
+    "consumers_ready": [
+      "COMMAND_CENTER",
+      "DASHBOARD_SUMMARY",
+      "PROPERTY_SUMMARY",
+      "REGENERATION_RECALC_PATHS",
+      "REQUIREMENT_LIST"
+    ],
+    "safest_rollout_candidates": [
+      {
+        "consumer": "COMMAND_CENTER",
+        "rollout_state": "READY",
+        "score": 100
+      },
+      {
+        "consumer": "DASHBOARD_SUMMARY",
+        "rollout_state": "READY",
+        "score": 100
+      },
+      {
+        "consumer": "PROPERTY_SUMMARY",
+        "rollout_state": "READY",
+        "score": 100
+      },
+      {
+        "consumer": "REGENERATION_RECALC_PATHS",
+        "rollout_state": "READY",
+        "score": 100
+      },
+      {
+        "consumer": "REQUIREMENT_LIST",
+        "rollout_state": "READY",
+        "score": 100
+      },
+      {
+        "consumer": "TODAY_VIEW",
+        "rollout_state": "CONDITIONAL",
+        "score": 83
+      },
+      {
+        "consumer": "UNIFIED_TASKS",
+        "rollout_state": "CONDITIONAL",
+        "score": 83
+      },
+      {
+        "consumer": "SCORE_DRIVERS",
+        "rollout_state": "CONDITIONAL",
+        "score": 80
+      },
+      {
+        "consumer": "REPORT_EXPORT",
+        "rollout_state": "CONDITIONAL",
+        "score": 70
+      },
+      {
+        "consumer": "PORTFOLIO_SCORE",
+        "rollout_state": "CONDITIONAL",
+        "score": 65
+      },
+      {
+        "consumer": "NOTIFICATION_EMAIL_PATHS",
+        "rollout_state": "CONDITIONAL",
+        "score": 61
+      },
+      {
+        "consumer": "PRIORITY_ACTIONS",
+        "rollout_state": "BLOCKED",
+        "score": 2
+      },
+      {
+        "consumer": "SLA_ESCALATION_PATHS",
+        "rollout_state": "BLOCKED",
+        "score": -18
+      },
+      {
+        "consumer": "REMINDER_ENGINE",
+        "rollout_state": "BLOCKED",
+        "score": -34
+      },
+      {
+        "consumer": "CACHE_INVALIDATION_REFRESH",
+        "rollout_state": "INSUFFICIENT_EVIDENCE",
+        "score": -82
+      }
+    ],
+    "waiver_eligibility_by_consumer": {
+      "CACHE_INVALIDATION_REFRESH": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY",
+        "waiver_eligible": true
+      },
+      "COMMAND_CENTER": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY",
+        "waiver_eligible": true
+      },
+      "DASHBOARD_SUMMARY": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY",
+        "waiver_eligible": true
+      },
+      "NOTIFICATION_EMAIL_PATHS": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW",
+        "waiver_eligible": true
+      },
+      "PORTFOLIO_SCORE": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY",
+        "waiver_eligible": true
+      },
+      "PRIORITY_ACTIONS": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW",
+        "waiver_eligible": true
+      },
+      "PROPERTY_SUMMARY": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY",
+        "waiver_eligible": true
+      },
+      "REGENERATION_RECALC_PATHS": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY",
+        "waiver_eligible": true
+      },
+      "REMINDER_ENGINE": {
+        "overall_waiver_policy": "WAIVER_NOT_ALLOWED",
+        "waiver_eligible": false
+      },
+      "REPORT_EXPORT": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW",
+        "waiver_eligible": true
+      },
+      "REQUIREMENT_LIST": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY",
+        "waiver_eligible": true
+      },
+      "SCORE_DRIVERS": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY",
+        "waiver_eligible": true
+      },
+      "SLA_ESCALATION_PATHS": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_WITH_MANUAL_REVIEW",
+        "waiver_eligible": true
+      },
+      "TODAY_VIEW": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY",
+        "waiver_eligible": true
+      },
+      "UNIFIED_TASKS": {
+        "overall_waiver_policy": "WAIVER_ALLOWED_FOR_UX_ONLY",
+        "waiver_eligible": true
+      }
+    }
+  },
+  "matrix_row_count": 195,
+  "minimum_evidence_thresholds": {
+    "critical_transitions_for_evidence": [
+      "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "EXPIRY_REVIEW_REQUIRED",
+      "OPERATIONALLY_OPEN",
+      "PARTIALLY_COMPLETE"
+    ],
+    "min_critical_transition_non_unknown_rows": 3,
+    "min_non_unknown_confidence_rows": 8,
+    "min_rows_per_consumer": 13,
+    "observe_instrumented_consumers_optional_delta": [
+      "PORTFOLIO_SCORE",
+      "REMINDER_ENGINE",
+      "REPORT_EXPORT"
+    ]
+  },
+  "non_blocking": true,
+  "phase": "Trigger Propagation Completeness Audit Phase 3",
+  "remaining_runtime_convergence_limitation": "Gap and refresh guarantees are inferred from propagation type and dependency labels, not from live traces, production metrics, or cross-service convergence proofs.",
+  "remaining_state_model_limitation": "Audit matrix uses declared consumer profiles and static expected contracts; it does not enumerate every runtime branch or environment-specific configuration.",
+  "rollout_gate_states": [
+    "READY",
+    "CONDITIONAL",
+    "BLOCKED",
+    "INSUFFICIENT_EVIDENCE",
+    "OBSERVE_ONLY",
+    "NOT_ELIGIBLE"
+  ],
+  "runtime_behavior_changed": false,
+  "scope": "consumer-level rollout gate profiles",
+  "waiver_policies": [
+    "WAIVER_NOT_ALLOWED",
+    "WAIVER_ALLOWED_WITH_MANUAL_REVIEW",
+    "WAIVER_ALLOWED_FOR_UX_ONLY",
+    "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY"
+  ],
+  "waiver_policy_summary": {
+    "WAIVER_ALLOWED_FOR_ANALYTICS_ONLY": 4,
+    "WAIVER_ALLOWED_FOR_UX_ONLY": 6,
+    "WAIVER_ALLOWED_WITH_MANUAL_REVIEW": 4,
+    "WAIVER_NOT_ALLOWED": 1
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "phase": "Semantic-State Consumer Precedence Adapters Phase 4",
+  "scope": "audit-mode adapters only",
+  "target_consumers": [
+    "REMINDER_ENGINE",
+    "REPORT_EXPORT",
+    "PORTFOLIO_SCORE"
+  ],
+  "audit_mode": true,
+  "runtime_enforcement": false,
+  "non_blocking": true,
+  "matrix": [
+    {
+      "consumer": "REMINDER_ENGINE",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "legacy_interpretation": "PENDING_LIKE",
+      "semantic_interpretation": "ATTENTION_ELIGIBLE",
+      "delta": true,
+      "impact": "WIDESPREAD_COLLAPSE_DELTA"
+    },
+    {
+      "consumer": "REMINDER_ENGINE",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "legacy_interpretation": "PENDING_LIKE",
+      "semantic_interpretation": "ATTENTION_ELIGIBLE",
+      "delta": true,
+      "impact": "WIDESPREAD_COLLAPSE_DELTA"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "PARTIALLY_COMPLETE",
+      "legacy_interpretation": "PENDING_LIKE",
+      "semantic_interpretation": "INCOMPLETE_VISIBLE",
+      "delta": true,
+      "impact": "HIGH_DELTA"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "legacy_interpretation": "PENDING_LIKE",
+      "semantic_interpretation": "RISK_BEARING",
+      "delta": true,
+      "impact": "HIGH_DELTA"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "legacy_interpretation": "CURRENT_LIKE",
+      "semantic_interpretation": "NOT_CURRENT",
+      "delta": true,
+      "impact": "HIGH_DELTA"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "legacy_interpretation": "CURRENT_LIKE",
+      "semantic_interpretation": "NOT_CURRENT",
+      "delta": true,
+      "impact": "HIGH_DELTA"
+    }
+  ]
+}

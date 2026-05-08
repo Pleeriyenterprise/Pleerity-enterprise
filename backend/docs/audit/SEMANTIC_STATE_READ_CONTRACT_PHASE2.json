@@ -1,0 +1,102 @@
+{
+  "phase": "Semantic-State Read Contract Audit Phase 2",
+  "scope": "consumer precedence rules and expected interpretation snapshots",
+  "non_blocking": true,
+  "target_consumers": [
+    "REMINDER_ENGINE",
+    "PORTFOLIO_SCORE",
+    "REPORT_EXPORT"
+  ],
+  "matrix": [
+    {
+      "consumer": "REMINDER_ENGINE",
+      "precedence_model": "LEGACY_STATUS_PRIMARY",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "expected_interpretation": "ATTENTION_ELIGIBLE",
+      "collapse_risk": [
+        "OPERATIONAL_CONVERGENCE_RISK",
+        "SEMANTIC_COLLAPSE_RISK"
+      ]
+    },
+    {
+      "consumer": "REMINDER_ENGINE",
+      "precedence_model": "LEGACY_STATUS_PRIMARY",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "expected_interpretation": "ATTENTION_ELIGIBLE",
+      "collapse_risk": [
+        "EXPIRY_REVIEW_COLLAPSE",
+        "SEMANTIC_COLLAPSE_RISK"
+      ]
+    },
+    {
+      "consumer": "REMINDER_ENGINE",
+      "precedence_model": "LEGACY_STATUS_PRIMARY",
+      "semantic_state": "PARTIALLY_COMPLETE",
+      "expected_interpretation": "ATTENTION_ELIGIBLE",
+      "collapse_risk": [
+        "PARTIAL_COMPLETENESS_RISK",
+        "SEMANTIC_COLLAPSE_RISK"
+      ]
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "precedence_model": "MIXED_UNDEFINED",
+      "semantic_state": "PARTIALLY_COMPLETE",
+      "expected_interpretation": "INCOMPLETE_VISIBLE",
+      "collapse_risk": [
+        "PARTIAL_COMPLETENESS_RISK",
+        "SEMANTIC_COLLAPSE_RISK"
+      ]
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "precedence_model": "MIXED_UNDEFINED",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "expected_interpretation": "RISK_BEARING",
+      "collapse_risk": [
+        "ASSESSMENT_FOLLOWUP_COLLAPSE",
+        "SEMANTIC_COLLAPSE_RISK"
+      ]
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "precedence_model": "MIXED_UNDEFINED",
+      "semantic_state": "DECLARATION_RECORDED",
+      "expected_interpretation": "NOT_VERIFIED",
+      "collapse_risk": [
+        "DECLARATION_VERIFICATION_COLLAPSE",
+        "SEMANTIC_COLLAPSE_RISK"
+      ]
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "precedence_model": "MIXED_UNDEFINED",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "expected_interpretation": "NOT_CURRENT",
+      "collapse_risk": [
+        "EXPIRY_REVIEW_COLLAPSE",
+        "SEMANTIC_COLLAPSE_RISK"
+      ]
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "precedence_model": "MIXED_UNDEFINED",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "expected_interpretation": "NOT_CURRENT",
+      "collapse_risk": [
+        "OPERATIONAL_CONVERGENCE_RISK",
+        "SEMANTIC_COLLAPSE_RISK"
+      ]
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "precedence_model": "MIXED_UNDEFINED",
+      "semantic_state": "PARTIALLY_COMPLETE",
+      "expected_interpretation": "INCOMPLETE_VISIBLE",
+      "collapse_risk": [
+        "PARTIAL_COMPLETENESS_RISK",
+        "SEMANTIC_COLLAPSE_RISK"
+      ]
+    }
+  ]
+}

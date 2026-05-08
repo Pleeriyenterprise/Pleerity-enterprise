@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 
 from utils.expiry_utils import get_effective_expiry_date, is_included_for_calendar
 from services.requirement_evidence_authority import authority_runtime_requirement_status
+from services.semantic_state_precedence_adapter import REMINDER_ENGINE, observe_consumer_precedence_delta
 
 COLLECTION_REMINDER_ITEM_STATE = "reminder_item_state"
 COLLECTION_REMINDER_EVALUATION_LOG = "reminder_evaluation_log"
@@ -233,6 +234,25 @@ async def evaluate_requirement_for_daily_reminder(
         or current.get("status")
         or ""
     ).upper()
+    try:
+        sem = (
+            current.get("semantic_state")
+            or (
+                (current.get("evidence_authority") or {}).get("semantic_state")
+                if isinstance(current.get("evidence_authority"), dict)
+                else None
+            )
+        )
+        if sem:
+            observe_consumer_precedence_delta(
+                REMINDER_ENGINE,
+                str(sem),
+                property_id=str(current.get("property_id") or ""),
+                requirement_id=str(current.get("requirement_id") or ""),
+            )
+    except Exception:
+        # Observe-only hook must never alter reminder runtime behavior.
+        pass
     applicability = str(current.get("applicability") or "").upper()
     if status in {"COMPLIANT", "VERIFIED", "RESOLVED", "COMPLETED", "REGULARISED", "REGULARIZED", "REPLACED"} or applicability == "NOT_REQUIRED":
         await db.reminder_item_state.update_one(

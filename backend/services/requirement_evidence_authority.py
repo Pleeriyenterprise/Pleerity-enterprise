@@ -53,6 +53,7 @@ from services.workflow_behaviour_governance import (
     get_workflow_capabilities,
     resolve_governance_capability_key,
 )
+from services.semantic_state_model import derive_semantic_state
 
 logger = logging.getLogger(__name__)
 
@@ -462,6 +463,12 @@ def _apply_evidence_governance_extensions(
         _enforce_registration_tracking_record_guard()
         _enforce_tenant_delivery_record_guard()
         _enforce_document_upload_certificate_validity_guard()
+        b["semantic_state"] = derive_semantic_state(
+            authority_state=b.get("state"),
+            state_reason=b.get("state_reason"),
+            workflow_class=ref_class,
+            evidence_completeness=b.get("evidence_completeness"),
+        )
         return b, m
 
     is_critical = is_critical_safety_or_legal_obligation(requirement)
@@ -523,6 +530,12 @@ def _apply_evidence_governance_extensions(
         _enforce_registration_tracking_record_guard()
         _enforce_tenant_delivery_record_guard()
         _enforce_document_upload_certificate_validity_guard()
+        b["semantic_state"] = derive_semantic_state(
+            authority_state=b.get("state"),
+            state_reason=b.get("state_reason"),
+            workflow_class=ref_class,
+            evidence_completeness=b.get("evidence_completeness"),
+        )
         return b, m
 
     _fill_document_governance()
@@ -542,6 +555,12 @@ def _apply_evidence_governance_extensions(
     _enforce_registration_tracking_record_guard()
     _enforce_tenant_delivery_record_guard()
     _enforce_document_upload_certificate_validity_guard()
+    b["semantic_state"] = derive_semantic_state(
+        authority_state=b.get("state"),
+        state_reason=b.get("state_reason"),
+        workflow_class=ref_class,
+        evidence_completeness=b.get("evidence_completeness"),
+    )
     return b, m
 
 
@@ -581,6 +600,12 @@ def _compute_authority(
             "evidence_scope_type": SCOPE_PROPERTY,
             "evidence_scope_id": requirement.get("property_id"),
         }
+        blob["semantic_state"] = derive_semantic_state(
+            authority_state=blob.get("state"),
+            state_reason=blob.get("state_reason"),
+            workflow_class=None,
+            evidence_completeness=None,
+        )
         mirror = {
             "status": RequirementStatus.NOT_REQUIRED.value,
             "evidence_state": "NOT_REQUIRED",

@@ -481,6 +481,9 @@ def enrich_requirement_dict(
     attached only when ``audience == "admin"``; client surfaces never receive them.
     """
     out = dict(requirement)
+    ea_blob = out.get("evidence_authority") if isinstance(out.get("evidence_authority"), dict) else {}
+    if ea_blob.get("semantic_state") is not None:
+        out["semantic_state"] = ea_blob.get("semantic_state")
     _raw_code = str(out.get("requirement_code") or out.get("requirement_type") or "").strip()
     _canon = normalize_requirement_code(_raw_code)
     _is_active_standard = _is_active_standard_code(_raw_code)

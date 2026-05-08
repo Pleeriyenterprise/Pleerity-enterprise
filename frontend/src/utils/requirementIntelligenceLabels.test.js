@@ -51,6 +51,24 @@ describe('requirementIntelligenceLabels', () => {
     expect(sum.compliance).toMatch(/missing required evidence/i);
   });
 
+  it('uses workflow-aware missing-evidence wording for guided declaration', () => {
+    const sum = requirementStatusSummaryForModal({
+      workflow_class: 'GUIDED_DECLARATION',
+      compliance_state: 'MISSING',
+      status: 'MISSING',
+    });
+    expect(sum.evidenceLine).toBe('Declaration not recorded — action required');
+  });
+
+  it('uses workflow-aware missing-evidence wording for external assessment', () => {
+    const sum = requirementStatusSummaryForModal({
+      workflow_class: 'EXTERNAL_ASSESSMENT_EVIDENCE',
+      compliance_state: 'MISSING',
+      status: 'MISSING',
+    });
+    expect(sum.evidenceLine).toBe('Assessment not recorded — action required');
+  });
+
   it('uses human-friendly workflow and compliance defaults', () => {
     expect(humanWorkflowStatusLabel('ACTION_REQUIRED')).toBe('Action needed');
     expect(humanComplianceStateLabel('PENDING_VERIFICATION')).toBe('Evidence submitted and awaiting review');

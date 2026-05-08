@@ -64,6 +64,7 @@ from services.requirement_code_registry import normalize_requirement_code
 from services.requirement_read_model_guard import get_canonical_requirement_ids_map_for_properties
 from services.requirement_truth import requirement_has_active_negative_actionability
 from services.compliance_expiry_policy import resolve_expiring_soon_days_for_requirement
+from services.semantic_state_precedence_adapter import PORTFOLIO_SCORE, observe_consumer_precedence_delta
 import logging
 
 logger = logging.getLogger(__name__)
@@ -805,6 +806,23 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 continue
 
             take_action = r.get("take_action") if isinstance(r.get("take_action"), dict) else None
+            workflow_class = r.get("workflow_class")
+            semantic_state = r.get("semantic_state")
+            try:
+                if semantic_state:
+                    observe_consumer_precedence_delta(
+                        PORTFOLIO_SCORE,
+                        str(semantic_state),
+                        property_id=pid,
+                        requirement_id=rid or None,
+                    )
+            except Exception:
+                # Observe-only hook: scoring behavior must remain unchanged.
+                pass
+            evidence_authority = r.get("evidence_authority") if isinstance(r.get("evidence_authority"), dict) else None
+            evidence_completeness = (
+                r.get("evidence_completeness") if isinstance(r.get("evidence_completeness"), dict) else None
+            )
             actions = []
             if take_action and isinstance(take_action.get("primary"), dict):
                 primary_kind = str((take_action.get("primary") or {}).get("kind") or "").strip().lower()
@@ -845,12 +863,18 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "requirement_id": rid,
                 "requirement_name": req_name,
                 "requirement_display": rd if rd else None,
+                "semantic_state": semantic_state,
+                "workflow_class": workflow_class,
                 "status": display_status,
                 "date_used": r.get("due_date"),
                 "date_confidence": "UNKNOWN",
                 "evidence_uploaded": evidence,
                 "actions": list(dict.fromkeys(actions)) if actions else ["VIEW"],
                 "take_action": take_action,
+                "evidence_authority": evidence_authority,
+                "evidence_completeness": evidence_completeness,
+                "guidance_target": r.get("guidance_target"),
+                "allowed_evidence_modes": r.get("allowed_evidence_modes"),
             })
             seen_driver_keys.add(key)
         if not drivers and portal_reqs:

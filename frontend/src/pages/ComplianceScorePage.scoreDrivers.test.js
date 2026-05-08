@@ -291,4 +291,56 @@ describe('ComplianceScorePage score drivers CTA integrity', () => {
     expect(primaries[0]).toHaveTextContent('Canonical one');
     expect(primaries[1]).toHaveTextContent('Canonical one');
   });
+
+  it('uses resolved evidence semantics for canonical requirement rows (multi-evidence incomplete)', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/client/compliance-score') {
+        return Promise.resolve({
+          data: baseScore({
+            drivers: [
+              {
+                property_id: 'p1',
+                property_name: 'Prop',
+                requirement_id: 'r1',
+                requirement_name: 'Fire alarm evidence',
+                status: 'MISSING_EVIDENCE',
+                evidence_uploaded: false,
+              },
+            ],
+          }),
+        });
+      }
+      if (url === '/client/dashboard') {
+        return Promise.resolve({ data: { properties: [{ property_id: 'p1' }] } });
+      }
+      if (url === '/client/requirements') {
+        return Promise.resolve({
+          data: {
+            requirements: [
+              {
+                requirement_id: 'r1',
+                property_id: 'p1',
+                requirement_code: 'fire_alarm',
+                workflow_class: 'MULTI_EVIDENCE',
+                status: 'MISSING',
+                take_action: {
+                  primary: {
+                    label: 'Resolve',
+                    route: '/properties/p1?open=resolve&requirement_id=r1',
+                    handler: 'guided_evidence',
+                  },
+                },
+              },
+            ],
+          },
+        });
+      }
+      return Promise.reject(new Error(`unexpected ${url}`));
+    });
+
+    render(wrap(<ComplianceScorePage />));
+    const desktop = await getScoreDriversScope();
+    expect(await desktop.findByText('Evidence incomplete')).toBeInTheDocument();
+    expect(desktop.queryByText('Not uploaded')).not.toBeInTheDocument();
+  });
 });

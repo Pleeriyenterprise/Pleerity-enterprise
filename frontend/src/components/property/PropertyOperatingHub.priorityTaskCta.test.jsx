@@ -204,3 +204,82 @@ describe('PropertyOperatingHub Do this next — requirement CTA parity', () => {
     ).toBeTruthy();
   });
 });
+
+describe('PropertyOperatingHub prioritized requirement cards — resolved semantics', () => {
+  it('keeps MULTI_EVIDENCE rows incomplete-aware', () => {
+    renderHub(
+      hubProps({
+        hubPrioritizedRequirements: [
+          {
+            requirement_id: 'r-multi',
+            property_id: 'prop-1',
+            requirement_code: 'fire_alarm',
+            workflow_class: 'MULTI_EVIDENCE',
+            status: 'MISSING',
+            take_action: {
+              primary: {
+                label: 'Resolve evidence',
+                route: '/properties/prop-1?open=resolve&requirement_id=r-multi',
+                handler: 'guided_evidence',
+              },
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(screen.getByText('Evidence incomplete')).toBeInTheDocument();
+    expect(screen.getByText('Required evidence incomplete')).toBeInTheDocument();
+  });
+
+  it('keeps CONDITION_STANDARD wording operational-safe', () => {
+    renderHub(
+      hubProps({
+        hubPrioritizedRequirements: [
+          {
+            requirement_id: 'r-cond',
+            property_id: 'prop-1',
+            requirement_code: 'fitness_for_human_habitation',
+            workflow_class: 'GUIDANCE_ONLY',
+            status: 'MISSING',
+            take_action: {
+              primary: {
+                label: 'Review condition status',
+                route: '/properties/prop-1?open=resolve&requirement_id=r-cond',
+                handler: 'guided_evidence',
+              },
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(screen.getByText('Condition status needs review')).toBeInTheDocument();
+  });
+
+  it('keeps EXTERNAL_ASSESSMENT wording incomplete (not remediated)', () => {
+    renderHub(
+      hubProps({
+        hubPrioritizedRequirements: [
+          {
+            requirement_id: 'r-assess',
+            property_id: 'prop-1',
+            requirement_code: 'legionella',
+            workflow_class: 'EXTERNAL_ASSESSMENT_EVIDENCE',
+            status: 'MISSING',
+            take_action: {
+              primary: {
+                label: 'Upload assessment',
+                route: '/documents?property_id=prop-1&requirement_id=r-assess',
+                handler: 'navigate',
+              },
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(screen.getByText('Assessment incomplete')).toBeInTheDocument();
+    expect(screen.getByText('Assessment not recorded — action required')).toBeInTheDocument();
+  });
+});

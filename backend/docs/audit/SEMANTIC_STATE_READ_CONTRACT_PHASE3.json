@@ -1,0 +1,71 @@
+{
+  "phase": "Semantic-State Read Contract Audit Phase 3",
+  "scope": "declared precedence and current-vs-expected interpretation diffs",
+  "non_blocking": true,
+  "target_consumers": [
+    "REMINDER_ENGINE",
+    "PORTFOLIO_SCORE",
+    "REPORT_EXPORT"
+  ],
+  "declared_precedence_contracts": {
+    "REMINDER_ENGINE": "SEMANTIC_STATE_WITH_AUTHORITY_FALLBACK",
+    "PORTFOLIO_SCORE": "SEMANTIC_STATE_WITH_AUTHORITY_FALLBACK",
+    "REPORT_EXPORT": "SEMANTIC_STATE_PRIMARY"
+  },
+  "matrix": [
+    {
+      "consumer": "REMINDER_ENGINE",
+      "current_precedence": "LEGACY_STATUS_PRIMARY",
+      "declared_precedence": "SEMANTIC_STATE_WITH_AUTHORITY_FALLBACK",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "current_interpretation": "PENDING_LIKE",
+      "expected_interpretation": "ATTENTION_ELIGIBLE",
+      "impact": "WIDESPREAD_COLLAPSE_DEPENDENCY"
+    },
+    {
+      "consumer": "REMINDER_ENGINE",
+      "current_precedence": "LEGACY_STATUS_PRIMARY",
+      "declared_precedence": "SEMANTIC_STATE_WITH_AUTHORITY_FALLBACK",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "current_interpretation": "PENDING_LIKE",
+      "expected_interpretation": "ATTENTION_ELIGIBLE",
+      "impact": "WIDESPREAD_COLLAPSE_DEPENDENCY"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "current_precedence": "MIXED_UNDEFINED",
+      "declared_precedence": "SEMANTIC_STATE_WITH_AUTHORITY_FALLBACK",
+      "semantic_state": "PARTIALLY_COMPLETE",
+      "current_interpretation": "PENDING_LIKE",
+      "expected_interpretation": "INCOMPLETE_VISIBLE",
+      "impact": "HIGH_IMPACT"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "current_precedence": "MIXED_UNDEFINED",
+      "declared_precedence": "SEMANTIC_STATE_WITH_AUTHORITY_FALLBACK",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "current_interpretation": "PENDING_LIKE",
+      "expected_interpretation": "RISK_BEARING",
+      "impact": "HIGH_IMPACT"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "current_precedence": "MIXED_UNDEFINED",
+      "declared_precedence": "SEMANTIC_STATE_PRIMARY",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "current_interpretation": "CURRENT_LIKE",
+      "expected_interpretation": "NOT_CURRENT",
+      "impact": "HIGH_IMPACT"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "current_precedence": "MIXED_UNDEFINED",
+      "declared_precedence": "SEMANTIC_STATE_PRIMARY",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "current_interpretation": "CURRENT_LIKE",
+      "expected_interpretation": "NOT_CURRENT",
+      "impact": "HIGH_IMPACT"
+    }
+  ]
+}

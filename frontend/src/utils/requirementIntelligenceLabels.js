@@ -2,6 +2,7 @@
  * Human-facing labels for requirement workflow / evidence tokens.
  * Prefer API `workflow_status_label` / `compliance_state_label` when present; these are client fallbacks.
  */
+import { workflowAwareMissingEvidenceLabel } from './evidenceStatus';
 
 const WORKFLOW_STATUS_LABELS = {
   NOT_APPLICABLE: 'Not applicable',
@@ -107,12 +108,25 @@ function humanizeServerComplianceLabel(s) {
 export function requirementStatusSummaryForModal(requirement) {
   const pair = requirementWorkflowDisplayPair(requirement);
   const evRaw = String(requirement?.evidence_state || '').trim().toUpperCase();
-  const evLine = evRaw ? humanEvidenceStateLabel(evRaw) : null;
+  const statusRaw = String(requirement?.status || '').trim().toUpperCase();
+  const complianceRaw = String(requirement?.compliance_state || '').trim().toUpperCase();
+  const missingLike =
+    complianceRaw === 'MISSING' ||
+    evRaw === 'MISSING' ||
+    statusRaw === 'MISSING' ||
+    statusRaw === 'MISSING_EVIDENCE';
+  const wfMissingLine = missingLike ? workflowAwareMissingEvidenceLabel(requirement) : null;
+  const evLine = wfMissingLine || (evRaw ? humanEvidenceStateLabel(evRaw) : null);
   const comp = pair.compliance;
   const miss = 'missing required evidence';
+  const genericMissingAction = 'evidence missing — action required';
   const cNorm = comp.trim().toLowerCase();
   const eNorm = (evLine || '').trim().toLowerCase();
-  if (evLine && (cNorm === miss || cNorm === 'evidence missing') && (eNorm === miss || eNorm === 'evidence missing')) {
+  if (
+    evLine &&
+    (cNorm === miss || cNorm === 'evidence missing') &&
+    (eNorm === miss || eNorm === 'evidence missing' || eNorm === genericMissingAction)
+  ) {
     return { workflow: pair.workflow, compliance: comp, evidenceLine: null };
   }
   return { workflow: pair.workflow, compliance: comp, evidenceLine: evLine };

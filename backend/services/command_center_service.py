@@ -22,7 +22,7 @@ def _slim_task(t: Dict[str, Any]) -> Dict[str, Any]:
         "jurisdiction"
     )
     rid = t.get("requirement_id") or metadata.get("requirement_id") or metadata.get("linked_property_requirement_id")
-    return {
+    out = {
         "id": t.get("id"),
         "task_id": t.get("id"),
         "title": t.get("title"),
@@ -68,6 +68,21 @@ def _slim_task(t: Dict[str, Any]) -> Dict[str, Any]:
         "primary_action_url": t.get("primary_action_url"),
         "cta_url": t.get("primary_action_url") or "/tasks",
     }
+    if str(t.get("source_type") or "").strip().lower() == "requirement":
+        # Preserve converged requirement semantics for requirement-shaped rows only.
+        for k in (
+            "semantic_state",
+            "workflow_class",
+            "take_action",
+            "requirement_display",
+            "evidence_authority",
+            "evidence_completeness",
+            "guidance_target",
+            "allowed_evidence_modes",
+        ):
+            if metadata.get(k) is not None:
+                out[k] = metadata.get(k)
+    return out
 
 
 def _slim_risk(s: Dict[str, Any]) -> Dict[str, Any]:

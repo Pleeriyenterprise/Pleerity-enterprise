@@ -1039,7 +1039,8 @@ export default function PropertyDetailPage() {
     return a ? (a.name || (a.asset_type || '').replace(/_/g, ' ')) : assetId;
   };
 
-  const getStatus = (r) => getEvidenceStatus(r.status, r);
+  const getStatus = (r) =>
+    projectResolvedRequirementSemantics(r, { pagePropertyId: propertyId }).evidenceStatusForStatus(r.status);
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
   const formatJobPreviewDateTime = (iso) => {
     if (!iso) return '—';
