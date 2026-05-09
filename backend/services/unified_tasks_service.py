@@ -1122,6 +1122,8 @@ async def get_unified_tasks_for_client(
     property_id_filter: Optional[str] = None,
     raw_limit: int = 120,
     portal_user_id: Optional[str] = None,
+    *,
+    trust_surface_composition_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Build unified task list + sections + summary + freshness + spend (when invoicing data exists).
@@ -1230,7 +1232,7 @@ async def get_unified_tasks_for_client(
     freshness = await _freshness_block(client_id)
     activity_feed = activity_rows[:25]
 
-    return {
+    out: Dict[str, Any] = {
         "tasks": {
             "urgent": urgent,
             "upcoming": upcoming,
@@ -1244,6 +1246,16 @@ async def get_unified_tasks_for_client(
         "spend_this_month": spend,
         "activity_feed": activity_feed,
     }
+    if trust_surface_composition_context is not None:
+        from services.trust_surface_observability import build_unified_tasks_trust_surface_metadata
+
+        out["trust_surface_operational_metadata"] = build_unified_tasks_trust_surface_metadata(
+            client_id=client_id,
+            composition_context=trust_surface_composition_context,
+            freshness=freshness,
+            summary=summary,
+        )
+    return out
 
 
 async def get_unified_tasks_digest(
@@ -1252,6 +1264,7 @@ async def get_unified_tasks_digest(
     *,
     activity_limit: int = 8,
     portal_user_id: Optional[str] = None,
+    trust_surface_composition_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Lightweight dashboard payload: same prioritisation as full tasks, but no task lists
@@ -1262,11 +1275,16 @@ async def get_unified_tasks_digest(
         property_id_filter=property_id_filter,
         raw_limit=120,
         portal_user_id=portal_user_id,
+        trust_surface_composition_context=trust_surface_composition_context,
     )
     feed = full.get("activity_feed") or []
     cap = max(1, min(int(activity_limit), 25))
-    return {
+    digest_out: Dict[str, Any] = {
         "summary": full.get("summary") or {},
         "freshness": full.get("freshness") or {},
         "activity_feed": feed[:cap],
     }
+    meta = full.get("trust_surface_operational_metadata")
+    if meta is not None:
+        digest_out["trust_surface_operational_metadata"] = meta
+    return digest_out

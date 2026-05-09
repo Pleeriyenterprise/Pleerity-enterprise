@@ -9,7 +9,7 @@ from utils.api_errors import log_api_error, structured_error
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from config.security_limits import security_limits
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 import asyncio
 import json
 import os
@@ -18,10 +18,19 @@ import logging
 from pathlib import Path
 
 from utils.storage_paths import resolve_data_dir, resolve_document_storage_path
+from services.authority_mutation_fanout import (
+    authority_sync_with_transition_observability,
+    enqueue_compliance_recalc_with_fanout,
+)
 from services.requirement_evidence_authority import (
     normalize_document_evidence_scope,
     sync_for_documents_touching,
     sync_requirement_evidence_authority,
+)
+from services.requirement_transition_observability import (
+    ensure_requirement_transition_correlation_id,
+    merge_document_path_lineage_flags,
+    transition_origin_document_touch,
 )
 from services.compliance_evidence_record_service import safe_upsert_document_upload_evidence_for_linked_document
 from services.work_order_execution_constants import (
@@ -40,6 +49,158 @@ from services.evidence_review_migration import apply_v2_defaults_to_new_upload
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+
+def _document_verification_replay_heuristic(old_status: Optional[str]) -> bool:
+    """True when verify is applied while document was already VERIFIED (observability hint only)."""
+    return str(old_status or "").strip().upper() == str(DocumentStatus.VERIFIED.value).upper()
+
+
+async def _document_path_sync_requirement_authority(
+    db,
+    requirement_id: str,
+    *,
+    property_id: Optional[str],
+    client_id: str,
+    correlation_base: str,
+    transition_origin: str,
+    transition_fanout: Dict[str, Any],
+    document_id: Optional[str] = None,
+    verification_replay_possible: bool = False,
+    revert_retrigger_possible: bool = False,
+    document_replacement_detected: bool = False,
+    stale_document_transition_possible: bool = False,
+) -> None:
+    await authority_sync_with_transition_observability(
+        db,
+        requirement_id,
+        property_id=property_id,
+        client_id=client_id,
+        correlation_base=correlation_base,
+        transition_origin=transition_origin,
+        transition_fanout=transition_fanout,
+    )
+    if document_id:
+        merge_document_path_lineage_flags(
+            transition_fanout,
+            document_id=document_id,
+            verification_replay_possible=verification_replay_possible,
+            revert_retrigger_possible=revert_retrigger_possible,
+            document_replacement_detected=document_replacement_detected,
+            stale_document_transition_possible=stale_document_transition_possible,
+        )
+
+
+async def _document_path_enqueue_recalc(
+    transition_fanout: Optional[Dict[str, Any]],
+    *,
+    property_id: str,
+    client_id: str,
+    trigger_reason: str,
+    actor_type: str,
+    actor_id: Optional[str],
+    correlation_id: str,
+    trigger_origin: str,
+    propagation_stage: str,
+) -> None:
+    await enqueue_compliance_recalc_with_fanout(
+        transition_fanout,
+        property_id=property_id,
+        client_id=client_id,
+        trigger_reason=trigger_reason,
+        actor_type=actor_type,
+        actor_id=actor_id,
+        correlation_id=correlation_id,
+        trigger_origin=trigger_origin,
+        propagation_stage=propagation_stage,
+        fanout_op="document_transition_fanout",
+    )
+
+
+# DOCUMENT_UPLOAD bounded slices: static registry only (gas_safety, eicr, epc). Observability attachment only.
+_BOUND_DOCUMENT_UPLOAD_ACTIVATION_SLICES: Dict[str, Dict[str, frozenset[str]]] = {
+    "gas_safety": {"canonical_codes": frozenset({"gas_safety"})},
+    "eicr": {"canonical_codes": frozenset({"eicr"})},
+    "epc": {"canonical_codes": frozenset({"epc"})},
+}
+# Explicit precedence when resolving slices (matches legacy if gas_safety / elif eicr / elif epc).
+_BOUND_DOCUMENT_UPLOAD_ACTIVATION_SLICE_ORDER: Tuple[str, ...] = ("gas_safety", "eicr", "epc")
+
+_DOCUMENT_UPLOAD_BOUND_SLICE_ACTIVATION_DOWNSTREAM_ALLOWLIST = frozenset(
+    {
+        "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+        "requirement_state_transition.core_backbone.authority_sync",
+        "compliance_recalc_queue.enqueue_compliance_recalc",
+        "risk_signal_regen_queue.enqueue_risk_signal_regen",
+    }
+)
+
+
+def _resolve_bound_document_upload_activation_obligation_slice(
+    requirement: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    """
+    Return obligation_slice key when requirement matches an explicit bounded DOCUMENT_UPLOAD slice.
+
+    Order is gas_safety → eicr → epc per slice, and requirement_code → requirement_type per field,
+    matching the previous chained detectors. Code-only; no dynamic registration.
+    """
+    if not requirement:
+        return None
+    from services.requirement_code_registry import normalize_requirement_code
+
+    for obligation_slice in _BOUND_DOCUMENT_UPLOAD_ACTIVATION_SLICE_ORDER:
+        codes = _BOUND_DOCUMENT_UPLOAD_ACTIVATION_SLICES[obligation_slice]["canonical_codes"]
+        for req_key in ("requirement_code", "requirement_type"):
+            canon = normalize_requirement_code(requirement.get(req_key))
+            if canon and canon in codes:
+                return obligation_slice
+    return None
+
+
+def _workflow_activation_observability_for_bounded_document_upload_slice(
+    fanout: Mapping[str, Any],
+    *,
+    obligation_slice: str,
+    document_upload_correlation_id: str,
+) -> Dict[str, Any]:
+    raw_targets = fanout.get("downstream_trigger_targets")
+    if raw_targets is None:
+        raw_targets = fanout.get("downstream_propagation") or []
+    filtered: List[Dict[str, Any]] = []
+    for row in raw_targets:
+        if not isinstance(row, Mapping):
+            continue
+        dt = str(row.get("downstream_target") or "")
+        if dt not in _DOCUMENT_UPLOAD_BOUND_SLICE_ACTIVATION_DOWNSTREAM_ALLOWLIST:
+            continue
+        filtered.append(dict(row))
+
+    backbone = fanout.get("rst_core_backbone_activation")
+    backbone_copy: Dict[str, Any] = dict(backbone) if isinstance(backbone, Mapping) else {}
+
+    return {
+        "workflow_class": "DOCUMENT_UPLOAD",
+        "obligation_slice": obligation_slice,
+        "document_upload_correlation_id": document_upload_correlation_id,
+        "transition_id": fanout.get("transition_id"),
+        "requirement_transition_correlation_id": fanout.get("correlation_id"),
+        "transition_outcome": fanout.get("transition_outcome"),
+        "rst_core_backbone_activation": backbone_copy,
+        "approved_downstream_observations": filtered,
+    }
+
+
+def _workflow_activation_observability_for_gas_safety_client_upload(
+    fanout: Mapping[str, Any],
+    *,
+    document_upload_correlation_id: str,
+) -> Dict[str, Any]:
+    return _workflow_activation_observability_for_bounded_document_upload_slice(
+        fanout,
+        obligation_slice="gas_safety",
+        document_upload_correlation_id=document_upload_correlation_id,
+    )
 
 
 def _build_validation_result_persist(
@@ -574,7 +735,8 @@ async def bulk_upload_documents(
         )
         
         results = []
-        
+        bulk_authority_fanout_by_document_id: Dict[str, Dict[str, Any]] = {}
+
         for file in files:
             try:
                 # Create unique filename
@@ -683,7 +845,19 @@ async def bulk_upload_documents(
                                 filename=file.filename,
                                 context="bulk_upload",
                             )
-                            await sync_requirement_evidence_authority(db, matched_requirement)
+                            tf_bulk: Dict[str, Any] = {}
+                            await _document_path_sync_requirement_authority(
+                                db,
+                                matched_requirement,
+                                property_id=property_id,
+                                client_id=user["client_id"],
+                                correlation_base=f"DOC_UPLOADED:{document.document_id}",
+                                transition_origin="routes.documents.bulk_upload_documents",
+                                transition_fanout=tf_bulk,
+                                document_id=document.document_id,
+                                stale_document_transition_possible=True,
+                            )
+                            bulk_authority_fanout_by_document_id[document.document_id] = tf_bulk
                 except Exception as e:
                     logger.warning(f"AI analysis failed for {file.filename}: {e}")
 
@@ -720,16 +894,21 @@ async def bulk_upload_documents(
             }
         )
         
-        from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
+        from services.compliance_recalc_queue import TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
+
         for r in results:
             if r.get("status") == "uploaded" and r.get("document_id"):
-                await enqueue_compliance_recalc(
+                doc_id_b = str(r["document_id"])
+                await _document_path_enqueue_recalc(
+                    bulk_authority_fanout_by_document_id.get(doc_id_b),
                     property_id=property_id,
                     client_id=user["client_id"],
                     trigger_reason=TRIGGER_DOC_UPLOADED,
                     actor_type=ACTOR_CLIENT,
                     actor_id=user.get("portal_user_id"),
-                    correlation_id=f"DOC_UPLOADED:{r['document_id']}",
+                    correlation_id=f"DOC_UPLOADED:{doc_id_b}",
+                    trigger_origin="routes.documents.bulk_upload_documents",
+                    propagation_stage="post_bulk_authority_sync",
                 )
                 try:
                     from services.score_events_service import write_score_event, EVENT_DOCUMENT_UPLOADED, ACTOR_ROLE_CLIENT
@@ -882,8 +1061,9 @@ async def upload_zip_archive(
                 )
             
             results = []
+            zip_authority_fanout_by_document_id: Dict[str, Dict[str, Any]] = {}
             supported_extensions = {'.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'}
-            
+
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 # Check for zip bomb (max 1000 files, max 500MB uncompressed)
                 total_size = sum(info.file_size for info in zip_ref.infolist())
@@ -1038,7 +1218,19 @@ async def upload_zip_archive(
                                         filename=filename,
                                         context="zip_upload",
                                     )
-                                    await sync_requirement_evidence_authority(db, matched_requirement)
+                                    tf_zip: Dict[str, Any] = {}
+                                    await _document_path_sync_requirement_authority(
+                                        db,
+                                        matched_requirement,
+                                        property_id=property_id,
+                                        client_id=user["client_id"],
+                                        correlation_base=f"DOC_UPLOADED:{document.document_id}",
+                                        transition_origin="routes.documents.upload_zip_archive",
+                                        transition_fanout=tf_zip,
+                                        document_id=document.document_id,
+                                        stale_document_transition_possible=True,
+                                    )
+                                    zip_authority_fanout_by_document_id[document.document_id] = tf_zip
                         except Exception as e:
                             logger.warning(f"AI analysis failed for {filename}: {e}")
 
@@ -1077,16 +1269,21 @@ async def upload_zip_archive(
                 }
             )
             
-            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
+            from services.compliance_recalc_queue import TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
+
             for r in results:
                 if r.get("status") == "uploaded" and r.get("document_id"):
-                    await enqueue_compliance_recalc(
+                    doc_id_z = str(r["document_id"])
+                    await _document_path_enqueue_recalc(
+                        zip_authority_fanout_by_document_id.get(doc_id_z),
                         property_id=property_id,
                         client_id=user["client_id"],
                         trigger_reason=TRIGGER_DOC_UPLOADED,
                         actor_type=ACTOR_CLIENT,
                         actor_id=user.get("portal_user_id"),
-                        correlation_id=f"DOC_UPLOADED:{r['document_id']}",
+                        correlation_id=f"DOC_UPLOADED:{doc_id_z}",
+                        trigger_origin="routes.documents.upload_zip_archive",
+                        propagation_stage="post_zip_authority_sync",
                     )
                     try:
                         from services.score_events_service import write_score_event, EVENT_DOCUMENT_UPLOADED, ACTOR_ROLE_CLIENT
@@ -1335,6 +1532,7 @@ async def perform_client_document_upload(
 
     apply_v2_defaults_to_new_upload(doc)
     await db.documents.insert_one(doc)
+    client_upload_fanout: Optional[Dict[str, Any]] = None
     if requirement_id:
         await safe_upsert_document_upload_evidence_for_linked_document(
             db,
@@ -1346,7 +1544,18 @@ async def perform_client_document_upload(
             filename=file.filename,
             context="client_upload",
         )
-        await sync_requirement_evidence_authority(db, requirement_id)
+        client_upload_fanout = {}
+        await _document_path_sync_requirement_authority(
+            db,
+            requirement_id,
+            property_id=property_id,
+            client_id=user["client_id"],
+            correlation_base=f"DOC_UPLOADED:{document.document_id}",
+            transition_origin="routes.documents.perform_client_document_upload",
+            transition_fanout=client_upload_fanout,
+            document_id=document.document_id,
+            stale_document_transition_possible=True,
+        )
 
     asyncio.create_task(
         _run_analysis_after_upload(
@@ -1361,15 +1570,18 @@ async def perform_client_document_upload(
     from services.provisioning import provisioning_service
 
     await provisioning_service._update_property_compliance(property_id)
-    from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
+    from services.compliance_recalc_queue import TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
 
-    await enqueue_compliance_recalc(
+    await _document_path_enqueue_recalc(
+        client_upload_fanout,
         property_id=property_id,
         client_id=user["client_id"],
         trigger_reason=TRIGGER_DOC_UPLOADED,
         actor_type=ACTOR_CLIENT,
         actor_id=user.get("portal_user_id"),
         correlation_id=f"DOC_UPLOADED:{document.document_id}",
+        trigger_origin="routes.documents.perform_client_document_upload",
+        propagation_stage="post_client_upload_authority_sync",
     )
     try:
         from services.score_events_service import write_score_event, EVENT_DOCUMENT_UPLOADED, ACTOR_ROLE_CLIENT
@@ -1451,6 +1663,17 @@ async def perform_client_document_upload(
             ),
         )
 
+    workflow_activation_observability: Optional[Dict[str, Any]] = None
+    if requirement_id and client_upload_fanout is not None:
+        doc_corr = f"DOC_UPLOADED:{document.document_id}"
+        obligation_slice = _resolve_bound_document_upload_activation_obligation_slice(requirement)
+        if obligation_slice is not None:
+            workflow_activation_observability = _workflow_activation_observability_for_bounded_document_upload_slice(
+                client_upload_fanout,
+                obligation_slice=obligation_slice,
+                document_upload_correlation_id=doc_corr,
+            )
+
     out: Dict[str, Any] = {
         "message": "Document uploaded successfully",
         "document_id": document.document_id,
@@ -1476,6 +1699,8 @@ async def perform_client_document_upload(
         }
     out["document_metadata"] = meta_dict
     out["validation_result"] = validation_result_persist
+    if workflow_activation_observability is not None:
+        out["workflow_activation_observability"] = workflow_activation_observability
     return out
 
 
@@ -1692,19 +1917,34 @@ async def admin_upload_document(
             filename=file.filename,
             context="admin_upload",
         )
-        await sync_requirement_evidence_authority(db, requirement_id)
-        
+        admin_upload_fanout: Dict[str, Any] = {}
+        await _document_path_sync_requirement_authority(
+            db,
+            requirement_id,
+            property_id=property_id,
+            client_id=client_id,
+            correlation_base=f"ADMIN_UPLOAD:{document.document_id}",
+            transition_origin="routes.documents.admin_upload_document",
+            transition_fanout=admin_upload_fanout,
+            document_id=document.document_id,
+            stale_document_transition_possible=True,
+        )
+
         # Do not mark requirement as satisfied on upload; user/admin confirms via apply-extraction or modal
         from services.provisioning import provisioning_service
         await provisioning_service._update_property_compliance(property_id)
-        from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_ADMIN_UPLOAD, ACTOR_ADMIN
-        await enqueue_compliance_recalc(
+        from services.compliance_recalc_queue import TRIGGER_ADMIN_UPLOAD, ACTOR_ADMIN
+
+        await _document_path_enqueue_recalc(
+            admin_upload_fanout,
             property_id=property_id,
             client_id=client_id,
             trigger_reason=TRIGGER_ADMIN_UPLOAD,
             actor_type=ACTOR_ADMIN,
             actor_id=user.get("portal_user_id"),
             correlation_id=f"ADMIN_UPLOAD:{document.document_id}",
+            trigger_origin="routes.documents.admin_upload_document",
+            propagation_stage="post_admin_upload_authority_sync",
         )
         
         # Audit log
@@ -1843,7 +2083,18 @@ async def admin_confirm_extraction(request: Request, body: AdminExtractionConfir
                 except (TypeError, ValueError):
                     pass
             await db.requirements.update_one({"requirement_id": requirement_id}, {"$set": update_fields})
-            await sync_requirement_evidence_authority(db, requirement_id)
+            admin_extraction_fanout: Dict[str, Any] = {}
+            await _document_path_sync_requirement_authority(
+                db,
+                requirement_id,
+                property_id=str(document.get("property_id") or "") or None,
+                client_id=str(document.get("client_id") or ""),
+                correlation_base=f"ADMIN_EXTRACTION_CONFIRM:{document_id}",
+                transition_origin="routes.documents.admin_confirm_extraction",
+                transition_fanout=admin_extraction_fanout,
+                document_id=document_id,
+                stale_document_transition_possible=True,
+            )
         except ValueError:
             pass
     now = datetime.now(timezone.utc)
@@ -1886,7 +2137,14 @@ async def admin_reject_extraction(request: Request, body: AdminExtractionRejectB
         {"document_id": document_id},
         {"$set": {"extraction_status": "REJECTED", "ai_extraction.review_status": "rejected", "ai_extraction.rejection_reason": body.reason or "Admin rejected"}}
     )
-    await sync_for_documents_touching(db, document_id=document_id)
+    reject_touch_fanout: Dict[str, Any] = {}
+    await sync_for_documents_touching(
+        db,
+        document_id=document_id,
+        transition_fanout_out=reject_touch_fanout,
+        correlation_base=f"DOC_TOUCH_REJECT:{document_id}",
+        transition_origin=transition_origin_document_touch("admin_extraction_reject"),
+    )
     await create_audit_log(
         action=AuditAction.DOCUMENT_AI_ANALYZED,
         actor_id=None,
@@ -1983,6 +2241,7 @@ async def verify_document(
         )
         
         # Update requirement status to COMPLIANT when linked
+        verify_v1_fanout: Optional[Dict[str, Any]] = None
         if document.get("requirement_id"):
             await db.requirements.update_one(
                 {"requirement_id": document["requirement_id"]},
@@ -1996,7 +2255,19 @@ async def verify_document(
                     }
                 },
             )
-            await sync_requirement_evidence_authority(db, str(document["requirement_id"]))
+            verify_v1_fanout = {}
+            await _document_path_sync_requirement_authority(
+                db,
+                str(document["requirement_id"]),
+                property_id=str(document.get("property_id") or "") or None,
+                client_id=str(document.get("client_id") or ""),
+                correlation_base=f"DOC_STATUS_CHANGED:{document_id}:VERIFIED",
+                transition_origin="routes.documents.verify_document",
+                transition_fanout=verify_v1_fanout,
+                document_id=document_id,
+                verification_replay_possible=_document_verification_replay_heuristic(old_status),
+                stale_document_transition_possible=True,
+            )
             try:
                 await _finalize_active_compliance_jobs_after_certificate_verified(
                     db,
@@ -2007,19 +2278,23 @@ async def verify_document(
                 )
             except Exception as fin_e:
                 logger.warning("Active compliance job finalize on verify skipped: %s", fin_e)
-        
+
         # Recompute property compliance (skip for client-level docs with no property_id)
         if document.get("property_id"):
             from services.provisioning import provisioning_service
             await provisioning_service._update_property_compliance(document["property_id"])
-            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_STATUS_CHANGED, ACTOR_ADMIN
-            await enqueue_compliance_recalc(
+            from services.compliance_recalc_queue import TRIGGER_DOC_STATUS_CHANGED, ACTOR_ADMIN
+
+            await _document_path_enqueue_recalc(
+                verify_v1_fanout,
                 property_id=document["property_id"],
                 client_id=document["client_id"],
                 trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
                 actor_type=ACTOR_ADMIN,
                 actor_id=user.get("portal_user_id"),
                 correlation_id=f"DOC_STATUS_CHANGED:{document_id}:VERIFIED",
+                trigger_origin="routes.documents.verify_document",
+                propagation_stage="post_verify_v1_authority_sync",
             )
 
         # Audit log
@@ -2160,21 +2435,33 @@ async def reject_document(request: Request, document_id: str, reason: str = Form
             {"$set": {"status": DocumentStatus.REJECTED.value}}
         )
         
+        reject_fanout: Dict[str, Any] = {}
         # If this was the only verified doc for the requirement, revert requirement and sync property
         if document.get("requirement_id"):
             await _revert_requirement_if_no_verified_docs(
-                db, document["requirement_id"], document.get("property_id")
+                db,
+                str(document["requirement_id"]),
+                document.get("property_id"),
+                document_id=document_id,
+                transition_observability_out=reject_fanout,
+                correlation_base=f"DOC_STATUS_CHANGED:{document_id}:REJECTED",
+                transition_origin="routes.documents.reject_document",
+                client_id=str(document.get("client_id") or ""),
             )
         property_id = document.get("property_id")
         if property_id:
-            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_STATUS_CHANGED, ACTOR_ADMIN
-            await enqueue_compliance_recalc(
+            from services.compliance_recalc_queue import TRIGGER_DOC_STATUS_CHANGED, ACTOR_ADMIN
+
+            await _document_path_enqueue_recalc(
+                reject_fanout if reject_fanout.get("transition_id") else None,
                 property_id=property_id,
                 client_id=document["client_id"],
                 trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
                 actor_type=ACTOR_ADMIN,
                 actor_id=user.get("portal_user_id"),
                 correlation_id=f"DOC_STATUS_CHANGED:{document_id}:REJECTED",
+                trigger_origin="routes.documents.reject_document",
+                propagation_stage="post_reject_revert_authority_sync",
             )
         
         # Audit log
@@ -2228,17 +2515,31 @@ async def delete_document(request: Request, document_id: str):
         except Exception as wo_proof_err:
             logger.warning("Compliance WO proof reconcile on client delete failed: %s", wo_proof_err)
         await db.documents.delete_one({"document_id": document_id})
+        delete_fanout: Dict[str, Any] = {}
         if requirement_id:
-            await _revert_requirement_if_no_verified_docs(db, requirement_id, property_id)
+            await _revert_requirement_if_no_verified_docs(
+                db,
+                requirement_id,
+                property_id,
+                document_id=document_id,
+                transition_observability_out=delete_fanout,
+                correlation_base=f"DOC_DELETED:{document_id}",
+                transition_origin="routes.documents.delete_document",
+                client_id=str(user.get("client_id") or ""),
+            )
         if property_id:
-            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_DELETED, ACTOR_CLIENT
-            await enqueue_compliance_recalc(
+            from services.compliance_recalc_queue import TRIGGER_DOC_DELETED, ACTOR_CLIENT
+
+            await _document_path_enqueue_recalc(
+                delete_fanout if delete_fanout.get("transition_id") else None,
                 property_id=property_id,
                 client_id=user["client_id"],
                 trigger_reason=TRIGGER_DOC_DELETED,
                 actor_type=ACTOR_CLIENT,
                 actor_id=user.get("portal_user_id"),
                 correlation_id=f"DOC_DELETED:{document_id}",
+                trigger_origin="routes.documents.delete_document",
+                propagation_stage="post_client_delete_revert_authority_sync",
             )
         try:
             fp = document.get("file_path", "")
@@ -2285,17 +2586,31 @@ async def admin_delete_document(request: Request, document_id: str):
         except Exception as wo_proof_err:
             logger.warning("Compliance WO proof reconcile on admin delete failed: %s", wo_proof_err)
         await db.documents.delete_one({"document_id": document_id})
+        admin_delete_fanout: Dict[str, Any] = {}
         if requirement_id:
-            await _revert_requirement_if_no_verified_docs(db, requirement_id, property_id)
+            await _revert_requirement_if_no_verified_docs(
+                db,
+                requirement_id,
+                property_id,
+                document_id=document_id,
+                transition_observability_out=admin_delete_fanout,
+                correlation_base=f"ADMIN_DELETE:{document_id}",
+                transition_origin="routes.documents.admin_delete_document",
+                client_id=str(client_id),
+            )
         if property_id:
-            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_ADMIN_DELETE, ACTOR_ADMIN
-            await enqueue_compliance_recalc(
+            from services.compliance_recalc_queue import TRIGGER_ADMIN_DELETE, ACTOR_ADMIN
+
+            await _document_path_enqueue_recalc(
+                admin_delete_fanout if admin_delete_fanout.get("transition_id") else None,
                 property_id=property_id,
                 client_id=client_id,
                 trigger_reason=TRIGGER_ADMIN_DELETE,
                 actor_type=ACTOR_ADMIN,
                 actor_id=user.get("portal_user_id"),
                 correlation_id=f"ADMIN_DELETE:{document_id}",
+                trigger_origin="routes.documents.admin_delete_document",
+                propagation_stage="post_admin_delete_revert_authority_sync",
             )
         try:
             fp = document.get("file_path", "")
@@ -2323,14 +2638,60 @@ async def admin_delete_document(request: Request, document_id: str):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete document")
 
 
-async def _revert_requirement_if_no_verified_docs(db, requirement_id: str, property_id: Optional[str]) -> None:
+async def _revert_requirement_if_no_verified_docs(
+    db,
+    requirement_id: str,
+    property_id: Optional[str],
+    *,
+    document_id: Optional[str] = None,
+    transition_observability_out: Optional[Dict[str, Any]] = None,
+    correlation_base: Optional[str] = None,
+    transition_origin: str = "routes.documents._revert_requirement_if_no_verified_docs",
+    client_id: Optional[str] = None,
+) -> None:
     """If no VERIFIED document remains for this requirement, set requirement to PENDING, restore a baseline estimated due date, and sync property compliance.
     Avoids presenting a stale certificate date as fact while keeping reminders useful."""
+    resolved_client_id = (client_id or "").strip()
+    if transition_observability_out is not None and not resolved_client_id:
+        fq: Dict[str, Any] = {"requirement_id": requirement_id}
+        if property_id:
+            fq["property_id"] = property_id
+        req_lookup = await db.requirements.find_one(fq, {"_id": 0, "client_id": 1})
+        resolved_client_id = str((req_lookup or {}).get("client_id") or "")
+
+    cor_base = (correlation_base or "").strip() or f"REQ_REVERT_SYNC:{requirement_id}"
+
+    async def _sync_authority_after_revert_state() -> None:
+        if transition_observability_out is not None and resolved_client_id:
+            cid = ensure_requirement_transition_correlation_id(
+                requirement_id=str(requirement_id),
+                property_id=property_id,
+                client_id=resolved_client_id,
+                correlation_id=cor_base,
+            )
+            await sync_requirement_evidence_authority(
+                db,
+                requirement_id,
+                property_id_hint=property_id,
+                correlation_id=cid,
+                transition_origin=transition_origin,
+                transition_observability_out=transition_observability_out,
+            )
+            if document_id:
+                merge_document_path_lineage_flags(
+                    transition_observability_out,
+                    document_id=document_id,
+                    revert_retrigger_possible=True,
+                    stale_document_transition_possible=True,
+                )
+        else:
+            await sync_requirement_evidence_authority(db, requirement_id, property_id_hint=property_id)
+
     remaining = await db.documents.count_documents(
         {"requirement_id": requirement_id, "status": DocumentStatus.VERIFIED.value}
     )
     if remaining > 0:
-        await sync_requirement_evidence_authority(db, requirement_id, property_id_hint=property_id)
+        await _sync_authority_after_revert_state()
         return
     filter_query = {"requirement_id": requirement_id}
     if property_id:
@@ -2353,9 +2714,10 @@ async def _revert_requirement_if_no_verified_docs(db, requirement_id: str, prope
             "$unset": {"extracted_expiry_date": "", "confirmed_expiry_date": ""},
         },
     )
-    await sync_requirement_evidence_authority(db, requirement_id, property_id_hint=property_id)
+    await _sync_authority_after_revert_state()
     if property_id:
         from services.provisioning import provisioning_service
+
         await provisioning_service._update_property_compliance(property_id)
 
 
@@ -3042,7 +3404,20 @@ async def apply_ai_extraction(
             {"requirement_id": requirement_id},
             {"$set": merged_req_update},
         )
-        await sync_requirement_evidence_authority(db, requirement_id)
+        apply_ai_fanout: Dict[str, Any] = {}
+        await _document_path_sync_requirement_authority(
+            db,
+            requirement_id,
+            property_id=str(document.get("property_id") or "") or None,
+            client_id=str(document.get("client_id") or ""),
+            correlation_base=f"AI_APPLIED:{document_id}",
+            transition_origin="routes.documents.apply_ai_extraction",
+            transition_fanout=apply_ai_fanout,
+            document_id=document_id,
+            verification_replay_possible=_document_verification_replay_heuristic(str(before_state.get("status"))),
+            document_replacement_detected=bool(confirmed_data),
+            stale_document_transition_possible=True,
+        )
         after_state["due_date"] = merged_req_update.get("due_date", after_state["due_date"])
         after_state["status"] = merged_req_update.get("status", after_state["status"])
         
@@ -3074,14 +3449,18 @@ async def apply_ai_extraction(
         
         property_id = document.get("property_id")
         if property_id:
-            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_AI_APPLIED, ACTOR_CLIENT
-            await enqueue_compliance_recalc(
+            from services.compliance_recalc_queue import TRIGGER_AI_APPLIED, ACTOR_CLIENT
+
+            await _document_path_enqueue_recalc(
+                apply_ai_fanout,
                 property_id=property_id,
                 client_id=document["client_id"],
                 trigger_reason=TRIGGER_AI_APPLIED,
                 actor_type=ACTOR_CLIENT,
                 actor_id=user.get("portal_user_id"),
                 correlation_id=f"AI_APPLIED:{document_id}",
+                trigger_origin="routes.documents.apply_ai_extraction",
+                propagation_stage="post_apply_ai_extraction_authority_sync",
             )
             try:
                 from services.property_assets_service import update_asset_last_service_from_requirement

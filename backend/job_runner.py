@@ -278,6 +278,7 @@ async def run_compliance_recalc_worker():
             STATUS_FAILED,
             STATUS_DEAD,
         )
+        from services.compliance_recalc_correlation import normalize_recalc_job_context
         from services.compliance_recalc_worker_job_outcomes import build_compliance_recalc_worker_run_result
         from services.compliance_scoring_service import recalculate_and_persist
         from models import AuditAction
@@ -313,7 +314,11 @@ async def run_compliance_recalc_worker():
                 claim_skipped += 1
                 continue
             actor = {"id": actor_id or "system", "role": actor_type}
-            context = {"correlation_id": correlation_id, "trigger_reason": trigger_reason}
+            _nctx = normalize_recalc_job_context(job)
+            context = {
+                "correlation_id": (_nctx.get("correlation_id") or correlation_id or ""),
+                "trigger_reason": (_nctx.get("trigger_reason") or trigger_reason or ""),
+            }
             old_prop = await db.properties.find_one(
                 {"property_id": property_id},
                 {"_id": 0, "compliance_score": 1, "compliance_version": 1},
@@ -384,9 +389,21 @@ async def run_compliance_recalc_worker():
                     await record_score_recalc(client_id)
                 except Exception as auto_err:
                     logger.debug("automation_status score recalc stamp skipped: %s", auto_err)
+                done_iso = datetime.now(timezone.utc).isoformat()
                 await db.compliance_recalc_queue.update_one(
                     {"_id": jid},
-                    {"$set": {"status": STATUS_DONE, "updated_at": datetime.now(timezone.utc).isoformat()}},
+                    {
+                        "$set": {
+                            "status": STATUS_DONE,
+                            "updated_at": done_iso,
+                            "recalc_execution_signals": {
+                                "degraded_execution": False,
+                                "partial_recovery": False,
+                                "retry_pending": False,
+                                "reconciliation_recommended": False,
+                            },
+                        }
+                    },
                 )
                 processed += 1
             except Exception as e:
@@ -401,30 +418,63 @@ async def run_compliance_recalc_worker():
                     next_run_at = (now + timedelta(seconds=delta)).isoformat()
                     failed_retry += 1
                 err_str = str(e)
+                upd_iso = datetime.now(timezone.utc).isoformat()
+                failure_stage = "recalculate_and_persist"
+                retry_exhausted = new_status == STATUS_DEAD
+                signals = {
+                    "degraded_execution": bool(retry_exhausted),
+                    "partial_recovery": False,
+                    "retry_pending": new_status == STATUS_FAILED,
+                    "reconciliation_recommended": retry_exhausted,
+                }
+                fail_fields: Dict[str, Any] = {
+                    "status": new_status,
+                    "attempts": next_attempts,
+                    "retry_count": next_attempts,
+                    "next_run_at": next_run_at,
+                    "last_error": err_str,
+                    "updated_at": upd_iso,
+                    "failure_stage": failure_stage,
+                    "retry_exhausted": retry_exhausted,
+                    "recalc_execution_signals": signals,
+                    "last_retry_at": upd_iso,
+                }
+                if new_status == STATUS_DEAD:
+                    fail_fields["dead_state_at"] = upd_iso
+                    fail_fields["dead_state_reason"] = err_str[:4000] if err_str else None
                 await db.compliance_recalc_queue.update_one(
                     {"_id": jid},
-                    {"$set": {
-                        "status": new_status,
-                        "attempts": next_attempts,
-                        "next_run_at": next_run_at,
-                        "last_error": err_str,
-                        "updated_at": datetime.now(timezone.utc).isoformat(),
-                    }},
+                    {"$set": fail_fields},
                 )
+                audit_meta: Dict[str, Any] = {
+                    "attempts": next_attempts,
+                    "retry_count": next_attempts,
+                    "error": err_str,
+                    "correlation_id": correlation_id,
+                    "trigger_reason": trigger_reason,
+                    "failure_stage": failure_stage,
+                    "retry_exhausted": retry_exhausted,
+                    "last_retry_at": upd_iso,
+                }
+                if new_status == STATUS_DEAD:
+                    audit_meta["dead_state_at"] = upd_iso
+                    audit_meta["dead_state_reason"] = (err_str[:2000] if err_str else None)
                 await create_audit_log(
                     action=AuditAction.COMPLIANCE_RECALC_FAILED,
                     actor_id=actor_id,
                     client_id=client_id,
                     resource_type="property",
                     resource_id=property_id,
-                    metadata={
-                        "attempts": next_attempts,
-                        "error": err_str,
-                        "correlation_id": correlation_id,
-                        "trigger_reason": trigger_reason,
-                    },
+                    metadata=audit_meta,
                 )
-                logger.warning(f"Compliance recalc failed property_id={property_id} attempts={next_attempts} err={err_str}")
+                logger.warning(
+                    "Compliance recalc failed property_id=%s correlation_id=%s attempts=%s failure_stage=%s err=%s",
+                    property_id,
+                    correlation_id,
+                    next_attempts,
+                    failure_stage,
+                    err_str,
+                )
         return build_compliance_recalc_worker_run_result(
             {
                 "batch_size": batch_size,

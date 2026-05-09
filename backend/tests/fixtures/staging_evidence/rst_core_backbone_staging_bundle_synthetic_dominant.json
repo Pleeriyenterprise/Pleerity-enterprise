@@ -1,0 +1,83 @@
+{
+  "convergence_snapshot": {
+    "convergence_evidence_matrix": {
+      "matrix_rows": [
+        {
+          "join_classification": "JOIN_STRONG"
+        }
+      ]
+    }
+  },
+  "dual_family_staging_validation": {
+    "dual_family_staging_readiness_classification": "DUAL_FAMILY_STAGING_CONFIRMED",
+    "validation_snapshot": {
+      "drift": {
+        "finding_codes": []
+      }
+    }
+  },
+  "evidence_pack": {
+    "activation_governance_version": "workflow_runtime_activation_registry_v3",
+    "requirement_transition_core_backbone_activation_evidence": {
+      "ok": true
+    }
+  },
+  "governance_report_full": {
+    "requirement_transition_core_backbone_activation_operational_visibility": {
+      "schema_version": "x"
+    },
+    "runtime_activation_snapshot": {
+      "activation_governance_version": "workflow_runtime_activation_registry_v3",
+      "families": [
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC"
+        },
+        {
+          "activation_family": "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE"
+        }
+      ]
+    }
+  },
+  "rst_core_backbone_activation_operational_visibility": {
+    "schema_version": "rst_bb_vis_v1"
+  },
+  "schema_version": "rst_core_backbone_staging_evidence_bundle_v1",
+  "transition_traces": [
+    {
+      "correlation_id": "c1",
+      "downstream_trigger_targets": [
+        {
+          "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "gap"
+        },
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "recalc"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "regen"
+        }
+      ],
+      "rst_core_backbone_activation": {
+        "child_compliance_recalc_permitted": true,
+        "child_regeneration_recalc_permitted": true,
+        "permitted": true,
+        "propagation_skipped_visibility": false
+      },
+      "transition_id": "t1"
+    }
+  ]
+}

@@ -23,6 +23,7 @@ See ``scripts/backfill_evidence_authority.py`` for idempotent migration.
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import datetime, timezone, date
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -34,6 +35,11 @@ from models.evidence_review import EvidenceReviewState
 from services.evidence_document_match_engine import document_blocks_verified_satisfaction
 from services.evidence_review_config import is_feature_evidence_review_v2
 from services.evidence_review_migration import effective_evidence_review_state
+from services.requirement_transition_observability import (
+    TRANSITION_FAILED,
+    build_requirement_transition_trace,
+    ensure_requirement_transition_correlation_id,
+)
 from services.requirement_workflow_audit import (
     WC_DOCUMENT_UPLOAD,
     WC_EXTERNAL_ASSESSMENT_EVIDENCE,
@@ -831,6 +837,9 @@ async def sync_requirement_evidence_authority(
     requirement_id: str,
     *,
     property_id_hint: Optional[str] = None,
+    correlation_id: Optional[str] = None,
+    transition_origin: Optional[str] = None,
+    transition_observability_out: Optional[Dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Recompute and persist evidence_authority (+ legacy mirror). Returns blob or None."""
     q: Dict[str, Any] = {"requirement_id": requirement_id}
@@ -840,7 +849,29 @@ async def sync_requirement_evidence_authority(
     if not requirement:
         requirement = await db.requirements.find_one({"requirement_id": requirement_id}, {"_id": 0})
     if not requirement:
-        logger.warning("sync_requirement_evidence_authority: requirement not found %s", requirement_id)
+        logger.warning(
+            "sync_requirement_evidence_authority: requirement not found %s",
+            requirement_id,
+            extra=compliance_fanout_extra(
+                op="requirement_transition",
+                stage="requirement_missing",
+                requirement_id=str(requirement_id),
+                property_id=str(property_id_hint or "") or None,
+                correlation_id=(correlation_id or None),
+                transition_origin=transition_origin,
+            ),
+        )
+        if transition_observability_out is not None:
+            transition_observability_out.clear()
+            transition_observability_out.update(
+                {
+                    "transition_id": f"missing:{requirement_id}",
+                    "correlation_id": correlation_id or "",
+                    "transition_outcome": TRANSITION_FAILED,
+                    "degraded_reason": "requirement_not_found",
+                    "non_blocking": True,
+                }
+            )
         return None
 
     pid = requirement.get("property_id") or property_id_hint
@@ -870,6 +901,15 @@ async def sync_requirement_evidence_authority(
         evidence_policy=evidence_policy,
     )
     now = datetime.now(timezone.utc).isoformat()
+    cid_client = str(requirement.get("client_id") or "") or None
+    corr = ensure_requirement_transition_correlation_id(
+        requirement_id=str(requirement_id),
+        property_id=str(pid or "") if pid else None,
+        client_id=cid_client,
+        correlation_id=correlation_id,
+    )
+    transition_id = f"tr:{requirement_id}:{uuid.uuid4().hex[:16]}"
+    before_snap = {**requirement}
     await db.requirements.update_one(
         {"requirement_id": requirement_id},
         {
@@ -881,11 +921,25 @@ async def sync_requirement_evidence_authority(
         },
     )
     merged = {**requirement, "evidence_authority": blob, "evidence_authority_synced_at": now, **mirror}
+    gap_errors: List[Any] = []
+    gap_exc: Optional[Exception] = None
+    downstream_propagation: List[Dict[str, Any]] = []
     try:
         from services.compliance_gap_sync import sync_compliance_gaps_for_requirement
 
         sync_out = await sync_compliance_gaps_for_requirement(db, merged, property_doc=property_doc)
         errs = sync_out.get("errors") or []
+        gap_errors = list(errs) if errs else []
+        downstream_propagation.append(
+            {
+                "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+                "trigger_mode": "sync",
+                "enqueue_attempted": True,
+                "enqueue_succeeded": not gap_errors,
+                "propagation_degraded_possible": bool(gap_errors),
+                "reconciliation_recommended": bool(gap_errors),
+            }
+        )
         if errs:
             logger.warning(
                 "sync_compliance_gaps_for_requirement reported errors requirement_id=%s: %s",
@@ -894,13 +948,28 @@ async def sync_requirement_evidence_authority(
                 extra=compliance_fanout_extra(
                     op="gap_sync",
                     stage="partial",
-                    client_id=str(requirement.get("client_id") or "") or None,
+                    client_id=cid_client,
                     property_id=str(pid or "") or None,
                     requirement_id=str(requirement_id),
+                    correlation_id=corr,
+                    transition_id=transition_id,
+                    transition_origin=transition_origin,
+                    propagation_stage="gap_sync",
                     error_count=len(errs),
                 ),
             )
-    except Exception as gap_exc:
+    except Exception as exc:
+        gap_exc = exc
+        downstream_propagation.append(
+            {
+                "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+                "trigger_mode": "sync",
+                "enqueue_attempted": True,
+                "enqueue_succeeded": False,
+                "propagation_degraded_possible": True,
+                "reconciliation_recommended": True,
+            }
+        )
         logger.warning(
             "sync_compliance_gaps_for_requirement failed requirement_id=%s: %s",
             requirement_id,
@@ -908,26 +977,127 @@ async def sync_requirement_evidence_authority(
             extra=compliance_fanout_extra(
                 op="gap_sync",
                 stage="partial",
-                client_id=str(requirement.get("client_id") or "") or None,
+                client_id=cid_client,
                 property_id=str(pid or "") or None,
                 requirement_id=str(requirement_id),
+                correlation_id=corr,
+                transition_id=transition_id,
+                transition_origin=transition_origin,
+                propagation_stage="gap_sync_exception",
                 exc_type=type(gap_exc).__name__,
             ),
         )
+    trace = build_requirement_transition_trace(
+        transition_id=transition_id,
+        correlation_id=corr,
+        transition_origin=transition_origin,
+        requirement_id=str(requirement_id),
+        property_id=str(pid or "") if pid else None,
+        client_id=cid_client,
+        before_requirement=before_snap,
+        after_requirement=merged,
+        gap_errors=gap_errors,
+        gap_exception=gap_exc,
+        downstream_propagation=downstream_propagation,
+    )
+    if transition_observability_out is not None:
+        transition_observability_out.clear()
+        transition_observability_out.update(trace)
+    logger.debug(
+        "sync_requirement_evidence_authority transition trace requirement_id=%s outcome=%s",
+        requirement_id,
+        trace.get("transition_outcome"),
+        extra=compliance_fanout_extra(
+            op="requirement_transition",
+            stage="sync_complete",
+            client_id=cid_client,
+            property_id=str(pid or "") or None,
+            requirement_id=str(requirement_id),
+            correlation_id=corr,
+            transition_id=transition_id,
+            transition_origin=transition_origin,
+            propagation_stage="authority_persisted",
+            transition_outcome=str(trace.get("transition_outcome")),
+            previous_state=trace.get("previous_state"),
+            resulting_state=trace.get("resulting_state"),
+            semantic_state=trace.get("semantic_state"),
+            state_reason=trace.get("state_reason"),
+            replay_possible=trace.get("replay_possible"),
+            duplicate_transition_possible=trace.get("duplicate_transition_possible"),
+        ),
+    )
     return blob
 
 
-async def sync_for_documents_touching(db, *, document_id: Optional[str] = None, requirement_id: Optional[str] = None):
-    """Convenience: sync after a document mutation."""
+async def sync_for_documents_touching(
+    db,
+    *,
+    document_id: Optional[str] = None,
+    requirement_id: Optional[str] = None,
+    transition_fanout_out: Optional[Dict[str, Any]] = None,
+    correlation_base: Optional[str] = None,
+    transition_origin: Optional[str] = None,
+):
+    """
+    Convenience: sync after a document mutation.
+
+    When ``transition_fanout_out`` is provided, authority sync runs with transition
+    observability (``DOCUMENT_TOUCH_SYNC`` lineage by default). If no linked
+    requirement exists, the dict is left unchanged (no fake traces).
+    """
+    from services.authority_mutation_fanout import authority_sync_with_transition_observability
+    from services.requirement_transition_observability import (
+        merge_automated_system_lineage_flags,
+        transition_origin_document_touch,
+    )
+
+    async def _sync_with_optional_fanout(rid: str, *, corr: str, origin: str) -> None:
+        if transition_fanout_out is None:
+            await sync_requirement_evidence_authority(db, rid)
+            return
+        req = await db.requirements.find_one(
+            {"requirement_id": rid},
+            {"_id": 0, "client_id": 1, "property_id": 1},
+        )
+        cid = str((req or {}).get("client_id") or "").strip()
+        if not cid:
+            await sync_requirement_evidence_authority(db, rid)
+            return
+        pid = str((req or {}).get("property_id") or "").strip() or None
+        await authority_sync_with_transition_observability(
+            db,
+            str(rid),
+            property_id=pid,
+            client_id=cid,
+            correlation_base=corr,
+            transition_origin=origin,
+            transition_fanout=transition_fanout_out,
+        )
+        merge_automated_system_lineage_flags(
+            transition_fanout_out,
+            generic_touch_sync=True,
+            reconciliation_sync_possible=True,
+        )
+
     if requirement_id:
-        await sync_requirement_evidence_authority(db, requirement_id)
+        origin = transition_origin or transition_origin_document_touch("sync_for_documents_touching")
+        corr = correlation_base or f"DOC_TOUCH:req:{requirement_id}"
+        await _sync_with_optional_fanout(str(requirement_id), corr=corr, origin=origin)
         return
     if not document_id:
         return
-    doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0, "requirement_id": 1})
+    doc = await db.documents.find_one(
+        {"document_id": document_id},
+        {"_id": 0, "requirement_id": 1},
+    )
     rid = (doc or {}).get("requirement_id")
     if rid:
-        await sync_requirement_evidence_authority(db, str(rid))
+        origin = transition_origin or transition_origin_document_touch("sync_for_documents_touching")
+        corr = correlation_base or f"DOC_TOUCH:doc:{document_id}"
+        await _sync_with_optional_fanout(str(rid), corr=corr, origin=origin)
+        return
+    if transition_fanout_out is None:
+        return
 
 
 def map_authority_to_scoring_status(requirement: Dict[str, Any]) -> Optional[str]:

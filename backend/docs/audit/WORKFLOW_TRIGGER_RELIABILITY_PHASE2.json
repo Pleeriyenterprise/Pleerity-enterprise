@@ -1,0 +1,683 @@
+{
+  "audit_only": true,
+  "cache_ownership_ambiguity_findings": [
+    "CACHE_INVALIDATION: HTTP Cache-Control varies by route (calendar/cms/leads/admin_orders) without shared policy module.",
+    "CACHE_INVALIDATION: Contractor routing invalidation is domain-local; not unified with portal asset cache."
+  ],
+  "evidence_based_reliability_matrix": [
+    {
+      "audit_priority": "high",
+      "downstream_propagation_chain_summary": "No unified cache coordinator; CDN/browser + ad-hoc Mongo invalidations.",
+      "idempotency_evidence_class": "NO_IDEMPOTENCY_EVIDENCE",
+      "known_ambiguity_areas": [
+        "Browser/CDN vs API Cache-Control policy ownership split"
+      ],
+      "operational_confidence": "LOW",
+      "orchestration_maturity": "ORCHESTRATION_FRAGMENTED",
+      "reconciliation_evidence_class": "NO_RECONCILIATION_EVIDENCE",
+      "retry_evidence_class": "NO_RETRY_EVIDENCE",
+      "runtime_call_paths": [
+        {
+          "audit_logging_observed": false,
+          "call_path_classification": "CALL_PATH_SYNCHRONOUS",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "routes/calendar.py",
+          "function": "response headers Cache-Control",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "header_only",
+          "trigger_direction": "http_response"
+        },
+        {
+          "audit_logging_observed": false,
+          "call_path_classification": "CALL_PATH_SYNCHRONOUS",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "routes/cms.py",
+          "function": "public Cache-Control max-age",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "header_only",
+          "trigger_direction": "http_response"
+        },
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_ASYNC",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "services/work_order_contractor_routing_service.py",
+          "function": "invalidate_pending_routing_for_work_order",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": true,
+          "sync_async_nature": "async_mongo_updates",
+          "trigger_direction": "domain_write"
+        }
+      ],
+      "silent_failure_risk_class": "HIGH_SILENT_FAILURE_RISK",
+      "stale_state_dependency_class": "CRITICAL_STALE_STATE_DEPENDENCY",
+      "strongest_evidence_found": [
+        "Explicit invalidate_pending_routing_for_work_order with audit attempt"
+      ],
+      "trigger_entry_points": [
+        "HTTP response headers (multiple routes)",
+        "services/work_order_contractor_routing_service.py"
+      ],
+      "weakest_evidence_found": [
+        "No central invalidation registry across API surfaces"
+      ],
+      "workflow_family": "CACHE_INVALIDATION"
+    },
+    {
+      "audit_priority": "high",
+      "downstream_propagation_chain_summary": "Requirement row mutation \u2192 recalc enqueue \u2192 gap sync / score worker (multiple writers).",
+      "idempotency_evidence_class": "PARTIAL_IDEMPOTENCY_EVIDENCE",
+      "known_ambiguity_areas": [
+        "Ordering between gap sync and score read in UI"
+      ],
+      "operational_confidence": "MODERATE",
+      "orchestration_maturity": "ORCHESTRATION_FRAGMENTED",
+      "reconciliation_evidence_class": "RECONCILIATION_PARTIAL",
+      "retry_evidence_class": "RETRY_PARTIAL",
+      "runtime_call_paths": [
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_MIXED",
+          "explicit_idempotency_protections_observed": true,
+          "explicit_retries_observed": false,
+          "file": "routes/client.py",
+          "function": "requirements.update_one / insert_one (mark not applicable path)",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "sync_db_then_async_enqueue",
+          "trigger_direction": "client_write"
+        },
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_ASYNC",
+          "explicit_idempotency_protections_observed": true,
+          "explicit_retries_observed": false,
+          "file": "routes/client_compliance_evidence.py",
+          "function": "enqueue_compliance_recalc",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "async_enqueue",
+          "trigger_direction": "client_evidence_write"
+        },
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_ASYNC",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "services/requirement_evidence_authority.py",
+          "function": "sync_compliance_gaps_for_requirement (imported)",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": true,
+          "sync_async_nature": "async_service_call",
+          "trigger_direction": "semantic_followthrough"
+        }
+      ],
+      "silent_failure_risk_class": "MODERATE_SILENT_FAILURE_RISK",
+      "stale_state_dependency_class": "MODERATE_STALE_STATE_DEPENDENCY",
+      "strongest_evidence_found": [
+        "enqueue correlation dedupe on compliance_recalc_queue"
+      ],
+      "trigger_entry_points": [
+        "routes/client.py",
+        "routes/client_compliance_evidence.py",
+        "services/requirement_evidence_authority.py"
+      ],
+      "weakest_evidence_found": [
+        "Multiple entrypoints to requirement row without single saga coordinator"
+      ],
+      "workflow_family": "REQUIREMENT_STATE_TRANSITION"
+    },
+    {
+      "audit_priority": "high",
+      "downstream_propagation_chain_summary": "Infer gaps \u2192 upsert compliance_gaps \u2192 optional operational bridge \u2192 aggregates read by Command Centre / portfolio.",
+      "idempotency_evidence_class": "PARTIAL_IDEMPOTENCY_EVIDENCE",
+      "known_ambiguity_areas": [
+        "Runtime visibility gating resolves gaps without full propagation audit"
+      ],
+      "operational_confidence": "MODERATE",
+      "orchestration_maturity": "ORCHESTRATION_PARTIAL",
+      "reconciliation_evidence_class": "RECONCILIATION_PARTIAL",
+      "retry_evidence_class": "NO_RETRY_EVIDENCE",
+      "runtime_call_paths": [
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_ASYNC",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "services/compliance_gap_sync.py",
+          "function": "sync_compliance_gaps_for_requirement",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "async_persist",
+          "trigger_direction": "truth_change"
+        },
+        {
+          "audit_logging_observed": false,
+          "call_path_classification": "CALL_PATH_READ_DERIVED",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "services/compliance_gap_sync.py",
+          "function": "aggregate_gap_counts_for_client",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": true,
+          "swallowed_exception_pattern_observed": true,
+          "sync_async_nature": "async_read",
+          "trigger_direction": "read_aggregate"
+        },
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_MIXED",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "routes/properties.py",
+          "function": "_sync_compliance_gaps_for_property_requirements_after_materialization",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "async_batch",
+          "trigger_direction": "property_materialization"
+        }
+      ],
+      "silent_failure_risk_class": "MODERATE_SILENT_FAILURE_RISK",
+      "stale_state_dependency_class": "MODERATE_STALE_STATE_DEPENDENCY",
+      "strongest_evidence_found": [
+        "Explicit errors[] return contract on sync_compliance_gaps_for_requirement"
+      ],
+      "trigger_entry_points": [
+        "services/compliance_gap_sync.py",
+        "services/requirement_evidence_authority.py",
+        "routes/properties.py"
+      ],
+      "weakest_evidence_found": [
+        "No observed queue replay for gap upsert batch"
+      ],
+      "workflow_family": "COMPLIANCE_GAP_SYNC"
+    },
+    {
+      "audit_priority": "high",
+      "downstream_propagation_chain_summary": "Per-section try/except with degraded empty payloads; no single failure boundary.",
+      "idempotency_evidence_class": "WEAK_IDEMPOTENCY_EVIDENCE",
+      "known_ambiguity_areas": [
+        "Read-model composition: idempotency is operational best-effort only at bundle level"
+      ],
+      "operational_confidence": "LOW",
+      "orchestration_maturity": "ORCHESTRATION_READ_REBUILD_HEAVY",
+      "reconciliation_evidence_class": "NO_RECONCILIATION_EVIDENCE",
+      "retry_evidence_class": "NO_RETRY_EVIDENCE",
+      "runtime_call_paths": [
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_READ_DERIVED",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "services/command_center_service.py",
+          "function": "get_command_center_bundle",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": true,
+          "swallowed_exception_pattern_observed": true,
+          "sync_async_nature": "async_compose",
+          "trigger_direction": "client_read"
+        },
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_READ_DERIVED",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "services/command_center_service.py",
+          "function": "get_unified_tasks_digest / get_unified_tasks_for_client",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": true,
+          "swallowed_exception_pattern_observed": true,
+          "sync_async_nature": "async_subcalls",
+          "trigger_direction": "delegated_read"
+        },
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_READ_DERIVED",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "services/command_center_service.py",
+          "function": "calculate_compliance_score + aggregate_gap_counts_for_client",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": true,
+          "swallowed_exception_pattern_observed": true,
+          "sync_async_nature": "async_nested",
+          "trigger_direction": "nested_read"
+        }
+      ],
+      "silent_failure_risk_class": "HIGH_SILENT_FAILURE_RISK",
+      "stale_state_dependency_class": "HIGH_STALE_STATE_DEPENDENCY",
+      "strongest_evidence_found": [
+        "Structured logging on each swallowed subsystem failure"
+      ],
+      "trigger_entry_points": [
+        "services/command_center_service.py"
+      ],
+      "weakest_evidence_found": [
+        "Partial UI success with empty sections after failures"
+      ],
+      "workflow_family": "COMMAND_CENTER_REFRESH"
+    },
+    {
+      "audit_priority": "high",
+      "downstream_propagation_chain_summary": "message_logs + Postmark/Twilio + retry backoff tables.",
+      "idempotency_evidence_class": "STRONG_IDEMPOTENCY_EVIDENCE",
+      "known_ambiguity_areas": [
+        "Inline Postmark retry vs deferred queue overlap risk (documented in module header)"
+      ],
+      "operational_confidence": "MODERATE",
+      "orchestration_maturity": "ORCHESTRATION_PARTIAL",
+      "reconciliation_evidence_class": "RECONCILIATION_PARTIAL",
+      "retry_evidence_class": "RETRY_PRESENT",
+      "runtime_call_paths": [
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_MIXED",
+          "explicit_idempotency_protections_observed": true,
+          "explicit_retries_observed": true,
+          "file": "services/notification_orchestrator.py",
+          "function": "NotificationOrchestrator.send (+ idempotency_key path)",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "async_with_retry_queue",
+          "trigger_direction": "outbound_send"
+        },
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_PERIODIC",
+          "explicit_idempotency_protections_observed": true,
+          "explicit_retries_observed": true,
+          "file": "job_runner.py",
+          "function": "notification retry queue processor",
+          "periodic_job_dependency": true,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "async_worker_poll",
+          "trigger_direction": "deferred_retry"
+        }
+      ],
+      "silent_failure_risk_class": "MODERATE_SILENT_FAILURE_RISK",
+      "stale_state_dependency_class": "LOW_STALE_STATE_DEPENDENCY",
+      "strongest_evidence_found": [
+        "Sparse unique idempotency_key on message_logs",
+        "duplicate_ignored outcome"
+      ],
+      "trigger_entry_points": [
+        "services/notification_orchestrator.py",
+        "job_runner.py"
+      ],
+      "weakest_evidence_found": [
+        "Branching email vs SMS retry semantics differ"
+      ],
+      "workflow_family": "NOTIFICATION_DISPATCH"
+    },
+    {
+      "audit_priority": "high",
+      "downstream_propagation_chain_summary": "Queue doc \u2192 recalculate_and_persist \u2192 score_events (warn-only) \u2192 automation_status (debug-only on failure).",
+      "idempotency_evidence_class": "STRONG_IDEMPOTENCY_EVIDENCE",
+      "known_ambiguity_areas": [
+        "Lazy backfill path vs queue saturation under burst uploads"
+      ],
+      "operational_confidence": "MODERATE",
+      "orchestration_maturity": "ORCHESTRATION_PARTIAL",
+      "reconciliation_evidence_class": "RECONCILIATION_PRESENT",
+      "retry_evidence_class": "RETRY_PRESENT",
+      "runtime_call_paths": [
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_ASYNC",
+          "explicit_idempotency_protections_observed": true,
+          "explicit_retries_observed": false,
+          "file": "services/compliance_recalc_queue.py",
+          "function": "enqueue_compliance_recalc",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "async_mongo_insert",
+          "trigger_direction": "ingress_enqueue"
+        },
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_ASYNC",
+          "explicit_idempotency_protections_observed": true,
+          "explicit_retries_observed": true,
+          "file": "job_runner.py",
+          "function": "run_compliance_recalc_worker",
+          "periodic_job_dependency": true,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": true,
+          "sync_async_nature": "async_worker_batch",
+          "trigger_direction": "worker_claim"
+        },
+        {
+          "audit_logging_observed": false,
+          "call_path_classification": "CALL_PATH_READ_DERIVED",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "services/compliance_score.py",
+          "function": "calculate_compliance_score",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": true,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "async_read_persisted",
+          "trigger_direction": "read_aggregate"
+        }
+      ],
+      "silent_failure_risk_class": "MODERATE_SILENT_FAILURE_RISK",
+      "stale_state_dependency_class": "MODERATE_STALE_STATE_DEPENDENCY",
+      "strongest_evidence_found": [
+        "Mongo duplicate key treated as enqueue no-op",
+        "Worker backoff to DEAD with audit"
+      ],
+      "trigger_entry_points": [
+        "services/compliance_recalc_queue.py",
+        "job_runner.py",
+        "services/compliance_score.py",
+        "routes/client.py",
+        "routes/client_compliance_evidence.py"
+      ],
+      "weakest_evidence_found": [
+        "risk_signal_regen enqueue failure swallowed in enqueue finally"
+      ],
+      "workflow_family": "COMPLIANCE_SCORE_RECALC"
+    },
+    {
+      "audit_priority": "high",
+      "downstream_propagation_chain_summary": "Composes priority actions + tenant tasks + freshness blocks; rebuild implicit on each read.",
+      "idempotency_evidence_class": "NO_IDEMPOTENCY_EVIDENCE",
+      "known_ambiguity_areas": [
+        "Partial failure surfaces as shorter task lists without explicit stale banner"
+      ],
+      "operational_confidence": "LOW",
+      "orchestration_maturity": "ORCHESTRATION_READ_REBUILD_HEAVY",
+      "reconciliation_evidence_class": "NO_RECONCILIATION_EVIDENCE",
+      "retry_evidence_class": "NO_RETRY_EVIDENCE",
+      "runtime_call_paths": [
+        {
+          "audit_logging_observed": false,
+          "call_path_classification": "CALL_PATH_READ_DERIVED",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "services/unified_tasks_service.py",
+          "function": "get_unified_tasks_for_client",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": true,
+          "swallowed_exception_pattern_observed": true,
+          "sync_async_nature": "async_compose",
+          "trigger_direction": "client_read"
+        },
+        {
+          "audit_logging_observed": false,
+          "call_path_classification": "CALL_PATH_READ_DERIVED",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "services/unified_tasks_service.py",
+          "function": "get_unified_tasks_digest",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": true,
+          "swallowed_exception_pattern_observed": true,
+          "sync_async_nature": "async_compose",
+          "trigger_direction": "client_read_digest"
+        }
+      ],
+      "silent_failure_risk_class": "MODERATE_SILENT_FAILURE_RISK",
+      "stale_state_dependency_class": "HIGH_STALE_STATE_DEPENDENCY",
+      "strongest_evidence_found": [
+        "Centralized composition for Today / Command Centre urgent lists"
+      ],
+      "trigger_entry_points": [
+        "services/unified_tasks_service.py",
+        "services/command_center_service.py"
+      ],
+      "weakest_evidence_found": [
+        "No durable rebuild cursor; depends on upstream requirement truth freshness"
+      ],
+      "workflow_family": "TODAY_TASK_REBUILD"
+    },
+    {
+      "audit_priority": "high",
+      "downstream_propagation_chain_summary": "Scheduled triggers enqueue property-scoped recalcs; worker same as COMPLIANCE_SCORE_RECALC.",
+      "idempotency_evidence_class": "STRONG_IDEMPOTENCY_EVIDENCE",
+      "known_ambiguity_areas": [
+        "Overlap between manual admin regen and scheduled sweeps"
+      ],
+      "operational_confidence": "MODERATE",
+      "orchestration_maturity": "ORCHESTRATION_PARTIAL",
+      "reconciliation_evidence_class": "RECONCILIATION_PRESENT",
+      "retry_evidence_class": "RETRY_PRESENT",
+      "runtime_call_paths": [
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_ASYNC",
+          "explicit_idempotency_protections_observed": true,
+          "explicit_retries_observed": false,
+          "file": "services/jobs.py",
+          "function": "enqueue_compliance_recalc (TRIGGER_EXPIRY_JOB etc.)",
+          "periodic_job_dependency": true,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "async_enqueue_from_job",
+          "trigger_direction": "scheduled_job"
+        },
+        {
+          "audit_logging_observed": true,
+          "call_path_classification": "CALL_PATH_PERIODIC",
+          "explicit_idempotency_protections_observed": true,
+          "explicit_retries_observed": false,
+          "file": "job_runner.py",
+          "function": "run_expiry_rollover_recalc (+ worker)",
+          "periodic_job_dependency": true,
+          "read_derived_dependency": false,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "async_batch",
+          "trigger_direction": "periodic_enqueue"
+        }
+      ],
+      "silent_failure_risk_class": "LOW_SILENT_FAILURE_RISK",
+      "stale_state_dependency_class": "MODERATE_STALE_STATE_DEPENDENCY",
+      "strongest_evidence_found": [
+        "Shared queue/worker path with explicit DEAD state"
+      ],
+      "trigger_entry_points": [
+        "services/jobs.py",
+        "job_runner.py"
+      ],
+      "weakest_evidence_found": [
+        "Batch enqueue patterns depend on correlation discipline per job type"
+      ],
+      "workflow_family": "REGENERATION_RECALC"
+    },
+    {
+      "audit_priority": "optional",
+      "downstream_propagation_chain_summary": "Read-time aggregation of persisted scores and gap counts.",
+      "idempotency_evidence_class": "NO_IDEMPOTENCY_EVIDENCE",
+      "known_ambiguity_areas": [
+        "Portfolio KPI freshness tied to underlying property recalc latency"
+      ],
+      "operational_confidence": "LOW",
+      "orchestration_maturity": "ORCHESTRATION_READ_REBUILD_HEAVY",
+      "reconciliation_evidence_class": "NO_RECONCILIATION_EVIDENCE",
+      "retry_evidence_class": "NO_RETRY_EVIDENCE",
+      "runtime_call_paths": [
+        {
+          "audit_logging_observed": false,
+          "call_path_classification": "CALL_PATH_READ_DERIVED",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "routes/portfolio.py",
+          "function": "aggregate_gap_counts_for_client",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": true,
+          "swallowed_exception_pattern_observed": true,
+          "sync_async_nature": "async_read",
+          "trigger_direction": "client_read"
+        },
+        {
+          "audit_logging_observed": false,
+          "call_path_classification": "CALL_PATH_READ_DERIVED",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "services/compliance_score.py",
+          "function": "calculate_compliance_score",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": true,
+          "swallowed_exception_pattern_observed": false,
+          "sync_async_nature": "async_read",
+          "trigger_direction": "read_aggregate"
+        }
+      ],
+      "silent_failure_risk_class": "LOW_SILENT_FAILURE_RISK",
+      "stale_state_dependency_class": "HIGH_STALE_STATE_DEPENDENCY",
+      "strongest_evidence_found": [
+        "Reuses same aggregate primitives as Command Centre"
+      ],
+      "trigger_entry_points": [
+        "routes/portfolio.py",
+        "services/compliance_score.py"
+      ],
+      "weakest_evidence_found": [
+        "No portfolio-specific invalidation hook distinct from property writes"
+      ],
+      "workflow_family": "PORTFOLIO_SUMMARY_REFRESH"
+    },
+    {
+      "audit_priority": "optional",
+      "downstream_propagation_chain_summary": "Periodic / evaluation-driven reminder selection with governed gap context.",
+      "idempotency_evidence_class": "PARTIAL_IDEMPOTENCY_EVIDENCE",
+      "known_ambiguity_areas": [
+        "Cooldown state vs requirement truth race"
+      ],
+      "operational_confidence": "MODERATE",
+      "orchestration_maturity": "ORCHESTRATION_PARTIAL",
+      "reconciliation_evidence_class": "RECONCILIATION_PARTIAL",
+      "retry_evidence_class": "RETRY_UNKNOWN",
+      "runtime_call_paths": [
+        {
+          "audit_logging_observed": false,
+          "call_path_classification": "CALL_PATH_READ_DERIVED",
+          "explicit_idempotency_protections_observed": false,
+          "explicit_retries_observed": false,
+          "file": "services/reminder_truth_service.py",
+          "function": "gap engine context helper (infer_compliance_gaps_for_requirement)",
+          "periodic_job_dependency": false,
+          "read_derived_dependency": true,
+          "swallowed_exception_pattern_observed": true,
+          "sync_async_nature": "sync_infer_with_swallowed_engine_failure",
+          "trigger_direction": "read_derived"
+        }
+      ],
+      "silent_failure_risk_class": "MODERATE_SILENT_FAILURE_RISK",
+      "stale_state_dependency_class": "MODERATE_STALE_STATE_DEPENDENCY",
+      "strongest_evidence_found": [
+        "Explicit REMINDER_ENGINE / observe_consumer_precedence_delta integration"
+      ],
+      "trigger_entry_points": [
+        "services/reminder_truth_service.py",
+        "services/compliance_sla_monitor.py"
+      ],
+      "weakest_evidence_found": [
+        "Broad except Exception \u2192 empty gap context on engine failure"
+      ],
+      "workflow_family": "REMINDER_TRIGGER"
+    }
+  ],
+  "generated_at": "2026-05-08T23:00:00+00:00",
+  "non_blocking": true,
+  "phase2_scope": {
+    "high_priority_families": [
+      "CACHE_INVALIDATION",
+      "REQUIREMENT_STATE_TRANSITION",
+      "COMPLIANCE_GAP_SYNC",
+      "COMMAND_CENTER_REFRESH",
+      "NOTIFICATION_DISPATCH",
+      "COMPLIANCE_SCORE_RECALC",
+      "TODAY_TASK_REBUILD",
+      "REGENERATION_RECALC"
+    ],
+    "optional_families": [
+      "PORTFOLIO_SUMMARY_REFRESH",
+      "REMINDER_TRIGGER"
+    ]
+  },
+  "remaining_limitations": [
+    "Evidence is static repository inspection only; no live traces or metrics.",
+    "Call-path inventory is non-exhaustive (representative entrypoints per family).",
+    "Classifications are conservative where code evidence is ambiguous."
+  ],
+  "retry_reconciliation_gaps": {
+    "reconciliation_missing": [
+      "CACHE_INVALIDATION",
+      "COMMAND_CENTER_REFRESH",
+      "PORTFOLIO_SUMMARY_REFRESH",
+      "TODAY_TASK_REBUILD"
+    ],
+    "retry_weak_or_unknown": [
+      "CACHE_INVALIDATION",
+      "COMMAND_CENTER_REFRESH",
+      "COMPLIANCE_GAP_SYNC",
+      "PORTFOLIO_SUMMARY_REFRESH",
+      "REMINDER_TRIGGER",
+      "TODAY_TASK_REBUILD"
+    ]
+  },
+  "runtime_behavior_changed": false,
+  "safest_stabilization_candidates": [
+    "REGENERATION_RECALC"
+  ],
+  "schema_version": "workflow_trigger_reliability_phase2_v1",
+  "silent_failure_hotspots": [
+    "CACHE_INVALIDATION",
+    "COMMAND_CENTER_REFRESH",
+    "COMPLIANCE_GAP_SYNC",
+    "COMPLIANCE_SCORE_RECALC",
+    "NOTIFICATION_DISPATCH",
+    "REMINDER_TRIGGER",
+    "REQUIREMENT_STATE_TRANSITION",
+    "TODAY_TASK_REBUILD"
+  ],
+  "stale_state_hotspots": [
+    "CACHE_INVALIDATION",
+    "COMMAND_CENTER_REFRESH",
+    "COMPLIANCE_GAP_SYNC",
+    "COMPLIANCE_SCORE_RECALC",
+    "PORTFOLIO_SUMMARY_REFRESH",
+    "REGENERATION_RECALC",
+    "REMINDER_TRIGGER",
+    "REQUIREMENT_STATE_TRANSITION",
+    "TODAY_TASK_REBUILD"
+  ],
+  "strongest_idempotency_evidence": [
+    "COMPLIANCE_SCORE_RECALC",
+    "NOTIFICATION_DISPATCH",
+    "REGENERATION_RECALC"
+  ],
+  "strongest_orchestration_paths": [],
+  "unsafe_stabilization_candidates": [
+    "CACHE_INVALIDATION",
+    "COMMAND_CENTER_REFRESH",
+    "PORTFOLIO_SUMMARY_REFRESH",
+    "TODAY_TASK_REBUILD"
+  ],
+  "weakest_idempotency_evidence": [
+    "CACHE_INVALIDATION",
+    "PORTFOLIO_SUMMARY_REFRESH",
+    "TODAY_TASK_REBUILD"
+  ],
+  "weakest_orchestration_paths": [
+    "CACHE_INVALIDATION",
+    "REQUIREMENT_STATE_TRANSITION"
+  ]
+}

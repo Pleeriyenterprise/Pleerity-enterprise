@@ -1,0 +1,144 @@
+{
+  "aggregation_behavior_summary": {
+    "classification": "POTENTIAL_SEMANTIC_COLLAPSE",
+    "distinctDerivedStates": [
+      "DECLARATION_RECORDED",
+      "OPERATIONALLY_OPEN",
+      "PARTIALLY_COMPLETE",
+      "VERIFIED_CURRENT"
+    ],
+    "exportUsesGenericRiskCopy": false,
+    "export_note_active": false,
+    "portfolioTailoredToWorst": true,
+    "portfolio_supplement_active": true,
+    "reasons": [
+      "Multiple distinct pilot states are summarized by a single worst-state aggregate disclosure (Phase 2: portfolio and/or export)."
+    ],
+    "worstAggregateState": "OPERATIONALLY_OPEN"
+  },
+  "audit_only": true,
+  "cognitive_load_summary": {
+    "classification": "MODERATE_COGNITIVE_IMPACT",
+    "metrics": {
+      "disclosureBlockCount": 1,
+      "exportWordCount": 0,
+      "portfolioWordCount": 10,
+      "supportingLineCount": 2
+    }
+  },
+  "disclosure_noise_summary": {
+    "classification": "LOW_DISCLOSURE_NOISE",
+    "detail": {
+      "activeSurfaceCount": 2,
+      "chipDisclosureMetadataActive": true,
+      "combinedCharCount": 172,
+      "exportNoteActive": false,
+      "portfolioSupplementActive": true,
+      "redundantFollowUpPhrasing": null,
+      "stemOverlapScore": 2,
+      "worstAggregateState": "OPERATIONALLY_OPEN"
+    }
+  },
+  "fallback_integrity_summary": {
+    "issues": [],
+    "notes": [
+      "VERIFIED_CURRENT may retain base subline when pilot subline empty.",
+      "Non-scoped and missing semantic_state must preserve base chip text."
+    ],
+    "passed": true
+  },
+  "generated_at": "2026-05-08T21:51:21.929Z",
+  "highest_risk_pilot_surfaces": [
+    "REPORT_EXPORT",
+    "PORTFOLIO_SCORE",
+    "CLIENT_STATUS_CHIP"
+  ],
+  "input_row_count": 7,
+  "non_blocking": true,
+  "payload_coverage_summary": {
+    "fallbackRateSummary": {
+      "description": "Rows where derivePilotSemanticState returns null rely on legacy chip wording (no pilot overlay).",
+      "unresolvedCount": 2
+    },
+    "payloadSourceSummary": {
+      "evidence_authority.semantic_state": 1,
+      "evidence_state": 1,
+      "semantic_state": 3,
+      "semantic_state_out_of_scope": 1
+    },
+    "percentages": {
+      "nestedEaScopedPct": 14.29,
+      "nestedSemanticFieldPopulatedPct": 14.29,
+      "pilotResolvedPct": 71.43,
+      "semanticStateFieldPopulatedPct": 57.14,
+      "semanticStateTopScopedPct": 42.86,
+      "unresolvedPct": 28.57,
+      "verifiedFallbackPct": 14.29
+    },
+    "rowsEvidenceStateFieldPopulated": 1,
+    "rowsEvidenceStateVerifiedFallback": 1,
+    "rowsNestedEvidenceAuthorityScoped": 1,
+    "rowsNestedSemanticFieldPopulated": 1,
+    "rowsSemanticStateFieldPopulated": 4,
+    "rowsSemanticStateTopScoped": 3,
+    "rowsUnresolvedByPilotAdapter": 2,
+    "rowsVerifiedCurrentDerived": 2,
+    "rowsWithPilotDerivedState": 5,
+    "totalRows": 7,
+    "unresolvedStateInventory": {
+      "no_semantic_payload": 1,
+      "semantic_state:UNKNOWN_CUSTOM": 1
+    }
+  },
+  "phase2_dedup_summary": {
+    "export": {
+      "classification": "DISCLOSURE_SUPPRESSED",
+      "suppressionReason": "suppressed_portfolio_primary_aggregate",
+      "text": null
+    },
+    "export_suppressed": true,
+    "portfolio": {
+      "classification": "DISCLOSURE_PRIMARY",
+      "suppressionReason": null,
+      "text": "Some properties still have open operational items at portfolio level."
+    },
+    "portfolio_suppressed": false,
+    "worst_state": "OPERATIONALLY_OPEN"
+  },
+  "residual_risks": [
+    "Pilot activation rate depends on API populating semantic_state or evidence_authority.semantic_state.",
+    "Phase 2: aggregate worst-of framing can still differ from any single row’s semantic_state.",
+    "Runtime UI was not modified by this validation module (audit-only)."
+  ],
+  "rollback_recommendation": {
+    "narrative": "Remove mergeGovernanceUxPilotChip from getEvidenceStatus and pilot paragraphs from ComplianceScorePage; delete adapter and validation modules. No backend migration required.",
+    "recommendation": "REVERT_ADAPTER_WIRING"
+  },
+  "rollout_readiness_recommendation": {
+    "blockers": [],
+    "narrative": "Operationally safe for narrow pilot; aggregate surfaces still collapse distinct row semantics to one worst state — acceptable if stakeholders accept worst-of framing.",
+    "recommendation": "CONDITIONAL_GO"
+  },
+  "runtime_behavior_changed": false,
+  "safest_pilot_surfaces": [
+    "CLIENT_STATUS_CHIP",
+    "PORTFOLIO_SCORE",
+    "REPORT_EXPORT"
+  ],
+  "schema_version": "governance_ux_pilot_validation_phase1_v1",
+  "surface_risk_rationale": "Phase 2: export is state-specific when shown and suppressed when portfolio already discloses (≥2 rows). Chips remain row-specific. Residual risk: aggregate lines use worst-of semantics across rows.",
+  "unresolved_state_summary": {
+    "fallback_rate": {
+      "description": "Rows where derivePilotSemanticState returns null rely on legacy chip wording (no pilot overlay).",
+      "unresolvedCount": 2
+    },
+    "inventory": {
+      "no_semantic_payload": 1,
+      "semantic_state:UNKNOWN_CUSTOM": 1
+    }
+  },
+  "wording_leakage_summary": {
+    "findings": [],
+    "leakage_count": 0
+  }
+}

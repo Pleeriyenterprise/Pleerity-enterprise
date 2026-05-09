@@ -8,6 +8,7 @@
 import { CheckCircle, Clock, AlertTriangle, XCircle, FileText, HelpCircle } from 'lucide-react';
 import { documentVerificationAwaitingSubline } from '../domain/presentDomain';
 import { isConditionStandardWorkflowHint, isMultiEvidenceStyleWorkflow } from './workflowSemantics';
+import { mergeGovernanceUxPilotChip } from './governanceUxPilotAdapter';
 
 function awaitingVerificationSubline() {
   const s = documentVerificationAwaitingSubline();
@@ -91,24 +92,26 @@ export function getEvidenceStatus(status, row) {
   const key = (status || '').toUpperCase().trim();
   const linked = !!(row && row.evidence_doc_id);
   const tenancyStatus = _tenancyAgreementStatusText(row);
-  if (key === 'PENDING' && linked) return { ...VERIFY_CHIP, subline: awaitingVerificationSubline() };
-  if (key === 'MISSING' || key === 'MISSING_EVIDENCE' || (key === 'PENDING' && !linked)) {
+  /** @type {Record<string, unknown>} */
+  let out;
+  if (key === 'PENDING' && linked) {
+    out = { ...VERIFY_CHIP, subline: awaitingVerificationSubline() };
+  } else if (key === 'MISSING' || key === 'MISSING_EVIDENCE' || (key === 'PENDING' && !linked)) {
     const wf = _workflowClass(row);
     let chip = NO_DOC_CHIP;
     if (isMultiEvidenceStyleWorkflow(wf)) chip = MULTI_COMPONENT_CHIP;
     else if (wf === 'EXTERNAL_ASSESSMENT_EVIDENCE') chip = ASSESSMENT_GAP_CHIP;
     else if (wf === 'DOCUMENT_UPLOAD' || wf === 'LEGACY_DOCUMENT_UPLOAD') chip = CERTIFICATE_GAP_CHIP;
-    return { ...chip, subline: workflowAwareMissingEvidenceLabel(row) };
-  }
-  if (key === 'PENDING_VERIFICATION') {
+    out = { ...chip, subline: workflowAwareMissingEvidenceLabel(row) };
+  } else if (key === 'PENDING_VERIFICATION') {
     const cfg = EVIDENCE_STATUS_CONFIG.PENDING_VERIFICATION;
-    return { ...cfg, subline: awaitingVerificationSubline() };
-  }
-  if (key === 'OVERDUE' || key === 'EXPIRED' || key === 'FAILED') {
+    out = { ...cfg, subline: awaitingVerificationSubline() };
+  } else if (key === 'OVERDUE' || key === 'EXPIRED' || key === 'FAILED') {
     const cfg = EVIDENCE_STATUS_CONFIG[key] || EVIDENCE_STATUS_CONFIG.OVERDUE;
-    return { ...cfg, subline: 'Overdue — affecting compliance.' };
+    out = { ...cfg, subline: 'Overdue — affecting compliance.' };
+  } else {
+    const base = EVIDENCE_STATUS_CONFIG[key] || EVIDENCE_STATUS_CONFIG.PENDING;
+    out = tenancyStatus && (key === 'VALID' || key === 'COMPLIANT') ? { ...base, subline: tenancyStatus } : { ...base };
   }
-  const base = EVIDENCE_STATUS_CONFIG[key] || EVIDENCE_STATUS_CONFIG.PENDING;
-  if (tenancyStatus && (key === 'VALID' || key === 'COMPLIANT')) return { ...base, subline: tenancyStatus };
-  return base;
+  return mergeGovernanceUxPilotChip(out, row);
 }

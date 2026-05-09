@@ -18,6 +18,10 @@ from services.evidence_review_actions import correlation_id_new, document_is_cal
 from services.evidence_review_policy import promotions_allowed_for_accept_unverified
 from services.provisioning import provisioning_service
 from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_STATUS_CHANGED, ACTOR_ADMIN
+from services.requirement_transition_observability import (
+    attach_downstream_trigger_observation,
+    ensure_requirement_transition_correlation_id,
+)
 from services.work_order_execution_constants import COMPLIANCE_PROOF_VERIFIED, WORK_ORDER_KIND_COMPLIANCE
 
 logger = logging.getLogger(__name__)
@@ -98,7 +102,21 @@ async def execute_verify_document_v2(
 
     document_after = await db.documents.find_one({"document_id": document_id}, {"_id": 0}) or {}
 
-    if document.get("requirement_id") and promote_compliance:
+    recalc_correlation_id = f"DOC_STATUS_CHANGED:{document_id}:VERIFIED"
+    transition_fanout: Dict[str, Any] = {}
+    rid = str(document.get("requirement_id") or "")
+    sync_correlation_id = (
+        ensure_requirement_transition_correlation_id(
+            requirement_id=rid,
+            property_id=str(document.get("property_id") or "") or None,
+            client_id=str(document.get("client_id") or "") or None,
+            correlation_id=recalc_correlation_id,
+        )
+        if rid
+        else recalc_correlation_id
+    )
+
+    if rid and promote_compliance:
         await db.requirements.update_one(
             {"requirement_id": document["requirement_id"]},
             {
@@ -113,7 +131,13 @@ async def execute_verify_document_v2(
         )
         from services.requirement_evidence_authority import sync_requirement_evidence_authority
 
-        await sync_requirement_evidence_authority(db, str(document["requirement_id"]))
+        await sync_requirement_evidence_authority(
+            db,
+            rid,
+            correlation_id=sync_correlation_id,
+            transition_origin="services.evidence_review_verify.execute_verify_document_v2",
+            transition_observability_out=transition_fanout,
+        )
         try:
             await _finalize_active_compliance_jobs_after_certificate_verified(
                 db,
@@ -124,20 +148,60 @@ async def execute_verify_document_v2(
             )
         except Exception as fin_e:
             logger.warning("Active compliance job finalize on verify skipped: %s", fin_e)
-    elif document.get("requirement_id"):
+    elif rid:
         from services.requirement_evidence_authority import sync_requirement_evidence_authority
 
-        await sync_requirement_evidence_authority(db, str(document["requirement_id"]))
+        await sync_requirement_evidence_authority(
+            db,
+            rid,
+            correlation_id=sync_correlation_id,
+            transition_origin="services.evidence_review_verify.execute_verify_document_v2",
+            transition_observability_out=transition_fanout,
+        )
 
     if document.get("property_id"):
         await provisioning_service._update_property_compliance(document["property_id"])
-        await enqueue_compliance_recalc(
-            property_id=document["property_id"],
-            client_id=document["client_id"],
-            trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
-            actor_type=ACTOR_ADMIN,
-            actor_id=user.get("portal_user_id"),
-            correlation_id=f"DOC_STATUS_CHANGED:{document_id}:VERIFIED",
+        recalc_result = None
+        recalc_exc: Optional[Exception] = None
+        try:
+            recalc_result = await enqueue_compliance_recalc(
+                property_id=document["property_id"],
+                client_id=document["client_id"],
+                trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
+                actor_type=ACTOR_ADMIN,
+                actor_id=user.get("portal_user_id"),
+                correlation_id=recalc_correlation_id,
+            )
+        except Exception as exc:
+            recalc_exc = exc
+            logger.warning("enqueue_compliance_recalc after document verify failed: %s", exc)
+        trace_for_row: Dict[str, Any] = (
+            transition_fanout
+            if transition_fanout.get("transition_id")
+            else {
+                "transition_id": f"doc_verify_enqueue_only:{document_id}",
+                "correlation_id": recalc_correlation_id,
+                "transition_origin": "services.evidence_review_verify.execute_verify_document_v2",
+                "requirement_id": rid,
+                "property_id": str(document.get("property_id") or "") or None,
+                "client_id": str(document.get("client_id") or "") or None,
+                "replay_chain_detected": False,
+                "repeated_transition_origin": False,
+                "repeated_correlation_seen": False,
+                "downstream_retrigger_possible": False,
+                "partial_downstream_failure": False,
+                "stale_transition_replayed": False,
+            }
+        )
+        attach_downstream_trigger_observation(
+            trace_for_row,
+            downstream_target="compliance_recalc_queue.enqueue_compliance_recalc",
+            trigger_mode="async_queue",
+            propagation_stage="post_authority_or_property_touch",
+            downstream_correlation_id=getattr(recalc_result, "correlation_id", None) if recalc_result is not None else recalc_correlation_id,
+            trigger_origin="services.evidence_review_verify.execute_verify_document_v2",
+            enqueue_result=recalc_result,
+            enqueue_exc=recalc_exc,
         )
 
     verify_audit_meta: Dict[str, Any] = {}

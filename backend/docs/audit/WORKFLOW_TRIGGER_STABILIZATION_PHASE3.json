@@ -1,0 +1,509 @@
+{
+  "architecture_redesign_candidates": [
+    "CACHE_INVALIDATION"
+  ],
+  "audit_only": true,
+  "degraded_state_visibility_candidates": [
+    "COMMAND_CENTER_REFRESH",
+    "TODAY_TASK_REBUILD"
+  ],
+  "generated_at": "2026-05-08T22:23:23.301976+00:00",
+  "highest_risk_workflow_families": [
+    "CACHE_INVALIDATION",
+    "COMMAND_CENTER_REFRESH",
+    "COMPLIANCE_GAP_SYNC",
+    "COMPLIANCE_SCORE_RECALC",
+    "NOTIFICATION_DISPATCH",
+    "PORTFOLIO_SUMMARY_REFRESH",
+    "REGENERATION_RECALC",
+    "REMINDER_TRIGGER",
+    "REQUIREMENT_STATE_TRANSITION",
+    "TODAY_TASK_REBUILD"
+  ],
+  "idempotency_hardening_candidates": [
+    "REQUIREMENT_STATE_TRANSITION"
+  ],
+  "non_blocking": true,
+  "observability_first_candidates": [
+    "COMMAND_CENTER_REFRESH",
+    "COMPLIANCE_GAP_SYNC",
+    "PORTFOLIO_SUMMARY_REFRESH",
+    "TODAY_TASK_REBUILD"
+  ],
+  "queue_reference_pattern_candidates": [
+    "COMPLIANCE_SCORE_RECALC",
+    "NOTIFICATION_DISPATCH",
+    "REGENERATION_RECALC"
+  ],
+  "recommended_stabilization_sequencing": [
+    "COMPLIANCE_SCORE_RECALC",
+    "REGENERATION_RECALC",
+    "COMMAND_CENTER_REFRESH",
+    "TODAY_TASK_REBUILD",
+    "REQUIREMENT_STATE_TRANSITION",
+    "NOTIFICATION_DISPATCH",
+    "COMPLIANCE_GAP_SYNC",
+    "REMINDER_TRIGGER",
+    "PORTFOLIO_SUMMARY_REFRESH",
+    "CACHE_INVALIDATION"
+  ],
+  "reference_stabilization_patterns": {
+    "COMPLIANCE_SCORE_RECALC": {
+      "governance_note": "Treat as canonical queue pattern for property-scoped async recompute.",
+      "primary_modules": [
+        "services/compliance_recalc_queue.py",
+        "job_runner.py"
+      ],
+      "reusability": "reusable",
+      "summary": "Mongo-backed enqueue with correlation dedupe + worker backoff/DEAD + audit on failure"
+    },
+    "NOTIFICATION_DISPATCH": {
+      "governance_note": "Do not generalize inline Postmark retry vs deferred queue without explicit contract.",
+      "primary_modules": [
+        "services/notification_orchestrator.py",
+        "job_runner.py"
+      ],
+      "reusability": "partially_reusable",
+      "summary": "message_logs idempotency_key + deferred retry queue; branch-specific retry semantics"
+    },
+    "REGENERATION_RECALC": {
+      "governance_note": "Keep correlation discipline consistent with COMPLIANCE_SCORE_RECALC.",
+      "primary_modules": [
+        "services/jobs.py",
+        "job_runner.py"
+      ],
+      "reusability": "reusable",
+      "summary": "Scheduled/admin triggers reuse same queue/worker path as score recalc"
+    }
+  },
+  "remaining_limitations": [
+    "Planning consumes Phase 2 static evidence only; no live SLO or trace linkage.",
+    "Readiness and urgency are governance labels, not production approvals.",
+    "First implementation slice must still pass change control and staged rollout."
+  ],
+  "runtime_behavior_changed": false,
+  "safest_stabilization_candidates": [
+    "COMPLIANCE_SCORE_RECALC",
+    "REGENERATION_RECALC"
+  ],
+  "schema_version": "workflow_trigger_stabilization_phase3_v1",
+  "stabilization_matrix": [
+    {
+      "architecture_blockers": [
+        {
+          "blocker": "CACHE_BOUNDARY_UNDEFINED",
+          "severity": "HARD_BLOCKER"
+        },
+        {
+          "blocker": "FRAGMENTED_REFRESH_MODEL",
+          "severity": "SOFT_BLOCKER"
+        },
+        {
+          "blocker": "NO_RECONCILIATION_CONTRACT",
+          "severity": "OBSERVATION_ONLY"
+        },
+        {
+          "blocker": "NO_RETRY_CONTRACT",
+          "severity": "SOFT_BLOCKER"
+        },
+        {
+          "blocker": "NO_SINGLE_OWNER",
+          "severity": "OBSERVATION_ONLY"
+        },
+        {
+          "blocker": "SILENT_FAILURE_EXPOSURE",
+          "severity": "SOFT_BLOCKER"
+        }
+      ],
+      "blocker_severity_summary": "HARD_BLOCKER",
+      "dependency_chains": [
+        "HTTP headers (multi-route) || domain invalidate_pending_routing"
+      ],
+      "governance_notes": [
+        "Architecture + infra ownership required before engineering stabilization"
+      ],
+      "implementation_readiness": "REQUIRES_CACHE_OWNERSHIP",
+      "phase2_idempotency_evidence_class": "NO_IDEMPOTENCY_EVIDENCE",
+      "phase2_orchestration_maturity": "ORCHESTRATION_FRAGMENTED",
+      "phase2_retry_evidence_class": "NO_RETRY_EVIDENCE",
+      "phase2_silent_failure_risk_class": "HIGH_SILENT_FAILURE_RISK",
+      "phase2_stale_state_dependency_class": "CRITICAL_STALE_STATE_DEPENDENCY",
+      "recommended_stabilization_order": 10,
+      "reference_pattern_applicability": "unsafe_to_generalize",
+      "rollout_safety_posture": "DEFER_UNTIL_ARCHITECTURE_REVIEW",
+      "stabilization_track": "CACHE_GOVERNANCE_REQUIRED",
+      "strongest_evidence": [
+        "Explicit invalidate_pending_routing_for_work_order with audit attempt"
+      ],
+      "urgency_class": "P0_CRITICAL_RUNTIME_RISK",
+      "weakest_evidence": [
+        "No central invalidation registry across API surfaces"
+      ],
+      "workflow_family": "CACHE_INVALIDATION"
+    },
+    {
+      "architecture_blockers": [
+        {
+          "blocker": "NO_DEGRADED_STATE_SIGNALING",
+          "severity": "HARD_BLOCKER"
+        },
+        {
+          "blocker": "NO_RECONCILIATION_CONTRACT",
+          "severity": "OBSERVATION_ONLY"
+        },
+        {
+          "blocker": "NO_RETRY_CONTRACT",
+          "severity": "SOFT_BLOCKER"
+        },
+        {
+          "blocker": "READ_REBUILD_HEAVY",
+          "severity": "SOFT_BLOCKER"
+        },
+        {
+          "blocker": "SILENT_FAILURE_EXPOSURE",
+          "severity": "SOFT_BLOCKER"
+        }
+      ],
+      "blocker_severity_summary": "HARD_BLOCKER",
+      "dependency_chains": [
+        "unified_tasks \u2192 compliance_score \u2192 gap aggregate \u2192 optional HIUA"
+      ],
+      "governance_notes": [
+        "Trust surface: explicit degraded flags before adding automation"
+      ],
+      "implementation_readiness": "REQUIRES_OBSERVABILITY_FIRST",
+      "phase2_idempotency_evidence_class": "WEAK_IDEMPOTENCY_EVIDENCE",
+      "phase2_orchestration_maturity": "ORCHESTRATION_READ_REBUILD_HEAVY",
+      "phase2_retry_evidence_class": "NO_RETRY_EVIDENCE",
+      "phase2_silent_failure_risk_class": "HIGH_SILENT_FAILURE_RISK",
+      "phase2_stale_state_dependency_class": "HIGH_STALE_STATE_DEPENDENCY",
+      "recommended_stabilization_order": 3,
+      "reference_pattern_applicability": "unsafe_to_generalize",
+      "rollout_safety_posture": "UNSAFE_FOR_AUTOMATION_EXPANSION",
+      "stabilization_track": "DEGRADED_STATE_VISIBILITY",
+      "strongest_evidence": [
+        "Structured logging on each swallowed subsystem failure"
+      ],
+      "urgency_class": "P1_HIGH_TRUST_SURFACE",
+      "weakest_evidence": [
+        "Partial UI success with empty sections after failures"
+      ],
+      "workflow_family": "COMMAND_CENTER_REFRESH"
+    },
+    {
+      "architecture_blockers": [
+        {
+          "blocker": "NO_RETRY_CONTRACT",
+          "severity": "SOFT_BLOCKER"
+        },
+        {
+          "blocker": "SILENT_FAILURE_EXPOSURE",
+          "severity": "SOFT_BLOCKER"
+        }
+      ],
+      "blocker_severity_summary": "SOFT_BLOCKER",
+      "dependency_chains": [
+        "infer gaps \u2192 upsert compliance_gaps \u2192 operational bridge"
+      ],
+      "governance_notes": [
+        "Observability-first: surface sync errors[] to operators without widening writes"
+      ],
+      "implementation_readiness": "REQUIRES_OBSERVABILITY_FIRST",
+      "phase2_idempotency_evidence_class": "PARTIAL_IDEMPOTENCY_EVIDENCE",
+      "phase2_orchestration_maturity": "ORCHESTRATION_PARTIAL",
+      "phase2_retry_evidence_class": "NO_RETRY_EVIDENCE",
+      "phase2_silent_failure_risk_class": "MODERATE_SILENT_FAILURE_RISK",
+      "phase2_stale_state_dependency_class": "MODERATE_STALE_STATE_DEPENDENCY",
+      "recommended_stabilization_order": 7,
+      "reference_pattern_applicability": "partially_reusable",
+      "rollout_safety_posture": "SAFE_FOR_OBSERVABILITY_ONLY",
+      "stabilization_track": "SAFE_ENGINEERING_STABILIZATION",
+      "strongest_evidence": [
+        "Explicit errors[] return contract on sync_compliance_gaps_for_requirement"
+      ],
+      "urgency_class": "P4_OBSERVABILITY_GAP",
+      "weakest_evidence": [
+        "No observed queue replay for gap upsert batch"
+      ],
+      "workflow_family": "COMPLIANCE_GAP_SYNC"
+    },
+    {
+      "architecture_blockers": [
+        {
+          "blocker": "SILENT_FAILURE_EXPOSURE",
+          "severity": "SOFT_BLOCKER"
+        }
+      ],
+      "blocker_severity_summary": "SOFT_BLOCKER",
+      "dependency_chains": [
+        "enqueue \u2192 worker \u2192 persisted score \u2192 read surfaces"
+      ],
+      "governance_notes": [
+        "Reference pattern: REFERENCE_STABILIZATION_PATTERNS.COMPLIANCE_SCORE_RECALC"
+      ],
+      "implementation_readiness": "READY_FOR_STABILIZATION",
+      "phase2_idempotency_evidence_class": "STRONG_IDEMPOTENCY_EVIDENCE",
+      "phase2_orchestration_maturity": "ORCHESTRATION_PARTIAL",
+      "phase2_retry_evidence_class": "RETRY_PRESENT",
+      "phase2_silent_failure_risk_class": "MODERATE_SILENT_FAILURE_RISK",
+      "phase2_stale_state_dependency_class": "MODERATE_STALE_STATE_DEPENDENCY",
+      "recommended_stabilization_order": 1,
+      "reference_pattern_applicability": "reusable",
+      "rollout_safety_posture": "SAFE_FOR_INCREMENTAL_STABILIZATION",
+      "stabilization_track": "QUEUE_PATTERN_ALIGNMENT",
+      "strongest_evidence": [
+        "Mongo duplicate key treated as enqueue no-op",
+        "Worker backoff to DEAD with audit"
+      ],
+      "urgency_class": "P5_LOW_RISK_ALIGNMENT",
+      "weakest_evidence": [
+        "risk_signal_regen enqueue failure swallowed in enqueue finally"
+      ],
+      "workflow_family": "COMPLIANCE_SCORE_RECALC"
+    },
+    {
+      "architecture_blockers": [
+        {
+          "blocker": "SILENT_FAILURE_EXPOSURE",
+          "severity": "SOFT_BLOCKER"
+        }
+      ],
+      "blocker_severity_summary": "SOFT_BLOCKER",
+      "dependency_chains": [
+        "orchestrator.send \u2192 provider \u2192 retry queue"
+      ],
+      "governance_notes": [
+        "Document inline vs deferred retry contract before hardening"
+      ],
+      "implementation_readiness": "READY_WITH_GOVERNANCE_REVIEW",
+      "phase2_idempotency_evidence_class": "STRONG_IDEMPOTENCY_EVIDENCE",
+      "phase2_orchestration_maturity": "ORCHESTRATION_PARTIAL",
+      "phase2_retry_evidence_class": "RETRY_PRESENT",
+      "phase2_silent_failure_risk_class": "MODERATE_SILENT_FAILURE_RISK",
+      "phase2_stale_state_dependency_class": "LOW_STALE_STATE_DEPENDENCY",
+      "recommended_stabilization_order": 6,
+      "reference_pattern_applicability": "partially_reusable",
+      "rollout_safety_posture": "SAFE_FOR_INCREMENTAL_STABILIZATION",
+      "stabilization_track": "QUEUE_PATTERN_ALIGNMENT",
+      "strongest_evidence": [
+        "Sparse unique idempotency_key on message_logs",
+        "duplicate_ignored outcome"
+      ],
+      "urgency_class": "P4_OBSERVABILITY_GAP",
+      "weakest_evidence": [
+        "Branching email vs SMS retry semantics differ"
+      ],
+      "workflow_family": "NOTIFICATION_DISPATCH"
+    },
+    {
+      "architecture_blockers": [
+        {
+          "blocker": "NO_DEGRADED_STATE_SIGNALING",
+          "severity": "SOFT_BLOCKER"
+        },
+        {
+          "blocker": "NO_RECONCILIATION_CONTRACT",
+          "severity": "OBSERVATION_ONLY"
+        },
+        {
+          "blocker": "NO_RETRY_CONTRACT",
+          "severity": "SOFT_BLOCKER"
+        },
+        {
+          "blocker": "READ_REBUILD_HEAVY",
+          "severity": "SOFT_BLOCKER"
+        }
+      ],
+      "blocker_severity_summary": "SOFT_BLOCKER",
+      "dependency_chains": [
+        "portfolio route \u2192 gap aggregate / score read"
+      ],
+      "governance_notes": [
+        "Align with Command Centre freshness semantics"
+      ],
+      "implementation_readiness": "REQUIRES_OBSERVABILITY_FIRST",
+      "phase2_idempotency_evidence_class": "NO_IDEMPOTENCY_EVIDENCE",
+      "phase2_orchestration_maturity": "ORCHESTRATION_READ_REBUILD_HEAVY",
+      "phase2_retry_evidence_class": "NO_RETRY_EVIDENCE",
+      "phase2_silent_failure_risk_class": "LOW_SILENT_FAILURE_RISK",
+      "phase2_stale_state_dependency_class": "HIGH_STALE_STATE_DEPENDENCY",
+      "recommended_stabilization_order": 9,
+      "reference_pattern_applicability": "unsafe_to_generalize",
+      "rollout_safety_posture": "UNSAFE_FOR_AUTOMATION_EXPANSION",
+      "stabilization_track": "OBSERVABILITY_HARDENING",
+      "strongest_evidence": [
+        "Reuses same aggregate primitives as Command Centre"
+      ],
+      "urgency_class": "P1_HIGH_TRUST_SURFACE",
+      "weakest_evidence": [
+        "No portfolio-specific invalidation hook distinct from property writes"
+      ],
+      "workflow_family": "PORTFOLIO_SUMMARY_REFRESH"
+    },
+    {
+      "architecture_blockers": [],
+      "blocker_severity_summary": "OBSERVATION_ONLY",
+      "dependency_chains": [
+        "jobs.py periodic \u2192 enqueue \u2192 same worker as score recalc"
+      ],
+      "governance_notes": [
+        "Align correlation naming with COMPLIANCE_SCORE_RECALC before expanding sweep breadth"
+      ],
+      "implementation_readiness": "READY_FOR_STABILIZATION",
+      "phase2_idempotency_evidence_class": "STRONG_IDEMPOTENCY_EVIDENCE",
+      "phase2_orchestration_maturity": "ORCHESTRATION_PARTIAL",
+      "phase2_retry_evidence_class": "RETRY_PRESENT",
+      "phase2_silent_failure_risk_class": "LOW_SILENT_FAILURE_RISK",
+      "phase2_stale_state_dependency_class": "MODERATE_STALE_STATE_DEPENDENCY",
+      "recommended_stabilization_order": 2,
+      "reference_pattern_applicability": "reusable",
+      "rollout_safety_posture": "SAFE_FOR_INCREMENTAL_STABILIZATION",
+      "stabilization_track": "QUEUE_PATTERN_ALIGNMENT",
+      "strongest_evidence": [
+        "Shared queue/worker path with explicit DEAD state"
+      ],
+      "urgency_class": "P5_LOW_RISK_ALIGNMENT",
+      "weakest_evidence": [
+        "Batch enqueue patterns depend on correlation discipline per job type"
+      ],
+      "workflow_family": "REGENERATION_RECALC"
+    },
+    {
+      "architecture_blockers": [
+        {
+          "blocker": "SILENT_FAILURE_EXPOSURE",
+          "severity": "SOFT_BLOCKER"
+        }
+      ],
+      "blocker_severity_summary": "SOFT_BLOCKER",
+      "dependency_chains": [
+        "evaluation cadence \u2192 reminder truth \u2192 optional notification"
+      ],
+      "governance_notes": [
+        "Observe-only batch until gap-context swallowing is classified"
+      ],
+      "implementation_readiness": "READY_WITH_GOVERNANCE_REVIEW",
+      "phase2_idempotency_evidence_class": "PARTIAL_IDEMPOTENCY_EVIDENCE",
+      "phase2_orchestration_maturity": "ORCHESTRATION_PARTIAL",
+      "phase2_retry_evidence_class": "RETRY_UNKNOWN",
+      "phase2_silent_failure_risk_class": "MODERATE_SILENT_FAILURE_RISK",
+      "phase2_stale_state_dependency_class": "MODERATE_STALE_STATE_DEPENDENCY",
+      "recommended_stabilization_order": 8,
+      "reference_pattern_applicability": "unsafe_to_generalize",
+      "rollout_safety_posture": "SAFE_FOR_OBSERVABILITY_ONLY",
+      "stabilization_track": "OBSERVABILITY_HARDENING",
+      "strongest_evidence": [
+        "Explicit REMINDER_ENGINE / observe_consumer_precedence_delta integration"
+      ],
+      "urgency_class": "P6_OBSERVE_ONLY",
+      "weakest_evidence": [
+        "Broad except Exception \u2192 empty gap context on engine failure"
+      ],
+      "workflow_family": "REMINDER_TRIGGER"
+    },
+    {
+      "architecture_blockers": [
+        {
+          "blocker": "FRAGMENTED_REFRESH_MODEL",
+          "severity": "SOFT_BLOCKER"
+        },
+        {
+          "blocker": "MIXED_SYNC_ASYNC_CHAIN",
+          "severity": "SOFT_BLOCKER"
+        },
+        {
+          "blocker": "NO_SINGLE_OWNER",
+          "severity": "OBSERVATION_ONLY"
+        },
+        {
+          "blocker": "PARTIAL_PROPAGATION_RISK",
+          "severity": "OBSERVATION_ONLY"
+        },
+        {
+          "blocker": "SILENT_FAILURE_EXPOSURE",
+          "severity": "SOFT_BLOCKER"
+        }
+      ],
+      "blocker_severity_summary": "SOFT_BLOCKER",
+      "dependency_chains": [
+        "DB write \u2192 enqueue recalc \u2192 gap sync / semantic follow-through"
+      ],
+      "governance_notes": [
+        "Governance review before widening auto-transition triggers"
+      ],
+      "implementation_readiness": "REQUIRES_IDEMPOTENCY_FIRST",
+      "phase2_idempotency_evidence_class": "PARTIAL_IDEMPOTENCY_EVIDENCE",
+      "phase2_orchestration_maturity": "ORCHESTRATION_FRAGMENTED",
+      "phase2_retry_evidence_class": "RETRY_PARTIAL",
+      "phase2_silent_failure_risk_class": "MODERATE_SILENT_FAILURE_RISK",
+      "phase2_stale_state_dependency_class": "MODERATE_STALE_STATE_DEPENDENCY",
+      "recommended_stabilization_order": 5,
+      "reference_pattern_applicability": "partially_reusable",
+      "rollout_safety_posture": "SAFE_FOR_INCREMENTAL_STABILIZATION",
+      "stabilization_track": "IDEMPOTENCY_HARDENING",
+      "strongest_evidence": [
+        "enqueue correlation dedupe on compliance_recalc_queue"
+      ],
+      "urgency_class": "P2_HIGH_DUPLICATE_RISK",
+      "weakest_evidence": [
+        "Multiple entrypoints to requirement row without single saga coordinator"
+      ],
+      "workflow_family": "REQUIREMENT_STATE_TRANSITION"
+    },
+    {
+      "architecture_blockers": [
+        {
+          "blocker": "NO_DEGRADED_STATE_SIGNALING",
+          "severity": "SOFT_BLOCKER"
+        },
+        {
+          "blocker": "NO_RECONCILIATION_CONTRACT",
+          "severity": "OBSERVATION_ONLY"
+        },
+        {
+          "blocker": "NO_RETRY_CONTRACT",
+          "severity": "SOFT_BLOCKER"
+        },
+        {
+          "blocker": "READ_REBUILD_HEAVY",
+          "severity": "SOFT_BLOCKER"
+        },
+        {
+          "blocker": "SILENT_FAILURE_EXPOSURE",
+          "severity": "SOFT_BLOCKER"
+        }
+      ],
+      "blocker_severity_summary": "SOFT_BLOCKER",
+      "dependency_chains": [
+        "requirement truth \u2192 priority actions \u2192 digest composition"
+      ],
+      "governance_notes": [
+        "Coordinate with Command Centre sequencing to avoid duplicate UX signals"
+      ],
+      "implementation_readiness": "REQUIRES_OBSERVABILITY_FIRST",
+      "phase2_idempotency_evidence_class": "NO_IDEMPOTENCY_EVIDENCE",
+      "phase2_orchestration_maturity": "ORCHESTRATION_READ_REBUILD_HEAVY",
+      "phase2_retry_evidence_class": "NO_RETRY_EVIDENCE",
+      "phase2_silent_failure_risk_class": "MODERATE_SILENT_FAILURE_RISK",
+      "phase2_stale_state_dependency_class": "HIGH_STALE_STATE_DEPENDENCY",
+      "recommended_stabilization_order": 4,
+      "reference_pattern_applicability": "unsafe_to_generalize",
+      "rollout_safety_posture": "UNSAFE_FOR_AUTOMATION_EXPANSION",
+      "stabilization_track": "DEGRADED_STATE_VISIBILITY",
+      "strongest_evidence": [
+        "Centralized composition for Today / Command Centre urgent lists"
+      ],
+      "urgency_class": "P1_HIGH_TRUST_SURFACE",
+      "weakest_evidence": [
+        "No durable rebuild cursor; depends on upstream requirement truth freshness"
+      ],
+      "workflow_family": "TODAY_TASK_REBUILD"
+    }
+  ],
+  "unsafe_for_automation_expansion_families": [
+    "CACHE_INVALIDATION",
+    "COMMAND_CENTER_REFRESH",
+    "PORTFOLIO_SUMMARY_REFRESH",
+    "TODAY_TASK_REBUILD"
+  ]
+}

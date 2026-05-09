@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -85,7 +86,12 @@ async def gather_backfill_plan(db: Any, *, apply_writes: bool = False) -> Dict[s
     Classify unscoped documents and optionally apply patches + sync all requirements.
     When apply_writes is False (dry-run), returns counts only; DB unchanged.
     """
+    from services.authority_mutation_fanout import authority_sync_with_transition_observability
     from services.requirement_evidence_authority import sync_requirement_evidence_authority
+    from services.requirement_transition_observability import (
+        merge_automated_system_lineage_flags,
+        transition_origin_backfill,
+    )
 
     doc_stats: Dict[str, int] = {}
     touched = 0
@@ -103,8 +109,32 @@ async def gather_backfill_plan(db: Any, *, apply_writes: bool = False) -> Dict[s
             req_ids.append(str(rid))
 
     if apply_writes:
-        for rid in req_ids:
-            await sync_requirement_evidence_authority(db, rid)
+        batch_id = uuid.uuid4().hex[:12]
+        for rid in sorted(req_ids):
+            req = await db.requirements.find_one(
+                {"requirement_id": rid},
+                {"_id": 0, "client_id": 1, "property_id": 1},
+            )
+            cid = str((req or {}).get("client_id") or "").strip()
+            if not cid:
+                await sync_requirement_evidence_authority(db, rid)
+                continue
+            pid = str((req or {}).get("property_id") or "").strip() or None
+            tf: Dict[str, Any] = {}
+            await authority_sync_with_transition_observability(
+                db,
+                str(rid),
+                property_id=pid,
+                client_id=cid,
+                correlation_base=f"BACKFILL_AUTHORITY_SYNC:{batch_id}:{rid}",
+                transition_origin=transition_origin_backfill(f"script_batch:{batch_id}"),
+                transition_fanout=tf,
+            )
+            merge_automated_system_lineage_flags(
+                tf,
+                backfill_replay_possible=True,
+                reconciliation_sync_possible=True,
+            )
 
     return {
         "documents_matched_unscoped": touched,

@@ -1,0 +1,1037 @@
+{
+  "audit_only": true,
+  "cognitive_load_classes": [
+    "LOW_COGNITIVE_LOAD",
+    "MODERATE_COGNITIVE_LOAD",
+    "HIGH_COGNITIVE_LOAD",
+    "EXCESSIVE_DISCLOSURE_COMPLEXITY"
+  ],
+  "cognitive_load_distribution": {
+    "HIGH_COGNITIVE_LOAD": 15,
+    "LOW_COGNITIVE_LOAD": 3,
+    "MODERATE_COGNITIVE_LOAD": 21
+  },
+  "cognitive_load_governance_summary": {
+    "defaults": {
+      "maximum_disclosure_density": "one_primary_disclosure_per_surface",
+      "overload_risk_default": "MODERATE_COGNITIVE_LOAD",
+      "progressive_disclosure": "compact \u2192 summary \u2192 expander \u2192 audit detail",
+      "safe_compactness_limits": "chip <= 22 chars; subline <= 120 chars planning bounds"
+    },
+    "exports": {
+      "mitigation": "single disclosure block with bullets; avoid duplicate warnings in subtitle and footer",
+      "overload_risk_when_disclosure_stacking": "EXCESSIVE_DISCLOSURE_COMPLEXITY"
+    },
+    "score_rollups": {
+      "mitigation": "context panel summarizing dominant risk categories without legal essay",
+      "overload_risk_when_mixed_states": "HIGH_COGNITIVE_LOAD"
+    }
+  },
+  "cognitive_load_matrix": [
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "COMPLETENESS_PENDING"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "COMPLETENESS_PENDING"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "COMPLETENESS_PENDING"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "DECLARATION_RECORDED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "DECLARATION_RECORDED"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "DECLARATION_RECORDED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "MISSING"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "MISSING"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "MISSING"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "OPERATIONALLY_OPEN"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "OPERATIONALLY_OPEN"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "OPERATIONALLY_OPEN"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "PARTIALLY_COMPLETE"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "PARTIALLY_COMPLETE"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "PARTIALLY_COMPLETE"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "REGISTRATION_RECORDED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "REGISTRATION_RECORDED"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "REGISTRATION_RECORDED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "cognitive_load_class": "LOW_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    {
+      "cognitive_load_class": "LOW_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    {
+      "cognitive_load_class": "LOW_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "CLIENT_STATUS_CHIP",
+      "semantic_state": "VERIFIED_EXPIRED"
+    },
+    {
+      "cognitive_load_class": "MODERATE_COGNITIVE_LOAD",
+      "consumer": "PORTFOLIO_SCORE",
+      "semantic_state": "VERIFIED_EXPIRED"
+    },
+    {
+      "cognitive_load_class": "HIGH_COGNITIVE_LOAD",
+      "consumer": "REPORT_EXPORT",
+      "semantic_state": "VERIFIED_EXPIRED"
+    }
+  ],
+  "consumer_specific_trust_guidance": {
+    "CLIENT_STATUS_CHIP": {
+      "anti_patterns_to_avoid": [
+        "Green Compliant chip without adjacent disclosure on declaration or partial states",
+        "Current validation language on EXPIRY_REVIEW_REQUIRED without review cue",
+        "Resolved or passed wording on ASSESSMENT_FOLLOWUP_REQUIRED or OPERATIONALLY_OPEN"
+      ],
+      "implementation_notes": [
+        "Prefer neutral nouns over authority adjectives on risky states.",
+        "Pair every compact chip with subline or tooltip on CLIENT_STATUS_CHIP unless VERIFIED_CURRENT.",
+        "Use Recorded / Partial / Open / Review due instead of Compliant / Current when uncertain."
+      ]
+    },
+    "PORTFOLIO_SCORE": {
+      "anti_patterns_to_avoid": [
+        "Score headline that implies operational closure when follow-ups remain",
+        "Badge-only completion for PARTIALLY_COMPLETE"
+      ],
+      "implementation_notes": [
+        "Describe what the number aggregates (recorded signals), not legal outcome.",
+        "Add mixed-state caveat when portfolio blends semantic states.",
+        "Defer closure language to requirement-level detail."
+      ]
+    },
+    "REPORT_EXPORT": {
+      "anti_patterns_to_avoid": [
+        "Export title implying portfolio-wide compliance from mixed semantic states",
+        "Score headline that implies operational closure when follow-ups remain"
+      ],
+      "implementation_notes": [
+        "Mandatory disclosure block for non-safe states before evidence tables.",
+        "Summary sentence stating verification vs declaration distinction where relevant.",
+        "Avoid binary compliant/non-compliant chapter titles when states are mixed."
+      ]
+    }
+  },
+  "disclosure_layer_patterns": [
+    "BADGE_PLUS_SUBLINE",
+    "BADGE_PLUS_TOOLTIP",
+    "BADGE_PLUS_MODAL",
+    "SUMMARY_PLUS_EXPANDER",
+    "EXPORT_PLUS_DISCLOSURE_BLOCK",
+    "SCORE_PLUS_CONTEXT_PANEL"
+  ],
+  "disclosure_layering_catalog": {
+    "CLIENT_STATUS_CHIP": {
+      "compact_label_constraints": "neutral tokens unless VERIFIED_CURRENT; no standalone Compliant/Current/Verified on risky states",
+      "minimum_disclosure_proximity": "same_card_or_row",
+      "preferred_patterns": [
+        "BADGE_PLUS_SUBLINE",
+        "BADGE_PLUS_TOOLTIP",
+        "BADGE_PLUS_MODAL"
+      ],
+      "prohibited_patterns": [
+        "BADGE_ONLY_FOR_RISKY_STATES"
+      ]
+    },
+    "PORTFOLIO_SCORE": {
+      "compact_label_constraints": "no portfolio-wide compliant language; mixed-state caveat",
+      "minimum_disclosure_proximity": "adjacent_panel_or_subline",
+      "preferred_patterns": [
+        "SCORE_PLUS_CONTEXT_PANEL",
+        "SUMMARY_PLUS_EXPANDER"
+      ],
+      "prohibited_patterns": [
+        "SINGLE_NUMBER_IMPLIES_FULL_COMPLIANCE"
+      ]
+    },
+    "REPORT_EXPORT": {
+      "compact_label_constraints": "non-safe states require disclosure block before tables",
+      "minimum_disclosure_proximity": "first_page_body_adjacent_to_summary",
+      "preferred_patterns": [
+        "EXPORT_PLUS_DISCLOSURE_BLOCK",
+        "SUMMARY_PLUS_EXPANDER"
+      ],
+      "prohibited_patterns": [
+        "HEADLINE_ONLY_EXPORT_FOR_NON_SAFE_STATES"
+      ]
+    }
+  },
+  "disclosure_placement_guidance": [
+    "Place disclosure within one tap/scroll of the headline it qualifies.",
+    "Do not bury sole disclaimer in footer if headline makes a strong claim."
+  ],
+  "highest_risk_ux_anti_patterns": [
+    "Green Compliant chip without adjacent disclosure on declaration or partial states",
+    "Current validation language on EXPIRY_REVIEW_REQUIRED without review cue",
+    "Resolved or passed wording on ASSESSMENT_FOLLOWUP_REQUIRED or OPERATIONALLY_OPEN",
+    "Export title implying portfolio-wide compliance from mixed semantic states",
+    "Score headline that implies operational closure when follow-ups remain",
+    "Badge-only completion for PARTIALLY_COMPLETE"
+  ],
+  "non_blocking": true,
+  "phase": "Governance-Aware UX Trust Architecture Planning Phase 5",
+  "phase5_high_trust_consumers": [
+    "CLIENT_STATUS_CHIP",
+    "REPORT_EXPORT",
+    "PORTFOLIO_SCORE"
+  ],
+  "prohibited_compression_patterns": [
+    "Single-word Compliant for non-VERIFIED_CURRENT",
+    "Portfolio score titled Fully compliant",
+    "Export subtitle Valid without expiry review context",
+    "Chip Resolved on operational-open workflows"
+  ],
+  "remaining_runtime_limitation": "Planning artifact does not observe live user comprehension or A/B outcomes.",
+  "remaining_state_model_limitation": "UX trust architecture maps governance semantics to presentation layers; runtime binding per record is out of scope.",
+  "remediation_sequencing_categories": [
+    "FOUNDATIONAL_TRUST_FIX",
+    "HIGH_RISK_PUBLIC_SURFACE",
+    "DISCLOSURE_ALIGNMENT",
+    "SAFE_SIMPLIFICATION_UPGRADE",
+    "LOW_PRIORITY_ALIGNMENT",
+    "OBSERVE_ONLY_GOVERNANCE"
+  ],
+  "remediation_sequencing_plan": [
+    {
+      "description": "Establish neutral vocabulary and layer rules before visual polish.",
+      "sequence_rank": 0,
+      "sequencing_category": "FOUNDATIONAL_TRUST_FIX"
+    },
+    {
+      "description": "CLIENT_STATUS_CHIP, REPORT_EXPORT, PORTFOLIO_SCORE sequencing first.",
+      "sequence_rank": 1,
+      "sequencing_category": "HIGH_RISK_PUBLIC_SURFACE"
+    },
+    {
+      "description": "Align disclosure adjacency and pairing patterns across surfaces.",
+      "sequence_rank": 2,
+      "sequencing_category": "DISCLOSURE_ALIGNMENT"
+    },
+    {
+      "description": "Introduce truthful compact labels only where layers exist.",
+      "sequence_rank": 3,
+      "sequencing_category": "SAFE_SIMPLIFICATION_UPGRADE"
+    },
+    {
+      "description": "Broader REQUIREMENT_LIST and secondary surfaces.",
+      "sequence_rank": 4,
+      "sequencing_category": "LOW_PRIORITY_ALIGNMENT"
+    },
+    {
+      "description": "Metrics and unknown-mapping strings without copy churn.",
+      "sequence_rank": 5,
+      "sequencing_category": "OBSERVE_ONLY_GOVERNANCE"
+    }
+  ],
+  "runtime_behavior_changed": false,
+  "safe_chip_wording_guidance": [
+    "Prefer neutral nouns over authority adjectives on risky states.",
+    "Pair every compact chip with subline or tooltip on CLIENT_STATUS_CHIP unless VERIFIED_CURRENT.",
+    "Use Recorded / Partial / Open / Review due instead of Compliant / Current when uncertain."
+  ],
+  "safe_export_summary_guidance": [
+    "Mandatory disclosure block for non-safe states before evidence tables.",
+    "Summary sentence stating verification vs declaration distinction where relevant.",
+    "Avoid binary compliant/non-compliant chapter titles when states are mixed."
+  ],
+  "safe_score_summary_guidance": [
+    "Describe what the number aggregates (recorded signals), not legal outcome.",
+    "Add mixed-state caveat when portfolio blends semantic states.",
+    "Defer closure language to requirement-level detail."
+  ],
+  "safest_truthful_simplifications": [
+    "VERIFIED_CURRENT: short Verified (scope unchanged) with optional scope footnote",
+    "Neutral Missing / Not recorded for absent evidence",
+    "Partial / Evidence needed paired with subline",
+    "Follow-up pending with visible next-step affordance"
+  ],
+  "scope": "implementation planning for truthful simplification and disclosure layering; audit-only",
+  "semantic_transitions_reference": [
+    "MISSING",
+    "VERIFIED_CURRENT",
+    "VERIFIED_EXPIRED",
+    "UPLOADED_UNCONFIRMED",
+    "PARTIALLY_COMPLETE",
+    "DECLARATION_RECORDED",
+    "REGISTRATION_RECORDED",
+    "TENANT_DELIVERY_RECORDED",
+    "ASSESSMENT_FOLLOWUP_REQUIRED",
+    "OPERATIONALLY_OPEN",
+    "FOLLOWUP_REQUIRED",
+    "COMPLETENESS_PENDING",
+    "EXPIRY_REVIEW_REQUIRED"
+  ],
+  "tooltip_and_modal_guidance": [
+    "Tooltip for density; modal for obligation-heavy explanations.",
+    "Reuse consistent Why this matters framing across surfaces."
+  ],
+  "truthful_simplification_classes": [
+    "SAFE_TRUTHFUL_SIMPLIFICATION",
+    "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+    "RISKY_SEMANTIC_COMPRESSION",
+    "PROHIBITED_SIMPLIFICATION",
+    "AUDIT_DETAIL_REQUIRED"
+  ],
+  "truthful_simplification_distribution": {
+    "AUDIT_DETAIL_REQUIRED": 1,
+    "DISCLOSURE_REQUIRED_SIMPLIFICATION": 9,
+    "PROHIBITED_SIMPLIFICATION": 1,
+    "RISKY_SEMANTIC_COMPRESSION": 1,
+    "SAFE_TRUTHFUL_SIMPLIFICATION": 1
+  },
+  "truthful_simplification_governance_matrix": {
+    "ASSESSMENT_FOLLOWUP_REQUIRED": {
+      "compression_risk_note": "Resolved wording suppresses open obligations.",
+      "disclosure_required_note": "Follow-up visibility mandatory.",
+      "simplification_class": "PROHIBITED_SIMPLIFICATION",
+      "when_safe": "Never collapse to resolved/passed tokens."
+    },
+    "COMPLETENESS_PENDING": {
+      "compression_risk_note": "Single headline labels risk semantic collapse.",
+      "disclosure_required_note": "Pair compact signal with explanation affordance.",
+      "simplification_class": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "when_safe": "Prefer contextual summary plus disclosure support."
+    },
+    "DECLARATION_RECORDED": {
+      "compression_risk_note": "Chip-only compliance wording collapses declaration vs verification.",
+      "disclosure_required_note": "Independence disclaimer mandatory near headline.",
+      "simplification_class": "RISKY_SEMANTIC_COMPRESSION",
+      "when_safe": "Only with explicit not-independently-verified disclosure paired on same surface."
+    },
+    "EXPIRY_REVIEW_REQUIRED": {
+      "compression_risk_note": "Current language implies validity without review.",
+      "disclosure_required_note": "Expiry basis or review prompt adjacent.",
+      "simplification_class": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "when_safe": "Never current/valid-only chips without expiry-review cue."
+    },
+    "FOLLOWUP_REQUIRED": {
+      "compression_risk_note": "Single headline labels risk semantic collapse.",
+      "disclosure_required_note": "Pair compact signal with explanation affordance.",
+      "simplification_class": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "when_safe": "Prefer contextual summary plus disclosure support."
+    },
+    "MISSING": {
+      "compression_risk_note": "Any positive compliance language prohibited.",
+      "disclosure_required_note": "Avoid implying compliance by omission.",
+      "simplification_class": "AUDIT_DETAIL_REQUIRED",
+      "when_safe": "Neutral absence wording only."
+    },
+    "OPERATIONALLY_OPEN": {
+      "compression_risk_note": "Complete/compliant implies closure.",
+      "disclosure_required_note": "Documentary vs operational distinction.",
+      "simplification_class": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "when_safe": "Open/in-progress tokens only with operational context."
+    },
+    "PARTIALLY_COMPLETE": {
+      "compression_risk_note": "Badge-only complete states are misleading.",
+      "disclosure_required_note": "Outstanding evidence must be visible adjacent to any compact signal.",
+      "simplification_class": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "when_safe": "Never safe as a single green success signal."
+    },
+    "REGISTRATION_RECORDED": {
+      "compression_risk_note": "Single headline labels risk semantic collapse.",
+      "disclosure_required_note": "Pair compact signal with explanation affordance.",
+      "simplification_class": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "when_safe": "Prefer contextual summary plus disclosure support."
+    },
+    "TENANT_DELIVERY_RECORDED": {
+      "compression_risk_note": "Single headline labels risk semantic collapse.",
+      "disclosure_required_note": "Pair compact signal with explanation affordance.",
+      "simplification_class": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "when_safe": "Prefer contextual summary plus disclosure support."
+    },
+    "UPLOADED_UNCONFIRMED": {
+      "compression_risk_note": "Single headline labels risk semantic collapse.",
+      "disclosure_required_note": "Pair compact signal with explanation affordance.",
+      "simplification_class": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "when_safe": "Prefer contextual summary plus disclosure support."
+    },
+    "VERIFIED_CURRENT": {
+      "compression_risk_note": "Misleading only if scope implied exceeds verification evidence.",
+      "disclosure_required_note": "Optional reinforcement on export if mixed-state portfolios.",
+      "simplification_class": "SAFE_TRUTHFUL_SIMPLIFICATION",
+      "when_safe": "Single-token compact labels acceptable if verification scope is unchanged and unchanged elsewhere."
+    },
+    "VERIFIED_EXPIRED": {
+      "compression_risk_note": "Single headline labels risk semantic collapse.",
+      "disclosure_required_note": "Pair compact signal with explanation affordance.",
+      "simplification_class": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "when_safe": "Prefer contextual summary plus disclosure support."
+    }
+  },
+  "ux_trust_layer_matrix": [
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)",
+        "subline or tooltip mandatory for risky states"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "PROHIBITED_SIMPLIFICATION",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "PROHIBITED_SIMPLIFICATION",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "PROHIBITED_SIMPLIFICATION",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)",
+        "subline or tooltip mandatory for risky states"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "COMPLETENESS_PENDING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)",
+        "subline or tooltip mandatory for risky states"
+      ],
+      "expansion_requirements": [
+        "SUMMARY_PLUS_EXPANDER or BADGE_PLUS_MODAL",
+        "what this means copy available"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "RISKY_SEMANTIC_COMPRESSION",
+      "semantic_state": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "SUMMARY_PLUS_EXPANDER or BADGE_PLUS_MODAL",
+        "what this means copy available"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "RISKY_SEMANTIC_COMPRESSION",
+      "semantic_state": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "SUMMARY_PLUS_EXPANDER or BADGE_PLUS_MODAL",
+        "what this means copy available"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "RISKY_SEMANTIC_COMPRESSION",
+      "semantic_state": "DECLARATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)",
+        "subline or tooltip mandatory for risky states"
+      ],
+      "expansion_requirements": [
+        "SUMMARY_PLUS_EXPANDER or BADGE_PLUS_MODAL",
+        "what this means copy available"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "SUMMARY_PLUS_EXPANDER or BADGE_PLUS_MODAL",
+        "what this means copy available"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "SUMMARY_PLUS_EXPANDER or BADGE_PLUS_MODAL",
+        "what this means copy available"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)",
+        "subline or tooltip mandatory for risky states"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "FOLLOWUP_REQUIRED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)",
+        "subline or tooltip mandatory for risky states"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "RISKY_SEMANTIC_COMPRESSION",
+      "semantic_state": "MISSING"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "RISKY_SEMANTIC_COMPRESSION",
+      "semantic_state": "MISSING"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "RISKY_SEMANTIC_COMPRESSION",
+      "semantic_state": "MISSING"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)",
+        "subline or tooltip mandatory for risky states"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "PROHIBITED_SIMPLIFICATION",
+      "semantic_state": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "PROHIBITED_SIMPLIFICATION",
+      "semantic_state": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "PROHIBITED_SIMPLIFICATION",
+      "semantic_state": "OPERATIONALLY_OPEN"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)",
+        "subline or tooltip mandatory for risky states"
+      ],
+      "expansion_requirements": [
+        "SUMMARY_PLUS_EXPANDER or BADGE_PLUS_MODAL",
+        "what this means copy available"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "PROHIBITED_SIMPLIFICATION",
+      "semantic_state": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "SUMMARY_PLUS_EXPANDER or BADGE_PLUS_MODAL",
+        "what this means copy available"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "PROHIBITED_SIMPLIFICATION",
+      "semantic_state": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "SUMMARY_PLUS_EXPANDER or BADGE_PLUS_MODAL",
+        "what this means copy available"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "PROHIBITED_SIMPLIFICATION",
+      "semantic_state": "PARTIALLY_COMPLETE"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)",
+        "subline or tooltip mandatory for risky states"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "REGISTRATION_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)",
+        "subline or tooltip mandatory for risky states"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "TENANT_DELIVERY_RECORDED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)",
+        "subline or tooltip mandatory for risky states"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "RISKY_SEMANTIC_COMPRESSION",
+      "semantic_state": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "RISKY_SEMANTIC_COMPRESSION",
+      "semantic_state": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "RISKY_SEMANTIC_COMPRESSION",
+      "semantic_state": "UPLOADED_UNCONFIRMED"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "optional expanded explanation for audit-friendly landlords"
+      ],
+      "minimum_required_layer": "LAYER_COMPACT_SIGNAL",
+      "prohibited_compression_level": "SAFE_TRUTHFUL_SIMPLIFICATION",
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "optional expanded explanation for audit-friendly landlords"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "SAFE_TRUTHFUL_SIMPLIFICATION",
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "optional expanded explanation for audit-friendly landlords"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "SAFE_TRUTHFUL_SIMPLIFICATION",
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    {
+      "consumer": "CLIENT_STATUS_CHIP",
+      "disclosure_adjacency_requirements": [
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)",
+        "subline or tooltip mandatory for risky states"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "PORTFOLIO_SCORE",
+      "disclosure_adjacency_requirements": [
+        "context panel or summary line when portfolio mixes semantic states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_CONTEXTUAL_SUMMARY",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "VERIFIED_EXPIRED"
+    },
+    {
+      "consumer": "REPORT_EXPORT",
+      "disclosure_adjacency_requirements": [
+        "disclosure block required in export body for non-VERIFIED_CURRENT states",
+        "disclosure must be within one interaction of compact signal (expand, tooltip, or subline)"
+      ],
+      "expansion_requirements": [
+        "contextual summary available on demand"
+      ],
+      "minimum_required_layer": "LAYER_DISCLOSURE_SUPPORT",
+      "prohibited_compression_level": "DISCLOSURE_REQUIRED_SIMPLIFICATION",
+      "semantic_state": "VERIFIED_EXPIRED"
+    }
+  ],
+  "ux_trust_layers": [
+    "LAYER_COMPACT_SIGNAL",
+    "LAYER_CONTEXTUAL_SUMMARY",
+    "LAYER_DISCLOSURE_SUPPORT",
+    "LAYER_EXPANDED_EXPLANATION",
+    "LAYER_AUDIT_DETAIL"
+  ],
+  "what_this_means_explanation_guidance": [
+    "Plain-language clause: what was recorded, what was not verified, what happens next."
+  ]
+}

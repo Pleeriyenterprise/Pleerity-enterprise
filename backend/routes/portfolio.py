@@ -20,9 +20,15 @@ from services.compliance_score import (
 )
 from services.scoring_semantics_v1 import attach_semantics_contract
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Dict, Optional
 import logging
 
+from services.trust_surface_observability import (
+    SURFACE_PORTFOLIO_SUMMARY_REFRESH,
+    build_portfolio_summary_trust_surface_metadata,
+    ensure_trust_surface_correlation_id,
+)
+from utils.compliance_fanout_log import compliance_fanout_extra
 from utils.expiry_utils import get_computed_status, get_effective_expiry_date
 from services.requirement_client_runtime_surface import project_requirement_row_client_runtime
 
@@ -51,13 +57,31 @@ async def get_compliance_summary(request: Request):
     client_id = user["client_id"]
     headline = await get_persisted_portfolio_headline_for_summary(client_id)
     db = database.get_db()
+    corr = ensure_trust_surface_correlation_id(SURFACE_PORTFOLIO_SUMMARY_REFRESH, client_id, None)
     gap_engine_unavailable = False
+    gap_exc: Optional[Exception] = None
     try:
         from services.compliance_gap_sync import aggregate_gap_counts_for_client
 
         gap_engine = await aggregate_gap_counts_for_client(db, client_id)
-    except Exception:
+    except Exception as e:
+        gap_exc = e
         gap_engine_unavailable = True
+        logger.warning(
+            "portfolio compliance-summary gap aggregate failed: %s",
+            e,
+            extra=compliance_fanout_extra(
+                op="trust_surface",
+                stage="gap_engine_failed",
+                client_id=client_id,
+                correlation_id=corr,
+                surface_name=SURFACE_PORTFOLIO_SUMMARY_REFRESH,
+                section_name="gap_engine_aggregate",
+                degraded_reason=str(e),
+                fallback_used=True,
+                downstream_dependency="compliance_gap_sync.aggregate_gap_counts_for_client",
+            ),
+        )
         gap_engine = {
             "by_kind": {},
             "by_severity": {},
@@ -74,6 +98,19 @@ async def get_compliance_summary(request: Request):
                 "total_open": 0,
             },
         }
+    portfolio_trust_meta = build_portfolio_summary_trust_surface_metadata(
+        client_id=client_id,
+        correlation_id=corr,
+        gap_engine_unavailable=gap_engine_unavailable,
+        headline=headline,
+        gap_error=gap_exc,
+    )
+
+    def _with_portfolio_trust(payload: Dict[str, Any]) -> Dict[str, Any]:
+        merged = dict(payload)
+        merged["trust_surface_operational_metadata"] = portfolio_trust_meta
+        return merged
+
     catalog_result = await get_portfolio_compliance_from_catalog(client_id)
     if catalog_result:
         merged_props = []
@@ -123,40 +160,42 @@ async def get_compliance_summary(request: Request):
         )
         risk_override = override_outputs["effective_override_output"]
         return attach_semantics_contract(
-            {
-                "portfolio_score": headline.get("portfolio_score"),
-                "risk_level": risk_override.get("effective_portfolio_risk_state"),
-                "portfolio_risk_level": risk_override.get("effective_portfolio_risk_state"),
-                "base_portfolio_risk_state": risk_override.get("base_portfolio_risk_state"),
-                "effective_portfolio_risk_state": risk_override.get("effective_portfolio_risk_state"),
-                "risk_override_reasons": risk_override.get("risk_override_reasons"),
-                "critical_property_count": risk_override.get("critical_property_count"),
-                "high_risk_gap_count": risk_override.get("high_risk_gap_count"),
-                "unknown_or_stale_property_count": risk_override.get("unknown_or_stale_property_count"),
-                "attention_required": risk_override.get("attention_required"),
-                "critical_property_escalation": risk_override.get("critical_property_escalation"),
-                "suppress_positive_headline": risk_override.get("suppress_positive_headline"),
-                "legacy_override_output": override_outputs["legacy_override_output"],
-                "policy_override_output": override_outputs["policy_override_output"],
-                "effective_override_output": override_outputs["effective_override_output"],
-                "score_status": headline.get("score_status"),
-                "score_status_message": headline.get("score_status_message"),
-                "score_authority": "persisted_portfolio_aggregate",
-                "last_calculated_at": headline.get("portfolio_last_calculated_at"),
-                "score_coverage": headline.get("score_coverage"),
-                "updated_at": catalog_result.get("updated_at", datetime.now(timezone.utc).isoformat()),
-                "kpis": catalog_result.get("kpis", {}),
-                "gap_engine_diagnostics": {"policy": (gap_engine.get("policy") or {})},
-                "properties": merged_props,
-                "catalog_matrix_portfolio_preview": {
-                    "score_authority": "non_authoritative_requirement_matrix",
-                    "portfolio_score": catalog_result.get("portfolio_score"),
-                    "portfolio_risk_level": catalog_result.get("portfolio_risk_level"),
-                    "risk_level": catalog_result.get("risk_level"),
-                    "updated_at": catalog_result.get("updated_at"),
-                    "note": "Catalog-weighted matrix preview only; headline KPIs use persisted compliance scores.",
-                },
-            }
+            _with_portfolio_trust(
+                {
+                    "portfolio_score": headline.get("portfolio_score"),
+                    "risk_level": risk_override.get("effective_portfolio_risk_state"),
+                    "portfolio_risk_level": risk_override.get("effective_portfolio_risk_state"),
+                    "base_portfolio_risk_state": risk_override.get("base_portfolio_risk_state"),
+                    "effective_portfolio_risk_state": risk_override.get("effective_portfolio_risk_state"),
+                    "risk_override_reasons": risk_override.get("risk_override_reasons"),
+                    "critical_property_count": risk_override.get("critical_property_count"),
+                    "high_risk_gap_count": risk_override.get("high_risk_gap_count"),
+                    "unknown_or_stale_property_count": risk_override.get("unknown_or_stale_property_count"),
+                    "attention_required": risk_override.get("attention_required"),
+                    "critical_property_escalation": risk_override.get("critical_property_escalation"),
+                    "suppress_positive_headline": risk_override.get("suppress_positive_headline"),
+                    "legacy_override_output": override_outputs["legacy_override_output"],
+                    "policy_override_output": override_outputs["policy_override_output"],
+                    "effective_override_output": override_outputs["effective_override_output"],
+                    "score_status": headline.get("score_status"),
+                    "score_status_message": headline.get("score_status_message"),
+                    "score_authority": "persisted_portfolio_aggregate",
+                    "last_calculated_at": headline.get("portfolio_last_calculated_at"),
+                    "score_coverage": headline.get("score_coverage"),
+                    "updated_at": catalog_result.get("updated_at", datetime.now(timezone.utc).isoformat()),
+                    "kpis": catalog_result.get("kpis", {}),
+                    "gap_engine_diagnostics": {"policy": (gap_engine.get("policy") or {})},
+                    "properties": merged_props,
+                    "catalog_matrix_portfolio_preview": {
+                        "score_authority": "non_authoritative_requirement_matrix",
+                        "portfolio_score": catalog_result.get("portfolio_score"),
+                        "portfolio_risk_level": catalog_result.get("portfolio_risk_level"),
+                        "risk_level": catalog_result.get("risk_level"),
+                        "updated_at": catalog_result.get("updated_at"),
+                        "note": "Catalog-weighted matrix preview only; headline KPIs use persisted compliance scores.",
+                    },
+                }
+            )
         )
     # Legacy matrix path (no catalog): operational preview only for matrix numbers.
     properties = headline.get("properties") or []
@@ -172,30 +211,32 @@ async def get_compliance_summary(request: Request):
         )
         risk_override = override_outputs["effective_override_output"]
         return attach_semantics_contract(
-            {
-                "portfolio_score": headline.get("portfolio_score"),
-                "risk_level": risk_override.get("effective_portfolio_risk_state"),
-                "portfolio_risk_level": risk_override.get("effective_portfolio_risk_state"),
-                "base_portfolio_risk_state": risk_override.get("base_portfolio_risk_state"),
-                "effective_portfolio_risk_state": risk_override.get("effective_portfolio_risk_state"),
-                "risk_override_reasons": risk_override.get("risk_override_reasons"),
-                "critical_property_count": risk_override.get("critical_property_count"),
-                "high_risk_gap_count": risk_override.get("high_risk_gap_count"),
-                "unknown_or_stale_property_count": risk_override.get("unknown_or_stale_property_count"),
-                "attention_required": risk_override.get("attention_required"),
-                "critical_property_escalation": risk_override.get("critical_property_escalation"),
-                "suppress_positive_headline": risk_override.get("suppress_positive_headline"),
-                "legacy_override_output": override_outputs["legacy_override_output"],
-                "policy_override_output": override_outputs["policy_override_output"],
-                "effective_override_output": override_outputs["effective_override_output"],
-                "score_status": headline.get("score_status"),
-                "score_status_message": headline.get("score_status_message"),
-                "score_authority": "persisted_portfolio_aggregate",
-                "last_calculated_at": headline.get("portfolio_last_calculated_at"),
-                "score_coverage": headline.get("score_coverage"),
-                "gap_engine_diagnostics": {"policy": (gap_engine.get("policy") or {})},
-                "properties": [],
-            }
+            _with_portfolio_trust(
+                {
+                    "portfolio_score": headline.get("portfolio_score"),
+                    "risk_level": risk_override.get("effective_portfolio_risk_state"),
+                    "portfolio_risk_level": risk_override.get("effective_portfolio_risk_state"),
+                    "base_portfolio_risk_state": risk_override.get("base_portfolio_risk_state"),
+                    "effective_portfolio_risk_state": risk_override.get("effective_portfolio_risk_state"),
+                    "risk_override_reasons": risk_override.get("risk_override_reasons"),
+                    "critical_property_count": risk_override.get("critical_property_count"),
+                    "high_risk_gap_count": risk_override.get("high_risk_gap_count"),
+                    "unknown_or_stale_property_count": risk_override.get("unknown_or_stale_property_count"),
+                    "attention_required": risk_override.get("attention_required"),
+                    "critical_property_escalation": risk_override.get("critical_property_escalation"),
+                    "suppress_positive_headline": risk_override.get("suppress_positive_headline"),
+                    "legacy_override_output": override_outputs["legacy_override_output"],
+                    "policy_override_output": override_outputs["policy_override_output"],
+                    "effective_override_output": override_outputs["effective_override_output"],
+                    "score_status": headline.get("score_status"),
+                    "score_status_message": headline.get("score_status_message"),
+                    "score_authority": "persisted_portfolio_aggregate",
+                    "last_calculated_at": headline.get("portfolio_last_calculated_at"),
+                    "score_coverage": headline.get("score_coverage"),
+                    "gap_engine_diagnostics": {"policy": (gap_engine.get("policy") or {})},
+                    "properties": [],
+                }
+            )
         )
     client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
     requirements = await mongo_find_to_list(
@@ -297,36 +338,38 @@ async def get_compliance_summary(request: Request):
     )
     risk_override = override_outputs["effective_override_output"]
     return attach_semantics_contract(
-        {
-            "portfolio_score": headline.get("portfolio_score"),
-            "risk_level": risk_override.get("effective_portfolio_risk_state"),
-            "portfolio_risk_level": risk_override.get("effective_portfolio_risk_state"),
-            "base_portfolio_risk_state": risk_override.get("base_portfolio_risk_state"),
-            "effective_portfolio_risk_state": risk_override.get("effective_portfolio_risk_state"),
-            "risk_override_reasons": risk_override.get("risk_override_reasons"),
-            "critical_property_count": risk_override.get("critical_property_count"),
-            "high_risk_gap_count": risk_override.get("high_risk_gap_count"),
-            "unknown_or_stale_property_count": risk_override.get("unknown_or_stale_property_count"),
-            "attention_required": risk_override.get("attention_required"),
-            "critical_property_escalation": risk_override.get("critical_property_escalation"),
-            "suppress_positive_headline": risk_override.get("suppress_positive_headline"),
-            "legacy_override_output": override_outputs["legacy_override_output"],
-            "policy_override_output": override_outputs["policy_override_output"],
-            "effective_override_output": override_outputs["effective_override_output"],
-            "score_status": headline.get("score_status"),
-            "score_status_message": headline.get("score_status_message"),
-            "score_authority": "persisted_portfolio_aggregate",
-            "last_calculated_at": headline.get("portfolio_last_calculated_at"),
-            "score_coverage": headline.get("score_coverage"),
-            "gap_engine_diagnostics": {"policy": (gap_engine.get("policy") or {})},
-            "properties": property_summaries,
-            "legacy_matrix_portfolio_preview": {
-                "score_authority": "non_authoritative_legacy_matrix",
-                "portfolio_score": matrix_portfolio_score,
-                "risk_level": matrix_portfolio_risk,
-                "note": "Legacy equal-weight matrix preview only; headline uses persisted compliance scores.",
-            },
-        }
+        _with_portfolio_trust(
+            {
+                "portfolio_score": headline.get("portfolio_score"),
+                "risk_level": risk_override.get("effective_portfolio_risk_state"),
+                "portfolio_risk_level": risk_override.get("effective_portfolio_risk_state"),
+                "base_portfolio_risk_state": risk_override.get("base_portfolio_risk_state"),
+                "effective_portfolio_risk_state": risk_override.get("effective_portfolio_risk_state"),
+                "risk_override_reasons": risk_override.get("risk_override_reasons"),
+                "critical_property_count": risk_override.get("critical_property_count"),
+                "high_risk_gap_count": risk_override.get("high_risk_gap_count"),
+                "unknown_or_stale_property_count": risk_override.get("unknown_or_stale_property_count"),
+                "attention_required": risk_override.get("attention_required"),
+                "critical_property_escalation": risk_override.get("critical_property_escalation"),
+                "suppress_positive_headline": risk_override.get("suppress_positive_headline"),
+                "legacy_override_output": override_outputs["legacy_override_output"],
+                "policy_override_output": override_outputs["policy_override_output"],
+                "effective_override_output": override_outputs["effective_override_output"],
+                "score_status": headline.get("score_status"),
+                "score_status_message": headline.get("score_status_message"),
+                "score_authority": "persisted_portfolio_aggregate",
+                "last_calculated_at": headline.get("portfolio_last_calculated_at"),
+                "score_coverage": headline.get("score_coverage"),
+                "gap_engine_diagnostics": {"policy": (gap_engine.get("policy") or {})},
+                "properties": property_summaries,
+                "legacy_matrix_portfolio_preview": {
+                    "score_authority": "non_authoritative_legacy_matrix",
+                    "portfolio_score": matrix_portfolio_score,
+                    "risk_level": matrix_portfolio_risk,
+                    "note": "Legacy equal-weight matrix preview only; headline uses persisted compliance scores.",
+                },
+            }
+        )
     )
 
 

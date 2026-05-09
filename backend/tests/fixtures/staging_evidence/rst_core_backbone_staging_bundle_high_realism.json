@@ -1,0 +1,2765 @@
+{
+  "convergence_snapshot": {
+    "audit_only": true,
+    "convergence_evidence_matrix": {
+      "audit_only": true,
+      "matrix_rows": [
+        {
+          "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+          "correlation_id": "c-t0",
+          "degraded_visibility": false,
+          "downstream_targets": [
+            "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "compliance_recalc_queue.enqueue_compliance_recalc",
+            "risk_signal_regen_queue.enqueue_risk_signal_regen"
+          ],
+          "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+          "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+          "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+          "requirement_id": "",
+          "retry_evidence": "none_observed",
+          "settlement_evidence": "PROPAGATION_UNKNOWN",
+          "stale_read_dependency": false,
+          "workflow_family": "automated_outcome_authority"
+        },
+        {
+          "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+          "correlation_id": "c-t1",
+          "degraded_visibility": false,
+          "downstream_targets": [
+            "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "compliance_recalc_queue.enqueue_compliance_recalc",
+            "risk_signal_regen_queue.enqueue_risk_signal_regen"
+          ],
+          "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+          "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+          "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+          "requirement_id": "",
+          "retry_evidence": "enqueue_duplicate_suppressed",
+          "settlement_evidence": "PROPAGATION_UNKNOWN",
+          "stale_read_dependency": false,
+          "workflow_family": "automated_outcome_authority"
+        },
+        {
+          "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+          "correlation_id": "c-t2",
+          "degraded_visibility": false,
+          "downstream_targets": [
+            "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "compliance_recalc_queue.enqueue_compliance_recalc",
+            "risk_signal_regen_queue.enqueue_risk_signal_regen"
+          ],
+          "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+          "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+          "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+          "requirement_id": "",
+          "retry_evidence": "none_observed",
+          "settlement_evidence": "PROPAGATION_UNKNOWN",
+          "stale_read_dependency": false,
+          "workflow_family": "automated_outcome_authority"
+        },
+        {
+          "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+          "correlation_id": "c-t3",
+          "degraded_visibility": false,
+          "downstream_targets": [
+            "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "compliance_recalc_queue.enqueue_compliance_recalc",
+            "risk_signal_regen_queue.enqueue_risk_signal_regen"
+          ],
+          "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+          "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+          "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+          "requirement_id": "",
+          "retry_evidence": "none_observed",
+          "settlement_evidence": "PROPAGATION_UNKNOWN",
+          "stale_read_dependency": false,
+          "workflow_family": "automated_outcome_authority"
+        },
+        {
+          "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+          "correlation_id": "c-t4",
+          "degraded_visibility": false,
+          "downstream_targets": [
+            "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "compliance_recalc_queue.enqueue_compliance_recalc",
+            "risk_signal_regen_queue.enqueue_risk_signal_regen"
+          ],
+          "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+          "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+          "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+          "requirement_id": "",
+          "retry_evidence": "none_observed",
+          "settlement_evidence": "PROPAGATION_UNKNOWN",
+          "stale_read_dependency": false,
+          "workflow_family": "automated_outcome_authority"
+        },
+        {
+          "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+          "correlation_id": "c-t5",
+          "degraded_visibility": false,
+          "downstream_targets": [
+            "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "compliance_recalc_queue.enqueue_compliance_recalc",
+            "risk_signal_regen_queue.enqueue_risk_signal_regen"
+          ],
+          "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+          "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+          "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+          "requirement_id": "",
+          "retry_evidence": "none_observed",
+          "settlement_evidence": "PROPAGATION_UNKNOWN",
+          "stale_read_dependency": false,
+          "workflow_family": "automated_outcome_authority"
+        },
+        {
+          "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+          "correlation_id": "c-t6",
+          "degraded_visibility": false,
+          "downstream_targets": [
+            "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "compliance_recalc_queue.enqueue_compliance_recalc",
+            "risk_signal_regen_queue.enqueue_risk_signal_regen"
+          ],
+          "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+          "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+          "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+          "requirement_id": "",
+          "retry_evidence": "none_observed",
+          "settlement_evidence": "PROPAGATION_UNKNOWN",
+          "stale_read_dependency": false,
+          "workflow_family": "automated_outcome_authority"
+        },
+        {
+          "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+          "correlation_id": "c-t7",
+          "degraded_visibility": false,
+          "downstream_targets": [
+            "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "compliance_recalc_queue.enqueue_compliance_recalc",
+            "risk_signal_regen_queue.enqueue_risk_signal_regen"
+          ],
+          "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+          "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+          "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+          "requirement_id": "",
+          "retry_evidence": "none_observed",
+          "settlement_evidence": "PROPAGATION_UNKNOWN",
+          "stale_read_dependency": false,
+          "workflow_family": "automated_outcome_authority"
+        },
+        {
+          "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+          "correlation_id": "c-t8",
+          "degraded_visibility": false,
+          "downstream_targets": [
+            "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "compliance_recalc_queue.enqueue_compliance_recalc",
+            "risk_signal_regen_queue.enqueue_risk_signal_regen"
+          ],
+          "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+          "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+          "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+          "requirement_id": "",
+          "retry_evidence": "replay_or_reentry",
+          "settlement_evidence": "PROPAGATION_UNKNOWN",
+          "stale_read_dependency": false,
+          "workflow_family": "automated_outcome_authority"
+        },
+        {
+          "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+          "correlation_id": "c-t9",
+          "degraded_visibility": false,
+          "downstream_targets": [
+            "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "compliance_recalc_queue.enqueue_compliance_recalc",
+            "risk_signal_regen_queue.enqueue_risk_signal_regen"
+          ],
+          "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+          "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+          "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+          "requirement_id": "",
+          "retry_evidence": "none_observed",
+          "settlement_evidence": "PROPAGATION_UNKNOWN",
+          "stale_read_dependency": false,
+          "workflow_family": "automated_outcome_authority"
+        }
+      ],
+      "non_blocking": true,
+      "opaque_eventual_consistency_boundaries": [],
+      "schema_version": "workflow_runtime_convergence_evidence_matrix_v1",
+      "strongest_settlement_families": [],
+      "weakest_convergence_families": [
+        "automated_outcome_authority"
+      ]
+    },
+    "generated_at_iso": "2026-05-14T12:00:00Z",
+    "non_blocking": true,
+    "propagation_completion": {
+      "by_propagation_completion": {
+        "PROPAGATION_UNKNOWN": 10
+      },
+      "degraded_or_partial_count": 0,
+      "non_blocking": true,
+      "pending_or_retrying_count": 0,
+      "schema_version": "propagation_completion_summary_v1",
+      "settled_count": 0
+    },
+    "reconciliation_visibility": {
+      "by_reconciliation_evidence": {
+        "RECONCILIATION_UNKNOWN": 10
+      },
+      "non_blocking": true,
+      "not_visible_count": 0,
+      "pending_or_degraded_count": 0,
+      "schema_version": "reconciliation_visibility_summary_v1"
+    },
+    "runtime_convergence_hotspots": {
+      "audit_only": true,
+      "degraded_path_persistence_risk": [],
+      "non_blocking": true,
+      "partial_propagation_persistence": [],
+      "reconciliation_gaps": [],
+      "regeneration_convergence_ambiguity": [
+        "automated_outcome_authority:c-t0",
+        "automated_outcome_authority:c-t1",
+        "automated_outcome_authority:c-t2",
+        "automated_outcome_authority:c-t3",
+        "automated_outcome_authority:c-t4",
+        "automated_outcome_authority:c-t5",
+        "automated_outcome_authority:c-t6",
+        "automated_outcome_authority:c-t7",
+        "automated_outcome_authority:c-t8",
+        "automated_outcome_authority:c-t9"
+      ],
+      "replay_reentry_instability": [
+        "automated_outcome_authority:c-t8"
+      ],
+      "schema_version": "workflow_runtime_convergence_hotspots_v1",
+      "settlement_blind_spots": [
+        "automated_outcome_authority:c-t0",
+        "automated_outcome_authority:c-t1",
+        "automated_outcome_authority:c-t2",
+        "automated_outcome_authority:c-t3",
+        "automated_outcome_authority:c-t4",
+        "automated_outcome_authority:c-t5",
+        "automated_outcome_authority:c-t6",
+        "automated_outcome_authority:c-t7",
+        "automated_outcome_authority:c-t8",
+        "automated_outcome_authority:c-t9"
+      ],
+      "stale_state_persistence_risk": [],
+      "trust_surface_divergence_risk": []
+    },
+    "schema_version": "workflow_runtime_convergence_snapshot_v1",
+    "stale_state_recovery": {
+      "non_blocking": true,
+      "replay_settled_trace_count": 0,
+      "schema_version": "stale_state_recovery_summary_v1",
+      "stale_surface_trace_count": 0,
+      "stale_visible_propagation_count": 0
+    }
+  },
+  "dual_family_staging_validation": {
+    "combined_activation_continuity_summary": {
+      "combined_by_queue_continuity": {
+        "QUEUE_CONTINUITY_CONFIRMED": 2
+      },
+      "schema_version": "dual_family_combined_continuity_summary_v1",
+      "source_schema": "activation_continuity_summary_v1"
+    },
+    "combined_activation_convergence_summary": {
+      "convergence_matrix_row_count": 10,
+      "downstream_coexistence": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "has_recalc_downstream": true,
+        "has_regen_downstream": true,
+        "schema_version": "dual_family_downstream_coexistence_v1"
+      },
+      "matrix_workflow_families": [
+        "automated_outcome_authority"
+      ],
+      "schema_version": "dual_family_combined_convergence_summary_v1"
+    },
+    "combined_activation_drift_summary": {
+      "drift_classification": "LOW_VALIDATION_DRIFT",
+      "finding_codes": [],
+      "schema_version": "dual_family_combined_drift_summary_v1"
+    },
+    "combined_activation_observability_summary": {
+      "by_observability_band": {
+        "OBSERVABILITY_CONFIRMED": 3
+      },
+      "dual_family_observability_integrity": "OBSERVABILITY_CONFIRMED",
+      "schema_version": "dual_family_combined_observability_summary_v1"
+    },
+    "combined_activation_rollback_summary": {
+      "rollback_summary": {
+        "advisory_only": true,
+        "limited_activation_family_scope": [
+          "COMPLIANCE_SCORE_RECALC",
+          "REGENERATION_RECALC"
+        ],
+        "rollback_posture": "ROLLBACK_VALIDATED",
+        "rollback_posture_applies_to_registry_ceiling_order": true,
+        "rst_core_backbone_family": "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE",
+        "schema_version": "activation_rollback_summary_v1",
+        "transitions": [
+          {
+            "activation_validation": "VALIDATION_CONFIRMED",
+            "finding_codes": [],
+            "from_ceiling": "ACTIVATION_LIMITED",
+            "rollback_posture": "ROLLBACK_VALIDATED",
+            "schema_version": "activation_rollback_posture_validation_v1",
+            "to_ceiling": "ACTIVATION_OBSERVE_ONLY"
+          },
+          {
+            "activation_validation": "VALIDATION_CONFIRMED",
+            "finding_codes": [],
+            "from_ceiling": "ACTIVATION_LIMITED",
+            "rollback_posture": "ROLLBACK_VALIDATED",
+            "schema_version": "activation_rollback_posture_validation_v1",
+            "to_ceiling": "ACTIVATION_DISABLED"
+          },
+          {
+            "activation_validation": "VALIDATION_CONFIRMED",
+            "finding_codes": [],
+            "from_ceiling": "ACTIVATION_OBSERVE_ONLY",
+            "rollback_posture": "ROLLBACK_VALIDATED",
+            "schema_version": "activation_rollback_posture_validation_v1",
+            "to_ceiling": "ACTIVATION_DISABLED"
+          }
+        ]
+      },
+      "schema_version": "dual_family_combined_rollback_summary_v1"
+    },
+    "downstream_metadata_validation": {
+      "activation_validation": "VALIDATION_CONFIRMED",
+      "finding_codes": [],
+      "observability": "OBSERVABILITY_CONFIRMED",
+      "recalc_downstream_rows_checked": 10,
+      "regen_downstream_rows_checked": 10,
+      "schema_version": "downstream_activation_observability_v1"
+    },
+    "dual_family_downstream_coexistence": {
+      "activation_validation": "VALIDATION_CONFIRMED",
+      "finding_codes": [],
+      "has_recalc_downstream": true,
+      "has_regen_downstream": true,
+      "schema_version": "dual_family_downstream_coexistence_v1"
+    },
+    "dual_family_gate_alignment": {
+      "activation_validation": "VALIDATION_CONFIRMED",
+      "finding_codes": [],
+      "schema_version": "dual_family_gate_alignment_v1"
+    },
+    "dual_family_governance_evidence_posture": {
+      "activation_validation": "VALIDATION_CONFIRMED",
+      "finding_codes": [],
+      "schema_version": "dual_family_governance_evidence_posture_v1"
+    },
+    "dual_family_staging_readiness_classification": "DUAL_FAMILY_STAGING_CONFIRMED",
+    "generated_at_iso": "2026-05-14T12:00:00Z",
+    "registry_v2_governance_load_signal": {
+      "activation_validation": "VALIDATION_CONFIRMED",
+      "finding_codes": [],
+      "schema_version": "registry_v2_governance_load_signal_v1"
+    },
+    "schema_version": "workflow_runtime_activation_dual_family_validation_v1",
+    "validation_snapshot": {
+      "activation_governance_version": "workflow_runtime_activation_registry_v3",
+      "deferred_and_scoped_guard_validation": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "schema_version": "activation_family_guard_validation_v1"
+      },
+      "drift": {
+        "drift_classification": "LOW_VALIDATION_DRIFT",
+        "finding_codes": [],
+        "schema_version": "activation_validation_drift_v1"
+      },
+      "enqueue_sample_validations": [
+        {
+          "continuity": {
+            "activation_validation": "VALIDATION_CONFIRMED",
+            "finding_codes": [],
+            "queue_continuity": "QUEUE_CONTINUITY_CONFIRMED",
+            "schema_version": "enqueue_continuity_validation_v1"
+          },
+          "observability": {
+            "activation_validation": "VALIDATION_CONFIRMED",
+            "finding_codes": [],
+            "observability": "OBSERVABILITY_CONFIRMED",
+            "schema_version": "enqueue_observability_validation_v1"
+          }
+        }
+      ],
+      "gate_validation": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "gate": {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        },
+        "schema_version": "activation_gate_validation_v1"
+      },
+      "generated_at_iso": "2026-05-14T12:00:00Z",
+      "governance_runtime_visibility": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "observability": "OBSERVABILITY_CONFIRMED",
+        "schema_version": "governance_runtime_activation_visibility_v1"
+      },
+      "overall_activation_validation": "VALIDATION_CONFIRMED",
+      "regeneration_enqueue_sample_validations": [
+        {
+          "continuity": {
+            "activation_validation": "VALIDATION_CONFIRMED",
+            "finding_codes": [],
+            "queue_continuity": "QUEUE_CONTINUITY_CONFIRMED",
+            "schema_version": "regeneration_enqueue_continuity_validation_v1"
+          },
+          "observability": {
+            "activation_validation": "VALIDATION_CONFIRMED",
+            "finding_codes": [],
+            "observability": "OBSERVABILITY_CONFIRMED",
+            "schema_version": "regeneration_enqueue_observability_validation_v1"
+          }
+        }
+      ],
+      "regeneration_recalc_gate_validation": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "gate": {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        },
+        "schema_version": "regeneration_activation_gate_validation_v1"
+      },
+      "rst_core_backbone_convergence_continuity": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "schema_version": "rst_core_backbone_convergence_continuity_v1",
+        "traces_checked": 10
+      },
+      "rst_core_backbone_gate_validation": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "gate": {
+          "activation_family": "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "rst_core_backbone_registry_allows_authority_gap_recalc_regen_chain",
+          "activation_scope": "requirement_state_transition_core_backbone_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "child_compliance_recalc_gate": {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          },
+          "child_regeneration_recalc_gate": {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          },
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        },
+        "schema_version": "rst_core_backbone_activation_gate_validation_v1"
+      },
+      "runtime_activation_snapshot": {
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "families": [
+          {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          },
+          {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          },
+          {
+            "activation_family": "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "rst_core_backbone_registry_allows_authority_gap_recalc_regen_chain",
+            "activation_scope": "requirement_state_transition_core_backbone_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "child_compliance_recalc_gate": {
+              "activation_family": "COMPLIANCE_SCORE_RECALC",
+              "activation_guard_result": "GUARD_RESULT_PERMITTED",
+              "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+              "activation_scope": "compliance_recalc_enqueue_only",
+              "activation_state": "ACTIVATION_LIMITED",
+              "permitted": true,
+              "registry_ceiling": "ACTIVATION_LIMITED"
+            },
+            "child_regeneration_recalc_gate": {
+              "activation_family": "REGENERATION_RECALC",
+              "activation_guard_result": "GUARD_RESULT_PERMITTED",
+              "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+              "activation_scope": "risk_signal_regen_enqueue_only",
+              "activation_state": "ACTIVATION_LIMITED",
+              "permitted": true,
+              "registry_ceiling": "ACTIVATION_LIMITED"
+            },
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          }
+        ],
+        "generated_at_iso": "2026-05-14T12:00:00Z",
+        "schema_version": "workflow_runtime_activation_snapshot_v1"
+      },
+      "schema_version": "workflow_runtime_activation_validation_v1",
+      "transition_downstream_observability": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "observability": "OBSERVABILITY_CONFIRMED",
+        "recalc_downstream_rows_checked": 10,
+        "regen_downstream_rows_checked": 10,
+        "schema_version": "downstream_activation_observability_v1"
+      }
+    }
+  },
+  "evidence_pack": {
+    "activation_family": "COMPLIANCE_SCORE_RECALC",
+    "activation_governance_version": "workflow_runtime_activation_registry_v3",
+    "activation_operational_findings": {
+      "consistency_axes": {
+        "activation_runtime_consistency": "CONSISTENT",
+        "convergence_runtime_alignment": "CONSISTENT",
+        "downstream_runtime_consistency": "CONSISTENT",
+        "enqueue_runtime_consistency": "CONSISTENT",
+        "governance_runtime_alignment": "CONSISTENT",
+        "observability_runtime_alignment": "CONSISTENT",
+        "rollback_runtime_alignment": "CONSISTENT"
+      },
+      "finding_codes": [
+        "posture=LIMITED_ACTIVATION_REPRESENTATIVE_EVIDENCE_STRONG",
+        "readiness=READY_FOR_CONTINUED_LIMITED_ACTIVATION",
+        "representative_evidence=REPRESENTATIVE_EVIDENCE_CONFIRMED"
+      ],
+      "schema_version": "activation_operational_findings_v1"
+    },
+    "activation_state": "ACTIVATION_LIMITED",
+    "activation_validation_snapshot": {
+      "activation_governance_version": "workflow_runtime_activation_registry_v3",
+      "deferred_and_scoped_guard_validation": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "schema_version": "activation_family_guard_validation_v1"
+      },
+      "drift": {
+        "drift_classification": "LOW_VALIDATION_DRIFT",
+        "finding_codes": [],
+        "schema_version": "activation_validation_drift_v1"
+      },
+      "enqueue_sample_validations": [
+        {
+          "continuity": {
+            "activation_validation": "VALIDATION_CONFIRMED",
+            "finding_codes": [],
+            "queue_continuity": "QUEUE_CONTINUITY_CONFIRMED",
+            "schema_version": "enqueue_continuity_validation_v1"
+          },
+          "observability": {
+            "activation_validation": "VALIDATION_CONFIRMED",
+            "finding_codes": [],
+            "observability": "OBSERVABILITY_CONFIRMED",
+            "schema_version": "enqueue_observability_validation_v1"
+          }
+        }
+      ],
+      "gate_validation": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "gate": {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        },
+        "schema_version": "activation_gate_validation_v1"
+      },
+      "generated_at_iso": "2026-05-14T12:00:00Z",
+      "governance_runtime_visibility": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "observability": "OBSERVABILITY_CONFIRMED",
+        "schema_version": "governance_runtime_activation_visibility_v1"
+      },
+      "overall_activation_validation": "VALIDATION_CONFIRMED",
+      "regeneration_enqueue_sample_validations": [
+        {
+          "continuity": {
+            "activation_validation": "VALIDATION_CONFIRMED",
+            "finding_codes": [],
+            "queue_continuity": "QUEUE_CONTINUITY_CONFIRMED",
+            "schema_version": "regeneration_enqueue_continuity_validation_v1"
+          },
+          "observability": {
+            "activation_validation": "VALIDATION_CONFIRMED",
+            "finding_codes": [],
+            "observability": "OBSERVABILITY_CONFIRMED",
+            "schema_version": "regeneration_enqueue_observability_validation_v1"
+          }
+        }
+      ],
+      "regeneration_recalc_gate_validation": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "gate": {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        },
+        "schema_version": "regeneration_activation_gate_validation_v1"
+      },
+      "rst_core_backbone_convergence_continuity": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "schema_version": "rst_core_backbone_convergence_continuity_v1",
+        "traces_checked": 10
+      },
+      "rst_core_backbone_gate_validation": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "gate": {
+          "activation_family": "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "rst_core_backbone_registry_allows_authority_gap_recalc_regen_chain",
+          "activation_scope": "requirement_state_transition_core_backbone_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "child_compliance_recalc_gate": {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          },
+          "child_regeneration_recalc_gate": {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          },
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        },
+        "schema_version": "rst_core_backbone_activation_gate_validation_v1"
+      },
+      "runtime_activation_snapshot": {
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "families": [
+          {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          },
+          {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          },
+          {
+            "activation_family": "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "rst_core_backbone_registry_allows_authority_gap_recalc_regen_chain",
+            "activation_scope": "requirement_state_transition_core_backbone_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "child_compliance_recalc_gate": {
+              "activation_family": "COMPLIANCE_SCORE_RECALC",
+              "activation_guard_result": "GUARD_RESULT_PERMITTED",
+              "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+              "activation_scope": "compliance_recalc_enqueue_only",
+              "activation_state": "ACTIVATION_LIMITED",
+              "permitted": true,
+              "registry_ceiling": "ACTIVATION_LIMITED"
+            },
+            "child_regeneration_recalc_gate": {
+              "activation_family": "REGENERATION_RECALC",
+              "activation_guard_result": "GUARD_RESULT_PERMITTED",
+              "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+              "activation_scope": "risk_signal_regen_enqueue_only",
+              "activation_state": "ACTIVATION_LIMITED",
+              "permitted": true,
+              "registry_ceiling": "ACTIVATION_LIMITED"
+            },
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          }
+        ],
+        "generated_at_iso": "2026-05-14T12:00:00Z",
+        "schema_version": "workflow_runtime_activation_snapshot_v1"
+      },
+      "schema_version": "workflow_runtime_activation_validation_v1",
+      "transition_downstream_observability": {
+        "activation_validation": "VALIDATION_CONFIRMED",
+        "finding_codes": [],
+        "observability": "OBSERVABILITY_CONFIRMED",
+        "recalc_downstream_rows_checked": 10,
+        "regen_downstream_rows_checked": 10,
+        "schema_version": "downstream_activation_observability_v1"
+      }
+    },
+    "audit_only": true,
+    "continuity_summary": {
+      "by_queue_continuity": {
+        "QUEUE_CONTINUITY_CONFIRMED": 2
+      },
+      "schema_version": "activation_continuity_summary_v1"
+    },
+    "convergence_evidence_snapshot": {
+      "audit_only": true,
+      "convergence_evidence_matrix": {
+        "audit_only": true,
+        "matrix_rows": [
+          {
+            "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+            "correlation_id": "c-t0",
+            "degraded_visibility": false,
+            "downstream_targets": [
+              "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+              "compliance_recalc_queue.enqueue_compliance_recalc",
+              "risk_signal_regen_queue.enqueue_risk_signal_regen"
+            ],
+            "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+            "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+            "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+            "requirement_id": "",
+            "retry_evidence": "none_observed",
+            "settlement_evidence": "PROPAGATION_UNKNOWN",
+            "stale_read_dependency": false,
+            "workflow_family": "automated_outcome_authority"
+          },
+          {
+            "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+            "correlation_id": "c-t1",
+            "degraded_visibility": false,
+            "downstream_targets": [
+              "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+              "compliance_recalc_queue.enqueue_compliance_recalc",
+              "risk_signal_regen_queue.enqueue_risk_signal_regen"
+            ],
+            "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+            "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+            "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+            "requirement_id": "",
+            "retry_evidence": "enqueue_duplicate_suppressed",
+            "settlement_evidence": "PROPAGATION_UNKNOWN",
+            "stale_read_dependency": false,
+            "workflow_family": "automated_outcome_authority"
+          },
+          {
+            "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+            "correlation_id": "c-t2",
+            "degraded_visibility": false,
+            "downstream_targets": [
+              "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+              "compliance_recalc_queue.enqueue_compliance_recalc",
+              "risk_signal_regen_queue.enqueue_risk_signal_regen"
+            ],
+            "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+            "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+            "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+            "requirement_id": "",
+            "retry_evidence": "none_observed",
+            "settlement_evidence": "PROPAGATION_UNKNOWN",
+            "stale_read_dependency": false,
+            "workflow_family": "automated_outcome_authority"
+          },
+          {
+            "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+            "correlation_id": "c-t3",
+            "degraded_visibility": false,
+            "downstream_targets": [
+              "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+              "compliance_recalc_queue.enqueue_compliance_recalc",
+              "risk_signal_regen_queue.enqueue_risk_signal_regen"
+            ],
+            "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+            "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+            "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+            "requirement_id": "",
+            "retry_evidence": "none_observed",
+            "settlement_evidence": "PROPAGATION_UNKNOWN",
+            "stale_read_dependency": false,
+            "workflow_family": "automated_outcome_authority"
+          },
+          {
+            "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+            "correlation_id": "c-t4",
+            "degraded_visibility": false,
+            "downstream_targets": [
+              "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+              "compliance_recalc_queue.enqueue_compliance_recalc",
+              "risk_signal_regen_queue.enqueue_risk_signal_regen"
+            ],
+            "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+            "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+            "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+            "requirement_id": "",
+            "retry_evidence": "none_observed",
+            "settlement_evidence": "PROPAGATION_UNKNOWN",
+            "stale_read_dependency": false,
+            "workflow_family": "automated_outcome_authority"
+          },
+          {
+            "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+            "correlation_id": "c-t5",
+            "degraded_visibility": false,
+            "downstream_targets": [
+              "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+              "compliance_recalc_queue.enqueue_compliance_recalc",
+              "risk_signal_regen_queue.enqueue_risk_signal_regen"
+            ],
+            "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+            "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+            "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+            "requirement_id": "",
+            "retry_evidence": "none_observed",
+            "settlement_evidence": "PROPAGATION_UNKNOWN",
+            "stale_read_dependency": false,
+            "workflow_family": "automated_outcome_authority"
+          },
+          {
+            "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+            "correlation_id": "c-t6",
+            "degraded_visibility": false,
+            "downstream_targets": [
+              "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+              "compliance_recalc_queue.enqueue_compliance_recalc",
+              "risk_signal_regen_queue.enqueue_risk_signal_regen"
+            ],
+            "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+            "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+            "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+            "requirement_id": "",
+            "retry_evidence": "none_observed",
+            "settlement_evidence": "PROPAGATION_UNKNOWN",
+            "stale_read_dependency": false,
+            "workflow_family": "automated_outcome_authority"
+          },
+          {
+            "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+            "correlation_id": "c-t7",
+            "degraded_visibility": false,
+            "downstream_targets": [
+              "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+              "compliance_recalc_queue.enqueue_compliance_recalc",
+              "risk_signal_regen_queue.enqueue_risk_signal_regen"
+            ],
+            "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+            "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+            "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+            "requirement_id": "",
+            "retry_evidence": "none_observed",
+            "settlement_evidence": "PROPAGATION_UNKNOWN",
+            "stale_read_dependency": false,
+            "workflow_family": "automated_outcome_authority"
+          },
+          {
+            "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+            "correlation_id": "c-t8",
+            "degraded_visibility": false,
+            "downstream_targets": [
+              "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+              "compliance_recalc_queue.enqueue_compliance_recalc",
+              "risk_signal_regen_queue.enqueue_risk_signal_regen"
+            ],
+            "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+            "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+            "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+            "requirement_id": "",
+            "retry_evidence": "replay_or_reentry",
+            "settlement_evidence": "PROPAGATION_UNKNOWN",
+            "stale_read_dependency": false,
+            "workflow_family": "automated_outcome_authority"
+          },
+          {
+            "convergence_confidence": "UNKNOWN_CONVERGENCE_CONFIDENCE",
+            "correlation_id": "c-t9",
+            "degraded_visibility": false,
+            "downstream_targets": [
+              "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+              "compliance_recalc_queue.enqueue_compliance_recalc",
+              "risk_signal_regen_queue.enqueue_risk_signal_regen"
+            ],
+            "operational_maturity": "UNKNOWN_MATURITY_VISIBILITY",
+            "propagation_chain": "requirement_evidence_authority.sync->sync_compliance_gaps_for_requirement->enqueue_compliance_recalc->enqueue_risk_signal_regen",
+            "reconciliation_visibility": "RECONCILIATION_UNKNOWN",
+            "requirement_id": "",
+            "retry_evidence": "none_observed",
+            "settlement_evidence": "PROPAGATION_UNKNOWN",
+            "stale_read_dependency": false,
+            "workflow_family": "automated_outcome_authority"
+          }
+        ],
+        "non_blocking": true,
+        "opaque_eventual_consistency_boundaries": [],
+        "schema_version": "workflow_runtime_convergence_evidence_matrix_v1",
+        "strongest_settlement_families": [],
+        "weakest_convergence_families": [
+          "automated_outcome_authority"
+        ]
+      },
+      "generated_at_iso": "2026-05-14T12:00:00Z",
+      "non_blocking": true,
+      "propagation_completion": {
+        "by_propagation_completion": {
+          "PROPAGATION_UNKNOWN": 10
+        },
+        "degraded_or_partial_count": 0,
+        "non_blocking": true,
+        "pending_or_retrying_count": 0,
+        "schema_version": "propagation_completion_summary_v1",
+        "settled_count": 0
+      },
+      "reconciliation_visibility": {
+        "by_reconciliation_evidence": {
+          "RECONCILIATION_UNKNOWN": 10
+        },
+        "non_blocking": true,
+        "not_visible_count": 0,
+        "pending_or_degraded_count": 0,
+        "schema_version": "reconciliation_visibility_summary_v1"
+      },
+      "runtime_convergence_hotspots": {
+        "audit_only": true,
+        "degraded_path_persistence_risk": [],
+        "non_blocking": true,
+        "partial_propagation_persistence": [],
+        "reconciliation_gaps": [],
+        "regeneration_convergence_ambiguity": [
+          "automated_outcome_authority:c-t0",
+          "automated_outcome_authority:c-t1",
+          "automated_outcome_authority:c-t2",
+          "automated_outcome_authority:c-t3",
+          "automated_outcome_authority:c-t4",
+          "automated_outcome_authority:c-t5",
+          "automated_outcome_authority:c-t6",
+          "automated_outcome_authority:c-t7",
+          "automated_outcome_authority:c-t8",
+          "automated_outcome_authority:c-t9"
+        ],
+        "replay_reentry_instability": [
+          "automated_outcome_authority:c-t8"
+        ],
+        "schema_version": "workflow_runtime_convergence_hotspots_v1",
+        "settlement_blind_spots": [
+          "automated_outcome_authority:c-t0",
+          "automated_outcome_authority:c-t1",
+          "automated_outcome_authority:c-t2",
+          "automated_outcome_authority:c-t3",
+          "automated_outcome_authority:c-t4",
+          "automated_outcome_authority:c-t5",
+          "automated_outcome_authority:c-t6",
+          "automated_outcome_authority:c-t7",
+          "automated_outcome_authority:c-t8",
+          "automated_outcome_authority:c-t9"
+        ],
+        "stale_state_persistence_risk": [],
+        "trust_surface_divergence_risk": []
+      },
+      "schema_version": "workflow_runtime_convergence_snapshot_v1",
+      "stale_state_recovery": {
+        "non_blocking": true,
+        "replay_settled_trace_count": 0,
+        "schema_version": "stale_state_recovery_summary_v1",
+        "stale_surface_trace_count": 0,
+        "stale_visible_propagation_count": 0
+      }
+    },
+    "convergence_visibility_summary": {
+      "by_workflow_family": [
+        {
+          "convergence_visibility_score": 100,
+          "workflow_family": "COMPLIANCE_SCORE_RECALC"
+        },
+        {
+          "convergence_visibility_score": 100,
+          "workflow_family": "REGENERATION_RECALC"
+        }
+      ],
+      "non_blocking": true,
+      "schema_version": "convergence_visibility_summary_v1"
+    },
+    "drift_validation_summary": {
+      "drift_classification": "LOW_VALIDATION_DRIFT",
+      "finding_codes": [],
+      "schema_version": "drift_validation_summary_v1"
+    },
+    "evidence_pack_version": "workflow_runtime_activation_evidence_pack_v1",
+    "generated_at": "2026-05-14T12:00:00Z",
+    "governance_report_summary": {
+      "activation_readiness_summary": {
+        "by_activation_state": {
+          "SAFE_FOR_LIMITED_ACTIVATION": 2
+        },
+        "governance_deferred_count": 0,
+        "non_blocking": true,
+        "schema_version": "activation_readiness_summary_v1",
+        "scoped_family_count": 2
+      },
+      "convergence_visibility_summary": {
+        "by_workflow_family": [
+          {
+            "convergence_visibility_score": 100,
+            "workflow_family": "COMPLIANCE_SCORE_RECALC"
+          },
+          {
+            "convergence_visibility_score": 100,
+            "workflow_family": "REGENERATION_RECALC"
+          }
+        ],
+        "non_blocking": true,
+        "schema_version": "convergence_visibility_summary_v1"
+      },
+      "family_activation_reports_count": 2,
+      "generated_at": "2026-05-14T12:00:00Z",
+      "governance_drift_summary": {
+        "by_governance_drift_reason": {},
+        "governance_drift_detected_count": 0,
+        "governance_review_escalation_recommended_count": 0,
+        "non_blocking": true,
+        "schema_version": "governance_drift_summary_v1"
+      },
+      "governance_readiness_overview": {
+        "controlled_activation_readiness_indicator": "INDICATOR_CONDITIONAL_FURTHER_EVIDENCE_OR_REVIEW_REQUIRED",
+        "governance_ready_family_count": 0,
+        "notes": "Advisory_only_no_automatic_activation.",
+        "priority_p0_family_count": 0,
+        "schema_version": "governance_readiness_overview_v1"
+      },
+      "report_version": "workflow_activation_governance_report_v1",
+      "rollback_posture_summary": {
+        "by_rollback_readiness": {
+          "ROLLBACK_REQUIRES_REVIEW": 2
+        },
+        "non_blocking": true,
+        "schema_version": "rollback_posture_summary_v1"
+      },
+      "runtime_confidence_summary": {
+        "by_runtime_confidence": {
+          "MODERATE_RUNTIME_CONFIDENCE": 2
+        },
+        "non_blocking": true,
+        "schema_version": "runtime_confidence_summary_v1"
+      },
+      "schema_version": "governance_report_summary_v1"
+    },
+    "non_blocking": true,
+    "observability_validation_summary": {
+      "by_observability_band": {
+        "OBSERVABILITY_CONFIRMED": 2
+      },
+      "schema_version": "observability_validation_summary_v1"
+    },
+    "queue_visibility_summary": {
+      "present": false,
+      "schema_version": "queue_visibility_summary_v1"
+    },
+    "readiness_conclusion_block": {
+      "activation_expansion_recommendation": "CONTINUE_LIMITED_SCOPE_ONLY",
+      "operational_activation_posture": "LIMITED_ACTIVATION_REPRESENTATIVE_EVIDENCE_STRONG",
+      "readiness_conclusion": "READY_FOR_CONTINUED_LIMITED_ACTIVATION",
+      "schema_version": "activation_readiness_conclusion_v1"
+    },
+    "representative_downstream_samples": [
+      {
+        "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "gap_sync_sample"
+      },
+      {
+        "activation_family": "COMPLIANCE_SCORE_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "compliance_recalc_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "recalc_enqueue_sample"
+      },
+      {
+        "activation_family": "REGENERATION_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "risk_signal_regen_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+        "enqueue_outcome": "ENQUEUE_DEGRADED",
+        "propagation_stage": "risk_regen_delegate_sample"
+      },
+      {
+        "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "gap_sync_sample"
+      },
+      {
+        "activation_family": "COMPLIANCE_SCORE_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "compliance_recalc_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+        "duplicate_suppression_reason": "dedupe",
+        "enqueue_outcome": "ENQUEUE_DUPLICATE_SUPPRESSED",
+        "propagation_stage": "recalc_enqueue_sample"
+      },
+      {
+        "activation_family": "REGENERATION_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "risk_signal_regen_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "risk_regen_delegate_sample"
+      },
+      {
+        "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "gap_sync_sample"
+      },
+      {
+        "activation_family": "COMPLIANCE_SCORE_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "compliance_recalc_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "recalc_enqueue_sample"
+      },
+      {
+        "activation_family": "REGENERATION_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "risk_signal_regen_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+        "enqueue_outcome": "ENQUEUE_DEGRADED",
+        "propagation_stage": "risk_regen_delegate_sample"
+      },
+      {
+        "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "gap_sync_sample"
+      },
+      {
+        "activation_family": "COMPLIANCE_SCORE_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "compliance_recalc_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "recalc_enqueue_sample"
+      },
+      {
+        "activation_family": "REGENERATION_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "risk_signal_regen_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+        "enqueue_outcome": "ENQUEUE_DEGRADED",
+        "propagation_stage": "risk_regen_delegate_sample"
+      },
+      {
+        "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "gap_sync_sample"
+      },
+      {
+        "activation_family": "COMPLIANCE_SCORE_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "compliance_recalc_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "recalc_enqueue_sample"
+      },
+      {
+        "activation_family": "REGENERATION_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "risk_signal_regen_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+        "enqueue_outcome": "ENQUEUE_DEGRADED",
+        "propagation_stage": "risk_regen_delegate_sample"
+      },
+      {
+        "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "gap_sync_sample"
+      },
+      {
+        "activation_family": "COMPLIANCE_SCORE_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "compliance_recalc_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "recalc_enqueue_sample"
+      },
+      {
+        "activation_family": "REGENERATION_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "risk_signal_regen_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+        "enqueue_outcome": "ENQUEUE_DEGRADED",
+        "propagation_stage": "risk_regen_delegate_sample"
+      },
+      {
+        "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "gap_sync_sample"
+      },
+      {
+        "activation_family": "COMPLIANCE_SCORE_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "compliance_recalc_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "recalc_enqueue_sample"
+      },
+      {
+        "activation_family": "REGENERATION_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "risk_signal_regen_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+        "enqueue_outcome": "ENQUEUE_DEGRADED",
+        "propagation_stage": "risk_regen_delegate_sample"
+      },
+      {
+        "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "gap_sync_sample"
+      },
+      {
+        "activation_family": "COMPLIANCE_SCORE_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_BLOCKED_REGISTRY_OBSERVE_ONLY",
+        "activation_reason": "activation_gate",
+        "activation_scope": "compliance_recalc_enqueue_only",
+        "activation_skipped": true,
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+        "enqueue_outcome": "ENQUEUE_SKIPPED",
+        "propagation_stage": "recalc_skipped_sample"
+      },
+      {
+        "activation_family": "REGENERATION_RECALC",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "r",
+        "activation_scope": "risk_signal_regen_enqueue_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+        "enqueue_outcome": "ENQUEUE_ACCEPTED",
+        "propagation_stage": "risk_regen_delegate_sample"
+      }
+    ],
+    "representative_enqueue_samples": [
+      {
+        "enqueue": {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_skipped": false,
+          "activation_state": "ACTIVATION_LIMITED",
+          "correlation_id": "burn-in-cid",
+          "enqueued": true,
+          "regeneration_error": null,
+          "regeneration_requeued": true
+        },
+        "gate": {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        }
+      }
+    ],
+    "representative_evidence_classification": "REPRESENTATIVE_EVIDENCE_CONFIRMED",
+    "representative_regeneration_enqueue_samples": [
+      {
+        "enqueue": {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_skipped": false,
+          "activation_state": "ACTIVATION_LIMITED",
+          "merged": false,
+          "property_id": "p-burn",
+          "queued": true
+        },
+        "gate": {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        }
+      }
+    ],
+    "representative_transition_samples": [
+      {
+        "correlation_id": "c-t0",
+        "downstream_trigger_targets": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "gap_sync_sample"
+          },
+          {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "recalc_enqueue_sample"
+          },
+          {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+            "enqueue_outcome": "ENQUEUE_DEGRADED",
+            "propagation_stage": "risk_regen_delegate_sample"
+          }
+        ],
+        "replay_chain_detected": false,
+        "rst_core_backbone_activation": {
+          "child_compliance_recalc_permitted": true,
+          "child_regeneration_recalc_permitted": true,
+          "permitted": true,
+          "propagation_skipped_visibility": false
+        },
+        "staging_runtime_flow_kind": "STAGING_FLOW_DOCUMENT_UPLOAD",
+        "transition_id": "t0",
+        "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+      },
+      {
+        "correlation_id": "c-t1",
+        "downstream_trigger_targets": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "gap_sync_sample"
+          },
+          {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "duplicate_suppression_reason": "dedupe",
+            "enqueue_outcome": "ENQUEUE_DUPLICATE_SUPPRESSED",
+            "propagation_stage": "recalc_enqueue_sample"
+          },
+          {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "risk_regen_delegate_sample"
+          }
+        ],
+        "replay_chain_detected": false,
+        "rst_core_backbone_activation": {
+          "child_compliance_recalc_permitted": true,
+          "child_regeneration_recalc_permitted": true,
+          "permitted": true,
+          "propagation_skipped_visibility": false
+        },
+        "staging_runtime_flow_kind": "STAGING_FLOW_DOCUMENT_VERIFY",
+        "transition_id": "t1",
+        "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+      },
+      {
+        "correlation_id": "c-t2",
+        "downstream_trigger_targets": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "gap_sync_sample"
+          },
+          {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "recalc_enqueue_sample"
+          },
+          {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+            "enqueue_outcome": "ENQUEUE_DEGRADED",
+            "propagation_stage": "risk_regen_delegate_sample"
+          }
+        ],
+        "replay_chain_detected": false,
+        "rst_core_backbone_activation": {
+          "child_compliance_recalc_permitted": true,
+          "child_regeneration_recalc_permitted": true,
+          "permitted": true,
+          "propagation_skipped_visibility": false
+        },
+        "staging_runtime_flow_kind": "STAGING_FLOW_EVIDENCE_REVIEW_APPROVAL",
+        "transition_id": "t2",
+        "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+      },
+      {
+        "correlation_id": "c-t3",
+        "downstream_trigger_targets": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "gap_sync_sample"
+          },
+          {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "recalc_enqueue_sample"
+          },
+          {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+            "enqueue_outcome": "ENQUEUE_DEGRADED",
+            "propagation_stage": "risk_regen_delegate_sample"
+          }
+        ],
+        "replay_chain_detected": false,
+        "rst_core_backbone_activation": {
+          "child_compliance_recalc_permitted": true,
+          "child_regeneration_recalc_permitted": true,
+          "permitted": true,
+          "propagation_skipped_visibility": false
+        },
+        "staging_runtime_flow_kind": "STAGING_FLOW_EVIDENCE_REVIEW_REJECTION",
+        "transition_id": "t3",
+        "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+      },
+      {
+        "correlation_id": "c-t4",
+        "downstream_trigger_targets": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "gap_sync_sample"
+          },
+          {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "recalc_enqueue_sample"
+          },
+          {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+            "enqueue_outcome": "ENQUEUE_DEGRADED",
+            "propagation_stage": "risk_regen_delegate_sample"
+          }
+        ],
+        "replay_chain_detected": false,
+        "rst_core_backbone_activation": {
+          "child_compliance_recalc_permitted": true,
+          "child_regeneration_recalc_permitted": true,
+          "permitted": true,
+          "propagation_skipped_visibility": false
+        },
+        "staging_runtime_flow_kind": "STAGING_FLOW_ADMIN_RELINK",
+        "transition_id": "t4",
+        "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+      },
+      {
+        "correlation_id": "c-t5",
+        "downstream_trigger_targets": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "gap_sync_sample"
+          },
+          {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "recalc_enqueue_sample"
+          },
+          {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+            "enqueue_outcome": "ENQUEUE_DEGRADED",
+            "propagation_stage": "risk_regen_delegate_sample"
+          }
+        ],
+        "replay_chain_detected": false,
+        "rst_core_backbone_activation": {
+          "child_compliance_recalc_permitted": true,
+          "child_regeneration_recalc_permitted": true,
+          "permitted": true,
+          "propagation_skipped_visibility": false
+        },
+        "staging_runtime_flow_kind": "STAGING_FLOW_ADMIN_AUTHORITY_SYNC",
+        "transition_id": "t5",
+        "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+      },
+      {
+        "correlation_id": "c-t6",
+        "downstream_trigger_targets": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "gap_sync_sample"
+          },
+          {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "recalc_enqueue_sample"
+          },
+          {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+            "enqueue_outcome": "ENQUEUE_DEGRADED",
+            "propagation_stage": "risk_regen_delegate_sample"
+          }
+        ],
+        "replay_chain_detected": false,
+        "rst_core_backbone_activation": {
+          "child_compliance_recalc_permitted": true,
+          "child_regeneration_recalc_permitted": true,
+          "permitted": true,
+          "propagation_skipped_visibility": false
+        },
+        "staging_runtime_flow_kind": "STAGING_FLOW_DECLARATION",
+        "transition_id": "t6",
+        "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+      },
+      {
+        "correlation_id": "c-t7",
+        "downstream_trigger_targets": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "gap_sync_sample"
+          },
+          {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_BLOCKED_REGISTRY_OBSERVE_ONLY",
+            "activation_reason": "activation_gate",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_skipped": true,
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "enqueue_outcome": "ENQUEUE_SKIPPED",
+            "propagation_stage": "recalc_skipped_sample"
+          },
+          {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "r",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "propagation_stage": "risk_regen_delegate_sample"
+          }
+        ],
+        "replay_chain_detected": false,
+        "rst_core_backbone_activation": {
+          "child_compliance_recalc_permitted": true,
+          "child_regeneration_recalc_permitted": true,
+          "permitted": true,
+          "propagation_skipped_visibility": false
+        },
+        "staging_runtime_flow_kind": "STAGING_FLOW_AI_EXTRACTION_CONFIRMATION",
+        "transition_id": "t7",
+        "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+      }
+    ],
+    "requirement_transition_core_backbone_activation_evidence": {
+      "activation_operational_visibility": {
+        "activation_drift_visibility": "RST_CORE_BACKBONE_COMPOSITE_GATE_SUBJECT_TO_REGISTRY_V3",
+        "child_compliance_permitted": true,
+        "child_regeneration_permitted": true,
+        "convergence_continuity_visibility": "RST_CORE_BACKBONE_CHAIN_LIMITED_TO_GATED_ENQUEUES_ONLY",
+        "downstream_propagation_visibility": "RST_CORE_BACKBONE_NO_BROAD_FANOUT",
+        "generated_at_iso": "2026-05-14T12:00:00Z",
+        "replay_reconciliation_continuity_visibility": "RST_CORE_BACKBONE_TRACE_ROWS_AND_MATRIX_UNCHANGED",
+        "rollback_posture_visibility": "RST_CORE_BACKBONE_CODE_CEILING_ONLY_NO_QUEUE_RESET",
+        "rst_core_backbone_activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "rst_core_backbone_activation_state": "ACTIVATION_LIMITED",
+        "rst_core_backbone_permitted": true,
+        "rst_core_backbone_registry_ceiling": "ACTIVATION_LIMITED",
+        "schema_version": "rst_core_backbone_activation_operational_visibility_v1",
+        "skipped_propagation_visibility": "RST_CORE_BACKBONE_FANOUT_ROWS_ON_SKIP"
+      },
+      "rst_core_backbone_activation_gate": {
+        "activation_family": "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "rst_core_backbone_registry_allows_authority_gap_recalc_regen_chain",
+        "activation_scope": "requirement_state_transition_core_backbone_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "child_compliance_recalc_gate": {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        },
+        "child_regeneration_recalc_gate": {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        },
+        "permitted": true,
+        "registry_ceiling": "ACTIVATION_LIMITED"
+      },
+      "schema_version": "rst_core_backbone_activation_evidence_v1"
+    },
+    "rollback_validation_summary": {
+      "advisory_only": true,
+      "limited_activation_family_scope": [
+        "COMPLIANCE_SCORE_RECALC",
+        "REGENERATION_RECALC"
+      ],
+      "rollback_posture": "ROLLBACK_VALIDATED",
+      "rollback_posture_applies_to_registry_ceiling_order": true,
+      "rst_core_backbone_family": "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE",
+      "schema_version": "activation_rollback_summary_v1",
+      "transitions": [
+        {
+          "activation_validation": "VALIDATION_CONFIRMED",
+          "finding_codes": [],
+          "from_ceiling": "ACTIVATION_LIMITED",
+          "rollback_posture": "ROLLBACK_VALIDATED",
+          "schema_version": "activation_rollback_posture_validation_v1",
+          "to_ceiling": "ACTIVATION_OBSERVE_ONLY"
+        },
+        {
+          "activation_validation": "VALIDATION_CONFIRMED",
+          "finding_codes": [],
+          "from_ceiling": "ACTIVATION_LIMITED",
+          "rollback_posture": "ROLLBACK_VALIDATED",
+          "schema_version": "activation_rollback_posture_validation_v1",
+          "to_ceiling": "ACTIVATION_DISABLED"
+        },
+        {
+          "activation_validation": "VALIDATION_CONFIRMED",
+          "finding_codes": [],
+          "from_ceiling": "ACTIVATION_OBSERVE_ONLY",
+          "rollback_posture": "ROLLBACK_VALIDATED",
+          "schema_version": "activation_rollback_posture_validation_v1",
+          "to_ceiling": "ACTIVATION_DISABLED"
+        }
+      ]
+    },
+    "runtime_activation_rollout_visibility": {
+      "activation_governance_version": "workflow_runtime_activation_registry_v3",
+      "active_families": [],
+      "blocked_families": [],
+      "limited_families": [
+        "COMPLIANCE_SCORE_RECALC",
+        "REGENERATION_RECALC",
+        "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE"
+      ],
+      "observe_only_families": [],
+      "schema_version": "activation_rollout_visibility_v1"
+    },
+    "runtime_activation_snapshot": {
+      "activation_governance_version": "workflow_runtime_activation_registry_v3",
+      "families": [
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        },
+        {
+          "activation_family": "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "rst_core_backbone_registry_allows_authority_gap_recalc_regen_chain",
+          "activation_scope": "requirement_state_transition_core_backbone_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "child_compliance_recalc_gate": {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          },
+          "child_regeneration_recalc_gate": {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          },
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        }
+      ],
+      "generated_at_iso": "2026-05-14T12:00:00Z",
+      "schema_version": "workflow_runtime_activation_snapshot_v1"
+    },
+    "runtime_behavior_changed": false,
+    "runtime_confidence_summary": {
+      "by_runtime_confidence": {
+        "MODERATE_RUNTIME_CONFIDENCE": 2
+      },
+      "non_blocking": true,
+      "schema_version": "runtime_confidence_summary_v1"
+    },
+    "runtime_consistency_findings": {
+      "activation_runtime_consistency": "CONSISTENT",
+      "convergence_runtime_alignment": "CONSISTENT",
+      "downstream_runtime_consistency": "CONSISTENT",
+      "enqueue_runtime_consistency": "CONSISTENT",
+      "governance_runtime_alignment": "CONSISTENT",
+      "observability_runtime_alignment": "CONSISTENT",
+      "rollback_runtime_alignment": "CONSISTENT",
+      "schema_version": "activation_runtime_consistency_v1"
+    },
+    "staging_drift_classification": "LOW_STAGING_DRIFT",
+    "staging_drift_findings": {
+      "axes": {
+        "activation_drift": "LOW_STAGING_DRIFT",
+        "convergence_drift": "LOW_STAGING_DRIFT",
+        "governance_drift": "LOW_STAGING_DRIFT",
+        "observability_drift": "LOW_STAGING_DRIFT",
+        "rollback_drift": "LOW_STAGING_DRIFT",
+        "runtime_confidence_drift": "LOW_STAGING_DRIFT"
+      },
+      "overall_staging_drift": "LOW_STAGING_DRIFT",
+      "schema_version": "staging_drift_findings_v1"
+    },
+    "validation_summary": {
+      "by_activation_validation": {
+        "VALIDATION_CONFIRMED": 11
+      },
+      "drift_classification": "LOW_VALIDATION_DRIFT",
+      "overall_activation_validation": "VALIDATION_CONFIRMED",
+      "schema_version": "activation_validation_summary_v1"
+    }
+  },
+  "governance_report_full": {
+    "activation_decision_summary": {
+      "by_governance_decision_posture": {
+        "HOLD_PENDING_EVIDENCE": 2
+      },
+      "non_blocking": true,
+      "schema_version": "activation_decision_summary_v1"
+    },
+    "activation_readiness_summary": {
+      "by_activation_state": {
+        "SAFE_FOR_LIMITED_ACTIVATION": 2
+      },
+      "governance_deferred_count": 0,
+      "non_blocking": true,
+      "schema_version": "activation_readiness_summary_v1",
+      "scoped_family_count": 2
+    },
+    "approved_activation_candidates": [],
+    "audit_only": true,
+    "blocked_activation_candidates": [],
+    "calibration_stage_confirmed_candidates": [],
+    "conditional_activation_candidates": [],
+    "convergence_visibility_summary": {
+      "by_workflow_family": [
+        {
+          "convergence_visibility_score": 100,
+          "workflow_family": "COMPLIANCE_SCORE_RECALC"
+        },
+        {
+          "convergence_visibility_score": 100,
+          "workflow_family": "REGENERATION_RECALC"
+        }
+      ],
+      "non_blocking": true,
+      "schema_version": "convergence_visibility_summary_v1"
+    },
+    "deferred_architecture_candidates": [],
+    "escalation_risk_summary": {
+      "by_escalation_risk_code": {
+        "DEGRADATION_WITHOUT_ESCALATION": 2,
+        "PARTIAL_CONVERGENCE_WITHOUT_REVIEW": 2,
+        "RECONCILIATION_OPACITY": 2
+      },
+      "non_blocking": true,
+      "schema_version": "escalation_risk_summary_v1"
+    },
+    "evidence_gap_summary": {
+      "by_gap_code": {
+        "DEGRADED_PATH_OPAQUE": 2,
+        "NO_RECONCILIATION_VISIBILITY": 2
+      },
+      "non_blocking": true,
+      "schema_version": "evidence_gap_summary_v1"
+    },
+    "family_activation_reports": [
+      {
+        "activation_governance_state": "GOVERNANCE_REVIEW_REQUIRED",
+        "activation_readiness_reason": "activation_state=SAFE_FOR_LIMITED_ACTIVATION; activation_risk_classification=LOW; scoped_activation_program=True; governance_only=False.",
+        "activation_recommendation": "decision_posture=HOLD_PENDING_EVIDENCE; operational_priority_band=PRIORITY_P1_HIGH; advisory_operator_review_required.",
+        "approval_blockers": [
+          "NO_DEGRADED_STATE_VISIBILITY",
+          "calibration:CALIBRATION_PARTIAL",
+          "escalation:DEGRADATION_WITHOUT_ESCALATION",
+          "governance_state:GOVERNANCE_REVIEW_REQUIRED"
+        ],
+        "audit_only": true,
+        "calibration_drift_detected": false,
+        "calibration_drift_reason": null,
+        "calibration_outcome": "CALIBRATION_PARTIAL",
+        "convergence_visibility_reason": "convergence_visibility_score=100; calibration_outcome=CALIBRATION_PARTIAL.",
+        "escalation_review_reason": "max_escalation_severity=HIGH; escalation_risk_codes=DEGRADATION_WITHOUT_ESCALATION,PARTIAL_CONVERGENCE_WITHOUT_REVIEW,RECONCILIATION_OPACITY.",
+        "evidence_gaps": [
+          {
+            "code": "DEGRADED_PATH_OPAQUE",
+            "operational_implication": "Limited degraded_path markers in downstream rows.",
+            "recommended_operational_posture": "Ensure fanout rows attach degraded_possible where applicable.",
+            "severity": "INFO"
+          },
+          {
+            "code": "NO_RECONCILIATION_VISIBILITY",
+            "operational_implication": "Reconciliation evidence not clearly observable in sample.",
+            "recommended_operational_posture": "Pair transition traces with gap-sync visibility or observability summary.",
+            "severity": "WARNING"
+          }
+        ],
+        "evidence_scores": {
+          "convergence_visibility_score": 100,
+          "degraded_visibility_score": 25,
+          "idempotency_visibility_score": 90,
+          "observability_coverage_score": 90,
+          "reconciliation_visibility_score": 30,
+          "settlement_visibility_score": 65,
+          "stale_state_visibility_score": 100
+        },
+        "governance_confidence": "GOVERNANCE_CONFIDENCE_MODERATE",
+        "governance_decision_posture": "HOLD_PENDING_EVIDENCE",
+        "governance_drift_detected": false,
+        "governance_drift_reason": null,
+        "governance_owner": "compliance_platform",
+        "governance_review_escalation_recommended": false,
+        "governance_review_recommended": false,
+        "non_blocking": true,
+        "operational_governance_reason": "activation_governance_state=GOVERNANCE_REVIEW_REQUIRED; governance_confidence=GOVERNANCE_CONFIDENCE_MODERATE; operational_approval_posture=HOLD_PENDING_GOVERNANCE_REVIEW.",
+        "operational_priority_band": "PRIORITY_P1_HIGH",
+        "operational_review_priority": "P1",
+        "production_exposure_risk": "LOW",
+        "readiness_activation_state": "SAFE_FOR_LIMITED_ACTIVATION",
+        "rollback_readiness": "ROLLBACK_REQUIRES_REVIEW",
+        "rollback_reason": "rollback_readiness=ROLLBACK_REQUIRES_REVIEW; escalation_readiness=ESCALATION_READINESS_UNDEFINED.",
+        "runtime_confidence": "MODERATE_RUNTIME_CONFIDENCE",
+        "runtime_confidence_reason": "runtime_confidence=MODERATE_RUNTIME_CONFIDENCE; calibration_drift_detected=False.",
+        "workflow_family": "COMPLIANCE_SCORE_RECALC"
+      },
+      {
+        "activation_governance_state": "GOVERNANCE_REVIEW_REQUIRED",
+        "activation_readiness_reason": "activation_state=SAFE_FOR_LIMITED_ACTIVATION; activation_risk_classification=LOW; scoped_activation_program=True; governance_only=False.",
+        "activation_recommendation": "decision_posture=HOLD_PENDING_EVIDENCE; operational_priority_band=PRIORITY_P1_HIGH; advisory_operator_review_required.",
+        "approval_blockers": [
+          "NO_DEGRADED_STATE_VISIBILITY",
+          "calibration:CALIBRATION_PARTIAL",
+          "escalation:DEGRADATION_WITHOUT_ESCALATION",
+          "governance_state:GOVERNANCE_REVIEW_REQUIRED"
+        ],
+        "audit_only": true,
+        "calibration_drift_detected": false,
+        "calibration_drift_reason": null,
+        "calibration_outcome": "CALIBRATION_PARTIAL",
+        "convergence_visibility_reason": "convergence_visibility_score=100; calibration_outcome=CALIBRATION_PARTIAL.",
+        "escalation_review_reason": "max_escalation_severity=HIGH; escalation_risk_codes=DEGRADATION_WITHOUT_ESCALATION,PARTIAL_CONVERGENCE_WITHOUT_REVIEW,RECONCILIATION_OPACITY.",
+        "evidence_gaps": [
+          {
+            "code": "DEGRADED_PATH_OPAQUE",
+            "operational_implication": "Limited degraded_path markers in downstream rows.",
+            "recommended_operational_posture": "Ensure fanout rows attach degraded_possible where applicable.",
+            "severity": "INFO"
+          },
+          {
+            "code": "NO_RECONCILIATION_VISIBILITY",
+            "operational_implication": "Reconciliation evidence not clearly observable in sample.",
+            "recommended_operational_posture": "Pair transition traces with gap-sync visibility or observability summary.",
+            "severity": "WARNING"
+          }
+        ],
+        "evidence_scores": {
+          "convergence_visibility_score": 100,
+          "degraded_visibility_score": 25,
+          "idempotency_visibility_score": 90,
+          "observability_coverage_score": 90,
+          "reconciliation_visibility_score": 30,
+          "settlement_visibility_score": 65,
+          "stale_state_visibility_score": 100
+        },
+        "governance_confidence": "GOVERNANCE_CONFIDENCE_MODERATE",
+        "governance_decision_posture": "HOLD_PENDING_EVIDENCE",
+        "governance_drift_detected": false,
+        "governance_drift_reason": null,
+        "governance_owner": "compliance_platform",
+        "governance_review_escalation_recommended": false,
+        "governance_review_recommended": false,
+        "non_blocking": true,
+        "operational_governance_reason": "activation_governance_state=GOVERNANCE_REVIEW_REQUIRED; governance_confidence=GOVERNANCE_CONFIDENCE_MODERATE; operational_approval_posture=HOLD_PENDING_GOVERNANCE_REVIEW.",
+        "operational_priority_band": "PRIORITY_P1_HIGH",
+        "operational_review_priority": "P1",
+        "production_exposure_risk": "LOW",
+        "readiness_activation_state": "SAFE_FOR_LIMITED_ACTIVATION",
+        "rollback_readiness": "ROLLBACK_REQUIRES_REVIEW",
+        "rollback_reason": "rollback_readiness=ROLLBACK_REQUIRES_REVIEW; escalation_readiness=ESCALATION_READINESS_UNDEFINED.",
+        "runtime_confidence": "MODERATE_RUNTIME_CONFIDENCE",
+        "runtime_confidence_reason": "runtime_confidence=MODERATE_RUNTIME_CONFIDENCE; calibration_drift_detected=False.",
+        "workflow_family": "REGENERATION_RECALC"
+      }
+    ],
+    "generated_at": "2026-05-14T12:00:00Z",
+    "governance_blocked_registry_candidates": [],
+    "governance_drift_summary": {
+      "by_governance_drift_reason": {},
+      "governance_drift_detected_count": 0,
+      "governance_review_escalation_recommended_count": 0,
+      "non_blocking": true,
+      "schema_version": "governance_drift_summary_v1"
+    },
+    "governance_readiness_findings": {
+      "deferred_architecture_family_count": 0,
+      "drift_detected_family_count": 0,
+      "governance_blocked_family_count": 0,
+      "governance_ready_family_count": 0,
+      "high_risk_family_count": 0,
+      "low_runtime_confidence_family_count": 0,
+      "observe_only_family_count": 0,
+      "rollback_uncertain_family_count": 0
+    },
+    "governance_readiness_overview": {
+      "controlled_activation_readiness_indicator": "INDICATOR_CONDITIONAL_FURTHER_EVIDENCE_OR_REVIEW_REQUIRED",
+      "governance_ready_family_count": 0,
+      "notes": "Advisory_only_no_automatic_activation.",
+      "priority_p0_family_count": 0,
+      "schema_version": "governance_readiness_overview_v1"
+    },
+    "governance_review_summary": {
+      "by_activation_governance_state": {
+        "GOVERNANCE_REVIEW_REQUIRED": 2
+      },
+      "non_blocking": true,
+      "schema_version": "governance_review_summary_v1"
+    },
+    "highest_risk_activation_detail": [
+      {
+        "governance_decision_posture": "HOLD_PENDING_EVIDENCE",
+        "operational_priority_band": "PRIORITY_P1_HIGH",
+        "production_exposure_risk": "LOW",
+        "workflow_family": "COMPLIANCE_SCORE_RECALC"
+      },
+      {
+        "governance_decision_posture": "HOLD_PENDING_EVIDENCE",
+        "operational_priority_band": "PRIORITY_P1_HIGH",
+        "production_exposure_risk": "LOW",
+        "workflow_family": "REGENERATION_RECALC"
+      }
+    ],
+    "highest_risk_activation_families": [
+      "COMPLIANCE_SCORE_RECALC",
+      "REGENERATION_RECALC"
+    ],
+    "non_blocking": true,
+    "observe_only_candidates": [],
+    "operational_approval_summary": {
+      "by_operational_approval_posture": {
+        "HOLD_PENDING_GOVERNANCE_REVIEW": 2
+      },
+      "non_blocking": true,
+      "schema_version": "operational_approval_summary_v1"
+    },
+    "operational_review_priorities": [
+      {
+        "governance_decision_posture": "HOLD_PENDING_EVIDENCE",
+        "operational_priority_band": "PRIORITY_P1_HIGH",
+        "production_exposure_risk": "LOW",
+        "workflow_family": "COMPLIANCE_SCORE_RECALC"
+      },
+      {
+        "governance_decision_posture": "HOLD_PENDING_EVIDENCE",
+        "operational_priority_band": "PRIORITY_P1_HIGH",
+        "production_exposure_risk": "LOW",
+        "workflow_family": "REGENERATION_RECALC"
+      }
+    ],
+    "regeneration_activation_operational_visibility": {
+      "limited_activation_families": [
+        "COMPLIANCE_SCORE_RECALC",
+        "REGENERATION_RECALC",
+        "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE"
+      ],
+      "limited_activation_family_count": 3,
+      "regeneration_activation_guard_result": "GUARD_RESULT_PERMITTED",
+      "regeneration_activation_state": "ACTIVATION_LIMITED",
+      "regeneration_enqueue_continuity_visibility": "REGEN_ENQUEUE_SUBJECT_TO_RUNTIME_ACTIVATION_GATE",
+      "regeneration_permitted": true,
+      "regeneration_registry_ceiling": "ACTIVATION_LIMITED",
+      "schema_version": "regeneration_limited_activation_visibility_v1"
+    },
+    "report_version": "workflow_activation_governance_report_v1",
+    "requirement_transition_core_backbone_activation_operational_visibility": {
+      "activation_drift_visibility": "RST_CORE_BACKBONE_COMPOSITE_GATE_SUBJECT_TO_REGISTRY_V3",
+      "child_compliance_permitted": true,
+      "child_regeneration_permitted": true,
+      "convergence_continuity_visibility": "RST_CORE_BACKBONE_CHAIN_LIMITED_TO_GATED_ENQUEUES_ONLY",
+      "downstream_propagation_visibility": "RST_CORE_BACKBONE_NO_BROAD_FANOUT",
+      "generated_at_iso": "2026-05-14T12:00:00Z",
+      "replay_reconciliation_continuity_visibility": "RST_CORE_BACKBONE_TRACE_ROWS_AND_MATRIX_UNCHANGED",
+      "rollback_posture_visibility": "RST_CORE_BACKBONE_CODE_CEILING_ONLY_NO_QUEUE_RESET",
+      "rst_core_backbone_activation_guard_result": "GUARD_RESULT_PERMITTED",
+      "rst_core_backbone_activation_state": "ACTIVATION_LIMITED",
+      "rst_core_backbone_permitted": true,
+      "rst_core_backbone_registry_ceiling": "ACTIVATION_LIMITED",
+      "schema_version": "rst_core_backbone_activation_operational_visibility_v1",
+      "skipped_propagation_visibility": "RST_CORE_BACKBONE_FANOUT_ROWS_ON_SKIP"
+    },
+    "rollback_posture_summary": {
+      "by_rollback_readiness": {
+        "ROLLBACK_REQUIRES_REVIEW": 2
+      },
+      "non_blocking": true,
+      "schema_version": "rollback_posture_summary_v1"
+    },
+    "runtime_activation_rollout_visibility": {
+      "activation_governance_version": "workflow_runtime_activation_registry_v3",
+      "active_families": [],
+      "blocked_families": [],
+      "limited_families": [
+        "COMPLIANCE_SCORE_RECALC",
+        "REGENERATION_RECALC",
+        "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE"
+      ],
+      "observe_only_families": [],
+      "schema_version": "activation_rollout_visibility_v1"
+    },
+    "runtime_activation_snapshot": {
+      "activation_governance_version": "workflow_runtime_activation_registry_v3",
+      "families": [
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        },
+        {
+          "activation_family": "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "rst_core_backbone_registry_allows_authority_gap_recalc_regen_chain",
+          "activation_scope": "requirement_state_transition_core_backbone_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "child_compliance_recalc_gate": {
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          },
+          "child_regeneration_recalc_gate": {
+            "activation_family": "REGENERATION_RECALC",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_reason": "registry_allows_limited_regeneration_recalc_enqueue",
+            "activation_scope": "risk_signal_regen_enqueue_only",
+            "activation_state": "ACTIVATION_LIMITED",
+            "permitted": true,
+            "registry_ceiling": "ACTIVATION_LIMITED"
+          },
+          "permitted": true,
+          "registry_ceiling": "ACTIVATION_LIMITED"
+        }
+      ],
+      "generated_at_iso": "2026-05-14T12:00:00Z",
+      "schema_version": "workflow_runtime_activation_snapshot_v1"
+    },
+    "runtime_activation_state_summary": {
+      "by_activation_state": {
+        "ACTIVATION_LIMITED": 3
+      },
+      "schema_version": "activation_state_summary_v1"
+    },
+    "runtime_behavior_changed": false,
+    "runtime_calibration_summary": {
+      "by_calibration_outcome": {
+        "CALIBRATION_PARTIAL": 2
+      },
+      "drift_detected_count": 0,
+      "non_blocking": true,
+      "schema_version": "calibration_summary_v1"
+    },
+    "runtime_confidence_summary": {
+      "by_runtime_confidence": {
+        "MODERATE_RUNTIME_CONFIDENCE": 2
+      },
+      "non_blocking": true,
+      "schema_version": "runtime_confidence_summary_v1"
+    },
+    "safest_activation_detail": [
+      {
+        "governance_decision_posture": "HOLD_PENDING_EVIDENCE",
+        "operational_priority_band": "PRIORITY_P1_HIGH",
+        "production_exposure_risk": "LOW",
+        "workflow_family": "COMPLIANCE_SCORE_RECALC"
+      },
+      {
+        "governance_decision_posture": "HOLD_PENDING_EVIDENCE",
+        "operational_priority_band": "PRIORITY_P1_HIGH",
+        "production_exposure_risk": "LOW",
+        "workflow_family": "REGENERATION_RECALC"
+      }
+    ],
+    "safest_activation_families": [
+      "COMPLIANCE_SCORE_RECALC",
+      "REGENERATION_RECALC"
+    ]
+  },
+  "rst_core_backbone_activation_operational_visibility": {
+    "activation_drift_visibility": "RST_CORE_BACKBONE_COMPOSITE_GATE_SUBJECT_TO_REGISTRY_V3",
+    "child_compliance_permitted": true,
+    "child_regeneration_permitted": true,
+    "convergence_continuity_visibility": "RST_CORE_BACKBONE_CHAIN_LIMITED_TO_GATED_ENQUEUES_ONLY",
+    "downstream_propagation_visibility": "RST_CORE_BACKBONE_NO_BROAD_FANOUT",
+    "generated_at_iso": "2026-05-14T12:00:00Z",
+    "replay_reconciliation_continuity_visibility": "RST_CORE_BACKBONE_TRACE_ROWS_AND_MATRIX_UNCHANGED",
+    "rollback_posture_visibility": "RST_CORE_BACKBONE_CODE_CEILING_ONLY_NO_QUEUE_RESET",
+    "rst_core_backbone_activation_guard_result": "GUARD_RESULT_PERMITTED",
+    "rst_core_backbone_activation_state": "ACTIVATION_LIMITED",
+    "rst_core_backbone_permitted": true,
+    "rst_core_backbone_registry_ceiling": "ACTIVATION_LIMITED",
+    "schema_version": "rst_core_backbone_activation_operational_visibility_v1",
+    "skipped_propagation_visibility": "RST_CORE_BACKBONE_FANOUT_ROWS_ON_SKIP"
+  },
+  "schema_version": "rst_core_backbone_staging_evidence_bundle_v1",
+  "transition_traces": [
+    {
+      "correlation_id": "c-t5",
+      "downstream_trigger_targets": [
+        {
+          "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "gap_sync_sample"
+        },
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "recalc_enqueue_sample"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "enqueue_outcome": "ENQUEUE_DEGRADED",
+          "propagation_stage": "risk_regen_delegate_sample"
+        }
+      ],
+      "replay_chain_detected": false,
+      "rst_core_backbone_activation": {
+        "child_compliance_recalc_permitted": true,
+        "child_regeneration_recalc_permitted": true,
+        "permitted": true,
+        "propagation_skipped_visibility": false
+      },
+      "staging_runtime_flow_kind": "STAGING_FLOW_ADMIN_AUTHORITY_SYNC",
+      "transition_id": "t5",
+      "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+    },
+    {
+      "correlation_id": "c-t4",
+      "downstream_trigger_targets": [
+        {
+          "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "gap_sync_sample"
+        },
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "recalc_enqueue_sample"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "enqueue_outcome": "ENQUEUE_DEGRADED",
+          "propagation_stage": "risk_regen_delegate_sample"
+        }
+      ],
+      "replay_chain_detected": false,
+      "rst_core_backbone_activation": {
+        "child_compliance_recalc_permitted": true,
+        "child_regeneration_recalc_permitted": true,
+        "permitted": true,
+        "propagation_skipped_visibility": false
+      },
+      "staging_runtime_flow_kind": "STAGING_FLOW_ADMIN_RELINK",
+      "transition_id": "t4",
+      "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+    },
+    {
+      "correlation_id": "c-t7",
+      "downstream_trigger_targets": [
+        {
+          "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "gap_sync_sample"
+        },
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_BLOCKED_REGISTRY_OBSERVE_ONLY",
+          "activation_reason": "activation_gate",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_skipped": true,
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "enqueue_outcome": "ENQUEUE_SKIPPED",
+          "propagation_stage": "recalc_skipped_sample"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "risk_regen_delegate_sample"
+        }
+      ],
+      "replay_chain_detected": false,
+      "rst_core_backbone_activation": {
+        "child_compliance_recalc_permitted": true,
+        "child_regeneration_recalc_permitted": true,
+        "permitted": true,
+        "propagation_skipped_visibility": false
+      },
+      "staging_runtime_flow_kind": "STAGING_FLOW_AI_EXTRACTION_CONFIRMATION",
+      "transition_id": "t7",
+      "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+    },
+    {
+      "correlation_id": "c-t6",
+      "downstream_trigger_targets": [
+        {
+          "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "gap_sync_sample"
+        },
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "recalc_enqueue_sample"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "enqueue_outcome": "ENQUEUE_DEGRADED",
+          "propagation_stage": "risk_regen_delegate_sample"
+        }
+      ],
+      "replay_chain_detected": false,
+      "rst_core_backbone_activation": {
+        "child_compliance_recalc_permitted": true,
+        "child_regeneration_recalc_permitted": true,
+        "permitted": true,
+        "propagation_skipped_visibility": false
+      },
+      "staging_runtime_flow_kind": "STAGING_FLOW_DECLARATION",
+      "transition_id": "t6",
+      "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+    },
+    {
+      "correlation_id": "c-t9",
+      "downstream_trigger_targets": [
+        {
+          "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "gap_sync_sample"
+        },
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "recalc_enqueue_sample"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "enqueue_outcome": "ENQUEUE_DEGRADED",
+          "propagation_stage": "risk_regen_delegate_sample"
+        }
+      ],
+      "replay_chain_detected": false,
+      "rst_core_backbone_activation": {
+        "child_compliance_recalc_permitted": true,
+        "child_regeneration_recalc_permitted": true,
+        "permitted": true,
+        "propagation_skipped_visibility": false
+      },
+      "staging_runtime_flow_kind": "STAGING_FLOW_DOCUMENT_DELETE_REVERT",
+      "transition_id": "t9",
+      "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+    },
+    {
+      "correlation_id": "c-t0",
+      "downstream_trigger_targets": [
+        {
+          "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "gap_sync_sample"
+        },
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "recalc_enqueue_sample"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "enqueue_outcome": "ENQUEUE_DEGRADED",
+          "propagation_stage": "risk_regen_delegate_sample"
+        }
+      ],
+      "replay_chain_detected": false,
+      "rst_core_backbone_activation": {
+        "child_compliance_recalc_permitted": true,
+        "child_regeneration_recalc_permitted": true,
+        "permitted": true,
+        "propagation_skipped_visibility": false
+      },
+      "staging_runtime_flow_kind": "STAGING_FLOW_DOCUMENT_UPLOAD",
+      "transition_id": "t0",
+      "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+    },
+    {
+      "correlation_id": "c-t1",
+      "downstream_trigger_targets": [
+        {
+          "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "gap_sync_sample"
+        },
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "duplicate_suppression_reason": "dedupe",
+          "enqueue_outcome": "ENQUEUE_DUPLICATE_SUPPRESSED",
+          "propagation_stage": "recalc_enqueue_sample"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "risk_regen_delegate_sample"
+        }
+      ],
+      "replay_chain_detected": false,
+      "rst_core_backbone_activation": {
+        "child_compliance_recalc_permitted": true,
+        "child_regeneration_recalc_permitted": true,
+        "permitted": true,
+        "propagation_skipped_visibility": false
+      },
+      "staging_runtime_flow_kind": "STAGING_FLOW_DOCUMENT_VERIFY",
+      "transition_id": "t1",
+      "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+    },
+    {
+      "correlation_id": "c-t2",
+      "downstream_trigger_targets": [
+        {
+          "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "gap_sync_sample"
+        },
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "recalc_enqueue_sample"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "enqueue_outcome": "ENQUEUE_DEGRADED",
+          "propagation_stage": "risk_regen_delegate_sample"
+        }
+      ],
+      "replay_chain_detected": false,
+      "rst_core_backbone_activation": {
+        "child_compliance_recalc_permitted": true,
+        "child_regeneration_recalc_permitted": true,
+        "permitted": true,
+        "propagation_skipped_visibility": false
+      },
+      "staging_runtime_flow_kind": "STAGING_FLOW_EVIDENCE_REVIEW_APPROVAL",
+      "transition_id": "t2",
+      "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+    },
+    {
+      "correlation_id": "c-t3",
+      "downstream_trigger_targets": [
+        {
+          "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "gap_sync_sample"
+        },
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "recalc_enqueue_sample"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "enqueue_outcome": "ENQUEUE_DEGRADED",
+          "propagation_stage": "risk_regen_delegate_sample"
+        }
+      ],
+      "replay_chain_detected": false,
+      "rst_core_backbone_activation": {
+        "child_compliance_recalc_permitted": true,
+        "child_regeneration_recalc_permitted": true,
+        "permitted": true,
+        "propagation_skipped_visibility": false
+      },
+      "staging_runtime_flow_kind": "STAGING_FLOW_EVIDENCE_REVIEW_REJECTION",
+      "transition_id": "t3",
+      "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+    },
+    {
+      "correlation_id": "c-t8",
+      "downstream_trigger_targets": [
+        {
+          "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "gap_sync_sample"
+        },
+        {
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "propagation_stage": "recalc_enqueue_sample"
+        },
+        {
+          "activation_family": "REGENERATION_RECALC",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "r",
+          "activation_scope": "risk_signal_regen_enqueue_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "enqueue_outcome": "ENQUEUE_DEGRADED",
+          "propagation_stage": "risk_regen_delegate_sample"
+        }
+      ],
+      "replay_chain_detected": true,
+      "rst_core_backbone_activation": {
+        "child_compliance_recalc_permitted": true,
+        "child_regeneration_recalc_permitted": true,
+        "permitted": true,
+        "propagation_skipped_visibility": false
+      },
+      "staging_runtime_flow_kind": "STAGING_FLOW_OUTCOME_ENGINE_AUTHORITY_REFRESH",
+      "transition_id": "t8",
+      "transition_origin": "OUTCOME_ENGINE_SYNC:test"
+    }
+  ]
+}

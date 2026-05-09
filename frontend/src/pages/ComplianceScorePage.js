@@ -49,6 +49,10 @@ import {
 } from '../utils/scoringHeadlineDisplay';
 import { findRequirementRowForScoreDriver, scoreDriverRowReactKey } from './ComplianceScorePage.driverRemediation';
 import { COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE } from '../utils/scoreFreshnessUi';
+import {
+  getGovernanceUxPilotExportSurfaceNote,
+  getGovernanceUxPilotPortfolioSupplementLine,
+} from '../utils/governanceUxPilotAdapter';
 
 function scoreDriverStatusLabel(raw) {
   const s = String(raw || '').trim().toUpperCase();
@@ -383,6 +387,9 @@ const ComplianceScorePage = () => {
                        scoreData?.color === 'amber' ? 'bg-amber-50 border-amber-200' :
                        scoreData?.color === 'red' ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200';
 
+  const pilotPortfolioSupplement = getGovernanceUxPilotPortfolioSupplementLine(requirements);
+  const pilotExportNote = getGovernanceUxPilotExportSurfaceNote(requirements);
+
   return (
     <TooltipProvider>
     <div className={portalPageRoot} data-testid="compliance-score-page">
@@ -411,6 +418,14 @@ const ComplianceScorePage = () => {
           </Button>
           </div>
         </div>
+        {pilotExportNote ? (
+          <p
+            className="text-xs text-gray-600 max-w-3xl mb-3 leading-snug"
+            data-testid="governance-ux-pilot-export-note"
+          >
+            {pilotExportNote}
+          </p>
+        ) : null}
         {showExportUpgradeModal && (
           <UpgradePrompt
             featureName="Score report exports"
@@ -530,6 +545,14 @@ const ComplianceScorePage = () => {
                       <span className="block mt-0.5">Your overall score is the average of each property&apos;s score.</span>
                     )}
                   </p>
+                  {pilotPortfolioSupplement ? (
+                    <p
+                      className="text-xs text-gray-600 mt-2 max-w-3xl leading-snug"
+                      data-testid="governance-ux-pilot-portfolio-supplement"
+                    >
+                      {pilotPortfolioSupplement}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 

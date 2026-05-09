@@ -71,6 +71,10 @@ async def _enqueue_recalc_after_standalone_authority_sync(
     client_id: Optional[str],
     portal_user_id: Optional[str],
     correlation_id: str,
+    transition_fanout: Optional[Dict[str, Any]] = None,
+    trigger_origin: str = "routes.admin._enqueue_recalc_after_standalone_authority_sync",
+    propagation_stage: str = "post_admin_authority_sync",
+    broadcast_traces: Optional[List[Optional[Dict[str, Any]]]] = None,
 ) -> None:
     """Stream B straggler: queue property score after sync_requirement_evidence_authority (no sync recalc here)."""
     pid = (property_id or "").strip()
@@ -82,14 +86,31 @@ async def _enqueue_recalc_after_standalone_authority_sync(
         TRIGGER_DOC_STATUS_CHANGED,
         enqueue_compliance_recalc,
     )
+    from services.authority_mutation_fanout import enqueue_compliance_recalc_with_fanout
 
-    await enqueue_compliance_recalc(
+    if transition_fanout is None and not broadcast_traces:
+        await enqueue_compliance_recalc(
+            property_id=pid,
+            client_id=cid,
+            trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
+            actor_type=ACTOR_ADMIN,
+            actor_id=str(portal_user_id or "") or None,
+            correlation_id=correlation_id,
+        )
+        return
+
+    await enqueue_compliance_recalc_with_fanout(
+        transition_fanout,
         property_id=pid,
         client_id=cid,
         trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
         actor_type=ACTOR_ADMIN,
         actor_id=str(portal_user_id or "") or None,
         correlation_id=correlation_id,
+        trigger_origin=trigger_origin,
+        propagation_stage=propagation_stage,
+        fanout_op="admin_transition_fanout",
+        broadcast_traces=broadcast_traces,
     )
 
 
@@ -546,7 +567,9 @@ async def resolve_unresolved_document_scope(
     """Resolve UNRESOLVED evidence to PROPERTY or PORTFOLIO scope with validation and audit."""
     user = await admin_route_guard(request)
     db = database.get_db()
-    from services.requirement_evidence_authority import normalize_document_evidence_scope, sync_requirement_evidence_authority
+    from services.authority_mutation_fanout import authority_sync_with_transition_observability
+    from services.requirement_evidence_authority import normalize_document_evidence_scope
+    from services.requirement_transition_observability import merge_document_path_lineage_flags, merge_review_admin_lineage_flags
 
     doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
     if not doc:
@@ -590,12 +613,26 @@ async def resolve_unresolved_document_scope(
         update_payload["requirement_id"] = body.requirement_id.strip()
     await db.documents.update_one({"document_id": document_id}, {"$set": update_payload})
     if update_payload.get("requirement_id"):
-        await sync_requirement_evidence_authority(db, update_payload["requirement_id"], property_id_hint=body.property_id.strip())
+        scope_fanout: Dict[str, Any] = {}
+        await authority_sync_with_transition_observability(
+            db,
+            update_payload["requirement_id"],
+            property_id=body.property_id.strip(),
+            client_id=str(doc.get("client_id") or ""),
+            correlation_base=f"AUTHORITY_SYNC:RESOLVE_UNRESOLVED_SCOPE:{document_id}",
+            transition_origin="routes.admin.resolve_unresolved_document_scope",
+            transition_fanout=scope_fanout,
+        )
+        merge_document_path_lineage_flags(scope_fanout, document_id=document_id)
+        merge_review_admin_lineage_flags(scope_fanout, review_id=f"RESOLVE_SCOPE:{document_id}")
         await _enqueue_recalc_after_standalone_authority_sync(
             property_id=body.property_id.strip(),
             client_id=str(doc.get("client_id") or ""),
             portal_user_id=user.get("portal_user_id"),
             correlation_id=f"AUTHORITY_SYNC:RESOLVE_UNRESOLVED_SCOPE:{document_id}",
+            transition_fanout=scope_fanout,
+            trigger_origin="routes.admin.resolve_unresolved_document_scope",
+            propagation_stage="post_resolve_unresolved_scope",
         )
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,
@@ -621,10 +658,7 @@ class AdminDocumentRequirementLinkRequest(BaseModel):
 async def admin_link_document_requirement(request: Request, document_id: str, body: AdminDocumentRequirementLinkRequest):
     user = await admin_route_guard(request)
     db = database.get_db()
-    from services.requirement_evidence_authority import (
-        document_evidence_compatible_with_requirement,
-        sync_requirement_evidence_authority,
-    )
+    from services.requirement_evidence_authority import document_evidence_compatible_with_requirement
 
     doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
     if not doc:
@@ -654,12 +688,26 @@ async def admin_link_document_requirement(request: Request, document_id: str, bo
         filename=doc.get("file_name"),
         context="admin_link_requirement",
     )
-    await sync_requirement_evidence_authority(db, body.requirement_id, property_id_hint=req.get("property_id"))
+    link_fanout: Dict[str, Any] = {}
+    await authority_sync_with_transition_observability(
+        db,
+        body.requirement_id,
+        property_id=str(req.get("property_id") or "") or None,
+        client_id=str(doc.get("client_id") or ""),
+        correlation_base=f"AUTHORITY_SYNC:ADMIN_LINK_REQUIREMENT:{document_id}",
+        transition_origin="routes.admin.admin_link_document_requirement",
+        transition_fanout=link_fanout,
+    )
+    merge_document_path_lineage_flags(link_fanout, document_id=document_id)
+    merge_review_admin_lineage_flags(link_fanout, reviewer_retrigger_possible=True)
     await _enqueue_recalc_after_standalone_authority_sync(
         property_id=str(req.get("property_id") or ""),
         client_id=str(doc.get("client_id") or ""),
         portal_user_id=user.get("portal_user_id"),
         correlation_id=f"AUTHORITY_SYNC:ADMIN_LINK_REQUIREMENT:{document_id}",
+        transition_fanout=link_fanout,
+        trigger_origin="routes.admin.admin_link_document_requirement",
+        propagation_stage="post_admin_link_requirement",
     )
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,
@@ -676,7 +724,8 @@ async def admin_link_document_requirement(request: Request, document_id: str, bo
 async def admin_unlink_document_requirement(request: Request, document_id: str):
     user = await admin_route_guard(request)
     db = database.get_db()
-    from services.requirement_evidence_authority import sync_requirement_evidence_authority
+    from services.authority_mutation_fanout import authority_sync_with_transition_observability
+    from services.requirement_transition_observability import merge_document_path_lineage_flags, merge_review_admin_lineage_flags
 
     doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
     if not doc:
@@ -684,12 +733,26 @@ async def admin_unlink_document_requirement(request: Request, document_id: str):
     prior_requirement_id = doc.get("requirement_id")
     await db.documents.update_one({"document_id": document_id}, {"$set": {"requirement_id": None}})
     if prior_requirement_id:
-        await sync_requirement_evidence_authority(db, str(prior_requirement_id), property_id_hint=doc.get("property_id"))
+        unlink_fanout: Dict[str, Any] = {}
+        await authority_sync_with_transition_observability(
+            db,
+            str(prior_requirement_id),
+            property_id=str(doc.get("property_id") or "") or None,
+            client_id=str(doc.get("client_id") or ""),
+            correlation_base=f"AUTHORITY_SYNC:ADMIN_UNLINK_REQUIREMENT:{document_id}",
+            transition_origin="routes.admin.admin_unlink_document_requirement",
+            transition_fanout=unlink_fanout,
+        )
+        merge_document_path_lineage_flags(unlink_fanout, document_id=document_id)
+        merge_review_admin_lineage_flags(unlink_fanout, reassignment_replay_possible=True)
         await _enqueue_recalc_after_standalone_authority_sync(
             property_id=str(doc.get("property_id") or ""),
             client_id=str(doc.get("client_id") or ""),
             portal_user_id=user.get("portal_user_id"),
             correlation_id=f"AUTHORITY_SYNC:ADMIN_UNLINK_REQUIREMENT:{document_id}",
+            transition_fanout=unlink_fanout,
+            trigger_origin="routes.admin.admin_unlink_document_requirement",
+            propagation_stage="post_admin_unlink_requirement",
         )
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,
@@ -706,7 +769,8 @@ async def admin_unlink_document_requirement(request: Request, document_id: str):
 async def admin_reject_unresolved_document(request: Request, document_id: str):
     user = await admin_route_guard(request)
     db = database.get_db()
-    from services.requirement_evidence_authority import sync_requirement_evidence_authority
+    from services.authority_mutation_fanout import authority_sync_with_transition_observability
+    from services.requirement_transition_observability import merge_document_path_lineage_flags, merge_review_admin_lineage_flags
 
     doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
     if not doc:
@@ -717,12 +781,26 @@ async def admin_reject_unresolved_document(request: Request, document_id: str):
         {"$set": {"status": "REJECTED", "manual_review_flag": True}},
     )
     if prior_requirement_id:
-        await sync_requirement_evidence_authority(db, str(prior_requirement_id), property_id_hint=doc.get("property_id"))
+        rej_fanout: Dict[str, Any] = {}
+        await authority_sync_with_transition_observability(
+            db,
+            str(prior_requirement_id),
+            property_id=str(doc.get("property_id") or "") or None,
+            client_id=str(doc.get("client_id") or ""),
+            correlation_base=f"AUTHORITY_SYNC:ADMIN_REJECT_UNRESOLVED:{document_id}",
+            transition_origin="routes.admin.admin_reject_unresolved_document",
+            transition_fanout=rej_fanout,
+        )
+        merge_document_path_lineage_flags(rej_fanout, document_id=document_id)
+        merge_review_admin_lineage_flags(rej_fanout, review_reversal_possible=True)
         await _enqueue_recalc_after_standalone_authority_sync(
             property_id=str(doc.get("property_id") or ""),
             client_id=str(doc.get("client_id") or ""),
             portal_user_id=user.get("portal_user_id"),
             correlation_id=f"AUTHORITY_SYNC:ADMIN_REJECT_UNRESOLVED:{document_id}",
+            transition_fanout=rej_fanout,
+            trigger_origin="routes.admin.admin_reject_unresolved_document",
+            propagation_stage="post_admin_reject_unresolved",
         )
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,
@@ -758,10 +836,9 @@ async def admin_resolve_evidence_match(
     """Approve, relink, or reject evidence after automated mismatch / unknown-type detection."""
     user = await admin_route_guard(request)
     db = database.get_db()
-    from services.requirement_evidence_authority import (
-        document_evidence_compatible_with_requirement,
-        sync_requirement_evidence_authority,
-    )
+    from services.authority_mutation_fanout import authority_sync_with_transition_observability
+    from services.requirement_evidence_authority import document_evidence_compatible_with_requirement
+    from services.requirement_transition_observability import merge_document_path_lineage_flags, merge_review_admin_lineage_flags
     from services.evidence_document_taxonomy import MATCH_OUTCOME_MATCH_CONFIRMED
     from services.evidence_document_match_engine import persist_document_evidence_match_after_extraction
 
@@ -791,12 +868,30 @@ async def admin_resolve_evidence_match(
             },
         )
         if prior_rid:
-            await sync_requirement_evidence_authority(db, str(prior_rid), property_id_hint=doc.get("property_id"))
+            ov_fanout: Dict[str, Any] = {}
+            await authority_sync_with_transition_observability(
+                db,
+                str(prior_rid),
+                property_id=str(doc.get("property_id") or "") or None,
+                client_id=str(cid or ""),
+                correlation_base=f"AUTHORITY_SYNC:EVIDENCE_MATCH_APPROVE_OVERRIDE:{document_id}",
+                transition_origin="routes.admin.admin_resolve_evidence_match",
+                transition_fanout=ov_fanout,
+            )
+            merge_document_path_lineage_flags(ov_fanout, document_id=document_id)
+            merge_review_admin_lineage_flags(
+                ov_fanout,
+                admin_override_possible=True,
+                authority_override_replay_possible=True,
+            )
             await _enqueue_recalc_after_standalone_authority_sync(
                 property_id=str(doc.get("property_id") or ""),
                 client_id=str(cid or ""),
                 portal_user_id=user.get("portal_user_id"),
                 correlation_id=f"AUTHORITY_SYNC:EVIDENCE_MATCH_APPROVE_OVERRIDE:{document_id}",
+                transition_fanout=ov_fanout,
+                trigger_origin="routes.admin.admin_resolve_evidence_match",
+                propagation_stage="post_evidence_match_approve_override",
             )
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
@@ -817,12 +912,26 @@ async def admin_resolve_evidence_match(
             {"$set": {"status": "REJECTED", "manual_review_flag": True}},
         )
         if prior_rid:
-            await sync_requirement_evidence_authority(db, str(prior_rid), property_id_hint=doc.get("property_id"))
+            rej_match_fanout: Dict[str, Any] = {}
+            await authority_sync_with_transition_observability(
+                db,
+                str(prior_rid),
+                property_id=str(doc.get("property_id") or "") or None,
+                client_id=str(cid or ""),
+                correlation_base=f"AUTHORITY_SYNC:EVIDENCE_MATCH_REJECT:{document_id}",
+                transition_origin="routes.admin.admin_resolve_evidence_match",
+                transition_fanout=rej_match_fanout,
+            )
+            merge_document_path_lineage_flags(rej_match_fanout, document_id=document_id)
+            merge_review_admin_lineage_flags(rej_match_fanout, review_reversal_possible=True)
             await _enqueue_recalc_after_standalone_authority_sync(
                 property_id=str(doc.get("property_id") or ""),
                 client_id=str(cid or ""),
                 portal_user_id=user.get("portal_user_id"),
                 correlation_id=f"AUTHORITY_SYNC:EVIDENCE_MATCH_REJECT:{document_id}",
+                transition_fanout=rej_match_fanout,
+                trigger_origin="routes.admin.admin_resolve_evidence_match",
+                propagation_stage="post_evidence_match_reject",
             )
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
@@ -870,8 +979,26 @@ async def admin_resolve_evidence_match(
             context="admin_relink_requirement",
         )
         touched_property_ids: List[str] = []
+        fanout_prior: Dict[str, Any] = {}
+        fanout_new: Dict[str, Any] = {}
+        pp = ""
+        np = ""
         if prior_rid and str(prior_rid) != rid:
-            await sync_requirement_evidence_authority(db, str(prior_rid), property_id_hint=doc.get("property_id"))
+            await authority_sync_with_transition_observability(
+                db,
+                str(prior_rid),
+                property_id=str(doc.get("property_id") or "") or None,
+                client_id=str(cid or ""),
+                correlation_base=f"AUTHORITY_SYNC:EVIDENCE_MATCH_RELINK:{document_id}:prior",
+                transition_origin="routes.admin.admin_resolve_evidence_match",
+                transition_fanout=fanout_prior,
+            )
+            merge_document_path_lineage_flags(fanout_prior, document_id=document_id)
+            merge_review_admin_lineage_flags(
+                fanout_prior,
+                reassignment_replay_possible=True,
+                review_chain_reentry_detected=True,
+            )
             prior_req_row = await db.requirements.find_one(
                 {"requirement_id": str(prior_rid), "client_id": cid},
                 {"_id": 0, "property_id": 1},
@@ -879,7 +1006,21 @@ async def admin_resolve_evidence_match(
             pp = str((prior_req_row or {}).get("property_id") or doc.get("property_id") or "").strip()
             if pp:
                 touched_property_ids.append(pp)
-        await sync_requirement_evidence_authority(db, rid, property_id_hint=req.get("property_id"))
+        await authority_sync_with_transition_observability(
+            db,
+            rid,
+            property_id=str(req.get("property_id") or "") or None,
+            client_id=str(cid or ""),
+            correlation_base=f"AUTHORITY_SYNC:EVIDENCE_MATCH_RELINK:{document_id}:new",
+            transition_origin="routes.admin.admin_resolve_evidence_match",
+            transition_fanout=fanout_new,
+        )
+        merge_document_path_lineage_flags(fanout_new, document_id=document_id)
+        merge_review_admin_lineage_flags(
+            fanout_new,
+            reassignment_replay_possible=True,
+            review_chain_reentry_detected=bool(prior_rid and str(prior_rid) != rid),
+        )
         np = str(req.get("property_id") or doc.get("property_id") or "").strip()
         if np and np not in touched_property_ids:
             touched_property_ids.append(np)
@@ -892,11 +1033,25 @@ async def admin_resolve_evidence_match(
             if not prop_id or prop_id in seen_enqueue_props:
                 continue
             seen_enqueue_props.add(prop_id)
+            primary = fanout_new if prop_id == np else fanout_prior if prop_id == pp else fanout_new
+            broadcast: Optional[List[Optional[Dict[str, Any]]]] = None
+            if (
+                pp
+                and np
+                and pp == np == prop_id
+                and fanout_prior.get("transition_id")
+                and fanout_new.get("transition_id")
+            ):
+                broadcast = [fanout_prior, fanout_new]
             await _enqueue_recalc_after_standalone_authority_sync(
                 property_id=prop_id,
                 client_id=str(cid or ""),
                 portal_user_id=user.get("portal_user_id"),
                 correlation_id=f"AUTHORITY_SYNC:EVIDENCE_MATCH_RELINK:{document_id}:{prop_id}",
+                transition_fanout=primary,
+                broadcast_traces=broadcast,
+                trigger_origin="routes.admin.admin_resolve_evidence_match",
+                propagation_stage="post_evidence_match_relink",
             )
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
@@ -934,13 +1089,14 @@ async def admin_backfill_evidence_match(request: Request, body: AdminEvidenceMat
     user = await admin_route_guard(request)
     support_reason = ensure_action_reason("backfill_evidence_match_batch", body.reason)
     db = database.get_db()
+    from services.authority_mutation_fanout import authority_sync_with_transition_observability
     from services.evidence_document_match_engine import persist_document_evidence_match_after_extraction
     from services.evidence_document_taxonomy import (
         EVIDENCE_MATCH_LEGACY_STATE_UNCLASSIFIED_PRE_ENGINE,
         MATCH_OUTCOME_NEEDS_ADMIN_REVIEW,
         REASON_CODE_LEGACY_UNCLASSIFIED,
     )
-    from services.requirement_evidence_authority import sync_requirement_evidence_authority
+    from services.requirement_transition_observability import merge_document_path_lineage_flags
 
     q: Dict[str, Any] = {
         "$and": [
@@ -1002,15 +1158,28 @@ async def admin_backfill_evidence_match(request: Request, body: AdminEvidenceMat
         await db.documents.update_one({"document_id": did}, {"$set": patch})
         rid = doc.get("requirement_id")
         if rid:
-            await sync_requirement_evidence_authority(db, str(rid), property_id_hint=doc.get("property_id"))
             pid_bf = str(doc.get("property_id") or "").strip()
             cid_bf = str(doc.get("client_id") or "").strip()
+            bf_fanout: Dict[str, Any] = {}
+            await authority_sync_with_transition_observability(
+                db,
+                str(rid),
+                property_id=str(doc.get("property_id") or "") or None,
+                client_id=str(doc.get("client_id") or ""),
+                correlation_base=f"AUTHORITY_SYNC:EVIDENCE_MATCH_BACKFILL:{backfill_batch_tag}:{pid_bf}",
+                transition_origin="routes.admin.admin_backfill_evidence_match",
+                transition_fanout=bf_fanout,
+            )
+            merge_document_path_lineage_flags(bf_fanout, document_id=str(did))
             if pid_bf and cid_bf and backfill_batch_tag:
                 await _enqueue_recalc_after_standalone_authority_sync(
                     property_id=pid_bf,
                     client_id=cid_bf,
                     portal_user_id=user.get("portal_user_id"),
                     correlation_id=f"AUTHORITY_SYNC:EVIDENCE_MATCH_BACKFILL:{backfill_batch_tag}:{pid_bf}",
+                    transition_fanout=bf_fanout,
+                    trigger_origin="routes.admin.admin_backfill_evidence_match",
+                    propagation_stage="post_evidence_match_backfill",
                 )
         updated += 1
 

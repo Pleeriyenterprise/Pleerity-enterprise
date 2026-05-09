@@ -1,0 +1,569 @@
+{
+  "audit_only": true,
+  "duplicate_trigger_hotspots": [
+    "BOOKING_CONFIRMATION",
+    "COMPLIANCE_SCORE_RECALC",
+    "DOCUMENT_UPLOAD",
+    "EXPORT_REFRESH",
+    "NOTIFICATION_DISPATCH",
+    "REGENERATION_RECALC",
+    "REMINDER_TRIGGER",
+    "REQUIREMENT_STATE_TRANSITION"
+  ],
+  "generated_at": "2026-05-08T22:00:00+00:00",
+  "highest_risk_workflow_families": [
+    "CACHE_INVALIDATION",
+    "COMPLIANCE_GAP_SYNC",
+    "REQUIREMENT_STATE_TRANSITION",
+    "TODAY_TASK_REBUILD",
+    "COMMAND_CENTER_REFRESH",
+    "NOTIFICATION_DISPATCH"
+  ],
+  "non_blocking": true,
+  "orchestration_fragmentation_findings": [
+    "FRAGMENTED_CHAIN::CACHE_INVALIDATION",
+    "FRAGMENTED_CHAIN::COMMAND_CENTER_REFRESH",
+    "FRAGMENTED_CHAIN::COMPLIANCE_GAP_SYNC",
+    "FRAGMENTED_CHAIN::REQUIREMENT_STATE_TRANSITION"
+  ],
+  "remaining_limitations": [
+    "Catalog is curated static assessment; live code paths are not instrumented by this module.",
+    "Cross-tenant and deployment-specific queue topology is not modeled.",
+    "Failure flags are orthogonal; co-occurrence does not imply observed incident rates."
+  ],
+  "runtime_behavior_changed": false,
+  "safest_activation_candidates": [
+    "REPORT_GENERATION",
+    "WORK_ORDER_TRANSITION"
+  ],
+  "schema_version": "workflow_trigger_reliability_phase1_v1",
+  "stale_state_hotspots": [
+    "CACHE_INVALIDATION",
+    "COMMAND_CENTER_REFRESH",
+    "COMPLIANCE_GAP_SYNC",
+    "COMPLIANCE_SCORE_RECALC",
+    "DOCUMENT_UPLOAD",
+    "EXPORT_REFRESH",
+    "PORTFOLIO_SUMMARY_REFRESH",
+    "REGENERATION_RECALC",
+    "REMINDER_TRIGGER",
+    "REPORT_GENERATION",
+    "REQUIREMENT_STATE_TRANSITION",
+    "SEMANTIC_STATE_TRANSITION",
+    "SLA_ESCALATION",
+    "TODAY_TASK_REBUILD",
+    "VERIFICATION_CONFIRMATION",
+    "WORK_ORDER_TRANSITION"
+  ],
+  "strongest_workflow_families": [
+    "REPORT_GENERATION"
+  ],
+  "unsafe_activation_candidates": [
+    "CACHE_INVALIDATION",
+    "COMMAND_CENTER_REFRESH",
+    "COMPLIANCE_GAP_SYNC",
+    "COMPLIANCE_SCORE_RECALC",
+    "NOTIFICATION_DISPATCH",
+    "PORTFOLIO_SUMMARY_REFRESH",
+    "REGENERATION_RECALC",
+    "REMINDER_TRIGGER",
+    "REQUIREMENT_STATE_TRANSITION",
+    "SLA_ESCALATION",
+    "TODAY_TASK_REBUILD"
+  ],
+  "weakest_observability_paths": [
+    "CACHE_INVALIDATION",
+    "COMMAND_CENTER_REFRESH",
+    "COMPLIANCE_GAP_SYNC",
+    "PORTFOLIO_SUMMARY_REFRESH",
+    "SLA_ESCALATION",
+    "TODAY_TASK_REBUILD",
+    "BOOKING_CONFIRMATION",
+    "COMPLIANCE_SCORE_RECALC"
+  ],
+  "weakest_recovery_paths": [
+    "CACHE_INVALIDATION",
+    "COMMAND_CENTER_REFRESH",
+    "COMPLIANCE_GAP_SYNC",
+    "SLA_ESCALATION",
+    "BOOKING_CONFIRMATION",
+    "DOCUMENT_UPLOAD",
+    "EXPORT_REFRESH",
+    "NOTIFICATION_DISPATCH"
+  ],
+  "workflow_reliability_matrix": [
+    {
+      "downstream_consumers": [
+        "REQUIREMENT_ROW",
+        "EVIDENCE_AUTHORITY",
+        "SEMANTIC_STATE_TRANSITION",
+        "COMPLIANCE_SCORE_RECALC",
+        "TODAY_TASK_REBUILD"
+      ],
+      "duplicate_trigger_exposure": "MODERATE",
+      "idempotency_posture": "PARTIALLY_IDEMPOTENT",
+      "observability_posture": "PARTIAL_OBSERVABILITY",
+      "operational_maturity_level": "MATURE",
+      "operational_owner": "compliance_runtime_ingestion",
+      "orchestration_path": "API handler \u2192 persistence \u2192 downstream recalc hooks",
+      "orphan_risk_exposure": "LOW",
+      "propagation_failure_flags": [
+        "PARTIAL_PROPAGATION_RISK",
+        "POTENTIAL_DUPLICATE_TRIGGER",
+        "STALE_READ_DEPENDENCY"
+      ],
+      "recovery_posture": "PARTIAL_RECOVERY",
+      "refresh_model": "Synchronous commit + queued/eventual rollups",
+      "reliability_class": "MODERATE_RELIABILITY",
+      "runtime_activation_confidence": "MODERATE",
+      "stale_state_exposure": "MODERATE",
+      "trigger_activation_type": "TRIGGER_DIRECT_SYNCHRONOUS",
+      "trigger_source": "Client portal / API evidence attach; ingestion hooks",
+      "workflow_family": "DOCUMENT_UPLOAD"
+    },
+    {
+      "downstream_consumers": [
+        "COMMAND_CENTER_REFRESH",
+        "TODAY_TASK_REBUILD",
+        "REMINDER_TRIGGER",
+        "COMPLIANCE_SCORE_RECALC"
+      ],
+      "duplicate_trigger_exposure": "HIGH",
+      "idempotency_posture": "PARTIALLY_IDEMPOTENT",
+      "observability_posture": "PARTIAL_OBSERVABILITY",
+      "operational_maturity_level": "EVOLVING",
+      "operational_owner": "compliance_requirement_engine",
+      "orchestration_path": "Multiple writers + read models; cross-service fan-out",
+      "orphan_risk_exposure": "MODERATE",
+      "propagation_failure_flags": [
+        "FRAGMENTED_TRIGGER_CHAIN",
+        "PARTIAL_PROPAGATION_RISK",
+        "POTENTIAL_DUPLICATE_TRIGGER"
+      ],
+      "recovery_posture": "PARTIAL_RECOVERY",
+      "refresh_model": "Mixed sync/async by entrypoint",
+      "reliability_class": "LOW_RELIABILITY",
+      "runtime_activation_confidence": "LOW",
+      "stale_state_exposure": "HIGH",
+      "trigger_activation_type": "TRIGGER_FRAGMENTED",
+      "trigger_source": "Registry resolver; status engine; admin corrections",
+      "workflow_family": "REQUIREMENT_STATE_TRANSITION"
+    },
+    {
+      "downstream_consumers": [
+        "REMINDER_TRIGGER",
+        "REPORT_GENERATION",
+        "COMMAND_CENTER_REFRESH",
+        "NOTIFICATION_DISPATCH"
+      ],
+      "duplicate_trigger_exposure": "MODERATE",
+      "idempotency_posture": "PARTIALLY_IDEMPOTENT",
+      "observability_posture": "PARTIAL_OBSERVABILITY",
+      "operational_maturity_level": "EVOLVING",
+      "operational_owner": "semantic_governance_plane",
+      "orchestration_path": "Semantic write \u2192 projection lag \u2192 consumer reads",
+      "orphan_risk_exposure": "MODERATE",
+      "propagation_failure_flags": [
+        "PARTIAL_PROPAGATION_RISK",
+        "STALE_READ_DEPENDENCY",
+        "UNKNOWN_DOWNSTREAM_STATE"
+      ],
+      "recovery_posture": "PARTIAL_RECOVERY",
+      "refresh_model": "Eventual consistency; read-time guards",
+      "reliability_class": "MODERATE_RELIABILITY",
+      "runtime_activation_confidence": "MODERATE",
+      "stale_state_exposure": "HIGH",
+      "trigger_activation_type": "TRIGGER_EVENTUAL",
+      "trigger_source": "Evidence authority / semantic projection updates",
+      "workflow_family": "SEMANTIC_STATE_TRANSITION"
+    },
+    {
+      "downstream_consumers": [
+        "PORTFOLIO_SUMMARY_REFRESH",
+        "COMMAND_CENTER_REFRESH",
+        "REPORT_GENERATION"
+      ],
+      "duplicate_trigger_exposure": "HIGH",
+      "idempotency_posture": "PARTIALLY_IDEMPOTENT",
+      "observability_posture": "PARTIAL_OBSERVABILITY",
+      "operational_maturity_level": "MATURE",
+      "operational_owner": "compliance_scoring_runtime",
+      "orchestration_path": "Job or inline trigger \u2192 score tables \u2192 dashboards",
+      "orphan_risk_exposure": "LOW",
+      "propagation_failure_flags": [
+        "NO_RETRY_STRATEGY",
+        "POTENTIAL_DUPLICATE_TRIGGER",
+        "STALE_READ_DEPENDENCY"
+      ],
+      "recovery_posture": "RECOVERY_READY",
+      "refresh_model": "Async worker / deferred batch",
+      "reliability_class": "MODERATE_RELIABILITY",
+      "runtime_activation_confidence": "MODERATE",
+      "stale_state_exposure": "MODERATE",
+      "trigger_activation_type": "TRIGGER_EVENTUAL",
+      "trigger_source": "Scoring engine; property/portfolio rollups",
+      "workflow_family": "COMPLIANCE_SCORE_RECALC"
+    },
+    {
+      "downstream_consumers": [
+        "COMMAND_CENTER_REFRESH",
+        "NOTIFICATION_DISPATCH"
+      ],
+      "duplicate_trigger_exposure": "MODERATE",
+      "idempotency_posture": "PARTIALLY_IDEMPOTENT",
+      "observability_posture": "LIMITED_OBSERVABILITY",
+      "operational_maturity_level": "EVOLVING",
+      "operational_owner": "unified_tasks_service",
+      "orchestration_path": "Task builder job \u2192 task tables",
+      "orphan_risk_exposure": "MODERATE",
+      "propagation_failure_flags": [
+        "ORPHAN_STATE_RISK",
+        "PARTIAL_PROPAGATION_RISK",
+        "SILENT_FAILURE_RISK"
+      ],
+      "recovery_posture": "PARTIAL_RECOVERY",
+      "refresh_model": "Queued rebuild; partial sync paths",
+      "reliability_class": "LOW_RELIABILITY",
+      "runtime_activation_confidence": "LOW",
+      "stale_state_exposure": "HIGH",
+      "trigger_activation_type": "TRIGGER_EVENTUAL",
+      "trigger_source": "Unified tasks / priority surfaces",
+      "workflow_family": "TODAY_TASK_REBUILD"
+    },
+    {
+      "downstream_consumers": [
+        "UI_CLIENT_CACHE",
+        "ADMIN_OPERATOR_VIEW"
+      ],
+      "duplicate_trigger_exposure": "LOW",
+      "idempotency_posture": "UNKNOWN_IDEMPOTENCY",
+      "observability_posture": "LIMITED_OBSERVABILITY",
+      "operational_maturity_level": "LEGACY_MIXED",
+      "operational_owner": "control_centre_service",
+      "orchestration_path": "Read API composes from multiple sources",
+      "orphan_risk_exposure": "LOW",
+      "propagation_failure_flags": [
+        "FRAGMENTED_TRIGGER_CHAIN",
+        "STALE_READ_DEPENDENCY",
+        "UNKNOWN_DOWNSTREAM_STATE"
+      ],
+      "recovery_posture": "MANUAL_RECOVERY_HEAVY",
+      "refresh_model": "On-read + opportunistic cache",
+      "reliability_class": "LOW_RELIABILITY",
+      "runtime_activation_confidence": "UNVERIFIED",
+      "stale_state_exposure": "HIGH",
+      "trigger_activation_type": "TRIGGER_DERIVED_ON_READ",
+      "trigger_source": "Control centre aggregates",
+      "workflow_family": "COMMAND_CENTER_REFRESH"
+    },
+    {
+      "downstream_consumers": [
+        "NOTIFICATION_DISPATCH",
+        "SLA_ESCALATION"
+      ],
+      "duplicate_trigger_exposure": "HIGH",
+      "idempotency_posture": "PARTIALLY_IDEMPOTENT",
+      "observability_posture": "PARTIAL_OBSERVABILITY",
+      "operational_maturity_level": "MATURE",
+      "operational_owner": "reminder_truth_service",
+      "orchestration_path": "Scheduler \u2192 reminder truth \u2192 outbound channels",
+      "orphan_risk_exposure": "MODERATE",
+      "propagation_failure_flags": [
+        "PARTIAL_PROPAGATION_RISK",
+        "POTENTIAL_DUPLICATE_TRIGGER",
+        "SILENT_FAILURE_RISK"
+      ],
+      "recovery_posture": "PARTIAL_RECOVERY",
+      "refresh_model": "Cron / interval tick",
+      "reliability_class": "MODERATE_RELIABILITY",
+      "runtime_activation_confidence": "MODERATE",
+      "stale_state_exposure": "MODERATE",
+      "trigger_activation_type": "TRIGGER_PERIODIC",
+      "trigger_source": "Reminder / SLA cadence engines",
+      "workflow_family": "REMINDER_TRIGGER"
+    },
+    {
+      "downstream_consumers": [
+        "USER_INBOX",
+        "AUDIT_LOG",
+        "EXTERNAL_PROVIDER"
+      ],
+      "duplicate_trigger_exposure": "HIGH",
+      "idempotency_posture": "NON_IDEMPOTENT",
+      "observability_posture": "PARTIAL_OBSERVABILITY",
+      "operational_maturity_level": "MATURE",
+      "operational_owner": "notification_runtime",
+      "orchestration_path": "Queue worker \u2192 provider APIs",
+      "orphan_risk_exposure": "LOW",
+      "propagation_failure_flags": [
+        "NO_RETRY_STRATEGY",
+        "POTENTIAL_DUPLICATE_TRIGGER",
+        "SILENT_FAILURE_RISK"
+      ],
+      "recovery_posture": "PARTIAL_RECOVERY",
+      "refresh_model": "At-least-once delivery semantics",
+      "reliability_class": "LOW_RELIABILITY",
+      "runtime_activation_confidence": "LOW",
+      "stale_state_exposure": "LOW",
+      "trigger_activation_type": "TRIGGER_EVENTUAL",
+      "trigger_source": "Email / in-app notification pipeline",
+      "workflow_family": "NOTIFICATION_DISPATCH"
+    },
+    {
+      "downstream_consumers": [
+        "NOTIFICATION_DISPATCH",
+        "CONTROL_CENTRE_ALERTS"
+      ],
+      "duplicate_trigger_exposure": "MODERATE",
+      "idempotency_posture": "PARTIALLY_IDEMPOTENT",
+      "observability_posture": "LIMITED_OBSERVABILITY",
+      "operational_maturity_level": "EVOLVING",
+      "operational_owner": "compliance_sla_monitor",
+      "orchestration_path": "Monitor job \u2192 escalation actions",
+      "orphan_risk_exposure": "MODERATE",
+      "propagation_failure_flags": [
+        "NO_RECONCILIATION_PATH",
+        "PARTIAL_PROPAGATION_RISK",
+        "SILENT_FAILURE_RISK"
+      ],
+      "recovery_posture": "MANUAL_RECOVERY_HEAVY",
+      "refresh_model": "Periodic evaluation",
+      "reliability_class": "LOW_RELIABILITY",
+      "runtime_activation_confidence": "LOW",
+      "stale_state_exposure": "MODERATE",
+      "trigger_activation_type": "TRIGGER_PERIODIC",
+      "trigger_source": "SLA watchdog / escalation ladder",
+      "workflow_family": "SLA_ESCALATION"
+    },
+    {
+      "downstream_consumers": [
+        "OBJECT_STORAGE",
+        "CLIENT_DOWNLOAD"
+      ],
+      "duplicate_trigger_exposure": "LOW",
+      "idempotency_posture": "IDEMPOTENT",
+      "observability_posture": "FULL_OBSERVABILITY",
+      "operational_maturity_level": "MATURE",
+      "operational_owner": "reporting_service",
+      "orchestration_path": "Report service \u2192 blob write",
+      "orphan_risk_exposure": "LOW",
+      "propagation_failure_flags": [
+        "PARTIAL_PROPAGATION_RISK",
+        "STALE_READ_DEPENDENCY"
+      ],
+      "recovery_posture": "RECOVERY_READY",
+      "refresh_model": "On-demand + cache",
+      "reliability_class": "HIGH_RELIABILITY",
+      "runtime_activation_confidence": "HIGH",
+      "stale_state_exposure": "LOW",
+      "trigger_activation_type": "TRIGGER_EVENTUAL",
+      "trigger_source": "PDF/CSV/report builders",
+      "workflow_family": "REPORT_GENERATION"
+    },
+    {
+      "downstream_consumers": [
+        "CLIENT_DOWNLOAD",
+        "AUDIT_LOG"
+      ],
+      "duplicate_trigger_exposure": "MODERATE",
+      "idempotency_posture": "PARTIALLY_IDEMPOTENT",
+      "observability_posture": "PARTIAL_OBSERVABILITY",
+      "operational_maturity_level": "MATURE",
+      "operational_owner": "reporting_service",
+      "orchestration_path": "Export job \u2192 storage",
+      "orphan_risk_exposure": "LOW",
+      "propagation_failure_flags": [
+        "POTENTIAL_DUPLICATE_TRIGGER",
+        "STALE_READ_DEPENDENCY"
+      ],
+      "recovery_posture": "PARTIAL_RECOVERY",
+      "refresh_model": "Async regeneration",
+      "reliability_class": "MODERATE_RELIABILITY",
+      "runtime_activation_confidence": "MODERATE",
+      "stale_state_exposure": "MODERATE",
+      "trigger_activation_type": "TRIGGER_EVENTUAL",
+      "trigger_source": "Export artifact refresh / signed URLs",
+      "workflow_family": "EXPORT_REFRESH"
+    },
+    {
+      "downstream_consumers": [
+        "REQUIREMENT_CATALOG",
+        "SCORING_INPUTS"
+      ],
+      "duplicate_trigger_exposure": "LOW",
+      "idempotency_posture": "UNKNOWN_IDEMPOTENCY",
+      "observability_posture": "LIMITED_OBSERVABILITY",
+      "operational_maturity_level": "EXPERIMENTAL",
+      "operational_owner": "compliance_gap_engine",
+      "orchestration_path": "Batch sync \u2192 requirement applicability",
+      "orphan_risk_exposure": "MODERATE",
+      "propagation_failure_flags": [
+        "FRAGMENTED_TRIGGER_CHAIN",
+        "NO_RECONCILIATION_PATH",
+        "PARTIAL_PROPAGATION_RISK"
+      ],
+      "recovery_posture": "MANUAL_RECOVERY_HEAVY",
+      "refresh_model": "Scheduled + manual admin",
+      "reliability_class": "UNVERIFIED_RELIABILITY",
+      "runtime_activation_confidence": "UNVERIFIED",
+      "stale_state_exposure": "HIGH",
+      "trigger_activation_type": "TRIGGER_PERIODIC",
+      "trigger_source": "Gap engine / registry sync",
+      "workflow_family": "COMPLIANCE_GAP_SYNC"
+    },
+    {
+      "downstream_consumers": [
+        "OPERATIONAL_ALERTS",
+        "NOTIFICATION_DISPATCH"
+      ],
+      "duplicate_trigger_exposure": "LOW",
+      "idempotency_posture": "PARTIALLY_IDEMPOTENT",
+      "observability_posture": "PARTIAL_OBSERVABILITY",
+      "operational_maturity_level": "EVOLVING",
+      "operational_owner": "operations_workflow_team",
+      "orchestration_path": "Transactional state change",
+      "orphan_risk_exposure": "MODERATE",
+      "propagation_failure_flags": [
+        "ORPHAN_STATE_RISK",
+        "PARTIAL_PROPAGATION_RISK"
+      ],
+      "recovery_posture": "PARTIAL_RECOVERY",
+      "refresh_model": "Synchronous domain transition",
+      "reliability_class": "MODERATE_RELIABILITY",
+      "runtime_activation_confidence": "MODERATE",
+      "stale_state_exposure": "MODERATE",
+      "trigger_activation_type": "TRIGGER_DIRECT_SYNCHRONOUS",
+      "trigger_source": "Maintenance / work-order state machine",
+      "workflow_family": "WORK_ORDER_TRANSITION"
+    },
+    {
+      "downstream_consumers": [
+        "NOTIFICATION_DISPATCH",
+        "CALENDAR_INTEGRATION"
+      ],
+      "duplicate_trigger_exposure": "MODERATE",
+      "idempotency_posture": "PARTIALLY_IDEMPOTENT",
+      "observability_posture": "PARTIAL_OBSERVABILITY",
+      "operational_maturity_level": "MATURE",
+      "operational_owner": "compliance_booking_service",
+      "orchestration_path": "Booking service \u2192 notifications",
+      "orphan_risk_exposure": "LOW",
+      "propagation_failure_flags": [
+        "POTENTIAL_DUPLICATE_TRIGGER",
+        "SILENT_FAILURE_RISK"
+      ],
+      "recovery_posture": "PARTIAL_RECOVERY",
+      "refresh_model": "Synchronous confirm + async side-effects",
+      "reliability_class": "MODERATE_RELIABILITY",
+      "runtime_activation_confidence": "MODERATE",
+      "stale_state_exposure": "LOW",
+      "trigger_activation_type": "TRIGGER_DIRECT_SYNCHRONOUS",
+      "trigger_source": "Booking pipeline confirmations",
+      "workflow_family": "BOOKING_CONFIRMATION"
+    },
+    {
+      "downstream_consumers": [
+        "SEMANTIC_STATE_TRANSITION",
+        "REMINDER_TRIGGER",
+        "COMPLIANCE_SCORE_RECALC"
+      ],
+      "duplicate_trigger_exposure": "MODERATE",
+      "idempotency_posture": "PARTIALLY_IDEMPOTENT",
+      "observability_posture": "PARTIAL_OBSERVABILITY",
+      "operational_maturity_level": "MATURE",
+      "operational_owner": "requirement_evidence_authority",
+      "orchestration_path": "Verifier outcome \u2192 semantic projection",
+      "orphan_risk_exposure": "LOW",
+      "propagation_failure_flags": [
+        "PARTIAL_PROPAGATION_RISK",
+        "STALE_READ_DEPENDENCY"
+      ],
+      "recovery_posture": "RECOVERY_READY",
+      "refresh_model": "Async propagation",
+      "reliability_class": "MODERATE_RELIABILITY",
+      "runtime_activation_confidence": "MODERATE",
+      "stale_state_exposure": "MODERATE",
+      "trigger_activation_type": "TRIGGER_EVENTUAL",
+      "trigger_source": "Evidence verification completion",
+      "workflow_family": "VERIFICATION_CONFIRMATION"
+    },
+    {
+      "downstream_consumers": [
+        "DASHBOARD_API",
+        "REPORT_GENERATION"
+      ],
+      "duplicate_trigger_exposure": "LOW",
+      "idempotency_posture": "UNKNOWN_IDEMPOTENCY",
+      "observability_posture": "LIMITED_OBSERVABILITY",
+      "operational_maturity_level": "LEGACY_MIXED",
+      "operational_owner": "portfolio_analytics_runtime",
+      "orchestration_path": "Read-time aggregation + cached rollups",
+      "orphan_risk_exposure": "LOW",
+      "propagation_failure_flags": [
+        "STALE_READ_DEPENDENCY",
+        "UNKNOWN_DOWNSTREAM_STATE"
+      ],
+      "recovery_posture": "PARTIAL_RECOVERY",
+      "refresh_model": "Derived on read + periodic warm",
+      "reliability_class": "LOW_RELIABILITY",
+      "runtime_activation_confidence": "LOW",
+      "stale_state_exposure": "HIGH",
+      "trigger_activation_type": "TRIGGER_DERIVED_ON_READ",
+      "trigger_source": "Portfolio aggregates / summaries",
+      "workflow_family": "PORTFOLIO_SUMMARY_REFRESH"
+    },
+    {
+      "downstream_consumers": [
+        "UI_CLIENT_CACHE",
+        "EDGE_CACHE"
+      ],
+      "duplicate_trigger_exposure": "HIGH",
+      "idempotency_posture": "NON_IDEMPOTENT",
+      "observability_posture": "BLACK_BOX_BEHAVIOR",
+      "operational_maturity_level": "LEGACY_MIXED",
+      "operational_owner": "platform_infra_team",
+      "orchestration_path": "Multi-layer invalidation; inconsistent guarantees",
+      "orphan_risk_exposure": "HIGH",
+      "propagation_failure_flags": [
+        "FRAGMENTED_TRIGGER_CHAIN",
+        "SILENT_FAILURE_RISK",
+        "UNKNOWN_DOWNSTREAM_STATE"
+      ],
+      "recovery_posture": "NO_KNOWN_RECOVERY",
+      "refresh_model": "Best-effort broadcast",
+      "reliability_class": "UNKNOWN_RELIABILITY",
+      "runtime_activation_confidence": "UNVERIFIED",
+      "stale_state_exposure": "HIGH",
+      "trigger_activation_type": "TRIGGER_FRAGMENTED",
+      "trigger_source": "CDN / app cache bust",
+      "workflow_family": "CACHE_INVALIDATION"
+    },
+    {
+      "downstream_consumers": [
+        "COMPLIANCE_SCORE_RECALC",
+        "TODAY_TASK_REBUILD",
+        "RISK_SIGNALS"
+      ],
+      "duplicate_trigger_exposure": "HIGH",
+      "idempotency_posture": "PARTIALLY_IDEMPOTENT",
+      "observability_posture": "PARTIAL_OBSERVABILITY",
+      "operational_maturity_level": "MATURE",
+      "operational_owner": "compliance_recalc_worker",
+      "orchestration_path": "Job runner \u2192 fan-out recalcs",
+      "orphan_risk_exposure": "MODERATE",
+      "propagation_failure_flags": [
+        "NO_RETRY_STRATEGY",
+        "PARTIAL_PROPAGATION_RISK",
+        "POTENTIAL_DUPLICATE_TRIGGER"
+      ],
+      "recovery_posture": "RECOVERY_READY",
+      "refresh_model": "Batch; long-running",
+      "reliability_class": "MODERATE_RELIABILITY",
+      "runtime_activation_confidence": "MODERATE",
+      "stale_state_exposure": "MODERATE",
+      "trigger_activation_type": "TRIGGER_PERIODIC",
+      "trigger_source": "Admin / risk regen / bulk rebuild jobs",
+      "workflow_family": "REGENERATION_RECALC"
+    }
+  ]
+}

@@ -22,9 +22,10 @@ from services.evidence_review_config import is_feature_evidence_review_v2
 from services.evidence_review_migration import effective_assurance_tier, effective_evidence_review_state
 from services.evidence_review_policy import promotions_allowed_for_accept_unverified
 from services.external_verification_helpers import build_verification_helpers
+from services.authority_mutation_fanout import authority_sync_with_transition_observability, enqueue_compliance_recalc_with_fanout
 from services.provisioning import provisioning_service
-from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_STATUS_CHANGED, ACTOR_ADMIN
-from services.requirement_evidence_authority import sync_requirement_evidence_authority
+from services.compliance_recalc_queue import TRIGGER_DOC_STATUS_CHANGED, ACTOR_ADMIN
+from services.requirement_transition_observability import merge_document_path_lineage_flags, merge_review_admin_lineage_flags
 
 logger = logging.getLogger(__name__)
 
@@ -108,18 +109,35 @@ class RecordExternalVerificationBody(ReviewNotesBody):
     verified_at: Optional[str] = None
 
 
-async def _sync_prop_recalc(db, *, property_id: Optional[str], client_id: Optional[str], actor_id: Optional[str], doc_id: str, reason: str) -> None:
+async def _sync_prop_recalc(
+    db,
+    *,
+    property_id: Optional[str],
+    client_id: Optional[str],
+    actor_id: Optional[str],
+    doc_id: str,
+    reason: str,
+    transition_fanout: Optional[Dict[str, Any]] = None,
+    correlation_id: Optional[str] = None,
+    trigger_origin: str = "routes.evidence_review._sync_prop_recalc",
+    propagation_stage: str = "post_review_authority_sync",
+) -> None:
     if not property_id or not client_id:
         return
     try:
         await provisioning_service._update_property_compliance(property_id)
-        await enqueue_compliance_recalc(
+        corr = correlation_id or f"DOC_REVIEW:{doc_id}"
+        await enqueue_compliance_recalc_with_fanout(
+            transition_fanout,
             property_id=property_id,
             client_id=client_id,
             trigger_reason=reason,
             actor_type=ACTOR_ADMIN,
             actor_id=actor_id,
-            correlation_id=f"DOC_REVIEW:{doc_id}",
+            correlation_id=corr,
+            trigger_origin=trigger_origin,
+            propagation_stage=propagation_stage,
+            fanout_op="evidence_review_transition_fanout",
         )
     except Exception as ex:
         logger.debug("Property compliance recalc after review: %s", ex)
@@ -452,7 +470,24 @@ async def start_evidence_review(request: Request, document_id: str, body: Review
         decision_reason="START_REVIEW",
     )
     if doc.get("requirement_id"):
-        await sync_requirement_evidence_authority(db, str(doc["requirement_id"]), property_id_hint=doc.get("property_id"))
+        start_fanout: Dict[str, Any] = {}
+        prev_rs = str(effective_evidence_review_state(doc) or "")
+        await authority_sync_with_transition_observability(
+            db,
+            str(doc["requirement_id"]),
+            property_id=str(doc.get("property_id") or "") or None,
+            client_id=str(doc.get("client_id") or ""),
+            correlation_base=str(corr),
+            transition_origin="routes.evidence_review.start_evidence_review",
+            transition_fanout=start_fanout,
+        )
+        merge_document_path_lineage_flags(start_fanout, document_id=document_id)
+        merge_review_admin_lineage_flags(
+            start_fanout,
+            review_id=str(corr),
+            reviewer_retrigger_possible=True,
+            review_chain_reentry_detected=(prev_rs == EvidenceReviewState.UNDER_REVIEW.value),
+        )
     return {"message": "Review started", "correlation_id": corr}
 
 
@@ -484,7 +519,24 @@ async def request_information(request: Request, document_id: str, body: RequestI
         decision_reason="REQUEST_INFORMATION",
     )
     if doc.get("requirement_id"):
-        await sync_requirement_evidence_authority(db, str(doc["requirement_id"]), property_id_hint=doc.get("property_id"))
+        prev_rs = str(effective_evidence_review_state(doc) or "")
+        ri_fanout: Dict[str, Any] = {}
+        await authority_sync_with_transition_observability(
+            db,
+            str(doc["requirement_id"]),
+            property_id=str(doc.get("property_id") or "") or None,
+            client_id=str(doc.get("client_id") or ""),
+            correlation_base=str(corr),
+            transition_origin="routes.evidence_review.request_information",
+            transition_fanout=ri_fanout,
+        )
+        merge_document_path_lineage_flags(ri_fanout, document_id=document_id)
+        merge_review_admin_lineage_flags(
+            ri_fanout,
+            review_id=str(corr),
+            review_chain_reentry_detected=(prev_rs == EvidenceReviewState.NEEDS_INFORMATION.value),
+            reviewer_retrigger_possible=True,
+        )
     return {"message": "Information requested", "correlation_id": corr}
 
 
@@ -587,8 +639,24 @@ async def verify_external(request: Request, document_id: str, body: ExternalVeri
             },
         )
 
+    ve_fanout: Dict[str, Any] = {}
     if document.get("requirement_id"):
-        await sync_requirement_evidence_authority(db, str(document["requirement_id"]), property_id_hint=document.get("property_id"))
+        await authority_sync_with_transition_observability(
+            db,
+            str(document["requirement_id"]),
+            property_id=str(document.get("property_id") or "") or None,
+            client_id=str(document.get("client_id") or ""),
+            correlation_base=str(corr),
+            transition_origin="routes.evidence_review.verify_external",
+            transition_fanout=ve_fanout,
+        )
+        merge_document_path_lineage_flags(ve_fanout, document_id=document_id)
+        merge_review_admin_lineage_flags(
+            ve_fanout,
+            review_id=str(corr),
+            admin_override_possible=bool(vs == "FAIL" and override),
+            reviewer_retrigger_possible=True,
+        )
 
     await _sync_prop_recalc(
         db,
@@ -597,6 +665,10 @@ async def verify_external(request: Request, document_id: str, body: ExternalVeri
         actor_id=user.get("portal_user_id"),
         doc_id=document_id,
         reason=TRIGGER_DOC_STATUS_CHANGED,
+        transition_fanout=ve_fanout if ve_fanout.get("transition_id") else None,
+        correlation_id=str(corr),
+        trigger_origin="routes.evidence_review.verify_external",
+        propagation_stage="post_verify_external",
     )
 
     return {"message": "External verification recorded", "validation": snapshot, "correlation_id": corr}
@@ -629,8 +701,19 @@ async def reject_evidence_review(request: Request, document_id: str, body: Rejec
         notes=body.notes,
         decision_reason="REJECT",
     )
+    reject_fanout: Dict[str, Any] = {}
     if doc.get("requirement_id"):
-        await sync_requirement_evidence_authority(db, str(doc["requirement_id"]), property_id_hint=doc.get("property_id"))
+        await authority_sync_with_transition_observability(
+            db,
+            str(doc["requirement_id"]),
+            property_id=str(doc.get("property_id") or "") or None,
+            client_id=str(doc.get("client_id") or ""),
+            correlation_base=str(corr),
+            transition_origin="routes.evidence_review.reject_evidence_review",
+            transition_fanout=reject_fanout,
+        )
+        merge_document_path_lineage_flags(reject_fanout, document_id=document_id)
+        merge_review_admin_lineage_flags(reject_fanout, review_id=str(corr), review_reversal_possible=True)
     await _sync_prop_recalc(
         db,
         property_id=doc.get("property_id"),
@@ -638,6 +721,10 @@ async def reject_evidence_review(request: Request, document_id: str, body: Rejec
         actor_id=user.get("portal_user_id"),
         doc_id=document_id,
         reason=TRIGGER_DOC_STATUS_CHANGED,
+        transition_fanout=reject_fanout if reject_fanout.get("transition_id") else None,
+        correlation_id=str(corr),
+        trigger_origin="routes.evidence_review.reject_evidence_review",
+        propagation_stage="post_review_reject",
     )
     return {"message": "Evidence rejected", "correlation_id": corr}
 
@@ -669,8 +756,19 @@ async def mark_expired_review(request: Request, document_id: str, body: ReviewNo
         notes=body.notes,
         decision_reason="MARK_EXPIRED",
     )
+    exp_fanout: Dict[str, Any] = {}
     if doc.get("requirement_id"):
-        await sync_requirement_evidence_authority(db, str(doc["requirement_id"]), property_id_hint=doc.get("property_id"))
+        await authority_sync_with_transition_observability(
+            db,
+            str(doc["requirement_id"]),
+            property_id=str(doc.get("property_id") or "") or None,
+            client_id=str(doc.get("client_id") or ""),
+            correlation_base=str(corr),
+            transition_origin="routes.evidence_review.mark_expired_review",
+            transition_fanout=exp_fanout,
+        )
+        merge_document_path_lineage_flags(exp_fanout, document_id=document_id)
+        merge_review_admin_lineage_flags(exp_fanout, review_id=str(corr), review_reversal_possible=True)
     await _sync_prop_recalc(
         db,
         property_id=doc.get("property_id"),
@@ -678,6 +776,10 @@ async def mark_expired_review(request: Request, document_id: str, body: ReviewNo
         actor_id=user.get("portal_user_id"),
         doc_id=document_id,
         reason=TRIGGER_DOC_STATUS_CHANGED,
+        transition_fanout=exp_fanout if exp_fanout.get("transition_id") else None,
+        correlation_id=str(corr),
+        trigger_origin="routes.evidence_review.mark_expired_review",
+        propagation_stage="post_review_mark_expired",
     )
     return {"message": "Marked expired", "correlation_id": corr}
 
@@ -713,8 +815,24 @@ async def supersede_evidence(request: Request, document_id: str, body: Supersede
         notes=meta_notes or None,
         decision_reason="SUPERSEDED",
     )
+    sup_fanout: Dict[str, Any] = {}
     if doc.get("requirement_id"):
-        await sync_requirement_evidence_authority(db, str(doc["requirement_id"]), property_id_hint=doc.get("property_id"))
+        await authority_sync_with_transition_observability(
+            db,
+            str(doc["requirement_id"]),
+            property_id=str(doc.get("property_id") or "") or None,
+            client_id=str(doc.get("client_id") or ""),
+            correlation_base=str(corr),
+            transition_origin="routes.evidence_review.supersede_evidence",
+            transition_fanout=sup_fanout,
+        )
+        merge_document_path_lineage_flags(sup_fanout, document_id=document_id)
+        merge_review_admin_lineage_flags(
+            sup_fanout,
+            review_id=str(corr),
+            review_reversal_possible=True,
+            reassignment_replay_possible=bool((body.superseded_by_document_id or "").strip()),
+        )
     await _sync_prop_recalc(
         db,
         property_id=doc.get("property_id"),
@@ -722,5 +840,9 @@ async def supersede_evidence(request: Request, document_id: str, body: Supersede
         actor_id=user.get("portal_user_id"),
         doc_id=document_id,
         reason=TRIGGER_DOC_STATUS_CHANGED,
+        transition_fanout=sup_fanout if sup_fanout.get("transition_id") else None,
+        correlation_id=str(corr),
+        trigger_origin="routes.evidence_review.supersede_evidence",
+        propagation_stage="post_review_supersede",
     )
     return {"message": "Evidence superseded", "correlation_id": corr}

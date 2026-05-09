@@ -656,8 +656,27 @@ async def patch_requirement(
     )
 
     from services.requirement_evidence_authority import sync_requirement_evidence_authority
+    from services.requirement_transition_observability import (
+        attach_downstream_trigger_observation,
+        ensure_requirement_transition_correlation_id,
+    )
 
-    await sync_requirement_evidence_authority(db, requirement_id, property_id_hint=property_id)
+    transition_fanout: Dict[str, Any] = {}
+    recalc_correlation_id = f"REQUIREMENT_UPDATED:{requirement_id}"
+    sync_correlation_id = ensure_requirement_transition_correlation_id(
+        requirement_id=str(requirement_id),
+        property_id=str(property_id),
+        client_id=str(user.get("client_id") or ""),
+        correlation_id=recalc_correlation_id,
+    )
+    await sync_requirement_evidence_authority(
+        db,
+        requirement_id,
+        property_id_hint=property_id,
+        correlation_id=sync_correlation_id,
+        transition_origin="routes.properties.patch_requirement",
+        transition_observability_out=transition_fanout,
+    )
 
     fields_changed: List[str] = []
     if data.confirmed_expiry_date is not None:
@@ -671,7 +690,6 @@ async def patch_requirement(
     if data.not_required_reason is not None and str(data.not_required_reason).strip():
         fields_changed.append("not_required_reason")
 
-    recalc_correlation_id = f"REQUIREMENT_UPDATED:{requirement_id}"
     await create_audit_log(
         action=AuditAction.REQUIREMENT_ACTION_TRIGGERED,
         actor_id=user.get("portal_user_id"),
@@ -692,14 +710,32 @@ async def patch_requirement(
 
     # Recalculate property compliance when requirement expiry/status changes (e.g. confirm details later)
     from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROPERTY_UPDATED, ACTOR_CLIENT
-    await enqueue_compliance_recalc(
-        property_id=property_id,
-        client_id=user["client_id"],
-        trigger_reason=TRIGGER_PROPERTY_UPDATED,
-        actor_type=ACTOR_CLIENT,
-        actor_id=user.get("portal_user_id"),
-        correlation_id=recalc_correlation_id,
-    )
+
+    recalc_result = None
+    recalc_exc: Optional[Exception] = None
+    try:
+        recalc_result = await enqueue_compliance_recalc(
+            property_id=property_id,
+            client_id=user["client_id"],
+            trigger_reason=TRIGGER_PROPERTY_UPDATED,
+            actor_type=ACTOR_CLIENT,
+            actor_id=user.get("portal_user_id"),
+            correlation_id=recalc_correlation_id,
+        )
+    except Exception as exc:
+        recalc_exc = exc
+        logger.warning("enqueue_compliance_recalc after patch_requirement failed: %s", exc)
+    if transition_fanout:
+        attach_downstream_trigger_observation(
+            transition_fanout,
+            downstream_target="compliance_recalc_queue.enqueue_compliance_recalc",
+            trigger_mode="async_queue",
+            propagation_stage="post_authority_sync",
+            downstream_correlation_id=getattr(recalc_result, "correlation_id", None) if recalc_result is not None else recalc_correlation_id,
+            trigger_origin="routes.properties.patch_requirement",
+            enqueue_result=recalc_result,
+            enqueue_exc=recalc_exc,
+        )
     try:
         from services.score_events_service import write_score_event, EVENT_REQUIREMENT_STATUS_CHANGED, ACTOR_ROLE_CLIENT
         await write_score_event(

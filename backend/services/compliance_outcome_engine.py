@@ -236,7 +236,16 @@ async def _sync_requirement_evidence_authority_after_compliant_set(event: Dict[s
     if not client_id or not property_id:
         return
     db = database.get_db()
-    from services.requirement_evidence_authority import sync_requirement_evidence_authority
+    from services.authority_mutation_fanout import authority_sync_with_transition_observability
+    from services.requirement_transition_observability import (
+        merge_automated_system_lineage_flags,
+        transition_origin_outcome_engine,
+    )
+
+    event_type = str(event.get("event_type") or "").strip().lower()
+    dedupe_key = _build_dedupe_key({**event, "event_type": event_type})
+    outcome_cid = _resolve_outcome_correlation_id(event, event_type, dedupe_key)
+    transition_origin = transition_origin_outcome_engine("compliant_set_authority_refresh")
 
     rows = await db.requirements.find(
         {
@@ -250,8 +259,22 @@ async def _sync_requirement_evidence_authority_after_compliant_set(event: Dict[s
         rid = row.get("requirement_id")
         if not rid:
             continue
+        tf: Dict[str, Any] = {}
         try:
-            await sync_requirement_evidence_authority(db, str(rid), property_id_hint=property_id)
+            await authority_sync_with_transition_observability(
+                db,
+                str(rid),
+                property_id=property_id,
+                client_id=client_id,
+                correlation_base=f"{outcome_cid}:authority:{rid}",
+                transition_origin=transition_origin,
+                transition_fanout=tf,
+            )
+            merge_automated_system_lineage_flags(
+                tf,
+                automated_transition_possible=True,
+                reconciliation_sync_possible=True,
+            )
         except Exception as exc:
             logger.warning(
                 "sync_requirement_evidence_authority after outcome compliant-set failed "
@@ -266,9 +289,31 @@ async def _sync_requirement_evidence_authority_after_compliant_set(event: Dict[s
                     client_id=client_id,
                     property_id=property_id,
                     requirement_id=str(rid),
+                    correlation_id=outcome_cid,
+                    transition_origin=transition_origin,
                     exc_type=type(exc).__name__,
+                    automated_transition_possible=True,
+                    reconciliation_sync_possible=True,
                 ),
             )
+    if rows:
+        logger.info(
+            "compliance_fanout: outcome_engine_authority_sync_batch client_id=%s property_id=%s count=%s",
+            client_id,
+            property_id,
+            len(rows),
+            extra=compliance_fanout_extra(
+                op="outcome_engine_authority_sync",
+                stage="batch_complete",
+                client_id=client_id,
+                property_id=property_id,
+                correlation_id=outcome_cid,
+                transition_origin=transition_origin,
+                trigger_reason=f"requirement_type={req_type}",
+                automated_transition_possible=True,
+                reconciliation_sync_possible=True,
+            ),
+        )
 
 
 async def apply_action_outcome(event: Dict[str, Any]) -> Dict[str, Any]:

@@ -48,6 +48,10 @@ from services.work_order_pricing_service import (
     submit_quote_for_work_order,
 )
 from services.requirement_evidence_authority import sync_requirement_evidence_authority
+from services.requirement_transition_observability import (
+    attach_downstream_trigger_observation,
+    ensure_requirement_transition_correlation_id,
+)
 from utils.audit import create_audit_log
 from utils.expiry_utils import get_computed_status
 
@@ -294,7 +298,22 @@ async def mark_requirement_not_applicable_by_id(
             }
         },
     )
-    await sync_requirement_evidence_authority(db, rid, property_id_hint=prop_id or None)
+    transition_fanout: Dict[str, Any] = {}
+    recalc_correlation_id = f"MARK_NOT_APPLICABLE:{rid}"
+    sync_correlation_id = ensure_requirement_transition_correlation_id(
+        requirement_id=str(rid),
+        property_id=str(prop_id or "") or None,
+        client_id=str(user.get("client_id") or ""),
+        correlation_id=recalc_correlation_id,
+    )
+    await sync_requirement_evidence_authority(
+        db,
+        rid,
+        property_id_hint=prop_id or None,
+        correlation_id=sync_correlation_id,
+        transition_origin="api_compliance_workflow.mark_not_applicable",
+        transition_observability_out=transition_fanout,
+    )
     await create_audit_log(
         action=AuditAction.REQUIREMENT_ACTION_TRIGGERED,
         actor_id=_actor_id(user),
@@ -305,14 +324,31 @@ async def mark_requirement_not_applicable_by_id(
     )
     from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED, enqueue_compliance_recalc
 
-    await enqueue_compliance_recalc(
-        property_id=prop_id,
-        client_id=user["client_id"],
-        trigger_reason=TRIGGER_PROPERTY_UPDATED,
-        actor_type=ACTOR_CLIENT,
-        actor_id=user.get("portal_user_id"),
-        correlation_id=f"MARK_NOT_APPLICABLE:{rid}",
-    )
+    recalc_result = None
+    recalc_exc: Optional[Exception] = None
+    try:
+        recalc_result = await enqueue_compliance_recalc(
+            property_id=prop_id,
+            client_id=user["client_id"],
+            trigger_reason=TRIGGER_PROPERTY_UPDATED,
+            actor_type=ACTOR_CLIENT,
+            actor_id=user.get("portal_user_id"),
+            correlation_id=recalc_correlation_id,
+        )
+    except Exception as exc:
+        recalc_exc = exc
+        logger.warning("enqueue_compliance_recalc after mark_not_applicable failed: %s", exc)
+    if transition_fanout:
+        attach_downstream_trigger_observation(
+            transition_fanout,
+            downstream_target="compliance_recalc_queue.enqueue_compliance_recalc",
+            trigger_mode="async_queue",
+            propagation_stage="post_authority_sync",
+            downstream_correlation_id=getattr(recalc_result, "correlation_id", None) if recalc_result is not None else recalc_correlation_id,
+            trigger_origin="api_compliance_workflow.mark_not_applicable",
+            enqueue_result=recalc_result,
+            enqueue_exc=recalc_exc,
+        )
     return {"ok": True, "requirement_id": rid}
 
 
@@ -357,7 +393,22 @@ async def reopen_requirement(request: Request, requirement_id: str, user: Dict[s
             }
         },
     )
-    await sync_requirement_evidence_authority(db, rid, property_id_hint=prop_id or None)
+    transition_fanout: Dict[str, Any] = {}
+    recalc_correlation_id = f"REOPEN_REQUIREMENT:{rid}"
+    sync_correlation_id = ensure_requirement_transition_correlation_id(
+        requirement_id=str(rid),
+        property_id=str(prop_id or "") or None,
+        client_id=str(user.get("client_id") or ""),
+        correlation_id=recalc_correlation_id,
+    )
+    await sync_requirement_evidence_authority(
+        db,
+        rid,
+        property_id_hint=prop_id or None,
+        correlation_id=sync_correlation_id,
+        transition_origin="api_compliance_workflow.reopen_requirement",
+        transition_observability_out=transition_fanout,
+    )
     await create_audit_log(
         action=AuditAction.REQUIREMENT_ACTION_TRIGGERED,
         actor_id=_actor_id(user),
@@ -368,14 +419,31 @@ async def reopen_requirement(request: Request, requirement_id: str, user: Dict[s
     )
     from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED, enqueue_compliance_recalc
 
-    await enqueue_compliance_recalc(
-        property_id=prop_id,
-        client_id=user["client_id"],
-        trigger_reason=TRIGGER_PROPERTY_UPDATED,
-        actor_type=ACTOR_CLIENT,
-        actor_id=user.get("portal_user_id"),
-        correlation_id=f"REOPEN_REQUIREMENT:{rid}",
-    )
+    recalc_result = None
+    recalc_exc: Optional[Exception] = None
+    try:
+        recalc_result = await enqueue_compliance_recalc(
+            property_id=prop_id,
+            client_id=user["client_id"],
+            trigger_reason=TRIGGER_PROPERTY_UPDATED,
+            actor_type=ACTOR_CLIENT,
+            actor_id=user.get("portal_user_id"),
+            correlation_id=recalc_correlation_id,
+        )
+    except Exception as exc:
+        recalc_exc = exc
+        logger.warning("enqueue_compliance_recalc after reopen_requirement failed: %s", exc)
+    if transition_fanout:
+        attach_downstream_trigger_observation(
+            transition_fanout,
+            downstream_target="compliance_recalc_queue.enqueue_compliance_recalc",
+            trigger_mode="async_queue",
+            propagation_stage="post_authority_sync",
+            downstream_correlation_id=getattr(recalc_result, "correlation_id", None) if recalc_result is not None else recalc_correlation_id,
+            trigger_origin="api_compliance_workflow.reopen_requirement",
+            enqueue_result=recalc_result,
+            enqueue_exc=recalc_exc,
+        )
     return {"ok": True, "requirement_id": rid, "status": new_status}
 
 

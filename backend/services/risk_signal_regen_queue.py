@@ -12,6 +12,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
 from database import database
+from utils.compliance_fanout_log import compliance_fanout_extra
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,18 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _activation_payload_from_ctx(ctx: Mapping[str, Any], *, skipped: bool) -> Dict[str, Any]:
+    return {
+        "activation_skipped": skipped,
+        "activation_state": str(ctx.get("activation_state") or "") or None,
+        "activation_reason": str(ctx.get("activation_reason") or "") or None,
+        "activation_scope": str(ctx.get("activation_scope") or "") or None,
+        "activation_family": str(ctx.get("activation_family") or "") or None,
+        "activation_guard_result": str(ctx.get("activation_guard_result") or "") or None,
+        "activation_governance_version": str(ctx.get("activation_governance_version") or "") or None,
+    }
+
+
 async def enqueue_risk_signal_regen(
     property_id: str,
     client_id: str,
@@ -56,6 +69,32 @@ async def enqueue_risk_signal_regen(
     Ensure a risk regeneration will run after debounce. At most one PENDING row per property
     (partial unique index). Extends next_run_at on repeat enqueue (debounce coalescing).
     """
+    from services.workflow_runtime_activation_registry import resolve_regeneration_recalc_activation_gate
+
+    activation_ctx = resolve_regeneration_recalc_activation_gate()
+    if not activation_ctx.get("permitted"):
+        logger.info(
+            "risk_regen_queue: enqueue skipped by_activation_gate property_id=%s trigger=%s",
+            property_id,
+            trigger_reason,
+            extra=compliance_fanout_extra(
+                op="risk_regen_enqueue",
+                stage="activation_gate",
+                client_id=client_id,
+                property_id=property_id,
+                trigger_reason=trigger_reason,
+                activation_state=str(activation_ctx.get("activation_state") or ""),
+                activation_guard_result=str(activation_ctx.get("activation_guard_result") or ""),
+                activation_governance_version=str(activation_ctx.get("activation_governance_version") or ""),
+            ),
+        )
+        return {
+            "merged": False,
+            "property_id": property_id,
+            "queued": False,
+            **_activation_payload_from_ctx(activation_ctx, skipped=True),
+        }
+
     db = database.get_db()
     now = datetime.now(timezone.utc)
     debounce = debounce_override if debounce_override is not None else _debounce_seconds()
@@ -87,7 +126,13 @@ async def enqueue_risk_signal_regen(
             next_run,
             trigger_reason,
         )
-        return {"queued": True, "merged": True, "property_id": property_id, "next_run_at": next_run}
+        return {
+            "merged": True,
+            "next_run_at": next_run,
+            "property_id": property_id,
+            "queued": True,
+            **_activation_payload_from_ctx(activation_ctx, skipped=False),
+        }
 
     doc = {
         "property_id": property_id,
@@ -108,7 +153,13 @@ async def enqueue_risk_signal_regen(
             next_run,
             trigger_reason,
         )
-        return {"queued": True, "merged": False, "property_id": property_id, "next_run_at": next_run}
+        return {
+            "merged": False,
+            "next_run_at": next_run,
+            "property_id": property_id,
+            "queued": True,
+            **_activation_payload_from_ctx(activation_ctx, skipped=False),
+        }
     except Exception as e:
         if "duplicate key" in str(e).lower() or "E11000" in str(e):
             return await enqueue_risk_signal_regen(
