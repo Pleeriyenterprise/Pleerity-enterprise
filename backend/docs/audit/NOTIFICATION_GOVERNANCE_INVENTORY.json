@@ -1,0 +1,96 @@
+{
+  "schema_version": "notification_governance_inventory_v1",
+  "generated_at_iso": "2026-05-08",
+  "policy": {
+    "canonical_send_api": "services.notification_orchestrator.notification_orchestrator.send",
+    "bypass_governance_test": "tests/test_notification_bypass_governance.py",
+    "notification_dispatch_workflow_family_globally_activated": false,
+    "message_logs_intended_writer": "notification_orchestrator_internal_paths"
+  },
+  "sender_clusters": [
+    {
+      "cluster_id": "jobs_reminders_digest",
+      "primary_modules": ["services/jobs.py"],
+      "launch_criticality": "LAUNCH_CRITICAL",
+      "governance_tier": "ORCHESTRATOR_PRIMARY",
+      "blast_radius": "Tenant-scoped reminders and digests; mis-tenant send is catastrophic",
+      "mitigation_status": "PARTIAL",
+      "idempotency_notes": "COMPLIANCE_EXPIRY_REMINDER email/SMS keys include daily_compliance_reminder_scope_fingerprint(reminder_refs) so batch scope differs per requirement set (L-008). COMPLIANCE_ALERT (check_compliance_status_changes) uses compliance_alert_property_scope_fingerprint: sorted join <=32 chars unchanged; longer joins use SHA-256 hex to avoid truncation collisions (L-008d).",
+      "message_logs_coverage": "intended via orchestrator"
+    },
+    {
+      "cluster_id": "admin_client_routes",
+      "primary_modules": ["routes/admin.py", "routes/client.py", "routes/auth.py", "routes/tenant.py"],
+      "launch_criticality": "LAUNCH_CRITICAL",
+      "governance_tier": "ORCHESTRATOR_PRIMARY",
+      "blast_radius": "Account lifecycle, invites, billing-adjacent comms",
+      "mitigation_status": "PARTIAL",
+      "idempotency_notes": "varies by route; admin resend flows audited separately",
+      "message_logs_coverage": "intended via orchestrator"
+    },
+    {
+      "cluster_id": "operational_maintenance_work_orders",
+      "primary_modules": ["services/maintenance_service.py", "services/work_order_schedule_service.py", "services/work_order_pricing_service.py", "services/work_order_contractor_routing_service.py"],
+      "launch_criticality": "PILOT_TOLERABLE",
+      "governance_tier": "ORCHESTRATOR_PRIMARY",
+      "blast_radius": "Operational comms to contractors/users for jobs",
+      "mitigation_status": "PARTIAL",
+      "idempotency_notes": "review per notification type",
+      "message_logs_coverage": "intended via orchestrator"
+    },
+    {
+      "cluster_id": "billing_stripe_webhooks",
+      "primary_modules": ["services/stripe_webhook_service.py", "routes/admin_billing.py", "services/admin_billing_receipts.py"],
+      "launch_criticality": "LAUNCH_CRITICAL",
+      "governance_tier": "ORCHESTRATOR_PRIMARY",
+      "blast_radius": "Payment and subscription notices; regulatory sensitivity",
+      "mitigation_status": "PARTIAL",
+      "idempotency_notes": "Stripe idempotency separate from message idempotency",
+      "message_logs_coverage": "intended via orchestrator"
+    },
+    {
+      "cluster_id": "compliance_sla_monitoring",
+      "primary_modules": ["services/compliance_sla_monitor.py", "services/sla_watchdog.py", "services/risk_signal_regen_alert_monitor.py", "services/notification_failure_spike_monitor.py"],
+      "launch_criticality": "PILOT_TOLERABLE",
+      "governance_tier": "ORCHESTRATOR_PRIMARY",
+      "blast_radius": "Internal/operator alerts and tenant SLA nudges",
+      "mitigation_status": "PARTIAL",
+      "idempotency_notes": "evaluate per trigger",
+      "message_logs_coverage": "intended via orchestrator"
+    },
+    {
+      "cluster_id": "lead_intake_marketing_adjacent",
+      "primary_modules": ["services/risk_lead_email_service.py", "services/lead_service.py", "services/lead_nurture_service.py", "services/lead_automation_service.py", "routes/leads.py"],
+      "launch_criticality": "PILOT_TOLERABLE",
+      "governance_tier": "ORCHESTRATOR_PRIMARY_OR_PARALLEL_LANE",
+      "blast_radius": "Non-tenant or pre-tenant marketing; must not substitute compliance notification governance",
+      "mitigation_status": "PARTIAL",
+      "idempotency_notes": "lead flows may use separate dedupe keys",
+      "message_logs_coverage": "mixed — verify per path"
+    },
+    {
+      "cluster_id": "tests_and_scripts",
+      "primary_modules": ["tests/**/*.py", "scripts/resend_portal_invite.py"],
+      "launch_criticality": "DEFERRED_FOR_POST_LAUNCH",
+      "governance_tier": "NON_PRODUCTION",
+      "blast_radius": "None in production",
+      "mitigation_status": "READY",
+      "idempotency_notes": "n/a",
+      "message_logs_coverage": "n/a"
+    },
+    {
+      "cluster_id": "deprecated_email_service",
+      "primary_modules": ["services/email_service.py"],
+      "launch_criticality": "LAUNCH_CRITICAL",
+      "governance_tier": "QUARANTINED_DEPRECATED",
+      "blast_radius": "Any live caller bypasses orchestrator governance",
+      "mitigation_status": "PARTIAL",
+      "idempotency_notes": "static test forbids new callers",
+      "message_logs_coverage": "legacy path may still write logs — treat as bypass risk"
+    }
+  ],
+  "unsafe_or_unknown": {
+    "description": "L-008e (2026-05-08): all audited string-literal ``template_key`` values on ``notification_orchestrator.send`` (non-test) are a subset of ``notification_template_seed_definitions``; ``EMAIL_EVENTS`` and landlord onboarding IDs are CI-checked against the same seed. Dynamic ``template_key`` variables must remain bounded by those registries.",
+    "resolution": "Extend this JSON with per-route narrative rows when needed; literal/template registry drift is guarded by ``tests/test_l008_orchestrator_template_seed_contract.py`` + ``notification_orchestrator_send_template_key_audit.py``"
+  }
+}

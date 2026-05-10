@@ -182,6 +182,52 @@ def test_attach_downstream_extends_shared_propagation_list():
     assert row["duplicate_suppression_reason"] == "dup"
 
 
+def test_attach_downstream_replay_support_context_merged():
+    before = {"status": "PENDING", "due_date": "d", "evidence_state": "X", "evidence_authority": {"version": 1, "state": "EA_MISSING"}}
+    after = {**before}
+    tr = build_transition_fanout_trace(
+        transition_id="t-replay",
+        correlation_id="c-base",
+        transition_origin="test",
+        requirement_id="r1",
+        property_id="p1",
+        client_id="cl1",
+        before_requirement=before,
+        after_requirement=after,
+        gap_errors=[],
+        gap_exception=None,
+        downstream_propagation=[],
+    )
+    attach_downstream_trigger_observation(
+        tr,
+        downstream_target="compliance_recalc_queue.enqueue_compliance_recalc",
+        trigger_mode="async_queue",
+        propagation_stage="post_authority_sync",
+        downstream_correlation_id="c1",
+        trigger_origin="caller",
+        enqueue_result=EnqueueComplianceRecalcResult(
+            enqueued=True,
+            correlation_id="c-resolved",
+            duplicate_suppression_reason=None,
+            regeneration_requeued=False,
+            regeneration_error=None,
+        ),
+        replay_support_context={
+            "idempotency_boundary": "test-boundary",
+            "enqueue_property_id": "prop-x",
+            "resolved_queue_correlation_id": "corr-y",
+            "replay_duplicate_enqueue_safe": True,
+            "ignored_unknown_key": "should-not-appear",
+        },
+    )
+    row = tr["downstream_trigger_targets"][-1]
+    assert row["idempotency_boundary"] == "test-boundary"
+    assert row["enqueue_property_id"] == "prop-x"
+    assert row["resolved_queue_correlation_id"] == "corr-y"
+    assert row["replay_duplicate_enqueue_safe"] is True
+    assert "ignored_unknown_key" not in row
+
+
 def test_merge_fanout_lineage_flags():
     tr: dict = {"replay_chain_detected": False}
     merge_fanout_lineage_flags(

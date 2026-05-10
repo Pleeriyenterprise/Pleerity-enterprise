@@ -13,6 +13,11 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 import logging
 
+from services.requirement_client_runtime_surface import (
+    filter_requirement_rows_for_client_runtime_surfaces,
+    project_requirement_row_client_runtime,
+)
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/properties", tags=["properties"])
 
@@ -773,7 +778,6 @@ async def list_properties(request: Request):
             {"client_id": user["client_id"]},
             {"_id": 0},
         ).to_list(2000)
-        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 
         all_reqs = await filter_requirement_rows_for_client_runtime_surfaces(
             db,
@@ -782,8 +786,9 @@ async def list_properties(request: Request):
             client_doc=client_row,
             properties=properties,
         )
+        projected_reqs = [project_requirement_row_client_runtime(r) for r in all_reqs]
         by_pid: Dict[str, List[Dict[str, Any]]] = {}
-        for r in all_reqs:
+        for r in projected_reqs:
             pid = r.get("property_id")
             if not pid:
                 continue
@@ -1033,7 +1038,6 @@ async def get_upcoming_deadlines(request: Request, days: int = 30):
         ).to_list(1000)
         props_all = await db.properties.find({"client_id": user["client_id"]}, {"_id": 0}).to_list(1000)
         client_row_ud = await db.clients.find_one({"client_id": user["client_id"]}, {"_id": 0}) or {}
-        from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 
         requirements = await filter_requirement_rows_for_client_runtime_surfaces(
             db,
@@ -1042,7 +1046,8 @@ async def get_upcoming_deadlines(request: Request, days: int = 30):
             client_doc=client_row_ud,
             properties=props_all,
         )
-        
+        requirements = [project_requirement_row_client_runtime(r) for r in requirements]
+
         # Filter for upcoming deadlines
         now = datetime.now(timezone.utc)
         deadline_threshold = now + timedelta(days=days)
@@ -1103,7 +1108,6 @@ async def get_property_requirements_api(request: Request, property_id: str):
         {"property_id": property_id, "client_id": user["client_id"]},
         {"_id": 0},
     ).to_list(100)
-    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 
     requirements = await filter_requirement_rows_for_client_runtime_surfaces(
         db,
@@ -1112,6 +1116,7 @@ async def get_property_requirements_api(request: Request, property_id: str):
         client_doc=await db.clients.find_one({"client_id": user["client_id"]}, {"_id": 0}) or {},
         properties=[prop],
     )
+    requirements = [project_requirement_row_client_runtime(r) for r in requirements]
     from services.requirement_truth import enrich_requirements_for_client
 
     enriched, presentation = await enrich_requirements_for_client(db, user["client_id"], requirements)

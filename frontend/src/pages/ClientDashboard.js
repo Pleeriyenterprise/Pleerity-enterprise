@@ -67,6 +67,7 @@ import {
 import {
   formatScoreLastCalculatedForUi,
   pickScoreLastCalculatedIso,
+  portfolioScoreRecalcPendingNote as resolvePortfolioScoreRecalcPendingNote,
   resolveDashboardFreshnessExplanation,
 } from '../utils/scoreFreshnessUi';
 const KPI_NO_DATA = 'No data yet';
@@ -951,6 +952,11 @@ const ClientDashboard = () => {
     };
   }, [displayScoreInfo, complianceScore, portfolioSummary, data]);
 
+  const portfolioRecalcPendingLine = useMemo(
+    () => resolvePortfolioScoreRecalcPendingNote(complianceScore),
+    [complianceScore],
+  );
+
   // Missing-evidence bucket from canonical score stats (portal projection); no client-side pending+overdue sum.
   const actionableMissingCount = useMemo(() => {
     if (complianceScore?.stats != null) {
@@ -1679,6 +1685,15 @@ const ClientDashboard = () => {
             ) : null}
           </div>
         )}
+
+        {portfolioRecalcPendingLine ? (
+          <div
+            className="mb-6 rounded-lg px-3 py-2 text-xs border border-slate-200 bg-slate-50 text-slate-900"
+            data-testid="dashboard-score-recalc-pending"
+          >
+            <p className="leading-snug">{portfolioRecalcPendingLine}</p>
+          </div>
+        ) : null}
 
         {!setupView && isClientUser && (
           <Card

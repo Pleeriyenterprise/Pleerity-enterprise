@@ -23,6 +23,10 @@ from services.reminder_truth_service import (
 )
 from presentation.label_service import requirement_label
 from services.requirement_code_registry import normalize_requirement_code
+from services.notification_send_idempotency import (
+    compliance_alert_property_scope_fingerprint,
+    daily_compliance_reminder_scope_fingerprint,
+)
 
 ROOT_DIR = Path(__file__).parent.parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1022,7 +1026,8 @@ class JobScheduler:
             if not to_addr:
                 return False
             key_suffix = to_addr.replace("@", "_at_") if recipient_email else "client"
-            idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_{date_key}_{key_suffix}"
+            _scope_fp = daily_compliance_reminder_scope_fingerprint(reminder_refs=reminder_refs)
+            idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_{date_key}_{key_suffix}_{_scope_fp}"
             from utils.app_urls import get_app_base_url
 
             base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
@@ -1192,7 +1197,8 @@ class JobScheduler:
             from services.notification_orchestrator import notification_orchestrator
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             key_suffix = (recipient_phone or "").replace("+", "").replace(" ", "")[:20] if recipient_phone else "client"
-            idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_SMS_{date_key}_{key_suffix}"
+            _sms_scope_fp = daily_compliance_reminder_scope_fingerprint(reminder_refs=reminder_refs)
+            idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_SMS_{date_key}_{key_suffix}_{_sms_scope_fp}"
             from utils.app_urls import get_app_base_url
 
             base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
@@ -1585,8 +1591,10 @@ class JobScheduler:
 
                         frontend_url = get_app_base_url(for_email_links=True)
                         date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                        ids_hash = "_".join(sorted(p.get("property_id", "") for p in properties_with_changes))[:32]
-                        idempotency_key = f"{client['client_id']}_COMPLIANCE_ALERT_{date_key}_{ids_hash}"
+                        alert_scope_fp = compliance_alert_property_scope_fingerprint(
+                            p.get("property_id", "") for p in properties_with_changes
+                        )
+                        idempotency_key = f"{client['client_id']}_COMPLIANCE_ALERT_{date_key}_{alert_scope_fp}"
                         await notification_orchestrator.send(
                             template_key="COMPLIANCE_ALERT",
                             client_id=client["client_id"],

@@ -25,7 +25,7 @@ Stripe price IDs are loaded from environment variables (mode-prefixed, no hardco
   See _get_stripe_mode() and _load_stripe_prices_for_mode() for exact names.
 """
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, FrozenSet, List, Optional, Tuple, Any
 import os
 from database import database
 import logging
@@ -480,6 +480,11 @@ FEATURE_METADATA = {
         "category": "advanced",
     },
 }
+
+
+def all_feature_matrix_keys() -> FrozenSet[str]:
+    """Every entitlement key defined across plans (same keys per plan row). L-010 governance."""
+    return frozenset(FEATURE_MATRIX[PlanCode.PLAN_3_PRO].keys())
 
 
 # ============================================================================

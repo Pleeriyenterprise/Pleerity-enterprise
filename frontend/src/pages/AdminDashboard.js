@@ -5309,6 +5309,16 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
           Documents with status UPLOADED (awaiting verification). Set minimum age in hours to focus on older
           queue items; choose 0 to list every pending upload, including those just added.
         </p>
+        {stats?.server_feature_flags && stats.server_feature_flags.evidence_review_v2_enabled === false && (
+          <p
+            className="mb-4 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3"
+            data-testid="evidence-review-v2-disabled-hint"
+          >
+            Evidence Review V2 admin actions (AI review panel) are disabled because{' '}
+            <code className="text-[11px]">FEATURE_EVIDENCE_REVIEW_V2</code> is off on the server. Verify, resolve
+            match, and reject still run on their supported paths.
+          </p>
+        )}
         {pendingListWarning && (
           <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800" role="alert">
             {pendingListWarning}
@@ -5520,14 +5530,16 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
                             <Download className="w-3.5 h-3.5" />
                             Download
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenAiReview(doc)}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded"
-                            data-testid={`ai-review-doc-${doc?.document_id}`}
-                          >
-                            AI review
-                          </button>
+                          {stats?.server_feature_flags?.evidence_review_v2_enabled === true && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAiReview(doc)}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded"
+                              data-testid={`ai-review-doc-${doc?.document_id}`}
+                            >
+                              AI review
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleVerifyDocument(doc)}

@@ -14,6 +14,7 @@ from services.requirement_transition_observability import (
     build_transition_reconciliation_markers,
     classify_transition_outcome,
     ensure_requirement_transition_correlation_id,
+    merge_pre_authority_optimistic_requirement_promotion_marker,
     normalize_requirement_transition_context,
 )
 
@@ -133,3 +134,19 @@ def test_build_trace_and_snapshots():
         [{**tr, "transition_outcome": TRANSITION_PENDING_RECONCILIATION}]
     )
     assert m["markers"]
+
+
+def test_merge_pre_authority_optimistic_requirement_promotion_marker():
+    trace: dict = {}
+    merge_pre_authority_optimistic_requirement_promotion_marker(
+        trace,
+        applied=True,
+        basis="TEST_BASIS",
+        transition_origin="test.origin",
+        requirement_id="r1",
+    )
+    block = trace.get("pre_authority_optimistic_requirement_promotion") or {}
+    assert block.get("applied") is True
+    assert block.get("basis") == "TEST_BASIS"
+    assert block.get("requirement_id") == "r1"
+    assert block.get("authority_reconciliation_expected") is True

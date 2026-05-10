@@ -115,9 +115,9 @@ def test_v2_disabled_preserve_verify_path(client):
         patch.object(documents_routes, "admin_route_guard", new_callable=AsyncMock, return_value=admin_user),
         patch.object(db_singleton, "get_db", return_value=mock_db),
         patch("routes.documents.create_audit_log", new_callable=AsyncMock),
-        patch("routes.documents.sync_requirement_evidence_authority", new_callable=AsyncMock),
+        patch("routes.documents.authority_sync_with_transition_observability", new_callable=AsyncMock),
+        patch("routes.documents.enqueue_compliance_recalc_with_fanout", new_callable=AsyncMock),
         patch("services.provisioning.provisioning_service._update_property_compliance", new_callable=AsyncMock),
-        patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock),
         patch("services.enablement_service.emit_enablement_event", new_callable=AsyncMock),
         patch("services.compliance_outcome_engine.apply_action_outcome", new_callable=AsyncMock, return_value=None),
     ):
@@ -182,9 +182,9 @@ def test_v2_verify_writes_review_event():
     admin_user = {"portal_user_id": "adm1", "client_id": "c1", "role": "ROLE_ADMIN"}
     with (
         patch("services.evidence_review_verify.create_audit_log", new_callable=AsyncMock),
-        patch("services.requirement_evidence_authority.sync_requirement_evidence_authority", new_callable=AsyncMock),
+        patch("services.evidence_review_verify.authority_sync_with_transition_observability", new_callable=AsyncMock),
         patch("services.evidence_review_verify.provisioning_service._update_property_compliance", new_callable=AsyncMock),
-        patch("services.evidence_review_verify.enqueue_compliance_recalc", new_callable=AsyncMock),
+        patch("services.evidence_review_verify.enqueue_compliance_recalc_with_fanout", new_callable=AsyncMock),
         patch("services.enablement_service.emit_enablement_event", new_callable=AsyncMock),
         patch("services.compliance_outcome_engine.apply_action_outcome", new_callable=AsyncMock, return_value=None),
     ):
@@ -257,9 +257,9 @@ def test_v2_reject_event_recorded(client):
     with (
         patch.object(er_mod, "admin_route_guard", new_callable=AsyncMock, return_value=admin_user),
         patch.object(db_singleton, "get_db", return_value=mock_db),
-        patch("routes.evidence_review.sync_requirement_evidence_authority", new_callable=AsyncMock),
+        patch("routes.evidence_review.authority_sync_with_transition_observability", new_callable=AsyncMock),
         patch("routes.evidence_review.provisioning_service._update_property_compliance", new_callable=AsyncMock),
-        patch("routes.evidence_review.enqueue_compliance_recalc", new_callable=AsyncMock),
+        patch("routes.evidence_review.enqueue_compliance_recalc_with_fanout", new_callable=AsyncMock),
     ):
         res = client.post("/api/documents/doc-rej/review/reject", json={"notes": "bad scan"})
 

@@ -30,6 +30,7 @@ from services.requirement_evidence_authority import (
 from services.requirement_transition_observability import (
     ensure_requirement_transition_correlation_id,
     merge_document_path_lineage_flags,
+    merge_pre_authority_optimistic_requirement_promotion_marker,
     transition_origin_document_touch,
 )
 from services.compliance_evidence_record_service import safe_upsert_document_upload_evidence_for_linked_document
@@ -46,6 +47,10 @@ from services.evidence_document_match_engine import (
     document_blocks_verified_satisfaction,
 )
 from services.evidence_review_migration import apply_v2_defaults_to_new_upload
+from services.client_propagation_notice import (
+    build_propagation_notice_from_transition_fanout,
+    merge_propagation_notice_from_ordered_transition_fanouts,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -115,6 +120,33 @@ async def _document_path_enqueue_recalc(
         propagation_stage=propagation_stage,
         fanout_op="document_transition_fanout",
     )
+
+
+def _finalize_bulk_zip_results_propagation_notices(
+    results: List[Dict[str, Any]],
+    fanout_by_document_id: Mapping[str, Dict[str, Any]],
+) -> Optional[Dict[str, str]]:
+    """
+    L-009f: per successful row with an authority fanout, attach optional ``propagation_notice``.
+
+    **Merge precedence (top-level summary):** ``merge_propagation_notice_from_ordered_transition_fanouts``
+    over fanouts in **``results`` iteration order** (stable processing order). The merge helper applies
+    **NOTICE_AUTHORITY_SYNC_DEFERRED** over **NOTICE_RECALC_ENQUEUE_DEFERRED** regardless of position
+    once an authority-deferred fanout is seen later in the sequence (see helper implementation).
+    """
+    ordered: List[Optional[Dict[str, Any]]] = []
+    for r in results:
+        if r.get("status") != "uploaded" or not r.get("document_id"):
+            continue
+        did = str(r["document_id"])
+        fo = fanout_by_document_id.get(did)
+        if fo is None:
+            continue
+        pn_row = build_propagation_notice_from_transition_fanout(fo)
+        if pn_row:
+            r["propagation_notice"] = pn_row
+        ordered.append(fo)
+    return merge_propagation_notice_from_ordered_transition_fanouts(ordered)
 
 
 # DOCUMENT_UPLOAD bounded slices: static registry only (gas_safety, eicr, epc). Observability attachment only.
@@ -924,18 +956,22 @@ async def bulk_upload_documents(
                     )
                 except Exception as ev_err:
                     logger.debug("Score event DOCUMENT_UPLOADED (bulk) skip: %s", ev_err)
-        
-        return {
+
+        top_pn_bulk = _finalize_bulk_zip_results_propagation_notices(results, bulk_authority_fanout_by_document_id)
+        out_bulk: Dict[str, Any] = {
             "message": f"Processed {len(files)} files",
             "results": results,
             "summary": {
                 "total": len(files),
                 "successful": sum(1 for r in results if r["status"] == "uploaded"),
                 "failed": sum(1 for r in results if r["status"] == "failed"),
-                "auto_matched": sum(1 for r in results if r.get("matched_requirement"))
-            }
+                "auto_matched": sum(1 for r in results if r.get("matched_requirement")),
+            },
         }
-    
+        if top_pn_bulk:
+            out_bulk["propagation_notice"] = top_pn_bulk
+        return out_bulk
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1299,8 +1335,9 @@ async def upload_zip_archive(
                         )
                     except Exception as ev_err:
                         logger.debug("Score event DOCUMENT_UPLOADED (zip) skip: %s", ev_err)
-            
-            return {
+
+            top_pn_zip = _finalize_bulk_zip_results_propagation_notices(results, zip_authority_fanout_by_document_id)
+            out_zip: Dict[str, Any] = {
                 "message": f"Processed ZIP archive: {file.filename}",
                 "results": results,
                 "summary": {
@@ -1308,10 +1345,13 @@ async def upload_zip_archive(
                     "successful": sum(1 for r in results if r.get("status") == "uploaded"),
                     "failed": sum(1 for r in results if r.get("status") == "failed"),
                     "skipped": sum(1 for r in results if r.get("status") == "skipped"),
-                    "auto_matched": sum(1 for r in results if r.get("matched_requirement"))
-                }
+                    "auto_matched": sum(1 for r in results if r.get("matched_requirement")),
+                },
             }
-            
+            if top_pn_zip:
+                out_zip["propagation_notice"] = top_pn_zip
+            return out_zip
+
         finally:
             # Clean up temp directory
             shutil.rmtree(temp_dir, ignore_errors=True)
@@ -1701,6 +1741,10 @@ async def perform_client_document_upload(
     out["validation_result"] = validation_result_persist
     if workflow_activation_observability is not None:
         out["workflow_activation_observability"] = workflow_activation_observability
+    if requirement_id and client_upload_fanout is not None:
+        pn_client_upload = build_propagation_notice_from_transition_fanout(client_upload_fanout)
+        if pn_client_upload:
+            out["propagation_notice"] = pn_client_upload
     return out
 
 
@@ -1981,11 +2025,15 @@ async def admin_upload_document(
         except Exception as ext_err:
             logger.warning("Enqueue extraction after admin upload failed (non-blocking): %s", ext_err)
 
-        return {
+        out_admin_up: Dict[str, Any] = {
             "message": "Document uploaded successfully by admin",
-            "document_id": document.document_id
+            "document_id": document.document_id,
         }
-    
+        pn_adm_up = build_propagation_notice_from_transition_fanout(admin_upload_fanout)
+        if pn_adm_up:
+            out_admin_up["propagation_notice"] = pn_adm_up
+        return out_admin_up
+
     except HTTPException:
         raise
     except Exception as e:
@@ -2060,6 +2108,7 @@ async def admin_confirm_extraction(request: Request, body: AdminExtractionConfir
         "engineer_details": {"name": ext.get("inspector_company") or ext.get("inspector_id"), "company_name": ext.get("inspector_company")},
     }
     requirement_id = document.get("requirement_id")
+    extraction_fanout_for_notice: Optional[Dict[str, Any]] = None
     if requirement_id and data.get("expiry_date"):
         try:
             expiry_dt = _normalize_and_parse_date(data["expiry_date"])
@@ -2083,7 +2132,7 @@ async def admin_confirm_extraction(request: Request, body: AdminExtractionConfir
                 except (TypeError, ValueError):
                     pass
             await db.requirements.update_one({"requirement_id": requirement_id}, {"$set": update_fields})
-            admin_extraction_fanout: Dict[str, Any] = {}
+            extraction_fanout_for_notice = {}
             await _document_path_sync_requirement_authority(
                 db,
                 requirement_id,
@@ -2091,12 +2140,12 @@ async def admin_confirm_extraction(request: Request, body: AdminExtractionConfir
                 client_id=str(document.get("client_id") or ""),
                 correlation_base=f"ADMIN_EXTRACTION_CONFIRM:{document_id}",
                 transition_origin="routes.documents.admin_confirm_extraction",
-                transition_fanout=admin_extraction_fanout,
+                transition_fanout=extraction_fanout_for_notice,
                 document_id=document_id,
                 stale_document_transition_possible=True,
             )
         except ValueError:
-            pass
+            extraction_fanout_for_notice = None
     now = datetime.now(timezone.utc)
     await db.extracted_documents.update_one(
         {"extraction_id": extraction_id},
@@ -2114,7 +2163,12 @@ async def admin_confirm_extraction(request: Request, body: AdminExtractionConfir
         resource_id=document_id,
         metadata={"admin_confirm": True, "extraction_id": extraction_id},
     )
-    return {"message": "Extraction applied", "document_id": document_id}
+    out_confirm_ext: Dict[str, Any] = {"message": "Extraction applied", "document_id": document_id}
+    if extraction_fanout_for_notice is not None:
+        pn_ext_conf = build_propagation_notice_from_transition_fanout(extraction_fanout_for_notice)
+        if pn_ext_conf:
+            out_confirm_ext["propagation_notice"] = pn_ext_conf
+    return out_confirm_ext
 
 
 @router.post("/admin/extraction-queue/reject")
@@ -2153,7 +2207,11 @@ async def admin_reject_extraction(request: Request, body: AdminExtractionRejectB
         resource_id=document_id,
         metadata={"action": "extraction_rejected", "reason": body.reason, "admin_reject": True},
     )
-    return {"message": "Extraction rejected", "document_id": document_id}
+    out_reject_ext: Dict[str, Any] = {"message": "Extraction rejected", "document_id": document_id}
+    pn_ext_rej = build_propagation_notice_from_transition_fanout(reject_touch_fanout)
+    if pn_ext_rej:
+        out_reject_ext["propagation_notice"] = pn_ext_rej
+    return out_reject_ext
 
 
 @router.post("/verify/{document_id}")
@@ -2256,6 +2314,13 @@ async def verify_document(
                 },
             )
             verify_v1_fanout = {}
+            merge_pre_authority_optimistic_requirement_promotion_marker(
+                verify_v1_fanout,
+                applied=True,
+                basis="VERIFIED_DOCUMENT_COMPLIANT_PROMOTION",
+                transition_origin="routes.documents.verify_document",
+                requirement_id=str(document["requirement_id"]),
+            )
             await _document_path_sync_requirement_authority(
                 db,
                 str(document["requirement_id"]),
@@ -2301,6 +2366,9 @@ async def verify_document(
         verify_audit_meta = {}
         if document.get("work_order_id"):
             verify_audit_meta["work_order_id"] = document["work_order_id"]
+        if document.get("requirement_id"):
+            verify_audit_meta["pre_authority_optimistic_requirement_promotion"] = True
+            verify_audit_meta["optimistic_promotion_basis"] = "VERIFIED_DOCUMENT_COMPLIANT_PROMOTION"
         await create_audit_log(
             action=AuditAction.DOCUMENT_VERIFIED,
             actor_id=user["portal_user_id"],
@@ -2402,7 +2470,13 @@ async def verify_document(
         except Exception as proof_err:
             logger.warning("Could not set compliance work order proof verified: %s", proof_err)
 
-        return {"message": "Document verified", "outcome": outcome}
+        out: Dict[str, Any] = {"message": "Document verified", "outcome": outcome}
+        notice = build_propagation_notice_from_transition_fanout(
+            verify_v1_fanout if document.get("requirement_id") else None
+        )
+        if notice:
+            out["propagation_notice"] = notice
+        return out
     
     except HTTPException:
         raise
@@ -2483,8 +2557,12 @@ async def reject_document(request: Request, document_id: str, reason: str = Form
         except Exception as wo_proof_err:
             logger.warning("Compliance WO proof reconcile on document reject failed: %s", wo_proof_err)
 
-        return {"message": "Document rejected"}
-    
+        out_reject_doc: Dict[str, Any] = {"message": "Document rejected"}
+        pn_rej_adm = build_propagation_notice_from_transition_fanout(reject_fanout)
+        if pn_rej_adm:
+            out_reject_doc["propagation_notice"] = pn_rej_adm
+        return out_reject_doc
+
     except HTTPException:
         raise
     except Exception as e:
@@ -2559,7 +2637,11 @@ async def delete_document(request: Request, document_id: str):
             resource_id=document_id,
             metadata={"action": "document_deleted", "file_name": document.get("file_name")},
         )
-        return {"message": "Document deleted"}
+        out_delete_client: Dict[str, Any] = {"message": "Document deleted"}
+        pn_del_c = build_propagation_notice_from_transition_fanout(delete_fanout)
+        if pn_del_c:
+            out_delete_client["propagation_notice"] = pn_del_c
+        return out_delete_client
     except HTTPException:
         raise
     except Exception as e:
@@ -2630,7 +2712,11 @@ async def admin_delete_document(request: Request, document_id: str):
             resource_id=document_id,
             metadata={"action": "admin_document_deleted", "file_name": document.get("file_name")},
         )
-        return {"message": "Document deleted"}
+        out_admin_del: Dict[str, Any] = {"message": "Document deleted"}
+        pn_adm_del = build_propagation_notice_from_transition_fanout(admin_delete_fanout)
+        if pn_adm_del:
+            out_admin_del["propagation_notice"] = pn_adm_del
+        return out_admin_del
     except HTTPException:
         raise
     except Exception as e:
@@ -3619,8 +3705,8 @@ async def apply_ai_extraction(
         except Exception as email_err:
             # Don't fail the extraction if email fails
             logger.warning(f"Failed to send AI extraction email: {email_err}")
-        
-        return {
+
+        out_apply: Dict[str, Any] = {
             "message": "Extraction applied successfully",
             "document_id": document_id,
             "requirement_id": requirement_id,
@@ -3630,6 +3716,10 @@ async def apply_ai_extraction(
             "note": "Requirement status has been updated based on the certificate expiry date.",
             "outcome": outcome,
         }
+        pn_apply = build_propagation_notice_from_transition_fanout(apply_ai_fanout)
+        if pn_apply:
+            out_apply["propagation_notice"] = pn_apply
+        return out_apply
     
     except HTTPException:
         raise

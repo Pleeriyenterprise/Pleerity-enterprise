@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import UpgradePrompt from '../components/UpgradePrompt';
@@ -48,7 +48,11 @@ import {
   headlineScoreShowsOutOf100,
 } from '../utils/scoringHeadlineDisplay';
 import { findRequirementRowForScoreDriver, scoreDriverRowReactKey } from './ComplianceScorePage.driverRemediation';
-import { COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE } from '../utils/scoreFreshnessUi';
+import {
+  COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE,
+  COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE,
+  portfolioScoreRecalcPendingNote as resolvePortfolioScoreRecalcPendingNote,
+} from '../utils/scoreFreshnessUi';
 import {
   getGovernanceUxPilotExportSurfaceNote,
   getGovernanceUxPilotPortfolioSupplementLine,
@@ -323,6 +327,11 @@ const ComplianceScorePage = () => {
     }
   };
 
+  const portfolioRecalcPendingLine = useMemo(
+    () => resolvePortfolioScoreRecalcPendingNote(scoreData),
+    [scoreData],
+  );
+
   const getPropertyRequirementCounts = (propertyId) => {
     const propertyReqs = getTrackedRequirementsForProperty(propertyId, requirements);
     const compliant = propertyReqs.filter((r) => r.status === 'COMPLIANT').length;
@@ -534,6 +543,14 @@ const ComplianceScorePage = () => {
                       data-testid="compliance-score-status-message"
                     >
                       {String(scoreData.score_status_message).trim()}
+                    </p>
+                  ) : null}
+                  {portfolioRecalcPendingLine ? (
+                    <p
+                      className="text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded-md px-2 py-1.5 mt-2 leading-snug"
+                      data-testid="compliance-score-recalc-pending-note"
+                    >
+                      {portfolioRecalcPendingLine}
                     </p>
                   ) : null}
                   <p className="text-sm text-gray-600 mt-1">
@@ -758,6 +775,7 @@ const ComplianceScorePage = () => {
                             {(scoreData?.stats?.verified_coverage_percent ?? scoreData?.stats?.document_coverage_percent) != null ? `${Number(scoreData.stats.verified_coverage_percent ?? scoreData.stats.document_coverage_percent).toFixed(0)}%` : '—'} tracked item coverage
                           </span>
                         </p>
+                        <p className="text-xs text-gray-500 mt-1 leading-snug">{COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE}</p>
                       </div>
                     </div>
                   </div>

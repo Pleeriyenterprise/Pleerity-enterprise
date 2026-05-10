@@ -387,6 +387,17 @@ def classify_enqueue_outcome(
     return ENQUEUE_DEGRADED, False, "unknown_enqueue_result_shape"
 
 
+# Optional downstream-row keys for replay / support forensics (never client-facing API contracts).
+_REPLAY_SUPPORT_CONTEXT_KEYS = frozenset(
+    {
+        "idempotency_boundary",
+        "enqueue_property_id",
+        "resolved_queue_correlation_id",
+        "replay_duplicate_enqueue_safe",
+    }
+)
+
+
 def attach_downstream_trigger_observation(
     trace: MutableMapping[str, Any],
     *,
@@ -402,6 +413,7 @@ def attach_downstream_trigger_observation(
     reconciliation_recommended: bool = False,
     degraded_possible: bool = False,
     activation_gate_overlay: Optional[Mapping[str, Any]] = None,
+    replay_support_context: Optional[Mapping[str, Any]] = None,
 ) -> None:
     """Append a downstream row and refresh counters on an existing transition trace dict (mutates)."""
     trace.setdefault("replay_chain_detected", False)
@@ -460,6 +472,10 @@ def attach_downstream_trigger_observation(
                 row[str(ok)] = ov
     row["backfill_replay_possible"] = bool(trace.get("backfill_replay_possible"))
     row["system_reentry_possible"] = bool(trace.get("system_reentry_possible"))
+    if replay_support_context:
+        for rk, rv in replay_support_context.items():
+            if rk in _REPLAY_SUPPORT_CONTEXT_KEYS and rv is not None:
+                row[str(rk)] = rv
     try:
         from services.compliance_recalc_queue import EnqueueComplianceRecalcResult as _ECR2
 
@@ -623,6 +639,31 @@ def merge_review_admin_lineage_flags(
         trace["review_chain_reentry_detected"] = bool(review_chain_reentry_detected)
     if authority_override_replay_possible is not None:
         trace["authority_override_replay_possible"] = bool(authority_override_replay_possible)
+
+
+def merge_pre_authority_optimistic_requirement_promotion_marker(
+    trace: MutableMapping[str, Any],
+    *,
+    applied: bool,
+    basis: str,
+    transition_origin: str,
+    requirement_id: Optional[str] = None,
+) -> None:
+    """
+    Records a direct ``requirements`` promotion **before** ``sync_requirement_evidence_authority``
+    (verify / external-verify paths). Observability and support forensics only — **no** control-flow change.
+
+    **Reconciliation expectation:** authority sync follows in the same request; client-visible truth must
+    follow ``project_requirement_row_client_runtime`` / evidence authority (see ``COMPLIANCE_CLIENT_STATUS_AUTHORITY.md``).
+    """
+    trace["pre_authority_optimistic_requirement_promotion"] = {
+        "applied": bool(applied),
+        "basis": str(basis or "")[:500],
+        "transition_origin": str(transition_origin or "")[:500],
+        "requirement_id": str(requirement_id).strip() if requirement_id else None,
+        "authority_reconciliation_expected": True,
+        "client_truth_after_sync": "requirement_evidence_authority_plus_runtime_projection",
+    }
 
 
 def merge_document_path_lineage_flags(

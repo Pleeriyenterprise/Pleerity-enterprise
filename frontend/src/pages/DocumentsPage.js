@@ -721,10 +721,14 @@ const DocumentsPage = () => {
       label: documentListStatusLabel(doc?.status),
     };
     const Icon = badge.icon;
+    let displayLabel = badge.label;
+    if (String(doc?.assurance_tier || '').trim().toUpperCase() === 'EXTERNALLY_VERIFIED') {
+      displayLabel = 'Externally verified';
+    }
     return (
       <span data-testid={`doc-status-${String(key || '').toLowerCase()}`} className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}>
         <Icon className="w-3 h-3" />
-        {badge.label}
+        {displayLabel}
       </span>
     );
   };

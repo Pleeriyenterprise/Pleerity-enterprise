@@ -9,6 +9,10 @@ from database import database as db_singleton
 from routes import documents as documents_routes
 from server import app
 from services.evidence_document_taxonomy import POLICY_BLOCK_UPLOAD
+from services.client_propagation_notice import (
+    NOTICE_AUTHORITY_SYNC_DEFERRED,
+    NOTICE_RECALC_ENQUEUE_DEFERRED,
+)
 
 
 @pytest.fixture
@@ -113,6 +117,8 @@ def test_verify_document_409_when_evidence_blocks(client_http):
         patch.object(documents_routes, "admin_route_guard", new_callable=AsyncMock, return_value=admin_user),
         patch.object(db_singleton, "get_db", return_value=mock_db),
         patch("routes.documents.create_audit_log", new_callable=AsyncMock),
+        patch("services.evidence_review_config.is_feature_evidence_review_v2", return_value=False),
+        patch.object(documents_routes, "authority_sync_with_transition_observability", new_callable=AsyncMock),
     ):
         res = client_http.post(f"/api/documents/verify/{doc['document_id']}", json={})
 
@@ -167,7 +173,8 @@ def test_verify_document_200_with_override_and_audit(client_http):
         patch.object(documents_routes, "admin_route_guard", new_callable=AsyncMock, return_value=admin_user),
         patch.object(db_singleton, "get_db", return_value=mock_db),
         patch("routes.documents.create_audit_log", new_callable=AsyncMock, side_effect=capture_audit),
-        patch.object(documents_routes, "sync_requirement_evidence_authority", new_callable=AsyncMock),
+        patch("services.evidence_review_config.is_feature_evidence_review_v2", return_value=False),
+        patch.object(documents_routes, "authority_sync_with_transition_observability", new_callable=AsyncMock),
         patch(
             "routes.documents._finalize_active_compliance_jobs_after_certificate_verified",
             new_callable=AsyncMock,
@@ -261,11 +268,23 @@ async def test_admin_resolve_evidence_match_approve_direct():
     request = MagicMock(spec=Request)
     body = AdminEvidenceMatchResolutionBody(action="approve_override", reason="CP12 verified manually")
 
+    async def authority_sync_mutate_fanout(*args, **kwargs):
+        fo = kwargs.get("transition_fanout")
+        if isinstance(fo, dict):
+            fo["rst_core_backbone_activation"] = {
+                "permitted": False,
+                "activation_reason": "unit_test_registry",
+            }
+
     with (
         patch("routes.admin.admin_route_guard", new_callable=AsyncMock, return_value=admin_user),
         patch.object(db_singleton, "get_db", return_value=mock_db),
         patch("routes.admin.create_audit_log", new_callable=AsyncMock),
-        patch("services.requirement_evidence_authority.sync_requirement_evidence_authority", new_callable=AsyncMock),
+        patch(
+            "services.authority_mutation_fanout.authority_sync_with_transition_observability",
+            new_callable=AsyncMock,
+            side_effect=authority_sync_mutate_fanout,
+        ),
         patch(
             "routes.admin._enqueue_recalc_after_standalone_authority_sync",
             new_callable=AsyncMock,
@@ -275,6 +294,157 @@ async def test_admin_resolve_evidence_match_approve_direct():
         out = await admin_resolve_evidence_match(request, doc_id, body)
 
     assert out.get("document_id") == doc_id
+    pn = out.get("propagation_notice") or {}
+    assert pn.get("code") == NOTICE_AUTHORITY_SYNC_DEFERRED
+
+
+@pytest.mark.asyncio
+async def test_admin_resolve_evidence_match_reject_propagation_notice_recalc_deferred():
+    from fastapi import Request
+    from routes.admin import admin_resolve_evidence_match, AdminEvidenceMatchResolutionBody
+
+    doc_id = "doc-em-reject"
+    doc = {
+        "document_id": doc_id,
+        "client_id": "cli-em",
+        "property_id": "prop-em",
+        "requirement_id": "req-em",
+        "status": "UPLOADED",
+    }
+    mock_db = MagicMock()
+    mock_db.documents.find_one = AsyncMock(return_value=doc)
+    mock_db.documents.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+
+    async def authority_sync_recalc_row(*args, **kwargs):
+        fo = kwargs.get("transition_fanout")
+        if isinstance(fo, dict):
+            fo["rst_core_backbone_activation"] = {"permitted": True}
+            fo["downstream_trigger_targets"] = [
+                {
+                    "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+                    "propagation_stage": "post_evidence_match_reject:rst_core_backbone_blocked_skip_enqueue",
+                }
+            ]
+
+    admin_user = {"portal_user_id": "admin-em", "role": "ROLE_ADMIN"}
+    request = MagicMock(spec=Request)
+    body = AdminEvidenceMatchResolutionBody(action="reject_evidence", reason="Evidence rejected in review")
+
+    with (
+        patch("routes.admin.admin_route_guard", new_callable=AsyncMock, return_value=admin_user),
+        patch.object(db_singleton, "get_db", return_value=mock_db),
+        patch("routes.admin.create_audit_log", new_callable=AsyncMock),
+        patch(
+            "services.authority_mutation_fanout.authority_sync_with_transition_observability",
+            new_callable=AsyncMock,
+            side_effect=authority_sync_recalc_row,
+        ),
+        patch("routes.admin._enqueue_recalc_after_standalone_authority_sync", new_callable=AsyncMock),
+    ):
+        out = await admin_resolve_evidence_match(request, doc_id, body)
+
+    assert out.get("document_id") == doc_id
+    assert (out.get("propagation_notice") or {}).get("code") == NOTICE_RECALC_ENQUEUE_DEFERRED
+
+
+@pytest.mark.asyncio
+async def test_admin_resolve_evidence_match_relink_merge_propagation_notice():
+    """Prior fanout recalc-deferred, new fanout authority-deferred → merged notice prefers authority."""
+    from fastapi import Request
+    from routes.admin import admin_resolve_evidence_match, AdminEvidenceMatchResolutionBody
+
+    doc_id = "doc-relink-pn"
+    doc = {
+        "document_id": doc_id,
+        "client_id": "cli-em",
+        "property_id": "prop-em",
+        "requirement_id": "req-prior",
+        "status": "UPLOADED",
+        "file_name": "cert.pdf",
+    }
+    new_req = {
+        "requirement_id": "req-new",
+        "client_id": "cli-em",
+        "property_id": "prop-em",
+        "requirement_type": "gas_safety",
+    }
+
+    async def find_req(filter_q, *args, **kwargs):
+        rid = filter_q.get("requirement_id")
+        if rid == "req-new":
+            return new_req
+        if rid == "req-prior":
+            return {"requirement_id": "req-prior", "client_id": "cli-em", "property_id": "prop-em"}
+        return None
+
+    async def authority_sync_relink_fanouts(db, requirement_id, *args, transition_fanout=None, **kwargs):
+        fo = transition_fanout
+        if not isinstance(fo, dict):
+            return
+        rid = str(requirement_id)
+        fo.clear()
+        if rid == "req-prior":
+            fo.update(
+                {
+                    "rst_core_backbone_activation": {"permitted": True},
+                    "downstream_trigger_targets": [
+                        {
+                            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+                            "propagation_stage": "r:rst_core_backbone_blocked_skip_enqueue",
+                        }
+                    ],
+                }
+            )
+        elif rid == "req-new":
+            fo.update(
+                {
+                    "rst_core_backbone_activation": {
+                        "permitted": False,
+                        "activation_reason": "unit_test",
+                    }
+                }
+            )
+
+    mock_db = MagicMock()
+    mock_db.documents.find_one = AsyncMock(return_value=doc)
+    mock_db.documents.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+    mock_db.requirements.find_one = AsyncMock(side_effect=find_req)
+
+    admin_user = {"portal_user_id": "admin-em", "role": "ROLE_ADMIN"}
+    request = MagicMock(spec=Request)
+    body = AdminEvidenceMatchResolutionBody(
+        action="relink_requirement",
+        reason="Correct obligation linkage",
+        relink_requirement_id="req-new",
+    )
+
+    with (
+        patch("routes.admin.admin_route_guard", new_callable=AsyncMock, return_value=admin_user),
+        patch.object(db_singleton, "get_db", return_value=mock_db),
+        patch("routes.admin.create_audit_log", new_callable=AsyncMock),
+        patch(
+            "services.authority_mutation_fanout.authority_sync_with_transition_observability",
+            new_callable=AsyncMock,
+            side_effect=authority_sync_relink_fanouts,
+        ),
+        patch("routes.admin._enqueue_recalc_after_standalone_authority_sync", new_callable=AsyncMock),
+        patch(
+            "services.compliance_evidence_record_service.safe_upsert_document_upload_evidence_for_linked_document",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "services.evidence_document_match_engine.persist_document_evidence_match_after_extraction",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "services.requirement_evidence_authority.document_evidence_compatible_with_requirement",
+            return_value=True,
+        ),
+    ):
+        out = await admin_resolve_evidence_match(request, doc_id, body)
+
+    assert out.get("document_id") == doc_id
+    assert (out.get("propagation_notice") or {}).get("code") == NOTICE_AUTHORITY_SYNC_DEFERRED
 
 
 def test_requirement_authority_stays_mismatch_flagged_when_doc_unsatisfied():

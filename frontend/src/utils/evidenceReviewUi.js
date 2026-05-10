@@ -1,6 +1,9 @@
 export function effectiveEvidenceReviewState(doc = {}) {
   const direct = String(doc?.evidence_review_state || '').trim().toUpperCase();
   if (direct) return direct;
+  const tier = String(doc?.assurance_tier || '').trim().toUpperCase();
+  // Prevent misleading "Uploaded" when assurance tier already reflects external verification but state lagged.
+  if (tier === 'EXTERNALLY_VERIFIED') return 'VERIFIED';
   const legacy = String(doc?.status || '').trim().toUpperCase();
   if (legacy === 'VERIFIED') return 'ACCEPTED_UNVERIFIED';
   if (legacy === 'REJECTED') return 'REJECTED';

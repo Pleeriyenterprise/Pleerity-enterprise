@@ -21,6 +21,30 @@ from services.workflow_runtime_activation_registry import resolve_requirement_st
 logger = logging.getLogger(__name__)
 
 
+def _compliance_recalc_replay_support_context(
+    *,
+    property_id: str,
+    correlation_id: str,
+    recalc_result: Any = None,
+    recalc_exc: Optional[Exception] = None,
+) -> Dict[str, Any]:
+    """
+    Support/audit metadata for queue idempotency (same request replay / duplicate enqueue).
+    Does not change enqueue behaviour.
+    """
+    resolved = str(correlation_id or "").strip()
+    if recalc_exc is None and recalc_result is not None:
+        rc = getattr(recalc_result, "correlation_id", None)
+        if rc:
+            resolved = str(rc).strip() or resolved
+    return {
+        "idempotency_boundary": "compliance_recalc_queue unique (property_id, correlation_id)",
+        "enqueue_property_id": str(property_id or "").strip(),
+        "resolved_queue_correlation_id": resolved or None,
+        "replay_duplicate_enqueue_safe": True,
+    }
+
+
 async def authority_sync_with_transition_observability(
     db,
     requirement_id: str,
@@ -177,6 +201,10 @@ async def enqueue_compliance_recalc_with_fanout(
                 enqueue_result=None,
                 duplicate_suppression_reason=str(backbone_gate.get("activation_reason") or "rst_core_backbone_blocked"),
                 activation_gate_overlay=bb_overlay,
+                replay_support_context=_compliance_recalc_replay_support_context(
+                    property_id=property_id,
+                    correlation_id=correlation_id,
+                ),
             )
             attach_risk_regen_delegate_row(
                 tf,
@@ -240,6 +268,12 @@ async def enqueue_compliance_recalc_with_fanout(
             trigger_origin=trigger_origin,
             enqueue_result=recalc_result,
             enqueue_exc=recalc_exc,
+            replay_support_context=_compliance_recalc_replay_support_context(
+                property_id=property_id,
+                correlation_id=correlation_id,
+                recalc_result=recalc_result,
+                recalc_exc=recalc_exc,
+            ),
         )
         attach_risk_regen_delegate_row(
             tf,

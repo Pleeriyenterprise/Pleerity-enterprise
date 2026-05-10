@@ -1,8 +1,10 @@
 import {
   CALCULATING_SCORE_FALLBACK_MESSAGE,
+  COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE,
   COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE,
   COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE,
   PROPERTY_DETAIL_STORED_VS_PREVIEW_NOTE,
+  portfolioScoreRecalcPendingNote,
   formatScoreLastCalculatedForUi,
   isNonOkDashboardScoreStatus,
   pickScoreLastCalculatedIso,
@@ -74,5 +76,16 @@ describe('scoreFreshnessUi', () => {
   it('PROPERTY_DETAIL_STORED_VS_PREVIEW_NOTE describes stored headline vs live detail', () => {
     expect(PROPERTY_DETAIL_STORED_VS_PREVIEW_NOTE).toContain('latest stored property score');
     expect(PROPERTY_DETAIL_STORED_VS_PREVIEW_NOTE).toContain('recalculation is pending');
+  });
+
+  it('portfolioScoreRecalcPendingNote returns trimmed server note when present', () => {
+    expect(portfolioScoreRecalcPendingNote(null)).toBe(null);
+    expect(portfolioScoreRecalcPendingNote({})).toBe(null);
+    expect(portfolioScoreRecalcPendingNote({ portfolio_score_recalc_pending_note: '  Q  ' })).toBe('Q');
+  });
+
+  it('COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE distinguishes upload vs verified coverage', () => {
+    expect(COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE).toContain('Uploaded');
+    expect(COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE).toContain('external verification');
   });
 });

@@ -154,6 +154,23 @@ async def mongo_find_to_list(cursor, cap: int = _MAX_TENANT_FETCH) -> List[Dict[
     return out
 
 
+def portfolio_pending_score_recalc_snapshot(properties: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Tenant-scoped honesty fields for Stream B: ``compliance_score_pending`` marks properties whose
+    stored headline will refresh after the compliance recalc queue drains. Exposed on compliance-score
+    payloads so KPI/live requirement rows are not confused with persisted headline timing.
+    """
+    n = sum(1 for p in properties if bool(p.get("compliance_score_pending")))
+    if n <= 0:
+        return {"properties_pending_score_recalc_count": 0, "portfolio_score_recalc_pending_note": None}
+    subj_have = "properties have" if n != 1 else "property has"
+    note = (
+        f"{n} {subj_have} a stored compliance score update queued after recent changes. "
+        "The headline uses the last completed calculation until processing finishes; requirement summaries reflect current portal records."
+    )
+    return {"properties_pending_score_recalc_count": n, "portfolio_score_recalc_pending_note": note}
+
+
 def property_persisted_score_row_status(prop: Dict[str, Any]) -> str:
     """Client-visible persisted headline status for one property row (SCORING_SEMANTICS_V1)."""
     return resolve_property_score_status(prop)
@@ -292,7 +309,6 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                     "compliance_top_deficits": 1,
                     "compliance_top_next_actions": 1,
                     "compliance_last_calculated_at": 1,
-                    "compliance_score_pending": 1,
                     "is_hmo": 1,
                     "nickname": 1,
                     "address_line_1": 1,
@@ -319,6 +335,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 policy_aggregate_unavailable=False,
             )
             _risk_empty = _override_empty["effective_override_output"]
+            _pending_empty = portfolio_pending_score_recalc_snapshot([])
             return attach_semantics_contract(
                 {
                     "score": None,
@@ -357,6 +374,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                     "properties_missing_persisted_score": 0,
                     "score_coverage": _agg_empty.get("score_coverage"),
                     "portfolio_last_calculated_at": _agg_empty.get("portfolio_last_calculated_at"),
+                    **_pending_empty,
                     **_jurisdiction_api_fields(client_row_empty, []),
                 }
             )
@@ -390,6 +408,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 policy_aggregate_unavailable=False,
             )
             _risk_nr = _override_nr["effective_override_output"]
+            _pending_nr = portfolio_pending_score_recalc_snapshot(properties)
             return attach_semantics_contract(
                 {
                     "score": None,
@@ -429,6 +448,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                     "properties_missing_persisted_score": _agg_nr.get("properties_missing_score", len(properties)),
                     "score_coverage": _agg_nr.get("score_coverage"),
                     "portfolio_last_calculated_at": _agg_nr.get("portfolio_last_calculated_at"),
+                    **_pending_nr,
                     **_jurisdiction_api_fields(client_row_nr, properties),
                 }
             )
@@ -929,6 +949,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
 
         earned_points = sum(float(p.get("compliance_earned_points") or 0) for p in properties)
         applicable_points = sum(float(p.get("compliance_applicable_points") or 0) for p in properties)
+        _pending_snap = portfolio_pending_score_recalc_snapshot(properties)
         result = {
             "score": client_score,
             "grade": grade,
@@ -996,6 +1017,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 for p in properties
             ],
             "jurisdiction_compliance_notice": jurisdiction_compliance_notice,
+            **_pending_snap,
             **_jurisdiction_api_fields(client_row, properties),
         }
         result["score_status"] = _head_agg.get("score_status")
@@ -1047,6 +1069,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         return result
     except Exception as e:
         logger.error(f"Error calculating compliance score: {e}")
+        _pending_err = portfolio_pending_score_recalc_snapshot([])
         return attach_semantics_contract(
             {
                 "score": None,
@@ -1069,6 +1092,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "property_breakdown": [],
                 "drivers": [],
                 "score_authority": "unavailable",
+                **_pending_err,
                 "risk_level": "Moderate Risk",
                 "portfolio_risk_level": "Moderate Risk",
                 "base_portfolio_risk_state": None,

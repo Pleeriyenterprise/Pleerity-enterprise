@@ -14,6 +14,18 @@ describe('evidenceReviewUi', () => {
     expect(effectiveAssuranceTier(doc)).toBe('HUMAN_ACCEPTED');
   });
 
+  it('maps assurance tier externally verified when evidence_review_state is absent', () => {
+    expect(
+      effectiveEvidenceReviewState({
+        assurance_tier: 'EXTERNALLY_VERIFIED',
+        status: 'UPLOADED',
+      }),
+    ).toBe('VERIFIED');
+    expect(clientFacingVerificationLabel({ assurance_tier: 'EXTERNALLY_VERIFIED', status: 'UPLOADED' })).toBe(
+      'Externally verified',
+    );
+  });
+
   it('shows externally verified only for EXTERNALLY_VERIFIED tier', () => {
     expect(clientFacingVerificationLabel({ assurance_tier: 'EXTERNALLY_VERIFIED' })).toBe('Externally verified');
     expect(clientFacingVerificationLabel({ status: 'VERIFIED' })).not.toBe('Externally verified');

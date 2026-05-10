@@ -61,6 +61,10 @@ from services.admin_action_governance import (
     ensure_action_reason,
     normalized_admin_action_metadata,
 )
+from services.client_propagation_notice import (
+    build_propagation_notice_from_transition_fanout,
+    merge_propagation_notice_from_ordered_transition_fanouts,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -309,6 +313,8 @@ async def get_admin_dashboard(request: Request):
                 }
             )
         
+        from services.evidence_review_config import is_feature_evidence_review_v2
+
         return {
             "stats": {
                 "total_clients": total_clients,
@@ -328,6 +334,9 @@ async def get_admin_dashboard(request: Request):
             "compliance_overview": compliance_breakdown,
             "recent_activity": [],
             "operational_alerts": operational_alerts,
+            "server_feature_flags": {
+                "evidence_review_v2_enabled": is_feature_evidence_review_v2(),
+            },
         }
     
     except Exception as e:
@@ -647,7 +656,16 @@ async def resolve_unresolved_document_scope(
             "requirement_id": update_payload.get("requirement_id"),
         },
     )
-    return {"message": "Document scope resolved", "document_id": document_id, "resolved_scope_type": "PROPERTY"}
+    out_scope: Dict[str, Any] = {
+        "message": "Document scope resolved",
+        "document_id": document_id,
+        "resolved_scope_type": "PROPERTY",
+    }
+    if update_payload.get("requirement_id"):
+        pn_scope = build_propagation_notice_from_transition_fanout(scope_fanout)
+        if pn_scope:
+            out_scope["propagation_notice"] = pn_scope
+    return out_scope
 
 
 class AdminDocumentRequirementLinkRequest(BaseModel):
@@ -717,7 +735,15 @@ async def admin_link_document_requirement(request: Request, document_id: str, bo
         resource_id=document_id,
         metadata={"action_type": "DOCUMENT_REQUIREMENT_LINKED", "requirement_id": body.requirement_id},
     )
-    return {"message": "Requirement linked", "document_id": document_id, "requirement_id": body.requirement_id}
+    out_link_req: Dict[str, Any] = {
+        "message": "Requirement linked",
+        "document_id": document_id,
+        "requirement_id": body.requirement_id,
+    }
+    pn_link = build_propagation_notice_from_transition_fanout(link_fanout)
+    if pn_link:
+        out_link_req["propagation_notice"] = pn_link
+    return out_link_req
 
 
 @router.post("/documents/{document_id}/unlink-requirement", dependencies=[Depends(require_owner_or_admin)])
@@ -762,7 +788,12 @@ async def admin_unlink_document_requirement(request: Request, document_id: str):
         resource_id=document_id,
         metadata={"action_type": "DOCUMENT_REQUIREMENT_UNLINKED", "prior_requirement_id": prior_requirement_id},
     )
-    return {"message": "Requirement unlinked", "document_id": document_id}
+    out_unlink: Dict[str, Any] = {"message": "Requirement unlinked", "document_id": document_id}
+    if prior_requirement_id:
+        pn_unlink = build_propagation_notice_from_transition_fanout(unlink_fanout)
+        if pn_unlink:
+            out_unlink["propagation_notice"] = pn_unlink
+    return out_unlink
 
 
 @router.post("/documents/{document_id}/reject-unresolved", dependencies=[Depends(require_owner_or_admin)])
@@ -810,7 +841,12 @@ async def admin_reject_unresolved_document(request: Request, document_id: str):
         resource_id=document_id,
         metadata={"action_type": "UNRESOLVED_DOCUMENT_REJECTED"},
     )
-    return {"message": "Unresolved document rejected", "document_id": document_id}
+    out_rej_unres: Dict[str, Any] = {"message": "Unresolved document rejected", "document_id": document_id}
+    if prior_requirement_id:
+        pn_rej_un = build_propagation_notice_from_transition_fanout(rej_fanout)
+        if pn_rej_un:
+            out_rej_unres["propagation_notice"] = pn_rej_un
+    return out_rej_unres
 
 
 class AdminEvidenceMatchResolutionBody(BaseModel):
@@ -904,7 +940,12 @@ async def admin_resolve_evidence_match(
                 "reason": (body.reason or "")[:2000],
             },
         )
-        return {"message": "Evidence match approved (override)", "document_id": document_id}
+        out_approve: Dict[str, Any] = {"message": "Evidence match approved (override)", "document_id": document_id}
+        if prior_rid:
+            notice_approve = build_propagation_notice_from_transition_fanout(ov_fanout)
+            if notice_approve:
+                out_approve["propagation_notice"] = notice_approve
+        return out_approve
 
     if action == "reject_evidence":
         await db.documents.update_one(
@@ -944,7 +985,12 @@ async def admin_resolve_evidence_match(
                 "reason": (body.reason or "")[:2000],
             },
         )
-        return {"message": "Evidence rejected", "document_id": document_id}
+        out_reject: Dict[str, Any] = {"message": "Evidence rejected", "document_id": document_id}
+        if prior_rid:
+            notice_reject = build_propagation_notice_from_transition_fanout(rej_match_fanout)
+            if notice_reject:
+                out_reject["propagation_notice"] = notice_reject
+        return out_reject
 
     if action == "relink_requirement":
         rid = (body.relink_requirement_id or "").strip()
@@ -1066,7 +1112,18 @@ async def admin_resolve_evidence_match(
                 "reason": (body.reason or "")[:2000],
             },
         )
-        return {"message": "Requirement relinked; match re-evaluated from extraction where available.", "document_id": document_id}
+        ordered_relink: List[Dict[str, Any]] = []
+        if prior_rid and str(prior_rid) != rid:
+            ordered_relink.append(fanout_prior)
+        ordered_relink.append(fanout_new)
+        out_relink: Dict[str, Any] = {
+            "message": "Requirement relinked; match re-evaluated from extraction where available.",
+            "document_id": document_id,
+        }
+        notice_relink = merge_propagation_notice_from_ordered_transition_fanouts(ordered_relink)
+        if notice_relink:
+            out_relink["propagation_notice"] = notice_relink
+        return out_relink
 
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown action")
 

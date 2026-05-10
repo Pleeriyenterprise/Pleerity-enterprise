@@ -17,14 +17,23 @@ from utils.compliance_fanout_log import compliance_fanout_extra
 from services.evidence_review_actions import correlation_id_new, document_is_calendrically_expired, run_validation_for_document, transition_review_fields
 from services.evidence_review_policy import promotions_allowed_for_accept_unverified
 from services.provisioning import provisioning_service
-from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_DOC_STATUS_CHANGED, ACTOR_ADMIN
+from services.authority_mutation_fanout import (
+    authority_sync_with_transition_observability,
+    enqueue_compliance_recalc_with_fanout,
+)
+from services.compliance_recalc_queue import TRIGGER_DOC_STATUS_CHANGED, ACTOR_ADMIN
 from services.requirement_transition_observability import (
-    attach_downstream_trigger_observation,
-    ensure_requirement_transition_correlation_id,
+    merge_document_path_lineage_flags,
+    merge_pre_authority_optimistic_requirement_promotion_marker,
 )
 from services.work_order_execution_constants import COMPLIANCE_PROOF_VERIFIED, WORK_ORDER_KIND_COMPLIANCE
 
 logger = logging.getLogger(__name__)
+
+
+def _verify_replay_possible_for_observability(old_status: str) -> bool:
+    """Match ``routes.documents._document_verification_replay_heuristic`` for lineage flags."""
+    return str(old_status or "").strip().upper() == str(DocumentStatus.VERIFIED.value).upper()
 
 
 async def execute_verify_document_v2(
@@ -105,16 +114,6 @@ async def execute_verify_document_v2(
     recalc_correlation_id = f"DOC_STATUS_CHANGED:{document_id}:VERIFIED"
     transition_fanout: Dict[str, Any] = {}
     rid = str(document.get("requirement_id") or "")
-    sync_correlation_id = (
-        ensure_requirement_transition_correlation_id(
-            requirement_id=rid,
-            property_id=str(document.get("property_id") or "") or None,
-            client_id=str(document.get("client_id") or "") or None,
-            correlation_id=recalc_correlation_id,
-        )
-        if rid
-        else recalc_correlation_id
-    )
 
     if rid and promote_compliance:
         await db.requirements.update_one(
@@ -129,15 +128,6 @@ async def execute_verify_document_v2(
                 }
             },
         )
-        from services.requirement_evidence_authority import sync_requirement_evidence_authority
-
-        await sync_requirement_evidence_authority(
-            db,
-            rid,
-            correlation_id=sync_correlation_id,
-            transition_origin="services.evidence_review_verify.execute_verify_document_v2",
-            transition_observability_out=transition_fanout,
-        )
         try:
             await _finalize_active_compliance_jobs_after_certificate_verified(
                 db,
@@ -148,60 +138,44 @@ async def execute_verify_document_v2(
             )
         except Exception as fin_e:
             logger.warning("Active compliance job finalize on verify skipped: %s", fin_e)
-    elif rid:
-        from services.requirement_evidence_authority import sync_requirement_evidence_authority
+        merge_pre_authority_optimistic_requirement_promotion_marker(
+            transition_fanout,
+            applied=True,
+            basis="VERIFIED_DOCUMENT_COMPLIANT_PROMOTION_V2",
+            transition_origin="services.evidence_review_verify.execute_verify_document_v2",
+            requirement_id=rid,
+        )
 
-        await sync_requirement_evidence_authority(
+    if rid:
+        await authority_sync_with_transition_observability(
             db,
             rid,
-            correlation_id=sync_correlation_id,
+            property_id=str(document.get("property_id") or "") or None,
+            client_id=str(document.get("client_id") or ""),
+            correlation_base=recalc_correlation_id,
             transition_origin="services.evidence_review_verify.execute_verify_document_v2",
-            transition_observability_out=transition_fanout,
+            transition_fanout=transition_fanout,
+        )
+        merge_document_path_lineage_flags(
+            transition_fanout,
+            document_id=document_id,
+            verification_replay_possible=_verify_replay_possible_for_observability(old_status),
+            stale_document_transition_possible=True,
         )
 
     if document.get("property_id"):
         await provisioning_service._update_property_compliance(document["property_id"])
-        recalc_result = None
-        recalc_exc: Optional[Exception] = None
-        try:
-            recalc_result = await enqueue_compliance_recalc(
-                property_id=document["property_id"],
-                client_id=document["client_id"],
-                trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
-                actor_type=ACTOR_ADMIN,
-                actor_id=user.get("portal_user_id"),
-                correlation_id=recalc_correlation_id,
-            )
-        except Exception as exc:
-            recalc_exc = exc
-            logger.warning("enqueue_compliance_recalc after document verify failed: %s", exc)
-        trace_for_row: Dict[str, Any] = (
-            transition_fanout
-            if transition_fanout.get("transition_id")
-            else {
-                "transition_id": f"doc_verify_enqueue_only:{document_id}",
-                "correlation_id": recalc_correlation_id,
-                "transition_origin": "services.evidence_review_verify.execute_verify_document_v2",
-                "requirement_id": rid,
-                "property_id": str(document.get("property_id") or "") or None,
-                "client_id": str(document.get("client_id") or "") or None,
-                "replay_chain_detected": False,
-                "repeated_transition_origin": False,
-                "repeated_correlation_seen": False,
-                "downstream_retrigger_possible": False,
-                "partial_downstream_failure": False,
-                "stale_transition_replayed": False,
-            }
-        )
-        attach_downstream_trigger_observation(
-            trace_for_row,
-            downstream_target="compliance_recalc_queue.enqueue_compliance_recalc",
-            trigger_mode="async_queue",
-            propagation_stage="post_authority_or_property_touch",
-            downstream_correlation_id=getattr(recalc_result, "correlation_id", None) if recalc_result is not None else recalc_correlation_id,
+        await enqueue_compliance_recalc_with_fanout(
+            transition_fanout if rid else None,
+            property_id=document["property_id"],
+            client_id=document["client_id"],
+            trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
+            actor_type=ACTOR_ADMIN,
+            actor_id=user.get("portal_user_id"),
+            correlation_id=recalc_correlation_id,
             trigger_origin="services.evidence_review_verify.execute_verify_document_v2",
-            enqueue_result=recalc_result,
-            enqueue_exc=recalc_exc,
+            propagation_stage="post_verify_v2_authority_sync",
+            fanout_op="evidence_review_verify_transition_fanout",
         )
 
     verify_audit_meta: Dict[str, Any] = {}
@@ -209,6 +183,9 @@ async def execute_verify_document_v2(
         verify_audit_meta["work_order_id"] = document["work_order_id"]
     verify_audit_meta["evidence_review_v2"] = True
     verify_audit_meta["validation_status"] = vs
+    if rid and promote_compliance:
+        verify_audit_meta["pre_authority_optimistic_requirement_promotion"] = True
+        verify_audit_meta["optimistic_promotion_basis"] = "VERIFIED_DOCUMENT_COMPLIANT_PROMOTION_V2"
     await create_audit_log(
         action=AuditAction.DOCUMENT_VERIFIED,
         actor_id=user["portal_user_id"],
@@ -301,13 +278,19 @@ async def execute_verify_document_v2(
     except Exception:
         pass
 
-    return {
+    from services.client_propagation_notice import build_propagation_notice_from_transition_fanout
+
+    out: Dict[str, Any] = {
         "message": "Document verified (human accepted, not externally verified)",
         "outcome": outcome,
         "evidence_review_state": document_after.get("evidence_review_state"),
         "assurance_tier": document_after.get("assurance_tier"),
         "validation": snapshot,
     }
+    notice = build_propagation_notice_from_transition_fanout(transition_fanout if rid else None)
+    if notice:
+        out["propagation_notice"] = notice
+    return out
 
 
 async def _append_document_evidence_to_work_order(document_id: str, work_order_id: Optional[str]) -> None:

@@ -15,6 +15,7 @@ import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientP
 import { resolveTaskCta } from '../utils/ctaRegistry';
 import {
   isWorkQueueScoreHeadlineDegradedStatus,
+  portfolioScoreRecalcPendingNote as resolvePortfolioScoreRecalcPendingNote,
   resolveDashboardFreshnessExplanation,
   WORK_QUEUE_SCORE_SNAPSHOT_LOAD_FAILED,
 } from '../utils/scoreFreshnessUi';
@@ -178,6 +179,10 @@ export default function ClientWorkQueuePage() {
   const headlineDegraded =
     Boolean(headlineExplanation) && isWorkQueueScoreHeadlineDegradedStatus(complianceHeadline.score_status);
 
+  const recalcPendingNote = complianceHeadline
+    ? resolvePortfolioScoreRecalcPendingNote(complianceHeadline)
+    : null;
+
   return (
     <div className={portalPageRoot} data-testid="work-queue-root">
       <div className="mb-6">
@@ -224,6 +229,13 @@ export default function ClientWorkQueuePage() {
           >
             {headlineExplanation}
           </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {recalcPendingNote ? (
+        <Alert className="mb-4 border-slate-200 bg-slate-50" data-testid="work-queue-score-recalc-pending">
+          <Info className="h-4 w-4 text-slate-600 shrink-0" />
+          <AlertDescription className="text-sm text-slate-800">{recalcPendingNote}</AlertDescription>
         </Alert>
       ) : null}
 

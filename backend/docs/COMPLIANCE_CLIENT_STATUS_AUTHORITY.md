@@ -76,4 +76,5 @@ Do **not** re-interpret overdue via ad hoc calendar on raw `PENDING` for KPI tot
 - `services/requirement_client_runtime_surface.py` — projection, visibility, `compute_client_portal_requirement_stats`.
 - `services/compliance_score.py` — `stats` and drivers from portal projected rows.
 - `services/command_center_service.py` — `compliance_status_summary` requirement fields from `calculate_compliance_score`.
+- `services/kpi_authority_projection_contract.py` — **L-002 CI guard**: registered KPI-authoritative modules must reference filter+project (or delegate only via `calculate_compliance_score` without raw requirement queries). See `tests/test_kpi_authority_projection_contract.py`.
 - `GET /api/admin/compliance-truth/clients/{client_id}/explain` — admin explain payload.

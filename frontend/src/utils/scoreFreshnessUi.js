@@ -88,6 +88,22 @@ export function formatScoreLastCalculatedForUi(isoOrString) {
 export const COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE =
   'Driver rows reflect current requirement state. The headline score uses the latest stored property scores until recalculation completes.';
 
+/**
+ * Server-backed note when one or more properties have `compliance_score_pending` (recalc queued).
+ * @param {Record<string, unknown> | null | undefined} payload compliance-score API body or dashboard headline object
+ * @returns {string | null}
+ */
+export function portfolioScoreRecalcPendingNote(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const raw = payload.portfolio_score_recalc_pending_note;
+  if (raw == null || String(raw).trim() === '') return null;
+  return String(raw).trim();
+}
+
+/** Clarifies document KPIs on the compliance score page (upload vs accepted / externally verified). */
+export const COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE =
+  'Uploaded counts include any file on record for tracked items. Verified coverage reflects documents accepted under review policy (human acceptance or external verification), not uploads alone.';
+
 /** Command Centre when `compliance_status_summary` is missing from the bundle (partial load). */
 export const COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE =
   'Compliance snapshot could not be loaded in this bundle. Other sections may still be current; refresh or open Dashboard for the full score.';

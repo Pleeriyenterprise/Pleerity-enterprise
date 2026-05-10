@@ -90,10 +90,20 @@ def test_data_remains_archived_property_still_listed(client):
             {"property_id": "p2", "address_line_1": "2 Low St", "is_active": False},
         ])
     ))
+    db.clients = MagicMock()
+    db.clients.find_one = AsyncMock(return_value={})
     db.requirements.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
 
+    async def passthrough_runtime_filter(_db, client_id, requirements, **_kwargs):
+        return requirements
+
     with patch("routes.properties.client_route_guard", side_effect=mock_guard), \
-         patch("routes.properties.database.get_db", return_value=db):
+         patch("routes.properties.database.get_db", return_value=db), \
+         patch(
+             "services.requirement_client_runtime_surface.filter_requirement_rows_for_client_runtime_surfaces",
+             new_callable=AsyncMock,
+             side_effect=passthrough_runtime_filter,
+         ):
         response = client.get("/api/properties/list", headers={"Authorization": "Bearer fake"})
 
     assert response.status_code == 200

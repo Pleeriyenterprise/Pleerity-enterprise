@@ -424,6 +424,8 @@ async def get_command_center_bundle(
             "score_coverage": cs.get("score_coverage"),
             "score_status_message": cs.get("score_status_message"),
             "scoring_semantics_version": cs.get("scoring_semantics_version"),
+            "properties_pending_score_recalc_count": cs.get("properties_pending_score_recalc_count"),
+            "portfolio_score_recalc_pending_note": cs.get("portfolio_score_recalc_pending_note"),
             # Canonical portfolio requirement KPIs (portal-visible + project_requirement_row_client_runtime).
             # Command Centre UI must use these fields only — no Math.max with other APIs.
             "compliance_counts_authority": "calculate_compliance_score.stats",
@@ -488,6 +490,8 @@ async def get_command_center_bundle(
             "score_coverage": None,
             "score_status_message": None,
             "scoring_semantics_version": None,
+            "properties_pending_score_recalc_count": None,
+            "portfolio_score_recalc_pending_note": None,
             "gap_engine": {"by_kind": {}, "by_severity": {}, "total_open": 0},
             "hiua_operational_uncertainty": {
                 "hiua_active": False,

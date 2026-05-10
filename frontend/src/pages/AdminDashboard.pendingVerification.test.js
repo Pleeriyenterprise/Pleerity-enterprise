@@ -47,6 +47,7 @@ describe('AdminDashboard pending verification queue', () => {
         },
         compliance_overview: { GREEN: 0, AMBER: 0, RED: 0 },
         recent_activity: [],
+        server_feature_flags: { evidence_review_v2_enabled: false },
       },
     });
     adminAPI.getClients.mockResolvedValue({ data: { clients: [] } });
@@ -95,6 +96,8 @@ describe('AdminDashboard pending verification queue', () => {
     expect(screen.getByText('WARN · 1 warning(s), 1 failure(s)')).toBeInTheDocument();
     expect(screen.getByText('1 warning(s), 1 flag(s)')).toBeInTheDocument();
     expect(screen.getByText('High (0.71)')).toBeInTheDocument();
+    expect(screen.getByTestId('evidence-review-v2-disabled-hint')).toBeInTheDocument();
+    expect(screen.queryByTestId('ai-review-doc-doc-v2-1')).not.toBeInTheDocument();
   });
 
   it('requires override reason before AI field override action', async () => {
@@ -113,6 +116,7 @@ describe('AdminDashboard pending verification queue', () => {
         },
         compliance_overview: { GREEN: 0, AMBER: 0, RED: 0 },
         recent_activity: [],
+        server_feature_flags: { evidence_review_v2_enabled: true },
       },
     });
     adminAPI.getClients.mockResolvedValue({ data: { clients: [] } });
@@ -162,6 +166,7 @@ describe('AdminDashboard pending verification queue', () => {
         stats: { total_clients: 1, total_properties: 1, active_clients: 1, pending_clients: 0, unverified_documents_count: 1 },
         compliance_overview: { GREEN: 0, AMBER: 0, RED: 0 },
         recent_activity: [],
+        server_feature_flags: { evidence_review_v2_enabled: true },
       },
     });
     adminAPI.getClients.mockResolvedValue({ data: { clients: [] } });

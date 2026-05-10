@@ -11,7 +11,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import ErrorBanner from '../components/ErrorBanner';
-import { AlertCircle, Gauge, Sparkles, Building2, Wrench, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, Gauge, Sparkles, Building2, Wrench, ChevronRight, CheckCircle2, Info } from 'lucide-react';
 import { recordClientPortalInteraction, resolveClientPortalPath } from '../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../utils/ctaRegistry';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
@@ -56,7 +56,10 @@ import {
   headlineScoreDisplayForDashboard,
   headlineScoreShowsOutOf100,
 } from '../utils/scoringHeadlineDisplay';
-import { COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE } from '../utils/scoreFreshnessUi';
+import {
+  COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE,
+  portfolioScoreRecalcPendingNote as resolvePortfolioScoreRecalcPendingNote,
+} from '../utils/scoreFreshnessUi';
 
 const KPI_NO_DATA = 'No data yet';
 
@@ -208,6 +211,11 @@ export default function ClientCommandCenterPage() {
   );
   const riskCount = bundle?.upcoming_risks?.length ?? 0;
   const summary = bundle?.compliance_status_summary;
+
+  const complianceRecalcPendingNote = useMemo(
+    () => resolvePortfolioScoreRecalcPendingNote(summary),
+    [summary],
+  );
 
   const activeJobs = useMemo(() => {
     const list = workOrdersRaw?.work_orders;
@@ -583,6 +591,15 @@ export default function ClientCommandCenterPage() {
               {summary.message ? <p className="text-sm mt-2 opacity-95">{summary.message}</p> : null}
               {summary.score_status_message && String(summary.score_status_message).trim() ? (
                 <p className="text-xs mt-2 opacity-95 border-t border-black/5 pt-2">{String(summary.score_status_message).trim()}</p>
+              ) : null}
+              {complianceRecalcPendingNote ? (
+                <p
+                  className="text-xs mt-2 opacity-95 border-t border-black/5 pt-2 flex gap-2 items-start"
+                  data-testid="command-center-score-recalc-pending"
+                >
+                  <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 opacity-90" aria-hidden />
+                  <span>{complianceRecalcPendingNote}</span>
+                </p>
               ) : null}
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs opacity-90">
                 {summary.requirements_overdue != null && (

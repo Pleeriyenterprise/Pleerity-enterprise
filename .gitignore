@@ -247,3 +247,9 @@ backend/pytest_junit_after_quarantine.xml
 backend/prod_surface_junit.xml
 backend/prod_surface_out.txt
 backend/prod_priority_run.txt
+backend/junit-full.xml
+backend/pytest_full_out.txt
+backend/pytest_full_run2.txt
+
+# Cursor local workspace (not part of product source)
+.cursor/

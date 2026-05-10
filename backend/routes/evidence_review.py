@@ -25,7 +25,12 @@ from services.external_verification_helpers import build_verification_helpers
 from services.authority_mutation_fanout import authority_sync_with_transition_observability, enqueue_compliance_recalc_with_fanout
 from services.provisioning import provisioning_service
 from services.compliance_recalc_queue import TRIGGER_DOC_STATUS_CHANGED, ACTOR_ADMIN
-from services.requirement_transition_observability import merge_document_path_lineage_flags, merge_review_admin_lineage_flags
+from services.requirement_transition_observability import (
+    merge_document_path_lineage_flags,
+    merge_pre_authority_optimistic_requirement_promotion_marker,
+    merge_review_admin_lineage_flags,
+)
+from services.client_propagation_notice import build_propagation_notice_from_transition_fanout
 
 logger = logging.getLogger(__name__)
 
@@ -469,8 +474,8 @@ async def start_evidence_review(request: Request, document_id: str, body: Review
         notes=body.notes,
         decision_reason="START_REVIEW",
     )
+    start_fanout: Dict[str, Any] = {}
     if doc.get("requirement_id"):
-        start_fanout: Dict[str, Any] = {}
         prev_rs = str(effective_evidence_review_state(doc) or "")
         await authority_sync_with_transition_observability(
             db,
@@ -488,7 +493,11 @@ async def start_evidence_review(request: Request, document_id: str, body: Review
             reviewer_retrigger_possible=True,
             review_chain_reentry_detected=(prev_rs == EvidenceReviewState.UNDER_REVIEW.value),
         )
-    return {"message": "Review started", "correlation_id": corr}
+    out_start: Dict[str, Any] = {"message": "Review started", "correlation_id": corr}
+    pn_start = build_propagation_notice_from_transition_fanout(start_fanout)
+    if pn_start:
+        out_start["propagation_notice"] = pn_start
+    return out_start
 
 
 @router.post("/{document_id}/review/request-information")
@@ -518,9 +527,9 @@ async def request_information(request: Request, document_id: str, body: RequestI
         notes=body.notes,
         decision_reason="REQUEST_INFORMATION",
     )
+    ri_fanout: Dict[str, Any] = {}
     if doc.get("requirement_id"):
         prev_rs = str(effective_evidence_review_state(doc) or "")
-        ri_fanout: Dict[str, Any] = {}
         await authority_sync_with_transition_observability(
             db,
             str(doc["requirement_id"]),
@@ -537,7 +546,11 @@ async def request_information(request: Request, document_id: str, body: RequestI
             review_chain_reentry_detected=(prev_rs == EvidenceReviewState.NEEDS_INFORMATION.value),
             reviewer_retrigger_possible=True,
         )
-    return {"message": "Information requested", "correlation_id": corr}
+    out_ri: Dict[str, Any] = {"message": "Information requested", "correlation_id": corr}
+    pn_ri = build_propagation_notice_from_transition_fanout(ri_fanout)
+    if pn_ri:
+        out_ri["propagation_notice"] = pn_ri
+    return out_ri
 
 
 @router.post("/{document_id}/review/accept-unverified")
@@ -625,6 +638,7 @@ async def verify_external(request: Request, document_id: str, body: ExternalVeri
         decision_reason=decision_reason,
     )
 
+    ve_fanout: Dict[str, Any] = {}
     if document.get("requirement_id") and promote:
         await db.requirements.update_one(
             {"requirement_id": document["requirement_id"]},
@@ -638,8 +652,14 @@ async def verify_external(request: Request, document_id: str, body: ExternalVeri
                 }
             },
         )
+        merge_pre_authority_optimistic_requirement_promotion_marker(
+            ve_fanout,
+            applied=True,
+            basis="EXTERNAL_VERIFICATION_COMPLIANT_PROMOTION",
+            transition_origin="routes.evidence_review.verify_external",
+            requirement_id=str(document["requirement_id"]),
+        )
 
-    ve_fanout: Dict[str, Any] = {}
     if document.get("requirement_id"):
         await authority_sync_with_transition_observability(
             db,
@@ -671,7 +691,11 @@ async def verify_external(request: Request, document_id: str, body: ExternalVeri
         propagation_stage="post_verify_external",
     )
 
-    return {"message": "External verification recorded", "validation": snapshot, "correlation_id": corr}
+    out_ve: Dict[str, Any] = {"message": "External verification recorded", "validation": snapshot, "correlation_id": corr}
+    notice_ve = build_propagation_notice_from_transition_fanout(ve_fanout)
+    if notice_ve:
+        out_ve["propagation_notice"] = notice_ve
+    return out_ve
 
 
 @router.post("/{document_id}/review/reject")
@@ -726,7 +750,11 @@ async def reject_evidence_review(request: Request, document_id: str, body: Rejec
         trigger_origin="routes.evidence_review.reject_evidence_review",
         propagation_stage="post_review_reject",
     )
-    return {"message": "Evidence rejected", "correlation_id": corr}
+    out_reject_review: Dict[str, Any] = {"message": "Evidence rejected", "correlation_id": corr}
+    pn_reject_review = build_propagation_notice_from_transition_fanout(reject_fanout)
+    if pn_reject_review:
+        out_reject_review["propagation_notice"] = pn_reject_review
+    return out_reject_review
 
 
 @router.post("/{document_id}/review/mark-expired")
@@ -781,7 +809,11 @@ async def mark_expired_review(request: Request, document_id: str, body: ReviewNo
         trigger_origin="routes.evidence_review.mark_expired_review",
         propagation_stage="post_review_mark_expired",
     )
-    return {"message": "Marked expired", "correlation_id": corr}
+    out_exp: Dict[str, Any] = {"message": "Marked expired", "correlation_id": corr}
+    pn_exp = build_propagation_notice_from_transition_fanout(exp_fanout)
+    if pn_exp:
+        out_exp["propagation_notice"] = pn_exp
+    return out_exp
 
 
 @router.post("/{document_id}/review/supersede")
@@ -845,4 +877,8 @@ async def supersede_evidence(request: Request, document_id: str, body: Supersede
         trigger_origin="routes.evidence_review.supersede_evidence",
         propagation_stage="post_review_supersede",
     )
-    return {"message": "Evidence superseded", "correlation_id": corr}
+    out_sup: Dict[str, Any] = {"message": "Evidence superseded", "correlation_id": corr}
+    pn_sup = build_propagation_notice_from_transition_fanout(sup_fanout)
+    if pn_sup:
+        out_sup["propagation_notice"] = pn_sup
+    return out_sup

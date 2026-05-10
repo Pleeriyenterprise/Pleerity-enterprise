@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from database import database
 from middleware import client_route_guard
 from services.compliance_score import calculate_compliance_score
+from services.evidence_review_config import is_feature_evidence_review_v2
 from services.scoring_semantics_v1 import SCORE_AUTHORITY_UNAVAILABLE, SCORE_STATUS_UNAVAILABLE
 from services.compliance_scoring_service import get_authoritative_property_compliance_for_client
 from typing import Optional, List, Dict, Any
@@ -600,6 +601,8 @@ async def get_dashboard(request: Request):
                 "score_status_message": cs.get("score_status_message"),
                 "scoring_semantics_version": cs.get("scoring_semantics_version"),
                 "properties_count": cs.get("properties_count"),
+                "properties_pending_score_recalc_count": cs.get("properties_pending_score_recalc_count"),
+                "portfolio_score_recalc_pending_note": cs.get("portfolio_score_recalc_pending_note"),
             }
         except Exception as headline_err:
             logger.warning("dashboard compliance headline unavailable: %s", headline_err)
@@ -615,6 +618,8 @@ async def get_dashboard(request: Request):
                 "score_status_message": None,
                 "scoring_semantics_version": None,
                 "properties_count": None,
+                "properties_pending_score_recalc_count": None,
+                "portfolio_score_recalc_pending_note": None,
             }
 
         return {
@@ -628,6 +633,9 @@ async def get_dashboard(request: Request):
             },
             "onboarding_checklist": checklist,
             "compliance_score_headline": compliance_score_headline,
+            "server_feature_flags": {
+                "evidence_review_v2_enabled": is_feature_evidence_review_v2(),
+            },
         }
     
     except Exception as e:
