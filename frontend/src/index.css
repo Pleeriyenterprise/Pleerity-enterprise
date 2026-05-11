@@ -21,37 +21,39 @@ code {
 
 @layer base {
     :root {
-        /* Pleerity Brand Colors */
-        --midnight-blue: 11 29 58; /* #0B1D3A */
+        /* Pleerity Brand v1.0 — Midnight #0B1D3A, Electric Teal #00B8A9 (see src/config/branding.js) */
+        --midnight-blue: 11 29 58; /* #0B1D3A — never use truncated #0B1D3 */
         --electric-teal: 0 184 169; /* #00B8A9 */
         
-        /* Design tokens */
-        --background: 0 0% 100%;
-        --foreground: 11 29 58;
+        /* Enterprise canvas: app #F8FAFC, cards #FFFFFF, borders #E5E7EB, text #111827 / #6B7280 */
+        --background: 210 40% 98%;
+        --foreground: 221 39% 11%;
         
         --card: 0 0% 100%;
-        --card-foreground: 11 29 58;
+        --card-foreground: 221 39% 11%;
         
         --popover: 0 0% 100%;
-        --popover-foreground: 11 29 58;
+        --popover-foreground: 221 39% 11%;
         
-        --primary: 11 29 58; /* Midnight Blue */
+        /* Primary = Midnight (nav chrome, dense actions); default Button uses electric-teal in button.jsx */
+        --primary: 11 29 58;
         --primary-foreground: 0 0% 98%;
         
-        --secondary: 0 184 169; /* Electric Teal */
-        --secondary-foreground: 11 29 58;
+        --secondary: 0 184 169;
+        --secondary-foreground: 0 0% 98%;
         
+        /* Cool enterprise neutrals (slate family) — avoid warm/brown-muted drift */
         --muted: 210 40% 96%;
         --muted-foreground: 215 16% 47%;
         
         --accent: 0 184 169;
         --accent-foreground: 0 0% 98%;
         
-        --destructive: 0 84% 60%;
+        --destructive: 0 72% 51%;
         --destructive-foreground: 0 0% 98%;
         
-        --border: 214 32% 91%;
-        --input: 214 32% 91%;
+        --border: 220 13% 91%;
+        --input: 220 13% 91%;
         --ring: 0 184 169;
         
         --radius: 0.5rem;

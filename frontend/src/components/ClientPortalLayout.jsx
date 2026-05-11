@@ -494,7 +494,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
         {/* Tabs: visible on desktop; collapsible on mobile */}
         <nav className={`border-t border-white/10 ${mobileNavOpen ? 'block' : 'hidden'} lg:block`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col lg:flex-row lg:items-stretch lg:space-x-1">
+            <div className="flex flex-col divide-y divide-white/10 lg:divide-y-0 lg:flex-row lg:items-stretch lg:space-x-1">
               {tabs.map((tab) => {
                 if (tab.type === 'group' && tab.children?.length > 0) {
                   const Icon = tab.icon;
@@ -509,10 +509,10 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                       <button
                         type="button"
                         onClick={() => setOperationsDropdownOpen((o) => !o)}
-                        className={`flex items-center min-h-[44px] px-3 py-3 lg:py-4 text-sm font-medium border-b-2 transition-colors w-full lg:w-auto ${
+                        className={`flex items-center min-h-[48px] px-3 py-3.5 lg:py-4 text-sm font-medium border-b-2 transition-colors w-full lg:w-auto ${
                           isActive
-                            ? 'border-electric-teal text-electric-teal'
-                            : 'border-transparent text-gray-300 hover:text-white hover:border-gray-400'
+                            ? 'border-electric-teal text-electric-teal bg-white/[0.06] lg:bg-transparent'
+                            : 'border-transparent text-slate-300 hover:text-white hover:border-white/25'
                         }`}
                       >
                         <Icon className="w-4 h-4 mr-2" />
@@ -559,10 +559,10 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                     end={end}
                     onClick={() => setMobileNavOpen(false)}
                     className={({ isActive }) =>
-                      `flex items-center min-h-[44px] px-3 py-3 lg:py-4 text-sm font-medium border-b-2 lg:border-b-2 transition-colors ${
+                      `flex items-center min-h-[48px] px-3 py-3.5 lg:py-4 text-sm font-medium border-b-2 lg:border-b-2 transition-colors ${
                         isActive || ((path === '/settings' || path === '/tenant/settings') && isSettingsActive(location.pathname))
-                          ? 'border-electric-teal text-electric-teal'
-                          : 'border-transparent text-gray-300 hover:text-white hover:border-gray-400'
+                          ? 'border-electric-teal text-electric-teal bg-white/[0.06] lg:bg-transparent'
+                          : 'border-transparent text-slate-300 hover:text-white hover:border-white/25'
                       }`
                     }
                   >
@@ -586,7 +586,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                   : 'Syncing portal status…'}
               </span>
             ) : portalTrustError && !portalTrust ? (
-              <span className="text-amber-800">
+              <span className="text-slate-800 font-medium">
                 Status line temporarily unavailable. We&apos;ll keep retrying in the background — refresh if this persists.
               </span>
             ) : (
@@ -634,7 +634,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
         </div>
       )}
 
-      <main className="client-portal-main client-portal-prose flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-8">
+      <main className="client-portal-main client-portal-prose flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7 pb-10">
         {children}
       </main>
 

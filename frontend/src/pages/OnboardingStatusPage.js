@@ -263,13 +263,13 @@ const OnboardingStatusPage = () => {
       case 'complete':
         return { container: 'bg-green-50 border-green-200', icon: 'bg-green-500 text-white', text: 'text-green-800', badge: 'bg-green-100 text-green-700' };
       case 'in_progress':
-        return { container: 'bg-teal-50 border-teal-200', icon: 'bg-electric-teal text-white animate-pulse', text: 'text-teal-800', badge: 'bg-teal-100 text-teal-700' };
+        return { container: 'bg-slate-50 border-slate-200', icon: 'bg-electric-teal text-white animate-pulse', text: 'text-slate-800', badge: 'bg-electric-teal/15 text-midnight-blue' };
       case 'pending':
-        return { container: 'bg-amber-50 border-amber-200', icon: 'bg-amber-500 text-white', text: 'text-amber-800', badge: 'bg-amber-100 text-amber-700' };
+        return { container: 'bg-slate-50 border-slate-200', icon: 'bg-slate-400 text-white', text: 'text-slate-800', badge: 'bg-slate-200 text-slate-700' };
       case 'failed':
         return { container: 'bg-red-50 border-red-200', icon: 'bg-red-500 text-white', text: 'text-red-800', badge: 'bg-red-100 text-red-700' };
       default:
-        return { container: 'bg-gray-50 border-gray-200', icon: 'bg-gray-300 text-gray-500', text: 'text-gray-500', badge: 'bg-gray-100 text-gray-500' };
+        return { container: 'bg-slate-50 border-slate-200', icon: 'bg-slate-300 text-slate-600', text: 'text-slate-600', badge: 'bg-slate-100 text-slate-600' };
     }
   };
 
@@ -333,14 +333,14 @@ const OnboardingStatusPage = () => {
           </div>
         )}
         {showLateConfirming && !showEarly && (
-          <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
-            <p className="font-medium">Still confirming payment… this can take a moment. You can refresh or contact support with your CRN.</p>
+          <div className="mb-6 p-5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 border-l-4 border-l-brand-warning">
+            <p className="font-medium leading-snug">Still confirming payment… this can take a moment. You can refresh or contact support with your CRN.</p>
           </div>
         )}
         {timedOut && (
-          <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
-            <p className="font-medium">We&apos;re still setting things up. Please use <strong>Refresh status</strong> below, or contact support with your CRN: <strong>{status?.customer_reference || '—'}</strong></p>
-            <p className="mt-2 text-sm">Email: <a href={`mailto:${SUPPORT_EMAIL_FALLBACK}`} className="underline">{SUPPORT_EMAIL_FALLBACK}</a></p>
+          <div className="mb-6 p-5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 border-l-4 border-l-brand-warning">
+            <p className="font-medium leading-snug">We&apos;re still setting things up. Please use <strong>Refresh status</strong> below, or contact support with your CRN: <strong>{status?.customer_reference || '—'}</strong></p>
+            <p className="mt-2 text-sm text-slate-600">Email: <a href={`mailto:${SUPPORT_EMAIL_FALLBACK}`} className="text-electric-teal underline">{SUPPORT_EMAIL_FALLBACK}</a></p>
           </div>
         )}
         {provisioningFailed && (
@@ -427,7 +427,7 @@ const OnboardingStatusPage = () => {
                         <h4 className={`font-semibold ${styles.text}`}>{step.name}</h4>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${styles.badge}`}>{step.label}</span>
                       </div>
-                      <p className="text-sm text-gray-600">{step.description}</p>
+                      <p className="text-sm text-slate-600 leading-relaxed">{step.description}</p>
                     </div>
                     <div className="text-2xl font-bold text-gray-200">{step.step}</div>
                   </div>
@@ -439,13 +439,13 @@ const OnboardingStatusPage = () => {
 
         {/* Next Action Card / CTA */}
         {(status?.next_action || status?.client_id) && (
-          <div className={`rounded-xl shadow-sm border-2 p-6 ${isComplete ? 'bg-green-50 border-green-200' : 'bg-teal-50 border-teal-200'}`}>
+          <div className={`rounded-xl shadow-sm border p-6 sm:p-7 ${isComplete ? 'bg-green-50 border-green-200 border-l-4 border-l-green-500' : 'bg-slate-50 border-slate-200 border-l-4 border-l-electric-teal'}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className={`font-semibold ${isComplete ? 'text-green-800' : 'text-teal-800'}`}>{isComplete ? '🎉 All Set!' : 'Next Step'}</h3>
-                <p className={`mt-1 ${isComplete ? 'text-green-700' : 'text-teal-700'}`}>{nextActionMsg}</p>
+                <h3 className={`font-semibold ${isComplete ? 'text-green-800' : 'text-midnight-blue'}`}>{isComplete ? '🎉 All Set!' : 'Next Step'}</h3>
+                <p className={`mt-2 text-sm leading-relaxed ${isComplete ? 'text-green-700' : 'text-slate-600'}`}>{nextActionMsg}</p>
                 {!passwordSet && (status?.activation_email_status === 'SENT') && (status?.activation_email_to_masked || status?.masked_email) && (
-                  <p className="mt-2 text-sm text-teal-700">
+                  <p className="mt-3 text-sm text-slate-600 leading-relaxed">
                     Activation email sent to: {status?.masked_email ?? status?.activation_email_to_masked}
                     {status?.activation_email_sent_at || status?.activation_email_last_sent_at
                       ? ` at ${new Date(status?.activation_email_last_sent_at ?? status?.activation_email_sent_at).toLocaleString()}`
@@ -463,11 +463,11 @@ const OnboardingStatusPage = () => {
                   <>
                     {/* Do not link to /set-password without token — user must use the link from the activation email. */}
                     {(status?.portal_user_exists && (status?.activation_email_status === 'SENT' || status?.activation_email_status === 'FAILED' || status?.next_action === 'set_password')) && (
-                      <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleResendActivation} disabled={resending} data-testid="resend-activation-btn">
+                      <Button onClick={handleResendActivation} disabled={resending} data-testid="resend-activation-btn">
                         {resending ? 'Sending…' : 'Resend activation email'}
                       </Button>
                     )}
-                    <Button variant="outline" size="sm" onClick={handleRefresh} className="border-teal-300 text-teal-700" data-testid="refresh-status-cta-btn">
+                    <Button variant="outline" size="sm" onClick={handleRefresh} className="border-slate-300 text-slate-700 hover:bg-slate-50" data-testid="refresh-status-cta-btn">
                       <RefreshCw className="w-4 h-4 mr-2" /> Refresh status
                     </Button>
                   </>

@@ -151,32 +151,32 @@ const RiskCheckPage = () => {
         canonicalUrl="/risk-check"
       />
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto px-4 py-8 sm:py-10">
         {/* Progress */}
-        <p className="text-sm text-gray-500 mb-2">
+        <p className="text-sm text-slate-500 mb-2 tracking-tight">
           Step {step} of 4
         </p>
         {/* Trust micro-row */}
-        <p className="text-xs text-gray-500 mb-6">
+        <p className="text-xs text-slate-500 mb-8 leading-relaxed">
           UK landlord compliance tracking · Certificate expiry reminders · Secure vault
         </p>
 
         {/* Header */}
-        <h1 className="text-3xl font-bold text-midnight-blue mb-2">
+        <h1 className="text-3xl font-bold text-midnight-blue mb-3 leading-tight">
           Check Your Compliance Risk in 60 Seconds
         </h1>
-        <p className="text-gray-600 mb-2">
+        <p className="text-slate-600 mb-3 leading-relaxed">
           Answer 5 quick questions. Get a structured risk overview. Informational only.
         </p>
-        <p className="text-sm text-gray-500 mb-8">
+        <p className="text-sm text-slate-500 mb-8 leading-relaxed">
           This is an informational monitoring indicator. It does not replace professional or legal advice.
         </p>
 
         {/* Step 1 – Questions */}
         {step === STEP.QUESTIONS && (
-          <Card className="mb-8">
-            <CardContent className="pt-6">
-              <div className="space-y-4">
+          <Card className="mb-8 border-slate-200 shadow-sm">
+            <CardContent className="pt-6 sm:pt-8 pb-6">
+              <div className="space-y-5">
                 <div>
                   <Label>How many rental properties do you manage?</Label>
                   <Select
@@ -269,11 +269,11 @@ const RiskCheckPage = () => {
                 <p className="font-medium">Estimated Compliance Score: {preview.blurred_score_hint}</p>
                 <p className="text-sm text-gray-600 mt-1">Potential monitoring gaps identified</p>
               </div>
-              <div className="rounded bg-amber-50/80 p-3 mb-6 blur-sm select-none text-sm text-gray-700">
+              <div className="rounded-lg border border-slate-200 bg-slate-100/90 p-4 mb-6 blur-sm select-none text-sm text-slate-600">
                 <p>⚠️ Certificate expiry risk detected</p>
-                <p className="mt-1">⚠️ Renewal tracking gaps</p>
+                <p className="mt-2">⚠️ Renewal tracking gaps</p>
               </div>
-              <p className="text-gray-600 mb-6">Unlock your full breakdown and suggested next steps.</p>
+              <p className="text-slate-600 mb-6 leading-relaxed">Unlock your full breakdown and suggested next steps.</p>
               <Button className="w-full" onClick={() => setStep(STEP.EMAIL_GATE)}>
                 Get Full Risk Report
               </Button>
@@ -325,10 +325,10 @@ const RiskCheckPage = () => {
                     <p className="text-lg text-gray-700 mt-2">Risk Level: {riskBandLabel(report.risk_band)}</p>
                     <p className="text-sm text-gray-500 mt-1">Based on structured weighting of safety and monitoring indicators.</p>
                   </div>
-                  <div className="mt-6 p-4 bg-amber-50 rounded-lg">
+                  <div className="mt-6 p-4 sm:p-5 rounded-xl border border-slate-200 bg-slate-50/80">
                     <h3 className="font-semibold text-midnight-blue mb-2">Estimated exposure band</h3>
-                    <p className="text-gray-700">{report.exposure_range_label}</p>
-                    <p className="text-xs text-gray-500 mt-2">Typical financial exposure range can vary; informational only.</p>
+                    <p className="text-slate-700 leading-relaxed">{report.exposure_range_label}</p>
+                    <p className="text-xs text-slate-500 mt-3 leading-relaxed">Typical financial exposure range can vary; informational only.</p>
                   </div>
                   {report.flags && report.flags.length > 0 && (
                     <div className="mt-6">
@@ -359,22 +359,22 @@ const RiskCheckPage = () => {
               <Card>
                 <CardContent className="pt-6">
                   <h3 className="text-lg font-semibold text-midnight-blue mb-4">How monitoring fixes this</h3>
-                  <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 p-4 space-y-3 opacity-90">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <span className="font-medium">Expiry tracker</span>
-                      <span className="text-xs bg-amber-100 px-2 py-0.5 rounded">Available after subscription</span>
+                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-4 sm:p-5 space-y-4 opacity-95">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                      <span className="font-medium text-midnight-blue">Expiry tracker</span>
+                      <span className="text-xs bg-slate-200/90 text-slate-700 px-2 py-0.5 rounded-md font-medium">Available after subscription</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <span className="font-medium">Alerts</span>
-                      <span className="text-xs bg-amber-100 px-2 py-0.5 rounded">Available after subscription</span>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                      <span className="font-medium text-midnight-blue">Alerts</span>
+                      <span className="text-xs bg-slate-200/90 text-slate-700 px-2 py-0.5 rounded-md font-medium">Available after subscription</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <span className="font-medium">Vault</span>
-                      <span className="text-xs bg-amber-100 px-2 py-0.5 rounded">Available after subscription</span>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                      <span className="font-medium text-midnight-blue">Vault</span>
+                      <span className="text-xs bg-slate-200/90 text-slate-700 px-2 py-0.5 rounded-md font-medium">Available after subscription</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <span className="font-medium">Audit trail</span>
-                      <span className="text-xs bg-amber-100 px-2 py-0.5 rounded">Available after subscription</span>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                      <span className="font-medium text-midnight-blue">Audit trail</span>
+                      <span className="text-xs bg-slate-200/90 text-slate-700 px-2 py-0.5 rounded-md font-medium">Available after subscription</span>
                     </div>
                   </div>
                   <p className="text-gray-500 text-sm mt-4">Your portal will reflect the evidence you upload.</p>

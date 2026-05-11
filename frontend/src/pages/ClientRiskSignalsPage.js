@@ -418,13 +418,13 @@ function ClientRiskSignalsPageInner() {
           <TrendingUp className="w-7 h-7 shrink-0" />
           Risk signals
         </h1>
-        <Card className="border-amber-200 bg-amber-50">
+        <Card className="border border-slate-200 bg-slate-50/90 border-l-4 border-l-brand-info">
           <CardContent className="p-6 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-brand-info shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium text-amber-900">Predictive maintenance not enabled</p>
-              <p className="text-sm text-amber-800 mt-1">{error}</p>
-              <p className="text-sm text-amber-700 mt-2">
+              <p className="font-medium text-midnight-blue">Predictive maintenance not enabled</p>
+              <p className="text-sm text-slate-700 mt-2 leading-relaxed">{error}</p>
+              <p className="text-sm text-slate-600 mt-3 leading-relaxed">
                 Contact your account administrator or support to enable predictive maintenance for your account.
               </p>
             </div>
@@ -453,7 +453,7 @@ function ClientRiskSignalsPageInner() {
         <TrendingUp className="w-7 h-7 shrink-0" />
         Risk signals
       </h1>
-      <p className="text-gray-600 mb-6 text-sm sm:text-base break-words">
+      <p className="text-slate-600 mb-6 text-sm sm:text-base leading-relaxed break-words">
         Predictive risk signals from your property data — each item suggests a next operational step when you are ready. Acknowledging,
         resolving, or dismissing a signal is <span className="font-medium text-gray-800">risk-layer housekeeping only</span> and does
         not by itself restore compliance; follow obligations, evidence, and verification where they apply.
@@ -624,19 +624,19 @@ function ClientRiskSignalsPageInner() {
 
       {/* High Priority panel */}
       {highPriority.length > 0 && (
-        <Card className="mb-6 border-amber-200 bg-amber-50/50">
+        <Card className="mb-6 border border-slate-200 bg-slate-50/90 border-l-4 border-l-brand-danger">
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600" />
+            <CardTitle className="text-base flex items-center gap-2 text-midnight-blue">
+              <AlertCircle className="w-4 h-4 text-brand-danger shrink-0" />
               Urgent risk signals
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {highPriority.slice(0, 15).map((s) => (
                 <li
                   key={s.signal_id}
-                  className="flex flex-col gap-3 p-3 rounded-lg bg-white border border-amber-100 sm:flex-row sm:items-start sm:justify-between"
+                  className="flex flex-col gap-3 p-4 rounded-lg bg-white border border-slate-200 sm:flex-row sm:items-start sm:justify-between"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-gray-900 break-words">{humanRiskType(s)}</p>
@@ -648,7 +648,7 @@ function ClientRiskSignalsPageInner() {
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
                     <Button
-                      className="w-full sm:w-auto min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90 text-white"
+                      className="w-full sm:w-auto min-h-11 justify-center"
                       onClick={() => runRiskSignalPrimaryAction(s)}
                     >
                       {

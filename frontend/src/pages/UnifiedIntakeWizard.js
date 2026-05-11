@@ -57,18 +57,18 @@ function StepIndicator({ currentStep }) {
             <div className="flex flex-col items-center">
               <div className={`
                 w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors
-                ${isComplete ? 'bg-teal-600 border-teal-600 text-white' :
-                  isCurrent ? 'border-teal-600 text-teal-600 bg-teal-50' :
-                  'border-gray-300 text-gray-400'}
+                ${isComplete ? 'bg-electric-teal border-electric-teal text-white' :
+                  isCurrent ? 'border-electric-teal text-electric-teal bg-electric-teal/10' :
+                  'border-slate-300 text-slate-400'}
               `}>
                 {isComplete ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
               </div>
-              <span className={`mt-1 text-xs font-medium ${isCurrent ? 'text-teal-600' : 'text-gray-500'}`}>
+              <span className={`mt-1 text-xs font-medium ${isCurrent ? 'text-electric-teal' : 'text-slate-500'}`}>
                 {step.name}
               </span>
             </div>
             {idx < STEPS.length - 1 && (
-              <div className={`w-16 h-0.5 mx-2 ${currentStep > step.id ? 'bg-teal-600' : 'bg-gray-200'}`} />
+              <div className={`w-16 h-0.5 mx-2 ${currentStep > step.id ? 'bg-electric-teal' : 'bg-slate-200'}`} />
             )}
           </React.Fragment>
         );
@@ -125,7 +125,7 @@ function ServiceSelectionStep({
         return (
           <div key={cat.code} className="mb-6">
             <div className="flex items-center gap-2 mb-3">
-              <CatIcon className="h-5 w-5 text-teal-600" />
+              <CatIcon className="h-5 w-5 text-electric-teal" />
               <h3 className="font-medium text-gray-800">{cat.name}</h3>
             </div>
             
@@ -137,7 +137,7 @@ function ServiceSelectionStep({
                   <Card
                     key={service.service_code}
                     className={`cursor-pointer transition-all hover:shadow-md ${
-                      isSelected ? 'ring-2 ring-teal-600 bg-teal-50' : 'hover:border-teal-300'
+                      isSelected ? 'ring-2 ring-electric-teal bg-electric-teal/10' : 'hover:border-electric-teal/50'
                     }`}
                     onClick={() => onSelect(service)}
                     data-testid={`service-${service.service_code}`}
@@ -149,8 +149,8 @@ function ServiceSelectionStep({
                           <p className="text-sm text-gray-500 mt-1">{service.description}</p>
                         </div>
                         <div className="text-right ml-3">
-                          <span className="text-lg font-bold text-teal-600">{service.price_display}</span>
-                          {isSelected && <Check className="h-5 w-5 text-teal-600 mt-1 ml-auto" />}
+                          <span className="text-lg font-bold text-electric-teal">{service.price_display}</span>
+                          {isSelected && <Check className="h-5 w-5 text-electric-teal mt-1 ml-auto" />}
                         </div>
                       </div>
                     </CardContent>
@@ -241,8 +241,8 @@ function ServiceSelectionStep({
           <div
             className={`p-3 rounded-lg border cursor-pointer transition-all ${
               selectedAddons.includes('FAST_TRACK')
-                ? 'bg-teal-50 border-teal-300'
-                : 'bg-white hover:border-teal-300'
+                ? 'bg-electric-teal/10 border-electric-teal/40'
+                : 'bg-white hover:border-electric-teal/50'
             }`}
             onClick={() => onToggleAddon('FAST_TRACK')}
           >
@@ -275,7 +275,7 @@ function ServiceSelectionStep({
                 <div
                   key={addon.addon_code}
                   className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                    isSelected ? 'bg-teal-50 border-teal-300' : 'bg-white hover:border-teal-300'
+                    isSelected ? 'bg-electric-teal/10 border-electric-teal/40' : 'bg-white hover:border-electric-teal/50'
                   }`}
                   onClick={() => onToggleAddon(addon.addon_code)}
                 >
@@ -764,7 +764,7 @@ function ReviewStep({ draft, clientData, intakeData, pricing, onConsentChange, c
               <p className="font-medium">{draft?.service_name || draft?.service_code}</p>
               <p className="text-sm text-gray-500">{draft?.category}</p>
             </div>
-            <span className="text-lg font-bold text-teal-600">
+            <span className="text-lg font-bold text-electric-teal">
               £{((pricing?.base_price_pence || 0) / 100).toFixed(2)}
             </span>
           </div>
@@ -784,7 +784,7 @@ function ReviewStep({ draft, clientData, intakeData, pricing, onConsentChange, c
           <Separator className="my-3" />
           <div className="flex justify-between font-bold text-lg">
             <span>Total</span>
-            <span className="text-teal-600">
+            <span className="text-electric-teal">
               £{((pricing?.total_price_pence || 0) / 100).toFixed(2)}
             </span>
           </div>
@@ -823,7 +823,7 @@ function ReviewStep({ draft, clientData, intakeData, pricing, onConsentChange, c
               onCheckedChange={(v) => onConsentChange('consent_terms_privacy', v)}
             />
             <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
-              I agree to the <a href="/legal/terms" className="text-teal-600 underline" target="_blank">Terms of Service</a> and <a href="/legal/privacy" className="text-teal-600 underline" target="_blank">Privacy Policy</a> *
+              I agree to the <a href="/legal/terms" className="text-electric-teal underline" target="_blank">Terms of Service</a> and <a href="/legal/privacy" className="text-electric-teal underline" target="_blank">Privacy Policy</a> *
             </Label>
           </div>
           
@@ -1429,7 +1429,7 @@ export default function UnifiedIntakeWizard() {
       case 5:
         return (
           <div className="text-center py-12">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto text-teal-600" />
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-electric-teal" />
             <p className="mt-4 text-lg text-gray-600">Redirecting to payment...</p>
           </div>
         );
@@ -1439,7 +1439,7 @@ export default function UnifiedIntakeWizard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8" data-testid="unified-intake-wizard">
+    <div className="min-h-screen bg-slate-50 py-8 sm:py-10" data-testid="unified-intake-wizard">
       <div className="max-w-3xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8">

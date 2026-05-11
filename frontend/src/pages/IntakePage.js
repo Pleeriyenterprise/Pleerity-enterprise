@@ -943,7 +943,7 @@ const IntakePage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100" data-testid="intake-wizard">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100/90" data-testid="intake-wizard">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-4 py-4">
@@ -959,7 +959,7 @@ const IntakePage = () => {
               />
               <div className="min-w-0">
                 <h1 className="text-lg font-bold text-midnight-blue truncate">{branding.productName}</h1>
-                <p className="text-xs text-gray-500">Premium UK Landlord Compliance</p>
+                <p className="text-xs text-slate-500">Premium UK Landlord Compliance</p>
               </div>
             </div>
             <button 
@@ -1013,7 +1013,7 @@ const IntakePage = () => {
       </div>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-4 py-8 sm:py-10">
         {error && (
           <Alert variant="destructive" className="mb-6" data-testid="intake-error-alert">
             <AlertCircle className="h-4 w-4" />
@@ -1207,7 +1207,7 @@ const Step1YourDetails = ({
             </div>
           )}
           {emailAvailability === 'error' && (
-            <div className="text-xs text-amber-900 space-y-2" data-testid="email-availability-error">
+            <div className="text-xs text-slate-800 space-y-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2" data-testid="email-availability-error">
               <p>Could not verify email right now.</p>
               <button
                 type="button"
@@ -1304,7 +1304,7 @@ const Step1YourDetails = ({
         <div className="pt-4">
           <Button
             onClick={onNext}
-            className="w-full bg-electric-teal hover:bg-teal-600"
+            className="w-full"
             data-testid="step1-next"
             disabled={emailAvailability === 'checking'}
           >
@@ -1355,7 +1355,7 @@ const Step2SelectPlan = ({ formData, setFormData, plans, onNext, onBack }) => {
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-semibold text-midnight-blue">{plan.display_name || plan.name}</h3>
                     {plan.is_popular && (
-                      <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">
+                      <span className="text-xs px-2 py-0.5 bg-electric-teal/10 text-midnight-blue rounded-full font-medium border border-electric-teal/20">
                         {plan.badge || 'Popular'}
                       </span>
                     )}
@@ -1400,7 +1400,7 @@ const Step2SelectPlan = ({ formData, setFormData, plans, onNext, onBack }) => {
           </Button>
           <Button 
             onClick={onNext} 
-            className="flex-1 bg-electric-teal hover:bg-teal-600"
+            className="flex-1"
             data-testid="step2-next"
           >
             Next: Add Properties
@@ -1457,7 +1457,7 @@ const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, r
             </div>
             <span className={`text-sm font-medium px-3 py-1 rounded-full ${
               formData.properties.length >= maxProperties 
-                ? 'bg-amber-100 text-amber-800' 
+                ? 'bg-slate-200 text-slate-800' 
                 : 'bg-gray-100 text-gray-700'
             }`}>
               {formData.properties.length}/{maxProperties}
@@ -1468,7 +1468,7 @@ const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, r
           )}
           {existingPortfolioCount > 0 && (
             <p
-              className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3"
+              className="text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 mt-3 leading-relaxed"
               data-testid="intake-existing-properties-hint"
             >
               Your account already has <strong>{existingPortfolioCount}</strong> propert
@@ -1519,18 +1519,18 @@ const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, r
           Add Another Property ({currentCount + 1}/{maxProperties})
         </button>
       ) : (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3" data-testid="property-limit-warning">
-          <Lock className="w-5 h-5 text-amber-600 mt-0.5" />
+        <div className="p-4 sm:p-5 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-3 border-l-4 border-l-brand-warning" data-testid="property-limit-warning">
+          <Lock className="w-5 h-5 text-brand-warning shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium text-amber-800">Property limit reached</p>
-            <p className="text-sm text-amber-700">
+            <p className="font-medium text-midnight-blue">Property limit reached</p>
+            <p className="text-sm text-slate-600 leading-relaxed mt-1">
               You've added the maximum {maxProperties} {maxProperties === 1 ? 'property' : 'properties'} for the {PLAN_NAMES[formData.billing_plan] || 'current'} plan.
               {upgradePlan && (
                 <>
                   {' '}
                   <button 
                     onClick={handleUpgrade}
-                    className="underline font-medium hover:text-amber-900"
+                    className="underline font-medium text-electric-teal hover:text-electric-teal/90"
                     data-testid="upgrade-plan-link"
                   >
                     Upgrade to {upgradePlan.name} (up to {upgradePlan.limit} properties)
@@ -1549,7 +1549,7 @@ const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, r
         </Button>
         <Button 
           onClick={onNext} 
-          className="flex-1 bg-electric-teal hover:bg-teal-600"
+          className="flex-1"
           data-testid="step3-next"
         >
           Next: Preferences
@@ -2176,17 +2176,19 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
           </div>
         )}
 
-        {/* Current Compliance Status */}
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-4">
-          <div className="flex items-start gap-2">
-            <Info className="w-5 h-5 text-amber-600 mt-0.5" />
-            <div>
-              <p className="font-medium text-amber-800">Current Compliance Status</p>
-              <p className="text-sm text-amber-700">Do you currently have these certificates?</p>
+        {/* Current Compliance Status — operational snapshot (same fields / validation as before) */}
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-4 py-3 sm:px-5 sm:py-4 bg-slate-50/90 border-b border-slate-200 flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-electric-teal/10 text-electric-teal">
+              <Shield className="w-5 h-5" aria-hidden />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <p className="text-sm font-semibold text-midnight-blue tracking-tight">Current Compliance Status</p>
+              <p className="text-sm text-slate-600 leading-relaxed">Do you currently have these certificates?</p>
             </div>
           </div>
-          
-          <div className="grid grid-cols-2 gap-4">
+          <div className="p-4 sm:p-5 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
             {[
               { key: 'cert_gas_safety', label: 'Gas Safety Certificate' },
               { key: 'cert_eicr', label: 'EICR (Electrical)' },
@@ -2194,11 +2196,11 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
               ...(property.licence_required === 'YES' ? [{ key: 'cert_licence', label: 'Licence' }] : [])
             ].map(cert => (
               <div key={cert.key} className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">{cert.label}</label>
+                <label className="text-sm font-medium text-slate-700">{cert.label}</label>
                 <select
                   value={property[cert.key]}
                   onChange={(e) => updateProperty(index, cert.key, e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-md bg-white text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-electric-teal/30 focus:border-electric-teal"
                 >
                   <option value="">Select...</option>
                   {CERT_OPTIONS.map(opt => (
@@ -2207,6 +2209,7 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
                 </select>
               </div>
             ))}
+          </div>
           </div>
         </div>
       </CardContent>
@@ -2327,38 +2330,38 @@ const Step4Preferences = ({ formData, setFormData, onNext, onBack, intakeSession
           <h3 className="font-semibold text-midnight-blue">Required Consents</h3>
           
           {/* GDPR Consent */}
-          <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+          <label className="flex items-start gap-3 p-4 sm:p-5 rounded-xl border border-slate-200 bg-slate-50/60 cursor-pointer hover:bg-slate-50 transition-colors">
             <input
               type="checkbox"
               checked={formData.consent_data_processing}
               onChange={(e) => setFormData({ ...formData, consent_data_processing: e.target.checked })}
-              className="mt-1 rounded border-gray-300 text-electric-teal focus:ring-electric-teal"
+              className="mt-1 rounded border-slate-300 text-electric-teal focus:ring-electric-teal"
               data-testid="gdpr-consent-checkbox"
             />
             <div>
-              <span className="text-sm font-medium text-gray-900">
+              <span className="text-sm font-medium text-midnight-blue">
                 Data Processing Consent (GDPR) *
               </span>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
                 I consent to Pleerity Enterprise Ltd processing my personal data for compliance management purposes in accordance with their Privacy Policy.
               </p>
             </div>
           </label>
 
           {/* Service Boundary Acknowledgment */}
-          <label className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+          <label className="flex items-start gap-3 p-4 sm:p-5 rounded-xl border border-slate-200 bg-slate-50/60 cursor-pointer hover:bg-slate-50 transition-colors">
             <input
               type="checkbox"
               checked={formData.consent_service_boundary}
               onChange={(e) => setFormData({ ...formData, consent_service_boundary: e.target.checked })}
-              className="mt-1 rounded border-gray-300 text-electric-teal focus:ring-electric-teal"
+              className="mt-1 rounded border-slate-300 text-electric-teal focus:ring-electric-teal"
               data-testid="service-consent-checkbox"
             />
             <div>
-              <span className="text-sm font-medium text-gray-900">
+              <span className="text-sm font-medium text-midnight-blue">
                 Service Acknowledgment *
               </span>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
                 I understand that Compliance Vault Pro does not provide legal advice or guarantee regulatory compliance. The service is a compliance tracking tool and the responsibility for ensuring regulatory compliance remains with the property owner/manager.
               </p>
             </div>
@@ -2372,7 +2375,7 @@ const Step4Preferences = ({ formData, setFormData, onNext, onBack, intakeSession
           </Button>
           <Button 
             onClick={onNext} 
-            className="flex-1 bg-electric-teal hover:bg-teal-600"
+            className="flex-1"
             data-testid="step4-next"
           >
             Review & Pay
@@ -2609,7 +2612,7 @@ const Step5Review = ({
             <p className="text-sm text-gray-500">Generating summary...</p>
           )}
           {!requirementsPreviewLoading && requirementsPreviewError && (
-            <p className="text-sm text-amber-700">{requirementsPreviewError}</p>
+            <p className="text-sm text-slate-700 leading-relaxed">{requirementsPreviewError}</p>
           )}
           {!requirementsPreviewLoading && !requirementsPreviewError && requirementsPreview.length === 0 && (
             <p className="text-sm text-gray-500">No preview available yet.</p>
@@ -2635,7 +2638,7 @@ const Step5Review = ({
                 Additional requirements may appear after onboarding review or document verification.
               </p>
               {row.assumptions?.has_gas_supply_unknown_assumed_true_for_planning && (
-                <p className="text-xs text-amber-700 mt-1">
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed border-l-2 border-slate-300 pl-3">
                   Gas supply is marked "Not sure"; planner currently assumes gas-supply obligations until confirmed.
                 </p>
               )}
@@ -2696,15 +2699,15 @@ const Step5Review = ({
           <h3 className="font-semibold text-midnight-blue">Service agreement</h3>
           <p className="text-xs text-gray-500 mt-1">You must accept this agreement before payment. Text is loaded from our servers.</p>
         </div>
-        <CardContent className="pt-4 space-y-4">
-          {agreementLoading && <p className="text-sm text-gray-600">Loading agreement…</p>}
+        <CardContent className="pt-4 sm:pt-6 space-y-5">
+          {agreementLoading && <p className="text-sm text-slate-600">Loading agreement…</p>}
           {agreementError && !agreementLoading && (
-            <p className="text-sm text-amber-800" data-testid="intake-agreement-load-error">
+            <p className="text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 leading-relaxed" data-testid="intake-agreement-load-error">
               {agreementError}
             </p>
           )}
           {!agreementLoading && !agreementCurrent && !agreementError && (
-            <p className="text-sm text-amber-800" data-testid="intake-agreement-empty">
+            <p className="text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 leading-relaxed" data-testid="intake-agreement-empty">
               No agreement content was returned. Refresh the page or try again later. If this persists, contact support.
             </p>
           )}
@@ -2715,7 +2718,7 @@ const Step5Review = ({
                   The agreement content is not valid for payment yet. Refresh the page and try again.
                 </p>
               )}
-              <div className="border rounded-md p-4 bg-white text-sm text-gray-800 space-y-3">
+              <div className="border border-slate-200 rounded-lg p-4 sm:p-5 bg-white text-sm text-slate-800 space-y-4 leading-relaxed">
                 <div>
                   <p className="font-semibold text-midnight-blue">{renderedAgreement?.title || agreementCurrent.title}</p>
                   {(renderedAgreement?.subtitle || agreementCurrent.subtitle) ? (
@@ -2742,18 +2745,18 @@ const Step5Review = ({
                   View full agreement
                 </Button>
               </div>
-              <label className="flex items-start gap-3 cursor-pointer">
+              <label className="flex items-start gap-3 sm:gap-4 cursor-pointer rounded-lg border border-slate-100 bg-slate-50/40 px-3 py-3 sm:p-4">
                 <input
                   type="checkbox"
-                  className="mt-1 h-4 w-4 rounded border-gray-300 text-electric-teal focus:ring-electric-teal"
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-electric-teal focus:ring-electric-teal"
                   checked={serviceAgreementAccepted}
                   disabled={!agreementRenderValidation?.valid}
                   onChange={(e) => onServiceAgreementAcceptedChange(e.target.checked)}
                   data-testid="intake-service-agreement-checkbox"
                 />
-                <span className="text-sm text-gray-700">{agreementCurrent.acceptance_text_required}</span>
+                <span className="text-sm text-slate-800 leading-relaxed">{agreementCurrent.acceptance_text_required}</span>
               </label>
-              <p className="text-xs text-gray-500 pl-7 -mt-2 max-w-prose">
+              <p className="text-xs text-slate-500 pl-3 sm:pl-4 max-w-prose leading-relaxed">
                 Ticking this box alone does not store your acceptance — that happens only after you continue to payment
                 and the server confirms.
               </p>
@@ -2803,10 +2806,10 @@ const Step5Review = ({
 
       {/* Payment Summary */}
       {selectedPlan && (
-        <Card className="border-2 border-electric-teal">
-          <CardContent className="pt-6">
+        <Card className="border border-slate-200 shadow-sm overflow-hidden border-t-4 border-t-electric-teal">
+          <CardContent className="pt-6 sm:pt-8 pb-6">
             <h3 className="font-semibold text-midnight-blue mb-4">Payment Summary</h3>
-            <div className="space-y-2 text-sm">
+            <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Monthly subscription</span>
                 <span className="font-medium">£{selectedPlan.monthly_price.toFixed(2)}</span>
@@ -2827,15 +2830,15 @@ const Step5Review = ({
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-3">
-        <Button variant="outline" onClick={onBack} className="flex-1" data-testid="step5-back">
+      <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
+        <Button variant="outline" onClick={onBack} className="flex-1 min-h-11" data-testid="step5-back">
           <ChevronLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
         <Button 
           onClick={onSubmit} 
           disabled={loading}
-          className="flex-1 bg-electric-teal hover:bg-teal-600"
+          className="flex-1 min-h-11"
           data-testid="submit-payment"
         >
           {loading ? (
@@ -3035,7 +3038,7 @@ const IntakeDocumentUpload = ({ intakeSessionId, onFilesChange }) => {
                     <p className="text-xs text-gray-500">
                       {formatFileSize(file.file_size)}
                       {file.status === 'CLEAN' && <span className="text-green-600 ml-2">• Ready</span>}
-                      {file.status === 'QUARANTINED' && <span className="text-amber-600 ml-2">• Not accepted</span>}
+                      {file.status === 'QUARANTINED' && <span className="text-brand-warning ml-2 font-medium">• Not accepted</span>}
                       {file.status === 'MIGRATED' && <span className="text-gray-500 ml-2">• Migrated</span>}
                     </p>
                   </div>
