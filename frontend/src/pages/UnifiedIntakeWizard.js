@@ -1480,7 +1480,6 @@ export default function UnifiedIntakeWizard() {
             <Button
               onClick={nextStep}
               disabled={loading || (currentStep === 1 && !selectedService)}
-              className="bg-teal-600 hover:bg-teal-700"
             >
               {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Continue
@@ -1490,7 +1489,6 @@ export default function UnifiedIntakeWizard() {
             <Button
               onClick={proceedToPayment}
               disabled={loading}
-              className="bg-teal-600 hover:bg-teal-700"
             >
               {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
               Continue to Checkout

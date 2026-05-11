@@ -192,7 +192,7 @@ export default function HelpPage() {
                   It may not be published on your environment yet. Open the full Help Centre and use search for &quot;Today&quot; or
                   &quot;inbox&quot;.
                 </p>
-                <Button type="button" className="bg-electric-teal hover:bg-teal-600" onClick={() => navigate('/help')}>
+                <Button type="button" onClick={() => navigate('/help')}>
                   Browse all articles
                 </Button>
               </CardContent>
@@ -220,7 +220,7 @@ export default function HelpPage() {
                   className="flex-1 min-h-11"
                   disabled={askLoading}
                 />
-                <Button type="submit" disabled={!askQuery.trim() || askLoading} className="bg-electric-teal hover:bg-teal-600 min-h-11 w-full sm:w-auto shrink-0">
+                <Button type="submit" disabled={!askQuery.trim() || askLoading} className="min-h-11 w-full sm:w-auto shrink-0">
                   {askLoading ? 'Searching...' : 'Search'}
                 </Button>
               </form>

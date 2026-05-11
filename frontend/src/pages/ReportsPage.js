@@ -593,7 +593,7 @@ const ReportsPage = () => {
               <button
                 type="button"
                 onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))}
-                className="text-gray-300 hover:text-white p-2 min-h-11 min-w-11 flex items-center justify-center shrink-0 rounded-lg hover:bg-white/10"
+                className="text-slate-200 hover:text-white p-2 min-h-11 min-w-11 flex items-center justify-center shrink-0 rounded-lg hover:bg-white/10"
                 data-testid="back-btn"
                 aria-label="Back"
               >
@@ -601,7 +601,7 @@ const ReportsPage = () => {
               </button>
               <div className="min-w-0">
                 <h1 className="text-xl font-bold">Reports</h1>
-                <p className="text-sm text-gray-300">Generate and download compliance reports</p>
+                <p className="text-sm text-slate-200">Generate and download compliance reports</p>
               </div>
             </div>
             {hasScheduledReportsAccess ? (

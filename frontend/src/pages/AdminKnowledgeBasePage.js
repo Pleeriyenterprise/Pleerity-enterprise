@@ -375,7 +375,6 @@ export default function AdminKnowledgeBasePage() {
               setArticleForm({ title: '', category_id: '', excerpt: '', content: '', tags: '', status: 'draft', audience: 'USER', version: '1.0', article_type: '', release_version: '', release_date: '', changes: '', affected_modules: '' });
               setArticleDialogOpen(true);
             }}
-            className="bg-teal-600 hover:bg-teal-700"
             data-testid="create-article-btn"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -581,7 +580,6 @@ export default function AdminKnowledgeBasePage() {
                 setCategoryForm({ name: '', icon: '📁', description: '', order: 0, audience: 'USER' });
                 setCategoryDialogOpen(true);
               }}
-              className="bg-teal-600 hover:bg-teal-700"
               data-testid="create-category-btn"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -1112,7 +1110,6 @@ export default function AdminKnowledgeBasePage() {
             <Button
               onClick={handleArticleSubmit}
               disabled={saving}
-              className="bg-teal-600 hover:bg-teal-700"
               data-testid="save-article-btn"
             >
               {saving ? (
@@ -1183,7 +1180,6 @@ export default function AdminKnowledgeBasePage() {
             <Button
               onClick={handleCategorySubmit}
               disabled={saving}
-              className="bg-teal-600 hover:bg-teal-700"
             >
               {saving ? 'Saving...' : editingCategory ? 'Update' : 'Create'}
             </Button>

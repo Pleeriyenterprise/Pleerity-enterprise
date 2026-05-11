@@ -9,16 +9,18 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        /* Brand v1.0: CTAs = Electric Teal (not midnight fill). */
         default:
-          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+          "bg-electric-teal text-white shadow hover:bg-electric-teal/90 focus-visible:ring-electric-teal",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:
-          "border border-input shadow-sm hover:bg-accent hover:text-accent-foreground",
+          "border border-input bg-card shadow-sm hover:bg-muted hover:text-foreground",
+        /** Non-primary actions — neutral; use `default` for brand CTAs. */
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-muted text-muted-foreground shadow-sm hover:bg-muted/80",
+        ghost: "hover:bg-muted hover:text-foreground",
+        link: "text-electric-teal underline-offset-4 hover:underline hover:text-electric-teal/90",
       },
       size: {
         default: "h-9 px-4 py-2",
@@ -38,7 +40,7 @@ const Button = React.forwardRef(({ className, variant, size, asChild = false, ..
   const Comp = asChild ? Slot : "button"
   return (
     <Comp
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, size }), className)}
       ref={ref}
       {...props} />
   );
