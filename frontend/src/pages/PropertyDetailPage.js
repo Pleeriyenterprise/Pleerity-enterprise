@@ -84,6 +84,7 @@ import {
   complianceWhatChangedLine,
   complianceObligationStatusLabel,
   compliancePriorityRecommendedNext,
+  isRedundantUploadStyleSecondaryAction,
 } from '../utils/complianceObligationPresent';
 import {
   executeRequirementPrimaryCta,
@@ -91,6 +92,7 @@ import {
 } from '../utils/requirementCtaParity';
 import {
   clientFacingVerificationLabel,
+  clientVerificationLabelRedundantWithPrimary,
   effectiveEvidenceReviewState,
   isPositiveEvidenceState,
 } from '../utils/evidenceReviewUi';
@@ -194,6 +196,7 @@ export function PropertyDocumentsMissingRequirementList({
             : '';
         const sem = projectResolvedRequirementSemantics(r, { pagePropertyId: propertyId });
         const ta = sem.cta;
+        const showDocumentsSecondary = ta.secondary_action?.route && !isRedundantUploadStyleSecondaryAction(ta);
         const docsHref = resolveDocumentsPath(propertyId, {
           ...uploadQuery,
           ...(ta.primary_intent === 'upload_evidence' ? { focus: 'upload' } : {}),
@@ -231,7 +234,7 @@ export function PropertyDocumentsMissingRequirementList({
               >
                 {ta.primary_action_label}
               </Button>
-              {ta.secondary_action?.route ? (
+              {showDocumentsSecondary ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -1926,26 +1929,24 @@ export default function PropertyDetailPage() {
                       const taRow = projectResolvedRequirementSemantics(r, { pagePropertyId: propertyId }).cta;
                       const explainOpen = urgentExplainOpenId === rid;
                       const explainPayload = canonicalComplianceInlineNarrative(r);
-                      const docsHref = resolveDocumentsPath(propertyId, {
-                        requirement_id: rowReqId(r),
-                        ...(taRow.primary_intent === 'upload_evidence' ? { focus: 'upload' } : {}),
-                      });
+                      const showNonUploadSecondary =
+                        taRow.secondary_action?.route && !isRedundantUploadStyleSecondaryAction(taRow);
                       return (
                         <div key={rid} className="rounded border border-amber-200 bg-white overflow-hidden">
-                          <div className="flex flex-wrap items-center justify-between gap-2 p-3">
-                            <div className="min-w-0">
-                              <p className="font-medium text-midnight-blue">{rowCompactTitle(r)}</p>
-                              <p className="text-sm text-gray-600 mt-0.5">
-                                <span className="font-medium text-midnight-blue">{stdStatus}</span>
-                                <span className="text-gray-400"> · </span>
-                                Risk: {complianceImpactLabel(r).label}
-                              </p>
-                              {statusUi.subline ? <p className="text-xs text-gray-500 mt-1">{statusUi.subline}</p> : null}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <div>
+                                <p className="font-medium text-midnight-blue">{rowCompactTitle(r)}</p>
+                                <p className="text-sm text-gray-600 mt-0.5">
+                                  <span className="font-medium text-midnight-blue">{stdStatus}</span>
+                                  <span className="text-gray-400"> · </span>
+                                  Risk: {complianceImpactLabel(r).label}
+                                </p>
+                                {statusUi.subline ? <p className="text-xs text-gray-500 mt-1">{statusUi.subline}</p> : null}
+                              </div>
                               <button
                                 type="button"
-                                className="flex items-center gap-1 text-xs text-electric-teal hover:underline"
+                                className="inline-flex items-center gap-1 text-left text-xs text-gray-600 hover:text-midnight-blue"
                                 onClick={() => {
                                   if (explainOpen) {
                                     setUrgentExplainOpenId(null);
@@ -1954,31 +1955,32 @@ export default function PropertyDetailPage() {
                                   setUrgentExplainOpenId(rid);
                                 }}
                               >
-                                <Info className="w-3.5 h-3.5 shrink-0" /> Why this matters{' '}
-                                {explainOpen ? <ChevronUp className="w-3.5 h-3.5 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0" />}
+                                <Info className="w-3.5 h-3.5 shrink-0 text-gray-400" aria-hidden />
+                                <span className="underline decoration-gray-300 underline-offset-2 hover:decoration-midnight-blue/40">
+                                  Why this matters
+                                </span>
+                                {explainOpen ? (
+                                  <ChevronUp className="w-3.5 h-3.5 shrink-0 text-gray-400" aria-hidden />
+                                ) : (
+                                  <ChevronDown className="w-3.5 h-3.5 shrink-0 text-gray-400" aria-hidden />
+                                )}
                               </button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="min-h-9"
-                                onClick={() => {
-                                  const safe = typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(rid) : rid.replace(/"/g, '\\"');
-                                  const el = document.querySelector(`[data-compliance-req-id="${safe}"]`);
-                                  el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                                  setComplianceExpandedReqId(rowReqId(r) || r.requirement_code);
-                                }}
-                              >
-                                Show in table
-                              </Button>
+                            </div>
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[min(100%,14rem)] sm:max-w-full sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-end sm:shrink-0">
                               {rowReqId(r) ? (
-                                <Button type="button" size="sm" variant="outline" className="min-h-9" onClick={() => setRequirementIntelRow(r)}>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="min-h-11 w-full justify-center border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 sm:min-h-9 sm:w-auto"
+                                  onClick={() => setRequirementIntelRow(r)}
+                                >
                                   Requirement details
                                 </Button>
                               ) : null}
                               <Button
                                 size="sm"
-                                className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-9"
+                                className="min-h-11 w-full bg-electric-teal text-white hover:bg-electric-teal/90 sm:min-h-9 sm:w-auto"
                                 data-testid={taRow.primary_action_handler === 'guided_evidence' ? `compliance-urgent-guided-${rowReqId(r)}` : undefined}
                                 disabled={taRow.primary_action_handler === 'guided_evidence_error'}
                                 title={
@@ -1991,11 +1993,11 @@ export default function PropertyDetailPage() {
                               >
                                 {taRow.primary_action_label}
                               </Button>
-                              {taRow.secondary_action?.route ? (
+                              {showNonUploadSecondary ? (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="min-h-9"
+                                  className="min-h-11 w-full sm:min-h-9 sm:w-auto"
                                   onClick={() =>
                                     taRow.secondary_action.external
                                       ? window.open(taRow.secondary_action.route, '_blank', 'noopener,noreferrer')
@@ -2077,10 +2079,8 @@ export default function PropertyDetailPage() {
                         const complianceDomId = rowReqId(r) || `rc:${propertyId}:${normalizeRequirementCode(r.requirement_code || r.requirement_type || `t${idx}`)}`;
                         const isMissing = isRequirementMissingDocument(r);
                         const explainPayload = canonicalComplianceInlineNarrative(r);
-                        const docsHref = resolveDocumentsPath(propertyId, {
-                          requirement_id: rowReqId(r),
-                          ...(taRow.primary_intent === 'upload_evidence' ? { focus: 'upload' } : {}),
-                        });
+                        const showComplianceMatrixSecondary =
+                          taRow.secondary_action?.route && !isRedundantUploadStyleSecondaryAction(taRow);
                         return (
                           <React.Fragment key={rowReqId(r) || r.requirement_code || idx}>
                             <tr
@@ -2110,65 +2110,83 @@ export default function PropertyDetailPage() {
                                 <span className={`inline-flex px-2 py-1 rounded border text-xs ${impact.className}`}>{impact.label}</span>
                               </td>
                               <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex flex-wrap gap-1 items-center">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-electric-teal border-electric-teal min-h-9"
-                                    data-testid={`compliance-matrix-action-${rowReqId(r)}`}
-                                    disabled={taRow.primary_action_handler === 'guided_evidence_error'}
-                                    title={
-                                      taRow.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined
-                                    }
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (taRow.primary_action_handler === 'guided_evidence_error') return;
-                                      runCompliancePrimaryCta(r);
-                                    }}
-                                  >
-                                    {taRow.primary_intent === 'upload_evidence' && taRow.primary_action_handler === 'navigate' ? (
-                                      <Upload className="w-3.5 h-3.5 mr-1 shrink-0" />
-                                    ) : null}
-                                    {taRow.actionType === 'JOB' ? <RefreshCw className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
-                                    {taRow.actionType === 'OBLIGATION' ? <Eye className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
-                                    {taRow.primary_action_label}
-                                  </Button>
-                                  {taRow.secondary_action?.route ? (
+                                <div className="flex flex-col gap-1.5 items-start">
+                                  <div className="flex flex-wrap gap-1 items-center">
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      className="min-h-9"
+                                      className="text-electric-teal border-electric-teal min-h-9"
+                                      data-testid={`compliance-matrix-action-${rowReqId(r)}`}
+                                      disabled={taRow.primary_action_handler === 'guided_evidence_error'}
+                                      title={
+                                        taRow.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined
+                                      }
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (taRow.secondary_action.external) {
-                                          window.open(taRow.secondary_action.route, '_blank', 'noopener,noreferrer');
-                                        } else {
-                                          navigate(taRow.secondary_action.route);
-                                        }
+                                        if (taRow.primary_action_handler === 'guided_evidence_error') return;
+                                        runCompliancePrimaryCta(r);
                                       }}
                                     >
-                                      {taRow.secondary_action.label}
+                                      {taRow.primary_intent === 'upload_evidence' && taRow.primary_action_handler === 'navigate' ? (
+                                        <Upload className="w-3.5 h-3.5 mr-1 shrink-0" />
+                                      ) : null}
+                                      {taRow.actionType === 'JOB' ? <RefreshCw className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
+                                      {taRow.actionType === 'OBLIGATION' ? <Eye className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
+                                      {taRow.primary_action_label}
                                     </Button>
-                                  ) : null}
-                                  {isMissing && (r.requirement_code || r.requirement_type) && (
-                                    <Button size="sm" variant="ghost" className="text-gray-600 min-h-9" onClick={(e) => { e.stopPropagation(); setNotApplicableModal({ requirement_code: r.requirement_code || r.requirement_type, title: rowTitle(r) }); setNotApplicableReason('not_applicable'); }} data-testid="mark-not-applicable">
-                                      <MinusCircle className="w-3.5 h-3.5 mr-1" /> Not applicable
-                                    </Button>
-                                  )}
-                                  {rowReqId(r) ? (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="text-electric-teal min-h-9"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setRequirementIntelRow(r);
-                                      }}
-                                      data-testid={`property-compliance-requirement-intel-${rowReqId(r)}`}
-                                    >
-                                      Requirement details
-                                    </Button>
-                                  ) : null}
+                                    {showComplianceMatrixSecondary ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="min-h-9 border-gray-300 text-gray-800"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (taRow.secondary_action.external) {
+                                            window.open(taRow.secondary_action.route, '_blank', 'noopener,noreferrer');
+                                          } else {
+                                            navigate(taRow.secondary_action.route);
+                                          }
+                                        }}
+                                      >
+                                        {taRow.secondary_action.label}
+                                      </Button>
+                                    ) : null}
+                                  </div>
+                                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 items-center">
+                                    {isMissing && (r.requirement_code || r.requirement_type) && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-auto min-h-0 py-0.5 px-1 text-xs font-normal text-gray-500 hover:text-gray-700"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setNotApplicableModal({
+                                            requirement_code: r.requirement_code || r.requirement_type,
+                                            title: rowTitle(r),
+                                          });
+                                          setNotApplicableReason('not_applicable');
+                                        }}
+                                        data-testid="mark-not-applicable"
+                                      >
+                                        <MinusCircle className="w-3 h-3 mr-1 shrink-0" aria-hidden />
+                                        Not applicable
+                                      </Button>
+                                    )}
+                                    {rowReqId(r) ? (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-auto min-h-0 py-0.5 px-1 text-xs font-normal text-gray-600 hover:text-midnight-blue underline-offset-2 hover:underline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setRequirementIntelRow(r);
+                                        }}
+                                        data-testid={`property-compliance-requirement-intel-${rowReqId(r)}`}
+                                      >
+                                        Requirement details
+                                      </Button>
+                                    ) : null}
+                                  </div>
                                 </div>
                               </td>
                             </tr>
@@ -2251,10 +2269,8 @@ export default function PropertyDetailPage() {
                   const stdStatus = complianceObligationStatusLabel(r);
                   const taRow = projectResolvedRequirementSemantics(r, { pagePropertyId: propertyId }).cta;
                   const complianceDomId = rowReqId(r) || `rc:${propertyId}:${normalizeRequirementCode(r.requirement_code || r.requirement_type || `m${idx}`)}`;
-                  const docsHref = resolveDocumentsPath(propertyId, {
-                    requirement_id: rowReqId(r),
-                    ...(taRow.primary_intent === 'upload_evidence' ? { focus: 'upload' } : {}),
-                  });
+                  const showComplianceMobileSecondary =
+                    taRow.secondary_action?.route && !isRedundantUploadStyleSecondaryAction(taRow);
                   return (
                     <Card key={rowReqId(r) || idx} className="border border-gray-200 p-3" data-compliance-req-id={complianceDomId}>
                       <div className="font-medium text-midnight-blue">{rowTitle(r)}</div>
@@ -2264,33 +2280,78 @@ export default function PropertyDetailPage() {
                       </div>
                       {status.subline ? <p className="text-xs text-gray-500 mt-1">{status.subline}</p> : null}
                       <div className="text-xs text-gray-500 mt-1">{formatDate(rowExpiry(r))} · {hasEvidence ? 'Document linked' : 'No document'}</div>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-electric-teal border-electric-teal min-h-9"
-                          disabled={taRow.primary_action_handler === 'guided_evidence_error'}
-                          title={
-                            taRow.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined
-                          }
-                          onClick={() => {
-                            if (taRow.primary_action_handler === 'guided_evidence_error') return;
-                            runCompliancePrimaryCta(r);
-                          }}
-                        >
-                          {taRow.primary_action_label}
-                        </Button>
-                        <Button size="sm" variant="ghost" className="min-h-9" onClick={() => setComplianceExpandedReqId(complianceExpandedReqId === (rowReqId(r) || r.requirement_code) ? null : (rowReqId(r) || r.requirement_code))}>Details</Button>
-                        {rowReqId(r) ? (
-                          <Button size="sm" variant="ghost" className="text-electric-teal min-h-9" onClick={() => setRequirementIntelRow(r)}>
-                            Requirement details
+                      <div className="mt-2 flex flex-col gap-1.5">
+                        <div className="flex flex-wrap gap-1 items-center">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-electric-teal border-electric-teal min-h-9"
+                            disabled={taRow.primary_action_handler === 'guided_evidence_error'}
+                            title={
+                              taRow.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined
+                            }
+                            onClick={() => {
+                              if (taRow.primary_action_handler === 'guided_evidence_error') return;
+                              runCompliancePrimaryCta(r);
+                            }}
+                          >
+                            {taRow.primary_action_label}
                           </Button>
-                        ) : null}
-                        {isMissing && (r.requirement_code || r.requirement_type) ? (
-                          <Button size="sm" variant="ghost" className="text-gray-600 min-h-9" onClick={() => { setNotApplicableModal({ requirement_code: r.requirement_code || r.requirement_type, title: rowTitle(r) }); setNotApplicableReason('not_applicable'); }}>
-                            Not applicable
+                          {showComplianceMobileSecondary ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="min-h-9 border-gray-300 text-gray-800"
+                              onClick={() =>
+                                taRow.secondary_action.external
+                                  ? window.open(taRow.secondary_action.route, '_blank', 'noopener,noreferrer')
+                                  : navigate(taRow.secondary_action.route)
+                              }
+                            >
+                              {taRow.secondary_action.label}
+                            </Button>
+                          ) : null}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="min-h-9"
+                            onClick={() =>
+                              setComplianceExpandedReqId(
+                                complianceExpandedReqId === (rowReqId(r) || r.requirement_code)
+                                  ? null
+                                  : rowReqId(r) || r.requirement_code,
+                              )
+                            }
+                          >
+                            Details
                           </Button>
-                        ) : null}
+                        </div>
+                        <div className="flex flex-wrap gap-x-2 gap-y-0.5 items-center">
+                          {rowReqId(r) ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-auto min-h-0 py-0.5 px-1 text-xs font-normal text-gray-600 hover:text-midnight-blue underline-offset-2 hover:underline"
+                              onClick={() => setRequirementIntelRow(r)}
+                            >
+                              Requirement details
+                            </Button>
+                          ) : null}
+                          {isMissing && (r.requirement_code || r.requirement_type) ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-auto min-h-0 py-0.5 px-1 text-xs font-normal text-gray-500 hover:text-gray-700"
+                              onClick={() => {
+                                setNotApplicableModal({ requirement_code: r.requirement_code || r.requirement_type, title: rowTitle(r) });
+                                setNotApplicableReason('not_applicable');
+                              }}
+                            >
+                              <MinusCircle className="w-3 h-3 mr-1 shrink-0" aria-hidden />
+                              Not applicable
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
                     </Card>
                   );
@@ -3094,15 +3155,20 @@ export default function PropertyDetailPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {evidenceData.documents.map((doc) => (
+                            {evidenceData.documents.map((doc) => {
+                              const evidencePrimary = evidenceDocStatusLabel(doc);
+                              const showVerificationSubline = !clientVerificationLabelRedundantWithPrimary(doc, evidencePrimary);
+                              return (
                               <tr key={doc.document_id} className="border-b border-gray-100 hover:bg-gray-50">
                                 <td className="p-3 font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</td>
                                 <td className="p-3 text-gray-600">{doc.document_type ? documentTypeLabel(doc.document_type) : '—'}</td>
                                 <td className="p-3 text-gray-600">{doc.requirement_id || '—'}</td>
                                 <td className="p-3">
                                   <div className="flex flex-col gap-1">
-                                    <span className="inline-flex px-2 py-1 rounded border text-xs bg-gray-100 text-gray-700 border-gray-200">{evidenceDocStatusLabel(doc)}</span>
-                                    <span className="text-[11px] text-gray-500">{clientFacingVerificationLabel(doc)}</span>
+                                    <span className="inline-flex px-2 py-1 rounded border text-xs bg-gray-100 text-gray-700 border-gray-200">{evidencePrimary}</span>
+                                    {showVerificationSubline ? (
+                                      <span className="text-[11px] text-gray-500">{clientFacingVerificationLabel(doc)}</span>
+                                    ) : null}
                                   </div>
                                 </td>
                                 <td className="p-3 text-gray-600">{doc.uploaded_by || '—'}</td>
@@ -3119,16 +3185,28 @@ export default function PropertyDetailPage() {
                                   </div>
                                 </td>
                               </tr>
-                            ))}
+                            );
+                            })}
                           </tbody>
                         </table>
                       </div>
                     </div>
                     <div className="md:hidden space-y-2">
-                      {evidenceData.documents.map((doc) => (
+                      {evidenceData.documents.map((doc) => {
+                        const evidencePrimary = evidenceDocStatusLabel(doc);
+                        const verificationSub = clientVerificationLabelRedundantWithPrimary(doc, evidencePrimary)
+                          ? null
+                          : clientFacingVerificationLabel(doc);
+                        const metaBits = [
+                          doc.document_type ? documentTypeLabel(doc.document_type) : '—',
+                          evidencePrimary,
+                          verificationSub,
+                          doc.uploaded_at ? formatDate(doc.uploaded_at) : null,
+                        ].filter(Boolean);
+                        return (
                         <Card key={doc.document_id} className="border border-gray-200 p-3">
                           <div className="font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</div>
-                          <div className="text-xs text-gray-600 mt-1">Type: {doc.document_type ? documentTypeLabel(doc.document_type) : '—'} · {evidenceDocStatusLabel(doc)} · {clientFacingVerificationLabel(doc)} · {doc.uploaded_at ? formatDate(doc.uploaded_at) : '—'}</div>
+                          <div className="text-xs text-gray-600 mt-1">Type: {metaBits.join(' · ')}</div>
                           <div className="flex flex-wrap gap-1 mt-2">
                             <Button variant="outline" size="sm" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}>View</Button>
                             <Button variant="outline" size="sm" onClick={() => handleEvidenceDocumentDownload(doc)}>Download</Button>
@@ -3136,7 +3214,8 @@ export default function PropertyDetailPage() {
                             <Button variant="ghost" size="sm" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'EVIDENCE' })); }}>History</Button>
                           </div>
                         </Card>
-                      ))}
+                        );
+                      })}
                     </div>
                   </>
                 )}

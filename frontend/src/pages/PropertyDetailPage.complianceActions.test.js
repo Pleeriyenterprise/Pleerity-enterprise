@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import PropertyDetailPage from './PropertyDetailPage';
 import { clientAPI } from '../api/client';
 
@@ -102,6 +102,9 @@ describe('PropertyDetailPage compliance action surfaces', () => {
 
     const matrixAction = await screen.findByTestId('compliance-matrix-action-req-guided');
     expect(matrixAction).toHaveTextContent('Resolve requirement');
+    const matrixActionCell = matrixAction.closest('td');
+    expect(matrixActionCell).toBeTruthy();
+    expect(within(matrixActionCell).queryByRole('button', { name: 'Upload document' })).not.toBeInTheDocument();
     fireEvent.click(matrixAction);
     expect(mockOpenGuidedEvidence).toHaveBeenCalledTimes(2);
   });

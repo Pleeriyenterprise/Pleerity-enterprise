@@ -86,6 +86,29 @@ export function complianceObligationStatusLabel(r) {
   return 'Valid';
 }
 
+/**
+ * Property Compliance surfaces (urgent strip, full matrix, etc.): API `take_action.secondary` often
+ * duplicates a Documents/upload deep-link while the primary opens guided / record workflows that already
+ * allow optional evidence. Suppress that duplicate CTA in the UI only — resolver and routes unchanged.
+ * Heuristic is intentionally narrow: `/documents` routes and upload-shaped labels only.
+ * @param {{ secondary_action?: { label?: string, route?: string } | null }} taRow
+ * @returns {boolean}
+ */
+export function isRedundantUploadStyleSecondaryAction(taRow) {
+  if (!taRow || typeof taRow !== 'object') return false;
+  const sec = taRow.secondary_action;
+  if (!sec || typeof sec !== 'object') return false;
+  const route = String(sec.route || '');
+  const label = String(sec.label || '').toLowerCase();
+  if (route.includes('/documents')) return true;
+  if (/\bupload\b/.test(label)) return true;
+  if (label.includes('supporting evidence')) return true;
+  if (label.includes('deposit evidence')) return true;
+  if (label.includes('signed agreement')) return true;
+  if (label.includes('delivery proof')) return true;
+  return false;
+}
+
 /** Standardised primary action — delegates to unified Take Action resolver (single CTA contract). */
 export function complianceObligationPrimaryAction(r) {
   const sem = resolvedProjectionForRequirementRow(r);

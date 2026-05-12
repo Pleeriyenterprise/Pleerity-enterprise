@@ -2,6 +2,7 @@ import {
   canonicalComplianceInlineNarrative,
   complianceObligationPrimaryAction,
   complianceObligationStatusLabel,
+  isRedundantUploadStyleSecondaryAction,
 } from './complianceObligationPresent';
 
 describe('canonicalComplianceInlineNarrative', () => {
@@ -80,5 +81,28 @@ describe('canonicalComplianceInlineNarrative', () => {
       },
     };
     expect(complianceObligationStatusLabel(row)).toBe('Condition status needs review');
+  });
+});
+
+describe('isRedundantUploadStyleSecondaryAction', () => {
+  it('treats Documents routes and upload labels as redundant next to a guided primary', () => {
+    expect(
+      isRedundantUploadStyleSecondaryAction({
+        secondary_action: { label: 'Upload document', route: '/documents?property_id=p1' },
+      }),
+    ).toBe(true);
+    expect(
+      isRedundantUploadStyleSecondaryAction({
+        secondary_action: { label: 'Upload supporting evidence', route: '/foo' },
+      }),
+    ).toBe(true);
+  });
+
+  it('keeps non-upload secondaries available for compliance action strips', () => {
+    expect(
+      isRedundantUploadStyleSecondaryAction({
+        secondary_action: { label: 'Book inspection', route: '/maintenance?property_id=p1' },
+      }),
+    ).toBe(false);
   });
 });
