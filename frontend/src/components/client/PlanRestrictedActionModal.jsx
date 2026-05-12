@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from '@/utils/portalNotifications';
 import {
   Dialog,
   DialogContent,
@@ -19,29 +18,14 @@ import {
 import { useEntitlements } from '../../contexts/EntitlementsContext';
 import { getFeatureDisplayInfo } from '../UpgradePrompt';
 
-export const PLAN_RESTRICTED_TITLE = "This action isn't available on your current plan";
+/** Calm, operational framing — discoverability lives in Billing, not punitive “locked” language. */
+export const PLAN_RESTRICTED_TITLE = 'Designed for portfolio-scale job workflows';
 
 const COMPLIANCE_BODY =
-  'Starting compliance inspection work from a requirement requires a higher plan. You can still upload documents or manage requirements.';
+  'Starting inspection jobs from this control uses portfolio automation. You can still upload evidence, manage requirements, and complete remediation on your current plan.';
 
 const MAINTENANCE_BODY =
-  'Starting maintenance jobs from the platform requires a higher plan. You can still log issues or track property activity.';
-
-const TOAST_PREFIX = 'cvp_plan_gate_toast_';
-
-/**
- * One short toast per browser tab session per `toastSessionKey` (modal still shows every time).
- */
-export function notifyPlanRestrictedActionOnce(toastSessionKey, message) {
-  const key = `${TOAST_PREFIX}${toastSessionKey}`;
-  try {
-    if (typeof window !== 'undefined' && sessionStorage.getItem(key)) return;
-    if (typeof window !== 'undefined') sessionStorage.setItem(key, '1');
-  } catch {
-    /* ignore */
-  }
-  toast.message(message);
-}
+  'Creating platform jobs from this entry point uses portfolio automation. You can still log issues and track property activity without changing plans.';
 
 /**
  * @param {import('axios').AxiosError} error
@@ -59,17 +43,13 @@ export function openPlanRestrictedJobGate(error, setGate, context = {}) {
     upgradeDetail: error.upgradeDetail,
     billingFeatureFallbackKey: error.planRestrictedBillingFeatureKey || null,
   });
-  notifyPlanRestrictedActionOnce(
-    kind === 'compliance_job' ? 'compliance_job' : 'maintenance_job',
-    kind === 'compliance_job'
-      ? 'Upgrade required to start compliance inspection jobs'
-      : 'Upgrade required to start maintenance jobs',
-  );
+  /* No session toast: modal carries discoverability; avoids stacking with urgent compliance toasts. */
   return true;
 }
 
 /**
  * Plan-gated job/workflow creation: compliance vs maintenance copy and CTAs.
+ * Primary actions = operational (upload / log issue); Billing = secondary discoverability.
  * @param {{ kind: 'compliance_job'|'maintenance_job', propertyId?: string|null, requirementId?: string|null, upgradeDetail?: object|null, billingFeatureFallbackKey?: string|null } | null} gate
  */
 export function PlanRestrictedJobModal({ gate, onDismiss }) {
@@ -136,37 +116,32 @@ export function PlanRestrictedJobModal({ gate, onDismiss }) {
       <DialogContent className="sm:max-w-md" data-testid="plan-restricted-action-modal">
         <DialogHeader>
           <DialogTitle>{PLAN_RESTRICTED_TITLE}</DialogTitle>
-          <DialogDescription className="text-left text-muted-foreground pt-1">{body}</DialogDescription>
+          <DialogDescription className="pt-1 text-left text-muted-foreground">{body}</DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
-          <Button type="button" className="w-full bg-electric-teal hover:bg-electric-teal/90" onClick={goBilling}>
-            Upgrade plan
-          </Button>
           {kind === 'compliance_job' ? (
             <>
-              <Button type="button" variant="outline" className="w-full" onClick={goDocuments}>
+              <Button type="button" className="w-full bg-electric-teal hover:bg-electric-teal/90" onClick={goDocuments}>
                 Upload document instead
               </Button>
-              <button
-                type="button"
-                onClick={goRequirements}
-                className="text-sm text-electric-teal hover:underline font-medium pt-1 text-left"
-              >
+              <Button type="button" variant="outline" className="w-full" onClick={goRequirements}>
                 View requirements
-              </button>
+              </Button>
+              <Button type="button" variant="ghost" className="w-full text-midnight-blue hover:bg-slate-50" onClick={goBilling}>
+                View plans in Billing
+              </Button>
             </>
           ) : (
             <>
-              <Button type="button" variant="outline" className="w-full" onClick={goLogIssue}>
+              <Button type="button" className="w-full bg-electric-teal hover:bg-electric-teal/90" onClick={goLogIssue}>
                 Log issue instead
               </Button>
-              <button
-                type="button"
-                onClick={goPropertyActivity}
-                className="text-sm text-electric-teal hover:underline font-medium pt-1 text-left"
-              >
+              <Button type="button" variant="outline" className="w-full" onClick={goPropertyActivity}>
                 View issues & property activity
-              </button>
+              </Button>
+              <Button type="button" variant="ghost" className="w-full text-midnight-blue hover:bg-slate-50" onClick={goBilling}>
+                View plans in Billing
+              </Button>
             </>
           )}
         </DialogFooter>

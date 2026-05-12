@@ -1092,6 +1092,23 @@ const ClientDashboard = () => {
     return {};
   }, [commandCenter, tasksDigest]);
 
+  /** Discoverability budget: avoid stacked billing CTAs + amber “nudge” when plan comparison strip already present. */
+  const showPlanComparisonStrip = useMemo(
+    () =>
+      !!valueInsights &&
+      !!valueInsights.plan_comparison?.next &&
+      !valueInsights.upgrade_path?.at_highest_public_tier,
+    [valueInsights],
+  );
+  const showUpgradeNudgeAlert = useMemo(
+    () =>
+      !!valueInsights &&
+      (valueInsights.upgrade_nudge_reasons || []).length > 0 &&
+      !valueInsights.upgrade_path?.at_highest_public_tier &&
+      !showPlanComparisonStrip,
+    [valueInsights, showPlanComparisonStrip],
+  );
+
 
   if (loading) {
     return (
@@ -1774,7 +1791,7 @@ const ClientDashboard = () => {
                         <li key={u}>{u}</li>
                       ))}
                     </ul>
-                    {valueInsights.show_upgrade_for_property_cap ? (
+                    {valueInsights.show_upgrade_for_property_cap && !showPlanComparisonStrip ? (
                       <Button
                         type="button"
                         variant="outline"
@@ -1783,7 +1800,7 @@ const ClientDashboard = () => {
                         onClick={() => navigate('/billing')}
                         data-testid="value-insights-upgrade-cta"
                       >
-                        Upgrade to add properties
+                        Compare capacity in Billing
                       </Button>
                     ) : null}
                   </>
@@ -1827,27 +1844,26 @@ const ClientDashboard = () => {
             </div>
             <Button
               type="button"
-              className="mt-4 bg-electric-teal hover:bg-electric-teal/90 text-white"
+              variant="outline"
+              className="mt-4 border-slate-200 text-midnight-blue hover:bg-slate-50"
               size="sm"
               onClick={() => navigate('/settings/billing')}
             >
-              Compare plans & upgrade
+              View plans in Billing
             </Button>
           </div>
         )}
 
-        {valueInsights &&
-          (valueInsights.upgrade_nudge_reasons || []).length > 0 &&
-          !valueInsights.upgrade_path?.at_highest_public_tier && (
-            <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="upgrade-nudge-contextual">
-              <AlertCircle className="h-4 w-4 text-amber-700" />
+        {showUpgradeNudgeAlert && (
+            <Alert className="mb-6 border-slate-200 bg-slate-50" data-testid="upgrade-nudge-contextual">
+              <Info className="h-4 w-4 text-midnight-blue shrink-0" />
               <AlertDescription>
-                <span className="font-medium text-amber-900">Why upgrade right now</span>
-                <ul className="mt-2 space-y-2 text-sm text-amber-950 list-disc pl-4">
+                <span className="font-medium text-midnight-blue">When your operations scale</span>
+                <ul className="mt-2 space-y-2 text-sm text-slate-700 list-disc pl-4">
                   {(valueInsights.upgrade_nudge_reasons || []).map((r) => (
                     <li key={r.code}>
-                      <span className="font-medium">{r.headline}</span>
-                      <span className="block text-amber-900 mt-0.5">{r.why_now}</span>
+                      <span className="font-medium text-midnight-blue">{r.headline}</span>
+                      <span className="mt-0.5 block text-slate-600">{r.why_now}</span>
                     </li>
                   ))}
                 </ul>
@@ -1855,7 +1871,7 @@ const ClientDashboard = () => {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="mt-3 border-amber-400 text-amber-900 hover:bg-amber-100"
+                  className="mt-3 border-slate-200 text-midnight-blue hover:bg-slate-100"
                   onClick={() => navigate('/settings/billing')}
                 >
                   Review plans and limits

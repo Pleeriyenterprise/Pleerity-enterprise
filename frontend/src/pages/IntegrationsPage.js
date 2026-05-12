@@ -22,8 +22,7 @@ import {
   Info,
   Clock,
   Activity,
-  Shield,
-  Lock
+  Shield
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -31,14 +30,15 @@ import { Switch } from '../components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { toast } from '@/utils/portalNotifications';
 import api from '../api/client';
-import UpgradePrompt from '../components/UpgradePrompt';
+import { DiscoverabilityHint, GrowthCapabilityPanel } from '../components/client/PlanGatingDiscoverability';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
+import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 
 const IntegrationsPage = () => {
   const navigate = useNavigate();
-  const { hasFeature, planName } = useEntitlements();
+  const { hasFeature } = useEntitlements();
   const [loading, setLoading] = useState(true);
   const [webhooks, setWebhooks] = useState([]);
   const [availableEvents, setAvailableEvents] = useState([]);
@@ -293,53 +293,46 @@ const IntegrationsPage = () => {
           </div>
         </header>
 
-        <main className="max-w-2xl mx-auto px-4 py-12">
-          <UpgradePrompt
-            featureName="Webhooks & Integrations"
-            featureDescription="Connect Compliance Vault Pro to your existing systems. Receive real-time notifications when compliance events occur, automate workflows, and integrate with property management software."
-            requiredPlan="PLAN_3_PRO"
-            requiredPlanName="Professional"
-            currentPlan={planName}
-            variant="card"
+        <main className="max-w-2xl mx-auto space-y-4 px-4 py-12">
+          <DiscoverabilityHint
+            title="Webhooks & external integrations"
+            body="Connect compliance events to your own endpoints with signed payloads and retries — designed for larger, delegated operations (Professional tier). Your current workflows are unchanged until you enable this in Billing."
+            onCta={() => navigate(buildSafeQueryPath('/settings/billing', { upgrade_to: 'PLAN_3_PRO' }))}
+            dataTestId="integrations-discoverability-hint"
           />
-          
-          {/* Feature Preview */}
-          <div className="mt-8 bg-white rounded-xl border border-gray-200 p-6" data-testid="webhooks-preview">
-            <h3 className="font-semibold text-midnight-blue mb-4 flex items-center gap-2">
-              <Lock className="w-4 h-4 text-gray-400" />
-              What you'll unlock with Professional
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                <Webhook className="w-5 h-5 text-electric-teal mt-0.5" />
+
+          <GrowthCapabilityPanel title="Overview of integration capabilities (optional read)">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2" data-testid="webhooks-preview">
+              <div className="flex items-start gap-3 rounded-lg bg-gray-50 p-3">
+                <Webhook className="mt-0.5 h-5 w-5 text-electric-teal" />
                 <div>
-                  <p className="font-medium text-gray-900">Custom Webhooks</p>
+                  <p className="font-medium text-gray-900">Custom webhooks</p>
                   <p className="text-sm text-gray-500">Send events to your own endpoints</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                <Activity className="w-5 h-5 text-electric-teal mt-0.5" />
+              <div className="flex items-start gap-3 rounded-lg bg-gray-50 p-3">
+                <Activity className="mt-0.5 h-5 w-5 text-electric-teal" />
                 <div>
-                  <p className="font-medium text-gray-900">Real-time Events</p>
-                  <p className="text-sm text-gray-500">Instant notifications for compliance changes</p>
+                  <p className="font-medium text-gray-900">Real-time events</p>
+                  <p className="text-sm text-gray-500">Notifications when compliance-relevant activity occurs</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                <Shield className="w-5 h-5 text-electric-teal mt-0.5" />
+              <div className="flex items-start gap-3 rounded-lg bg-gray-50 p-3">
+                <Shield className="mt-0.5 h-5 w-5 text-electric-teal" />
                 <div>
-                  <p className="font-medium text-gray-900">Signed Payloads</p>
-                  <p className="text-sm text-gray-500">HMAC-SHA256 signature verification</p>
+                  <p className="font-medium text-gray-900">Signed payloads</p>
+                  <p className="text-sm text-gray-500">HMAC-SHA256 verification</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                <RefreshCw className="w-5 h-5 text-electric-teal mt-0.5" />
+              <div className="flex items-start gap-3 rounded-lg bg-gray-50 p-3">
+                <RefreshCw className="mt-0.5 h-5 w-5 text-electric-teal" />
                 <div>
-                  <p className="font-medium text-gray-900">Automatic Retries</p>
-                  <p className="text-sm text-gray-500">Reliable delivery with exponential backoff</p>
+                  <p className="font-medium text-gray-900">Automatic retries</p>
+                  <p className="text-sm text-gray-500">Delivery with backoff</p>
                 </div>
               </div>
             </div>
-          </div>
+          </GrowthCapabilityPanel>
         </main>
       </div>
     );

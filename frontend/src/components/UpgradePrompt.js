@@ -1,30 +1,17 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEntitlements } from '../contexts/EntitlementsContext';
-import { Lock, ArrowUpRight, Sparkles, CheckCircle } from 'lucide-react';
+import { Layers, ArrowUpRight, Sparkles, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
+import { operationalLabelForToken } from '../utils/presentationLanguage';
+import { GovernedUpgradeDiscoverCard } from './client/PlanGatingDiscoverability';
+import { cn } from '../lib/utils';
 
 /**
- * Upgrade Prompt Component - Displayed when user attempts to access a gated feature.
- * 
- * NON-NEGOTIABLE RULES:
- * 1. No silent failures - always show this prompt
- * 2. Clearly explain what the feature does
- * 3. Show which plan unlocks it
- * 4. Link to upgrade page
- * 5. No background side effects
- * 
- * Props:
- * - featureName: Human-readable feature name
- * - featureDescription: What the feature does
- * - requiredPlan: Plan code that unlocks this feature
- * - requiredPlanName: Human-readable plan name
- * - currentPlan: Current plan name (optional)
- * - variant: 'inline' | 'modal' | 'card' (default: 'card')
- * - onUpgrade: Optional callback when upgrade button clicked
- * - onDismiss: Optional callback when dismissed (only for modal variant)
- * - contextHint: Optional short line (e.g. portfolio usage) shown under the main copy
+ * Upgrade / tier discoverability — presentation only. Backend gating unchanged.
+ *
+ * Principles: calm operational framing, scale & automation language, no punitive “locked” tone.
  */
 const UpgradePrompt = ({
   featureName,
@@ -37,6 +24,7 @@ const UpgradePrompt = ({
   onDismiss = null,
   className = '',
   contextHint = null,
+  dataTestId = null,
 }) => {
   const navigate = useNavigate();
 
@@ -47,32 +35,35 @@ const UpgradePrompt = ({
     navigate(buildSafeQueryPath('/settings/billing', { upgrade_to: requiredPlan }));
   };
 
-  const planAvailabilityLine = `This feature is available on the ${requiredPlanName} plan.`;
+  const planDiscoverabilityLine = `Included with the ${requiredPlanName} tier for portfolio-scale workflows and optional automation.`;
+  const planDiscoverabilityShort = `Portfolio-scale plans include this under the ${requiredPlanName} tier — see Billing for current options.`;
 
-  // Inline variant - minimal, fits within existing UI
   if (variant === 'inline') {
     return (
       <div
-        className={`flex flex-col gap-1 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 ${className}`}
-        data-testid="upgrade-prompt-inline"
+        className={cn(
+          'flex flex-col gap-1 rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 text-sm text-slate-700',
+          className,
+        )}
+        data-testid={dataTestId || 'upgrade-prompt-inline'}
       >
         <div className="flex items-start gap-2">
-          <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
-          <span>
-            <span className="block text-amber-900 font-medium">{planAvailabilityLine}</span>
-            <span className="block mt-1">
+          <Layers className="mt-0.5 h-4 w-4 flex-shrink-0 text-midnight-blue/55" aria-hidden />
+          <div className="min-w-0">
+            <span className="block font-medium leading-snug text-midnight-blue">{planDiscoverabilityShort}</span>
+            <span className="mt-1 block">
               <button
                 type="button"
                 onClick={handleUpgradeClick}
-                className="text-amber-800 underline hover:text-amber-900 font-semibold"
+                className="font-semibold text-electric-teal underline decoration-electric-teal/40 underline-offset-2 hover:text-electric-teal/90"
               >
-                Upgrade plan
+                View plans in Billing
               </button>
             </span>
-          </span>
+          </div>
         </div>
         {contextHint ? (
-          <p className="text-xs text-amber-900/80 pl-6 leading-snug" data-testid="upgrade-context-hint">
+          <p className="pl-6 text-xs leading-snug text-slate-600" data-testid="upgrade-context-hint">
             {contextHint}
           </p>
         ) : null}
@@ -80,147 +71,119 @@ const UpgradePrompt = ({
     );
   }
 
-  // Modal variant - full-screen overlay
   if (variant === 'modal') {
     return (
-      <div 
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-        data-testid="upgrade-prompt-modal"
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        data-testid={dataTestId || 'upgrade-prompt-modal'}
       >
-        <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-          <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full mx-auto mb-4">
-            <Lock className="w-8 h-8 text-amber-600" />
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-slate-100 bg-slate-50">
+            <Layers className="h-7 w-7 text-midnight-blue/70" aria-hidden />
           </div>
-          
-          <h2 className="text-xl font-bold text-center text-gray-900 mb-2">
-            {featureName}
-          </h2>
 
-          <p className="text-center text-gray-800 font-medium mb-3">
-            {planAvailabilityLine}
+          <h2 className="mb-2 text-center text-xl font-bold text-gray-900">{featureName}</h2>
+
+          <p className="mb-2 text-center font-medium text-gray-800">{planDiscoverabilityLine}</p>
+
+          {currentPlan ? (
+            <p className="mb-2 text-center text-xs text-gray-500">
+              Billing lists options for your <span className="font-medium text-gray-700">{currentPlan}</span> workspace.
+            </p>
+          ) : null}
+
+          <p className="mb-4 text-center text-sm text-gray-600">
+            Your current plan stays focused on core operations; this capability is available when you add portfolio-scale
+            tooling.
           </p>
 
-          <p className="text-center text-sm text-gray-500 mb-4">It isn&apos;t included on your current plan.</p>
-          
-          {featureDescription && (
-            <p className="text-center text-sm text-gray-500 mb-6">
-              {featureDescription}
-            </p>
-          )}
+          {featureDescription ? <p className="mb-4 text-center text-sm text-gray-500">{featureDescription}</p> : null}
 
           {contextHint ? (
-            <p className="text-center text-xs text-gray-500 mb-4" data-testid="upgrade-context-hint">
+            <p className="mb-4 text-center text-xs text-gray-500" data-testid="upgrade-context-hint">
               {contextHint}
             </p>
           ) : null}
 
-          <div className="bg-gradient-to-r from-electric-teal/10 to-electric-teal/5 border border-electric-teal/20 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-5 h-5 text-electric-teal" />
-              <span className="font-semibold text-gray-900">{requiredPlanName} Plan</span>
+          <div className="mb-6 rounded-xl border border-electric-teal/20 bg-gradient-to-r from-electric-teal/10 to-electric-teal/5 p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-electric-teal" aria-hidden />
+              <span className="font-semibold text-gray-900">{requiredPlanName}</span>
             </div>
             <p className="text-sm text-gray-600">
-              Unlock {featureName} and more advanced features by upgrading to {requiredPlanName}.
+              Adds optional automation, reporting, and collaboration suited to larger portfolios — without changing how
+              compliance authority works in your account.
             </p>
           </div>
-          
-          <div className="flex gap-3">
-            {onDismiss && (
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {onDismiss ? (
+              <>
+                <Button type="button" className="flex-1 bg-electric-teal hover:bg-electric-teal/90" onClick={onDismiss}>
+                  Continue
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 border-slate-200 text-midnight-blue hover:bg-slate-50"
+                  onClick={handleUpgradeClick}
+                >
+                  View plans in Billing
+                  <ArrowUpRight className="ml-2 h-4 w-4" />
+                </Button>
+              </>
+            ) : (
               <Button
-                variant="outline"
-                className="flex-1"
-                onClick={onDismiss}
+                type="button"
+                className="w-full bg-electric-teal hover:bg-electric-teal/90"
+                onClick={handleUpgradeClick}
               >
-                Maybe Later
+                View plans in Billing
+                <ArrowUpRight className="ml-2 h-4 w-4" />
               </Button>
             )}
-            <Button
-              className="flex-1 bg-electric-teal hover:bg-electric-teal/90"
-              onClick={handleUpgradeClick}
-            >
-              Upgrade plan
-              <ArrowUpRight className="w-4 h-4 ml-2" />
-            </Button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Card variant (default) - standalone card for embedding
   return (
-    <div 
-      className={`bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-amber-200 rounded-2xl p-6 ${className}`}
-      data-testid="upgrade-prompt-card"
+    <GovernedUpgradeDiscoverCard
+      title={featureName}
+      onPrimaryCta={handleUpgradeClick}
+      primaryCtaLabel="View plans in Billing"
+      className={className}
+      data-testid={dataTestId || 'upgrade-prompt-card'}
     >
-      <div className="flex items-start gap-4">
-        <div className="flex items-center justify-center w-12 h-12 bg-amber-100 rounded-xl flex-shrink-0">
-          <Lock className="w-6 h-6 text-amber-600" />
-        </div>
-        
-        <div className="flex-1">
-          <h3 className="font-semibold text-gray-900 mb-2">
-            {featureName}
-          </h3>
-
-          <p className="text-sm font-medium text-gray-800 mb-2">{planAvailabilityLine}</p>
-          
-          {featureDescription && (
-            <p className="text-sm text-gray-600 mb-3">
-              {featureDescription}
-            </p>
-          )}
-
-          {contextHint ? (
-            <p className="text-xs text-gray-500 mb-4 leading-relaxed" data-testid="upgrade-context-hint">
-              {contextHint}
-            </p>
-          ) : null}
-
-          <Button
-            size="sm"
-            className="bg-electric-teal hover:bg-electric-teal/90"
-            onClick={handleUpgradeClick}
-          >
-            Upgrade plan
-            <ArrowUpRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      </div>
-    </div>
+      <p className="text-sm leading-relaxed text-slate-600">{planDiscoverabilityLine}</p>
+      {featureDescription ? <p className="text-sm leading-relaxed text-slate-600">{featureDescription}</p> : null}
+      {contextHint ? (
+        <p className="text-xs leading-relaxed text-slate-500" data-testid="upgrade-context-hint">
+          {contextHint}
+        </p>
+      ) : null}
+    </GovernedUpgradeDiscoverCard>
   );
 };
 
 /**
- * Feature Gate Component - Wraps content and shows upgrade prompt if not entitled.
- * 
- * Props:
- * - feature: Feature key to check
- * - entitlements: Entitlements object from API
- * - children: Content to show if entitled
- * - fallback: Optional custom fallback (default: UpgradePrompt)
+ * Feature Gate — wraps content; shows discoverability when not entitled (no entitlement change).
  */
-export const FeatureGate = ({
-  feature,
-  entitlements,
-  children,
-  fallback = null,
-}) => {
+export const FeatureGate = ({ feature, entitlements, children, fallback = null }) => {
   const { usageContext } = useEntitlements();
   const contextHint = useMemo(() => formatUpgradeUsageContext(usageContext), [usageContext]);
 
   if (!entitlements || !entitlements.features) {
-    // Still loading or no entitlements - show nothing or loading state
     return null;
   }
 
   const featureData = entitlements.features[feature];
-  
+
   if (featureData?.enabled) {
     return children;
   }
 
-  // Feature not enabled - show upgrade prompt or custom fallback
   if (fallback) {
     return fallback;
   }
@@ -239,11 +202,7 @@ export const FeatureGate = ({
 };
 
 /**
- * Property Limit Prompt - Specific upgrade prompt for property limits.
- *
- * When switchPlanOnly is true (e.g. during intake), clicking upgrade only calls onUpgrade
- * and does NOT navigate to billing — so the user can switch plan selection and continue intake.
- * No entitlement is granted until after Stripe payment.
+ * Property limit — authoritative limits preserved; calmer presentation (not a red “error” surface).
  */
 export const PropertyLimitPrompt = ({
   currentLimit,
@@ -266,60 +225,63 @@ export const PropertyLimitPrompt = ({
       onUpgrade();
     }
     if (switchPlanOnly) {
-      return; // Intake flow: only change plan selection; no navigation, no entitlement
+      return;
     }
     navigate(buildSafeQueryPath('/settings/billing', { upgrade_to: upgradePlan }));
   };
 
   return (
-    <div 
-      className={`bg-red-50 border-2 border-red-200 rounded-2xl p-6 ${className}`}
+    <div
+      className={cn(
+        'rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-6 shadow-sm',
+        className,
+      )}
       data-testid="property-limit-prompt"
     >
       <div className="flex items-start gap-4">
-        <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-xl flex-shrink-0">
-          <Lock className="w-6 h-6 text-red-600" />
+        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-white">
+          <Layers className="h-6 w-6 text-midnight-blue/70" aria-hidden />
         </div>
-        
-        <div className="flex-1">
-          <h3 className="font-semibold text-red-900 mb-1">
-            Property Limit Reached
-          </h3>
-          
-          <p className="text-sm text-red-700 mb-3">
-            Your current plan ({currentPlan}) allows a maximum of <strong>{currentLimit}</strong> properties.
-            You're trying to add {requestedCount} properties.
+
+        <div className="min-w-0 flex-1">
+          <h3 className="mb-1 font-semibold text-midnight-blue">Portfolio capacity for your plan</h3>
+
+          <p className="mb-3 text-sm text-slate-700">
+            <span className="font-medium text-midnight-blue">{currentPlan}</span> supports up to{' '}
+            <strong>{currentLimit}</strong> propert{currentLimit === 1 ? 'y' : 'ies'}. This action involves{' '}
+            <strong>{requestedCount}</strong> propert{requestedCount === 1 ? 'y' : 'ies'}.
           </p>
 
           {existingOnAccount != null && existingOnAccount > 0 ? (
             <p
-              className="text-sm text-red-900/90 mb-3 border-l-2 border-red-300 pl-3 bg-red-100/40 rounded-r py-2"
+              className="mb-3 rounded-r border-l-2 border-slate-200 bg-slate-100/60 py-2 pl-3 text-sm text-slate-800"
               data-testid="property-limit-existing-portfolio-hint"
             >
               Your account already has <strong>{existingOnAccount}</strong> propert
-              {existingOnAccount === 1 ? 'y' : 'ies'} on file. Plan limits apply to your{' '}
-              <strong>whole</strong> portfolio, including properties you add in this intake — not only the rows in
-              this form.
+              {existingOnAccount === 1 ? 'y' : 'ies'} on file. Limits apply to your whole portfolio, including properties
+              added in this flow.
             </p>
           ) : null}
 
-          {upgradePlanName && (
-            <div className="bg-white/50 rounded-lg p-3 mb-4">
-              <div className="flex items-center gap-2 text-sm">
-                <CheckCircle className="w-4 h-4 text-green-600" />
+          {upgradePlanName ? (
+            <div className="mb-4 rounded-lg border border-slate-100 bg-white/80 p-3">
+              <div className="flex items-center gap-2 text-sm text-slate-700">
+                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
                 <span>
-                  <strong>{upgradePlanName}</strong> allows up to <strong>{upgradeLimit}</strong> properties
+                  <strong className="text-midnight-blue">{upgradePlanName}</strong> supports up to{' '}
+                  <strong>{upgradeLimit}</strong> propert{upgradeLimit === 1 ? 'y' : 'ies'} when you need more capacity.
                 </span>
               </div>
             </div>
-          )}
-          
+          ) : null}
+
           <Button
-            className="bg-electric-teal hover:bg-electric-teal/90"
+            className="bg-electric-teal text-white hover:bg-electric-teal/90"
             onClick={handleUpgradeClick}
+            type="button"
           >
-            Upgrade to {upgradePlanName || 'Higher Plan'}
-            <ArrowUpRight className="w-4 h-4 ml-2" />
+            Compare plans in Billing
+            <ArrowUpRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -327,21 +289,18 @@ export const PropertyLimitPrompt = ({
   );
 };
 
-// Helper function to get human-readable plan name (exported for UpgradeRequired)
 export function getRequiredPlanName(planCode) {
   const planNames = {
-    'PLAN_1_SOLO': 'Solo Landlord',
-    'PLAN_2_PORTFOLIO': 'Portfolio',
-    'PLAN_3_PRO': 'Professional',
-    // Legacy
-    'PLAN_1': 'Solo Landlord',
-    'PLAN_2_5': 'Portfolio',
-    'PLAN_6_15': 'Professional',
+    PLAN_1_SOLO: 'Solo Landlord',
+    PLAN_2_PORTFOLIO: 'Portfolio',
+    PLAN_3_PRO: 'Professional',
+    PLAN_1: 'Solo Landlord',
+    PLAN_2_5: 'Portfolio',
+    PLAN_6_15: 'Professional',
   };
   return planNames[planCode] || 'Portfolio';
 }
 
-// Feature key -> minimum plan (matches backend plan_registry)
 const FEATURE_MIN_PLAN = {
   document_upload_bulk_zip: 'PLAN_2_PORTFOLIO',
   zip_upload: 'PLAN_2_PORTFOLIO',
@@ -371,7 +330,10 @@ const FEATURE_DISPLAY = {
   reports_pdf: { name: 'PDF reports', description: 'Generate and download PDF compliance reports.' },
   reports_csv: { name: 'CSV export', description: 'Export report data as CSV.' },
   scheduled_reports: { name: 'Scheduled reports', description: 'Schedule automated report delivery.' },
-  ai_extraction_advanced: { name: 'Advanced AI extraction', description: 'Confidence scoring and field validation for extracted data.' },
+  ai_extraction_advanced: {
+    name: 'Advanced AI extraction',
+    description: 'Confidence scoring and field validation for extracted data.',
+  },
   extraction_review_ui: { name: 'Extraction review', description: 'Review and approve AI-extracted data before applying.' },
   ai_review_interface: { name: 'AI review interface', description: 'Review and apply AI-extracted data (Professional).' },
   sms_reminders: { name: 'SMS reminders', description: 'Receive compliance reminders via SMS.' },
@@ -384,13 +346,24 @@ const FEATURE_DISPLAY = {
   audit_exports: { name: 'Audit export', description: 'Export audit logs.' },
   maintenance_workflows: { name: 'Maintenance & jobs', description: 'Create and manage jobs and maintenance issues per property.' },
   contractor_network: { name: 'Contractor network', description: 'View and manage contractors assigned to properties.' },
-  predictive_maintenance: { name: 'Risk signals & assets', description: 'Predictive risk signals from your property data, plus asset tracking.' },
-  invoicing: { name: 'Invoice & job approvals', description: 'Review and approve invoices and cost submissions linked to jobs. Compare amounts to benchmarks and maintain an audit trail.' },
+  predictive_maintenance: {
+    name: 'Risk signals & assets',
+    description: 'Predictive risk signals from your property data, plus asset tracking.',
+  },
+  invoicing: {
+    name: 'Invoice & job approvals',
+    description:
+      'Review and approve invoices and cost submissions linked to jobs. Compare amounts to benchmarks and maintain an audit trail.',
+  },
 };
 
 export function getFeatureDisplayInfo(featureKey, entitlements = null) {
-  const planCode = entitlements?.features?.[featureKey]?.minimum_plan ?? FEATURE_MIN_PLAN[featureKey] ?? 'PLAN_2_PORTFOLIO';
-  const display = FEATURE_DISPLAY[featureKey] || { name: featureKey.replace(/_/g, ' '), description: '' };
+  const planCode =
+    entitlements?.features?.[featureKey]?.minimum_plan ?? FEATURE_MIN_PLAN[featureKey] ?? 'PLAN_2_PORTFOLIO';
+  const display = FEATURE_DISPLAY[featureKey] || {
+    name: operationalLabelForToken(featureKey, { emptyLabel: 'Feature' }),
+    description: '',
+  };
   return {
     featureName: display.name,
     featureDescription: display.description,
@@ -409,7 +382,7 @@ export function formatUpgradeUsageContext(usageContext) {
   const at = Boolean(usageContext.at_property_limit);
   if (typeof cap === 'number' && cap > 0) {
     if (at) {
-      return `You're at your plan's property limit (${n} of ${cap}). Upgrading can raise your cap and unlock higher-tier features.`;
+      return `You're at your plan's property limit (${n} of ${cap}). Higher tiers can add capacity and optional automation — Billing lists current limits.`;
     }
     return `You have ${n} propert${n === 1 ? 'y' : 'ies'} on file; your plan allows up to ${cap}.`;
   }
@@ -417,9 +390,7 @@ export function formatUpgradeUsageContext(usageContext) {
 }
 
 /**
- * Reusable "Upgrade required" state for plan-gated features.
- * Use when a 403 with upgrade_required is returned or when user hits a locked route.
- * Props: feature (key), plan (optional override), variant, showBackToDashboard
+ * Plan-gated route or 403 surface — presentation only.
  */
 export function UpgradeRequired({
   feature,
@@ -449,17 +420,18 @@ export function UpgradeRequired({
         className={className}
         contextHint={contextHint}
       />
-      {showBackToDashboard && (
+      {showBackToDashboard ? (
         <div className="flex justify-center">
           <Button
             variant="outline"
             onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/dashboard'))}
             data-testid="upgrade-required-back"
+            type="button"
           >
             Back to Dashboard
           </Button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -28,7 +28,6 @@ import {
   ToggleRight,
   Bell,
   X,
-  Lock,
   ArrowUpRight,
   Eye,
   Package,
@@ -43,6 +42,7 @@ import {
   requirementLabel,
 } from '../domain/presentDomain';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { presentPortalAnalyticsEvent } from '../utils/timelinePresent';
@@ -617,12 +617,12 @@ const ReportsPage = () => {
             ) : (
               <Button
                 variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 min-h-11 w-full sm:w-auto shrink-0"
-                onClick={() => navigate('/settings/billing?upgrade_to=PLAN_2_PORTFOLIO')}
+                className="min-h-11 w-full shrink-0 border-white/30 text-white hover:bg-white/10 sm:w-auto"
+                onClick={() => navigate(buildSafeQueryPath('/settings/billing', { upgrade_to: 'PLAN_2_PORTFOLIO' }))}
                 data-testid="schedule-report-upgrade-btn"
               >
-                <Lock className="w-4 h-4 mr-2" />
-                Upgrade to schedule reports
+                <Calendar className="mr-2 h-4 w-4" aria-hidden />
+                Scheduling & digests — Billing
               </Button>
             )}
           </div>
@@ -670,8 +670,8 @@ const ReportsPage = () => {
             <UpgradeRequired upgradeDetail={upgradeRequiredDetail} showBackToDashboard />
           </div>
         )}
-        {/* Upgrade Prompt for Reports Access (no report features at all) */}
-        {!hasReportsAccess && (
+        {/* One discoverability slot: contextual 403 detail OR full reports gate, not both */}
+        {!hasReportsAccess && !upgradeRequiredDetail && (
           <div className="mb-6" data-testid="reports-upgrade-prompt">
             <UpgradePrompt
               featureName="Advanced Reports"
@@ -1031,7 +1031,10 @@ const ReportsPage = () => {
                       toast.success('Evidence Readiness PDF downloaded');
                       fetchData();
                     } catch (err) {
-                      if (err.response?.status === 403) toast.error('Upgrade required for PDF reports');
+                      if (err.response?.status === 403)
+                        toast.info('PDF export is included on portfolio-scale plans. Use Billing to compare options.', {
+                          tier: 'important',
+                        });
                       else toast.error('Failed to generate report');
                     } finally {
                       setGenerating(null);
@@ -1074,7 +1077,10 @@ const ReportsPage = () => {
                         toast.success('Evidence Readiness PDF downloaded');
                         fetchData();
                       } catch (err) {
-                        if (err.response?.status === 403) toast.error('Upgrade required for PDF reports');
+                        if (err.response?.status === 403)
+                        toast.info('PDF export is included on portfolio-scale plans. Use Billing to compare options.', {
+                          tier: 'important',
+                        });
                         else toast.error('Failed to generate report');
                       } finally {
                         setGenerating(null);

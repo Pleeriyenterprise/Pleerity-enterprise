@@ -114,7 +114,10 @@ const BrandingSettingsPage = () => {
       setSuccess('Branding settings saved successfully');
     } catch (err) {
       if (err.response?.status === 403) {
-        setError(err.response.data.detail?.message || 'Upgrade required to use this feature');
+        setError(
+          err.response.data.detail?.message ||
+            'White-label branding is included on Professional-tier plans. Billing lists current options for your workspace.',
+        );
       } else if (err.response?.status === 400) {
         const d = err.response.data?.detail;
         setError(
@@ -277,13 +280,13 @@ const BrandingSettingsPage = () => {
         {/* Upgrade Notice for Locked Feature */}
         {isLocked && (
           <UpgradePrompt
-            featureName="White-Label Branding"
-            featureDescription="Customize your compliance reports and emails with your company logo, colors, and contact information. Create a professional, branded experience for your clients."
+            featureName="White-label reporting & emails"
+            featureDescription="Apply your logo, colours, and contact details to client-facing PDFs and emails — suited to larger operations and delegated teams."
             requiredPlan="PLAN_3_PRO"
             requiredPlanName="Professional"
             currentPlan={branding?.current_plan_name}
             variant="card"
-            data-testid="upgrade-notice"
+            dataTestId="upgrade-notice"
           />
         )}
 

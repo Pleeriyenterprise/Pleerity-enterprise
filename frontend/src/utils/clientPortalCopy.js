@@ -41,7 +41,7 @@ export const PORTAL_COPY = {
   trackedItem: 'tracked item',
   trackedItems: 'tracked items',
   addWorkOrder: 'Start maintenance job',
-  upgradeForWorkOrders: 'Upgrade for jobs',
+  upgradeForWorkOrders: 'Job automation — Billing',
   viewReports: 'View reports',
   reportIssue: 'Report issue',
   loadingApprovals: 'Loading approvals…',

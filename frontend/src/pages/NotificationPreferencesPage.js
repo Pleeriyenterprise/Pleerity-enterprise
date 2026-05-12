@@ -23,7 +23,8 @@ import { Input } from '../components/ui/input';
 import { toast } from '@/utils/portalNotifications';
 import api from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
-import UpgradePrompt from '../components/UpgradePrompt';
+import { DiscoverabilityHint } from '../components/client/PlanGatingDiscoverability';
+import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 
@@ -559,12 +560,10 @@ const NotificationPreferencesPage = () => {
           />
         ) : (
           <div className="mb-6" data-testid="sms-upgrade-prompt">
-            <UpgradePrompt
-              featureName="SMS Notifications"
-              featureDescription="Receive urgent compliance alerts via text message."
-              requiredPlan="PLAN_2_PORTFOLIO"
-              requiredPlanName="Portfolio"
-              variant="card"
+            <DiscoverabilityHint
+              title="SMS notifications"
+              body="Optional text alerts for time-sensitive compliance reminders — included when you add portfolio-scale notification channels. Email and in-app notices stay available on your current plan."
+              onCta={() => navigate(buildSafeQueryPath('/settings/billing', { upgrade_to: 'PLAN_2_PORTFOLIO' }))}
             />
           </div>
         )}

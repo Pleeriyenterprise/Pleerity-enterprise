@@ -34,7 +34,7 @@ import {
   AlertCircle,
   Loader2,
   Plus,
-  Lock,
+  Layers,
   Package,
   BarChart3,
   Eye,
@@ -43,7 +43,8 @@ import {
   ChevronUp,
   Info,
 } from 'lucide-react';
-import UpgradePrompt, { getFeatureDisplayInfo } from '../components/UpgradePrompt';
+import { getFeatureDisplayInfo } from '../components/UpgradePrompt';
+import { DiscoverabilityHint } from '../components/client/PlanGatingDiscoverability';
 import { projectResolvedRequirementSemantics } from '../utils/resolvedRequirementViewModel';
 import { formatRiskLabel } from '../utils/riskLabel';
 import { humanRiskType, humanSeverity, humanAction, humanizeRiskReasonBullet } from '../utils/riskPresentation';
@@ -1537,8 +1538,13 @@ export default function PropertyDetailPage() {
                 {PORTAL_COPY.addWorkOrder}
               </Button>
             ) : (
-              <Button type="button" variant="outline" className={cn(portalSecondaryButtonClass, 'w-full justify-center')} onClick={() => navigate('/settings/billing?upgrade_to=PLAN_2_PORTFOLIO')}>
-                <Lock className="w-4 h-4 mr-2 shrink-0" />
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(portalSecondaryButtonClass, 'w-full justify-center')}
+                onClick={() => navigate(buildSafeQueryPath('/settings/billing', { upgrade_to: 'PLAN_2_PORTFOLIO' }))}
+              >
+                <Layers className="mr-2 h-4 w-4 shrink-0 text-midnight-blue/60" aria-hidden />
                 {PORTAL_COPY.upgradeForWorkOrders}
               </Button>
             )}
@@ -1586,7 +1592,11 @@ export default function PropertyDetailPage() {
             >
               <Icon className="w-4 h-4" />
               {label}
-              {!enabled && <Lock className="w-3.5 h-3.5 text-amber-600" />}
+              {!enabled ? (
+                <span className="inline-flex shrink-0" title="Portfolio-scale add-on">
+                  <Layers className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -2391,12 +2401,16 @@ export default function PropertyDetailPage() {
 
       {/* Tab: Jobs & issues (maintenance issues + work orders, including compliance jobs) */}
       {activeTab === TAB_MAINTENANCE && !hasFeature('maintenance_workflows') && (
-        <UpgradePrompt
-          featureName={getFeatureDisplayInfo('maintenance_workflows').featureName}
-          featureDescription="Create and manage issues, repair jobs, and compliance-led jobs for this property."
-          requiredPlan={getFeatureDisplayInfo('maintenance_workflows').requiredPlan}
-          requiredPlanName={getFeatureDisplayInfo('maintenance_workflows').requiredPlanName}
-          variant="card"
+        <DiscoverabilityHint
+          title={`${getFeatureDisplayInfo('maintenance_workflows').featureName} — portfolio-scale`}
+          body="Create and manage issues, repair jobs, and compliance-led jobs when you add portfolio-scale automation. Evidence uploads and requirements stay available on your current plan."
+          onCta={() =>
+            navigate(
+              buildSafeQueryPath('/settings/billing', {
+                upgrade_to: getFeatureDisplayInfo('maintenance_workflows').requiredPlan,
+              }),
+            )
+          }
         />
       )}
       {activeTab === TAB_MAINTENANCE && hasFeature('maintenance_workflows') && (
@@ -3363,12 +3377,16 @@ export default function PropertyDetailPage() {
 
       {/* Tab: Contractors */}
       {activeTab === TAB_CONTRACTORS && !hasFeature('contractor_network') && (
-        <UpgradePrompt
-          featureName={getFeatureDisplayInfo('contractor_network').featureName}
-          featureDescription="View and manage contractors assigned to this property."
-          requiredPlan={getFeatureDisplayInfo('contractor_network').requiredPlan}
-          requiredPlanName={getFeatureDisplayInfo('contractor_network').requiredPlanName}
-          variant="card"
+        <DiscoverabilityHint
+          title={`${getFeatureDisplayInfo('contractor_network').featureName} — portfolio coordination`}
+          body="Contractor directory and routing fit larger operations with delegated maintenance. Optional when your workflow grows."
+          onCta={() =>
+            navigate(
+              buildSafeQueryPath('/settings/billing', {
+                upgrade_to: getFeatureDisplayInfo('contractor_network').requiredPlan,
+              }),
+            )
+          }
         />
       )}
       {activeTab === TAB_CONTRACTORS && hasFeature('contractor_network') && (
@@ -3623,12 +3641,16 @@ export default function PropertyDetailPage() {
 
       {/* Tab: Risk Signals */}
       {activeTab === TAB_RISK_SIGNALS && !hasFeature('predictive_maintenance') && (
-        <UpgradePrompt
-          featureName={getFeatureDisplayInfo('predictive_maintenance').featureName}
-          featureDescription="View predictive risk signals and recommendations for this property. Resolving a signal does not by itself restore compliance."
-          requiredPlan={getFeatureDisplayInfo('predictive_maintenance').requiredPlan}
-          requiredPlanName={getFeatureDisplayInfo('predictive_maintenance').requiredPlanName}
-          variant="card"
+        <DiscoverabilityHint
+          title={`${getFeatureDisplayInfo('predictive_maintenance').featureName} — operational insight`}
+          body="Predictive signals and asset-linked insight are included on portfolio-scale plans. Resolving a signal does not by itself restore compliance."
+          onCta={() =>
+            navigate(
+              buildSafeQueryPath('/settings/billing', {
+                upgrade_to: getFeatureDisplayInfo('predictive_maintenance').requiredPlan,
+              }),
+            )
+          }
         />
       )}
       {activeTab === TAB_RISK_SIGNALS && hasFeature('predictive_maintenance') && (
@@ -3771,12 +3793,10 @@ export default function PropertyDetailPage() {
 
       {/* Tab: Assets */}
       {activeTab === TAB_ASSETS && !hasFeature('maintenance_workflows') && !hasFeature('predictive_maintenance') && (
-        <UpgradePrompt
-          featureName="Maintenance or Predictive"
-          featureDescription="Track property assets (e.g. boiler, electrical) and link to maintenance and issues."
-          requiredPlan="PLAN_2_PORTFOLIO"
-          requiredPlanName="Portfolio"
-          variant="card"
+        <DiscoverabilityHint
+          title="Property assets — portfolio-scale tooling"
+          body="Track equipment and link assets to maintenance when jobs and risk tooling are enabled. Your core compliance views stay unchanged."
+          onCta={() => navigate(buildSafeQueryPath('/settings/billing', { upgrade_to: 'PLAN_2_PORTFOLIO' }))}
         />
       )}
       {activeTab === TAB_ASSETS && (hasFeature('maintenance_workflows') || hasFeature('predictive_maintenance')) && (

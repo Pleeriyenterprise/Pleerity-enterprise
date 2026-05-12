@@ -20,8 +20,7 @@ import {
   CloudUpload,
   Files,
   Building2,
-  Archive,
-  Lock
+  Archive
 } from 'lucide-react';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
@@ -229,7 +228,10 @@ const BulkUploadPage = () => {
       } else {
         const errorDetail = error.response?.data?.detail;
         if (errorDetail?.error_code === 'PLAN_NOT_ELIGIBLE') {
-          toast.error(`Upgrade required: ${errorDetail.message}`);
+          toast.info(
+            `ZIP bulk upload is available on portfolio-scale plans. ${errorDetail.message || 'See Billing for current options.'}`,
+            { tier: 'important' },
+          );
         } else {
           toast.error(typeof errorDetail === 'string' ? errorDetail : 'ZIP upload failed');
         }
@@ -436,12 +438,10 @@ const BulkUploadPage = () => {
                   Individual Files
                 </button>
                 <button
-                  onClick={() => { 
+                  onClick={() => {
                     if (canUseZipUpload) {
-                      setUploadMode('zip'); 
+                      setUploadMode('zip');
                       setFiles([]);
-                    } else {
-                      toast.error('ZIP upload requires Portfolio plan');
                     }
                   }}
                   className={`px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors ${
@@ -456,13 +456,11 @@ const BulkUploadPage = () => {
                 >
                   <Archive className="w-4 h-4" />
                   ZIP Archive
-                  {!canUseZipUpload && <Lock className="w-3 h-3 ml-1" />}
                 </button>
               </div>
               {!canUseZipUpload && (
-                <span className="text-xs text-amber-600 flex items-center gap-1">
-                  <Lock className="w-3 h-3" />
-                  Upgrade to Portfolio plan for ZIP uploads
+                <span className="flex items-center gap-1 text-xs text-slate-600">
+                  ZIP bulk archives are included on portfolio-scale plans — see Billing to compare options.
                 </span>
               )}
             </div>
