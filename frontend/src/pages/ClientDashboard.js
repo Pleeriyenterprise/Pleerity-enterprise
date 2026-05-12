@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
@@ -239,6 +240,8 @@ const ClientDashboard = () => {
   const [roiSummary, setRoiSummary] = useState(undefined);
   /** Inbox digest + priority preview: collapsed by default (overview-first). */
   const [dashboardInboxExpanded, setDashboardInboxExpanded] = useState(false);
+  /** Zone 3 — subscription / security / activity telemetry (single disclosure; default closed). */
+  const [dashboardSystemInsightsOpen, setDashboardSystemInsightsOpen] = useState(false);
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -1484,62 +1487,289 @@ const ClientDashboard = () => {
         )}
 
         {/* Welcome – executive overview */}
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-5 sm:mb-6">
           <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-2">Dashboard</h2>
           <p className="text-gray-600 text-sm sm:text-base">
-            Welcome, {data?.client?.full_name}. Portfolio health, compliance position, and activity snapshot — overview only.
-            Use <span className="font-medium text-midnight-blue">Command Center</span> when you want to work through priorities in order.
+            Welcome, {data?.client?.full_name}. Portfolio health and what needs attention — overview only (not your full work queue).
           </p>
-          <p className="text-xs text-gray-500 mt-2">Not legal advice.</p>
+          <p className="text-xs text-gray-500 mt-1.5">
+            Work in order in <span className="font-medium text-midnight-blue">Today</span> or{' '}
+            <span className="font-medium text-midnight-blue">Command Center</span>. Not legal advice.
+          </p>
         </div>
 
+        {/* ZONE 1 — Operational overview: headline KPIs + freshness metadata */}
+        {(displayScoreInfo || complianceScore || portfolioSummary) && (
+          <div
+            className={`mb-5 rounded-xl border px-3 py-3 sm:px-4 flex flex-col gap-2 ${
+              dashboardScoreFreshness.isPartialOrStale && dashboardScoreFreshness.explanation
+                ? 'bg-amber-50/50 border-amber-200'
+                : 'bg-gray-50 border-gray-200'
+            }`}
+            data-testid="dashboard-top-strip"
+          >
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-midnight-blue">{portfolioHeadlineUi.display}</span>
+                {portfolioHeadlineUi.showOutOf100 ? <span className="text-gray-500">/100</span> : null}
+                <span
+                  className={`ml-1 text-lg font-semibold ${
+                    displayScoreInfo?.color === 'green'
+                      ? 'text-green-600'
+                      : displayScoreInfo?.color === 'amber'
+                        ? 'text-amber-600'
+                        : displayScoreInfo?.color === 'red'
+                          ? 'text-red-600'
+                          : 'text-gray-600'
+                  }`}
+                >
+                  Grade {formatDashboardGrade(displayScoreInfo?.grade ?? complianceScore?.grade)}
+                </span>
+              </div>
+              <span className="text-sm text-gray-600">
+                {formatRiskLabel(portfolioSummary?.risk_level) || displayScoreInfo?.message || complianceScore?.message || KPI_NO_DATA}
+              </span>
+              {portfolioSummary?.updated_at && (
+                <span className="text-xs text-gray-500">Updated {new Date(portfolioSummary.updated_at).toLocaleString()}</span>
+              )}
+              {(portfolioSummary?.properties?.length != null || complianceScore?.properties_count != null) && (
+                <span className="text-xs text-gray-500">
+                  {portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0} propert
+                  {(portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0) === 1 ? 'y' : 'ies'}
+                </span>
+              )}
+            </div>
+            {dashboardScoreFreshness.hasAny ? (
+              <div
+                className={`rounded-md px-2 py-1.5 text-xs ${
+                  dashboardScoreFreshness.isPartialOrStale && dashboardScoreFreshness.explanation
+                    ? 'border border-amber-200 bg-amber-50 text-amber-950'
+                    : 'border border-gray-200 bg-slate-50 text-gray-800'
+                }`}
+                data-testid="dashboard-score-freshness"
+              >
+                {dashboardScoreFreshness.explanation ? (
+                  <p className="leading-snug" data-testid="dashboard-score-freshness-explanation">
+                    {dashboardScoreFreshness.explanation}
+                  </p>
+                ) : null}
+                {dashboardScoreFreshness.lastCalculatedLine ? (
+                  <p
+                    className={`leading-snug text-gray-700 ${dashboardScoreFreshness.explanation ? 'mt-1.5' : ''}`}
+                    data-testid="dashboard-score-freshness-last-calculated"
+                  >
+                    {dashboardScoreFreshness.lastCalculatedLine}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {portfolioRecalcPendingLine ? (
+              <p
+                className="text-xs text-slate-800 leading-snug border-t border-slate-200/80 pt-2 mt-0.5"
+                data-testid="dashboard-score-recalc-pending"
+              >
+                {portfolioRecalcPendingLine}
+              </p>
+            ) : null}
+            {(dashboardFreshness?.score_updated_at ||
+              dashboardFreshness?.risk_signals_updated_at ||
+              dashboardFreshness?.last_automation_score_recalc_at ||
+              dashboardFreshness?.last_automation_risk_refresh_at) && (
+              <div
+                className="w-full border-t border-gray-200 pt-2 mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500"
+                data-testid="dashboard-freshness-strip"
+              >
+                {dashboardFreshness.score_updated_at ? (
+                  <span>
+                    Last score data: {new Date(dashboardFreshness.score_updated_at).toLocaleString()}
+                    {isTimestampStale(dashboardFreshness.score_updated_at, FRESH_SCORE_STALE_HOURS) ? (
+                      <span className="ml-1 text-amber-700">(may be outdated)</span>
+                    ) : null}
+                  </span>
+                ) : null}
+                {dashboardFreshness.risk_signals_updated_at ? (
+                  <span>
+                    Risk refresh: {new Date(dashboardFreshness.risk_signals_updated_at).toLocaleString()}
+                    {isTimestampStale(dashboardFreshness.risk_signals_updated_at, FRESH_RISK_STALE_HOURS) ? (
+                      <span className="ml-1 text-amber-700">(may be outdated)</span>
+                    ) : null}
+                  </span>
+                ) : null}
+                {dashboardFreshness.last_automation_score_recalc_at ? (
+                  <span>Auto score recalc: {new Date(dashboardFreshness.last_automation_score_recalc_at).toLocaleString()}</span>
+                ) : null}
+                {dashboardFreshness.last_automation_risk_refresh_at ? (
+                  <span>Auto risk refresh: {new Date(dashboardFreshness.last_automation_risk_refresh_at).toLocaleString()}</span>
+                ) : null}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ZONE 1 — Executive KPI row */}
+        {!setupView && (
+          <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3" data-testid="executive-kpi-row">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/today')}>
+              <CardContent className="p-3 sm:p-4 min-w-0">
+                <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center">
+                  Today (inbox)
+                  <DashboardKpiHint label="Today inbox total">
+                    Sum of urgent, upcoming, and in-progress items from the same Today inbox as the Today page, after the same
+                    tracked-requirement filter. Snoozed and hidden are separate buckets below. If this fails to load, open Today for
+                    live counts.
+                  </DashboardKpiHint>
+                </p>
+                {tasksDigest === undefined || todayInboxPayload === undefined ? (
+                  <p className="text-xl font-bold text-midnight-blue mt-1">…</p>
+                ) : tasksDigest === null ? (
+                  <>
+                    <p className="text-xl font-bold text-gray-500 mt-1">{KPI_NO_DATA}</p>
+                    <p className="text-xs text-gray-500 mt-1">Could not load inbox summary.</p>
+                  </>
+                ) : todayInboxPayload === null ? (
+                  <>
+                    <p className="text-xl font-bold text-gray-500 mt-1">{KPI_NO_DATA}</p>
+                    <p className="text-xs text-gray-500 mt-1">Could not load Today buckets.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl font-bold text-midnight-blue mt-1">{todayInboxSum ?? 0}</p>
+                    {todayInboxSum === 0 && (
+                      <p className="text-xs text-gray-500 mt-1">Nothing in those buckets in this snapshot.</p>
+                    )}
+                  </>
+                )}
+                <p className="text-xs text-electric-teal mt-1">Continue in Today →</p>
+              </CardContent>
+            </Card>
+            <Card className="hidden sm:block cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/compliance-score')}>
+              <CardContent className="p-3 sm:p-4 min-w-0">
+                <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center">
+                  Portfolio compliance
+                  <DashboardKpiHint label="Portfolio compliance score">
+                    Document-backed portfolio score (0–100) from your latest compliance calculation. Updates when requirements, documents,
+                    or related jobs change. Same metric as the Compliance score page — not a legal certification.
+                  </DashboardKpiHint>
+                </p>
+                <p className="text-xl font-bold text-midnight-blue">{portfolioHeadlineUi.display}</p>
+              </CardContent>
+            </Card>
+            {hasFeature('maintenance_workflows') && (
+              <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/operations/issues')}>
+                <CardContent className="p-3 sm:p-4 min-w-0">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Open issues</p>
+                  <p className="text-xl font-bold text-midnight-blue">
+                    {openIssuesKpiLoading ? '…' : openIssuesCount == null ? KPI_NO_DATA : openIssuesCount}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            {hasFeature('maintenance_workflows') && (
+              <Card
+                className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
+                title="Jobs where the agreed response time has passed (current list, up to 500 loaded)."
+                onClick={() => navigate('/operations/work-orders?sla_state=breached')}
+              >
+                <CardContent className="p-3 sm:p-4 min-w-0">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Jobs · {slaStateLabel('breached')}</p>
+                  <p className="text-xl font-bold text-midnight-blue">{slaBreachedCount}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {slaStateLabel('near_breach')}: {slaNearBreachCount}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            {hasFeature('predictive_maintenance') && (
+              <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/operations/risk-signals')}>
+                <CardContent className="p-3 sm:p-4 min-w-0">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center">
+                    Risk signals
+                    <DashboardKpiHint label="Active risk signals count">
+                      Open predictive risk signals for your portfolio (active status). Matches the security snapshot when loaded.
+                      Resolved or dismissed signals are excluded. Open the list for detail — not every item needs immediate work.
+                      Acknowledging or dismissing a signal does not clear compliance obligations by itself.
+                    </DashboardKpiHint>
+                  </p>
+                  <p className="text-xl font-bold text-midnight-blue">{riskSignalsCount}</p>
+                </CardContent>
+              </Card>
+            )}
+            {hasFeature('invoicing') && maintenanceSpendMonth && maintenanceSpendMonth.has_any_invoices && (
+              <Card
+                className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
+                title={maintenanceSpendMonth.calculation_summary || 'Paid contractor invoices this UTC month.'}
+                onClick={() => navigate('/operations/approvals')}
+              >
+                <CardContent className="p-3 sm:p-4 min-w-0">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Maintenance spend (month)</p>
+                  <p className="text-xl font-bold text-midnight-blue">
+                    {new Intl.NumberFormat('en-GB', { style: 'currency', currency: maintenanceSpendMonth.currency || 'GBP' }).format(
+                      Number(maintenanceSpendMonth.total_amount ?? 0),
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Paid invoices · UTC month</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* ZONE 2 — Portfolio intelligence: impact snapshot (compact KPIs) */}
         {valueInsights && (
           <div
-            className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+            className="mb-6 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm"
             data-testid="value-insights-strip"
           >
             <h3 className="text-sm font-semibold text-midnight-blue mb-3">Your impact</h3>
-            <div className="grid sm:grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="text-gray-500 text-xs uppercase tracking-wide flex items-center">
-                  What you&apos;ve achieved
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                  Achieved
                   <DashboardKpiHint label="About achievements">
                     Counts from your live account: compliant requirements, documents stored, and maintenance jobs completed in the last 30 days.
                     They update as you record activity — zeros mean nothing yet in that window, not a broken metric.
                   </DashboardKpiHint>
                 </p>
-                <ul className="mt-2 text-gray-800 space-y-1 list-disc pl-4">
-                  <li>{valueInsights.achievements?.requirements_compliant ?? 0} requirements compliant</li>
-                  <li>{valueInsights.achievements?.documents_on_file ?? 0} documents on file</li>
-                  <li>{valueInsights.achievements?.work_orders_completed_last_30_days ?? 0} jobs completed (30 days)</li>
-                </ul>
+                <p className="text-2xl font-bold text-midnight-blue tabular-nums mt-1">
+                  {valueInsights.achievements?.requirements_compliant ?? 0}
+                </p>
+                <p className="text-xs text-gray-600 mt-0.5">Requirements compliant</p>
+                <p className="text-2xl font-bold text-midnight-blue tabular-nums mt-2">
+                  {valueInsights.achievements?.documents_on_file ?? 0}
+                </p>
+                <p className="text-xs text-gray-600 mt-0.5">Documents on file</p>
+                <p className="text-2xl font-bold text-midnight-blue tabular-nums mt-2">
+                  {valueInsights.achievements?.work_orders_completed_last_30_days ?? 0}
+                </p>
+                <p className="text-xs text-gray-600 mt-0.5">Jobs completed (30d)</p>
                 {(valueInsights.achievements?.requirements_compliant ?? 0) === 0 &&
                   (valueInsights.achievements?.documents_on_file ?? 0) === 0 &&
                   (valueInsights.achievements?.work_orders_completed_last_30_days ?? 0) === 0 && (
-                    <p className="text-xs text-gray-500 mt-2">No achievement data in this window yet — appears after compliant work and completed jobs.</p>
+                    <p className="text-[11px] text-gray-500 mt-2">No data in this window yet.</p>
                   )}
               </div>
-              <div>
-                <p className="text-gray-500 text-xs uppercase tracking-wide flex items-center">
-                  What needs attention
+              <div className="rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                  Needs attention
                   <DashboardKpiHint label="About attention counts">
                     From current compliance and your unified task inbox: overdue and expiring-soon requirements, plus open urgent items.
                     Excludes snoozed or hidden tasks.
                   </DashboardKpiHint>
                 </p>
-                <ul className="mt-2 text-gray-800 space-y-1 list-disc pl-4">
-                  <li>{valueInsights.at_risk?.overdue_requirements ?? 0} overdue requirements</li>
-                  <li>{valueInsights.at_risk?.expiring_soon_requirements ?? 0} expiring soon</li>
-                  <li>{valueInsights.at_risk?.command_centre_urgent_open ?? 0} urgent inbox items</li>
-                </ul>
+                <p className="text-2xl font-bold text-amber-800 tabular-nums mt-1">{valueInsights.at_risk?.overdue_requirements ?? 0}</p>
+                <p className="text-xs text-gray-600 mt-0.5">Overdue requirements</p>
+                <p className="text-2xl font-bold text-amber-800 tabular-nums mt-2">{valueInsights.at_risk?.expiring_soon_requirements ?? 0}</p>
+                <p className="text-xs text-gray-600 mt-0.5">Expiring soon</p>
+                <p className="text-2xl font-bold text-midnight-blue tabular-nums mt-2">{valueInsights.at_risk?.command_centre_urgent_open ?? 0}</p>
+                <p className="text-xs text-gray-600 mt-0.5">Urgent inbox items</p>
               </div>
-              <div>
-                <p className="text-gray-500 text-xs uppercase tracking-wide">On a higher plan</p>
+              <div className="rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wide">Next tier</p>
                 {valueInsights.upgrade_path?.at_highest_public_tier ? (
-                  <p className="mt-2 text-gray-700">You&apos;re on our top public tier for published limits.</p>
+                  <p className="text-sm text-gray-700 mt-2">Top public tier for published limits.</p>
                 ) : (
                   <>
-                    <ul className="mt-2 text-gray-800 space-y-1 list-disc pl-4">
+                    <ul className="mt-2 text-xs text-gray-700 space-y-1 list-disc pl-4 max-h-28 overflow-y-auto">
                       {(valueInsights.upgrade_path?.unlocks_on_next_tier || []).slice(0, 5).map((u) => (
                         <li key={u}>{u}</li>
                       ))}
@@ -1549,7 +1779,7 @@ const ClientDashboard = () => {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="mt-3"
+                        className="mt-3 w-full sm:w-auto"
                         onClick={() => navigate('/billing')}
                         data-testid="value-insights-upgrade-cta"
                       >
@@ -1634,369 +1864,6 @@ const ClientDashboard = () => {
             </Alert>
           )}
 
-        {/* Compact top strip: score, grade, risk band, last updated, properties count */}
-        {(displayScoreInfo || complianceScore || portfolioSummary) && (
-          <div className="mb-6 flex flex-wrap items-center gap-4 py-3 px-4 rounded-xl bg-gray-50 border border-gray-200" data-testid="dashboard-top-strip">
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-midnight-blue">
-                {portfolioHeadlineUi.display}
-              </span>
-              {portfolioHeadlineUi.showOutOf100 ? <span className="text-gray-500">/100</span> : null}
-              <span className={`ml-1 text-lg font-semibold ${
-                displayScoreInfo?.color === 'green' ? 'text-green-600' :
-                displayScoreInfo?.color === 'amber' ? 'text-amber-600' :
-                displayScoreInfo?.color === 'red' ? 'text-red-600' : 'text-gray-600'
-              }`}>
-                Grade {formatDashboardGrade(displayScoreInfo?.grade ?? complianceScore?.grade)}
-              </span>
-            </div>
-            <span className="text-sm text-gray-600">
-              {formatRiskLabel(portfolioSummary?.risk_level) || displayScoreInfo?.message || complianceScore?.message || KPI_NO_DATA}
-            </span>
-            {portfolioSummary?.updated_at && (
-              <span className="text-xs text-gray-500">Updated {new Date(portfolioSummary.updated_at).toLocaleString()}</span>
-            )}
-            {(portfolioSummary?.properties?.length != null || complianceScore?.properties_count != null) && (
-              <span className="text-xs text-gray-500">{portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0} propert{(portfolioSummary?.properties?.length ?? complianceScore?.properties_count ?? 0) === 1 ? 'y' : 'ies'}</span>
-            )}
-          </div>
-        )}
-        {dashboardScoreFreshness.hasAny && (
-          <div
-            className={`mb-6 rounded-lg px-3 py-2 text-xs ${
-              dashboardScoreFreshness.isPartialOrStale && dashboardScoreFreshness.explanation
-                ? 'border border-amber-200 bg-amber-50 text-amber-950'
-                : 'border border-gray-200 bg-slate-50 text-gray-800'
-            }`}
-            data-testid="dashboard-score-freshness"
-          >
-            {dashboardScoreFreshness.explanation ? (
-              <p className="leading-snug" data-testid="dashboard-score-freshness-explanation">
-                {dashboardScoreFreshness.explanation}
-              </p>
-            ) : null}
-            {dashboardScoreFreshness.lastCalculatedLine ? (
-              <p
-                className={`leading-snug text-gray-700 ${dashboardScoreFreshness.explanation ? 'mt-1.5' : ''}`}
-                data-testid="dashboard-score-freshness-last-calculated"
-              >
-                {dashboardScoreFreshness.lastCalculatedLine}
-              </p>
-            ) : null}
-          </div>
-        )}
-
-        {portfolioRecalcPendingLine ? (
-          <div
-            className="mb-6 rounded-lg px-3 py-2 text-xs border border-slate-200 bg-slate-50 text-slate-900"
-            data-testid="dashboard-score-recalc-pending"
-          >
-            <p className="leading-snug">{portfolioRecalcPendingLine}</p>
-          </div>
-        ) : null}
-
-        {!setupView && isClientUser && (
-          <Card
-            className="mb-6 border border-teal-100 bg-gradient-to-br from-teal-50/40 to-white shadow-sm"
-            data-testid="dashboard-roi-summary"
-          >
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2 flex-wrap">
-                <TrendingUp className="h-4 w-4 text-teal-600 shrink-0" aria-hidden />
-                Value from your subscription
-                <DashboardKpiHint label="Value from subscription (full detail)">
-                  Month-to-date style tallies from your account only. Compliance row counts requirements/items marked compliant in the
-                  period (or current portfolio snapshot when the API falls back). Jobs on time = maintenance jobs closed before their SLA
-                  deadline in the period. SLA clears = jobs that showed SLA pressure but finished without a recorded breach — descriptive
-                  only, not attributed to a single action. Excludes other accounts. Updates when the value-summary endpoint runs; may lag
-                  Today or Jobs by a few minutes. Not legal advice.
-                </DashboardKpiHint>
-              </CardTitle>
-              <p className="text-xs text-gray-500 font-normal mt-1">
-                Three concrete counts for this period — each line below says exactly what the number means.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {roiSummary === undefined && (
-                <p className="text-sm text-gray-500">Loading value summary…</p>
-              )}
-              {roiSummary === null && (
-                <p className="text-sm text-gray-600">Value summary is temporarily unavailable.</p>
-              )}
-              {roiSummary != null && (
-                <>
-                  {(roiSummary.compliance_items_up_to_date ?? 0) === 0 &&
-                    (roiSummary.jobs_completed_on_time ?? 0) === 0 &&
-                    (roiSummary.sla_breaches_avoided ?? 0) === 0 &&
-                    !roiSummary.unavailable && (
-                      <p className="text-sm text-gray-700 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-                        No outcomes recorded in this period yet — zeros are normal until you have compliant items and completed jobs in the
-                        window.
-                      </p>
-                    )}
-                  <p className="text-sm font-semibold text-midnight-blue">{roiSummary.period_label || 'This month'}</p>
-                  <div className="grid sm:grid-cols-3 gap-4 text-sm">
-                    <div className="rounded-lg border border-gray-100 bg-white p-3">
-                      <p className="text-2xl font-bold text-midnight-blue tabular-nums">
-                        {roiSummary.compliance_basis === 'unavailable' ? '—' : roiSummary.compliance_items_up_to_date ?? 0}
-                      </p>
-                      <p className="font-medium text-gray-900 mt-1">Up to date</p>
-                      <p className="text-xs text-gray-600 mt-1 leading-snug">
-                        Count of requirements (or certificate slots) counted as compliant in this period&apos;s tally — from the live
-                        compliance engine, not a legal sign-off.
-                        {roiSummary.compliance_basis === 'portfolio_snapshot'
-                          ? ' This month uses your current compliant portfolio because nothing changed in-period (not strictly new activity).'
-                          : roiSummary.compliance_basis === 'unavailable'
-                            ? ' Compliance basis could not be loaded.'
-                            : ''}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-gray-100 bg-white p-3">
-                      <p className="text-2xl font-bold text-midnight-blue tabular-nums">{roiSummary.jobs_completed_on_time ?? 0}</p>
-                      <p className="font-medium text-gray-900 mt-1">Jobs on time</p>
-                      <p className="text-xs text-gray-600 mt-1 leading-snug">
-                        Maintenance jobs completed before their response or completion SLA in this period. Missed or open jobs are not
-                        counted here.
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-gray-100 bg-white p-3">
-                      <p className="text-2xl font-bold text-midnight-blue tabular-nums">{roiSummary.sla_breaches_avoided ?? 0}</p>
-                      <p className="font-medium text-gray-900 mt-1">SLA pressure cleared</p>
-                      <p className="text-xs text-gray-600 mt-1 leading-snug">
-                        Jobs that had an SLA near-breach signal, then finished without a recorded breach and within the deadline — a
-                        descriptive count only; we do not claim which action &quot;caused&quot; the outcome.
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Loaded separately from the rest of the dashboard for speed; figures are approximate for the labelled period.
-                  </p>
-                  {roiSummary.unavailable && (
-                    <p className="text-xs text-amber-800">Some underlying data could not be fully loaded.</p>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {!setupView && isClientUser &&
-          (dashboardFreshness?.score_updated_at ||
-            dashboardFreshness?.risk_signals_updated_at ||
-            dashboardFreshness?.last_automation_score_recalc_at ||
-            dashboardFreshness?.last_automation_risk_refresh_at) && (
-          <div
-            className="hidden xl:block mb-4 rounded-lg border border-gray-200 bg-white px-4 py-3 text-xs text-gray-600"
-            data-testid="dashboard-freshness-strip"
-          >
-            <p className="font-medium text-gray-700 mb-1">Data freshness</p>
-            <ul className="space-y-1">
-              {dashboardFreshness.score_updated_at && (
-                <li>
-                  Compliance score updated: {new Date(dashboardFreshness.score_updated_at).toLocaleString()}
-                  {isTimestampStale(dashboardFreshness.score_updated_at, FRESH_SCORE_STALE_HOURS) && (
-                    <span className="ml-2 text-amber-700" title="Snapshot may be outdated; open Today or Compliance score, or ask your admin to recalc if needed.">
-                      May be outdated
-                    </span>
-                  )}
-                </li>
-              )}
-              {dashboardFreshness.risk_signals_updated_at && (
-                <li>
-                  Risk signals updated: {new Date(dashboardFreshness.risk_signals_updated_at).toLocaleString()}
-                  {isTimestampStale(dashboardFreshness.risk_signals_updated_at, FRESH_RISK_STALE_HOURS) && (
-                    <span className="ml-2 text-amber-700" title="Risk data may be stale.">
-                      May be outdated
-                    </span>
-                  )}
-                </li>
-              )}
-              {dashboardFreshness.last_automation_score_recalc_at && (
-                <li className="text-gray-500">
-                  Last automated score recalc: {new Date(dashboardFreshness.last_automation_score_recalc_at).toLocaleString()}
-                  {isTimestampStale(dashboardFreshness.last_automation_score_recalc_at, FRESH_SCORE_STALE_HOURS) && (
-                    <span className="ml-2 text-amber-700" title="Scheduled recalc may be overdue.">
-                      May be outdated
-                    </span>
-                  )}
-                </li>
-              )}
-              {dashboardFreshness.last_automation_risk_refresh_at && (
-                <li className="text-gray-500">
-                  Last automated risk refresh: {new Date(dashboardFreshness.last_automation_risk_refresh_at).toLocaleString()}
-                  {isTimestampStale(dashboardFreshness.last_automation_risk_refresh_at, FRESH_RISK_STALE_HOURS) && (
-                    <span className="ml-2 text-amber-700" title="Scheduled risk job may be overdue.">
-                      May be outdated
-                    </span>
-                  )}
-                </li>
-              )}
-            </ul>
-          </div>
-        )}
-
-        {!setupView && isClientUser && (protectionSnapshotLoading || protectionSnapshot) && (
-          <Card
-            className="hidden lg:block mb-6 border border-gray-200 shadow-sm"
-            data-testid="protection-snapshot-card"
-          >
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Shield className="w-4 h-4 text-teal-600" />
-                Security &amp; continuity snapshot
-              </CardTitle>
-              <p className="text-xs text-gray-500 mt-1">
-                Read-only summary of sign-in activity, requirement counts, maintenance issues, and open predictive risk signals. Not legal advice.
-              </p>
-            </CardHeader>
-            <CardContent className="text-sm text-gray-700 space-y-2 pt-0">
-              {protectionSnapshotLoading && <p className="text-gray-500">Loading…</p>}
-              {!protectionSnapshotLoading && protectionSnapshot && (
-                <>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>
-                      Last portal sign-in:{' '}
-                      {protectionSnapshot.account?.last_login_at
-                        ? new Date(protectionSnapshot.account.last_login_at).toLocaleString()
-                        : 'Not recorded'}
-                    </li>
-                    <li>
-                      Compliance requirements:{' '}
-                      {Number(protectionSnapshot.compliance?.requirements_overdue || 0)} overdue,{' '}
-                      {Number(protectionSnapshot.compliance?.requirements_expiring_soon || 0)} expiring soon,{' '}
-                      {Number(protectionSnapshot.compliance?.requirements_pending || 0)} pending
-                    </li>
-                    {protectionSnapshot.operations?.maintenance_workflows_enabled &&
-                      protectionSnapshot.operations?.open_maintenance_issues != null && (
-                        <li>Open maintenance issues: {protectionSnapshot.operations.open_maintenance_issues}</li>
-                      )}
-                    {protectionSnapshot.risk?.predictive_enabled &&
-                      protectionSnapshot.risk?.active_risk_signals_count != null && (
-                        <li>
-                          Active risk signals: {protectionSnapshot.risk.active_risk_signals_count}
-                          {Number(protectionSnapshot.risk.high_or_critical_active_count || 0) > 0
-                            ? ` (${protectionSnapshot.risk.high_or_critical_active_count} high or critical)`
-                            : ''}
-                        </li>
-                      )}
-                  </ul>
-                  {commandCenterScopePropertyId && (
-                    <p className="text-xs text-electric-teal">
-                      Maintenance issues and risk-signal counts are scoped to the selected property; compliance totals are portfolio-wide.
-                    </p>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Executive KPI row (compliance + operations) */}
-        {!setupView && (
-          <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3" data-testid="executive-kpi-row">
-            <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/today')}>
-              <CardContent className="p-3 sm:p-4 min-w-0">
-                <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center">
-                  Today (inbox)
-                  <DashboardKpiHint label="Today inbox total">
-                    Sum of urgent, upcoming, and in-progress items from the same Today inbox as the Today page, after the same
-                    tracked-requirement filter. Snoozed and hidden are separate buckets below. If this fails to load, open Today for
-                    live counts.
-                  </DashboardKpiHint>
-                </p>
-                {tasksDigest === undefined || todayInboxPayload === undefined ? (
-                  <p className="text-xl font-bold text-midnight-blue mt-1">…</p>
-                ) : tasksDigest === null ? (
-                  <>
-                    <p className="text-xl font-bold text-gray-500 mt-1">{KPI_NO_DATA}</p>
-                    <p className="text-xs text-gray-500 mt-1">Could not load inbox summary.</p>
-                  </>
-                ) : todayInboxPayload === null ? (
-                  <>
-                    <p className="text-xl font-bold text-gray-500 mt-1">{KPI_NO_DATA}</p>
-                    <p className="text-xs text-gray-500 mt-1">Could not load Today buckets.</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-xl font-bold text-midnight-blue mt-1">{todayInboxSum ?? 0}</p>
-                    {todayInboxSum === 0 && (
-                      <p className="text-xs text-gray-500 mt-1">Nothing in those buckets in this snapshot.</p>
-                    )}
-                  </>
-                )}
-                <p className="text-xs text-electric-teal mt-1">Continue in Today →</p>
-              </CardContent>
-            </Card>
-            <Card className="hidden sm:block cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/compliance-score')}>
-              <CardContent className="p-3 sm:p-4 min-w-0">
-                <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center">
-                  Portfolio compliance
-                  <DashboardKpiHint label="Portfolio compliance score">
-                    Document-backed portfolio score (0–100) from your latest compliance calculation. Updates when requirements, documents,
-                    or related jobs change. Same metric as the Compliance score page — not a legal certification.
-                  </DashboardKpiHint>
-                </p>
-                <p className="text-xl font-bold text-midnight-blue">
-                  {portfolioHeadlineUi.display}
-                </p>
-              </CardContent>
-            </Card>
-            {hasFeature('maintenance_workflows') && (
-              <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/operations/issues')}>
-                <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Open issues</p>
-                  <p className="text-xl font-bold text-midnight-blue">
-                    {openIssuesKpiLoading ? '…' : openIssuesCount == null ? KPI_NO_DATA : openIssuesCount}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-            {hasFeature('maintenance_workflows') && (
-              <Card
-                className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
-                title="Jobs where the agreed response time has passed (current list, up to 500 loaded)."
-                onClick={() => navigate('/operations/work-orders?sla_state=breached')}
-              >
-                <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Jobs · {slaStateLabel('breached')}</p>
-                  <p className="text-xl font-bold text-midnight-blue">{slaBreachedCount}</p>
-                  <p className="text-xs text-gray-500 mt-1">{slaStateLabel('near_breach')}: {slaNearBreachCount}</p>
-                </CardContent>
-              </Card>
-            )}
-            {hasFeature('predictive_maintenance') && (
-              <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/operations/risk-signals')}>
-                <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center">
-                    Risk signals
-                    <DashboardKpiHint label="Active risk signals count">
-                      Open predictive risk signals for your portfolio (active status). Matches the security snapshot when loaded.
-                      Resolved or dismissed signals are excluded. Open the list for detail — not every item needs immediate work.
-                      Acknowledging or dismissing a signal does not clear compliance obligations by itself.
-                    </DashboardKpiHint>
-                  </p>
-                  <p className="text-xl font-bold text-midnight-blue">{riskSignalsCount}</p>
-                </CardContent>
-              </Card>
-            )}
-            {hasFeature('invoicing') && maintenanceSpendMonth && maintenanceSpendMonth.has_any_invoices && (
-              <Card
-                className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
-                title={maintenanceSpendMonth.calculation_summary || 'Paid contractor invoices this UTC month.'}
-                onClick={() => navigate('/operations/approvals')}
-              >
-                <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Maintenance spend (month)</p>
-                  <p className="text-xl font-bold text-midnight-blue">
-                    {new Intl.NumberFormat('en-GB', { style: 'currency', currency: maintenanceSpendMonth.currency || 'GBP' }).format(Number(maintenanceSpendMonth.total_amount ?? 0))}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">Paid invoices · UTC month</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
-
         {!setupView && tasksDigest && typeof tasksDigest === 'object' && (() => {
           const cc = commandCenter && typeof commandCenter === 'object' ? commandCenter : null;
           const inboxReady = todayInboxPayload !== undefined && todayInboxPayload !== null;
@@ -2020,7 +1887,8 @@ const ClientDashboard = () => {
                   Inbox snapshot
                 </CardTitle>
                 <p className="text-xs text-gray-600 mt-1 break-words">
-                  Overview counts only — work items in <span className="font-medium text-midnight-blue">Command Center</span> and{' '}
+                  Counts only — prioritisation and execution stay in{' '}
+                  <span className="font-medium text-midnight-blue">Command Center</span> and{' '}
                   <span className="font-medium text-midnight-blue">Today</span>.
                 </p>
                 {(tasksDigest.freshness?.tasks_refreshed_at || cc?.freshness?.tasks_refreshed_at) && (
@@ -2061,26 +1929,24 @@ const ClientDashboard = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-sm text-gray-800 space-y-2">
+              <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-sm text-gray-800 space-y-1.5">
                 <p>
-                  <span className="font-semibold text-midnight-blue">Inbox buckets: </span>
+                  <span className="font-semibold text-midnight-blue">Buckets: </span>
                   Urgent {n(urgentN)} · Upcoming {n(upN)} · In progress {n(ipN)} · Snoozed {n(snoozedN)} · Hidden {n(hiddenN)}
                 </p>
                 {todayInboxPayload === null ? (
                   <p className="text-xs text-amber-800">Today inbox could not be loaded — open Today for bucket counts.</p>
                 ) : null}
                 {cc ? (
-                  <p>
-                    <span className="font-semibold text-midnight-blue">In this snapshot: </span>
+                  <p className="text-xs text-gray-700">
+                    <span className="font-medium text-midnight-blue">This snapshot: </span>
                     {queueN} prioritised row{queueN === 1 ? '' : 's'}
                     {hasFeature('predictive_maintenance') && riskN > 0
-                      ? ` · ${riskN} risk signal${riskN === 1 ? '' : 's'} in preview (not compliance closure)`
+                      ? ` · ${riskN} risk signal${riskN === 1 ? '' : 's'} preview`
                       : ''}
+                    . <span className="text-gray-600">Use Command Center to work the queue in order.</span>
                   </p>
                 ) : null}
-                <p className="text-xs text-gray-600">
-                  Expand only if you want the breakdown on the Dashboard — actions and ordering live in Command Center and Today.
-                </p>
               </div>
               <Button
                 type="button"
@@ -2266,48 +2132,204 @@ const ClientDashboard = () => {
           );
         })()}
 
-        {!setupView && isClientUser && (activitySinceLoading || activitySince) && (
-          <Card className="mb-6 border border-gray-200 shadow-sm" data-testid="activity-since-card">
-            <CardHeader className="pb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div className="min-w-0">
-                <CardTitle className="text-base flex items-center gap-2 break-words">
-                  <History className="w-4 h-4 text-teal-600 shrink-0" />
-                  Since your last visit
-                </CardTitle>
-                {activitySince?.window?.since && activitySince?.window?.until && (
-                  <p className="text-xs text-gray-500 mt-1 break-words">
-                    Compared {new Date(activitySince.window.since).toLocaleString()} →{' '}
-                    {new Date(activitySince.window.until).toLocaleString()}
-                  </p>
-                )}
-          </div>
-          <Button 
-                variant="outline"
-                size="sm"
-                className="shrink-0 w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0"
-                disabled={activitySinceAckBusy || activitySinceLoading}
-                onClick={handleAckActivitySince}
-                data-testid="activity-since-ack-btn"
-              >
-                Mark as seen
-          </Button>
-            </CardHeader>
-            <CardContent>
-              {activitySinceLoading ? (
-                <p className="text-sm text-gray-500">Loading what changed…</p>
-              ) : Array.isArray(activitySince?.lines) && activitySince.lines.length > 0 ? (
-                <ul className="list-disc list-inside space-y-1.5 text-sm text-gray-800">
-                  {activitySince.lines.map((line, idx) => (
-                    <li key={idx}>{line}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-gray-600">
-                  No qualifying changes in audit logs, score snapshots, jobs, or uploads for this window.
+        {/* ZONE 3 — Subscription, security/continuity, activity since last visit (single disclosure; default closed) */}
+        {!setupView && isClientUser && (
+          <Collapsible
+            open={dashboardSystemInsightsOpen}
+            onOpenChange={setDashboardSystemInsightsOpen}
+            className="mb-6 rounded-xl border border-slate-200 bg-white shadow-sm"
+            data-testid="dashboard-system-insights-zone"
+          >
+            <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3.5 text-left hover:bg-slate-50/80 min-h-[48px] [&[data-state=open]]:rounded-b-none">
+              <div className="min-w-0 pr-2">
+                <p className="text-sm font-semibold text-midnight-blue">System & activity insights</p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-snug">
+                  Subscription value summary, security and continuity readout, and changes since your last acknowledged visit.
                 </p>
+              </div>
+              <ChevronDown
+                className={`h-5 w-5 shrink-0 text-gray-500 transition-transform duration-200 ${dashboardSystemInsightsOpen ? 'rotate-180' : ''}`}
+                aria-hidden
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="border-t border-slate-100 px-3 pb-4 pt-3 sm:px-4 space-y-4">
+              <Card
+                className="border border-teal-100 bg-gradient-to-br from-teal-50/40 to-white shadow-sm"
+                data-testid="dashboard-roi-summary"
+              >
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+                    <TrendingUp className="h-4 w-4 text-teal-600 shrink-0" aria-hidden />
+                    Value from your subscription
+                    <DashboardKpiHint label="Value from subscription (full detail)">
+                      Month-to-date style tallies from your account only. Compliance row counts requirements/items marked compliant in the
+                      period (or current portfolio snapshot when the API falls back). Jobs on time = maintenance jobs closed before their SLA
+                      deadline in the period. SLA clears = jobs that showed SLA pressure but finished without a recorded breach — descriptive
+                      only, not attributed to a single action. Excludes other accounts. Updates when the value-summary endpoint runs; may lag
+                      Today or Jobs by a few minutes. Not legal advice.
+                    </DashboardKpiHint>
+                  </CardTitle>
+                  <p className="text-xs text-gray-500 font-normal mt-1">
+                    Three concrete counts for this period — each line below says exactly what the number means.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {roiSummary === undefined && <p className="text-sm text-gray-500">Loading value summary…</p>}
+                  {roiSummary === null && <p className="text-sm text-gray-600">Value summary is temporarily unavailable.</p>}
+                  {roiSummary != null && (
+                    <>
+                      {(roiSummary.compliance_items_up_to_date ?? 0) === 0 &&
+                        (roiSummary.jobs_completed_on_time ?? 0) === 0 &&
+                        (roiSummary.sla_breaches_avoided ?? 0) === 0 &&
+                        !roiSummary.unavailable && (
+                          <p className="text-sm text-gray-700 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                            No outcomes recorded in this period yet — zeros are normal until you have compliant items and completed jobs in the
+                            window.
+                          </p>
+                        )}
+                      <p className="text-sm font-semibold text-midnight-blue">{roiSummary.period_label || 'This month'}</p>
+                      <div className="grid sm:grid-cols-3 gap-4 text-sm">
+                        <div className="rounded-lg border border-gray-100 bg-white p-3">
+                          <p className="text-2xl font-bold text-midnight-blue tabular-nums">
+                            {roiSummary.compliance_basis === 'unavailable' ? '—' : roiSummary.compliance_items_up_to_date ?? 0}
+                          </p>
+                          <p className="font-medium text-gray-900 mt-1">Up to date</p>
+                          <p className="text-xs text-gray-600 mt-1 leading-snug">
+                            Count of requirements (or certificate slots) counted as compliant in this period&apos;s tally — from the live
+                            compliance engine, not a legal sign-off.
+                            {roiSummary.compliance_basis === 'portfolio_snapshot'
+                              ? ' This month uses your current compliant portfolio because nothing changed in-period (not strictly new activity).'
+                              : roiSummary.compliance_basis === 'unavailable'
+                                ? ' Compliance basis could not be loaded.'
+                                : ''}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-gray-100 bg-white p-3">
+                          <p className="text-2xl font-bold text-midnight-blue tabular-nums">{roiSummary.jobs_completed_on_time ?? 0}</p>
+                          <p className="font-medium text-gray-900 mt-1">Jobs on time</p>
+                          <p className="text-xs text-gray-600 mt-1 leading-snug">
+                            Maintenance jobs completed before their response or completion SLA in this period. Missed or open jobs are not
+                            counted here.
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-gray-100 bg-white p-3">
+                          <p className="text-2xl font-bold text-midnight-blue tabular-nums">{roiSummary.sla_breaches_avoided ?? 0}</p>
+                          <p className="font-medium text-gray-900 mt-1">SLA pressure cleared</p>
+                          <p className="text-xs text-gray-600 mt-1 leading-snug">
+                            Jobs that had an SLA near-breach signal, then finished without a recorded breach and within the deadline — a
+                            descriptive count only; we do not claim which action &quot;caused&quot; the outcome.
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Loaded separately from the rest of the dashboard for speed; figures are approximate for the labelled period.
+                      </p>
+                      {roiSummary.unavailable && (
+                        <p className="text-xs text-amber-800">Some underlying data could not be fully loaded.</p>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {(protectionSnapshotLoading || protectionSnapshot) && (
+                <Card className="border border-gray-200 shadow-sm" data-testid="protection-snapshot-card">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-teal-600" />
+                      Security & continuity snapshot
+                    </CardTitle>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Read-only summary of sign-in activity, requirement counts, maintenance issues, and open predictive risk signals. Not legal advice.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="text-sm text-gray-700 space-y-2 pt-0">
+                    {protectionSnapshotLoading && <p className="text-gray-500">Loading…</p>}
+                    {!protectionSnapshotLoading && protectionSnapshot && (
+                      <>
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>
+                            Last portal sign-in:{' '}
+                            {protectionSnapshot.account?.last_login_at
+                              ? new Date(protectionSnapshot.account.last_login_at).toLocaleString()
+                              : 'Not recorded'}
+                          </li>
+                          <li>
+                            Compliance requirements:{' '}
+                            {Number(protectionSnapshot.compliance?.requirements_overdue || 0)} overdue,{' '}
+                            {Number(protectionSnapshot.compliance?.requirements_expiring_soon || 0)} expiring soon,{' '}
+                            {Number(protectionSnapshot.compliance?.requirements_pending || 0)} pending
+                          </li>
+                          {protectionSnapshot.operations?.maintenance_workflows_enabled &&
+                            protectionSnapshot.operations?.open_maintenance_issues != null && (
+                              <li>Open maintenance issues: {protectionSnapshot.operations.open_maintenance_issues}</li>
+                            )}
+                          {protectionSnapshot.risk?.predictive_enabled &&
+                            protectionSnapshot.risk?.active_risk_signals_count != null && (
+                              <li>
+                                Active risk signals: {protectionSnapshot.risk.active_risk_signals_count}
+                                {Number(protectionSnapshot.risk.high_or_critical_active_count || 0) > 0
+                                  ? ` (${protectionSnapshot.risk.high_or_critical_active_count} high or critical)`
+                                  : ''}
+                              </li>
+                            )}
+                        </ul>
+                        {commandCenterScopePropertyId && (
+                          <p className="text-xs text-electric-teal">
+                            Maintenance issues and risk-signal counts are scoped to the selected property; compliance totals are portfolio-wide.
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
+
+              {(activitySinceLoading || activitySince) && (
+                <Card className="border border-gray-200 shadow-sm" data-testid="activity-since-card">
+                  <CardHeader className="pb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                    <div className="min-w-0">
+                      <CardTitle className="text-base flex items-center gap-2 break-words">
+                        <History className="w-4 h-4 text-teal-600 shrink-0" />
+                        Since your last visit
+                      </CardTitle>
+                      {activitySince?.window?.since && activitySince?.window?.until && (
+                        <p className="text-xs text-gray-500 mt-1 break-words">
+                          Compared {new Date(activitySince.window.since).toLocaleString()} →{' '}
+                          {new Date(activitySince.window.until).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0"
+                      disabled={activitySinceAckBusy || activitySinceLoading}
+                      onClick={handleAckActivitySince}
+                      data-testid="activity-since-ack-btn"
+                    >
+                      Mark as seen
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    {activitySinceLoading ? (
+                      <p className="text-sm text-gray-500">Loading what changed…</p>
+                    ) : Array.isArray(activitySince?.lines) && activitySince.lines.length > 0 ? (
+                      <ul className="list-disc list-inside space-y-1.5 text-sm text-gray-800">
+                        {activitySince.lines.map((line, idx) => (
+                          <li key={idx}>{line}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-600">
+                        No qualifying changes in audit logs, score snapshots, jobs, or uploads for this window.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         {!setupView && jurisdictionPortfolioBanner.showFull && (
@@ -2347,6 +2369,7 @@ const ClientDashboard = () => {
           </Alert>
         )}
 
+        {/* ZONE 2 — Portfolio intelligence: score trend + what changed */}
         {/* Score Trend (90 days) + What Changed */}
         <div className="mb-8 grid lg:grid-cols-2 gap-6" data-testid="score-trend-and-changes">
           {/* Left: Score Trend (90 days) */}
