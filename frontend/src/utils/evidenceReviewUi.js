@@ -68,3 +68,13 @@ export function isPositiveEvidenceState(doc = {}) {
   return st === 'ACCEPTED_UNVERIFIED' || st === 'VERIFIED';
 }
 
+/**
+ * True when a separate “verification / assurance” pill would repeat the same
+ * user-facing phrase as the primary evidence row label (Documents row, property tables).
+ */
+export function clientVerificationLabelRedundantWithPrimary(doc, primaryRowLabel) {
+  const a = String(primaryRowLabel || '').trim().toLowerCase();
+  const b = String(clientFacingVerificationLabel(doc) || '').trim().toLowerCase();
+  return Boolean(a) && Boolean(b) && a === b;
+}
+

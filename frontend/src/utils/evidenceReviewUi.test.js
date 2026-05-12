@@ -1,6 +1,7 @@
 import {
   assuranceTierLabel,
   clientFacingVerificationLabel,
+  clientVerificationLabelRedundantWithPrimary,
   effectiveAssuranceTier,
   effectiveEvidenceReviewState,
   isPositiveEvidenceState,
@@ -43,6 +44,12 @@ describe('evidenceReviewUi', () => {
     expect(isPositiveEvidenceState({ evidence_review_state: 'EXPIRED' })).toBe(false);
     expect(isPositiveEvidenceState({ evidence_review_state: 'NEEDS_INFORMATION' })).toBe(false);
     expect(isPositiveEvidenceState({ evidence_review_state: 'ACCEPTED_UNVERIFIED' })).toBe(true);
+  });
+
+  it('detects duplicate primary vs client verification label', () => {
+    const doc = { evidence_review_state: 'ACCEPTED_UNVERIFIED' };
+    expect(clientVerificationLabelRedundantWithPrimary(doc, 'Accepted (unverified)')).toBe(true);
+    expect(clientVerificationLabelRedundantWithPrimary(doc, 'Uploaded')).toBe(false);
   });
 });
 
