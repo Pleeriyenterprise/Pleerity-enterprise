@@ -24,6 +24,7 @@ import {
 import { toast } from '@/utils/portalNotifications';
 import { cn } from '../lib/utils';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { operationalLabelForToken } from '../utils/presentationLanguage';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -305,8 +306,8 @@ const ClientProvideInfoPage = () => {
                 <h3 className="font-medium text-gray-900">Requested Information</h3>
                 
                 {requestData.requested_fields.map(fieldId => {
-                  const config = fieldConfig[fieldId] || { 
-                    label: fieldId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                  const config = fieldConfig[fieldId] || {
+                    label: operationalLabelForToken(fieldId, { emptyLabel: fieldId }),
                     type: 'text',
                   };
                   
@@ -518,7 +519,7 @@ const ClientProvideInfoPage = () => {
                   <div className="text-sm text-gray-600">
                     {Object.entries(resp.payload || {}).map(([key, value]) => (
                       <p key={key}>
-                        <span className="font-medium">{key.replace(/_/g, ' ')}:</span> {value}
+                        <span className="font-medium">{operationalLabelForToken(key, { emptyLabel: key })}:</span> {value}
                       </p>
                     ))}
                   </div>

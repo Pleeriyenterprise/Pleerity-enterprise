@@ -240,11 +240,11 @@
   },
   "sla_presentations": {
     "breached": {
-      "client_label": "Response time exceeded",
+      "client_label": "SLA deadline missed",
       "admin_label": "SLA breached"
     },
     "near_breach": {
-      "client_label": "Approaching response deadline",
+      "client_label": "Near SLA deadline",
       "admin_label": "Near SLA breach"
     }
   },

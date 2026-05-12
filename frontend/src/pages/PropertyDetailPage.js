@@ -98,6 +98,7 @@ import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { toast } from '@/utils/portalNotifications';
 import { buildEntityRoute, buildSafeQueryPath, resolveClientPortalPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
 import { cn } from '../lib/utils';
+import { operationalLabelForToken } from '../utils/presentationLanguage';
 import {
   PortalLoadingPanel,
   PortalFilterStack,
@@ -1036,7 +1037,7 @@ export default function PropertyDetailPage() {
   const assetLabel = (assetId) => {
     if (!assetId) return '—';
     const a = assets.find((x) => x.asset_id === assetId);
-    return a ? (a.name || (a.asset_type || '').replace(/_/g, ' ')) : assetId;
+    return a ? (a.name || operationalLabelForToken(a.asset_type, { emptyLabel: '' }) || assetId) : assetId;
   };
 
   const getStatus = (r) =>
@@ -1783,13 +1784,16 @@ export default function PropertyDetailPage() {
                     <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
                       Scoring rules:{' '}
                       <strong>
-                        {String(
-                          (complianceExplainability?.authoritative || complianceExplainability)?.scoring_jurisdiction_bucket ??
-                            (complianceExplainability?.authoritative || complianceExplainability)?.jurisdiction ??
-                            (complianceExplainability?.operational_preview?.live_engine_snapshot || {}).scoring_jurisdiction_bucket ??
-                            (complianceExplainability?.operational_preview?.live_engine_snapshot || {}).jurisdiction ??
-                            'ENGLAND_WALES',
-                        ).replace(/_/g, ' ')}
+                        {operationalLabelForToken(
+                          String(
+                            (complianceExplainability?.authoritative || complianceExplainability)?.scoring_jurisdiction_bucket ??
+                              (complianceExplainability?.authoritative || complianceExplainability)?.jurisdiction ??
+                              (complianceExplainability?.operational_preview?.live_engine_snapshot || {}).scoring_jurisdiction_bucket ??
+                              (complianceExplainability?.operational_preview?.live_engine_snapshot || {}).jurisdiction ??
+                              'ENGLAND_WALES',
+                          ).trim() || 'ENGLAND_WALES',
+                          { emptyLabel: '—' },
+                        )}
                       </strong>
                     </span>
                     <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
@@ -2379,7 +2383,7 @@ export default function PropertyDetailPage() {
                       <Card key={iss.issue_id} className="border border-gray-200 p-3">
                         <p className="font-medium text-midnight-blue text-sm">{iss.description || '—'}</p>
                         <p className="text-xs text-gray-600 mt-1">
-                          {(iss.category || '—').replace(/_/g, ' ')} · {iss.severity || '—'} · {issueStatusLabel(iss.status)}
+                          {operationalLabelForToken(iss.category, { emptyLabel: '—' })} · {iss.severity || '—'} · {issueStatusLabel(iss.status)}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
                           {iss.created_at ? formatDate(iss.created_at) : '—'} · {assetLabel(iss.asset_id)}
@@ -2400,7 +2404,7 @@ export default function PropertyDetailPage() {
                         {maintenanceIssues.map((iss) => (
                           <tr key={iss.issue_id} className="border-b hover:bg-gray-50">
                             <td className="p-2 font-medium max-w-[180px] truncate" title={iss.description}>{iss.description || '—'}</td>
-                            <td className="p-2 text-gray-600">{(iss.category || '—').replace(/_/g, ' ')}</td>
+                            <td className="p-2 text-gray-600">{operationalLabelForToken(iss.category, { emptyLabel: '—' })}</td>
                             <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${(iss.severity || '').toLowerCase() === 'urgent' ? 'bg-red-100 text-red-800' : (iss.severity || '').toLowerCase() === 'high' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>{iss.severity || '—'}</span></td>
                             <td className="p-2">{iss.priority_score != null ? iss.priority_score : '—'}</td>
                             <td className="p-2 text-gray-600">{assetLabel(iss.asset_id)}</td>
@@ -2568,7 +2572,7 @@ export default function PropertyDetailPage() {
           {/* SLA panel */}
           {slaAtRiskOrBreached.length > 0 && (
             <Card className="border-amber-200 bg-amber-50/30">
-              <CardHeader><CardTitle className="text-base">SLA at risk or breached</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">SLA deadlines at risk or missed</CardTitle></CardHeader>
               <CardContent>
                 <ul className="space-y-2">
                   {slaAtRiskOrBreached.slice(0, 10).map((wo) => (
@@ -2578,7 +2582,11 @@ export default function PropertyDetailPage() {
                         <span className={cn('shrink-0 inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>
                       </span>
                       <span className="text-xs text-gray-600">{wo.sla_complete_by ? formatDate(wo.sla_complete_by) : '—'}</span>
-                      {wo.sla_breached_at ? <span className="text-xs text-red-600 font-medium">Breached</span> : <span className="text-xs text-amber-600">At risk</span>}
+                      {wo.sla_breached_at ? (
+                        <span className="text-xs text-red-600 font-medium">Deadline missed</span>
+                      ) : (
+                        <span className="text-xs text-amber-600">Near deadline</span>
+                      )}
                       <Button size="sm" variant="outline" onClick={() => setWoDetailDrawer(wo.work_order_id)}>Preview</Button>
                     </li>
                   ))}
@@ -2672,7 +2680,7 @@ export default function PropertyDetailPage() {
                 <>
                   <p className="text-sm text-gray-700 whitespace-pre-wrap mb-4">{issueDetailData.description || '—'}</p>
                   <dl className="grid grid-cols-2 gap-2 text-sm mb-4">
-                    <dt className="text-gray-500">Category</dt><dd>{(issueDetailData.category || '—').replace(/_/g, ' ')}</dd>
+                    <dt className="text-gray-500">Category</dt><dd>{operationalLabelForToken(issueDetailData.category, { emptyLabel: '—' })}</dd>
                     <dt className="text-gray-500">Severity</dt><dd>{issueDetailData.severity || '—'}</dd>
                     <dt className="text-gray-500">Priority score</dt><dd>{issueDetailData.priority_score != null ? issueDetailData.priority_score : '—'}</dd>
                     <dt className="text-gray-500">Asset</dt><dd>{assetLabel(issueDetailData.asset_id)}</dd>
@@ -2687,7 +2695,10 @@ export default function PropertyDetailPage() {
                     </div>
                   )}
                   {issueDetailData.triage?.recommended_contractor_type && (
-                    <p className="text-sm text-gray-600 mb-4">Recommended contractor: {(issueDetailData.triage.recommended_contractor_type || '').replace(/_/g, ' ')}</p>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Recommended contractor:{' '}
+                      {operationalLabelForToken(issueDetailData.triage.recommended_contractor_type, { emptyLabel: '—' })}
+                    </p>
                   )}
                   <div className="flex flex-wrap gap-2 pt-2">
                     {issueDetailData.status !== 'ready_for_work_order' && issueDetailData.status !== 'closed' && (
@@ -2728,8 +2739,8 @@ export default function PropertyDetailPage() {
                 const current = clientCurrentUpdateSummary(wf || basis);
                 const slaDue = basis.sla_complete_by ? formatDate(basis.sla_complete_by) : '—';
                 let slaUrgency = slaDue;
-                if (basis.sla_breached_at) slaUrgency = `${slaDue} · SLA breached`;
-                else if (basis.sla_breach_risk_at) slaUrgency = `${slaDue} · SLA at risk`;
+                if (basis.sla_breached_at) slaUrgency = `${slaDue} · SLA deadline missed`;
+                else if (basis.sla_breach_risk_at) slaUrgency = `${slaDue} · Near SLA deadline`;
                 const cid = String(basis.contractor_id || '').trim();
                 const cname = String(basis.contractor_name || '').trim();
                 const contractorSummary = cid ? (cname && cname !== cid ? `${cname} · ${cid}` : cid) : 'Unassigned';
@@ -2740,14 +2751,14 @@ export default function PropertyDetailPage() {
                   const when = formatJobPreviewDateTime(sched);
                   if (ss === 'confirmed') visitSummary = `${when} · Confirmed`;
                   else if (ss === 'proposed') visitSummary = `${when} · Proposed (confirm on full job page)`;
-                  else visitSummary = `${when}${ss ? ` · ${ss.replace(/_/g, ' ')}` : ''}`;
+                  else visitSummary = `${when}${ss ? ` · ${operationalLabelForToken(ss, { emptyLabel: '' })}` : ''}`;
                 } else if (ss) {
-                  visitSummary = ss.replace(/_/g, ' ');
+                  visitSummary = operationalLabelForToken(ss, { emptyLabel: '—' });
                 }
                 const pr = basis.pricing;
                 let quoteSummary = null;
                 if (pr?.pricing_workflow) {
-                  const bits = [String(pr.price_status || '—').replace(/_/g, ' ')];
+                  const bits = [operationalLabelForToken(pr.price_status, { emptyLabel: '—' })];
                   if (pr.quoted_price != null && pr.quoted_price !== '') {
                     bits.push(`£${Number(pr.quoted_price).toFixed(2)}${pr.price_currency ? ` ${pr.price_currency}` : ''}`);
                   }
@@ -2777,7 +2788,7 @@ export default function PropertyDetailPage() {
                       <dd>
                         <span
                           className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${basis.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : basis.status === 'CANCELLED' ? 'bg-gray-100 text-gray-700' : 'bg-amber-100 text-amber-800'}`}
-                          title={basis.status ? String(basis.status).replace(/_/g, ' ') : undefined}
+                          title={basis.status ? operationalLabelForToken(basis.status) : undefined}
                         >
                           {workOrderStatusLabel(basis.status)}
                         </span>
@@ -2827,7 +2838,11 @@ export default function PropertyDetailPage() {
                         )}
                       </dd>
                     </dl>
-                    {basis.resolution_outcome ? <p className="text-xs text-gray-600 mb-3">Outcome: {String(basis.resolution_outcome).replace(/_/g, ' ')}</p> : null}
+                    {basis.resolution_outcome ? (
+                      <p className="text-xs text-gray-600 mb-3">
+                        Outcome: {operationalLabelForToken(basis.resolution_outcome, { emptyLabel: '—' })}
+                      </p>
+                    ) : null}
                     {!quoteSummary && basis.cost_estimate_min != null && basis.cost_estimate_max != null ? (
                       <p className="text-xs text-gray-600 mb-3">Cost estimate: £{basis.cost_estimate_min} – £{basis.cost_estimate_max}</p>
                     ) : null}
@@ -3698,7 +3713,7 @@ export default function PropertyDetailPage() {
                         const per = assetsSummary?.per_asset?.[a.asset_id] || {};
                         const status = (a.status || 'active').toLowerCase();
                         const statusLabel = status === 'active' ? 'Active' : status === 'inactive' ? 'Inactive' : status === 'replaced' ? 'Replaced' : status === 'removed' ? 'Removed' : 'Active';
-                        const typeLabel = (a.asset_type || '—').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+                        const typeLabel = operationalLabelForToken(a.asset_type, { emptyLabel: '—' });
                         return (
                           <tr key={a.asset_id} className="border-b border-gray-100 hover:bg-gray-50">
                             <td className="p-3 font-medium text-midnight-blue">{a.name || typeLabel}</td>
@@ -3742,8 +3757,12 @@ export default function PropertyDetailPage() {
                   const statusLabel = (a.status || 'active') === 'active' ? 'Active' : (a.status || 'active');
                   return (
                     <Card key={a.asset_id} className="border border-gray-200 p-3">
-                      <div className="font-medium text-midnight-blue">{a.name || (a.asset_type || '').replace(/_/g, ' ')}</div>
-                      <div className="text-xs text-gray-500 mt-1">{(a.asset_type || '').replace(/_/g, ' ')} · {statusLabel}</div>
+                      <div className="font-medium text-midnight-blue">
+                        {a.name || operationalLabelForToken(a.asset_type, { emptyLabel: '—' })}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {operationalLabelForToken(a.asset_type, { emptyLabel: '—' })} · {statusLabel}
+                      </div>
                       <p className="text-sm text-gray-700 mt-2 leading-snug">{assetActivitySummary(a, per)}</p>
                       <div className="flex flex-wrap gap-1 mt-2">
                         <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => { setAssetDetailDrawer(a.asset_id); setAssetDetailData(null); setAssetDetailLoading(true); clientAPI.getPropertyAsset(propertyId, a.asset_id).then((res) => setAssetDetailData(res.data)).catch(() => setAssetDetailData(null)).finally(() => setAssetDetailLoading(false)); }}>View</Button>
@@ -3774,7 +3793,10 @@ export default function PropertyDetailPage() {
                 <>
                   <dl className="space-y-2 text-sm">
                     <div><dt className="text-gray-500">Name</dt><dd className="font-medium">{assetDetailData.asset.name || assetDetailData.asset.asset_type || '—'}</dd></div>
-                    <div><dt className="text-gray-500">Type</dt><dd>{(assetDetailData.asset.asset_type || '—').replace(/_/g, ' ')}</dd></div>
+                    <div>
+                      <dt className="text-gray-500">Type</dt>
+                      <dd>{operationalLabelForToken(assetDetailData.asset.asset_type, { emptyLabel: '—' })}</dd>
+                    </div>
                     <div><dt className="text-gray-500">Status</dt><dd>{(assetDetailData.asset.status || 'active').replace(/^\w/, (c) => c.toUpperCase())}</dd></div>
                     <div><dt className="text-gray-500">Last service</dt><dd>{assetDetailData.asset.last_service_date ? formatDate(assetDetailData.asset.last_service_date) : '—'}</dd></div>
                     <div><dt className="text-gray-500">Installed year</dt><dd>{assetDetailData.asset.installed_year ?? '—'}</dd></div>

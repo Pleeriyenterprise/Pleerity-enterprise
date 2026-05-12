@@ -16,6 +16,7 @@ import { PortalFilterStack, portalDrawerPanelClass } from '../components/client/
 import { resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import { operationalLabelForToken } from '../utils/presentationLanguage';
 
 function ClientIssuesPageInner() {
   const navigate = useNavigate();
@@ -417,7 +418,9 @@ function ClientIssuesPageInner() {
                       <span className={`px-2 py-1 rounded-md ${(iss.severity || '').toLowerCase() === 'urgent' ? 'bg-red-100 text-red-800' : (iss.severity || '').toLowerCase() === 'high' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>
                         {issueSeverityLabel(iss.severity)}
                       </span>
-                      <span className="px-2 py-1 rounded-md bg-gray-50 text-gray-600">{(iss.category || '—').replace(/_/g, ' ')}</span>
+                      <span className="px-2 py-1 rounded-md bg-gray-50 text-gray-600">
+                        {operationalLabelForToken(iss.category, { emptyLabel: '—' })}
+                      </span>
                     </div>
                     <div className="flex flex-col gap-2 pt-1">
                       <Button className="w-full min-h-11 justify-center bg-midnight-blue hover:bg-midnight-blue/90" onClick={() => setIssueDetailDrawer(iss.issue_id)}>
@@ -458,7 +461,7 @@ function ClientIssuesPageInner() {
                         <span className="font-medium truncate block" title={iss.description}>{iss.description || '—'}</span>
                       </td>
                       <td className="p-2 text-gray-600">{propertyLabel(iss.property_id)}</td>
-                      <td className="p-2 text-gray-600">{(iss.category || '—').replace(/_/g, ' ')}</td>
+                      <td className="p-2 text-gray-600">{operationalLabelForToken(iss.category, { emptyLabel: '—' })}</td>
                       <td className="p-2">
                         <span className={`px-1.5 py-0.5 rounded text-xs ${(iss.severity || '').toLowerCase() === 'urgent' ? 'bg-red-100 text-red-800' : (iss.severity || '').toLowerCase() === 'high' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>
                           {issueSeverityLabel(iss.severity)}
@@ -500,7 +503,9 @@ function ClientIssuesPageInner() {
             <ul className="space-y-2">
               {recurringIssues.slice(0, 10).map((iss) => (
                 <li key={iss.issue_id} className="flex flex-wrap items-center justify-between gap-2 p-2 rounded bg-white border border-amber-100">
-                  <span className="font-medium truncate max-w-[240px]">{(iss.category || '').replace(/_/g, ' ')} at {propertyLabel(iss.property_id)}</span>
+                  <span className="font-medium truncate max-w-[240px]">
+                    {operationalLabelForToken(iss.category, { emptyLabel: 'Issue' })} at {propertyLabel(iss.property_id)}
+                  </span>
                   <span className="text-xs text-gray-600">{iss.asset_id ? 'Asset linked' : 'No asset'}</span>
                   <span className="text-xs text-amber-700">Recurring · Investigate root cause / Create inspection</span>
                   <Button size="sm" variant="outline" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
@@ -529,7 +534,7 @@ function ClientIssuesPageInner() {
                     <dt className="text-gray-500">Property</dt>
                     <dd>{propertyLabel(issueDetailData.property_id)}</dd>
                     <dt className="text-gray-500">Category</dt>
-                    <dd>{(issueDetailData.category || '—').replace(/_/g, ' ')}</dd>
+                    <dd>{operationalLabelForToken(issueDetailData.category, { emptyLabel: '—' })}</dd>
                     <dt className="text-gray-500">Severity</dt>
                     <dd>{issueSeverityLabel(issueDetailData.severity)}</dd>
                     <dt className="text-gray-500">Priority score</dt>
@@ -552,7 +557,10 @@ function ClientIssuesPageInner() {
                     </div>
                   )}
                   {issueDetailData.triage?.recommended_contractor_type && (
-                    <p className="text-sm text-gray-600 mb-4">Recommended contractor: {(issueDetailData.triage.recommended_contractor_type || '').replace(/_/g, ' ')}</p>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Recommended contractor:{' '}
+                      {operationalLabelForToken(issueDetailData.triage.recommended_contractor_type, { emptyLabel: '—' })}
+                    </p>
                   )}
                   <div className="flex flex-wrap gap-2 pt-2">
                     {issueDetailData.status !== 'ready_for_work_order' && issueDetailData.status !== 'closed' && (

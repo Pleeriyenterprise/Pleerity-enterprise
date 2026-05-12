@@ -17,8 +17,12 @@ import {
 } from './jobWorkflowUi';
 import { inboxTaskLinkedRequirementId } from './portalRequirementAttention';
 import { headlineScoreShowsOutOf100 } from './scoringHeadlineDisplay';
+import { operationalLabelForToken } from './presentationLanguage';
 
 const TERMINAL_WORK_ORDER_STATUSES = new Set(['COMPLETED', 'VERIFIED', 'CLOSED', 'CANCELLED']);
+
+const LABEL_SLA_DEADLINE_MISSED = operationalLabelForToken('sla_breached');
+const LABEL_NEAR_SLA_DEADLINE = operationalLabelForToken('near_sla_breach');
 
 const PROOF_PENDING = 'NOT_SUBMITTED';
 const BOOKING_AWAITING_CONTRACTOR = 'AWAITING_CONTRACTOR_RESPONSE';
@@ -127,15 +131,15 @@ export function rankWorkOrdersByAttention(activeList, limit = 8) {
 }
 
 export function attentionBadgeForJob(wo) {
-  if (hasTruthyIso(wo.sla_breached_at)) return { label: 'SLA overdue', className: 'bg-red-100 text-red-900' };
-  if (hasTruthyIso(wo.sla_breach_risk_at)) return { label: 'SLA at risk', className: 'bg-amber-100 text-amber-900' };
+  if (hasTruthyIso(wo.sla_breached_at)) return { label: LABEL_SLA_DEADLINE_MISSED, className: 'bg-red-100 text-red-900' };
+  if (hasTruthyIso(wo.sla_breach_risk_at)) return { label: LABEL_NEAR_SLA_DEADLINE, className: 'bg-amber-100 text-amber-900' };
   if (isOperationalHold(wo)) {
     const ex = String(wo.operational_exception || '').trim();
     const human = ex ? operationalExceptionLabel(ex) : '';
     return { label: human ? `On hold (${human})` : 'On hold', className: 'bg-amber-100 text-amber-900' };
   }
   if (isAwaitingProof(wo)) return { label: 'Awaiting proof', className: 'bg-violet-100 text-violet-900' };
-  if (isAwaitingParts(wo)) return { label: 'Awaiting parts', className: 'bg-slate-200 text-slate-900' };
+  if (isAwaitingParts(wo)) return { label: operationalLabelForToken('awaiting_parts'), className: 'bg-slate-200 text-slate-900' };
   if (isPendingContractorAction(wo)) return { label: 'With contractor', className: 'bg-sky-100 text-sky-900' };
   if (slaDueSoon(wo)) return { label: 'Due soon', className: 'bg-teal-100 text-teal-900' };
   return null;
@@ -152,11 +156,11 @@ export function commandCenterJobRowHeadline(wo) {
   const badgeLbl = badge?.label || '';
 
   if (reqName) {
-    if (hasTruthyIso(wo?.sla_breached_at) || badgeLbl === 'SLA overdue') {
-      return `${reqName} — job needs attention (SLA overdue)`;
+    if (hasTruthyIso(wo?.sla_breached_at) || badgeLbl === LABEL_SLA_DEADLINE_MISSED) {
+      return `${reqName} — job needs attention (${LABEL_SLA_DEADLINE_MISSED})`;
     }
-    if (badgeLbl === 'SLA at risk') {
-      return `${reqName} — job needs attention (SLA at risk)`;
+    if (badgeLbl === LABEL_NEAR_SLA_DEADLINE) {
+      return `${reqName} — job needs attention (${LABEL_NEAR_SLA_DEADLINE})`;
     }
     if (badgeLbl === 'Due soon' || /expir|renew|due soon|certificate expiry/i.test(d)) {
       return `${reqName} due soon — job needs attention`;
@@ -244,8 +248,8 @@ export function buildCommandCenterVerdict({
     if (breachedJobCount > 0) {
       sublines.push(
         breachedJobCount === 1
-          ? 'One job has missed its SLA — follow up now.'
-          : `${breachedJobCount} jobs have missed their SLA — follow up now.`
+          ? 'One job has missed an SLA deadline — follow up now.'
+          : `${breachedJobCount} jobs have missed an SLA deadline — follow up now.`
       );
     } else if (blockedJobCount > 0) {
       sublines.push(
@@ -258,8 +262,8 @@ export function buildCommandCenterVerdict({
   if (breachedJobCount > 0) {
     const line =
       breachedJobCount === 1
-        ? 'A job has missed its SLA — follow up now.'
-        : `${breachedJobCount} jobs have missed their SLA — follow up now.`;
+        ? 'A job has missed an SLA deadline — follow up now.'
+        : `${breachedJobCount} jobs have missed an SLA deadline — follow up now.`;
     if (blockedJobCount > 0) {
       sublines.push(`${blockedJobCount} job${blockedJobCount === 1 ? '' : 's'} also on hold.`);
     }

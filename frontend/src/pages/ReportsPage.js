@@ -35,6 +35,7 @@ import {
   BarChart2,
 } from 'lucide-react';
 import UpgradePrompt from '../components/UpgradePrompt';
+import { operationalLabelForToken } from '../utils/presentationLanguage';
 import {
   complianceRequirementStatusLabel,
   propertyComplianceRagLabel,
@@ -1225,7 +1226,7 @@ const ReportsPage = () => {
                       <Mail className={`w-5 h-5 ${schedule.is_active ? 'text-green-600' : 'text-gray-400'}`} />
                       <div>
                         <div className="font-medium text-gray-900">
-                          {schedule.report_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          {operationalLabelForToken(schedule.report_type, { emptyLabel: 'Report' })}
                         </div>
                         <div className="text-sm text-gray-500">
                           {getFrequencyLabel(schedule.frequency)} • {schedule.recipients?.join(', ')}
@@ -1431,8 +1432,8 @@ const ReportsPage = () => {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
                     data-testid="schedule-report-type"
                   >
-                    <option value="compliance_summary">Compliance Status Summary</option>
-                    <option value="requirements">Requirements Report</option>
+                    <option value="compliance_summary">{operationalLabelForToken('compliance_summary')}</option>
+                    <option value="requirements">{operationalLabelForToken('requirements')}</option>
                   </select>
                 </div>
                 

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
 import { issueSeverityLabel, workOrderStatusLabel } from '../domain/presentDomain';
+import { operationalLabelForToken } from '../utils/presentationLanguage';
 import { assetIdParts } from '../utils/assetDisplay';
 import { normalizeRouteId, resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
@@ -301,9 +302,13 @@ function ClientMaintenancePageInner() {
   };
 
   const slaStateLabel = (wo) => {
-    if (wo.sla_breached_at) return { label: 'Breached', class: 'bg-red-100 text-red-800' };
-    if (wo.sla_breach_risk_at) return { label: 'Near breach', class: 'bg-amber-100 text-amber-800' };
-    return { label: 'On track', class: 'bg-gray-100 text-gray-600' };
+    if (wo.sla_breached_at) {
+      return { label: operationalLabelForToken('sla_breached'), class: 'bg-red-100 text-red-800' };
+    }
+    if (wo.sla_breach_risk_at) {
+      return { label: operationalLabelForToken('near_sla_breach'), class: 'bg-amber-100 text-amber-800' };
+    }
+    return { label: operationalLabelForToken('on_track'), class: 'bg-gray-100 text-gray-600' };
   };
 
   const handleCreateSubmit = (e) => {
@@ -429,7 +434,7 @@ function ClientMaintenancePageInner() {
           <p className="text-lg font-semibold text-midnight-blue">{summary.completedToday}</p>
         </button>
         <button type="button" onClick={() => applySummaryFilter('sla', 'breached')} className="p-3 rounded-lg border border-red-200 bg-red-50/50 text-left hover:bg-red-50 transition-colors">
-          <p className="text-xs text-red-700 uppercase tracking-wide">SLA breaches</p>
+          <p className="text-xs text-red-700 uppercase tracking-wide">SLA deadlines missed</p>
           <p className="text-lg font-semibold text-red-800">{summary.slaBreaches}</p>
         </button>
       </div>
@@ -504,9 +509,9 @@ function ClientMaintenancePageInner() {
               <label className="block text-xs text-gray-500 mb-1">SLA state</label>
               <select value={filterSlaState} onChange={(e) => setFilterSlaState(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2.5 text-sm w-full sm:w-auto min-h-11">
                 <option value="">All</option>
-                <option value="on_track">On track</option>
-                <option value="near_breach">Near breach</option>
-                <option value="breached">Breached</option>
+                <option value="on_track">{operationalLabelForToken('on_track')}</option>
+                <option value="near_breach">{operationalLabelForToken('near_breach')}</option>
+                <option value="breached">{operationalLabelForToken('breached')}</option>
               </select>
             </div>
             <div className="w-full sm:w-auto">
@@ -539,10 +544,10 @@ function ClientMaintenancePageInner() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600" />
-              SLA risk
+              SLA deadline pressure
             </CardTitle>
             <p className="text-xs text-gray-600 font-normal mt-1 leading-snug">
-              These jobs have SLA pressure—opening them cuts portfolio exposure.
+              These jobs are past due or close to an SLA deadline—open them to reduce portfolio exposure.
             </p>
           </CardHeader>
           <CardContent>
