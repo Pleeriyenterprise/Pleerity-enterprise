@@ -15,6 +15,7 @@ import { formatRiskLabel } from '../../utils/riskLabel';
 import { resolveDocumentsPath } from '../../utils/clientPortalNavigation';
 import { useGuidedEvidenceModal } from '../../context/GuidedEvidenceModalContext';
 import { projectResolvedRequirementSemantics } from '../../utils/resolvedRequirementViewModel';
+import { NotApplicableGovernedNotice } from '../../utils/notApplicableGovernedCopy';
 
 function formatIntelDate(value) {
   if (value == null || value === '') return null;
@@ -379,6 +380,14 @@ export default function RequirementIntelligenceModal({
         <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/80 shrink-0 space-y-3">
           {!loading && !error && merged ? (
             <>
+              {onMarkNotApplicable ? (
+                <div
+                  className="rounded-md border border-gray-200 bg-white p-3 mb-1"
+                  data-testid="requirement-intel-na-governance"
+                >
+                  <NotApplicableGovernedNotice variant="compact" />
+                </div>
+              ) : null}
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end sm:items-center">
                 <Button
                   type="button"
@@ -416,7 +425,7 @@ export default function RequirementIntelligenceModal({
                 ) : null}
                 {onMarkNotApplicable ? (
                   <button type="button" className="text-electric-teal hover:underline font-medium" onClick={() => onMarkNotApplicable(merged)}>
-                    Mark as not applicable
+                    Record as not applicable
                   </button>
                 ) : null}
                 {pid ? (

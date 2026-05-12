@@ -23,8 +23,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/client", tags=["client"], dependencies=[Depends(client_route_guard)])
 
 # Controlled reason list for "Mark as not applicable" (must match properties.PATCH requirement)
-NOT_REQUIRED_REASONS = ["no_gas_supply", "exempt", "not_applicable", "other"]
-
 
 async def _resolved_jurisdiction_settings_for_client(db, client_id: str) -> Dict[str, Any]:
     """
@@ -1818,9 +1816,8 @@ async def get_requirement_explanation(
 
 @router.post("/properties/{property_id}/requirements/mark-not-applicable")
 async def mark_requirement_not_applicable(request: Request, property_id: str):
-    """Create or update a requirement row as NOT_APPLICABLE for a catalog item (e.g. from Property detail).
-    Used when the item appears as 'Missing evidence' on the property tab but does not apply to this property.
-    After this, the catalog matrix excludes it and the item disappears from the property requirements list."""
+    """Create or update a requirement row as NOT_REQUIRED for a catalog item (e.g. from Property detail).
+    Aligns with requirement-id mark: audit free-text reason, evidence authority sync, audit log, async recalc enqueue."""
     user = await client_route_guard(request)
     db = database.get_db()
     client_id = user["client_id"]
@@ -1830,91 +1827,43 @@ async def mark_requirement_not_applicable(request: Request, property_id: str):
         body = {}
     requirement_code = (body.get("requirement_code") or "").strip()
     not_required_reason = (body.get("not_required_reason") or "").strip()
-    if not requirement_code:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="requirement_code is required")
-    if not not_required_reason or not_required_reason not in NOT_REQUIRED_REASONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"not_required_reason is required and must be one of: {NOT_REQUIRED_REASONS}",
-        )
+    audit_reason = (body.get("reason") or body.get("not_applicable_audit_reason") or "").strip()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": client_id},
         {"_id": 0},
     )
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
-    catalog_doc = await db.requirements_catalog.find_one(
-        {"code": requirement_code},
-        {"_id": 0, "code": 1, "title": 1},
-    )
-    if not catalog_doc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown requirement_code: {requirement_code}",
-        )
-    code = catalog_doc.get("code", requirement_code)
-    title = catalog_doc.get("title") or code
-
-    def _matches(r):
-        rt = (r.get("requirement_type") or "").strip().lower()
-        rc = (r.get("requirement_code") or "").strip().lower()
-        c = code.strip().lower()
-        return rt == c or rc == c
-
-    reqs = await db.requirements.find(
-        {"client_id": client_id, "property_id": property_id},
-        {"_id": 0, "requirement_id": 1, "requirement_type": 1, "requirement_code": 1},
-    ).to_list(200)
-    existing_row = next((r for r in reqs if _matches(r)), None)
-    now = datetime.now(timezone.utc)
     client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1})
     from services.compliance_rules_registry import portfolio_jurisdiction_label
+    from services.requirement_mark_not_applicable_catalog import (
+        mark_catalog_requirement_not_applicable_for_property,
+        sync_audit_enqueue_after_catalog_not_applicable,
+    )
 
     portfolio_juris = portfolio_jurisdiction_label(prop, client_doc or {})
-
-    if existing_row:
-        update = {
-            "applicability": "NOT_REQUIRED",
-            "not_required_reason": not_required_reason or None,
-            "status": "NOT_REQUIRED",
-            "jurisdiction": portfolio_juris,
-            "updated_at": now.isoformat(),
-        }
-        await db.requirements.update_one(
-            {"requirement_id": existing_row["requirement_id"], "property_id": property_id, "client_id": client_id},
-            {"$set": update},
-        )
-        requirement_id = existing_row["requirement_id"]
-    else:
-        requirement_id = str(uuid.uuid4())
-        due_far = now + timedelta(days=365 * 10)
-        doc = {
-            "requirement_id": requirement_id,
-            "client_id": client_id,
-            "property_id": property_id,
-            "requirement_type": code,
-            "requirement_code": code,
-            "jurisdiction": portfolio_juris,
-            "description": title,
-            "frequency_days": 0,
-            "due_date": due_far.isoformat(),
-            "status": "NOT_REQUIRED",
-            "applicability": "NOT_REQUIRED",
-            "not_required_reason": not_required_reason or None,
-            "created_at": now.isoformat(),
-            "updated_at": now.isoformat(),
-        }
-        await db.requirements.insert_one(doc)
-    from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROPERTY_UPDATED, ACTOR_CLIENT
-    await enqueue_compliance_recalc(
-        property_id=property_id,
+    requirement_id, normalized_code, created = await mark_catalog_requirement_not_applicable_for_property(
+        db,
         client_id=client_id,
-        trigger_reason=TRIGGER_PROPERTY_UPDATED,
-        actor_type=ACTOR_CLIENT,
-        actor_id=user.get("portal_user_id"),
-        correlation_id=f"MARK_NOT_APPLICABLE:{requirement_id}",
+        property_id=property_id,
+        requirement_code=requirement_code,
+        not_required_preset=not_required_reason,
+        audit_free_text=audit_reason,
+        portfolio_jurisdiction=portfolio_juris,
     )
-    return {"message": "Requirement marked as not applicable", "requirement_id": requirement_id}
+    await sync_audit_enqueue_after_catalog_not_applicable(
+        db,
+        client_id=client_id,
+        property_id=property_id,
+        requirement_id=requirement_id,
+        requirement_code=normalized_code,
+        not_required_preset=not_required_reason,
+        audit_free_text=audit_reason,
+        created=created,
+        actor_portal_user_id=user.get("portal_user_id"),
+        transition_origin="routes.client.mark_requirement_not_applicable",
+    )
+    return {"message": "Requirement marked as not applicable", "requirement_id": requirement_id, "created": created}
 
 
 @router.get("/requirements")

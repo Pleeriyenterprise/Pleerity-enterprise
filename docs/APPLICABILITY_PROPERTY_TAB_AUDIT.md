@@ -27,24 +27,24 @@
 - **Data:** Include `applicability` in the requirements query projection and use it in the loop before appending to `matrix` / updating KPIs.
 
 ### 2. Backend: Create requirement row for "Mark as not applicable"
-- **New endpoint:** `POST /api/client/properties/{property_id}/requirements/mark-not-applicable` (or under portfolio/client as appropriate). Body: `{ "requirement_code": "<catalog code>", "not_required_reason": "<one of NOT_REQUIRED_REASONS>" }`.
+- **New endpoint:** `POST /api/client/properties/{property_id}/requirements/mark-not-applicable` (and `POST /api/properties/{property_id}/requirements/mark-not-applicable`). Body: `{ "requirement_code": "<catalog code>", "not_required_reason": "<one of NOT_REQUIRED_REASONS>", "reason": "<free-text audit note, min length>" }` (client route also accepts `not_applicable_audit_reason` as an alias for `reason`).
 - **Behaviour:**
   - Resolve property and client (client_route_guard; property must belong to client).
   - Validate `requirement_code` against `requirements_catalog` (must exist).
-  - If a requirement row already exists for this property + code, **update** it to `applicability=NOT_REQUIRED` and `not_required_reason` (idempotent).
-  - If no row exists, **create** a new requirement row with: `client_id`, `property_id`, `requirement_type` = catalog code (for matching), `requirement_code` = catalog code, `description` = catalog title, `applicability=NOT_REQUIRED`, `not_required_reason`, `status=NOT_REQUIRED` (or let deterministic status apply), `frequency_days` (e.g. 0 or from catalog), `due_date` (null or omit).
-  - Trigger compliance recalc for the property after create/update.
-- **Reuse:** Use the same `NOT_REQUIRED_REASONS` and validation as the existing PATCH requirement endpoint (`properties.py`).
+  - If a requirement row already exists for this property + code, **update** it to `applicability=NOT_REQUIRED`, `not_required_reason`, and `not_applicable_audit_reason` (idempotent).
+  - If no row exists, **create** a new requirement row with: `client_id`, `property_id`, `requirement_type` = catalog code (for matching), `requirement_code` = catalog code, `description` = catalog title, `applicability=NOT_REQUIRED`, `not_required_reason`, `not_applicable_audit_reason`, `status=NOT_REQUIRED` (or let deterministic status apply), `frequency_days` (e.g. 0 or from catalog), `due_date` (null or omit).
+  - After create/update: **`sync_requirement_evidence_authority`**, **`create_audit_log`** (event `mark_not_applicable`; catalog path adds `path: property_catalog`), then **async** `enqueue_compliance_recalc` for the property.
+- **Reuse:** Use the same `NOT_REQUIRED_REASONS` preset list and PATCH-aligned governance for free-text audit notes (`properties.py`).
 
 ### 3. Frontend: Property detail – "Mark as not applicable"
 - **File:** `frontend/src/pages/PropertyDetailPage.js`.
-- **Change:** For each matrix row that shows "Missing evidence" (status PENDING or equivalent), add a second action: **"Mark as not applicable"** (link or button). On click, open a small modal: dropdown for `not_required_reason` (same list as Requirements page: no_gas_supply, exempt, not_applicable, other) and a Confirm button. On confirm, call the new API with `requirement_code` (from matrix row) and selected reason, then refresh compliance detail (and optionally show success toast). After backend change (1), the row will disappear from the matrix on refresh.
+- **Change:** For each matrix row that shows "Missing evidence" (status PENDING or equivalent), add a second action: **"Record as not applicable"** (link or button). On click, open a modal: category dropdown for `not_required_reason`, **required free-text audit note** (min length), governed explanatory copy, and Confirm. On confirm, call the API with `requirement_code`, selected preset, and `reason`, then refresh compliance detail (and optionally show success toast). After backend change (1), the row will disappear from the matrix on refresh.
 - **Global:** This is the only place we add "Mark as not applicable" for **catalog items without a row**; the Requirements tab continues to handle applicability for **existing** rows. No duplication of logic; one source of truth (requirement row applicability).
 
 ### 4. Consistency
 - **Requirements tab:** Unchanged; still shows all requirement rows and allows editing applicability. New rows created from the property tab will appear here with NOT_REQUIRED and can be reverted to REQUIRED/UNKNOWN if needed.
 - **Scoring/calendar:** Already exclude NOT_REQUIRED (compliance_scoring, calendar, expiry_utils). Catalog matrix exclusion aligns property tab with that behaviour.
-- **Audit:** Log requirement create/update (e.g. REQUIREMENT_UPDATED or new action) with property_id, requirement_code, applicability=NOT_REQUIRED.
+- **Audit:** Log via `create_audit_log` with `event: mark_not_applicable` (plus `path: property_catalog` for catalog endpoints), preset `reason_code`, and trimmed free-text `reason` excerpt; evidence authority sync precedes enqueue.
 
 ## Implementation order
 1. Backend: catalog_compliance – exclude NOT_REQUIRED from matrix (and KPIs/score).

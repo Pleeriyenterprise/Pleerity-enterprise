@@ -94,6 +94,88 @@ def test_patch_requirement_audit_metadata_and_order(client_http):
     assert enqueue_mock.await_args.kwargs["correlation_id"] == "REQUIREMENT_UPDATED:r-audit"
 
 
+def test_patch_requirement_clears_na_metadata_when_applicability_required(client_http):
+    user = {
+        "client_id": "c-audit",
+        "portal_user_id": "pu-1",
+        "role": "ROLE_CLIENT_ADMIN",
+    }
+    req_row = {
+        "requirement_id": "r-na",
+        "property_id": "p-audit",
+        "client_id": "c-audit",
+        "status": "NOT_REQUIRED",
+        "applicability": "NOT_REQUIRED",
+        "not_required_reason": "other",
+        "not_applicable_audit_reason": "previous audit reason long enough",
+    }
+    mock_db = MagicMock()
+    mock_db.requirements.find_one = AsyncMock(return_value=req_row)
+    mock_db.requirements.update_one = AsyncMock()
+    mock_db.properties.find_one = AsyncMock(return_value={"property_id": "p-audit", "jurisdiction": "England"})
+    mock_db.clients.find_one = AsyncMock(return_value={"client_id": "c-audit", "default_jurisdiction": None})
+
+    async def guard(_request):
+        return user
+
+    with (
+        patch.object(db_singleton, "get_db", return_value=mock_db),
+        patch.object(properties_routes, "client_route_guard", guard),
+        patch(
+            "services.requirement_evidence_authority.sync_requirement_evidence_authority",
+            AsyncMock(),
+        ),
+        patch("routes.properties.create_audit_log", AsyncMock()),
+        patch("services.compliance_recalc_queue.enqueue_compliance_recalc", AsyncMock()),
+        patch("services.score_events_service.write_score_event", AsyncMock()),
+    ):
+        res = client_http.patch(
+            "/api/properties/p-audit/requirements/r-na",
+            json={"applicability": "REQUIRED"},
+        )
+
+    assert res.status_code == 200, res.text
+    mock_db.requirements.update_one.assert_awaited_once()
+    upd = mock_db.requirements.update_one.await_args[0][1]
+    assert "$unset" in upd
+    assert "not_required_reason" in upd["$unset"]
+    assert "not_applicable_audit_reason" in upd["$unset"]
+
+
+def test_patch_requirement_not_required_requires_audit_reason(client_http):
+    user = {
+        "client_id": "c-audit",
+        "portal_user_id": "pu-1",
+        "role": "ROLE_CLIENT_ADMIN",
+    }
+    req_row = {
+        "requirement_id": "r-na",
+        "property_id": "p-audit",
+        "client_id": "c-audit",
+        "status": "OVERDUE",
+        "applicability": "REQUIRED",
+    }
+    mock_db = MagicMock()
+    mock_db.requirements.find_one = AsyncMock(return_value=req_row)
+    mock_db.properties.find_one = AsyncMock(return_value={"property_id": "p-audit", "jurisdiction": "England"})
+    mock_db.clients.find_one = AsyncMock(return_value={"client_id": "c-audit", "default_jurisdiction": None})
+
+    async def guard(_request):
+        return user
+
+    with (
+        patch.object(db_singleton, "get_db", return_value=mock_db),
+        patch.object(properties_routes, "client_route_guard", guard),
+    ):
+        res = client_http.patch(
+            "/api/properties/p-audit/requirements/r-na",
+            json={"applicability": "NOT_REQUIRED", "not_required_reason": "other"},
+        )
+
+    assert res.status_code == 400
+    assert "not_applicable_audit_reason" in res.text.lower()
+
+
 def test_patch_requirement_no_audit_when_no_updates(client_http):
     user = {
         "client_id": "c-audit",

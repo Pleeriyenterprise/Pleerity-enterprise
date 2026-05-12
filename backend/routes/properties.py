@@ -438,8 +438,9 @@ NOT_REQUIRED_REASONS = ["no_gas_supply", "exempt", "not_applicable", "other"]
 
 class MarkNotApplicableRequest(BaseModel):
     """Mark a catalog requirement as not applicable for this property (creates or updates requirement row)."""
-    requirement_code: str  # Catalog code (e.g. co_alarms, deposit_pi)
-    not_required_reason: str  # One of NOT_REQUIRED_REASONS
+    requirement_code: str
+    not_required_reason: str
+    reason: str = Field(..., min_length=10, description="Mandatory free-text audit reason (trimmed server-side)")
 
 
 @router.post("/{property_id}/requirements/mark-not-applicable")
@@ -448,15 +449,11 @@ async def mark_requirement_not_applicable(
     property_id: str,
     data: MarkNotApplicableRequest,
 ):
-    """Create or update a requirement row to mark a catalog item as not applicable for this property.
-    Used from the property detail page for items that show as 'Missing evidence' but do not apply.
-    After this, the item is excluded from the property compliance matrix and from score/KPIs.
-    """
+    """Create or update a requirement row to mark a catalog item as not applicable for this property."""
     user = await client_route_guard(request)
     client_id = user["client_id"]
     db = database.get_db()
 
-    # Property must belong to client
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": client_id},
         {"_id": 0, "property_id": 1, "jurisdiction": 1},
@@ -466,101 +463,39 @@ async def mark_requirement_not_applicable(
 
     client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1})
     from services.compliance_rules_registry import portfolio_jurisdiction_label
+    from services.requirement_mark_not_applicable_catalog import (
+        mark_catalog_requirement_not_applicable_for_property,
+        sync_audit_enqueue_after_catalog_not_applicable,
+    )
 
     portfolio_juris = portfolio_jurisdiction_label(prop, client_doc or {})
-
-    code = (data.requirement_code or "").strip().lower()
-    if not code:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="requirement_code is required")
-    reason = (data.not_required_reason or "").strip()
-    if reason not in NOT_REQUIRED_REASONS:
+    preset = (data.not_required_reason or "").strip()
+    if preset not in NOT_REQUIRED_REASONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"not_required_reason must be one of: {NOT_REQUIRED_REASONS}",
         )
-
-    # Resolve catalog title for description
-    catalog_item = await db.requirements_catalog.find_one({"code": code}, {"_id": 0, "title": 1})
-    if not catalog_item:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown requirement_code: {code}",
-        )
-    title = catalog_item.get("title") or code.replace("_", " ").title()
-
-    existing = await db.requirements.find_one(
-        {"client_id": client_id, "property_id": property_id},
-        None,
-    )
-    # Match by requirement_type or requirement_code (same as catalog_compliance._requirement_matches_code)
-    def matches(r):
-        rt = (r.get("requirement_type") or "").strip().lower()
-        rc = (r.get("requirement_code") or "").strip().lower()
-        return rt == code or rc == code
-
-    existing = await db.requirements.find_one(
-        {"client_id": client_id, "property_id": property_id},
-        {"_id": 0, "requirement_id": 1, "requirement_type": 1, "requirement_code": 1},
-    )
-    if existing and matches(existing):
-        # Update existing row to NOT_REQUIRED
-        await db.requirements.update_one(
-            {"requirement_id": existing["requirement_id"], "property_id": property_id, "client_id": client_id},
-            {"$set": {
-                "applicability": "NOT_REQUIRED",
-                "not_required_reason": reason,
-                "status": "NOT_REQUIRED",
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }},
-        )
-        requirement_id = existing["requirement_id"]
-        created = False
-    else:
-        # Create new requirement row with NOT_REQUIRED
-        from models import Requirement
-        from models.core import RequirementStatus
-        req = Requirement(
-            client_id=client_id,
-            property_id=property_id,
-            requirement_type=code,
-            requirement_code=code,
-            jurisdiction=portfolio_juris,
-            description=title,
-            frequency_days=0,
-            due_date=datetime.now(timezone.utc),
-            status=RequirementStatus.NOT_REQUIRED,
-            applicability="NOT_REQUIRED",
-            not_required_reason=reason,
-        )
-        doc = req.model_dump()
-        if hasattr(doc.get("applicability"), "value"):
-            doc["applicability"] = doc["applicability"].value
-        if hasattr(doc.get("status"), "value"):
-            doc["status"] = doc["status"].value
-        for key in ["due_date", "created_at", "updated_at"]:
-            if doc.get(key) and hasattr(doc[key], "isoformat"):
-                doc[key] = doc[key].isoformat()
-        await db.requirements.insert_one(doc)
-        requirement_id = doc["requirement_id"]
-        created = True
-
-    from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROPERTY_UPDATED, ACTOR_CLIENT
-    await enqueue_compliance_recalc(
+    audit = (data.reason or "").strip()
+    requirement_id, normalized_code, created = await mark_catalog_requirement_not_applicable_for_property(
+        db,
+        client_id=client_id,
         property_id=property_id,
-        client_id=client_id,
-        trigger_reason=TRIGGER_PROPERTY_UPDATED,
-        actor_type=ACTOR_CLIENT,
-        actor_id=user.get("portal_user_id"),
-        correlation_id=f"REQUIREMENT_MARK_NOT_APPLICABLE:{requirement_id}",
+        requirement_code=data.requirement_code.strip(),
+        not_required_preset=preset,
+        audit_free_text=audit,
+        portfolio_jurisdiction=portfolio_juris,
     )
-    from utils.audit import create_audit_log
-    await create_audit_log(
-        action=AuditAction.REQUIREMENT_UPDATED,
-        actor_id=user.get("portal_user_id"),
+    await sync_audit_enqueue_after_catalog_not_applicable(
+        db,
         client_id=client_id,
-        resource_type="requirement",
-        resource_id=requirement_id,
-        metadata={"property_id": property_id, "requirement_code": code, "applicability": "NOT_REQUIRED", "created": created},
+        property_id=property_id,
+        requirement_id=requirement_id,
+        requirement_code=normalized_code,
+        not_required_preset=preset,
+        audit_free_text=audit,
+        created=created,
+        actor_portal_user_id=user.get("portal_user_id"),
+        transition_origin="routes.properties.mark_requirement_not_applicable",
     )
     return {"message": "Marked as not applicable", "requirement_id": requirement_id, "created": created}
 
@@ -572,6 +507,7 @@ class PatchRequirementRequest(BaseModel):
     certificate_number: Optional[str] = None
     applicability: Optional[str] = None  # REQUIRED | NOT_REQUIRED | UNKNOWN
     not_required_reason: Optional[str] = None  # Required when applicability=NOT_REQUIRED; one of NOT_REQUIRED_REASONS
+    not_applicable_audit_reason: Optional[str] = None  # Required when applicability=NOT_REQUIRED; min 10 chars (trimmed server-side)
 
 
 @router.patch("/{property_id}/requirements/{requirement_id}")
@@ -602,6 +538,7 @@ async def patch_requirement(
     ) or {}
 
     update = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    unset_na_metadata = False
     if data.confirmed_expiry_date is not None:
         try:
             parsed = datetime.fromisoformat(data.confirmed_expiry_date.replace("Z", "+00:00"))
@@ -627,12 +564,21 @@ async def patch_requirement(
         update["applicability"] = app
         if app == "NOT_REQUIRED":
             reason = (data.not_required_reason or "").strip()
-            if reason and reason not in NOT_REQUIRED_REASONS:
+            if not reason or reason not in NOT_REQUIRED_REASONS:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"not_required_reason must be one of: {NOT_REQUIRED_REASONS}",
+                    detail=f"not_required_reason is required when applicability is NOT_REQUIRED and must be one of: {NOT_REQUIRED_REASONS}",
                 )
-            update["not_required_reason"] = reason or None
+            audit = (data.not_applicable_audit_reason or "").strip()
+            if len(audit) < 10:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="not_applicable_audit_reason must be at least 10 characters when applicability is NOT_REQUIRED",
+                )
+            update["not_required_reason"] = reason
+            update["not_applicable_audit_reason"] = audit
+        elif app in ("REQUIRED", "UNKNOWN"):
+            unset_na_metadata = True
 
     if data.issue_date is not None:
         try:
@@ -648,16 +594,23 @@ async def patch_requirement(
     if data.certificate_number is not None:
         update["certificate_number"] = (data.certificate_number or "").strip() or None
 
-    if len(update) <= 1:
+    if len(update) <= 1 and not unset_na_metadata:
         return {"message": "No updates", "requirement_id": requirement_id}
 
     # Set status from deterministic rule when expiry or applicability changed
     merged = {**req, **update}
+    if unset_na_metadata:
+        merged["not_required_reason"] = None
+        merged["not_applicable_audit_reason"] = None
     update["status"] = get_computed_status(merged, property_doc=prop_row, client_doc=client_row)
+
+    mongo_update: Dict[str, Any] = {"$set": update}
+    if unset_na_metadata:
+        mongo_update["$unset"] = {"not_required_reason": "", "not_applicable_audit_reason": ""}
 
     await db.requirements.update_one(
         {"requirement_id": requirement_id, "property_id": property_id, "client_id": user["client_id"]},
-        {"$set": update},
+        mongo_update,
     )
 
     from services.requirement_evidence_authority import sync_requirement_evidence_authority
@@ -692,8 +645,13 @@ async def patch_requirement(
         fields_changed.append("certificate_number")
     if data.applicability is not None:
         fields_changed.append("applicability")
+        app_fc = data.applicability.strip().upper()
+        if app_fc in ("REQUIRED", "UNKNOWN"):
+            fields_changed.extend(["not_required_reason", "not_applicable_audit_reason"])
     if data.not_required_reason is not None and str(data.not_required_reason).strip():
         fields_changed.append("not_required_reason")
+    if data.not_applicable_audit_reason is not None and str(data.not_applicable_audit_reason).strip():
+        fields_changed.append("not_applicable_audit_reason")
 
     await create_audit_log(
         action=AuditAction.REQUIREMENT_ACTION_TRIGGERED,

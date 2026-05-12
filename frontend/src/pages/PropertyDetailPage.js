@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useContext } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import apiClient, { clientAPI } from '../api/client';
+import { AuthContext } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -38,7 +39,6 @@ import {
   BarChart3,
   Eye,
   Download,
-  Link2,
   ChevronDown,
   ChevronUp,
   Info,
@@ -97,6 +97,8 @@ import {
   isPositiveEvidenceState,
 } from '../utils/evidenceReviewUi';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
+import ClientDocumentPreviewModal from '../components/client/ClientDocumentPreviewModal';
+import { downloadClientDocumentFile } from '../utils/clientDocumentPreview';
 import { toast } from '@/utils/portalNotifications';
 import { buildEntityRoute, buildSafeQueryPath, resolveClientPortalPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
 import { cn } from '../lib/utils';
@@ -128,6 +130,7 @@ import {
   headlineScoreShowsOutOf100,
 } from '../utils/scoringHeadlineDisplay';
 import { PROPERTY_DETAIL_STORED_VS_PREVIEW_NOTE } from '../utils/scoreFreshnessUi';
+import { NotApplicableGovernedNotice } from '../utils/notApplicableGovernedCopy';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -150,6 +153,23 @@ const TAB_RISK_SIGNALS = 'risk_signals';
 const TAB_ASSETS = 'assets';
 
 const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function formatEvidenceUploaderLabel(uploadedBy, currentPortalUserId) {
+  if (uploadedBy == null || uploadedBy === '') return '—';
+  const u = String(uploadedBy).trim();
+  if (!u) return '—';
+  if (currentPortalUserId && u === String(currentPortalUserId).trim()) return 'You';
+  const up = u.toUpperCase();
+  if (up === 'INTAKE_WIZARD' || up === 'INTAKE_MIGRATION') return 'Intake';
+  if (UUID_V4_RE.test(u)) return 'Another team member';
+  return u;
+}
+
+function linkedRequirementLabelForDocument(doc, requirements, rowTitleFn) {
+  if (!doc?.requirement_id) return '—';
+  const r = requirements.find((x) => String(x.requirement_id || x.id || '') === String(doc.requirement_id));
+  return r ? rowTitleFn(r) : 'Requirement (open Documents workspace for details)';
+}
 
 function looksLikeContractorUuid(s) {
   return UUID_V4_RE.test(String(s || '').trim());
@@ -276,6 +296,8 @@ export default function PropertyDetailPage() {
   const location = useLocation();
   const { openGuidedEvidence } = useGuidedEvidenceModal();
   const { hasFeature } = useEntitlements();
+  const auth = useContext(AuthContext);
+  const portalUserId = auth?.user?.portal_user_id;
   const [activeTab, setActiveTab] = useState(TAB_OPERATING);
   const [property, setProperty] = useState(null);
   const [requirements, setRequirements] = useState([]);
@@ -285,9 +307,11 @@ export default function PropertyDetailPage() {
   const [scoreHistoryModal, setScoreHistoryModal] = useState(false);
   const [scoreHistoryEntries, setScoreHistoryEntries] = useState([]);
   const [scoreHistoryLoading, setScoreHistoryLoading] = useState(false);
+  const [propertyDocumentPreview, setPropertyDocumentPreview] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [notApplicableModal, setNotApplicableModal] = useState(null);
-  const [notApplicableReason, setNotApplicableReason] = useState('');
+  const [notApplicablePreset, setNotApplicablePreset] = useState('not_applicable');
+  const [notApplicableAuditText, setNotApplicableAuditText] = useState('');
   const [notApplicableSubmitting, setNotApplicableSubmitting] = useState(false);
   /** Compliance matrix / cards: full requirement intelligence (GET /requirements/:id). */
   const [requirementIntelRow, setRequirementIntelRow] = useState(null);
@@ -1117,18 +1141,15 @@ export default function PropertyDetailPage() {
     return 'Uploaded';
   };
 
-  const handleEvidenceDocumentDownload = (doc) => {
+  const handleEvidenceDocumentDownload = async (doc) => {
     if (!doc?.document_id) return;
-    apiClient.get(`/documents/${doc.document_id}/file`, { params: { download: true }, responseType: 'blob' })
-      .then((res) => {
-        const url = window.URL.createObjectURL(res.data);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = doc.file_name || doc.original_filename || 'document';
-        a.click();
-        window.URL.revokeObjectURL(url);
-      })
-      .catch(() => toast.error('Could not download document'));
+    try {
+      await downloadClientDocumentFile(apiClient, doc, {
+        onError: (msg) => toast.error(msg),
+      });
+    } catch {
+      /* errors surfaced via onError */
+    }
   };
 
   const isPendingConfirmation = (doc) => {
@@ -1600,7 +1621,8 @@ export default function PropertyDetailPage() {
           openBookInspectionFromRisk={openBookInspectionFromRisk}
           onOpenNotApplicable={(payload) => {
             setNotApplicableModal(payload);
-            setNotApplicableReason('not_applicable');
+            setNotApplicablePreset('not_applicable');
+            setNotApplicableAuditText('');
           }}
           onCreateWoFromRiskDescription={(description) => {
             setActiveTab(TAB_MAINTENANCE);
@@ -2161,7 +2183,8 @@ export default function PropertyDetailPage() {
                                             requirement_code: r.requirement_code || r.requirement_type,
                                             title: rowTitle(r),
                                           });
-                                          setNotApplicableReason('not_applicable');
+                                          setNotApplicablePreset('not_applicable');
+                                          setNotApplicableAuditText('');
                                         }}
                                         data-testid="mark-not-applicable"
                                       >
@@ -2341,7 +2364,8 @@ export default function PropertyDetailPage() {
                               className="h-auto min-h-0 py-0.5 px-1 text-xs font-normal text-gray-500 hover:text-gray-700"
                               onClick={() => {
                                 setNotApplicableModal({ requirement_code: r.requirement_code || r.requirement_type, title: rowTitle(r) });
-                                setNotApplicableReason('not_applicable');
+                                setNotApplicablePreset('not_applicable');
+                                setNotApplicableAuditText('');
                               }}
                             >
                               <MinusCircle className="w-3 h-3 mr-1 shrink-0" aria-hidden />
@@ -3155,11 +3179,14 @@ export default function PropertyDetailPage() {
                             {evidenceData.documents.map((doc) => {
                               const evidencePrimary = evidenceDocStatusLabel(doc);
                               const showVerificationSubline = !clientVerificationLabelRedundantWithPrimary(doc, evidencePrimary);
+                              const reqLabel = linkedRequirementLabelForDocument(doc, requirements, rowTitle);
+                              const upLabel = formatEvidenceUploaderLabel(doc.uploaded_by, portalUserId);
+                              const workspaceHref = resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id });
                               return (
                               <tr key={doc.document_id} className="border-b border-gray-100 hover:bg-gray-50">
                                 <td className="p-3 font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</td>
                                 <td className="p-3 text-gray-600">{doc.document_type ? documentTypeLabel(doc.document_type) : '—'}</td>
-                                <td className="p-3 text-gray-600">{doc.requirement_id || '—'}</td>
+                                <td className="p-3 text-gray-600">{reqLabel}</td>
                                 <td className="p-3">
                                   <div className="flex flex-col gap-1">
                                     <span className="inline-flex px-2 py-1 rounded border text-xs bg-gray-100 text-gray-700 border-gray-200">{evidencePrimary}</span>
@@ -3168,18 +3195,32 @@ export default function PropertyDetailPage() {
                                     ) : null}
                                   </div>
                                 </td>
-                                <td className="p-3 text-gray-600">{doc.uploaded_by || '—'}</td>
+                                <td className="p-3 text-gray-600">{upLabel}</td>
                                 <td className="p-3 text-gray-600">{doc.uploaded_at ? formatDate(doc.uploaded_at) : '—'}</td>
                                 <td className="p-3">
                                   <div className="flex flex-wrap gap-1">
-                                    <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}><Eye className="w-3 h-3 mr-1" /> View</Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-electric-teal border-electric-teal"
+                                      onClick={() => setPropertyDocumentPreview(doc)}
+                                      data-testid={`property-doc-preview-open-${doc.document_id}`}
+                                    >
+                                      <Eye className="w-3 h-3 mr-1" /> View
+                                    </Button>
                                     <Button variant="outline" size="sm" onClick={() => handleEvidenceDocumentDownload(doc)}><Download className="w-3 h-3 mr-1" /> Download</Button>
                                     {isPendingConfirmation(doc) && (
                                       <Button variant="outline" size="sm" className="border-amber-300 text-amber-700" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}>Confirm details</Button>
                                     )}
-                                    <Button variant="outline" size="sm" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}><Link2 className="w-3 h-3 mr-1" /> Link</Button>
                                     <Button variant="ghost" size="sm" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'EVIDENCE' })); }}><History className="w-3 h-3 mr-1" /> History</Button>
                                   </div>
+                                  <button
+                                    type="button"
+                                    className="mt-1.5 block text-left text-xs text-gray-600 hover:text-midnight-blue underline-offset-2 hover:underline"
+                                    onClick={() => navigate(workspaceHref)}
+                                  >
+                                    Open in Documents workspace
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -3194,22 +3235,34 @@ export default function PropertyDetailPage() {
                         const verificationSub = clientVerificationLabelRedundantWithPrimary(doc, evidencePrimary)
                           ? null
                           : clientFacingVerificationLabel(doc);
+                        const reqLabel = linkedRequirementLabelForDocument(doc, requirements, rowTitle);
+                        const upLabel = formatEvidenceUploaderLabel(doc.uploaded_by, portalUserId);
                         const metaBits = [
                           doc.document_type ? documentTypeLabel(doc.document_type) : '—',
                           evidencePrimary,
                           verificationSub,
+                          reqLabel !== '—' ? `Requirement: ${reqLabel}` : null,
+                          upLabel !== '—' ? `Uploaded by: ${upLabel}` : null,
                           doc.uploaded_at ? formatDate(doc.uploaded_at) : null,
                         ].filter(Boolean);
+                        const workspaceHref = resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id });
                         return (
                         <Card key={doc.document_id} className="border border-gray-200 p-3">
                           <div className="font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</div>
-                          <div className="text-xs text-gray-600 mt-1">Type: {metaBits.join(' · ')}</div>
+                          <div className="text-xs text-gray-600 mt-1">{metaBits.join(' · ')}</div>
                           <div className="flex flex-wrap gap-1 mt-2">
-                            <Button variant="outline" size="sm" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}>View</Button>
+                            <Button variant="outline" size="sm" onClick={() => setPropertyDocumentPreview(doc)}>View</Button>
                             <Button variant="outline" size="sm" onClick={() => handleEvidenceDocumentDownload(doc)}>Download</Button>
                             {isPendingConfirmation(doc) && <Button variant="outline" size="sm" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}>Confirm</Button>}
                             <Button variant="ghost" size="sm" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'EVIDENCE' })); }}>History</Button>
                           </div>
+                          <button
+                            type="button"
+                            className="mt-2 text-left text-xs text-gray-600 hover:text-midnight-blue underline-offset-2 hover:underline w-full"
+                            onClick={() => navigate(workspaceHref)}
+                          >
+                            Open in Documents workspace
+                          </button>
                         </Card>
                         );
                       })}
@@ -3217,6 +3270,34 @@ export default function PropertyDetailPage() {
                   </>
                 )}
               </div>
+
+              <ClientDocumentPreviewModal
+                open={Boolean(propertyDocumentPreview)}
+                onOpenChange={(next) => {
+                  if (!next) setPropertyDocumentPreview(null);
+                }}
+                api={apiClient}
+                doc={propertyDocumentPreview}
+                documentsWorkspacePath={
+                  propertyDocumentPreview
+                    ? resolveDocumentsPath(propertyId, {
+                        ...(propertyDocumentPreview.requirement_id
+                          ? { requirement_id: propertyDocumentPreview.requirement_id }
+                          : {}),
+                      })
+                    : ''
+                }
+                requirementLabel={
+                  propertyDocumentPreview
+                    ? linkedRequirementLabelForDocument(propertyDocumentPreview, requirements, rowTitle)
+                    : ''
+                }
+                uploaderLabel={
+                  propertyDocumentPreview
+                    ? formatEvidenceUploaderLabel(propertyDocumentPreview.uploaded_by, portalUserId)
+                    : ''
+                }
+              />
 
               {/* D) Pending Confirmations */}
               {(() => {
@@ -4075,40 +4156,59 @@ export default function PropertyDetailPage() {
             requirement_code: m.requirement_code || m.requirement_type,
             title: rowTitle(m),
           });
-          setNotApplicableReason('not_applicable');
+          setNotApplicablePreset('not_applicable');
+          setNotApplicableAuditText('');
         }}
       />
       <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
 
       {notApplicableModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !notApplicableSubmitting && setNotApplicableModal(null)}>
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full m-4 p-4" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-midnight-blue mb-2">Mark as not applicable</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              &ldquo;{notApplicableModal.title}&rdquo; will be excluded from this property&apos;s score and requirements list. You can change this later from the Compliance tab.
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full m-4 p-4 max-h-[min(90dvh,90vh)] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-midnight-blue mb-2">Record as not applicable</h3>
+            <NotApplicableGovernedNotice />
+            <p className="text-sm text-gray-700 mt-3 mb-2">
+              <span className="font-medium text-gray-800">&ldquo;{notApplicableModal.title}&rdquo;</span>
             </p>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
             <select
-              value={notApplicableReason}
-              onChange={(e) => setNotApplicableReason(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 mb-4"
-              data-testid="not-applicable-reason"
+              value={notApplicablePreset}
+              onChange={(e) => setNotApplicablePreset(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 mb-3"
+              data-testid="not-applicable-preset"
             >
               {NOT_REQUIRED_REASONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Audit note (required, min. 10 characters)</label>
+            <textarea
+              value={notApplicableAuditText}
+              onChange={(e) => setNotApplicableAuditText(e.target.value)}
+              rows={4}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 mb-4 text-sm"
+              placeholder="Briefly explain why this obligation does not apply, for audit and support review."
+              data-testid="not-applicable-audit-reason"
+            />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setNotApplicableModal(null)} disabled={notApplicableSubmitting}>Cancel</Button>
               <Button
                 onClick={async () => {
+                  const audit = notApplicableAuditText.trim();
+                  if (audit.length < 10) {
+                    toast.error('Please add an audit note of at least 10 characters.');
+                    return;
+                  }
                   setNotApplicableSubmitting(true);
                   try {
                     await clientAPI.markRequirementNotApplicable(propertyId, {
                       requirement_code: notApplicableModal.requirement_code,
-                      not_required_reason: notApplicableReason,
+                      not_required_reason: notApplicablePreset,
+                      reason: audit,
                     });
-                    toast.success('Requirement marked as not applicable. List will update.');
+                    toast.success(
+                      'Recorded as not applicable. Score and lists may update after recalculation completes.',
+                    );
                     setNotApplicableModal(null);
                     fetchData();
                   } catch (err) {

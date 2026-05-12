@@ -415,7 +415,12 @@ async def reopen_requirement(request: Request, requirement_id: str, user: Dict[s
         client_id=user["client_id"],
         resource_type="requirement",
         resource_id=rid,
-        metadata={"event": "reopen_requirement"},
+        metadata={
+            "event": "reopen_requirement",
+            "property_id": prop_id,
+            "correlation_id": recalc_correlation_id,
+            "prior_applicability": req.get("applicability"),
+        },
     )
     from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED, enqueue_compliance_recalc
 

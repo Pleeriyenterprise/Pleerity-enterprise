@@ -42,6 +42,7 @@ import {
 } from '../utils/requirementCtaParity';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
+import { NotApplicableGovernedNotice } from '../utils/notApplicableGovernedCopy';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -65,7 +66,12 @@ const RequirementsPage = () => {
   const [groupBy, setGroupBy] = useState('property'); // 'property' | 'requirement'
   const [editModal, setEditModal] = useState(null); // { requirement, property } or null
   const [editSaving, setEditSaving] = useState(false);
-  const [editForm, setEditForm] = useState({ confirmed_expiry_date: '', applicability: '', not_required_reason: '' });
+  const [editForm, setEditForm] = useState({
+    confirmed_expiry_date: '',
+    applicability: '',
+    not_required_reason: '',
+    not_applicable_audit_reason: '',
+  });
   const [documentCountByRequirementId, setDocumentCountByRequirementId] = useState({});
   const [requirementsPresentation, setRequirementsPresentation] = useState(null);
   const [notApplicableModal, setNotApplicableModal] = useState(null);
@@ -76,6 +82,7 @@ const RequirementsPage = () => {
   const [notApplicableActiveJobId, setNotApplicableActiveJobId] = useState(null);
   const [viewRequirementModal, setViewRequirementModal] = useState(null);
   const [planJobGate, setPlanJobGate] = useState(null);
+  const [reopenSavingId, setReopenSavingId] = useState(null);
 
   // Get filter from URL params
   const statusFilter = searchParams.get('status') || 'all';
@@ -165,6 +172,8 @@ const RequirementsPage = () => {
       confirmed_expiry_date: dateStr,
       applicability: req.applicability || 'UNKNOWN',
       not_required_reason: req.not_required_reason || '',
+      not_applicable_audit_reason:
+        typeof req.not_applicable_audit_reason === 'string' ? req.not_applicable_audit_reason : '',
     });
     setEditModal({ requirement: req, property: getPropertyById(req.property_id) });
   };
@@ -189,7 +198,7 @@ const RequirementsPage = () => {
         confirm_close_active_job: notApplicableCloseActiveJob,
       });
       toast.success(
-        'Recorded as not applicable with audit reason. This requirement stops counting as overdue for that property.',
+        'Recorded as not applicable with audit reason. Tracking and score views may update after recalculation completes.',
       );
       setNotApplicableModal(null);
       setNotApplicableReason('');
@@ -205,12 +214,31 @@ const RequirementsPage = () => {
       const det = error.response?.data?.detail;
       if (st === 409 && det && typeof det === 'object' && det.code === 'ACTIVE_COMPLIANCE_JOB_EXISTS') {
         setNotApplicableActiveJobId(det.work_order_id || null);
-        toast.error(det.message || 'An open compliance job must be cancelled to mark this not applicable.');
+        toast.error(det.message || 'An open compliance job must be cancelled to record this as not applicable.');
       } else {
         toast.error(typeof det === 'string' ? det : det?.message || 'Could not update requirement');
       }
     } finally {
       setNotApplicableSaving(false);
+    }
+  };
+
+  const handleReopenRequirement = async (req) => {
+    setReopenSavingId(req.requirement_id);
+    try {
+      await clientAPI.reopenRequirementById(req.requirement_id);
+      toast.success(
+        'Restored to active tracking. Score and lists may update after recalculation completes.',
+      );
+      fetchData();
+      if (req.property_id && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: req.property_id } }));
+      }
+    } catch (error) {
+      const det = error.response?.data?.detail;
+      toast.error(typeof det === 'string' ? det : det?.message || 'Could not restore requirement');
+    } finally {
+      setReopenSavingId(null);
     }
   };
 
@@ -222,9 +250,24 @@ const RequirementsPage = () => {
       const payload = {};
       if (editForm.confirmed_expiry_date.trim()) payload.confirmed_expiry_date = editForm.confirmed_expiry_date.trim();
       if (editForm.applicability) payload.applicability = editForm.applicability;
-      if (editForm.applicability === 'NOT_REQUIRED' && editForm.not_required_reason) payload.not_required_reason = editForm.not_required_reason;
+      if (editForm.applicability === 'NOT_REQUIRED') {
+        if (!editForm.not_required_reason) {
+          toast.error('Select a category for why this does not apply.');
+          setEditSaving(false);
+          return;
+        }
+        const audit = editForm.not_applicable_audit_reason.trim();
+        if (audit.length < 10) {
+          toast.error('Add an audit note of at least 10 characters describing why this does not apply.');
+          setEditSaving(false);
+          return;
+        }
+        payload.not_required_reason = editForm.not_required_reason;
+        payload.not_applicable_audit_reason = audit;
+      }
       if (Object.keys(payload).length === 0) {
         setEditModal(null);
+        setEditSaving(false);
         return;
       }
       await api.patch(
@@ -515,20 +558,32 @@ const RequirementsPage = () => {
               >
                 Edit dates and applicability
               </button>
-              <button
-                type="button"
-                className="text-xs text-gray-500 hover:text-midnight-blue text-left underline"
-                onClick={() => {
-                  setNotApplicableReason('');
-                  setNotApplicableCode('other');
-                  setNotApplicableModal({ requirement: req });
-                  setNotApplicableCloseActiveJob(false);
-                  setNotApplicableActiveJobId(null);
-                }}
-                data-testid={`compliance-not-applicable-${req.requirement_id}`}
-              >
-                Mark as not applicable
-              </button>
+              {String(req.applicability || '').toUpperCase() === 'NOT_REQUIRED' ? (
+                <button
+                  type="button"
+                  className="text-xs text-gray-500 hover:text-midnight-blue text-left underline disabled:opacity-50"
+                  disabled={reopenSavingId === req.requirement_id}
+                  onClick={() => handleReopenRequirement(req)}
+                  data-testid={`compliance-reopen-${req.requirement_id}`}
+                >
+                  {reopenSavingId === req.requirement_id ? 'Restoring…' : 'Restore to active tracking'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="text-xs text-gray-500 hover:text-midnight-blue text-left underline"
+                  onClick={() => {
+                    setNotApplicableReason('');
+                    setNotApplicableCode('other');
+                    setNotApplicableModal({ requirement: req });
+                    setNotApplicableCloseActiveJob(false);
+                    setNotApplicableActiveJobId(null);
+                  }}
+                  data-testid={`compliance-not-applicable-${req.requirement_id}`}
+                >
+                  Record as not applicable
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -792,15 +847,15 @@ const RequirementsPage = () => {
         {notApplicableModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" data-testid="not-applicable-modal">
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 portal-modal-scroll max-h-[min(90dvh,90vh)]">
-              <h3 className="text-lg font-semibold text-midnight-blue mb-2">Mark as not applicable</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                This is recorded for audit. The requirement is not deleted.
-              </p>
+              <h3 className="text-lg font-semibold text-midnight-blue mb-2">Record as not applicable</h3>
+              <div className="mb-4">
+                <NotApplicableGovernedNotice />
+              </div>
               {notApplicableActiveJobId ? (
                 <Alert className="mb-4 border-amber-200 bg-amber-50">
                   <AlertDescription className="text-sm text-amber-900">
                     An open compliance job is linked to this requirement (
-                    <span className="font-mono">{notApplicableActiveJobId}</span>). To mark not applicable, confirm that
+                    <span className="font-mono">{notApplicableActiveJobId}</span>). To record this as not applicable, confirm that
                     this job should be cancelled with audit trail.
                   </AlertDescription>
                 </Alert>
@@ -839,7 +894,7 @@ const RequirementsPage = () => {
                       data-testid="not-applicable-close-job"
                     />
                     <span>
-                      Cancel the open compliance job and mark this requirement not applicable (one step).
+                      Cancel the open compliance job and record this requirement as not applicable (one step).
                     </span>
                   </label>
                 ) : null}
@@ -905,7 +960,8 @@ const RequirementsPage = () => {
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 portal-modal-scroll max-h-[min(90dvh,90vh)]">
               <h3 className="text-lg font-semibold text-midnight-blue mb-4">Edit tracked item</h3>
               <p className="text-sm text-gray-600 mb-2">
-                {editModal.requirement.requirement_type?.replace(/_/g, ' ')} — {getPropertyDisplayName(editModal.property)}
+                {requirementLabel(editModal.requirement.requirement_type || editModal.requirement.requirement_code)} —{' '}
+                {getPropertyDisplayName(editModal.property)}
               </p>
               <div className="space-y-4">
                 <div>
@@ -932,20 +988,36 @@ const RequirementsPage = () => {
                   </select>
                 </div>
                 {editForm.applicability === 'NOT_REQUIRED' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
-                    <select
-                      value={editForm.not_required_reason}
-                      onChange={(e) => setEditForm(f => ({ ...f, not_required_reason: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2"
-                      data-testid="edit-not-required-reason"
-                    >
-                      <option value="">Select reason</option>
-                      {NOT_REQUIRED_REASONS.map((r) => (
-                        <option key={r.value} value={r.value}>{r.label}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <select
+                        value={editForm.not_required_reason}
+                        onChange={(e) => setEditForm(f => ({ ...f, not_required_reason: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                        data-testid="edit-not-required-reason"
+                      >
+                        <option value="">Select category</option>
+                        {NOT_REQUIRED_REASONS.map((r) => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Audit note (required, min. 10 characters)</label>
+                      <textarea
+                        value={editForm.not_applicable_audit_reason}
+                        onChange={(e) => setEditForm(f => ({ ...f, not_applicable_audit_reason: e.target.value }))}
+                        rows={3}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                        placeholder="Explain why this does not apply, for audit and support review."
+                        data-testid="edit-not-applicable-audit-reason"
+                      />
+                    </div>
+                    <div className="rounded-md border border-gray-100 bg-gray-50/80 p-2">
+                      <NotApplicableGovernedNotice variant="compact" />
+                    </div>
+                  </>
                 )}
               </div>
               <div className="flex justify-end gap-2 mt-6">

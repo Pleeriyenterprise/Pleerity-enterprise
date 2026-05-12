@@ -78,3 +78,11 @@ Do **not** re-interpret overdue via ad hoc calendar on raw `PENDING` for KPI tot
 - `services/command_center_service.py` — `compliance_status_summary` requirement fields from `calculate_compliance_score`.
 - `services/kpi_authority_projection_contract.py` — **L-002 CI guard**: registered KPI-authoritative modules must reference filter+project (or delegate only via `calculate_compliance_score` without raw requirement queries). See `tests/test_kpi_authority_projection_contract.py`.
 - `GET /api/admin/compliance-truth/clients/{client_id}/explain` — admin explain payload.
+
+## Not applicable (NOT_REQUIRED) — portal governance
+
+Catalog mark (`POST /api/client/properties/{property_id}/requirements/mark-not-applicable` and `POST /api/properties/{property_id}/requirements/mark-not-applicable`) and requirement-id mark (`POST /api/requirements/{requirement_id}/mark-not-applicable`) align on: preset category (`not_required_reason` / `reason_code`), mandatory **free-text audit reason** (minimum length, trimmed), **`sync_requirement_evidence_authority`**, **`create_audit_log`** with `event: mark_not_applicable` (catalog adds `path: property_catalog`), and **async** `enqueue_compliance_recalc` (no synchronous score rewrite).
+
+`PATCH /api/properties/{property_id}/requirements/{requirement_id}` with `applicability: NOT_REQUIRED` requires the same preset plus `not_applicable_audit_reason`. When applicability is set to **`REQUIRED`** or **`UNKNOWN`**, stale N/A row metadata (`not_required_reason`, `not_applicable_audit_reason`) is cleared with **`$unset`** on the requirement document; historical audit log rows are not deleted.
+
+`POST /api/requirements/{requirement_id}/reopen` restores tracked participation with the same authority sync + enqueue pattern; audit metadata includes `prior_applicability` for operational review.
