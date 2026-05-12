@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback, useMemo, useContext } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import apiClient, { clientAPI } from '../api/client';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -296,8 +296,8 @@ export default function PropertyDetailPage() {
   const location = useLocation();
   const { openGuidedEvidence } = useGuidedEvidenceModal();
   const { hasFeature } = useEntitlements();
-  const auth = useContext(AuthContext);
-  const portalUserId = auth?.user?.portal_user_id;
+  const { user: authUser } = useAuth();
+  const portalUserId = authUser?.portal_user_id;
   const [activeTab, setActiveTab] = useState(TAB_OPERATING);
   const [property, setProperty] = useState(null);
   const [requirements, setRequirements] = useState([]);
