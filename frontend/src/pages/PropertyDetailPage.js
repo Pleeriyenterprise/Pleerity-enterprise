@@ -204,19 +204,19 @@ export function PropertyDocumentsMissingRequirementList({
         return (
           <li
             key={rid || code || 'row'}
-            className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between min-w-0"
+            className="flex flex-col gap-3 px-4 py-4 min-w-0"
           >
             <div className="min-w-0">
               <p className="font-medium text-midnight-blue leading-snug">{rowTitle(r)}</p>
               <p className="text-xs text-gray-500 mt-1">{sem.evidenceStatusForStatus(r.status).text}</p>
             </div>
-            <div className="flex flex-wrap gap-2 shrink-0">
+            <div className="flex w-full max-w-lg flex-col gap-2">
               <Button
                 type="button"
                 className={
                   ta.primary_action_handler === 'guided_evidence_error'
-                    ? 'bg-electric-teal/40 text-white min-h-10 cursor-not-allowed'
-                    : 'bg-electric-teal text-white hover:bg-electric-teal/90 min-h-10'
+                    ? 'min-h-11 w-full bg-electric-teal/40 text-white cursor-not-allowed'
+                    : 'min-h-11 w-full bg-electric-teal text-white hover:bg-electric-teal/90'
                 }
                 disabled={ta.primary_action_handler === 'guided_evidence_error'}
                 title={ta.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined}
@@ -238,7 +238,7 @@ export function PropertyDocumentsMissingRequirementList({
                 <Button
                   type="button"
                   variant="outline"
-                  className="min-h-10 border-midnight-blue/30 text-midnight-blue"
+                  className="min-h-10 w-full border-gray-300 text-gray-800 text-sm font-normal"
                   onClick={() =>
                     ta.secondary_action.external
                       ? window.open(ta.secondary_action.route, '_blank', 'noopener,noreferrer')
@@ -251,7 +251,7 @@ export function PropertyDocumentsMissingRequirementList({
               {reqHref ? (
                 <Link
                   to={reqHref}
-                  className={cn(portalSecondaryButtonClass, 'inline-flex items-center justify-center min-h-10 px-4 text-sm no-underline')}
+                  className="text-xs font-normal text-gray-600 hover:text-midnight-blue py-0.5 underline-offset-2 decoration-gray-300 hover:underline hover:decoration-midnight-blue/40"
                 >
                   Review requirement details
                 </Link>
@@ -1933,54 +1933,20 @@ export default function PropertyDetailPage() {
                         taRow.secondary_action?.route && !isRedundantUploadStyleSecondaryAction(taRow);
                       return (
                         <div key={rid} className="rounded border border-amber-200 bg-white overflow-hidden">
-                          <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                            <div className="min-w-0 flex-1 space-y-2">
-                              <div>
-                                <p className="font-medium text-midnight-blue">{rowCompactTitle(r)}</p>
-                                <p className="text-sm text-gray-600 mt-0.5">
-                                  <span className="font-medium text-midnight-blue">{stdStatus}</span>
-                                  <span className="text-gray-400"> · </span>
-                                  Risk: {complianceImpactLabel(r).label}
-                                </p>
-                                {statusUi.subline ? <p className="text-xs text-gray-500 mt-1">{statusUi.subline}</p> : null}
-                              </div>
-                              <button
-                                type="button"
-                                className="inline-flex items-center gap-1 text-left text-xs text-gray-600 hover:text-midnight-blue"
-                                onClick={() => {
-                                  if (explainOpen) {
-                                    setUrgentExplainOpenId(null);
-                                    return;
-                                  }
-                                  setUrgentExplainOpenId(rid);
-                                }}
-                              >
-                                <Info className="w-3.5 h-3.5 shrink-0 text-gray-400" aria-hidden />
-                                <span className="underline decoration-gray-300 underline-offset-2 hover:decoration-midnight-blue/40">
-                                  Why this matters
-                                </span>
-                                {explainOpen ? (
-                                  <ChevronUp className="w-3.5 h-3.5 shrink-0 text-gray-400" aria-hidden />
-                                ) : (
-                                  <ChevronDown className="w-3.5 h-3.5 shrink-0 text-gray-400" aria-hidden />
-                                )}
-                              </button>
+                          <div className="flex flex-col gap-3 p-3">
+                            <div className="min-w-0">
+                              <p className="font-medium text-midnight-blue">{rowCompactTitle(r)}</p>
+                              <p className="text-sm text-gray-600 mt-0.5">
+                                <span className="font-medium text-midnight-blue">{stdStatus}</span>
+                                <span className="text-gray-400"> · </span>
+                                Risk: {complianceImpactLabel(r).label}
+                              </p>
+                              {statusUi.subline ? <p className="text-xs text-gray-500 mt-1">{statusUi.subline}</p> : null}
                             </div>
-                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[min(100%,14rem)] sm:max-w-full sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-end sm:shrink-0">
-                              {rowReqId(r) ? (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  className="min-h-11 w-full justify-center border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 sm:min-h-9 sm:w-auto"
-                                  onClick={() => setRequirementIntelRow(r)}
-                                >
-                                  Requirement details
-                                </Button>
-                              ) : null}
+                            <div className="flex w-full flex-col gap-2 sm:max-w-md">
                               <Button
                                 size="sm"
-                                className="min-h-11 w-full bg-electric-teal text-white hover:bg-electric-teal/90 sm:min-h-9 sm:w-auto"
+                                className="min-h-11 w-full bg-electric-teal text-white hover:bg-electric-teal/90 sm:min-h-11"
                                 data-testid={taRow.primary_action_handler === 'guided_evidence' ? `compliance-urgent-guided-${rowReqId(r)}` : undefined}
                                 disabled={taRow.primary_action_handler === 'guided_evidence_error'}
                                 title={
@@ -1996,8 +1962,9 @@ export default function PropertyDetailPage() {
                               {showNonUploadSecondary ? (
                                 <Button
                                   size="sm"
+                                  type="button"
                                   variant="outline"
-                                  className="min-h-11 w-full sm:min-h-9 sm:w-auto"
+                                  className="min-h-10 w-full border-gray-300 text-gray-800 text-sm font-normal"
                                   onClick={() =>
                                     taRow.secondary_action.external
                                       ? window.open(taRow.secondary_action.route, '_blank', 'noopener,noreferrer')
@@ -2007,6 +1974,36 @@ export default function PropertyDetailPage() {
                                   {taRow.secondary_action.label}
                                 </Button>
                               ) : null}
+                              {rowReqId(r) ? (
+                                <button
+                                  type="button"
+                                  className="text-left text-xs font-normal text-gray-600 hover:text-midnight-blue underline-offset-2 hover:underline py-0.5"
+                                  onClick={() => setRequirementIntelRow(r)}
+                                >
+                                  Requirement details
+                                </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 text-left text-xs text-gray-500 hover:text-gray-700"
+                                onClick={() => {
+                                  if (explainOpen) {
+                                    setUrgentExplainOpenId(null);
+                                    return;
+                                  }
+                                  setUrgentExplainOpenId(rid);
+                                }}
+                              >
+                                <Info className="w-3.5 h-3.5 shrink-0 text-gray-400" aria-hidden />
+                                <span className="underline decoration-gray-300 underline-offset-2 hover:decoration-gray-500">
+                                  Why this matters
+                                </span>
+                                {explainOpen ? (
+                                  <ChevronUp className="w-3.5 h-3.5 shrink-0 text-gray-400" aria-hidden />
+                                ) : (
+                                  <ChevronDown className="w-3.5 h-3.5 shrink-0 text-gray-400" aria-hidden />
+                                )}
+                              </button>
                             </div>
                           </div>
                           {explainOpen && explainPayload ? (

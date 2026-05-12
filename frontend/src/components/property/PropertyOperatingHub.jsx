@@ -26,6 +26,7 @@ import { PORTAL_COPY } from '../../utils/clientPortalCopy';
 import { cn } from '../../lib/utils';
 import { humanizeOperatingFeedItems } from '../../utils/propertyOperatingActivityCopy';
 import { isRequirementMissingDocument } from '../../utils/propertyDocumentsMatrix';
+import { isRedundantUploadStyleSecondaryAction } from '../../utils/complianceObligationPresent';
 import {
   projectResolvedRequirementFromPriorityTask,
   projectResolvedRequirementSemantics,
@@ -461,6 +462,7 @@ export default function PropertyOperatingHub({
               const needsDocument = isRequirementMissingDocument(r);
               const rid = rowReqId(r);
               const ta = sem.cta;
+              const showHubSecondary = ta.secondary_action?.route && !isRedundantUploadStyleSecondaryAction(ta);
               const docsHref = resolveDocumentsPath(propertyId, rid ? { requirement_id: rid } : {});
               const reqHref = buildEntityRoute({ requirement_id: rid, property_id: propertyId, mode: 'requirement' }, '');
               const primaryClick = () => {
@@ -508,10 +510,10 @@ export default function PropertyOperatingHub({
                       ) : null}
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2 mt-4 sm:flex-row sm:flex-wrap">
+                  <div className="mt-4 flex w-full max-w-lg flex-col gap-2">
                     <Button
                       type="button"
-                      className={cn(portalPrimaryButtonClass, 'w-full sm:w-auto justify-center')}
+                      className={cn(portalPrimaryButtonClass, 'w-full justify-center')}
                       disabled={ta.primary_action_handler === 'guided_evidence_error'}
                       title={ta.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined}
                       onClick={primaryClick}
@@ -523,11 +525,11 @@ export default function PropertyOperatingHub({
                       {ta.actionType === 'OBLIGATION' ? <Eye className="w-3.5 h-3.5 mr-1 shrink-0 inline" aria-hidden /> : null}
                       {ta.primary_action_label}
                     </Button>
-                    {ta.secondary_action?.route ? (
+                    {showHubSecondary ? (
                       <Button
                         type="button"
                         variant="outline"
-                        className={cn(portalSecondaryButtonClass, 'w-full sm:w-auto justify-center')}
+                        className="min-h-10 w-full justify-center border-gray-300 text-gray-800 text-sm font-normal"
                         onClick={() =>
                           ta.secondary_action.external
                             ? window.open(ta.secondary_action.route, '_blank', 'noopener,noreferrer')
@@ -538,16 +540,17 @@ export default function PropertyOperatingHub({
                       </Button>
                     ) : null}
                     {reqHref ? (
-                      <Link to={reqHref} className={cn(portalSecondaryButtonClass, 'inline-flex w-full sm:w-auto justify-center no-underline items-center')}>
+                      <Link
+                        to={reqHref}
+                        className="text-left text-xs font-normal text-gray-600 hover:text-midnight-blue py-0.5 underline-offset-2 decoration-gray-300 hover:underline hover:decoration-midnight-blue/40 no-underline"
+                      >
                         View details
                       </Link>
                     ) : null}
                     {needsDocument && (r.requirement_code || r.requirement_type) ? (
-                      <Button
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="min-h-10 text-gray-600 w-full sm:w-auto justify-center"
+                        className="text-left text-xs font-normal text-gray-500 hover:text-gray-700 py-0.5"
                         onClick={() =>
                           onOpenNotApplicable({
                             requirement_code: r.requirement_code || r.requirement_type,
@@ -556,7 +559,7 @@ export default function PropertyOperatingHub({
                         }
                       >
                         Not applicable
-                      </Button>
+                      </button>
                     ) : null}
                   </div>
                 </li>
