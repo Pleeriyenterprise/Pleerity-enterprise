@@ -1028,10 +1028,15 @@ class JobScheduler:
             key_suffix = to_addr.replace("@", "_at_") if recipient_email else "client"
             _scope_fp = daily_compliance_reminder_scope_fingerprint(reminder_refs=reminder_refs)
             idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_{date_key}_{key_suffix}_{_scope_fp}"
-            from utils.app_urls import get_app_base_url
+            from utils.app_urls import get_app_base_url, client_portal_requirements_list_url
 
             base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
-            portal_link = f"{base_url}/dashboard"
+            if overdue:
+                portal_link = client_portal_requirements_list_url(base_url, status="OVERDUE_OR_MISSING")
+            elif expiring:
+                portal_link = client_portal_requirements_list_url(base_url, status="DUE_SOON")
+            else:
+                portal_link = f"{base_url}/today"
             context = {
                 "client_name": client.get("full_name", "Valued Customer"),
                 "expiring_count": len(expiring),
@@ -1064,11 +1069,11 @@ class JobScheduler:
                 if is_overdue:
                     context["days_remaining"] = 0
                     context["days_overdue"] = first_item.get("days_overdue", 0)
-                    context["subject"] = f"Action Required: {context['requirement_name']} Overdue"
+                    context["subject"] = f"Renewal reminder: {context['requirement_name']} is overdue"
                 else:
                     context["days_remaining"] = first_item.get("days_remaining", 0)
                     context["days_overdue"] = None
-                    context["subject"] = f"Action Required: {context['requirement_name']} Due Soon"
+                    context["subject"] = f"Renewal reminder: {context['requirement_name']} due soon"
             result = await notification_orchestrator.send(
                 template_key="COMPLIANCE_EXPIRY_REMINDER",
                 client_id=client["client_id"],
@@ -1199,10 +1204,15 @@ class JobScheduler:
             key_suffix = (recipient_phone or "").replace("+", "").replace(" ", "")[:20] if recipient_phone else "client"
             _sms_scope_fp = daily_compliance_reminder_scope_fingerprint(reminder_refs=reminder_refs)
             idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_SMS_{date_key}_{key_suffix}_{_sms_scope_fp}"
-            from utils.app_urls import get_app_base_url
+            from utils.app_urls import get_app_base_url, client_portal_requirements_list_url
 
             base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
-            portal_link = f"{base_url}/dashboard"
+            if overdue:
+                portal_link = client_portal_requirements_list_url(base_url, status="OVERDUE_OR_MISSING")
+            elif expiring:
+                portal_link = client_portal_requirements_list_url(base_url, status="DUE_SOON")
+            else:
+                portal_link = f"{base_url}/today"
             total = len(expiring) + len(overdue)
             context = {"count": total, "portal_link": portal_link}
             if recipient_phone:
@@ -1586,7 +1596,7 @@ class JobScheduler:
                 if properties_with_changes and status_alerts_enabled:
                     attempted_alerts += 1
                     try:
-                        from utils.app_urls import get_app_base_url
+                        from utils.app_urls import get_app_base_url, compliance_alert_email_portal_url
                         from services.notification_orchestrator import notification_orchestrator
 
                         frontend_url = get_app_base_url(for_email_links=True)
@@ -1595,13 +1605,14 @@ class JobScheduler:
                             p.get("property_id", "") for p in properties_with_changes
                         )
                         idempotency_key = f"{client['client_id']}_COMPLIANCE_ALERT_{date_key}_{alert_scope_fp}"
+                        portal_link = compliance_alert_email_portal_url(frontend_url, properties_with_changes)
                         await notification_orchestrator.send(
                             template_key="COMPLIANCE_ALERT",
                             client_id=client["client_id"],
                             context={
                                 "client_name": client.get("full_name", "Valued Customer"),
                                 "affected_properties": properties_with_changes,
-                                "portal_link": f"{frontend_url}/app/dashboard",
+                                "portal_link": portal_link,
                             },
                             idempotency_key=idempotency_key,
                             event_type="compliance_status_changed",
@@ -1749,8 +1760,8 @@ class JobScheduler:
         from utils.app_urls import get_app_base_url
 
         now = datetime.now(timezone.utc)
-        frontend_url = get_app_base_url(for_email_links=False)
-        billing_url = f"{frontend_url}/settings/billing"
+        frontend_url = get_app_base_url(for_email_links=True)
+        billing_url = f"{frontend_url.rstrip('/')}/settings/billing"
         stripe_key = (os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY") or "").strip()
 
         transitioned = await apply_post_grace_transitions(now)
@@ -1789,9 +1800,11 @@ class JobScheduler:
                 g_end_s = g_end.strftime("%d %B %Y") if hasattr(g_end, "strftime") else ""
                 idempotency_key = f"{client_id}_GRACE_REMINDER_{(b.get('dunning_stripe_invoice_id') or '')[:40]}"
                 grace_msg = (
-                    f"<p>We still could not charge your saved payment method. "
+                    f"<p>We could not charge your saved payment method on the last attempt. "
                     f"Please update it before <strong>{html.escape(g_end_s)}</strong> "
-                    f"to keep full access. Some automations stay paused until payment succeeds.</p>"
+                    f"to restore uninterrupted access to plan-gated features.</p>"
+                    f"<p>You can still sign in to the portal; some automations may stay paused until payment succeeds. "
+                    f"Exact limits follow your plan — use Billing for the current view.</p>"
                     f"<p><a href=\"{html.escape(billing_url, quote=True)}\">Open Billing</a></p>"
                 )
                 await notification_orchestrator.send(
@@ -1800,7 +1813,7 @@ class JobScheduler:
                     context={
                         "client_name": name,
                         "message": grace_msg,
-                        "subject": "Reminder: update your payment method",
+                        "subject": "Payment method: action needed to avoid feature limits",
                     },
                     idempotency_key=idempotency_key,
                     event_type="subscription_grace_reminder",
@@ -1883,7 +1896,7 @@ class JobScheduler:
                         context={
                             "client_name": name,
                             "message": msg_html,
-                            "subject": "Upcoming subscription renewal (7 days)",
+                            "subject": "Subscription renewal in about 7 days",
                         },
                         idempotency_key=f"{client_id}_RENEW7_{period_key}",
                         event_type="subscription_renewal_reminder_7d",
@@ -1900,7 +1913,7 @@ class JobScheduler:
                         context={
                             "client_name": name,
                             "message": msg_html,
-                            "subject": "Upcoming subscription renewal (3 days)",
+                            "subject": "Subscription renewal in about 3 days",
                         },
                         idempotency_key=f"{client_id}_RENEW3_{period_key}",
                         event_type="subscription_renewal_reminder_3d",
@@ -2105,10 +2118,12 @@ class ScheduledReportJob:
                     # Send to each recipient via orchestrator
                     date_key = now.strftime("%Y-%m-%d")
                     schedule_sent = 0
-                    from utils.app_urls import get_app_base_url
+                    from utils.app_urls import get_app_base_url, client_portal_requirements_list_url
 
                     base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
                     scheduled_portal_link = f"{base_url}/today"
+                    if report_type == "requirements":
+                        scheduled_portal_link = client_portal_requirements_list_url(base_url)
                     for recipient in recipients:
                         attempted_reports += 1
                         try:

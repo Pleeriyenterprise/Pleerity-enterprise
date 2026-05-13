@@ -314,7 +314,8 @@ const NotificationPreferencesPage = () => {
       iconColor: 'text-amber-500',
       bgColor: 'bg-amber-50',
       title: 'Compliance Status Alerts',
-      description: 'Get notified when your property compliance status changes (GREEN → AMBER → RED)',
+      description:
+        'Email when a property dashboard indicator changes (GREEN / AMBER / RED). Informational — the portal shows current obligation state.',
       recommended: true
     },
     {
@@ -340,7 +341,8 @@ const NotificationPreferencesPage = () => {
       iconColor: 'text-green-500',
       bgColor: 'bg-green-50',
       title: 'Document Updates',
-      description: 'Notifications when documents are uploaded, verified, or require attention'
+      description:
+        'Assistive processing, uploads, and evidence workflow notices. Not a final “verified compliant” verdict until the portal shows it.',
     },
     {
       key: 'system_announcements',
@@ -348,7 +350,7 @@ const NotificationPreferencesPage = () => {
       iconColor: 'text-gray-500',
       bgColor: 'bg-gray-50',
       title: 'System Announcements',
-      description: 'Platform updates, new features, and important service notices'
+      description: 'Product updates and service notices (separate from certificate compliance alerts and billing dunning)',
     }
   ];
 
@@ -385,7 +387,7 @@ const NotificationPreferencesPage = () => {
               </button>
               <div>
                 <h1 className="text-xl font-semibold text-midnight-blue">Notification Preferences</h1>
-                <p className="text-sm text-gray-500">Manage how you receive updates</p>
+                <p className="text-sm text-gray-500">Manage how you receive updates. Operational compliance emails may still be sent when needed for account safety even if optional categories are off.</p>
               </div>
             </div>
             <Button

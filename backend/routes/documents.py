@@ -3681,9 +3681,15 @@ async def apply_ai_extraction(
                             expiry_display = update_fields.get("due_date", "N/A")
                     
                     from services.notification_orchestrator import notification_orchestrator
-                    from utils.app_urls import get_app_base_url
+                    from utils.app_urls import get_app_base_url, client_portal_documents_evidence_url
 
-                    _portal = f"{get_app_base_url(for_email_links=True)}/app/dashboard"
+                    base = get_app_base_url(for_email_links=True).rstrip("/")
+                    prop_id = str(document.get("property_id") or "").strip()
+                    req_id = str(requirement_id or "").strip()
+                    if prop_id:
+                        _portal = client_portal_documents_evidence_url(base, property_id=prop_id, requirement_id=req_id)
+                    else:
+                        _portal = f"{base}/documents"
                     result = await notification_orchestrator.send(
                         template_key="AI_EXTRACTION_APPLIED",
                         client_id=document["client_id"],

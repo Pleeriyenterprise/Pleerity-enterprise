@@ -4,6 +4,7 @@ import {
   riskTypeLabelAdmin,
   riskTypeLabelClient,
 } from '../domain/presentDomain';
+import { operationalLabelForToken } from './presentationLanguage';
 
 /**
  * @param {string|object|null|undefined} riskTypeOrSignal — raw risk_type string, or signal object with API labels
@@ -43,7 +44,8 @@ export function humanStatus(status) {
   if (value === 'active') return 'Open';
   if (value === 'acknowledged') return 'In progress';
   if (value === 'resolved') return 'Resolved';
-  return status || 'Open';
+  if (!status) return 'Open';
+  return operationalLabelForToken(status, { emptyLabel: 'Open' });
 }
 
 export function humanTrend(trend) {

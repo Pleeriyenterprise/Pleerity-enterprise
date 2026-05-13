@@ -5,6 +5,7 @@ import { History, FileText, Mail, Shield, Activity, Download, ChevronDown, Chevr
 import { toast } from '@/utils/portalNotifications';
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
+import { operationalLabelForToken } from '../utils/presentationLanguage';
 
 const TAB_SCORE_HISTORY = 'score-history';
 const TAB_ACTIVITY_LOG = 'activity-log';
@@ -416,7 +417,9 @@ export default function ClientAuditLogPage() {
                       {iconForAction(event.action)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-midnight-blue">{event.action?.replace(/_/g, ' ')}</p>
+                      <p className="font-medium text-midnight-blue">
+                        {operationalLabelForToken(event.action, { emptyLabel: '—' })}
+                      </p>
                       <p className="text-sm text-gray-500">{formatDate(event.timestamp)}</p>
                       {event.metadata && Object.keys(event.metadata).length > 0 && (
                         <div className="mt-2 text-xs text-gray-400 bg-white p-2 rounded max-h-24 overflow-auto">

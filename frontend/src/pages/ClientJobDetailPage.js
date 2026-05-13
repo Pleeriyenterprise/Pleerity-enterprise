@@ -20,6 +20,7 @@ import { clientAPI, parseApiError, contractorEvidenceFilenameFromKey, isContract
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { jobLifecycleSuccessMessage, JOB_DETAIL_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
+import { operationalLabelForToken } from '../utils/presentationLanguage';
 import { resolveClientPortalPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -666,7 +667,8 @@ function ClientJobDetailInner() {
           {job.requirement_code ? <p>Code: {job.requirement_code}</p> : null}
           {job.resolution_outcome ? (
             <p className="sm:col-span-2 text-gray-700">
-              Outcome: <span className="font-medium">{String(job.resolution_outcome).replace(/_/g, ' ')}</span>
+              Outcome:{' '}
+              <span className="font-medium">{operationalLabelForToken(job.resolution_outcome, { emptyLabel: '—' })}</span>
             </p>
           ) : null}
           {job.issue_resolution_hint ? <p className="sm:col-span-2 text-gray-600">{job.issue_resolution_hint}</p> : null}
@@ -1024,7 +1026,8 @@ function ClientJobDetailInner() {
             </p>
             {job.compliance_proof_status != null && String(job.compliance_proof_status).trim() !== '' ? (
               <p>
-                Validation: <span className="font-medium">{String(job.compliance_proof_status).replace(/_/g, ' ')}</span>
+                Validation:{' '}
+                <span className="font-medium">{operationalLabelForToken(job.compliance_proof_status, { emptyLabel: '—' })}</span>
               </p>
             ) : (
               <p className="text-gray-600">Validation: pending or not yet recorded for this job.</p>
@@ -1095,7 +1098,7 @@ function ClientJobDetailInner() {
               <p className="font-semibold text-midnight-blue">Quote status</p>
               <p>
                 <span className="text-gray-500">Status:</span>{' '}
-                <span className="font-medium">{(job.pricing.price_status || '—').replace(/_/g, ' ')}</span>
+                <span className="font-medium">{operationalLabelForToken(job.pricing.price_status, { emptyLabel: '—' })}</span>
               </p>
               {job.pricing.quoted_price != null && job.pricing.quoted_price !== '' ? (
                 <p>

@@ -21,6 +21,7 @@ from services.monthly_digest_snapshot_service import (
     load_latest_snapshot,
 )
 from utils.risk_bands import score_to_risk_level
+from utils.app_urls import client_portal_requirements_list_url
 from services.scoring_semantics_v1 import (
     attach_semantics_contract,
     headline_score_display_for_export,
@@ -508,6 +509,12 @@ async def assemble_monthly_digest_payload(
     portal_today_url = f"{base_url}/today"
     portal_requirements_url = f"{base_url}/requirements"
 
+    primary_cta_url = portal_today_url
+    if overdue_count > 0 or missing_evidence_count > 0:
+        primary_cta_url = client_portal_requirements_list_url(base_url, status="OVERDUE_OR_MISSING")
+    elif expiring_soon_count > 0:
+        primary_cta_url = client_portal_requirements_list_url(base_url, status="DUE_SOON")
+
     _jur_notice = build_jurisdiction_compliance_notice(client, properties)
 
     _generated_at_display = now.strftime("%d %B %Y %H:%M UTC")
@@ -558,7 +565,7 @@ async def assemble_monthly_digest_payload(
         "portal_dashboard_url": portal_dashboard_url,
         "portal_today_url": portal_today_url,
         "portal_requirements_url": portal_requirements_url,
-        "primary_cta_url": portal_today_url,
+        "primary_cta_url": primary_cta_url,
         "primary_cta_label": "Open portal for compliance summary",
         "urgent_items": urgent_items,
         "deltas": deltas,

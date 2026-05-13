@@ -927,6 +927,15 @@ class EmailService:
                 customer_reference=customer_ref or None,
             )
         elif template_alias == EmailTemplateAlias.COMPLIANCE_ALERT:
+            if model.get("admin_manual_structured") and str(model.get("admin_manual_summary") or "").strip():
+                from email_templates.admin_manual_structured_layout import build_admin_manual_structured_html
+
+                inner = build_admin_manual_structured_html(
+                    model,
+                    footer_html="",
+                    customer_reference_html="",
+                )
+                return inner.replace("</body>", f"{footer}</body>", 1)
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
             properties_html = ""
@@ -1897,6 +1906,10 @@ Go to your dashboard: {model.get('portal_link', '#')}
 {footer}
             """
         elif template_alias == EmailTemplateAlias.COMPLIANCE_ALERT:
+            if model.get("admin_manual_structured") and str(model.get("admin_manual_summary") or "").strip():
+                from email_templates.admin_manual_structured_layout import build_admin_manual_structured_plain_text
+
+                return build_admin_manual_structured_plain_text(model, footer=footer)
             properties_text = ""
             for prop in model.get('affected_properties', []):
                 properties_text += f"- {prop.get('address', 'N/A')}: {prop.get('previous_status', 'GREEN')} → {prop.get('new_status', 'RED')} ({prop.get('reason', 'Status changed')})\n"
@@ -2165,6 +2178,12 @@ Always review the output and seek professional advice for legal matters.
                 cust = str(model.get("customer_impact") or "").strip()
                 if cust:
                     lines.extend(["", "Customer impact: " + cust])
+                urg = str(model.get("operator_urgency_note") or "").strip()
+                if urg:
+                    lines.extend(["", "Urgency and response: " + urg])
+                ign = str(model.get("if_ignored_guidance") or "").strip()
+                if ign:
+                    lines.extend(["", "If left unresolved: " + ign])
                 comp = str(model.get("affected_component") or model.get("component") or "").strip()
                 scope = str(model.get("affected_scope") or "").strip()
                 if comp or scope:
@@ -2175,7 +2194,7 @@ Always review the output and seek professional advice for legal matters.
                         lines.append("Scope: " + scope)
                 action = (model.get("recommended_actions") or model.get("suggested_action") or "").strip()
                 if action:
-                    lines.extend(["", "Recommended actions: " + action])
+                    lines.extend(["", "Recommended actions:", action])
                 res = str(model.get("resolution_link") or model.get("incident_link") or "").strip()
                 obs = str(model.get("dashboard_link") or "").strip()
                 if res:

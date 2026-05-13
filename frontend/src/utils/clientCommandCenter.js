@@ -682,8 +682,9 @@ export function buildPortfolioVerdictBlock({
       key: 'overdue',
       label:
         overdueDisplay === 1
-          ? '1 overdue requirement'
-          : `${overdueDisplay} overdue requirements`,
+          ? '1 overdue requirement in your latest compliance score snapshot'
+          : `${overdueDisplay} overdue requirements in your latest compliance score snapshot`,
+      navTo: '/requirements?status=OVERDUE',
     });
   }
   if (missingDisplay > 0) {
@@ -691,8 +692,9 @@ export function buildPortfolioVerdictBlock({
       key: 'missing',
       label:
         missingDisplay === 1
-          ? '1 missing document hurting your score'
-          : `${missingDisplay} missing documents hurting your score`,
+          ? '1 requirement counted as missing evidence in your latest compliance score'
+          : `${missingDisplay} requirements counted as missing evidence in your latest compliance score`,
+      navTo: '/requirements?status=OVERDUE_OR_MISSING',
     });
   }
   if (jobPressure > 0) {
@@ -700,8 +702,9 @@ export function buildPortfolioVerdictBlock({
       key: 'job_pressure',
       label:
         jobPressure === 1
-          ? '1 job stuck or waiting on you'
-          : `${jobPressure} jobs stuck or waiting on you`,
+          ? '1 job needs follow-up (SLA, proof, hold, or contractor step)'
+          : `${jobPressure} jobs need follow-up (SLA, proof, hold, or contractor step)`,
+      navTo: '/operations/work-orders',
     });
   }
   if (riskDisplay > 0) {
@@ -709,8 +712,9 @@ export function buildPortfolioVerdictBlock({
       key: 'risk',
       label:
         riskDisplay === 1
-          ? '1 open issue to close out'
-          : `${riskDisplay} open issues to close out`,
+          ? '1 open predictive risk signal to triage'
+          : `${riskDisplay} open predictive risk signals to triage`,
+      navTo: '/operations/risk-signals',
     });
   }
 

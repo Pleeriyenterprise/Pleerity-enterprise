@@ -531,8 +531,8 @@ export default function AdminCannedResponsesPage() {
                 <p className="text-sm font-medium text-gray-600 mb-2 flex items-center gap-2">
                   <Phone className="h-4 w-4" /> WhatsApp Preview
                 </p>
-                <div className="bg-[#e5ddd5] rounded-lg p-4">
-                  <div className="bg-[#dcf8c6] rounded-lg p-3 max-w-[80%] ml-auto">
+                <div className="bg-slate-200/80 rounded-lg p-4 border border-slate-300/60">
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 max-w-[80%] ml-auto shadow-sm">
                     <p className="text-sm text-gray-800 whitespace-pre-wrap">
                       {previewResponse.response_text.replace(/\*\*/g, '*')}
                     </p>

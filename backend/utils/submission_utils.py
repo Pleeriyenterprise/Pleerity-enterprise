@@ -34,13 +34,20 @@ async def notify_admin_new_submission(
             for_email_links=True
         ).rstrip("/")
         link = f"{base_url}/admin/submissions/{submission_type}/{submission_id}" if detail_url_path is None else f"{base_url}{detail_url_path}"
-        subject = f"New {submission_type.title()} submission: {submission_id}"
-        message = f"<p>{summary}</p><p><a href=\"{link}\">View in admin →</a></p>"
         idempotency_key = f"admin_notify_{submission_type}_{submission_id}_{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H')}"
+        from services.operational_alert_presentation import enrich_submission_internal_notification_context
+
+        ctx = enrich_submission_internal_notification_context(
+            recipient=admin_email,
+            submission_type=submission_type,
+            submission_id=submission_id,
+            summary=summary,
+            detail_url=link,
+        )
         result = await notification_orchestrator.send(
             template_key="SUPPORT_INTERNAL_NOTIFICATION",
             client_id=None,
-            context={"recipient": admin_email, "subject": subject, "message": message},
+            context=ctx,
             idempotency_key=idempotency_key,
             event_type="submission_admin_notify",
         )

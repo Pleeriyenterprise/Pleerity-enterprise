@@ -14,6 +14,7 @@
 - `STREAM_E_MUTATION_FANOUT_MATRIX.md`
 - `STREAM_F_RECONSTRUCTION_CONSISTENCY.md` / `STREAM_F_FORENSICS_JOIN_RECIPE.md`
 - `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` §18 (architecture doctrine)
+- `audit/NOTIFICATION_OWNERSHIP_READINESS.md` — operational email deep links vs portal truth; preference vs mandatory sends (cross-check with product)
 
 ---
 
@@ -211,7 +212,7 @@ During beta, operators use **Admin → Automation** together with **Control Cent
 | **Running stuck** | `RUNNING` + `updated_at` vs `COMPLIANCE_RECALC_SLA_RUNNING_SECONDS` (default **300**) → **CRIT**. |
 | **Repeated failures** | `attempts` vs `SLA_MAX_FAILURES_WARN` (3) / `SLA_MAX_FAILURES_CRIT` (5). |
 | **Property pending too long** | `compliance_score_pending` + stale `compliance_last_calculated_at` → `ALERT_PROPERTY_PENDING_TOO_LONG`. |
-| **SLA alert delivery** | `OPS_ALERT_EMAIL` set; `COMPLIANCE_SLA_ALERT` template path verified in beta env. |
+| **SLA alert delivery** | `OPS_ALERT_EMAIL` set; `COMPLIANCE_SLA_ALERT` template path verified in beta env. Bodies use operator-first layout (`internal_alert_layout` + structured sections; full diagnostics in plaintext/debug). |
 | **Fan-out anomaly logs** | Search `event=compliance_fanout` spikes (`partial`, `failed`, `dedupe`). |
 | **Audit volume** | `COMPLIANCE_RECALC_FAILED`, `COMPLIANCE_RECALC_SLA_BREACH` / `RESOLVED`, repair audit chain. |
 

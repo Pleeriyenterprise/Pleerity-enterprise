@@ -19,8 +19,18 @@ module.exports = {
     },
     extend: {
       colors: {
-        'midnight-blue': 'rgb(11, 29, 58)',
-        'electric-teal': 'rgb(0, 184, 169)',
+        'midnight-blue': 'rgb(11, 29, 58)' /* #0B1D3A */,
+        'electric-teal': 'rgb(0, 184, 169)' /* #00B8A9 */,
+        /* Pleerity Brand v1.0 semantic (use for status / charts; prefer tokens in JS charts) */
+        'brand-success': '#10B981',
+        'brand-warning': '#F59E0B',
+        'brand-danger': '#EF4444',
+        'brand-info': '#3B82F6',
+        'brand-app': '#F8FAFC',
+        'brand-border': '#E5E7EB',
+        'brand-text': '#111827',
+        'brand-text-muted': '#6B7280',
+        'brand-chart-muted': '#64748B',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

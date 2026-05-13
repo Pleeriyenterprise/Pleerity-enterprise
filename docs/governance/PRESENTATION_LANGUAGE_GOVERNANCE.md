@@ -119,6 +119,8 @@ Applies to **code-built** bodies in `EmailService` / `email_templates/unified/sc
 - **Scheduled report digest**: include a short **how to read this** framing (HTML + plain text); label portfolio rates as **recorded / tracked** where percentages are shown.
 - **AI extraction**: no emoji or celebratory adornment on requirement status snapshots; assistive extraction is never statutory verification (see prior section and `NOTIFICATION_OWNERSHIP_READINESS.md`).
 - **Pending verification digest** (admin): **UPLOADED** = received for admin review — not “compliant” until reviewed in-platform.
+- **Deep links:** Operational CTAs should land on **existing** SPA routes with query params already supported (`RequirementsPage` `status`, `DocumentsPage` `property_id` / `requirement_id`). Canonical mapping is maintained in **`backend/docs/audit/NOTIFICATION_OWNERSHIP_READINESS.md`** (Operational email deep links & CTA destinations).
+- **Internal / staff operational alerts** (`INTERNAL_ALERT`, structured `admin-manual` for `COMPLIANCE_SLA_ALERT`, `ORDER_NOTIFICATION` SLA paths, `LEAD_SLA_BREACH_ADMIN`, `SUPPORT_INTERNAL_NOTIFICATION` via adapters in `operational_alert_presentation.py`): use **calm, factual** subject lines; distinguish **monitor vs investigate now** without mimicking tenant marketing tone; keep **raw job ids / queue payloads** in the technical/debug section only; align with `backend/docs/OPERATIONAL_EMAIL_PRESENTATION_PHASE25.md` and `ADMIN_MANUAL_STRUCTURED_PHASE26.md`.
 
 ### Forbidden patterns in customer-facing mail
 

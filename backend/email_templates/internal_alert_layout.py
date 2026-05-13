@@ -76,6 +76,16 @@ def _structured_internal_alert_html(model: Dict[str, Any]) -> str:
     if cust_s:
         cust_block = f'<p style="margin: 0 0 12px 0;"><strong>Customer impact:</strong> {html.escape(cust_s)}</p>'
 
+    urg = str(model.get("operator_urgency_note") or "").strip()
+    urg_block = ""
+    if urg:
+        urg_block = f'<p style="margin: 0 0 12px 0;"><strong>Urgency and response:</strong> {html.escape(urg)}</p>'
+
+    ign = str(model.get("if_ignored_guidance") or "").strip()
+    ign_block = ""
+    if ign:
+        ign_block = f'<p style="margin: 0 0 12px 0;"><strong>If left unresolved:</strong> {html.escape(ign)}</p>'
+
     affected_block = ""
     if comp or scope:
         bits = []
@@ -121,8 +131,11 @@ def _structured_internal_alert_html(model: Dict[str, Any]) -> str:
             <p style="margin: 0 0 12px 0; line-height: 1.5;">{operational_summary or html.escape(str(model.get("description") or ""))}</p>
             {bio_block}
             {cust_block}
+            {urg_block}
+            {ign_block}
             {affected_block}
-            <p style="margin: 0 0 12px 0;"><strong>Recommended actions:</strong> {action or "Review linked admin views and resolve when safe."}</p>
+            <p style="margin: 0 0 12px 0;"><strong>Recommended actions:</strong></p>
+            <p style="margin: 0 0 12px 0; line-height: 1.55; white-space: pre-wrap; color: #334155;">{action or "Review linked admin views and resolve when safe."}</p>
             {links_html}
             {tech_details}
         </div>

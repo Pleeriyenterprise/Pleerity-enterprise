@@ -34,8 +34,9 @@ import { useEntitlements } from '../contexts/EntitlementsContext';
 import { formatUpgradeUsageContext } from '../components/UpgradePrompt';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import branding from '../config/branding';
 
-// Plan configuration - matches backend plan_registry.py
+// Plan configuration - matches backend plan_registry.py (colours from Pleerity Brand v1.0)
 const PLANS = [
   {
     code: 'PLAN_1_SOLO',
@@ -44,7 +45,7 @@ const PLANS = [
     monthlyPrice: 19,
     onboardingFee: 49,
     maxProperties: 2,
-    color: '#6B7280',
+    color: branding.text.secondary,
     icon: Building2,
     badge: null,
     targetAudience: 'DIY landlords',
@@ -56,7 +57,7 @@ const PLANS = [
     monthlyPrice: 39,
     onboardingFee: 79,
     maxProperties: 10,
-    color: '#00B8A9',
+    color: branding.colors.secondary,
     icon: Users,
     badge: 'Most Popular',
     targetAudience: 'Portfolio landlords, small agents',
@@ -68,7 +69,7 @@ const PLANS = [
     monthlyPrice: 79,
     onboardingFee: 149,
     maxProperties: 25,
-    color: '#0B1D3A',
+    color: branding.colors.primary,
     icon: Crown,
     badge: 'Full Features',
     targetAudience: 'Letting agents, HMOs',
@@ -179,8 +180,8 @@ const FEATURE_MATRIX = {
     multi_file_upload: true,
     score_trending: true,
     ai_extraction_basic: true,
-    ai_extraction_advanced: true,
-    extraction_review_ui: true,
+    ai_extraction_advanced: false,
+    extraction_review_ui: false,
     zip_upload: true,
     reports_pdf: true,
     reports_csv: false,
@@ -214,7 +215,7 @@ const FEATURE_MATRIX = {
 };
 
 /**
- * Static FEATURE_MATRIX is a marketing tier comparison only.
+ * Static FEATURE_MATRIX must match backend/services/plan_registry.py FEATURE_MATRIX (single commercial truth).
  * For the signed-in client's current plan, feature on/off state comes from GET /client/entitlements when loaded.
  */
 function isFeatureEnabledForBillingComparison(planCode, featureKey, currentPlan, entitlements) {
@@ -1244,17 +1245,23 @@ const BillingPage = () => {
                         {plan.code === currentPlan ? ' (your account)' : ' (typical tier)'}
                       </span>
                     </div>
-                    {plan.code !== 'PLAN_1_SOLO' && (
+                    {plan.code === 'PLAN_2_PORTFOLIO' && (
                       <div className="flex items-center gap-2 text-sm">
                         <Check className="w-4 h-4 text-green-500" />
-                        <span>Advanced AI extraction</span>
+                        <span>ZIP bulk upload & scheduled PDF reports</span>
                       </div>
                     )}
                     {plan.code === 'PLAN_3_PRO' && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Check className="w-4 h-4 text-green-500" />
-                        <span>Webhooks</span>
-                      </div>
+                      <>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Check className="w-4 h-4 text-green-500" />
+                          <span>Advanced AI extraction & review</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Check className="w-4 h-4 text-green-500" />
+                          <span>Webhooks & read API</span>
+                        </div>
+                      </>
                     )}
                   </div>
                   

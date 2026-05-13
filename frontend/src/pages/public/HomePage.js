@@ -216,10 +216,16 @@ const HomePage = () => {
                 />
               </ProductScreenshot>
               <p className="text-xs text-gray-500 text-center mt-2">Expiry alerts generated from confirmed certificate dates.</p>
-              <div className="mt-4 flex justify-center">
+              <div className="mt-4 flex flex-col items-center gap-2">
                 <Button className="bg-electric-teal hover:bg-electric-teal/90 text-white w-full sm:w-auto min-h-[48px]" asChild>
-                  <Link to="/risk-check">Generate Report</Link>
+                  <Link to="/risk-check">Free compliance risk preview</Link>
                 </Button>
+                <p className="text-xs text-gray-500 text-center max-w-sm px-2">
+                  Short questionnaire — not your live in-app PDF reports.{' '}
+                  <Link to="/pricing" className="text-electric-teal font-medium hover:underline">
+                    Plans with reports
+                  </Link>
+                </p>
               </div>
             </div>
           </div>

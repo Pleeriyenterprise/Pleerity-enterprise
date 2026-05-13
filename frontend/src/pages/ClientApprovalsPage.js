@@ -38,6 +38,7 @@ import { PortalFilterStack, PortalLoadingPanel, portalPageRoot, portalDrawerPane
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { invoiceDisplayLabel } from '../utils/invoiceDisplay';
 import { cn } from '../lib/utils';
+import { operationalLabelForToken } from '../utils/presentationLanguage';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -92,7 +93,7 @@ function StatusBadge({ status }) {
     needs_info: 'Needs more information',
     paid: 'Paid',
   };
-  const label = status ? labelByStatus[status] || status.replace(/_/g, ' ') : '—';
+  const label = status ? labelByStatus[status] || operationalLabelForToken(status, { emptyLabel: '—' }) : '—';
   return (
     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${map[status] || 'bg-gray-100 text-gray-700'}`}>
       {label}

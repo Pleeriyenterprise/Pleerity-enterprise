@@ -7,7 +7,9 @@
     "notification_dispatch_workflow_family_globally_activated": false,
     "message_logs_intended_writer": "notification_orchestrator_internal_paths",
     "semantic_family_and_cta_rules": "backend/docs/audit/NOTIFICATION_OWNERSHIP_READINESS.md#governed-notification-semantic-families--authoritative-in-repo",
-    "email_cta_semantics_cross_ref": "docs/governance/PRESENTATION_LANGUAGE_GOVERNANCE.md#email--notification-cta-semantics-operational-vs-lifecycle"
+    "operational_email_deep_links": "backend/docs/audit/NOTIFICATION_OWNERSHIP_READINESS.md#operational-email-deep-links--cta-destinations-code-owned",
+    "email_cta_semantics_cross_ref": "docs/governance/PRESENTATION_LANGUAGE_GOVERNANCE.md#email--notification-cta-semantics-operational-vs-lifecycle",
+    "pilot_rendered_truth_verification": "backend/docs/audit/NOTIFICATION_OWNERSHIP_READINESS.md#pilot--rendered-truth-verification-environment-sign-off"
   },
   "sender_clusters": [
     {
@@ -91,6 +93,30 @@
       "message_logs_coverage": "legacy path may still write logs — treat as bypass risk"
     }
   ],
+  "internal_operator_email_surface": {
+    "description": "Operator-first internal/staff operational mail: human titles, customer impact, urgency, ordered actions, deep links; full diagnostics in plaintext/debug. No new notification system — presentation only via shared layouts and enrichers.",
+    "primary_code": [
+      "backend/services/operational_alert_presentation.py",
+      "backend/services/internal_alert_registry.py",
+      "backend/email_templates/internal_alert_layout.py",
+      "backend/email_templates/admin_manual_structured_layout.py",
+      "backend/services/email_service.py"
+    ],
+    "template_keys_typical": [
+      "INTERNAL_ALERT",
+      "JOB_MONITOR_EMAIL",
+      "COMPLIANCE_SLA_ALERT",
+      "ORDER_NOTIFICATION",
+      "LEAD_SLA_BREACH_ADMIN",
+      "SUPPORT_INTERNAL_NOTIFICATION",
+      "PROVISIONING_FAILED_ADMIN",
+      "STRIPE_WEBHOOK_FAILURE_ADMIN"
+    ],
+    "cross_refs": [
+      "backend/docs/audit/NOTIFICATION_OWNERSHIP_READINESS.md#governed-notification-semantic-families--authoritative-in-repo",
+      "docs/governance/PRESENTATION_LANGUAGE_GOVERNANCE.md"
+    ]
+  },
   "unsafe_or_unknown": {
     "description": "L-008e (2026-05-08): all audited string-literal ``template_key`` values on ``notification_orchestrator.send`` (non-test) are a subset of ``notification_template_seed_definitions``; ``EMAIL_EVENTS`` and landlord onboarding IDs are CI-checked against the same seed. Dynamic ``template_key`` variables must remain bounded by those registries.",
     "resolution": "Extend this JSON with per-route narrative rows when needed; literal/template registry drift is guarded by ``tests/test_l008_orchestrator_template_seed_contract.py`` + ``notification_orchestrator_send_template_key_audit.py``"

@@ -117,7 +117,7 @@ Each row is a **governance family** (may span multiple `template_key` values and
 
 | Lane | Typical `template_key` examples | Tone | CTA / link rules |
 |------|----------------------------------|------|------------------|
-| **INTERNAL_OPS** | `INTERNAL_ALERT`, `OPS_ALERT_NOTIFICATION_SPIKE`, `PROVISIONING_FAILED_ADMIN`, `STRIPE_WEBHOOK_FAILURE_ADMIN`, `COMPLIANCE_SLA_ALERT` | Operator alert; no faux “customer delight” | Link to admin/ops console or runbook; **no** tenant billing upsell |
+| **INTERNAL_OPS** | `INTERNAL_ALERT`, `JOB_MONITOR_EMAIL`, `OPS_ALERT_NOTIFICATION_SPIKE`, `PROVISIONING_FAILED_ADMIN`, `STRIPE_WEBHOOK_FAILURE_ADMIN`, `COMPLIANCE_SLA_ALERT`, staff `ORDER_NOTIFICATION` (SLA paths), `LEAD_SLA_BREACH_ADMIN`, `SUPPORT_INTERNAL_NOTIFICATION` | Operator alert; no faux “customer delight” | Link to admin/ops console or runbook; **no** tenant billing upsell |
 | **CUSTOMER_SUPPORT** | `SUPPORT_TICKET_*`, `CUSTOM_NOTIFICATION` (when used for client comms) | Neutral service desk | Ticket URL or reply-to support; one primary action |
 | **BILLING_ADJACENT_MANUAL** | `INVOICE_AVAILABLE`, subscription grace / renewal copies using admin-manual | Factual money language | Billing portal deep link; **no** fake urgency |
 | **LEAD_RECOVERY** | `LEAD_*`, `LEAD_MANUAL_MESSAGE` | Nurture / sales-appropriate | Landing or calendar link — **never** compliance RAG semantics |
@@ -144,3 +144,69 @@ Each row is a **governance family** (may span multiple `template_key` values and
 
 - One-off HTML hand-rolled outside `_customer_email_html` for tenant mail without security review.
 - Reusing **green “success”** panels for **non-terminal** async states (AI extraction) — use neutral panels for “suggested / pending confirmation” semantics.
+
+---
+
+## Operational email deep links & CTA destinations (code-owned)
+
+**Authority:** Portal routes and query params are defined by the **client SPA** (`frontend/src/App.js`, `RequirementsPage`, `DocumentsPage`). Email must **not** invent paths or “magic” state; only append query strings already honoured by those pages.
+
+| `template_key` / flow | Primary operational CTA target | Notes |
+|----------------------|--------------------------------|--------|
+| `COMPLIANCE_ALERT` | `/requirements?status=OVERDUE_OR_MISSING` if batch worst new status is **RED**; `DUE_SOON` if worst is **AMBER**; else `/dashboard` | Implemented in `utils.app_urls.compliance_alert_email_portal_url` + `jobs.py` send context. |
+| `COMPLIANCE_EXPIRY_REMINDER` (email) | Same status query when overdue vs expiring cohorts present; else `/today` | `jobs._send_reminder_email`. SMS uses the same link contract (longer URL — acceptable for operational clarity). |
+| `COMPLIANCE_EXPIRY_REMINDER_SMS` | (same as email `portal_link` in context) | |
+| `MONTHLY_DIGEST` | `/requirements?status=OVERDUE_OR_MISSING` when overdue or missing-evidence counts > 0; `DUE_SOON` when only expiring-soon; else primary CTA remains `/today` | `primary_cta_url` in `monthly_digest_assembly_service.py`; digest narrative `portal_link` unchanged where separate. |
+| `SCHEDULED_REPORT` | `/today` by default; `/requirements` (no filter) when `report_type == "requirements"` | `jobs.py` scheduled report batch. |
+| `AI_EXTRACTION_APPLIED` | `/documents?property_id=…&requirement_id=…` when `property_id` present | `routes/documents.py` orchestrator context. |
+| `CLIENT_QUOTE_REVIEW_REQUIRED` / `CLIENT_PROOF_UPLOADED` | `/operations/jobs/{work_order_id}` | Already job-deep-linked from pricing / maintenance services. |
+| `ORDER_DELIVERED` | `download_link` primary; portal secondary | Unchanged. |
+| `PENDING_VERIFICATION_DIGEST` | Admin list (internal) | Not client deep link scope. |
+
+**Postmark / DB drift (guardrails):** DB-backed aliases own **subject/body placeholders** and marketing tone risk; **code-built** aliases own **layout + trust semantics** for the rows above. Admins must not use DB editor to override **scheduled-report**, **monthly-digest**, or other **immutable** runtime aliases (see `email_template_runtime_metadata.py`). Forbidden drift patterns remain in `PRESENTATION_LANGUAGE_GOVERNANCE.md` (high-risk operational mail).
+
+**Sender identity:** Outbound Postmark `From` remains **`DEFAULT_SENDER`** unless `context._email_send_extras.from_display_name` is set (orchestrator-only). Semantic lanes (Operations vs Billing) are expressed primarily through **subject + template family**, not multiple SMTP identities, unless product explicitly provisions Postmark senders.
+
+---
+
+## Support: explaining email vs portal truth
+
+Use with `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md` and `PRESENTATION_LANGUAGE_GOVERNANCE.md`:
+
+- **Why they received it:** tie to **notification preference** bucket or billing lifecycle job (grace / renewal), not to a legal determination.
+- **What the CTA does:** operational CTAs land on **Requirements**, **Documents**, **Today**, or **Billing** as above — never treat the email body as authoritative for obligation state.
+- **Authoritative vs informational:** **Portal persisted state + recalculation timestamps** win; email is a **snapshot / nudge**.
+- **Pending verification / score delays:** extraction and admin review are **async**; scores catch up after confirmed evidence and jobs — same language as in-app workspace orientation.
+
+---
+
+## Pilot — rendered truth verification (environment sign-off)
+
+**Repo alone is not sufficient:** `notification_orchestrator._render_email` may use **Mongo `email_templates`** (active row per alias) **before** `EmailService` code-built fallbacks. **Customer-rendered HTML/subject** in staging/production therefore **must** be exported and compared to governance — git cannot prove what Postmark delivered.
+
+### Authoritative rendering source (code path — “who wins if…”)
+
+| Alias / family | Orchestrator short-circuit (code-first) | If no short-circuit |
+|----------------|----------------------------------------|----------------------|
+| `monthly-digest` | **Always** `EmailService` | n/a |
+| `activation-reminder` | **Always** `EmailService` | n/a |
+| `scheduled-report` | Code when `report_rows` / `report_summary`; **pre-rendered** `context["message"]` bypasses DB | Else **DB** then fallback |
+| `payment-receipt` | Code when `payment_receipt_layout == "structured"` | Else **DB** then fallback |
+| `portal-ready` | Code when `dashboard_milestone_email` | Else **DB** then fallback |
+| `order-intake-confirmation` | Pre-rendered `context["message"]` when set | Else **DB** then fallback |
+| `client-*` / `contractor-*` operational (see `email_template_runtime_metadata._UNCONDITIONAL_CODE_BUILT`) | **Always** `EmailService` | n/a |
+| `compliance-alert`, `reminder`, `ai-extraction-applied`, `payment-failed`, `subscription-canceled`, `admin-manual`, … | **None** in orchestrator | **Active DB row** replaces body/subject; placeholders merged from `context` |
+
+### MUST complete in target environment before pilot sign-off
+
+1. **Export** active `email_templates` documents for every alias in **`notification_template_seed_definitions`** that is **customer-facing** in pilot (at minimum: `compliance-alert`, `reminder`, `ai-extraction-applied`, `payment-failed`, `subscription-canceled`, `admin-manual`, onboarding aliases in use).  
+2. **Render preview** (Postmark test recipient or staging send) for each **priority `template_key`** with realistic `context` (same keys production sends).  
+3. **Checklist per render:** subject, CTA label + URL (open links logged out / logged in), footer/support line, no fake legal/verification/score finality, no “upload = compliant”, no panic upgrade pressure; compare to `PRESENTATION_LANGUAGE_GOVERNANCE.md` and `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`.  
+4. **Record** sign-off: date, environment, reviewer, snapshot hash or Postmark message IDs — attach to pilot gate materials (`PILOT_LAUNCH_GOVERNANCE.md` / launch tracker as your process dictates).
+
+### Can wait until after pilot
+
+- Full archival of rendered HTML for every historical `message_log` row.  
+- Postmark server-side template inventory parity (if not used for these aliases).  
+- Automated diff: DB body vs repo `EmailService` (engineering tooling).
+

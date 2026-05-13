@@ -84,7 +84,7 @@ const PROPERTY_TYPES = [
 // Occupancy types
 const OCCUPANCY_TYPES = [
   { value: 'single_family', label: 'Single Family' },
-  { value: 'multi_family', label: 'Multi Family' },
+  { value: 'multi_family', label: 'Multi-family occupancy' },
   { value: 'student', label: 'Student Let' },
   { value: 'professional', label: 'Professional Let' },
   { value: 'mixed', label: 'Mixed Use' }

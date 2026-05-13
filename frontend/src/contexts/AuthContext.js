@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../api/client';
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 /** Role-based redirect path: staff -> admin dashboard, tenant -> tenant home, client -> Today (priorities inbox). */
 export function getRedirectPathForRole(role) {

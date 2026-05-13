@@ -29,6 +29,7 @@ import api, { openBlobApiResponse } from '../api/client';
 import { buildEntityRoute, resolveClientPortalPath } from '../utils/clientPortalNavigation';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
+import { operationalLabelForToken } from '../utils/presentationLanguage';
 
 const FILTER_OPTIONS = [
   { key: 'requirement', label: 'Requirements', param: 'requirements' },
@@ -246,7 +247,7 @@ function timelineCategoryLabel(category) {
   if (category === 'requirement') return 'Requirement';
   if (category === 'scheduled_job') return 'Repair';
   if (category === 'compliance_job') return 'Compliance';
-  return String(category || '').replace(/_/g, ' ') || 'Event';
+  return operationalLabelForToken(category, { emptyLabel: 'Event' });
 }
 
 function formatEventWhen(event) {
@@ -800,7 +801,7 @@ const CalendarPage = () => {
                         )}
                       </div>
                       <div className="text-left sm:text-right shrink-0">
-                        <p className="text-sm font-medium capitalize">{String(event.status || '').replace(/_/g, ' ') || '—'}</p>
+                        <p className="text-sm font-medium text-slate-800">{operationalLabelForToken(event.status, { emptyLabel: '—' })}</p>
                         <p className="text-xs text-gray-500 mt-1">Tap for details</p>
                       </div>
                     </div>

@@ -1042,13 +1042,11 @@ class LeadSLAService:
     async def notify_sla_breach(lead: Dict[str, Any]):
         """Send SLA breach notification to admins."""
         import os
-        
-        POSTMARK_SERVER_TOKEN = os.environ.get("POSTMARK_SERVER_TOKEN")
+
         ADMIN_NOTIFICATION_EMAILS = os.environ.get(
-            "ADMIN_NOTIFICATION_EMAILS", 
-            "admin@pleerity.com"
+            "ADMIN_NOTIFICATION_EMAILS",
+            "admin@pleerity.com",
         ).split(",")
-        SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@pleerityenterprise.co.uk")
         _base = _lead_app_base()
         ADMIN_DASHBOARD_URL = os.environ.get("ADMIN_DASHBOARD_URL", f"{_base}/admin/leads")
         
@@ -1059,23 +1057,26 @@ class LeadSLAService:
             name = lead.get("name") or "Unknown"
             email = lead.get("email") or "No email"
             created_at = lead.get("created_at", "Unknown")
-            subject = f"⚠️ SLA BREACH: Lead {lead_id} not contacted within 24 hours"
-            message = (
-                f"<p>This lead has not been contacted within the required 24-hour SLA window.</p>"
-                f"<p><strong>Lead ID:</strong> {lead_id}<br><strong>Name:</strong> {name}<br>"
-                f"<strong>Email:</strong> {email}<br><strong>Created:</strong> {created_at}</p>"
-                f"<p><a href=\"{ADMIN_DASHBOARD_URL}\">Contact Lead Now →</a></p>"
-            )
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            from services.operational_alert_presentation import enrich_lead_sla_breach_admin_context
+
             for admin_email in ADMIN_NOTIFICATION_EMAILS:
                 admin_email = admin_email.strip()
                 if admin_email:
                     try:
                         idempotency_key = f"{lead_id}_LEAD_SLA_BREACH_ADMIN_{date_key}_{admin_email}"
+                        ctx = enrich_lead_sla_breach_admin_context(
+                            recipient=admin_email,
+                            lead_id=str(lead_id),
+                            name=str(name),
+                            email=str(email),
+                            created_at=str(created_at),
+                            admin_dashboard_url=ADMIN_DASHBOARD_URL,
+                        )
                         result = await notification_orchestrator.send(
                             template_key="LEAD_SLA_BREACH_ADMIN",
                             client_id=None,
-                            context={"recipient": admin_email, "subject": subject, "message": message},
+                            context=ctx,
                             idempotency_key=idempotency_key,
                             event_type="lead_sla_breach",
                         )

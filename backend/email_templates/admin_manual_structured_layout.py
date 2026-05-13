@@ -44,11 +44,39 @@ def build_admin_manual_structured_html(
     greeting = html.escape(str(model.get("client_name") or "there").strip())
     header_title = html.escape(str(model.get("admin_manual_header_title") or "Staff notification").strip())
 
+    urgency = str(model.get("admin_manual_urgency_guidance") or "").strip()
+    urgency_html = ""
+    if urgency:
+        urgency_html = (
+            f'<h2 style="font-size: 15px; color: #0f172a; margin: 20px 0 8px 0;">Urgency and response</h2>'
+            f'<p style="margin: 0; line-height: 1.55; color: #334155;">{html.escape(urgency)}</p>'
+        )
+    cust = str(model.get("admin_manual_customer_impact") or "").strip()
+    cust_html = ""
+    if cust:
+        cust_html = (
+            f'<h2 style="font-size: 15px; color: #0f172a; margin: 20px 0 8px 0;">Customer impact</h2>'
+            f'<p style="margin: 0; line-height: 1.55; color: #334155;">{html.escape(cust)}</p>'
+        )
+    likely = str(model.get("admin_manual_likely_causes") or "").strip()
+    likely_html = ""
+    if likely:
+        likely_html = (
+            f'<h2 style="font-size: 15px; color: #0f172a; margin: 20px 0 8px 0;">Likely causes</h2>'
+            f'<p style="margin: 0; line-height: 1.55; color: #334155;">{html.escape(likely)}</p>'
+        )
     impact_html = ""
     if impact:
         impact_html = (
             f'<h2 style="font-size: 15px; color: #0f172a; margin: 20px 0 8px 0;">Operational impact</h2>'
             f'<p style="margin: 0; line-height: 1.55; color: #334155;">{html.escape(impact)}</p>'
+        )
+    if_ignored = str(model.get("admin_manual_if_ignored") or "").strip()
+    if_ignored_html = ""
+    if if_ignored:
+        if_ignored_html = (
+            f'<h2 style="font-size: 15px; color: #0f172a; margin: 20px 0 8px 0;">If this is left unresolved</h2>'
+            f'<p style="margin: 0; line-height: 1.55; color: #334155;">{html.escape(if_ignored)}</p>'
         )
     actions_html = ""
     if actions:
@@ -102,8 +130,12 @@ def build_admin_manual_structured_html(
             <p style="margin: 0 0 16px 0; color: #475569;">Hello {greeting},</p>
             <h2 style="font-size: 15px; color: #0f172a; margin: 0 0 8px 0;">Summary</h2>
             {summary_block}
+            {urgency_html}
+            {cust_html}
             {impact_html}
+            {likely_html}
             {actions_html}
+            {if_ignored_html}
             {cta_block}
             {sec_html}
             {debug_html}
@@ -125,12 +157,24 @@ def build_admin_manual_structured_plain_text(model: Dict[str, Any], *, footer: s
         "Summary",
         str(model.get("admin_manual_summary") or "").strip() or "(see debug section)",
     ]
+    urg = str(model.get("admin_manual_urgency_guidance") or "").strip()
+    if urg:
+        lines.extend(["", "Urgency and response", urg])
+    cust = str(model.get("admin_manual_customer_impact") or "").strip()
+    if cust:
+        lines.extend(["", "Customer impact", cust])
     imp = str(model.get("admin_manual_impact") or "").strip()
     if imp:
         lines.extend(["", "Operational impact", imp])
+    likely = str(model.get("admin_manual_likely_causes") or "").strip()
+    if likely:
+        lines.extend(["", "Likely causes", likely])
     act = str(model.get("admin_manual_actions") or "").strip()
     if act:
         lines.extend(["", "Recommended actions", act])
+    ign = str(model.get("admin_manual_if_ignored") or "").strip()
+    if ign:
+        lines.extend(["", "If this is left unresolved", ign])
     url = str(model.get("admin_manual_resolution_url") or "").strip()
     if url:
         lab = str(model.get("admin_manual_resolution_label") or "Open admin view").strip()

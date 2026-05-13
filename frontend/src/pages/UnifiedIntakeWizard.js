@@ -31,6 +31,7 @@ import { toast } from '@/utils/portalNotifications';
 import client from '../api/client';
 import { validateCheckout, createCheckoutSession, isDocumentPack, getPackTierName } from '../api/checkoutApi';
 import { BRAND_LOGO_URL } from '../config/branding';
+import { operationalLabelForToken } from '../utils/presentationLanguage';
 
 // ============================================================================
 // STEP COMPONENTS
@@ -718,8 +719,8 @@ function ServiceFieldsStep({ schema, data, onChange, errors }) {
       {Object.entries(groups).map(([groupName, fields]) => (
         <div key={groupName} className="space-y-4">
           {groupName !== 'general' && (
-            <h3 className="font-medium text-gray-700 capitalize">
-              {groupName.replace(/_/g, ' ')}
+            <h3 className="font-medium text-slate-800">
+              {operationalLabelForToken(groupName, { allowHumanSentence: true })}
             </h3>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -322,17 +322,32 @@ class OrderNotificationService:
                         from utils.app_urls import get_app_base_url
 
                         idempotency_key = f"{order_id}_ORDER_NOTIFICATION_{event_type}_{notification_email}"
-                        result = await notification_orchestrator.send(
-                            template_key="ORDER_NOTIFICATION",
-                            client_id=None,
-                            context={
+                        base_url = get_app_base_url(for_email_links=True)
+                        if event_type in (OrderNotificationEvent.SLA_WARNING, OrderNotificationEvent.SLA_BREACH):
+                            from services.operational_alert_presentation import enrich_order_notification_staff_context
+
+                            ctx = enrich_order_notification_staff_context(
+                                recipient=notification_email,
+                                event_type=event_type,
+                                order_id=order_id,
+                                message=message or "",
+                                metadata=metadata,
+                                admin_display_name=str(admin.get("name") or "Admin"),
+                            )
+                            ctx["portal_link"] = f"{base_url}/admin/orders?order={order_id}"
+                        else:
+                            ctx = {
                                 "recipient": notification_email,
                                 "client_name": admin.get("name", "Admin"),
                                 "title": f"{config.get('icon', '')} {title}",
                                 "message": f"Order: {order_id}\n\n{message}",
-                                "portal_link": f"{get_app_base_url(for_email_links=True)}/admin/orders",
+                                "portal_link": f"{base_url}/admin/orders",
                                 "subject": f"[Pleerity] {title}: {order_id}",
-                            },
+                            }
+                        result = await notification_orchestrator.send(
+                            template_key="ORDER_NOTIFICATION",
+                            client_id=None,
+                            context=ctx,
                             idempotency_key=idempotency_key,
                             event_type=f"order_notification_{event_type}",
                         )

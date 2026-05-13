@@ -83,27 +83,36 @@ async def _send_alert_email(
     alert_type: str,
     severity: str,
     property_id: str,
-    body: str,
-    subject: str,
+    client_id: str,
+    details: Dict[str, Any],
     *,
     now: Optional[datetime] = None,
 ) -> bool:
-    """Send email to OPS_ALERT_EMAIL via Postmark if configured. Returns True if sent."""
+    """Send operator-structured COMPLIANCE_SLA_ALERT to OPS_ALERT_EMAIL. Returns True if sent."""
     if not OPS_ALERT_EMAIL:
         logger.warning("OPS_ALERT_EMAIL not set; compliance SLA alert not sent by email")
         return False
     try:
         from services.notification_orchestrator import notification_orchestrator
+        from services.operational_alert_presentation import enrich_compliance_sla_alert_email_context
         from datetime import datetime, timezone
 
         now_dt = now or datetime.now(timezone.utc)
         idempotency_key = compliance_sla_alert_email_idempotency_key(
             property_id, alert_type, severity, now_dt
         )
+        ctx = enrich_compliance_sla_alert_email_context(
+            recipient=OPS_ALERT_EMAIL,
+            alert_type=alert_type,
+            severity=severity,
+            property_id=property_id,
+            client_id=client_id,
+            details=details,
+        )
         result = await notification_orchestrator.send(
             template_key="COMPLIANCE_SLA_ALERT",
             client_id=None,
-            context={"recipient": OPS_ALERT_EMAIL, "subject": subject, "message": body},
+            context=ctx,
             idempotency_key=idempotency_key,
             event_type="compliance_sla_alert",
         )
@@ -164,13 +173,7 @@ async def _upsert_alert_and_maybe_send(
             **details,
         },
     )
-    subject = f"[{severity}] Compliance recalc SLA: {alert_type} — {property_id}"
-    try:
-        body_text = str(details)
-    except Exception:
-        body_text = repr(details)
-    body_html = f"<p>Compliance recalc SLA alert.</p><pre>{body_text}</pre>"
-    await _send_alert_email(alert_type, severity, property_id, body_html, subject, now=now)
+    await _send_alert_email(alert_type, severity, property_id, client_id, details, now=now)
 
 
 async def _resolve_alert(db, property_id: str, alert_type: str, client_id: str, now: datetime) -> None:

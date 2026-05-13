@@ -8,8 +8,9 @@ import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import client from '../api/client';
+import { chartDonutPalette } from '../design-tokens';
 
-const DONUT_COLORS = ['#0f766e', '#0d9488', '#14b8a6', '#99f6e4', '#ccfbf1'];
+const DONUT_COLORS = chartDonutPalette;
 
 function KpiCard({ title, value, changePct, trend }) {
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;

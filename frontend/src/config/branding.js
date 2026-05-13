@@ -11,14 +11,40 @@ export const branding = {
   companyName: 'Pleerity Enterprise Ltd',
   productName: 'Compliance Vault Pro',
   tagline: 'AI-Driven Solutions & Compliance',
+  /** Pleerity Brand v1.0 — do not drift without updating `docs/governance/DESIGN_SYSTEM_GOVERNANCE.md`. */
+  brandVersion: '1.0',
 
   colors: {
+    /** Midnight Blue — nav, headers, framework (not default CTA fill; see Button). */
     primary: '#0B1D3A',
+    /** Electric Teal — CTAs, links, active states, score highlights. */
     secondary: '#00B8A9',
     success: '#10B981',
     warning: '#F59E0B',
     danger: '#EF4444',
     info: '#3B82F6',
+  },
+
+  /** Surfaces & neutrals (enterprise SaaS canvas). */
+  surfaces: {
+    appBackground: '#F8FAFC',
+    card: '#FFFFFF',
+    border: '#E5E7EB',
+  },
+
+  text: {
+    primary: '#111827',
+    secondary: '#6B7280',
+  },
+
+  /** Charts / analytics — trend primary = teal; do not imply legal outcome. */
+  chart: {
+    scoreCompliant: '#10B981',
+    scoreWarning: '#F59E0B',
+    scoreCritical: '#EF4444',
+    trendPrimary: '#00B8A9',
+    trendSecondary: '#64748B',
+    baseline: '#E5E7EB',
   },
 
   typography: {

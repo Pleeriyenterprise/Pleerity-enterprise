@@ -3,8 +3,7 @@ import { Button } from '../ui/button';
 import { Shield, Calendar, FileText } from 'lucide-react';
 
 /**
- * Marketing dashboard preview: HTML/CSS mock of app dashboard (Portfolio Overview, Upcoming Expiries, Generate Report).
- * Used on homepage hero. Not an image — looks like the real app. Generate Report is disabled in preview.
+ * Marketing dashboard preview: HTML/CSS mock (not live product data). Disabled CTA is illustrative only.
  */
 const DashboardPreview = () => {
   return (
@@ -52,14 +51,13 @@ const DashboardPreview = () => {
         </ul>
       </div>
 
-      {/* Generate Report button (disabled in preview) */}
       <Button
         disabled
         variant="outline"
         className="w-full border-gray-200 text-gray-400 cursor-not-allowed"
       >
         <FileText className="w-4 h-4 mr-2" />
-        Generate Report
+        In-app reports (when subscribed)
       </Button>
 
       <p className="text-xs text-gray-500 text-center px-2">

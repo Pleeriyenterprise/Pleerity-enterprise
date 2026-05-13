@@ -22,6 +22,7 @@ import {
   ReferenceArea,
   ResponsiveContainer,
 } from 'recharts';
+import branding from '../config/branding';
 
 const RISK_BANDS = [
   { yMin: 0, yMax: 39, fill: 'rgba(185, 28, 28, 0.08)', label: 'Critical (0-39)' },
@@ -30,7 +31,7 @@ const RISK_BANDS = [
   { yMin: 80, yMax: 100, fill: 'rgba(21, 128, 61, 0.05)', label: 'Healthy (80-100)' },
 ];
 
-const LINE_COLOR = '#00B8A9'; // brand electric-teal
+const LINE_COLOR = branding.colors.secondary;
 const CHART_HEIGHT = 220;
 
 function formatDateShort(dateStr) {

@@ -322,12 +322,12 @@ def build_renewal_email_context(
     if charge_automatically:
         body_framing = (
             f"Your subscription renews in about {days_until} day(s) on {renewal_date_display}. "
-            "Payment is set to run automatically — please ensure your card on file is valid so renewal succeeds."
+            "If your card or billing details have changed, update them in Billing so automatic renewal can complete without retries."
         )
     else:
         body_framing = (
             f"Your billing period renews in about {days_until} day(s) on {renewal_date_display}. "
-            "Please complete payment when invoiced to avoid interruption."
+            "When you receive your invoice, complete payment from Billing to keep plan-gated features on schedule."
         )
     return {
         "client_name": client_name,

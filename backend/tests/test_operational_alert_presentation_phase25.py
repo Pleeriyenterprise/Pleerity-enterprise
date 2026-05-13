@@ -4,6 +4,7 @@ from unittest.mock import patch
 from email_templates.internal_alert_layout import build_internal_alert_html
 
 from services.operational_alert_presentation import (
+    enrich_compliance_sla_alert_email_context,
     enrich_minimal_internal_alert_context,
     enrich_ops_notification_spike_email_context,
     enrich_risk_regen_queue_ops_email_context,
@@ -66,6 +67,34 @@ def test_enrich_minimal_internal_alert_sets_description_and_title():
     )
     assert ctx["description"] == "Body text"
     assert ctx["title"] == "Client information submitted"
+    assert "severity_label" not in ctx
+
+
+def test_enrich_minimal_structured_operator_layout():
+    ctx = enrich_minimal_internal_alert_context(
+        {"recipient": "a@b.c", "subject": "Subj", "message": "First line of detail.\nMore."},
+        default_title="Client information submitted",
+        use_structured_operator_layout=True,
+    )
+    assert ctx["severity_label"] == "WARNING"
+    assert ctx["operational_summary"].startswith("First line")
+
+
+def test_enrich_compliance_sla_alert_structured():
+    with patch("services.operational_alert_presentation.get_app_base_url", return_value="https://app.example"):
+        ctx = enrich_compliance_sla_alert_email_context(
+            recipient="ops@test.com",
+            alert_type="RUNNING_STUCK",
+            severity="CRIT",
+            property_id="prop-1",
+            client_id="client-1",
+            details={"job_id": "abc", "status": "RUNNING"},
+        )
+    assert ctx.get("admin_manual_structured") is True
+    assert "Technical / debug" in ctx.get("message", "")
+    assert "prop-1" in ctx["admin_manual_debug"]
+    assert "https://app.example/admin/automation" in ctx["admin_manual_resolution_url"]
+    assert "Urgent" in ctx["subject"] or "operational" in ctx["subject"].lower()
 
 
 def test_internal_alert_legacy_html_includes_message_when_no_description():

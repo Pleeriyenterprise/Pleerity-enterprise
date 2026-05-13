@@ -1,30 +1,33 @@
 /**
- * Compliance Vault Pro – design tokens.
- * Aligned with Pleerity brand: primary #0B1D3A, secondary #00B8A9.
- * @see src/config/branding.js for canonical brand values.
+ * Pleerity Enterprise — governed design tokens (frontend).
+ * Pleerity Brand v1.0 — single presentation layer; keep aligned with `src/config/branding.js`.
+ * @see docs/governance/DESIGN_SYSTEM_GOVERNANCE.md
  */
 
+import branding from './config/branding';
+
+const { colors: bc, surfaces, text, chart } = branding;
+
+/** Hex palette for inline styles, charts, and legacy callers. */
 export const colors = {
-  // Brand (official Pleerity)
-  navy: '#0B1D3A',
-  teal: '#00B8A9',
+  navy: bc.primary,
+  teal: bc.secondary,
   tealLight: '#ccfbf1',
   tealMuted: 'rgba(0, 184, 169, 0.2)',
-  // Surfaces
-  cardBg: '#ffffff',
-  pageBg: '#f8fafc',
-  border: '#e2e8f0',
-  borderSoft: '#f1f5f9',
-  // Semantic / status (brand-aligned where applicable)
-  success: '#10B981',
+  cardBg: surfaces.card,
+  pageBg: surfaces.appBackground,
+  border: surfaces.border,
+  borderSoft: '#F1F5F9',
+  textPrimary: text.primary,
+  textSecondary: text.secondary,
+  success: bc.success,
   successBg: '#f0fdf4',
-  warning: '#F59E0B',
+  warning: bc.warning,
   warningBg: '#fffbeb',
-  danger: '#EF4444',
+  danger: bc.danger,
   dangerBg: '#fef2f2',
-  info: '#3B82F6',
+  info: bc.info,
   infoBg: '#eff6ff',
-  // Evidence / risk (no legal verdict)
   valid: '#15803d',
   validBg: '#f0fdf4',
   missing: '#b91c1c',
@@ -35,12 +38,22 @@ export const colors = {
   overdueBg: '#fef2f2',
   failed: '#991b1b',
   failedBg: '#fef2f2',
-  // Risk levels
   riskLow: '#15803d',
   riskMedium: '#b45309',
   riskHigh: '#b91c1c',
   riskCritical: '#7f1d1d',
 };
+
+/** Multi-segment chart / donut — Midnight → teal ramp → slate → baseline (no consumer rainbow). */
+export const chartDonutPalette = [
+  bc.primary,
+  '#0f766e',
+  bc.secondary,
+  chart.trendSecondary,
+  chart.baseline,
+];
+
+export const chartTokens = chart;
 
 export const spacing = {
   card: '1.5rem',
@@ -53,11 +66,11 @@ export const spacing = {
 
 export const typography = {
   fontFamily: 'inherit',
-  // Headers
-  h1: '1.875rem',   // 30px
-  h2: '1.5rem',     // 24px
-  h3: '1.125rem',   // 18px
-  // Body
+  fontHeading: branding.typography.fontHeading,
+  fontBody: branding.typography.fontBody,
+  h1: '1.875rem',
+  h2: '1.5rem',
+  h3: '1.125rem',
   body: '1rem',
   bodySm: '0.875rem',
   caption: '0.75rem',

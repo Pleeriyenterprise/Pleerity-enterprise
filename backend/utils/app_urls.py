@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import os
 import logging
-from typing import List, Optional, Set, Tuple
-from urllib.parse import urlparse
+from typing import Any, Dict, List, Optional, Set, Tuple
+from urllib.parse import quote, urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -191,3 +191,60 @@ def validate_url_configuration() -> None:
         raise RuntimeError(msg)
 
     logger.info("URL validation OK: app_base=%s api_base=%s", app, get_api_base_url())
+
+
+def client_portal_requirements_list_url(app_base: str, *, status: Optional[str] = None) -> str:
+    """
+    Client SPA URL for the Requirements list.
+
+    ``status`` must match ``RequirementsPage`` query semantics (e.g. ``OVERDUE_OR_MISSING``, ``DUE_SOON``).
+    """
+    b = _strip_base(app_base)
+    if not b:
+        return "/requirements"
+    if status:
+        st = quote(str(status).strip(), safe="")
+        return f"{b}/requirements?status={st}"
+    return f"{b}/requirements"
+
+
+def client_portal_documents_evidence_url(
+    app_base: str, *, property_id: str, requirement_id: str = ""
+) -> str:
+    """
+    Documents vault with property (and optional requirement) pre-selection — supported by ``DocumentsPage`` query params.
+    """
+    b = _strip_base(app_base)
+    pid = quote(str(property_id or "").strip(), safe="")
+    if not pid:
+        return f"{b}/documents" if b else "/documents"
+    if requirement_id:
+        rid = quote(str(requirement_id).strip(), safe="")
+        return f"{b}/documents?property_id={pid}&requirement_id={rid}"
+    return f"{b}/documents?property_id={pid}"
+
+
+def compliance_alert_email_portal_url(app_base: str, affected_properties: Optional[List[Dict[str, Any]]]) -> str:
+    """
+    Primary CTA for COMPLIANCE_ALERT emails: land on Requirements with a filter that matches the worst
+    dashboard indicator in the batch (no new routes; portal remains authoritative).
+    """
+    b = _strip_base(app_base)
+    if not b:
+        return "/dashboard"
+    if not affected_properties:
+        return f"{b}/dashboard"
+    worst = -1
+    worst_label = ""
+    rank = {"GREEN": 0, "AMBER": 1, "RED": 2}
+    for row in affected_properties:
+        st = str(row.get("new_status") or "").upper()
+        sev = rank.get(st, -1)
+        if sev > worst:
+            worst = sev
+            worst_label = st
+    if worst_label == "RED":
+        return client_portal_requirements_list_url(b, status="OVERDUE_OR_MISSING")
+    if worst_label == "AMBER":
+        return client_portal_requirements_list_url(b, status="DUE_SOON")
+    return f"{b}/dashboard"

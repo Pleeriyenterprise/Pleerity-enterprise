@@ -706,10 +706,14 @@ async def submit_order_provide_info(body: OrderProvideInfoSubmitBody, request: R
                     "subject": email_data["subject"],
                 },
                 default_title="Client information submitted",
+                use_structured_operator_layout=True,
             )
             alert_ctx["dashboard_link"] = order_link
             alert_ctx["suggested_action"] = "Review the order in Admin and continue processing."
             alert_ctx["component"] = "Orders / client intake"
+            alert_ctx["customer_impact"] = (
+                "The client may be waiting for order progression after submitting requested information."
+            )
             await notification_orchestrator.send(
                 template_key="INTERNAL_ALERT",
                 client_id=None,

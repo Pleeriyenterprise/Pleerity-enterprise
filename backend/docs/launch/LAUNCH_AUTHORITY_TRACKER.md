@@ -242,7 +242,7 @@ Each row: category, subcategory, original audit classification (A/B/C), current 
 | **Current mitigation** | Orchestrator primary path; `test_notification_bypass_governance.py`; **`NOTIFICATION_GOVERNANCE_INVENTORY.json`**; reminder + alert idempotency (**L-008d**); **L-008e** — audited literal `template_key` sends + **`EMAIL_EVENTS`** + onboarding sequence ⊆ seed (**CI**). |
 | **Remaining gaps** | **None for in-scope L-008 closure.** **Explicit exclusions:** `NOTIFICATION_DISPATCH` not globally activated (product policy); shrinking live **`EmailService`** callers remains gradual quarantine; dynamic `template_key` variables must remain bounded by **`EMAIL_EVENTS`** / caller contracts. |
 | **Evidence / tests** | `test_notification_bypass_governance.py`, `test_reminder_governance_phase2.py`, **`tests/test_notification_reminder_idempotency.py`**, **`tests/test_notification_compliance_alert_idempotency.py`**, **`tests/test_notification_template_seed_definitions.py`**, **`tests/test_l008_orchestrator_template_seed_contract.py`** |
-| **Governance notes** | `docs/audit/NOTIFICATION_OWNERSHIP_READINESS.md` + `docs/audit/NOTIFICATION_GOVERNANCE_INVENTORY.json` |
+| **Governance notes** | `backend/docs/audit/NOTIFICATION_OWNERSHIP_READINESS.md` (operational deep links + drift guardrails) + `backend/docs/audit/NOTIFICATION_GOVERNANCE_INVENTORY.json` |
 
 ### L-009 Workflow activation registry
 

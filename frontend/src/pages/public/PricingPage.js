@@ -87,6 +87,7 @@ const PricingPage = () => {
         'Extras': [
           { name: 'Tenant portal access', included: false },
           { name: 'White-label reports', included: false },
+          { name: 'Webhooks & read API', included: false },
         ],
       },
     },
@@ -119,11 +120,11 @@ const PricingPage = () => {
           { name: 'PDF reports', included: true },
           { name: 'CSV export', included: false },
           { name: 'Scheduled reports', included: true },
-          { name: 'Audit log export', included: true },
+          { name: 'Audit log export', included: false },
         ],
         'AI Extraction': [
           { name: 'Basic AI extraction', included: true },
-          { name: 'Advanced AI extraction', included: true },
+          { name: 'Advanced AI extraction', included: false },
         ],
         'Support': [
           { name: 'Email support', included: true },
@@ -132,6 +133,7 @@ const PricingPage = () => {
         'Extras': [
           { name: 'Tenant portal access', included: false },
           { name: 'White-label reports', included: false },
+          { name: 'Webhooks & read API', included: false },
         ],
       },
     },
@@ -176,6 +178,7 @@ const PricingPage = () => {
         'Extras': [
           { name: 'Tenant portal access', included: true },
           { name: 'White-label reports', included: true },
+          { name: 'Webhooks & read API', included: true },
         ],
       },
     },
