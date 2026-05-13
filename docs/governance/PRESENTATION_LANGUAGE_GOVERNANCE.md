@@ -73,6 +73,15 @@ Keep uncertainty visible where the system is still catching up: e.g. “Awaiting
 
 ---
 
+## Customer mental model & workspace orientation (presentation)
+
+- **Purpose:** Reduce confusion between **Dashboard** (portfolio KPIs / trends), **Today** (operational inbox), **Command Center** (portfolio triage / verdict), **Requirements** (tracked obligations), **Documents** (evidence vault), and **score timing** (stored headline vs uploads), without tours, modal carousels, or marketing rewrite.
+- **Rules:** Calm, operational English; preserve async honesty and authority boundaries (`backend/docs/COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`); do not imply instant score finality or legal certainty.
+- **Hub:** `frontend/src/utils/workspaceOrientationCopy.js` — extend here rather than scattering duplicate intros across pages.
+- **Companion:** Page-level confidence one-liners remain in `frontend/src/utils/confidenceUxCopy.js` where they add non-duplicative emphasis.
+
+---
+
 ## Review checklist (PRs)
 
 - [ ] No new user-facing string built only from `replace(/_/g, ' ')`.

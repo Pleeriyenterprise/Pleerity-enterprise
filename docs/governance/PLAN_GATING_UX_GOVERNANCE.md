@@ -99,6 +99,10 @@ Preserve existing patterns for pending recalculation, evidence review, propagati
 
 When the API returns optional `propagation_notice` on document mutations, the **standard client** may show a **read-only** dismissible callout using the **server-provided `message`** (no paraphrase that weakens deferral semantics). Surfaces in-repo: **Documents** (upload + apply-extraction) and **Bulk upload** (ZIP + multi-file). This is **informational honesty**, not a replacement for KPI-authoritative requirement rows or persisted headline score semantics (`COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`).
 
+### 8.2 Workspace framing (support-burden reduction)
+
+Short **orientation** copy (headers, one-line descriptions, empty states) may clarify **which surface is for what** (e.g. Today vs Dashboard) and **async boundaries** (upload → confirm → recalc), provided it stays calm, non-marketing, and does not override plan-gating rules in §2–7. Implementation hub: `frontend/src/utils/workspaceOrientationCopy.js`.
+
 ---
 
 ## 9. Upgrade discoverability standards

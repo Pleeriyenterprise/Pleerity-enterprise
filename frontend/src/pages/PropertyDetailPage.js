@@ -131,6 +131,7 @@ import {
   headlineScoreShowsOutOf100,
 } from '../utils/scoringHeadlineDisplay';
 import { PROPERTY_DETAIL_STORED_VS_PREVIEW_NOTE } from '../utils/scoreFreshnessUi';
+import { WORKSPACE_PROPERTY_SCORE_STRIP_FOOTNOTE } from '../utils/workspaceOrientationCopy';
 import { NotApplicableGovernedNotice } from '../utils/notApplicableGovernedCopy';
 
 const NOT_REQUIRED_REASONS = [
@@ -1125,18 +1126,18 @@ export default function PropertyDetailPage() {
   const evidenceDocStatusLabel = (doc) => {
     const reviewState = effectiveEvidenceReviewState(doc);
     if (reviewState === 'VERIFIED') return 'Verified';
-    if (reviewState === 'ACCEPTED_UNVERIFIED') return 'Accepted (unverified)';
+    if (reviewState === 'ACCEPTED_UNVERIFIED') return 'Accepted on file (not externally verified)';
     if (reviewState === 'REJECTED') return 'Rejected';
     if (reviewState === 'EXPIRED') return 'Expired';
     if (reviewState === 'NEEDS_INFORMATION') return 'Needs information';
     if (reviewState === 'UNDER_REVIEW') return 'Under review';
     if (reviewState === 'SUPERSEDED') return 'Superseded';
     const s = (doc?.status || '').toUpperCase();
-    if (s === 'VERIFIED') return 'Accepted (unverified)';
+    if (s === 'VERIFIED') return 'Accepted on file (not externally verified)';
     if (s === 'REJECTED') return 'Rejected';
     if (s === 'EXPIRED') return 'Expired';
     const hasExtraction = doc?.extraction_id || (doc?.ai_extraction?.status === 'completed' && doc?.ai_extraction?.data);
-    if (hasExtraction && s !== 'VERIFIED') return 'Awaiting verification';
+    if (hasExtraction && s !== 'VERIFIED') return 'Awaiting confirmation';
     if (s === 'UPLOADED') return 'Extracted';
     if (!doc?.requirement_id) return 'Unlinked';
     return 'Uploaded';
@@ -1716,6 +1717,7 @@ export default function PropertyDetailPage() {
                   <span className="text-sm text-gray-500">Last updated: {new Date(complianceDetail.last_updated_at).toLocaleString()}</span>
                 )}
               </div>
+              <p className="text-xs text-gray-500 mt-2 max-w-prose leading-relaxed">{WORKSPACE_PROPERTY_SCORE_STRIP_FOOTNOTE}</p>
               {complianceExplainability ? (
                 <div
                   className="mb-4 rounded-lg border border-gray-200 bg-gray-50/90 px-3 py-2.5 text-xs text-gray-700 space-y-1.5"

@@ -37,8 +37,10 @@ import {
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import PropagationNoticeCallout from '../components/client/PropagationNoticeCallout';
 import { normalizeRequirementCode, documentListStatusLabel } from '../domain/presentDomain';
+import { WORKSPACE_DOCUMENTS_SUBTITLE, WORKSPACE_DOCUMENTS_EMPTY_DESCRIPTION } from '../utils/workspaceOrientationCopy';
 import {
   effectiveEvidenceReviewState,
+  reviewStateLabel,
 } from '../utils/evidenceReviewUi';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
 import {
@@ -677,15 +679,15 @@ const DocumentsPage = () => {
   const getStatusBadge = (doc) => {
     const key = effectiveEvidenceReviewState(doc);
     const badges = {
-      PENDING: { icon: Clock, color: 'bg-yellow-100 text-yellow-800', label: 'Awaiting verification' },
-      UPLOADED: { icon: Clock, color: 'bg-blue-100 text-blue-800', label: 'Uploaded' },
-      VERIFIED: { icon: CheckCircle, color: 'bg-green-100 text-green-800', label: 'Verified' },
-      ACCEPTED_UNVERIFIED: { icon: Shield, color: 'bg-teal-100 text-teal-800', label: 'Accepted (unverified)' },
-      UNDER_REVIEW: { icon: Clock, color: 'bg-indigo-100 text-indigo-800', label: 'Under review' },
-      NEEDS_INFORMATION: { icon: AlertTriangle, color: 'bg-amber-100 text-amber-800', label: 'Needs information' },
-      SUPERSEDED: { icon: XCircle, color: 'bg-gray-100 text-gray-700', label: 'Superseded' },
-      REJECTED: { icon: XCircle, color: 'bg-red-100 text-red-800', label: 'Rejected' },
-      EXPIRED: { icon: XCircle, color: 'bg-red-100 text-red-800', label: 'Expired' },
+      PENDING: { icon: Clock, color: 'bg-yellow-100 text-yellow-800', label: 'Awaiting confirmation' },
+      UPLOADED: { icon: Clock, color: 'bg-blue-100 text-blue-800', label: reviewStateLabel('UPLOADED') },
+      VERIFIED: { icon: CheckCircle, color: 'bg-green-100 text-green-800', label: reviewStateLabel('VERIFIED') },
+      ACCEPTED_UNVERIFIED: { icon: Shield, color: 'bg-teal-100 text-teal-800', label: reviewStateLabel('ACCEPTED_UNVERIFIED') },
+      UNDER_REVIEW: { icon: Clock, color: 'bg-indigo-100 text-indigo-800', label: reviewStateLabel('UNDER_REVIEW') },
+      NEEDS_INFORMATION: { icon: AlertTriangle, color: 'bg-amber-100 text-amber-800', label: reviewStateLabel('NEEDS_INFORMATION') },
+      SUPERSEDED: { icon: XCircle, color: 'bg-gray-100 text-gray-700', label: reviewStateLabel('SUPERSEDED') },
+      REJECTED: { icon: XCircle, color: 'bg-red-100 text-red-800', label: reviewStateLabel('REJECTED') },
+      EXPIRED: { icon: XCircle, color: 'bg-red-100 text-red-800', label: reviewStateLabel('EXPIRED') },
     };
     const badge = badges[key] || {
       icon: Clock,
@@ -861,10 +863,7 @@ const DocumentsPage = () => {
           </Button>
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-midnight-blue">Documents</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Documents update requirement status and your compliance score once dates are confirmed. Command Center and Today
-              refresh after you act.
-            </p>
+            <p className="text-sm text-gray-500 mt-0.5">{WORKSPACE_DOCUMENTS_SUBTITLE}</p>
           </div>
         </div>
         <Button
@@ -1163,7 +1162,7 @@ const DocumentsPage = () => {
                   <EmptyState
                     icon={FileText}
                     title="No documents uploaded yet"
-                    description="Upload your compliance certificates to get started"
+                    description={WORKSPACE_DOCUMENTS_EMPTY_DESCRIPTION}
                     testId="no-documents"
                     className="py-12"
                   />
@@ -1190,8 +1189,8 @@ const DocumentsPage = () => {
                         data-testid="filter-by-status"
                       >
                         <option value="">All statuses</option>
-                        <option value="PENDING">Awaiting verification</option>
-                        <option value="UPLOADED">Uploaded</option>
+                        <option value="PENDING">Awaiting confirmation</option>
+                        <option value="UPLOADED">Received (confirm to apply)</option>
                         <option value="VERIFIED">Confirmed</option>
                         <option value="REJECTED">Rejected</option>
                       </select>
@@ -1204,7 +1203,7 @@ const DocumentsPage = () => {
                     {filteredDocuments.length === 0 ? (
                       <EmptyState
                         title="No documents match"
-                        description="No documents match the current filters."
+                        description="No files match the current filters. Clear filters or upload on this page — new files can take a moment to appear after upload."
                         testId="no-documents-match"
                         className="py-8"
                       />

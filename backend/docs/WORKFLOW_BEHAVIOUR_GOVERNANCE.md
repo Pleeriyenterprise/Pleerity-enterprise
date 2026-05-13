@@ -664,3 +664,9 @@ Authoritative defaults: `services/workflow_behaviour_governance.py` → `WORKFLO
 | **Audit** | **Additive** flags on admin-enriched requirement rows (`requirement_workflow_audit`) — diagnostics only, non-blocking. |
 
 Future work may wire CI or admin dashboards to these flags; **do not** use them to block tenant/client APIs without an explicit product decision.
+
+---
+
+## Client workspace orientation (presentation adjunct)
+
+`frontend/src/utils/workspaceOrientationCopy.js` and related page intros **do not change** workflow classes, resolver contracts, or evidence authority. They exist only to reduce **misinterpretation** (e.g. upload vs verified vs score timing). New orientation copy must remain consistent with the non-equivalence rules in this document and must not imply upload-only closure where a workflow class forbids it.

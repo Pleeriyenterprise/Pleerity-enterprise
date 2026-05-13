@@ -15,9 +15,9 @@ export const COMMAND_CENTER_CONFIDENCE_LINE =
 export const JOBS_PAGE_CONFIDENCE_LINE =
   'Moving jobs forward updates SLA and compliance execution so each property’s record matches reality.';
 
-/** Requirements hub — outcome-focused. */
+/** Requirements hub — how this page relates to scoring (non-duplicative with workspace orientation lead). */
 export const REQUIREMENTS_PAGE_CONFIDENCE_LINE =
-  'Uploads, dates, and applicability here directly affect overdue counts and how each property scores.';
+  'Row statuses are the same inputs the scoring engine reads; “pending” here means the obligation or evidence pipeline is not yet settled.';
 
 /** Job detail — why lifecycle actions matter. */
 export const JOB_DETAIL_CONFIDENCE_LINE =

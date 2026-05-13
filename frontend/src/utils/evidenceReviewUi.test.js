@@ -33,7 +33,7 @@ describe('evidenceReviewUi', () => {
   });
 
   it('keeps ACCEPTED_UNVERIFIED visually distinct from VERIFIED', () => {
-    expect(reviewStateLabel('ACCEPTED_UNVERIFIED')).toBe('Accepted (unverified)');
+    expect(reviewStateLabel('ACCEPTED_UNVERIFIED')).toBe('Accepted on file (not externally verified)');
     expect(reviewStateLabel('VERIFIED')).toBe('Verified');
     expect(assuranceTierLabel('HUMAN_ACCEPTED')).toBe('Human accepted');
     expect(assuranceTierLabel('EXTERNALLY_VERIFIED')).toBe('Externally verified');
@@ -48,7 +48,7 @@ describe('evidenceReviewUi', () => {
 
   it('detects duplicate primary vs client verification label', () => {
     const doc = { evidence_review_state: 'ACCEPTED_UNVERIFIED' };
-    expect(clientVerificationLabelRedundantWithPrimary(doc, 'Accepted (unverified)')).toBe(true);
+    expect(clientVerificationLabelRedundantWithPrimary(doc, 'Accepted on file (not externally verified)')).toBe(true);
     expect(clientVerificationLabelRedundantWithPrimary(doc, 'Uploaded')).toBe(false);
   });
 });

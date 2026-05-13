@@ -107,6 +107,10 @@
 
 **Rule:** Visual success (green) follows **data** — do not add decorative “all done” treatments that contradict payload semantics.
 
+### 8.1 Workspace orientation copy
+
+Short contextual intros and footnotes that explain **which screen is for what** (portfolio vs inbox vs evidence) live in `frontend/src/utils/workspaceOrientationCopy.js` and must follow the same async-honesty rules as §8 — no decorative certainty, no authority flattening.
+
 ---
 
 ## 9. Knowledge Centre & documentation surfaces

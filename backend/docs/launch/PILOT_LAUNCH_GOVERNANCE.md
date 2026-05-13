@@ -48,6 +48,7 @@ These are **known and accepted** for pilot operation until revisited (see §Revi
 ## Part D — Operational mitigations
 
 - **Support:** `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` — no direct edits to authoritative score/requirement fields; sanctioned repair paths only.
+- **Client mental model:** Governed orientation copy (`frontend/src/utils/workspaceOrientationCopy.js`, `docs/governance/PRESENTATION_LANGUAGE_GOVERNANCE.md`) — reduces “wrong screen” tickets; does not replace runbooks or authority docs.
 - **Observation:** `BETA_OBSERVATION_AND_TRUST_REVIEW.md` — trust, async confusion, CTA fatigue.
 - **Correlation:** Stream C/E/F docs for incident reconstruction.
 

@@ -91,7 +91,7 @@ describe('AdminDashboard pending verification queue', () => {
 
     await waitFor(() => expect(adminAPI.getPendingVerificationDocuments).toHaveBeenCalled());
 
-    expect(screen.getByText('Accepted (unverified)')).toBeInTheDocument();
+    expect(screen.getByText('Accepted on file (not externally verified)')).toBeInTheDocument();
     expect(screen.getByText('Human accepted')).toBeInTheDocument();
     expect(screen.getByText('WARN · 1 warning(s), 1 failure(s)')).toBeInTheDocument();
     expect(screen.getByText('1 warning(s), 1 flag(s)')).toBeInTheDocument();

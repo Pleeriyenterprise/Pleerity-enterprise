@@ -78,6 +78,7 @@ import {
   todayTaskSourceAttributionLine,
   shouldShowTodayTaskConfidence,
 } from '../utils/confidenceUxCopy';
+import { WORKSPACE_TODAY_PRIMARY, WORKSPACE_TODAY_VS_DASHBOARD } from '../utils/workspaceOrientationCopy';
 import {
   shapeTodayBusinessActions,
   businessActionNavigatePath,
@@ -85,6 +86,7 @@ import {
 } from '../utils/todayWorkflowPolicy';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import { todayRequirementWhyItMattersLine } from '../utils/todayRequirementWhyItMatters';
+import { todayTaskOperationalGuidance } from '../utils/todayTaskOperationalGuidance';
 import {
   alignTodayPayloadTaskSections,
   inboxTaskLinkedRequirementId,
@@ -386,7 +388,10 @@ function TaskCard({
   const requirementWhyLine = complianceUi ? todayRequirementWhyItMattersLine(task) : null;
   const confidenceLine =
     !complianceUi && shouldShowTodayTaskConfidence(task) ? todayTaskConfidenceLine(task) : null;
-  const hasLongContext = !complianceUi && Boolean(task.why_matters || task.recommended_action);
+  const guidedDetails = useMemo(() => todayTaskOperationalGuidance(task), [task]);
+  const detailWhyLine = guidedDetails?.whyMatters || task.why_matters;
+  const detailWhatLine = guidedDetails?.whatToDo || task.recommended_action;
+  const hasLongContext = Boolean(detailWhyLine || detailWhatLine);
   const hasVisibilityActions = enableTriage && (task.visibility_actions || []).length > 0;
   const hasMoreOptionsBlock =
     hasVisibilityActions || (workflow === 'issue_risk' && showRiskInline && sid);
@@ -507,16 +512,16 @@ function TaskCard({
             )}
             {detailsOpen && hasLongContext && (
               <div className="rounded-lg bg-gray-50 border border-gray-100 p-3 text-xs text-gray-600 space-y-2 break-words">
-                {task.why_matters && (
+                {detailWhyLine ? (
                   <p>
-                    <span className="font-medium text-gray-800">Why it matters:</span> {task.why_matters}
+                    <span className="font-medium text-gray-800">Why it matters:</span> {detailWhyLine}
                   </p>
-                )}
-                {task.recommended_action && (
+                ) : null}
+                {detailWhatLine ? (
                   <p>
-                    <span className="font-medium text-gray-800">What to do:</span> {task.recommended_action}
+                    <span className="font-medium text-gray-800">What to do:</span> {detailWhatLine}
                   </p>
-                )}
+                ) : null}
               </div>
             )}
             {task.freshness_timestamp && (
@@ -1358,10 +1363,8 @@ export default function ClientTasksPage() {
           <LayoutList className="w-7 h-7" />
           <h1 className="text-2xl md:text-3xl font-bold">Today</h1>
         </div>
-        <p className="text-gray-600 text-sm md:text-base">
-          Your portfolio priority list: each card opens the linked workspace (requirements, jobs, approvals, issues).
-          Primary actions move real work forward; options under More only change what appears on Today.
-        </p>
+        <p className="text-gray-600 text-sm md:text-base">{WORKSPACE_TODAY_PRIMARY}</p>
+        <p className="text-xs text-gray-500 mt-2 leading-relaxed">{WORKSPACE_TODAY_VS_DASHBOARD}</p>
         <p className="text-sm text-gray-600 mt-2">{TODAY_PAGE_CONFIDENCE_LINE}</p>
         <p className="text-xs text-gray-500 mt-2 leading-relaxed">
           <Link
@@ -1649,7 +1652,7 @@ export default function ClientTasksPage() {
             emptyHint={
               topPriorityTasks.length > 0
                 ? 'No other urgent items — everything urgent is in Top priorities above.'
-                : 'Nothing in the urgent queue. Try another filter if this looks wrong.'
+                : 'No urgent items in this view. Dashboard still shows portfolio-wide counts; Command Center ranks what to do next.'
             }
           />
           <SectionBlock
@@ -1669,7 +1672,7 @@ export default function ClientTasksPage() {
             enableTriage
             inboxRequirementById={inboxRequirementById}
             defaultCollapsed
-            emptyHint="No upcoming items in this view."
+            emptyHint="No upcoming dated items here. Requirements and Calendar carry full renewal context."
           />
           <SectionBlock
             title="In progress"

@@ -28,7 +28,7 @@ export function reviewStateLabel(state) {
     UNDER_REVIEW: 'Under review',
     NEEDS_INFORMATION: 'Needs information',
     REJECTED: 'Rejected',
-    ACCEPTED_UNVERIFIED: 'Accepted (unverified)',
+    ACCEPTED_UNVERIFIED: 'Accepted on file (not externally verified)',
     VERIFIED: 'Verified',
     EXPIRED: 'Expired',
     SUPERSEDED: 'Superseded',
@@ -53,7 +53,7 @@ export function clientFacingVerificationLabel(doc = {}) {
   const tier = effectiveAssuranceTier(doc);
   if (tier === 'EXTERNALLY_VERIFIED') return 'Externally verified';
   const st = effectiveEvidenceReviewState(doc);
-  if (st === 'ACCEPTED_UNVERIFIED') return 'Accepted (unverified)';
+  if (st === 'ACCEPTED_UNVERIFIED') return 'Accepted on file (not externally verified)';
   if (st === 'VERIFIED') return 'Verified';
   if (st === 'REJECTED') return 'Rejected';
   if (st === 'EXPIRED') return 'Expired';

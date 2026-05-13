@@ -71,6 +71,7 @@ import {
   portfolioScoreRecalcPendingNote as resolvePortfolioScoreRecalcPendingNote,
   resolveDashboardFreshnessExplanation,
 } from '../utils/scoreFreshnessUi';
+import { workspaceDashboardWelcomeLead } from '../utils/workspaceOrientationCopy';
 const KPI_NO_DATA = 'No data yet';
 
 /** Compact (i) hint for dashboard KPIs — must sit under TooltipProvider. */
@@ -1507,7 +1508,7 @@ const ClientDashboard = () => {
         <div className="mb-5 sm:mb-6">
           <h2 className="text-2xl sm:text-3xl font-bold text-midnight-blue mb-2">Dashboard</h2>
           <p className="text-gray-600 text-sm sm:text-base">
-            Welcome, {data?.client?.full_name}. Portfolio health and what needs attention — overview only (not your full work queue).
+            {workspaceDashboardWelcomeLead(data?.client?.full_name)}
           </p>
           <p className="text-xs text-gray-500 mt-1.5">
             Work in order in <span className="font-medium text-midnight-blue">Today</span> or{' '}

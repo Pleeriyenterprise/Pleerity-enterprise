@@ -35,6 +35,13 @@ import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components
 import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import { REQUIREMENTS_PAGE_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
+import {
+  WORKSPACE_REQUIREMENTS_DESCRIPTION_DEFAULT,
+  WORKSPACE_REQUIREMENTS_DESCRIPTION_DUE_SOON,
+  WORKSPACE_REQUIREMENTS_DESCRIPTION_OVERDUE_OR_MISSING,
+  workspaceRequirementsDescriptionWindow,
+  WORKSPACE_REQUIREMENTS_EMPTY_DESCRIPTION,
+} from '../utils/workspaceOrientationCopy';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
 import {
   executeRequirementPrimaryCta,
@@ -600,11 +607,10 @@ const RequirementsPage = () => {
   };
 
   const getPageDescription = () => {
-    if (statusFilter === 'DUE_SOON') return 'Tracked items expiring soon that need attention';
-    if (statusFilter === 'OVERDUE_OR_MISSING')
-      return 'Overdue or missing items—upload on Documents to clear gaps; Command Center and Today reflect the result.';
-    if (windowDays) return `Tracked items with deadlines within the next ${windowDays} days`;
-    return 'Manage obligations here; documents and dates feed your compliance score and your Today inbox.';
+    if (statusFilter === 'DUE_SOON') return WORKSPACE_REQUIREMENTS_DESCRIPTION_DUE_SOON;
+    if (statusFilter === 'OVERDUE_OR_MISSING') return WORKSPACE_REQUIREMENTS_DESCRIPTION_OVERDUE_OR_MISSING;
+    if (windowDays) return workspaceRequirementsDescriptionWindow(windowDays);
+    return WORKSPACE_REQUIREMENTS_DESCRIPTION_DEFAULT;
   };
 
   // Stats
@@ -770,7 +776,7 @@ const RequirementsPage = () => {
             <EmptyState
               icon={FileCheck}
               title="No tracked items found"
-              description={searchTerm ? 'Try adjusting your search criteria' : 'No tracked items match the current filter'}
+              description={searchTerm ? 'Try adjusting your search criteria' : WORKSPACE_REQUIREMENTS_EMPTY_DESCRIPTION}
               className="p-12"
             />
           ) : groupBy === 'property' ? (

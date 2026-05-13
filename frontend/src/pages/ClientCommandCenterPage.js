@@ -60,6 +60,10 @@ import {
   COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE,
   portfolioScoreRecalcPendingNote as resolvePortfolioScoreRecalcPendingNote,
 } from '../utils/scoreFreshnessUi';
+import {
+  WORKSPACE_COMMAND_CENTER_PRIMARY,
+  WORKSPACE_COMMAND_CENTER_ALL_CLEAR_SECONDARY,
+} from '../utils/workspaceOrientationCopy';
 
 const KPI_NO_DATA = 'No data yet';
 
@@ -456,10 +460,7 @@ export default function ClientCommandCenterPage() {
             <Gauge className="h-7 w-7 text-teal-600 shrink-0" aria-hidden />
             Command center
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Portfolio synthesis and prioritisation—execution stays in Today, Jobs, Requirements, and Documents. Use the
-            status block below to pick your next step.
-          </p>
+          <p className="text-sm text-gray-600 mt-1">{WORKSPACE_COMMAND_CENTER_PRIMARY} Use the status block below to pick your next step.</p>
           <p className="text-sm text-gray-600 mt-2">{COMMAND_CENTER_CONFIDENCE_LINE}</p>
         </div>
         <div className="shrink-0 flex flex-col gap-2 items-start sm:items-end">
@@ -505,16 +506,23 @@ export default function ClientCommandCenterPage() {
                     (d.key === 'overdue' && improvedFlash.overdue) ||
                     (d.key === 'missing' && improvedFlash.missing) ||
                     (d.key === 'job_pressure' && improvedFlash.jobs);
+                  const rowClass =
+                    flashDriver
+                      ? 'rounded px-1 -mx-1 -my-0.5 py-0.5 command-center-metric-improved'
+                      : undefined;
                   return (
-                    <li
-                      key={d.key}
-                      className={
-                        flashDriver
-                          ? 'rounded px-1 -mx-1 -my-0.5 py-0.5 command-center-metric-improved'
-                          : undefined
-                      }
-                    >
-                      {d.label}
+                    <li key={d.key} className={rowClass}>
+                      {d.navTo ? (
+                        <Link
+                          to={d.navTo}
+                          className="text-inherit underline-offset-2 hover:underline font-medium"
+                          data-testid={`command-center-driver-${d.key}`}
+                        >
+                          {d.label}
+                        </Link>
+                      ) : (
+                        d.label
+                      )}
                     </li>
                   );
                 })}
@@ -555,8 +563,7 @@ export default function ClientCommandCenterPage() {
             <div>
               <p className="font-semibold text-green-950 text-lg">Nothing needs your immediate attention.</p>
               <p className="text-sm text-green-900/90 mt-1">
-                No urgent actions, no major risks in this snapshot, and no active jobs. Continue in Today when you are ready
-                for the next inbox item.
+                No urgent actions, no major risks in this snapshot, and no active jobs. {WORKSPACE_COMMAND_CENTER_ALL_CLEAR_SECONDARY}
               </p>
             </div>
           </CardContent>

@@ -384,8 +384,8 @@ export function inboxTimelineActionLabel(act) {
 export function documentListStatusLabel(status) {
   const key = String(status || '').trim().toUpperCase();
   const map = {
-    PENDING: 'Awaiting verification',
-    UPLOADED: 'Uploaded',
+    PENDING: 'Awaiting confirmation',
+    UPLOADED: 'Received (confirm to apply)',
     VERIFIED: 'Confirmed',
     REJECTED: 'Rejected',
     EXPIRED: 'Expired',
@@ -393,7 +393,7 @@ export function documentListStatusLabel(status) {
     FAILED: 'Failed',
   };
   if (map[key]) return map[key];
-  return 'Awaiting verification';
+  return 'Awaiting confirmation';
 }
 
 const INBOX_TITLE_UUID_RE =
