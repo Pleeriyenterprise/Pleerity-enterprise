@@ -559,7 +559,7 @@ async def assemble_monthly_digest_payload(
         "portal_today_url": portal_today_url,
         "portal_requirements_url": portal_requirements_url,
         "primary_cta_url": portal_today_url,
-        "primary_cta_label": "Review & Fix Compliance Now",
+        "primary_cta_label": "Open portal for compliance summary",
         "urgent_items": urgent_items,
         "deltas": deltas,
         "top_risk_drivers": top_risk_drivers,

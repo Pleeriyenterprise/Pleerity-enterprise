@@ -5,7 +5,9 @@
     "canonical_send_api": "services.notification_orchestrator.notification_orchestrator.send",
     "bypass_governance_test": "tests/test_notification_bypass_governance.py",
     "notification_dispatch_workflow_family_globally_activated": false,
-    "message_logs_intended_writer": "notification_orchestrator_internal_paths"
+    "message_logs_intended_writer": "notification_orchestrator_internal_paths",
+    "semantic_family_and_cta_rules": "backend/docs/audit/NOTIFICATION_OWNERSHIP_READINESS.md#governed-notification-semantic-families--authoritative-in-repo",
+    "email_cta_semantics_cross_ref": "docs/governance/PRESENTATION_LANGUAGE_GOVERNANCE.md#email--notification-cta-semantics-operational-vs-lifecycle"
   },
   "sender_clusters": [
     {

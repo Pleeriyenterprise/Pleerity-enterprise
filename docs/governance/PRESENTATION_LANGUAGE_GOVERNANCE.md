@@ -94,6 +94,44 @@ When adding a new user-visible status, pick the **family** first, then add or re
 
 ---
 
+## Email & notification CTA semantics (operational vs lifecycle)
+
+**Scope:** Outbound email and SMS rendered via `NotificationOrchestrator` + `EmailService` layout builders + Postmark/DB bodies. **Does not** change API contracts or `template_key` values.
+
+### CTA categories (semantic consistency, not identical labels)
+
+| Category | Purpose | Primary verb examples | Destination discipline |
+|----------|---------|----------------------|-------------------------|
+| **EXECUTE_OPERATIONAL** | Continue compliance / maintenance work | Open portal, Review requirements, Confirm details, Upload evidence | Must land in **authenticated** client route that matches the obligation (Documents, Requirements, job, approval) — avoid generic home when a deep link exists. |
+| **BILLING_ACCOUNT** | Money, plan, subscription | View billing, Manage subscription, Update payment method | Prefer `/settings/billing` or Stripe customer portal URL from context. On **high-stress remediation** paths, billing must stay **secondary** per `PLAN_GATING_UX_GOVERNANCE.md` §4–6. |
+| **LIFECYCLE_ACTIVATION** | Onboarding / setup / enable monitoring | Complete setup, Continue activation, Enable alerts | May be more persuasive **only** in onboarding family; still no false urgency (“Act now or non-compliant”). |
+| **INFORMATIONAL_REVIEW** | Digests, reports, score snapshots | View report, Read summary | Must state **snapshot / as-of** semantics where scores or counts are shown; align async honesty with `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`. |
+| **ESCALATION_INTERNAL** | Ops / admin | Acknowledge incident, Open control centre | Recipient is operator; must not impersonate tenant-facing reassurance tone. |
+
+### High-risk operational mail — trust wording (normative)
+
+Applies to **code-built** bodies in `EmailService` / `email_templates/unified/scheduled_report_digest.py` and **SMS** compliance alerts. Postmark/DB templates should follow the same principles when edited.
+
+- **Property GREEN / AMBER / RED** in customer email: describe as **dashboard operational indicators** from tracked requirements and recorded evidence — not legal outcomes, not instant score finality. The **portal** remains authoritative for obligation state and recalculation timestamps (`COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`).
+- **COMPLIANCE_ALERT** (email + SMS): calm header/subject; avoid “action required” / emoji alarm patterns that resemble phishing or imply a final verdict; primary CTA is **portal review**, not billing.
+- **COMPLIANCE_EXPIRY_REMINDER** (`REMINDER` alias): title and CTA frame **renewal / tracked requirement** language; keep factual due/overdue lines without marketing pressure.
+- **MONTHLY_DIGEST**: default primary CTA is **informational review** (“Open portal for compliance summary”); urgent list styling must not mimic billing-failure or fake-legal urgency; “missing evidence” steps must not equate **upload** with **verified compliant** or statutory verification.
+- **Scheduled report digest**: include a short **how to read this** framing (HTML + plain text); label portfolio rates as **recorded / tracked** where percentages are shown.
+- **AI extraction**: no emoji or celebratory adornment on requirement status snapshots; assistive extraction is never statutory verification (see prior section and `NOTIFICATION_OWNERSHIP_READINESS.md`).
+- **Pending verification digest** (admin): **UPLOADED** = received for admin review — not “compliant” until reviewed in-platform.
+
+### Forbidden patterns in customer-facing mail
+
+- Implying **legal certainty**, **regulator-grade verification**, or **instant score finality** after uploads or AI steps.
+- **Marketing urgency** in `compliance_notifications` or `system_critical` families.
+- **Billing CTAs dominating** the primary fold on overdue / missing-evidence / failure templates.
+
+### Relationship to token map
+
+Operational phrases in email bodies should align with `frontend/src/utils/presentationLanguage.js` / `PRESENTATION_LANGUAGE_GOVERNANCE.md` core rules where the same concepts appear in-app (e.g. pending confirmation, recalc pending). Email may add **channel-specific** brevity but must not **contradict** those meanings.
+
+---
+
 ## Review checklist (PRs)
 
 - [ ] No new user-facing string built only from `replace(/_/g, ' ')`.

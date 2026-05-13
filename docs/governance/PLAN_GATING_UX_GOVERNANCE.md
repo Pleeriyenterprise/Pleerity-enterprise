@@ -103,6 +103,10 @@ When the API returns optional `propagation_notice` on document mutations, the **
 
 Short **orientation** copy (headers, one-line descriptions, empty states) may clarify **which surface is for what** (e.g. Today vs Dashboard) and **async boundaries** (upload → confirm → recalc), provided it stays calm, non-marketing, and does not override plan-gating rules in §2–7. Implementation hub: `frontend/src/utils/workspaceOrientationCopy.js`.
 
+### 8.3 Email & outbound notifications (cross-reference)
+
+**Plan gating for in-app surfaces** remains §2–7. For **email/SMS** CTA hierarchy, operational vs lifecycle tone, and async honesty in templates, see **`docs/governance/PRESENTATION_LANGUAGE_GOVERNANCE.md`** (Email & notification CTA semantics) and **`backend/docs/audit/NOTIFICATION_OWNERSHIP_READINESS.md`** (governed semantic families + `admin-manual` lane policy). Do not invent punitive upgrade language in compliance-class mail.
+
 ---
 
 ## 9. Upgrade discoverability standards

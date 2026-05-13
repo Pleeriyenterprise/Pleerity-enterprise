@@ -142,13 +142,11 @@ class SMSService:
         Returns:
             dict with send result
         """
-        emoji = "🔴" if new_status == "RED" else "🟡"
-        
         message = (
-            f"{emoji} COMPLIANCE ALERT\n"
+            "Compliance status update\n"
             f"Hi {client_name.split()[0]},\n"
-            f"{property_address} is now {new_status}.\n"
-            f"Action required. View details in your portal."
+            f"{property_address}: dashboard indicator is now {new_status} (operational summary).\n"
+            "Review details in your portal when convenient."
         )
         
         return await self.send_sms(phone_number, message, client_id)

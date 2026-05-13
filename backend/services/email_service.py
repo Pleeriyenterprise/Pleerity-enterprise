@@ -619,13 +619,13 @@ class EmailService:
         if m.get("include_action_items", True):
             items = m.get("urgent_items") or []
             if items:
-                urgent_block = '<p style="font-weight:600;color:#b91c1c;margin:20px 0 8px 0;">Immediate attention</p><ul style="margin:0;padding-left:0;list-style:none;">'
+                urgent_block = '<p style="font-weight:600;color:#92400e;margin:20px 0 8px 0;">Items to review soon</p><ul style="margin:0;padding-left:0;list-style:none;">'
                 for it in items[:5]:
                     url = html_module.escape(str(it.get("url") or m.get("primary_cta_url") or m.get("portal_link") or "#"))
                     line = html_module.escape(str(it.get("line") or it.get("title") or "Action item"))
                     urgent_block += (
                         f'<li style="margin:0 0 12px 0;"><a href="{url}" style="display:block;padding:12px 14px;'
-                        f'background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#991b1b;text-decoration:none;'
+                        f'background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;color:#92400e;text-decoration:none;'
                         f'font-size:15px;font-weight:600;">{line}</a></li>'
                     )
                 urgent_block += "</ul>"
@@ -634,7 +634,7 @@ class EmailService:
         if m.get("include_recommendations", True):
             steps = '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">Recommended next steps</p><ol style="margin:0;padding-left:20px;color:#334155;font-size:15px;line-height:1.55;">'
             if miss > 0:
-                steps += "<li>Upload missing documents and request verification where required.</li>"
+                steps += "<li>Upload missing evidence and complete any review steps your administrator requires.</li>"
             if ovd > 0:
                 steps += "<li>Clear overdue renewals or book a compliance job from the command centre.</li>"
             steps += "<li>Review your dashboard and calendar for upcoming expiries.</li>"
@@ -783,6 +783,7 @@ class EmailService:
                 "<p>We noticed you haven’t finished activating your Compliance Vault Pro account yet.</p>"
                 "<p>Setting your password takes a minute and unlocks your compliance dashboard, property tracking, and document vault.</p>"
                 f'<p style="color: #666; font-size: 14px;">This link will expire in {expiry_phrase}.</p>'
+                "<p style=\"color: #64748b; font-size: 13px;\">This is an account-access reminder only — it is not a compliance determination.</p>"
             )
             return _customer_email_html(
                 model,
@@ -958,21 +959,22 @@ class EmailService:
                         </tbody>
                     </table>
                     <p style="color: #64748b; font-size: 14px;">
-                        <strong>What this means:</strong><br>
-                        • <span style="color: #22c55e;">GREEN</span> = All requirements are compliant<br>
-                        • <span style="color: #f59e0b;">AMBER</span> = Some requirements are expiring soon<br>
-                        • <span style="color: #dc2626;">RED</span> = Immediate action required
-                    </p>"""
+                        <strong>How to read this:</strong><br>
+                        • <span style="color: #22c55e;">GREEN</span> = Dashboard indicator: tracked requirements for this property appear satisfied on the last calculation (not a legal guarantee).<br>
+                        • <span style="color: #f59e0b;">AMBER</span> = Some tracked requirements are due soon or need review in the portal<br>
+                        • <span style="color: #dc2626;">RED</span> = One or more tracked requirements need attention — review details in the portal
+                    </p>
+                    <p style="color: #64748b; font-size: 13px;">This email is informational. The portal remains authoritative for obligation state, evidence, and when scores last recalculated.</p>"""
             greeting = f"Hello {model.get('client_name', 'there')},"
             return _customer_email_html(
                 model,
                 greeting=greeting,
                 body_html=body,
-                header_title="⚠️ Compliance Alert",
+                header_title="Compliance status update",
                 ref_badge=ref_badge,
-                cta_label="View Dashboard",
+                cta_label="Open portal to review",
                 cta_url=model.get('portal_link', '#'),
-                why_received="compliance monitoring is enabled for your account and a property status changed.",
+                why_received="compliance monitoring is enabled for your account and a property dashboard indicator changed.",
                 show_preferences_link=True,
                 preferences_url=_notification_preferences_url(model) or None,
                 customer_reference=customer_ref or None,
@@ -1000,8 +1002,8 @@ class EmailService:
                 model,
                 greeting=greeting,
                 body_html=body,
-                header_title="Compliance Action Required",
-                cta_label="View in Portal",
+                header_title="Compliance renewal reminder",
+                cta_label="Open portal for details",
                 cta_url=model.get('portal_link', '#'),
                 why_received="compliance monitoring and expiry reminders are enabled for your account.",
                 show_preferences_link=True,
@@ -1067,32 +1069,31 @@ class EmailService:
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
             status_color = model.get('status_color', '#22c55e')
-            status_icon = "✅" if model.get('requirement_status') == 'COMPLIANT' else "⚠️" if model.get('requirement_status') == 'EXPIRING_SOON' else "❌"
             doc_type_disp = html_module.escape(document_type_label(model.get('document_type')))
             status_disp = html_module.escape(compliance_requirement_status_label(model.get('requirement_status')))
             body = f"""
-                    <p>Good news! Our AI has successfully extracted and saved certificate details from your uploaded document.</p>
-                    <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                        <h3 style="margin: 0 0 15px 0; color: #166534;">📋 Certificate Details Saved</h3>
+                    <p>Assistive extraction has produced <strong>suggested</strong> certificate fields from your upload. They are not statutory verification and may still need your confirmation before they fully apply to scoring.</p>
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #0B1D3A;">Suggested details (review)</h3>
                         <table style="width: 100%; border-collapse: collapse;">
                             <tr><td style="padding: 8px 0; color: #64748b; width: 140px;">Property:</td><td style="padding: 8px 0; font-weight: bold;">{model.get('property_address', 'N/A')}</td></tr>
                             <tr><td style="padding: 8px 0; color: #64748b;">Document Type:</td><td style="padding: 8px 0; font-weight: bold;">{doc_type_disp}</td></tr>
                             <tr><td style="padding: 8px 0; color: #64748b;">Certificate No:</td><td style="padding: 8px 0; font-weight: bold; font-family: monospace;">{model.get('certificate_number', 'N/A')}</td></tr>
                             <tr><td style="padding: 8px 0; color: #64748b;">Expiry Date:</td><td style="padding: 8px 0; font-weight: bold;">{model.get('expiry_date', 'N/A')}</td></tr>
-                            <tr><td style="padding: 8px 0; color: #64748b;">Compliance Status:</td><td style="padding: 8px 0;"><span style="background-color: {status_color}; color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold;">{status_icon} {status_disp}</span></td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Requirement status (snapshot):</td><td style="padding: 8px 0;"><span style="background-color: {status_color}; color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold;">{status_disp}</span></td></tr>
                         </table>
                     </div>
-                    <p style="color: #64748b; font-size: 14px;"><strong>What happens next?</strong><br>• Your compliance dashboard has been updated automatically<br>• You'll receive reminders before this certificate expires<br>• You can review or edit these details in your portal</p>"""
+                    <p style="color: #64748b; font-size: 14px;"><strong>What happens next?</strong><br>• Confirm or correct extracted fields on <strong>Documents</strong> when prompted — scoring and requirement rows catch up after confirmation and any recalculation.<br>• You can still receive reminders based on dates already on record.<br>• This email is informational; the portal remains authoritative for current obligation state.</p>"""
             greeting = f"Hello {model.get('client_name', 'there')},"
             return _customer_email_html(
                 model,
                 greeting=greeting,
                 body_html=body,
-                header_title="AI Document Analysis Complete",
+                header_title="Suggested certificate details from your upload",
                 ref_badge=ref_badge,
-                cta_label="View in Dashboard",
+                cta_label="Open portal to review",
                 cta_url=model.get('portal_link', '#'),
-                why_received="compliance monitoring is enabled and our AI processed your uploaded document.",
+                why_received="assistive extraction ran on a document you uploaded and suggested fields for review.",
                 show_preferences_link=True,
                 preferences_url=_notification_preferences_url(model) or None,
                 customer_reference=customer_ref or None,
@@ -1131,12 +1132,12 @@ class EmailService:
                     <h1 style="color: #00B8A9; margin: 0;">Pending verification digest</h1>
                 </div>
                 <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-                    <p>Summary of documents awaiting admin verification (counts only):</p>
+                    <p>Summary of documents in <strong>UPLOADED</strong> state awaiting admin review (counts only). UPLOADED means received for review — not confirmed as compliant until reviewed in the platform.</p>
                     <ul>
                         <li><strong>Total UPLOADED:</strong> {count_pending}</li>
                         <li><strong>Older than 24 hours:</strong> {count_older_24h}</li>
                     </ul>
-                    <p>Review the admin dashboard pending-verification list to process these documents.</p>
+                    <p>Open the admin dashboard pending-verification list to process these documents.</p>
                 </div>
                 {footer}
             </body>
@@ -1177,7 +1178,7 @@ class EmailService:
                 greeting=greeting,
                 body_html=body,
                 header_title=header,
-                cta_label=str(model.get("primary_cta_label") or "Review & Fix Compliance Now"),
+                cta_label=str(model.get("primary_cta_label") or "Open portal for compliance summary"),
                 cta_url=model.get("primary_cta_url") or model.get("portal_link") or "#",
                 why_received="you have monthly compliance reporting enabled for your account.",
                 show_preferences_link=True,
@@ -1810,6 +1811,8 @@ We noticed you haven't finished activating your Compliance Vault Pro account. Se
 Set your password: {model.get('setup_link', '#')}
 
 This link will expire in {expiry_phrase}.
+
+This is an account-access reminder only — it is not a compliance determination.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.PAYMENT_RECEIPT:
@@ -1899,22 +1902,24 @@ Go to your dashboard: {model.get('portal_link', '#')}
                 properties_text += f"- {prop.get('address', 'N/A')}: {prop.get('previous_status', 'GREEN')} → {prop.get('new_status', 'RED')} ({prop.get('reason', 'Status changed')})\n"
             
             return f"""
-⚠️ COMPLIANCE ALERT - Action Required
+Compliance status update
 {ref_line}
 
 Hello {model.get('client_name', 'there')},
 
-The compliance status of one or more of your properties has changed and may require your attention.
+The dashboard compliance indicator for one or more of your properties has changed and may need your review.
 
 AFFECTED PROPERTIES:
 {properties_text}
 
-View your dashboard: {model.get('portal_link', '#')}
+Open portal to review: {model.get('portal_link', '#')}
 
-WHAT THIS MEANS:
-• GREEN = All requirements are compliant
-• AMBER = Some requirements are expiring soon  
-• RED = Immediate action required
+HOW TO READ THIS:
+• GREEN = Dashboard indicator: tracked requirements appear satisfied on the last calculation (not a legal guarantee).
+• AMBER = Some tracked requirements are due soon or need review in the portal.
+• RED = One or more tracked requirements need attention — review details in the portal.
+
+This message is informational; the portal is authoritative for obligation state and evidence.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.REMINDER:
@@ -1931,7 +1936,7 @@ WHAT THIS MEANS:
             grouped_sections_text = _build_grouped_reminder_sections_text(model)
             grouped_block = f"\n\n{grouped_sections_text}" if grouped_sections_text else ""
             return f"""
-Compliance Action Required
+Compliance renewal reminder
 =========================
 {ref_line}
 
@@ -1942,7 +1947,7 @@ This is a reminder that {req_name} for your property at {prop_addr} is due on {d
 {urgency_line}
 {grouped_block}
 
-View in Portal: {model.get('portal_link', '#')}
+Open portal for details: {model.get('portal_link', '#')}
 {footer}
             """
         elif template_alias == EmailTemplateAlias.ADMIN_INVITE:
@@ -1973,31 +1978,30 @@ If you did not expect this invitation, please contact the system administrator.
 {digest}{footer}
             """
         elif template_alias == EmailTemplateAlias.AI_EXTRACTION_APPLIED:
-            status_icon = "✅" if model.get('requirement_status') == 'COMPLIANT' else "⚠️" if model.get('requirement_status') == 'EXPIRING_SOON' else "❌"
             doc_plain = document_type_label(model.get('document_type'))
             status_plain = compliance_requirement_status_label(model.get('requirement_status'))
             return f"""
-🤖 AI DOCUMENT ANALYSIS COMPLETE
+SUGGESTED CERTIFICATE DETAILS (REVIEW)
 {ref_line}
 
 Hello {model.get('client_name', 'there')},
 
-Good news! Our AI has successfully extracted and saved certificate details from your uploaded document.
+Assistive extraction produced suggested certificate fields from your upload. They are not statutory verification and may still need your confirmation before they fully apply to scoring.
 
-📋 CERTIFICATE DETAILS SAVED
-----------------------------
+SUGGESTED DETAILS
+-----------------
 Property:         {model.get('property_address', 'N/A')}
 Document Type:    {doc_plain}
 Certificate No:   {model.get('certificate_number', 'N/A')}
 Expiry Date:      {model.get('expiry_date', 'N/A')}
-Status:           {status_icon} {status_plain}
+Status (snapshot): {status_plain}
 
 WHAT HAPPENS NEXT:
-• Your compliance dashboard has been updated automatically
-• You'll receive reminders before this certificate expires
-• You can review or edit these details in your portal
+• Confirm or correct extracted fields on Documents when prompted — scoring and requirement rows catch up after confirmation and any recalculation.
+• You can still receive reminders based on dates already on record.
+• This message is informational; the portal remains authoritative for obligation state.
 
-View in Dashboard: {model.get('portal_link', '#')}
+Open portal to review: {model.get('portal_link', '#')}
 {footer}
             """
         elif template_alias == EmailTemplateAlias.ORDER_DELIVERED:
@@ -2035,12 +2039,12 @@ Your documents are also available in your portal dashboard:
 PENDING VERIFICATION DIGEST
 ==========================
 
-Summary of documents awaiting admin verification (counts only):
+Documents in UPLOADED state awaiting admin review (counts only). UPLOADED means received for review — not confirmed as compliant until reviewed in the platform.
 
 - Total UPLOADED: {count_pending}
 - Older than 24 hours: {count_older_24h}
 
-Review the admin dashboard pending-verification list to process these documents.
+Open the admin dashboard pending-verification list to process these documents.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.MONTHLY_DIGEST:
@@ -2641,13 +2645,13 @@ Hello {model.get('client_name', 'there')},
         has_amber = any(p.get('new_status') == 'AMBER' for p in affected_properties)
         
         if has_red:
-            subject = "🔴 Urgent: Compliance Status Changed to RED"
+            subject = "Compliance status update (RED dashboard indicator)"
             status_color = "#dc2626"
         elif has_amber:
-            subject = "🟡 Attention: Compliance Status Changed to AMBER"
+            subject = "Compliance status update (AMBER dashboard indicator)"
             status_color = "#f59e0b"
         else:
-            subject = "Compliance Status Update"
+            subject = "Compliance status update"
             status_color = "#64748b"
         
         # Add color info to properties
@@ -2732,7 +2736,7 @@ Hello {model.get('client_name', 'there')},
                 "tagline": "AI-Driven Solutions & Compliance"
             },
             client_id=client_id,
-            subject="🤖 AI Document Analysis Complete - Certificate Details Saved"
+            subject="Suggested certificate details — review in portal",
         )
 
     # =========================================================================

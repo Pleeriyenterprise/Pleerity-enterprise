@@ -107,6 +107,14 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
             "It highlights what needs attention next — not a full data export."
         )
     )
+    parts.append(
+        info_panel_html(
+            "How to read this",
+            "<p style=\"margin:0;\">Green, amber, and red here are <strong>dashboard operational indicators</strong> from tracked "
+            "requirements and evidence recorded in Compliance Vault Pro — not a legal determination. "
+            "Figures can change when data updates or scoring recalculates. Your portal is authoritative for current obligation state.</p>",
+        )
+    )
 
     if summary and isinstance(summary, dict):
         parts.append(section_title_html("Portfolio snapshot"))
@@ -121,7 +129,7 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
             ("Requirements — overdue", str(rb.get("overdue", 0))),
             ("Requirements — due soon", str(rb.get("expiring_soon", 0))),
             ("Requirements — pending / missing evidence", str(rb.get("pending", 0))),
-            ("Overall compliance rate", f"{summary.get('compliance_rate', 0)}%"),
+            ("Requirements met (recorded rate)", f"{summary.get('compliance_rate', 0)}%"),
         ]
         ch = summary.get("compliance_score_headline") or {}
         if isinstance(ch, dict) and (ch.get("compliance_score_display") or ch.get("score_status")):
@@ -135,21 +143,21 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
         for p in red_props[:4]:
             addr = str(p.get("address") or "Property").strip()
             od = p.get("overdue")
-            priority_lines.append(f"{addr} — compliance status is red; overdue requirements: {od}.")
+            priority_lines.append(f"{addr} — dashboard indicator red; overdue tracked requirements: {od}.")
         for p in amb_props[:3]:
             if len(priority_lines) >= 5:
                 break
             addr = str(p.get("address") or "Property").strip()
-            priority_lines.append(f"{addr} — needs attention soon (amber).")
+            priority_lines.append(f"{addr} — dashboard indicator amber; review upcoming items in the portal.")
         if priority_lines:
             parts.append(section_title_html("Top priorities"))
             parts.append(bullet_list_html(priority_lines))
         else:
             parts.append(
                 info_panel_html(
-                    "All clear for now",
-                    "<p style=\"margin:0;\">No properties are currently flagged red or amber in this summary. "
-                    "Keep evidence up to date so reminders stay quiet.</p>",
+                    "All clear in this scheduled summary",
+                    "<p style=\"margin:0;\">No properties are flagged red or amber in this run’s snapshot. "
+                    "Keep evidence up to date in the portal so operational indicators stay current.</p>",
                 )
             )
 
@@ -219,6 +227,10 @@ def build_scheduled_report_digest_text(model: Dict[str, Any]) -> str:
         "",
         f"This email summarises what needs attention. It is not a full export.",
         "",
+        "HOW TO READ THIS:",
+        "- Green / amber / red are dashboard operational indicators from tracked requirements — not a legal determination.",
+        "- The portal is authoritative for current obligation state and when scores last recalculated.",
+        "",
     ]
     summary = model.get("report_summary")
     if summary and isinstance(summary, dict):
@@ -233,7 +245,7 @@ def build_scheduled_report_digest_text(model: Dict[str, Any]) -> str:
                 f"- Overdue: {rb.get('overdue', 0)}",
                 f"- Due soon: {rb.get('expiring_soon', 0)}",
                 f"- Pending: {rb.get('pending', 0)}",
-                f"- Compliance rate: {summary.get('compliance_rate', 0)}%",
+                f"- Requirements met (recorded rate): {summary.get('compliance_rate', 0)}%",
             ]
         )
         ch = summary.get("compliance_score_headline") or {}
