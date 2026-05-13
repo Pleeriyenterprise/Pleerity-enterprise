@@ -103,6 +103,19 @@ All recovery must end in: **observable** queue drain, **`validate-compliance-sco
 3. **Throttle** further bulk recalcs until drain if **S4**-scale (see §5).  
 4. Use logs `event=compliance_fanout`, `stage=dedupe` to explain duplicate suppressions.
 
+### 4.3a In-app Automation Control Centre
+
+During beta, operators use **Admin → Automation** together with **Control Centre** and **Incidents**:
+
+| Symptom | First actions |
+|---------|----------------|
+| Stale scheduler heartbeat | Treat as **S4**-class platform signal — restore API/scheduler process; confirm `scheduler_heartbeat` collection updates. |
+| Degraded / failed job rows | Open **Message logs** for the run; correlate template, channel, recipient, error. |
+| Delivery still `unknown` after SLA hours | Provider webhooks / Postmark (or equivalent) + `delivery_reconciliation` job outcomes. |
+| Open incidents | **Incidents** list — dedupe narrative; link back to job name and time window. |
+
+**Do not** invent new recovery writes beyond §2.2 sanctioned routes.
+
 ### 4.4 Broken CTA
 
 1. Capture API payload: `take_action`, `metadata.take_action`, `primary_action_*`.  

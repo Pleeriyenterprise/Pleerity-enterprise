@@ -29,6 +29,9 @@ This is **presentation-layer governance** — not a terminology redesign of the 
 6. **Single source of truth for formatting**  
    Use `frontend/src/utils/presentationLanguage.js` (`operationalLabelForToken`, etc.) and existing domain helpers (e.g. `requirementIntelligenceLabels.js`, `presentDomain.js`) instead of ad-hoc `.replace(/_/g, ' ')` in components.
 
+7. **L-009 propagation notices (`propagation_notice`)**  
+   On document flows that return this field, render via `propagationNoticeForUi` + **`PropagationNoticeCallout`** (`frontend/src/utils/propagationNoticePresentation.js`, `frontend/src/components/client/PropagationNoticeCallout.jsx`). Prefer the **server `message`**; do not paraphrase into stronger certainty than the API states.
+
 ---
 
 ## Forbidden patterns in UI code

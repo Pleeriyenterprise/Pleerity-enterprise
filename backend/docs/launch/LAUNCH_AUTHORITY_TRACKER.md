@@ -6,7 +6,7 @@
 
 **Allowed status values only:** `READY` | `PARTIAL` | `BLOCKED` | `DEFERRED_FOR_POST_LAUNCH` | `ACCEPTED_LAUNCH_RISK`
 
-**Last tracker update:** 2026-05-08 (+ **L-005 vertical closure** — parent **`READY_FOR_WIDER_LAUNCH`** per [L-005 closure inventory](#l-005--parent-terminal-state-inventory--freeze-2026-05-08); **L-008** / **L-009** / **L-010** unchanged)
+**Last tracker update:** 2026-05-12 (B-plane: standard client read-only `propagation_notice` on Documents + Bulk upload; RUNBOOK §4.3a Automation Centre triage; prior L-009 FE row reconciled)
 
 ---
 
@@ -32,7 +32,7 @@
 | 5 | Recovery/reconciliation paths exist | **PARTIAL** — recalc queue, admin validate/repair, SLA monitors; not fully exercised under chaos |
 | 6 | Core async flows are observable | **PARTIAL** — fanout / transition observability + **queue replay/idempotency fields** on authority-mutation enqueue; not all clients consume full trace |
 | 7 | Operational support flows are viable | **PARTIAL** — support correlation ladder documented (`AUTHORITY_WRITE_PATH_RECONCILIATION.md`); stuck `RUNNING` reclaim still manual |
-| 8 | Evidence semantics are consistent | **PARTIAL** — **L-009** inventory closed (bulk/zip, deletes/rejects, admin document mutations); **FE** still does not consume `propagation_notice` (explicit L-009 exclusion); **L-005** parent **`READY_FOR_WIDER_LAUNCH`** for in-scope V2 API + admin UI flag coherence (**L-005e**); wider copy / tier marketing review remains program work |
+| 8 | Evidence semantics are consistent | **PARTIAL** — **L-009** inventory closed (bulk/zip, deletes/rejects, admin document mutations); **standard client** read-only `propagation_notice` on **Documents** + **Bulk upload** when API returns it (B-plane, 2026-05-12); other FE surfaces unchanged; **L-005** parent **`READY_FOR_WIDER_LAUNCH`** for in-scope V2 API + admin UI flag coherence (**L-005e**); wider copy / tier marketing review remains program work |
 | 9 | Critical workflows are tested | **PARTIAL** — unit/HTTP suites; Mongo-dependent env gaps remain |
 |10 | Remaining risks explicitly accepted | **PARTIAL** — this tracker + audit docs; formal sign-off not recorded here |
 
@@ -258,7 +258,7 @@ Each row: category, subcategory, original audit classification (A/B/C), current 
 | **User trust risks** | Medium |
 | **Launch impact** | High |
 | **Current mitigation** | Gate merged into fanout; observability rows; **optional** `propagation_notice` `{code, message}` from **`build_propagation_notice_from_transition_fanout`** / **`merge_propagation_notice_from_ordered_transition_fanouts`** only (stable codes; no raw `activation_reason`); bulk/zip **per-row + merged top-level** notice order = **`results`** iteration order (see `_finalize_bulk_zip_results_propagation_notices` docstring). |
-| **Remaining gaps** | **None for in-scope L-009 HTTP inventory.** Residual: **FE** does not read `propagation_notice` (**explicit exclusion**, B-plane); composite gates 1–10 still govern overall launch. |
+| **Remaining gaps** | **None for in-scope L-009 HTTP inventory.** Residual: **standard client** surfaces `propagation_notice` **read-only** on **Documents** + **Bulk upload** when API returns it (`frontend/src/utils/propagationNoticePresentation.js`, `PropagationNoticeCallout.jsx`); other routes unchanged — extend only under named B-plane follow-up + tracker row. |
 | **Evidence / tests** | `test_workflow_rst_core_backbone_activation_phase2a.py`, **`tests/test_client_propagation_notice.py`**, **`tests/test_evidence_match_operations_http.py`**, **`tests/test_evidence_review_lifecycle_propagation_notice.py`**, **`tests/test_apply_extraction_propagation_notice.py`**, **`tests/test_client_upload_propagation_notice.py`**, **`tests/test_l009_closure_propagation_notice.py`** |
 
 ### L-010 Plan limits / downgrade behaviour
@@ -306,6 +306,7 @@ Each row: category, subcategory, original audit classification (A/B/C), current 
 - **STOP FEATURE WORK** — **Yes for net-new product features** until composite moves toward READY and gate checklist tightens.
 - **READY FOR CONTROLLED BETA** — **PARTIAL** only with written acceptance of PARTIAL rows and ops monitoring on queue + score pending.
 - **READY FOR PAID PILOT** — **Same as beta** until remaining commercial dimensions (e.g. full billing narrative) move to READY; **L-008** / **L-010** parent domains are **`READY_FOR_WIDER_LAUNCH`** within their scopes.
+- **PILOT GOVERNANCE** — **`docs/launch/PILOT_LAUNCH_GOVERNANCE.md`** — residual-risk acceptance + pilot positioning; **public pricing / marketing feature lists** must match **`services/plan_registry.py`** `FEATURE_MATRIX` (no entitlement drift).
 - **READY FOR WIDER LAUNCH** — **NO** (gate checklist not satisfied).
 
 ---
@@ -463,17 +464,17 @@ If the **parent** `L-00x` row remains **PARTIAL**, add **exactly one sentence** 
 | `routes/admin.py` | `POST .../reject-unresolved` | `rej_fanout` | **COVERED** |
 | `routes/admin.py` | `POST .../backfill-evidence-match` | — | **EXCLUDED** — batch support/repair tool; operators use audit + `preview` / counts; not a per-transition client honesty contract. |
 | Internal jobs | `_run_analysis_after_upload` → `sync_for_documents_touching` | — | **EXCLUDED** — no synchronous HTTP response; observability remains in logs/fanout if wired elsewhere. |
-| Frontend | — | — | **EXCLUDED** from L-009 — no UI consumption of `propagation_notice` in-repo; API remains contract for integrators and admin clients. |
+| Frontend | — | — | **PARTIAL (B-plane)** — Standard client **read-only** display of optional `propagation_notice` on **Documents** (`/documents` upload + apply-extraction) and **Bulk upload** (`/documents/bulk-upload`, `/documents/zip-upload`) when API returns it; does not alter authority or enqueue semantics; broader FE inventory still open. |
 
 ### Freeze criteria (L-009)
 
 * **No** edits to `services/client_propagation_notice.py`, `_finalize_bulk_zip_results_propagation_notices`, or route notice wiring **except** regression fix, audit failure, production incident, or **new** governed route added under a **named** follow-up unit with tracker update.  
-* **No** opportunistic FE work under L-009; open under **B / UX** program when picked.  
+* **B-plane (client read-only):** Additional surfaces may display returned `propagation_notice` **only** as informational copy (no new writes, no authority shortcuts); each expansion updates this inventory row + `PILOT_LAUNCH_GOVERNANCE.md` / `PRESENTATION_LANGUAGE_GOVERNANCE.md` cross-refs as applicable.  
 * **Reopen** inventory row only with explicit rationale row.
 
 ### Operational / support narrative
 
-Support and operators trace backbone deferral via existing transition fanout / audit correlation IDs (`AUTHORITY_WRITE_PATH_RECONCILIATION.md`, queue observability). Client-visible honesty for deferral on **in-scope** routes is **`propagation_notice.code`** + stable **`message`** only.
+Support and operators trace backbone deferral via existing transition fanout / audit correlation IDs (`AUTHORITY_WRITE_PATH_RECONCILIATION.md`, queue observability). Client-visible honesty for deferral on **in-scope** routes is **`propagation_notice.code`** + stable **`message`** on the API; where the standard client surfaces it (Documents, Bulk upload), the UI shows the **server `message`** verbatim (read-only).
 
 ---
 
@@ -655,6 +656,23 @@ Operators trace sends via **`message_logs`** + orchestrator metadata; mis-tenant
 
 ---
 
+## UI / brand consistency governance (frontend)
+
+**Status:** PARTIAL — governed token layer and CTA semantics tightened; full-page drift burn-down is continuous.
+
+| Rule | Requirement |
+|------|--------------|
+| No hardcoded marketing hex drift | Prefer `src/config/branding.js`, `src/design-tokens.js`, Tailwind `midnight-blue` / `electric-teal` / `brand-*`, or CSS variables in `src/index.css`. **Never** use truncated midnight (`#0B1D3`); canonical is **`#0B1D3A`**. |
+| No parallel styling systems | Do not introduce alternate theme objects per feature module. New surfaces use shadcn primitives + governed tokens. |
+| Canonical components | Buttons, cards, alerts, and tables should use `@/components/ui/*` patterns; avoid one-off button colour stacks unless documented in `docs/governance/DESIGN_SYSTEM_GOVERNANCE.md`. |
+| CTA hierarchy | **Primary actions:** Electric Teal (`Button` default variant). **Framework / nav:** Midnight Blue. Do not invert without design review. |
+| Async honesty | UI must not imply instant legal finality, guaranteed verification, or completed authority reconciliation. Visual “success” states follow existing backend payloads only (L-004, scoring pending, `propagation_notice` policy unchanged). |
+| No page-level drift | New pages use `--background` canvas (`#F8FAFC`), card white, borders `#E5E7EB`, and semantic status colours per Brand v1.0. |
+
+**Reference:** `docs/governance/DESIGN_SYSTEM_GOVERNANCE.md` (repo root `docs/`, not under `backend/docs/`).
+
+---
+
 ## Document index (governance artifacts)
 
 | Document | Purpose |
@@ -667,6 +685,7 @@ Operators trace sends via **`message_logs`** + orchestrator metadata; mis-tenant
 | `docs/STREAM_B_SCORING_AUTHORITY_MATRIX.md` | Stream B reference |
 | `docs/REQUIREMENT_WORKFLOW_CLASS_DECISION_RECORD.md` | Workflow classes |
 | `docs/WORKFLOW_BEHAVIOUR_GOVERNANCE.md` | Workflow behaviour |
+| `docs/governance/DESIGN_SYSTEM_GOVERNANCE.md` (repo) | Pleerity Brand v1.0 — UI tokens, forbidden patterns, async-honesty visual rules |
 
 ---
 

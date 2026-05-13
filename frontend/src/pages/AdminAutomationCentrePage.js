@@ -243,6 +243,20 @@ export default function AdminAutomationCentrePage() {
           </button>
         </div>
 
+        <p className="mb-4 text-sm text-slate-600 max-w-4xl">
+          Use this page with{' '}
+          <Link to="/admin/control-centre" className="text-indigo-700 underline font-medium">
+            Control Centre
+          </Link>{' '}
+          and{' '}
+          <Link to="/admin/incidents" className="text-indigo-700 underline font-medium">
+            Incidents
+          </Link>{' '}
+          for triage. Recovery ordering for scores, queues, and stuck jobs:{' '}
+          <span className="font-mono text-xs bg-slate-100 px-1 rounded">backend/docs/RUNBOOK_CONTROLLED_BETA_OPERATIONS.md</span>{' '}
+          (§4–§6).
+        </p>
+
         {loading && !jobRuns.items?.length && (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-10 w-10 border-2 border-indigo-600 border-t-transparent" />

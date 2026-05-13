@@ -23,6 +23,7 @@ import {
   Archive
 } from 'lucide-react';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import PropagationNoticeCallout from '../components/client/PropagationNoticeCallout';
 import { cn } from '../lib/utils';
 
 const BulkUploadPage = () => {
@@ -40,6 +41,8 @@ const BulkUploadPage = () => {
   const [uploadMode, setUploadMode] = useState('files'); // 'files' or 'zip'
   const [zipFile, setZipFile] = useState(null);
   const [upgradeRequiredDetail, setUpgradeRequiredDetail] = useState(null);
+  /** Top-level L-009 notice from bulk or ZIP API (merged server-side when present). */
+  const [bulkPropagationNotice, setBulkPropagationNotice] = useState(null);
 
   const canUseZipUpload = hasFeature('zip_upload');
 
@@ -173,6 +176,7 @@ const BulkUploadPage = () => {
     setUploading(true);
     setUploadProgress(0);
     setZipFile(prev => ({ ...prev, status: 'uploading' }));
+    setBulkPropagationNotice(null);
 
     try {
       const formData = new FormData();
@@ -204,6 +208,11 @@ const BulkUploadPage = () => {
       setFiles(extractedFiles);
 
       const { successful, failed, skipped, auto_matched } = response.data.summary;
+      setBulkPropagationNotice(
+        response.data?.propagation_notice && typeof response.data.propagation_notice === 'object'
+          ? response.data.propagation_notice
+          : null,
+      );
       if (failed === 0) {
         toast.success(`ZIP processed! ${successful} documents uploaded successfully.`);
       } else {
@@ -250,6 +259,7 @@ const BulkUploadPage = () => {
 
     setUploading(true);
     setUploadProgress(0);
+    setBulkPropagationNotice(null);
 
     try {
       const formData = new FormData();
@@ -286,6 +296,12 @@ const BulkUploadPage = () => {
       }));
 
       setUploadResults(response.data.summary);
+
+      setBulkPropagationNotice(
+        response.data?.propagation_notice && typeof response.data.propagation_notice === 'object'
+          ? response.data.propagation_notice
+          : null,
+      );
 
       const { successful, failed, auto_matched } = response.data.summary;
       if (failed === 0) {
@@ -387,6 +403,13 @@ const BulkUploadPage = () => {
             <UpgradeRequired upgradeDetail={upgradeRequiredDetail} showBackToDashboard />
           </div>
         )}
+        {bulkPropagationNotice ? (
+          <PropagationNoticeCallout
+            className="mb-6"
+            notice={bulkPropagationNotice}
+            onDismiss={() => setBulkPropagationNotice(null)}
+          />
+        ) : null}
         {/* Property Selection */}
         <Card className="mb-6" data-testid="property-selection-card">
           <CardHeader>

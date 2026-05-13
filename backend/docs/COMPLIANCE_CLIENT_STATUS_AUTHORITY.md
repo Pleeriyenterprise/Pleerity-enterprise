@@ -61,6 +61,7 @@ Do **not** re-interpret overdue via ad hoc calendar on raw `PENDING` for KPI tot
   3. `client_portal_surface_visible_row`
   4. `compute_client_portal_requirement_stats`
 - `operational task flow` surfaces (Today / task streams) MAY display requirement-linked tasks and canonical CTAs, but MUST NOT be used as a replacement aggregate for compliance KPI counts.
+- Optional API **`propagation_notice`** on document mutations is **not** a status authority — when displayed on client vault flows, it explains **temporary** backbone/queue deferral only; requirement rows and headline score semantics remain per projection + scoring services.
 - `calendar/schedule view` surfaces MAY use calendar urgency semantics (`remaining`, `overdue`, `expiring`) for planning outputs; they MUST be labeled schedule-only and MUST NOT be represented as KPI-truth totals.
 - `audit/reporting view` surfaces SHOULD mirror KPI-authoritative counts unless the output is explicitly labeled as alternate lens or schedule view.
 - Allowed divergence must be explicit in payload copy/labels (for example: `catalog_portfolio_view` note, expiry schedule disclaimer).

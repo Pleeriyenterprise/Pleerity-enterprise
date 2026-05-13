@@ -35,13 +35,16 @@ import {
   Trash2
 } from 'lucide-react';
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import PropagationNoticeCallout from '../components/client/PropagationNoticeCallout';
 import { normalizeRequirementCode, documentListStatusLabel } from '../domain/presentDomain';
 import {
-  clientFacingVerificationLabel,
-  effectiveAssuranceTier,
   effectiveEvidenceReviewState,
 } from '../utils/evidenceReviewUi';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
+import {
+  openClientDocumentFileInNewTab,
+  downloadClientDocumentFile,
+} from '../utils/clientDocumentPreview';
 
 function isExtractionReviewPending(reviewStatus) {
   const s = String(reviewStatus || '').toUpperCase();
@@ -78,6 +81,8 @@ const DocumentsPage = () => {
   const [applying, setApplying] = useState(false);
   const [editedData, setEditedData] = useState({});
   const [upgradeRequiredDetail, setUpgradeRequiredDetail] = useState(null);
+  /** Optional L-009 `propagation_notice` from last document mutation — read-only async honesty. */
+  const [documentPropagationNotice, setDocumentPropagationNotice] = useState(null);
   const [uploadForm, setUploadForm] = useState({
     property_id: '',
     requirement_id: '',
@@ -278,62 +283,19 @@ const DocumentsPage = () => {
 
   const handleViewDocument = async (doc) => {
     try {
-      const res = await api.get(`/documents/${doc.document_id}/file`, { responseType: 'blob' });
-      const blob = new Blob([res.data], { type: res.data.type || 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      // Revoke after a delay so the new tab can load it
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      await openClientDocumentFileInNewTab(api, doc.document_id);
     } catch (err) {
-      const data = err.response?.data;
-      if (data instanceof Blob) {
-        data.text().then((text) => {
-          try {
-            const parsed = JSON.parse(text);
-            const msg = parsed.detail?.message ?? (typeof parsed.detail === 'string' ? parsed.detail : parsed.detail?.msg) ?? parsed.message ?? 'Could not open document';
-            toast.error(msg);
-          } catch (_) {
-            toast.error('Could not open document');
-          }
-        }).catch(() => toast.error('Could not open document'));
-        return;
-      }
-      let message = 'Could not open document';
-      if (data && typeof data === 'string') message = data;
-      else if (data?.detail && typeof data.detail === 'string') message = data.detail;
-      else if (data?.detail?.message) message = data.detail.message;
-      toast.error(message);
+      toast.error(err?.message || 'Could not open document');
     }
   };
 
   const handleDownloadDocument = async (doc) => {
     try {
-      const res = await api.get(`/documents/${doc.document_id}/file?download=true`, { responseType: 'blob' });
-      const blob = new Blob([res.data], { type: res.data.type || 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.file_name || doc.original_filename || 'document';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success('Download started—open the file from your device when it finishes.');
+      await downloadClientDocumentFile(api, doc, {
+        showSuccessToast: (msg) => toast.success(msg),
+      });
     } catch (err) {
-      const data = err.response?.data;
-      if (data instanceof Blob) {
-        data.text().then((text) => {
-          try {
-            const parsed = JSON.parse(text);
-            const msg = parsed.detail?.message ?? (typeof parsed.detail === 'string' ? parsed.detail : null) ?? parsed.message ?? 'Could not download document';
-            toast.error(msg);
-          } catch (_) {
-            toast.error('Could not download document');
-          }
-        }).catch(() => toast.error('Could not download document'));
-        return;
-      }
-      toast.error(data?.detail || 'Could not download document');
+      toast.error(err?.message || 'Could not download document');
     }
   };
 
@@ -551,6 +513,11 @@ const DocumentsPage = () => {
       if (response.data?.outcome && typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: response.data.outcome }));
       }
+      setDocumentPropagationNotice(
+        response.data?.propagation_notice && typeof response.data.propagation_notice === 'object'
+          ? response.data.propagation_notice
+          : null,
+      );
       setReviewModal(null);
       fetchData();
     } catch (error) {
@@ -652,6 +619,11 @@ const DocumentsPage = () => {
         if (response.data?.outcome && typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: response.data.outcome }));
         }
+        setDocumentPropagationNotice(
+          response.data?.propagation_notice && typeof response.data.propagation_notice === 'object'
+            ? response.data.propagation_notice
+            : null,
+        );
       } else {
         await api.patch(
           `/properties/${confirmDetailsModal.property_id}/requirements/${confirmDetailsModal.requirement_id}`,
@@ -725,10 +697,16 @@ const DocumentsPage = () => {
     if (String(doc?.assurance_tier || '').trim().toUpperCase() === 'EXTERNALLY_VERIFIED') {
       displayLabel = 'Externally verified';
     }
+    const externallyVerified = String(doc?.assurance_tier || '').trim().toUpperCase() === 'EXTERNALLY_VERIFIED';
     return (
-      <span data-testid={`doc-status-${String(key || '').toLowerCase()}`} className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}>
+      <span
+        data-testid={`doc-status-${String(key || '').toLowerCase()}`}
+        title={externallyVerified ? 'Externally verified assurance' : undefined}
+        className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}
+      >
         <Icon className="w-3 h-3" />
         {displayLabel}
+        {externallyVerified ? <Award className="w-3 h-3 shrink-0" aria-hidden /> : null}
       </span>
     );
   };
@@ -901,19 +879,36 @@ const DocumentsPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto w-full">
+        {documentPropagationNotice ? (
+          <PropagationNoticeCallout
+            className="mb-6"
+            notice={documentPropagationNotice}
+            onDismiss={() => setDocumentPropagationNotice(null)}
+          />
+        ) : null}
         {requirementsNeedingDocuments > 0 && (
           <div
-            className="mb-6 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+            className="mb-6 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 flex flex-col gap-3"
             data-testid="documents-missing-requirements-banner"
           >
             <p className="text-sm text-amber-950">
               <span className="font-semibold">{requirementsNeedingDocuments}</span>{' '}
-              {requirementsNeedingDocuments === 1 ? 'requirement has' : 'requirements have'} no uploaded evidence yet
-              (missing file).
+              {requirementsNeedingDocuments === 1 ? 'requirement currently has' : 'requirements currently have'} no
+              uploaded evidence (from the requirement list on this page).
             </p>
+            <p className="text-xs text-amber-900/90 max-w-prose">
+              Command Center may show a different number for “missing evidence” because it uses your latest{' '}
+              <strong>compliance score snapshot</strong> (portfolio-wide, score-impacting count)—not this page’s live
+              filter alone.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 shrink-0">
             <Button variant="outline" size="sm" className="border-amber-300 shrink-0 min-h-10" asChild>
-              <Link to="/requirements?status=OVERDUE_OR_MISSING">View missing requirements</Link>
+              <Link to="/requirements?status=OVERDUE_OR_MISSING">View affected requirements</Link>
             </Button>
+            <Button variant="ghost" size="sm" className="text-amber-950 shrink-0 min-h-10" asChild>
+              <Link to="/compliance-score">How score counts missing evidence</Link>
+            </Button>
+            </div>
           </div>
         )}
         {requirementsAwaitingEvidenceConfirm > 0 && (
@@ -1229,10 +1224,6 @@ const DocumentsPage = () => {
                                 {doc.file_name || doc.original_filename || 'Document'}
                               </span>
                               {getStatusBadge(doc)}
-                              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
-                                {clientFacingVerificationLabel(doc)}
-                                {effectiveAssuranceTier(doc) === 'EXTERNALLY_VERIFIED' ? <Award className="w-3 h-3" /> : null}
-                              </span>
                               {(doc.extraction_id || doc.ai_extraction || extractingDocumentId === doc.document_id) && getExtractionStatusBadge(doc, extractingDocumentId)}
                             </div>
                             {doc.property_id && (
