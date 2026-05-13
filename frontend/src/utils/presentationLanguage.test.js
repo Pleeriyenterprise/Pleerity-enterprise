@@ -10,7 +10,7 @@ describe('presentationLanguage', () => {
   });
 
   it('maps known async-honest compliance phrases', () => {
-    expect(operationalLabelForToken('accepted_unverified')).toBe('Accepted (awaiting verification)');
+    expect(operationalLabelForToken('accepted_unverified')).toBe('Accepted on file (not externally verified)');
     expect(operationalLabelForToken('RECALC_PENDING')).toBe('Compliance score update pending');
     expect(operationalLabelForToken('propagation_pending')).toBe('Updates still applying');
   });

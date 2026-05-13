@@ -6,7 +6,7 @@
 
 **Allowed status values only:** `READY` | `PARTIAL` | `BLOCKED` | `DEFERRED_FOR_POST_LAUNCH` | `ACCEPTED_LAUNCH_RISK`
 
-**Last tracker update:** 2026-05-12 (B-plane: standard client read-only `propagation_notice` on Documents + Bulk upload; RUNBOOK §4.3a Automation Centre triage; prior L-009 FE row reconciled)
+**Last tracker update:** 2026-05-13 (RUNBOOK §12–§13 pre-pilot rehearsal checklist + instrumentation observation; mental-model copy module `workspaceOrientationCopy.js` on client KPI surfaces)
 
 ---
 
@@ -27,11 +27,11 @@
 |---|------|-------------------|
 | 1 | No known conflicting authorities remain | **FALSE** — legacy optimistic requirement `$set` on verify remains; authority reconciles after; single score writer holds |
 | 2 | No major stale-state trust risks remain | **PARTIAL** — queue + `compliance_score_pending` observable; some surfaces depend on refresh |
-| 3 | No misleading compliance wording remains | **PARTIAL** — improved; ongoing copy review against authority docs |
+| 3 | No misleading compliance wording remains | **PARTIAL** — improved; `PRESENTATION_LANGUAGE_GOVERNANCE.md` semantic families + `presentationLanguage.js` / vault formatters; ongoing copy review against authority docs |
 | 4 | Notification ownership is governed | **PARTIAL** — **L-008** inventory closed for in-scope template governance + high-volume idempotency (**L-008d/e**); **`NOTIFICATION_DISPATCH`** global activation remains intentionally off; deprecated `EmailService` quarantine unchanged |
 | 5 | Recovery/reconciliation paths exist | **PARTIAL** — recalc queue, admin validate/repair, SLA monitors; not fully exercised under chaos |
 | 6 | Core async flows are observable | **PARTIAL** — fanout / transition observability + **queue replay/idempotency fields** on authority-mutation enqueue; not all clients consume full trace |
-| 7 | Operational support flows are viable | **PARTIAL** — support correlation ladder documented (`AUTHORITY_WRITE_PATH_RECONCILIATION.md`); stuck `RUNNING` reclaim still manual |
+| 7 | Operational support flows are viable | **PARTIAL** — support correlation ladder documented (`AUTHORITY_WRITE_PATH_RECONCILIATION.md`); **RUNBOOK §12–§13** rehearsal checklist + analytics gaps for pilot observation; stuck `RUNNING` reclaim still manual |
 | 8 | Evidence semantics are consistent | **PARTIAL** — **L-009** inventory closed (bulk/zip, deletes/rejects, admin document mutations); **standard client** read-only `propagation_notice` on **Documents** + **Bulk upload** when API returns it (B-plane, 2026-05-12); other FE surfaces unchanged; **L-005** parent **`READY_FOR_WIDER_LAUNCH`** for in-scope V2 API + admin UI flag coherence (**L-005e**); wider copy / tier marketing review remains program work |
 | 9 | Critical workflows are tested | **PARTIAL** — unit/HTTP suites; Mongo-dependent env gaps remain |
 |10 | Remaining risks explicitly accepted | **PARTIAL** — this tracker + audit docs; formal sign-off not recorded here |

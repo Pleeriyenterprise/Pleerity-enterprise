@@ -3,6 +3,7 @@
  * Prefer API `workflow_status_label` / `compliance_state_label` when present; these are client fallbacks.
  */
 import { workflowAwareMissingEvidenceLabel } from './evidenceStatus';
+import { operationalLabelForToken } from './presentationLanguage';
 
 const WORKFLOW_STATUS_LABELS = {
   NOT_APPLICABLE: 'Not applicable',
@@ -19,6 +20,10 @@ const COMPLIANCE_STATE_LABELS = {
   OVERDUE: 'Overdue',
   MISSING: 'Missing required evidence',
   EXPIRING: 'Expiring soon',
+  ACCEPTED_UNVERIFIED: 'Accepted on file (not externally verified)',
+  RECALC_PENDING: 'Compliance score update pending',
+  PENDING_SYNC: 'Sync pending',
+  PROPAGATION_PENDING: 'Updates still applying',
 };
 
 const EVIDENCE_STATE_LABELS = {
@@ -38,13 +43,7 @@ const EVIDENCE_MODE_CLIENT_LABELS = {
 };
 
 function titleCaseToken(raw) {
-  const k = String(raw || '').trim().toUpperCase();
-  if (!k) return '—';
-  return k
-    .split('_')
-    .filter(Boolean)
-    .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
-    .join(' ');
+  return operationalLabelForToken(raw, { emptyLabel: '—' });
 }
 
 /** @param {string|undefined|null} raw */
@@ -176,7 +175,7 @@ export function activeComplianceJobClientSummary(activeJob) {
   }
   const jid = String(activeJob.job_id || '').trim();
   const statusRaw = String(activeJob.status_label || activeJob.display_status || activeJob.status || '').trim();
-  const status = statusRaw ? titleCaseToken(statusRaw.replace(/_/g, ' ')) : '';
+  const status = statusRaw ? operationalLabelForToken(statusRaw, { emptyLabel: '' }) : '';
   const contractor = String(activeJob.contractor_name || activeJob.assigned_contractor_name || '').trim();
   const next = activeJob.next_visit_at || activeJob.scheduled_visit_at || activeJob.next_appointment_at;
   const lines = [];

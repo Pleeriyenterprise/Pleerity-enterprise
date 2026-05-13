@@ -57,13 +57,14 @@ import {
   getGovernanceUxPilotExportSurfaceNote,
   getGovernanceUxPilotPortfolioSupplementLine,
 } from '../utils/governanceUxPilotAdapter';
+import { operationalLabelForToken } from '../utils/presentationLanguage';
 
 function scoreDriverStatusLabel(raw) {
   const s = String(raw || '').trim().toUpperCase();
   if (s === 'OVERDUE') return 'Overdue';
   if (s === 'EXPIRING_SOON') return 'Expiring soon';
   if (s === 'MISSING_EVIDENCE') return 'No document uploaded';
-  if (s === 'NEEDS_CONFIRMATION') return 'Awaiting verification';
+  if (s === 'NEEDS_CONFIRMATION') return operationalLabelForToken('needs_confirmation');
   const lbl = complianceRequirementStatusLabel(s);
   return lbl && lbl !== '—' ? lbl : 'Needs attention';
 }

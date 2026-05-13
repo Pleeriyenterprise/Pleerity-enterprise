@@ -32,8 +32,9 @@ export function humanizeSnakeFallback(normalizedKey) {
  */
 const OPERATIONAL_LABEL_BY_KEY = {
   // Evidence / compliance (async-honest wording)
-  accepted_unverified: 'Accepted (awaiting verification)',
+  accepted_unverified: 'Accepted on file (not externally verified)',
   pending_verification: 'Awaiting verification',
+  needs_confirmation: 'Awaiting confirmation',
   evidence_pending: 'Evidence review pending',
   pending_sync: 'Sync pending',
   recalc_pending: 'Compliance score update pending',

@@ -80,6 +80,18 @@ Keep uncertainty visible where the system is still catching up: e.g. “Awaiting
 - **Hub:** `frontend/src/utils/workspaceOrientationCopy.js` — extend here rather than scattering duplicate intros across pages.
 - **Companion:** Page-level confidence one-liners remain in `frontend/src/utils/confidenceUxCopy.js` where they add non-duplicative emphasis.
 
+### Semantic families (evidence vs tokens)
+
+Avoid implying **one English phrase = one API enum** across different domains:
+
+| Family | Where it applies | Canonical client phrasing |
+|--------|------------------|---------------------------|
+| **Document vault file row** | `documentListStatusLabel` / Documents filters | File lifecycle: e.g. “Awaiting confirmation”, “Received (confirm to apply)”, “Confirmed” — vault-first, then scoring catches up. |
+| **Operational token map** | `operationalLabelForToken` in `presentationLanguage.js` | Workflow / async tokens (e.g. `accepted_unverified`, `pending_verification`, `needs_confirmation`, propagation/recalc keys). Extend the map; do not duplicate ad hoc strings on filters. |
+| **Requirement matrix / compliance state** | `requirementIntelligenceLabels.js`, `evidenceStatus.js`, resolver-backed rows | Obligation and evidence pipeline semantics; may differ from vault row wording by design when the API distinguishes user confirm vs staff review. |
+
+When adding a new user-visible status, pick the **family** first, then add or reuse a formatter entry so support and client UI stay aligned.
+
 ---
 
 ## Review checklist (PRs)

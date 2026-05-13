@@ -241,6 +241,8 @@ During beta, operators use **Admin → Automation** together with **Control Cent
 - [ ] **Correlation view:** flag, RBAC, `non_authoritative`, caps, **no** tenant sharing.  
 - [ ] **Escalation rules:** S1–S4 and **when to stop enqueue**.  
 - [ ] **`STREAM_F`:** reconstruction order — not timestamp-only causality.
+- [ ] **Landlord vocabulary (no internal jargon):** **Today** = operational inbox; **Dashboard** = portfolio KPIs/trends; **Command Center** = one-screen triage; **Requirements** = obligations that feed scoring rules; **Documents** = evidence vault; **Score headline** = stored calculation (may lag uploads until confirm + recalc).  
+- [ ] **Trust collapse phrases:** “Accepted on file (not externally verified)” ≠ regulator proof; “Awaiting confirmation” = landlord or extraction confirm step on Documents; “Awaiting verification” / queue pending = automation or review still in flight — do not paraphrase as “broken.”
 
 ---
 
@@ -274,6 +276,81 @@ Controlled beta may proceed with discipline; **public launch** remains gated unt
 - **Product / legal:** Marketing and in-app claims must stay within **§18.J** doctrine (`CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md`).
 
 **This runbook does not** waive any of the above; it only governs **beta operations**.
+
+---
+
+## 12. Pre-pilot operational validation checklist (rehearsal)
+
+**Authority:** This section is the **single in-repo rehearsal checklist** for controlled beta / paid pilot readiness. It does **not** replace `LAUNCH_AUTHORITY_TRACKER.md` (gates) or `PILOT_LAUNCH_GOVERNANCE.md` (risk acceptance); it extends **operational** verification for support and ops. Rehearse in **staging** (or a dedicated pilot tenant) before widening cohort size.
+
+### 12.1 Authentication & session
+
+| # | Check | ☐ |
+|---|------|---|
+| A1 | Client login, logout, and session refresh behave as expected; invalid/expired token shows governed error (no silent blank shell). | ☐ |
+| A2 | Admin login / impersonation (if used) matches policy; logout clears sensitive context. | ☐ |
+| A3 | Password reset flow completes end-to-end for a test user. | ☐ |
+
+### 12.2 Billing / Stripe
+
+| # | Check | ☐ |
+|---|------|---|
+| B1 | **TEST vs LIVE** Stripe keys and price IDs match the target environment (`plan_registry` / config review). | ☐ |
+| B2 | New subscription → entitlements reflected in app (gated routes match plan). | ☐ |
+| B3 | Upgrade / downgrade path does not leave contradictory `feature_enabled` vs UI (403 surfaces are explainable). | ☐ |
+
+### 12.3 Automation & notifications (scheduler / delivery)
+
+| # | Check | ☐ |
+|---|------|---|
+| N1 | Scheduler heartbeat collection updates on schedule; stale heartbeat treated as **S4-class** signal per §4.3a. | ☐ |
+| N2 | Degraded automation runs visible in **Admin → Automation**; message logs correlate template / channel / error. | ☐ |
+| N3 | Delivery reconciliation outcomes understood (`unknown` vs `delivered` / bounces) — no manual DB edits. | ☐ |
+| N4 | Incidents list usable for dedupe narrative linked to job name and window. | ☐ |
+
+### 12.4 Compliance workflows (async truth)
+
+| # | Check | ☐ |
+|---|------|---|
+| C1 | Document upload → extraction / confirm path → requirement row updates without bypassing authority sync. | ☐ |
+| C2 | Optional `propagation_notice` on mutations: client sees read-only notice when returned; support can explain queue deferral. | ☐ |
+| C3 | Score recalculation: `PENDING` queue moves to `DONE` or explainable `FAILED`/`DEAD`; headline vs stats language matches **Stream B** / `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`. | ☐ |
+| C4 | Evidence verification / accepted-unverified semantics explainable to a landlord (see support phrases §9 and presentation governance). | ☐ |
+| C5 | Not applicable + reopen paths audited and **sanctioned** only via normal routes (no Mongo hand patches). | ☐ |
+| C6 | Reminders: governed templates only; no `NOTIFICATION_DISPATCH` surprise activation. | ☐ |
+
+### 12.5 Customer “first time” journeys (smoke)
+
+| # | Check | ☐ |
+|---|------|---|
+| F1 | First property → appears on dashboard / properties; no dead-end navigation. | ☐ |
+| F2 | First upload (Documents) → file listed; pending / confirm states honest. | ☐ |
+| F3 | First requirement primary action (resolver-backed CTA) completes or shows structured plan/limit response. | ☐ |
+| F4 | First report (if entitled) or governed upgrade path — no false “success” when gated. | ☐ |
+| F5 | Empty Today / empty Command Center: user sees orientation copy and a next step (not a broken shell). | ☐ |
+
+### 12.6 Admin recovery (support drill)
+
+| # | Check | ☐ |
+|---|------|---|
+| R1 | Identify a **DEAD** recalc job → follow §6.1 (no manual `DONE`). | ☐ |
+| R2 | `validate-compliance-score` `fix=false` then `fix=true` on a **non-prod** property documented. | ☐ |
+| R3 | Affected users identified via audit / property scope — not ad hoc guesswork. | ☐ |
+
+---
+
+## 13. Instrumentation & analytics (pilot observation)
+
+**Goal:** Know whether real users stall without building surveillance-heavy tracking.
+
+| Signal | In-repo / product today | Gap / pilot action |
+|--------|-------------------------|---------------------|
+| Today engagement | Client `emitTodayAnalytics` → backend `product_analytics_service` (see Today page module docstring) | No single “funnel dashboard” in-repo; pilot: sample export / DB review on agreed events |
+| Upload / Documents | No dedicated abandonment metric wired in SPA from Documents page | Pilot: support tags + optional server access logs for repeated failed POSTs |
+| Plan friction | 403 + `UpgradePrompt` / governed discoverability | Correlate support tickets to route + `feature_key`; no new tracking required for beta if ticket discipline exists |
+| Pending-state confusion | Freshness / recalc / propagation copy on KPI surfaces | Train §9 phrases; extend copy via `presentationLanguage.js` + governance, not ad hoc |
+
+**Rule:** New client-side beacons must stay **governed** (event names, PII minimization) and require explicit product sign-off — default for pilot is **ticket + runbook** correlation, not silent behavioural tracking.
 
 ---
 

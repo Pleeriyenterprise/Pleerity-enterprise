@@ -84,6 +84,8 @@ Do **not** re-interpret overdue via ad hoc calendar on raw `PENDING` for KPI tot
 
 Client-facing **page intros, empty states, and footnotes** that distinguish **Dashboard (portfolio KPIs)**, **Today (operational inbox)**, **Command Center (portfolio triage)**, **Requirements (tracked obligations)**, **Documents (evidence vault)**, and **stored scores vs uploads** are **non-authoritative**. They MUST NOT contradict this matrix, imply instant score finality, or substitute for requirement rows or `calculate_compliance_score` outputs. Canonical copy module: `frontend/src/utils/workspaceOrientationCopy.js` (governed alongside `PRESENTATION_LANGUAGE_GOVERNANCE.md`).
 
+**Pre-pilot ops rehearsal:** Support and ops SHOULD walk `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` **§12–§13** before expanding pilot cohort — checklist is presentation/ops only and does not waive KPI authority rules in this document.
+
 ## Not applicable (NOT_REQUIRED) — portal governance
 
 Catalog mark (`POST /api/client/properties/{property_id}/requirements/mark-not-applicable` and `POST /api/properties/{property_id}/requirements/mark-not-applicable`) and requirement-id mark (`POST /api/requirements/{requirement_id}/mark-not-applicable`) align on: preset category (`not_required_reason` / `reason_code`), mandatory **free-text audit reason** (minimum length, trimmed), **`sync_requirement_evidence_authority`**, **`create_audit_log`** with `event: mark_not_applicable` (catalog adds `path: property_catalog`), and **async** `enqueue_compliance_recalc` (no synchronous score rewrite).

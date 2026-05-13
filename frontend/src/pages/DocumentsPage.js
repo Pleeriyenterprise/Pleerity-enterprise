@@ -747,7 +747,7 @@ const DocumentsPage = () => {
       ? (rs === 'approved' ? 'CONFIRMED' : rs === 'rejected' ? 'REJECTED' : 'NEEDS_REVIEW')
       : doc.ai_extraction?.status === 'failed' ? 'FAILED' : 'PENDING');
     const config = {
-      PENDING: { label: 'Awaiting verification', color: 'bg-gray-100 text-gray-700' },
+      PENDING: { label: 'Awaiting confirmation', color: 'bg-gray-100 text-gray-700' },
       EXTRACTED: { label: 'Extracted', color: 'bg-teal-100 text-teal-800' },
       NEEDS_REVIEW: { label: 'Awaiting your confirmation', color: 'bg-amber-100 text-amber-800' },
       CONFIRMED: { label: 'Confirmed', color: 'bg-green-100 text-green-800' },
