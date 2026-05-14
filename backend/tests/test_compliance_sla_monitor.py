@@ -251,6 +251,106 @@ class TestComplianceRecalcSlaMonitor:
         assert any(s[1] == "CRIT" for s in severities)
 
     @pytest.mark.asyncio
+    async def test_running_stale_query_uses_liveness_expr(self, mock_now):
+        """RUNNING breach scan must use $expr liveness (heartbeat_at vs updated_at)."""
+        from services.compliance_sla_monitor import run_compliance_recalc_sla_monitor
+
+        filters_seen = []
+
+        def queue_find(filt, *args, **kwargs):
+            filters_seen.append(filt)
+            st = filt.get("status")
+            if st == "PENDING":
+                return AsyncCursor([])
+            if st == "RUNNING" or (isinstance(st, str) and st == "RUNNING"):
+                return AsyncCursor([])
+            if isinstance(st, dict) and "$in" in st:
+                return AsyncCursor([])
+            return AsyncCursor([])
+
+        db = MagicMock()
+        db.compliance_recalc_queue.find = MagicMock(side_effect=queue_find)
+        db.compliance_recalc_queue.find_one = AsyncMock(return_value=None)
+        db.properties.find = MagicMock(return_value=AsyncCursor([]))
+        db.compliance_sla_alerts.find_one = AsyncMock(return_value=None)
+        db.compliance_sla_alerts.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+        db.compliance_sla_alerts.update_one = AsyncMock()
+
+        with patch("services.compliance_sla_monitor.database.get_db", return_value=db):
+            with patch("services.compliance_sla_monitor.datetime") as m_dt:
+                m_dt.now.return_value = mock_now
+                m_dt.side_effect = lambda *a, **k: datetime(*a, **k) if a else mock_now
+                with patch("services.compliance_sla_monitor.create_audit_log", new_callable=AsyncMock):
+                    await run_compliance_recalc_sla_monitor()
+
+        running_filters = [f for f in filters_seen if f.get("status") == "RUNNING"]
+        assert running_filters, "expected a RUNNING-status scan"
+        assert "$expr" in running_filters[0]
+
+    @pytest.mark.asyncio
+    async def test_grouped_pending_and_property_single_email(self, mock_now):
+        """PENDING_STUCK + PROPERTY_PENDING_TOO_LONG same property → one composite email."""
+        from services.compliance_sla_monitor import (
+            run_compliance_recalc_sla_monitor,
+            ALERT_QUEUE_PROPERTY_COMPOSITE,
+            SLA_PENDING_SECONDS,
+        )
+
+        old_created = (mock_now - timedelta(seconds=SLA_PENDING_SECONDS + 60)).isoformat()
+        pending_job = {
+            "_id": "j1",
+            "property_id": "p1",
+            "client_id": "c1",
+            "status": "PENDING",
+            "attempts": 0,
+            "created_at": old_created,
+            "next_run_at": old_created,
+            "last_error": None,
+        }
+        prop_doc = {
+            "property_id": "p1",
+            "client_id": "c1",
+            "compliance_last_calculated_at": None,
+        }
+
+        def queue_find(filt, *args, **kwargs):
+            st = filt.get("status")
+            if st == "PENDING":
+                return AsyncCursor([dict(pending_job)])
+            if st == "RUNNING":
+                return AsyncCursor([])
+            if isinstance(st, dict) and "$in" in st:
+                return AsyncCursor([])
+            return AsyncCursor([])
+
+        db = MagicMock()
+        db.compliance_recalc_queue.find = MagicMock(side_effect=queue_find)
+        db.compliance_recalc_queue.find_one = AsyncMock(return_value=None)
+
+        def properties_find(filter, *args, **kwargs):
+            if filter.get("compliance_score_pending") is True:
+                return AsyncCursor([prop_doc])
+            return AsyncCursor([])
+
+        db.properties.find = MagicMock(side_effect=properties_find)
+        db.compliance_sla_alerts.find_one = AsyncMock(return_value=None)
+        db.compliance_sla_alerts.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+        db.compliance_sla_alerts.update_one = AsyncMock()
+
+        with patch("services.compliance_sla_monitor.database.get_db", return_value=db):
+            with patch("services.compliance_sla_monitor.datetime") as m_dt:
+                m_dt.now.return_value = mock_now
+                m_dt.side_effect = lambda *a, **k: datetime(*a, **k) if a else mock_now
+                with patch("services.compliance_sla_monitor.create_audit_log", new_callable=AsyncMock):
+                    with patch("services.compliance_sla_monitor._send_alert_email", new_callable=AsyncMock) as send:
+                        await run_compliance_recalc_sla_monitor()
+
+        assert send.call_count == 1
+        args, kwargs = send.call_args
+        assert args[0] == ALERT_QUEUE_PROPERTY_COMPOSITE
+        assert "grouped_signals" in (args[4] or {})
+
+    @pytest.mark.asyncio
     async def test_job_done_resolves_alert(self, mock_now):
         from services.compliance_sla_monitor import run_compliance_recalc_sla_monitor, ALERT_PENDING_STUCK
         from services.compliance_recalc_queue import STATUS_DONE

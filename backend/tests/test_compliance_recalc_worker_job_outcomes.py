@@ -72,6 +72,20 @@ def test_control_centre_skip_empty_queue():
     assert should_skip_control_centre_no_outcome_flag_recalc("daily_reminders", detail) is False
 
 
+def test_control_centre_does_not_skip_when_reclaim_metrics_present_even_if_queue_empty_flag():
+    """Defensive: reclaim work must not be treated as a no-op empty tick."""
+    detail = {
+        "last_outcome_status": OUTCOME_CONDITIONAL_NO_OUTPUT,
+        "last_run_status": "success",
+        "outcome_metrics": {
+            "queue_empty": True,
+            "stale_running_reclaimed_to_pending": 1,
+            "stale_running_reclaimed_to_dead": 0,
+        },
+    }
+    assert should_skip_control_centre_no_outcome_flag_recalc("compliance_recalc_worker", detail) is False
+
+
 def test_no_misleading_success_when_partial_failures():
     out = build_compliance_recalc_worker_run_result(
         {"batch_size": 1, "claim_skipped": 0, "processed": 0, "failed_retry": 1, "dead": 0}

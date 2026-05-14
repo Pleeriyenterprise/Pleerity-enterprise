@@ -24,6 +24,8 @@ def should_skip_control_centre_no_outcome_flag_recalc(job_id: str, detail: Dict[
     if (detail.get("last_outcome_status") or "").strip().lower() != OUTCOME_CONDITIONAL_NO_OUTPUT:
         return False
     om = detail.get("outcome_metrics") or {}
+    if int(om.get("stale_running_reclaimed_to_pending") or 0) > 0 or int(om.get("stale_running_reclaimed_to_dead") or 0) > 0:
+        return False
     return om.get("queue_empty") is True
 
 
@@ -43,6 +45,9 @@ def build_compliance_recalc_worker_run_result(metrics: Dict[str, Any]) -> Dict[s
     processed = int(metrics.get("processed") or 0)
     failed_retry = int(metrics.get("failed_retry") or 0)
     dead = int(metrics.get("dead") or 0)
+    reclaim_p = int(metrics.get("stale_running_reclaimed_to_pending") or 0)
+    reclaim_d = int(metrics.get("stale_running_reclaimed_to_dead") or 0)
+    reclaim_total = reclaim_p + reclaim_d
 
     claimed = batch - claim_skipped
     operational_fail = failed_retry + dead
@@ -54,19 +59,36 @@ def build_compliance_recalc_worker_run_result(metrics: Dict[str, Any]) -> Dict[s
         "queue_items_processed": processed,
         "queue_items_failed": failed_retry,
         "queue_items_dead": dead,
+        "stale_running_reclaimed_to_pending": reclaim_p,
+        "stale_running_reclaimed_to_dead": reclaim_d,
         "attempted_count": batch,
         "success_count": processed,
         "failed_count": operational_fail,
-        "queue_empty": batch == 0,
+        "queue_empty": batch == 0 and reclaim_total == 0,
     }
 
-    if batch == 0:
+    if batch == 0 and reclaim_total == 0:
         outcome_metrics["outcome_kind"] = "NO_WORK_ELIGIBLE"
         return {
             "message": "Compliance recalc worker: no pending queue items due now.",
             "count": 0,
             "errors": 0,
             "outcome_status": OUTCOME_CONDITIONAL_NO_OUTPUT,
+            "outcome_metrics": outcome_metrics,
+        }
+
+    if batch == 0 and reclaim_total > 0:
+        outcome_metrics["outcome_kind"] = "STALE_RUNNING_RECLAIMED"
+        outcome_metrics["queue_empty"] = False
+        msg = (
+            f"Compliance recalc worker: reclaimed {reclaim_total} stale RUNNING row(s) "
+            f"({reclaim_p} to PENDING, {reclaim_d} to DEAD); no pending work due this tick."
+        )
+        return {
+            "message": msg,
+            "count": reclaim_total,
+            "errors": 0,
+            "outcome_status": OUTCOME_SUCCESS,
             "outcome_metrics": outcome_metrics,
         }
 
@@ -89,6 +111,8 @@ def build_compliance_recalc_worker_run_result(metrics: Dict[str, Any]) -> Dict[s
         tail = ""
         if claim_skipped > 0:
             tail = f" {claim_skipped} row(s) skipped (claim not acquired)."
+        if reclaim_total > 0:
+            tail += f" Reclaimed {reclaim_total} stale RUNNING row(s) ({reclaim_p}→PENDING, {reclaim_d}→DEAD)."
         return {
             "message": (
                 f"Compliance recalc worker: {processed} queue item(s) recalculated successfully.{tail}"

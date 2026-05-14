@@ -1,0 +1,84 @@
+"""SLA watchdog still flags genuinely missed compliance_recalc_worker runs (job_runs)."""
+
+import sys
+from pathlib import Path
+from datetime import datetime, timezone, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+backend_root = Path(__file__).resolve().parent.parent
+if str(backend_root) not in sys.path:
+    sys.path.insert(0, str(backend_root))
+
+
+@pytest.mark.asyncio
+async def test_watchdog_creates_incident_when_compliance_worker_overdue():
+    from services.sla_watchdog import run_sla_watchdog
+
+    real_now = datetime.now(timezone.utc)
+    old_finish = (real_now - timedelta(days=1)).isoformat()
+
+    mock_db = MagicMock()
+    mock_db.scheduler_heartbeat = MagicMock()
+    mock_db.scheduler_heartbeat.find_one = AsyncMock(return_value={"last_heartbeat_at": real_now.isoformat()})
+
+    jr = MagicMock()
+
+    async def job_runs_find_one(filter, *args, **kwargs):
+        if filter.get("job_name") == "compliance_recalc_worker":
+            return {"finished_at": old_finish, "status": "success"}
+        return None
+
+    jr.find_one = AsyncMock(side_effect=job_runs_find_one)
+    jr.count_documents = AsyncMock(return_value=0)
+    mock_db.job_runs = jr
+
+    def _coll(name):
+        if name == "job_runs":
+            return jr
+        if name == "scheduler_heartbeat":
+            return mock_db.scheduler_heartbeat
+        if name == "incidents":
+            return mock_db.incidents
+        return MagicMock(find_one=AsyncMock(return_value=None), count_documents=AsyncMock(return_value=0))
+
+    mock_db.__getitem__.side_effect = _coll
+
+    mock_db.incidents = MagicMock()
+    mock_db.incidents.find_one = AsyncMock(return_value=None)
+    mock_db.incidents.update_one = AsyncMock()
+
+    fake_config = [("compliance_recalc_worker", 1, 10, "P2", "compliance worker must run")]
+
+    with patch("services.sla_watchdog.database.get_db", return_value=mock_db):
+        with patch(
+            "services.incident_recovery.check_and_resolve_heartbeat_incidents",
+            new_callable=AsyncMock,
+            return_value=0,
+        ):
+            with patch(
+                "services.incident_recovery.check_and_resolve_delivery_unknown_incidents",
+                new_callable=AsyncMock,
+                return_value=0,
+            ):
+                with patch(
+                    "services.incident_recovery.check_and_resolve_risk_regen_queue_incidents",
+                    new_callable=AsyncMock,
+                    return_value=0,
+                ):
+                    with patch("services.sla_watchdog._get_scheduler_next_runs", return_value={}):
+                        with patch("services.sla_watchdog.DEFAULT_SLA_CONFIG", fake_config):
+                            with patch(
+                                "services.sla_watchdog.create_incident",
+                                new_callable=AsyncMock,
+                                return_value="inc-1",
+                            ):
+                                with patch(
+                                    "services.sla_watchdog._send_incident_alert_email",
+                                    new_callable=AsyncMock,
+                                    return_value=True,
+                                ):
+                                    out = await run_sla_watchdog()
+
+    assert out.get("incidents_created", 0) >= 1

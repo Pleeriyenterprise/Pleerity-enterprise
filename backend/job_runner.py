@@ -4,8 +4,10 @@ Used by server (scheduler) and admin (manual run).
 Each run_* returns a dict with "message" (and optionally "count") for admin toast.
 Job execution is persisted via job_run_service for observability and SLA watchdog.
 """
+import asyncio
 import inspect
 import logging
+import os
 import traceback
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -279,6 +281,7 @@ async def run_compliance_recalc_worker():
             STATUS_DEAD,
         )
         from services.compliance_recalc_correlation import normalize_recalc_job_context
+        from services.compliance_recalc_running_reclaim import reclaim_stale_running_compliance_recalc_jobs
         from services.compliance_recalc_worker_job_outcomes import build_compliance_recalc_worker_run_result
         from services.compliance_scoring_service import recalculate_and_persist
         from models import AuditAction
@@ -287,6 +290,26 @@ async def run_compliance_recalc_worker():
         db = database.get_db()
         now = datetime.now(timezone.utc)
         now_iso = now.isoformat()
+
+        reclaim_stats = await reclaim_stale_running_compliance_recalc_jobs(db, now=now)
+        reclaimed_to_pending = int(reclaim_stats.get("reclaimed_to_pending") or 0)
+        reclaimed_to_dead = int(reclaim_stats.get("reclaimed_to_dead") or 0)
+
+        async def _heartbeat_while_running(job_id: Any) -> None:
+            try:
+                interval = max(20, int(os.getenv("COMPLIANCE_RECALC_HEARTBEAT_SECONDS", "45")))
+            except (TypeError, ValueError):
+                interval = 45
+            while True:
+                await asyncio.sleep(interval)
+                hb = datetime.now(timezone.utc).isoformat()
+                r = await db.compliance_recalc_queue.update_one(
+                    {"_id": job_id, "status": STATUS_RUNNING},
+                    {"$set": {"heartbeat_at": hb}},
+                )
+                if r.matched_count == 0:
+                    break
+
         cursor = db.compliance_recalc_queue.find(
             {"status": STATUS_PENDING, "next_run_at": {"$lte": now_iso}}
         ).sort("next_run_at", 1).limit(10)
@@ -305,10 +328,11 @@ async def run_compliance_recalc_worker():
             actor_type = job.get("actor_type", "SYSTEM")
             actor_id = job.get("actor_id")
             attempts = job.get("attempts", 0)
-            # Atomic claim
+            claim_iso = datetime.now(timezone.utc).isoformat()
+            # Atomic claim + initial lease heartbeat (RUNNING_STUCK / reclaim use liveness)
             r = await db.compliance_recalc_queue.update_one(
                 {"_id": jid, "status": STATUS_PENDING},
-                {"$set": {"status": STATUS_RUNNING, "updated_at": now_iso}},
+                {"$set": {"status": STATUS_RUNNING, "updated_at": claim_iso, "heartbeat_at": claim_iso}},
             )
             if r.modified_count == 0:
                 claim_skipped += 1
@@ -324,6 +348,7 @@ async def run_compliance_recalc_worker():
                 {"_id": 0, "compliance_score": 1, "compliance_version": 1},
             )
             old_score = old_prop.get("compliance_score") if old_prop else None
+            hb_task = asyncio.create_task(_heartbeat_while_running(jid))
             try:
                 await recalculate_and_persist(property_id, trigger_reason, actor, context)
                 prop_after = await db.properties.find_one(
@@ -402,7 +427,8 @@ async def run_compliance_recalc_worker():
                                 "retry_pending": False,
                                 "reconciliation_recommended": False,
                             },
-                        }
+                        },
+                        "$unset": {"heartbeat_at": ""},
                     },
                 )
                 processed += 1
@@ -444,7 +470,7 @@ async def run_compliance_recalc_worker():
                     fail_fields["dead_state_reason"] = err_str[:4000] if err_str else None
                 await db.compliance_recalc_queue.update_one(
                     {"_id": jid},
-                    {"$set": fail_fields},
+                    {"$set": fail_fields, "$unset": {"heartbeat_at": ""}},
                 )
                 audit_meta: Dict[str, Any] = {
                     "attempts": next_attempts,
@@ -475,6 +501,12 @@ async def run_compliance_recalc_worker():
                     failure_stage,
                     err_str,
                 )
+            finally:
+                hb_task.cancel()
+                try:
+                    await hb_task
+                except asyncio.CancelledError:
+                    pass
         return build_compliance_recalc_worker_run_result(
             {
                 "batch_size": batch_size,
@@ -482,6 +514,8 @@ async def run_compliance_recalc_worker():
                 "processed": processed,
                 "failed_retry": failed_retry,
                 "dead": dead_count,
+                "stale_running_reclaimed_to_pending": reclaimed_to_pending,
+                "stale_running_reclaimed_to_dead": reclaimed_to_dead,
             }
         )
     except Exception as e:

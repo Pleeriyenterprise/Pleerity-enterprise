@@ -291,6 +291,32 @@ def compliance_recalc_sla_alert_copy(alert_type: str, severity: str) -> Dict[str
             ],
             "subject_severity_token": "Operational warning",
         }
+    if alert_type == "QUEUE_PROPERTY_COMPOSITE":
+        return {
+            "plain_title": "Compliance queue and property pending flags both need attention",
+            "summary": (
+                "The SLA monitor detected multiple related signals for the same property in one run "
+                "(typically a stuck or slow queue row together with compliance_score_pending)."
+            ),
+            "operational_impact": "Recalculation may be delayed or wedged; property-level pending may not clear until the queue drains.",
+            "customer_impact": "Potential customer-facing impact: stale scores or inconsistent pending indicators for this property.",
+            "likely_causes": (
+                "Shared root causes include worker backlog, a RUNNING row awaiting reclaim after a crash, "
+                "or a successful recalc that did not clear compliance_score_pending."
+            ),
+            "urgency_guidance": (
+                "Start with Automation Control Centre queue health; escalate if multiple tenants show the same signature."
+            ),
+            "if_ignored": common_if_ignored,
+            "ordered_actions": [
+                "Review grouped_signals in technical details for each sub-signal and timestamp.",
+                "Open Automation Control Centre and inspect queue rows for this property_id.",
+                "Open Admin → Client control panel and verify compliance_score_pending vs last_calculated_at.",
+                "If RUNNING rows look stale, confirm workers are healthy and allow automatic reclaim before manual intervention.",
+                base_escalation,
+            ],
+            "subject_severity_token": "Urgent operational review" if severity == "CRIT" else "Operational warning",
+        }
     return {
         "plain_title": "Compliance recalculation SLA attention required",
         "summary": "The compliance recalculation SLA monitor raised an alert for this property.",

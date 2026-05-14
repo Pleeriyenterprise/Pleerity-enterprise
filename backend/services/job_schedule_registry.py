@@ -39,6 +39,7 @@ class JobScheduleEntry:
 
 # Critical jobs for health + SLA. Must match job_runner registered ids.
 # max_delay_minutes: after this, job is "missed" if no successful/degraded run
+# Note: compliance_recalc_worker can exceed short windows when draining a full batch (see docs/runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md).
 CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
     JobScheduleEntry("subscription_lifecycle", True, 26 * 60, "Daily", True),
     JobScheduleEntry("stripe_subscription_reconcile", False, 8 * 60, "Every 6 hours", True),
@@ -51,7 +52,7 @@ CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
     JobScheduleEntry("compliance_score_snapshots", True, 26 * 60, "Daily", False),
     JobScheduleEntry("expiry_rollover_recalc", True, 26 * 60, "Daily", False),
     JobScheduleEntry("contractor_performance_recalc", False, 26 * 60, "Daily", True),
-    JobScheduleEntry("compliance_recalc_worker", True, 2, "Every 15 sec", False),
+    JobScheduleEntry("compliance_recalc_worker", True, 10, "Every 15 sec", False),
     JobScheduleEntry(
         "compliance_recalc_enqueue_property",
         False,

@@ -234,6 +234,7 @@ class Database:
             except Exception:
                 pass
             await self.db.compliance_recalc_queue.create_index([("status", 1), ("next_run_at", 1)])
+            await self.db.compliance_recalc_queue.create_index([("status", 1), ("updated_at", 1)])
             await self.db.compliance_recalc_queue.create_index([("property_id", 1), ("status", 1)])
             # Risk signal regeneration queue (debounced; one PENDING row per property)
             try:

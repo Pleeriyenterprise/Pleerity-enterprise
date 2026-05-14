@@ -50,6 +50,7 @@ def build_recalc_queue_health_summary(snapshot: Mapping[str, Any]) -> Dict[str, 
         "missing_correlation_rows": int(snapshot.get("missing_correlation_job_count") or 0),
         "stale_pending_markers": int(obs.get("stale_pending_recalc_count") or 0),
         "stuck_running_markers": int(obs.get("stuck_running_count") or 0),
+        "stale_running_reclaimed_last_24h": int(obs.get("stale_running_reclaimed_last_24h") or 0),
         "regeneration_pending_backlog": int(obs.get("regeneration_pending_backlog") or 0),
         "duplicate_suppression_observed_total": dup,
         "health_posture": "NON_BLOCKING_OBSERVABILITY_ONLY",
@@ -81,6 +82,8 @@ async def build_recalc_queue_operational_snapshot(
     stuck_cut = (now - timedelta(seconds=stuck_running_after_seconds)).isoformat()
     regen_cut = (now - timedelta(seconds=regeneration_stale_after_seconds)).isoformat()
 
+    from services.compliance_recalc_running_reclaim import mongo_running_liveness_stale_filter
+
     pending_job_count = await db.compliance_recalc_queue.count_documents({"status": STATUS_PENDING})
     running_job_count = await db.compliance_recalc_queue.count_documents({"status": STATUS_RUNNING})
     failed_retry_job_count = await db.compliance_recalc_queue.count_documents({"status": STATUS_FAILED})
@@ -99,7 +102,11 @@ async def build_recalc_queue_operational_snapshot(
         {"status": STATUS_PENDING, "created_at": {"$lt": stale_cut}}
     )
     stuck_running_count = await db.compliance_recalc_queue.count_documents(
-        {"status": STATUS_RUNNING, "updated_at": {"$lt": stuck_cut}}
+        mongo_running_liveness_stale_filter(stuck_cut)
+    )
+    reclaim_cut = (now - timedelta(hours=24)).isoformat()
+    stale_running_reclaimed_last_24h = await db.compliance_recalc_queue.count_documents(
+        {"reclaimed_at": {"$gte": reclaim_cut}}
     )
 
     dup_field = "suppressed_duplicate_enqueue_count"
@@ -116,7 +123,7 @@ async def build_recalc_queue_operational_snapshot(
 
     active_jobs: List[Dict[str, Any]] = []
     cursor = (
-        db.compliance_recalc_queue.find({"status": STATUS_RUNNING}, {"_id": 1, "property_id": 1, "correlation_id": 1, "updated_at": 1})
+        db.compliance_recalc_queue.find({"status": STATUS_RUNNING}, {"_id": 1, "property_id": 1, "correlation_id": 1, "updated_at": 1, "heartbeat_at": 1})
         .sort("updated_at", 1)
         .limit(max_sample)
     )
@@ -127,6 +134,7 @@ async def build_recalc_queue_operational_snapshot(
                 "property_id": doc.get("property_id"),
                 "correlation_id": doc.get("correlation_id"),
                 "updated_at": doc.get("updated_at"),
+                "heartbeat_at": doc.get("heartbeat_at"),
             }
         )
 
@@ -219,6 +227,7 @@ async def build_recalc_queue_operational_snapshot(
     reconciliation_observability = {
         "stale_pending_recalc_count": stale_pending_recalc_count,
         "stuck_running_count": stuck_running_count,
+        "stale_running_reclaimed_last_24h": stale_running_reclaimed_last_24h,
         "orphaned_running_sample": longest_running_jobs[:5],
         "regeneration_pending_backlog": regeneration_pending_backlog,
         "regeneration_stale_pending_estimate": regeneration_stale_pending,

@@ -30,8 +30,13 @@ ALERT_RUNNING_STUCK = "RUNNING_STUCK"
 ALERT_FAILING_REPEATEDLY = "FAILING_REPEATEDLY"
 ALERT_DEAD_JOB = "DEAD_JOB"
 ALERT_PROPERTY_PENDING_TOO_LONG = "PROPERTY_PENDING_TOO_LONG"
+# Grouped email only (not persisted as its own alert_type row)
+ALERT_QUEUE_PROPERTY_COMPOSITE = "QUEUE_PROPERTY_COMPOSITE"
 SEVERITY_WARN = "WARN"
 SEVERITY_CRIT = "CRIT"
+
+# Same-property queue + property-flag SLA: one email per monitor tick when both fire.
+GROUPABLE_QUEUE_PROPERTY_ALERT_TYPES = frozenset({ALERT_PENDING_STUCK, ALERT_PROPERTY_PENDING_TOO_LONG})
 
 
 def _now_iso() -> str:
@@ -87,6 +92,7 @@ async def _send_alert_email(
     details: Dict[str, Any],
     *,
     now: Optional[datetime] = None,
+    idempotency_alert_type: Optional[str] = None,
 ) -> bool:
     """Send operator-structured COMPLIANCE_SLA_ALERT to OPS_ALERT_EMAIL. Returns True if sent."""
     if not OPS_ALERT_EMAIL:
@@ -98,8 +104,9 @@ async def _send_alert_email(
         from datetime import datetime, timezone
 
         now_dt = now or datetime.now(timezone.utc)
+        idem_type = idempotency_alert_type or alert_type
         idempotency_key = compliance_sla_alert_email_idempotency_key(
-            property_id, alert_type, severity, now_dt
+            property_id, idem_type, severity, now_dt
         )
         ctx = enrich_compliance_sla_alert_email_context(
             recipient=OPS_ALERT_EMAIL,
@@ -130,6 +137,8 @@ async def _upsert_alert_and_maybe_send(
     severity: str,
     details: Dict[str, Any],
     now: datetime,
+    *,
+    groupable_email_buffer: Optional[List[Dict[str, Any]]] = None,
 ) -> None:
     cooldown_boundary = now - timedelta(seconds=ALERT_COOLDOWN_SECONDS)
     existing = await db.compliance_sla_alerts.find_one(
@@ -173,7 +182,79 @@ async def _upsert_alert_and_maybe_send(
             **details,
         },
     )
-    await _send_alert_email(alert_type, severity, property_id, client_id, details, now=now)
+    will_send_email = True
+    if groupable_email_buffer is not None and alert_type in GROUPABLE_QUEUE_PROPERTY_ALERT_TYPES:
+        groupable_email_buffer.append(
+            {
+                "property_id": property_id,
+                "client_id": client_id,
+                "alert_type": alert_type,
+                "severity": severity,
+                "details": details,
+            }
+        )
+        will_send_email = False
+    if will_send_email:
+        await _send_alert_email(alert_type, severity, property_id, client_id, details, now=now)
+
+
+async def _flush_groupable_queue_property_emails(
+    buffer: List[Dict[str, Any]],
+    *,
+    now: datetime,
+) -> None:
+    """One email per property when both queue PENDING and property-pending SLA fire the same tick."""
+    if not buffer:
+        return
+    by_prop: Dict[str, List[Dict[str, Any]]] = {}
+    for item in buffer:
+        pid = str(item.get("property_id") or "")
+        by_prop.setdefault(pid, []).append(item)
+    for property_id, items in by_prop.items():
+        types = {str(i.get("alert_type") or "") for i in items}
+        if len(items) > 1 and types <= set(GROUPABLE_QUEUE_PROPERTY_ALERT_TYPES):
+            max_sev = SEVERITY_CRIT if any(i.get("severity") == SEVERITY_CRIT for i in items) else SEVERITY_WARN
+            client_id = str((items[0].get("client_id") or ""))
+            details = {
+                "grouped_signals": [
+                    {
+                        "alert_type": i.get("alert_type"),
+                        "severity": i.get("severity"),
+                        "details": i.get("details") or {},
+                    }
+                    for i in sorted(items, key=lambda x: str(x.get("alert_type")))
+                ],
+                "what_to_check_first": (
+                    "Automation Control Centre queue for this property_id, then Admin → client property flags "
+                    "(compliance_score_pending, last_calculated_at)."
+                ),
+                "likely_shared_cause": (
+                    "Worker backlog, a wedged queue row, or pending flag not cleared after a completed recalculation."
+                ),
+                "when_to_escalate": (
+                    "Escalate to platform engineering if the queue does not drain within 30 minutes after deploy "
+                    "or if multiple tenants show the same signature."
+                ),
+            }
+            await _send_alert_email(
+                ALERT_QUEUE_PROPERTY_COMPOSITE,
+                max_sev,
+                property_id,
+                client_id,
+                details,
+                now=now,
+                idempotency_alert_type=ALERT_QUEUE_PROPERTY_COMPOSITE,
+            )
+        else:
+            for i in items:
+                await _send_alert_email(
+                    str(i.get("alert_type")),
+                    str(i.get("severity") or SEVERITY_WARN),
+                    str(i.get("property_id") or ""),
+                    str(i.get("client_id") or ""),
+                    dict(i.get("details") or {}),
+                    now=now,
+                )
 
 
 async def _resolve_alert(db, property_id: str, alert_type: str, client_id: str, now: datetime) -> None:
@@ -204,12 +285,16 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
         STATUS_DEAD,
         STATUS_DONE,
     )
+    from services.compliance_recalc_running_reclaim import mongo_running_liveness_stale_filter
+
     db = database.get_db()
     now = datetime.now(timezone.utc)
     cutoff_pending = (now - timedelta(seconds=SLA_PENDING_SECONDS)).isoformat()
     cutoff_running = (now - timedelta(seconds=SLA_RUNNING_SECONDS)).isoformat()
+    running_stale_filter = mongo_running_liveness_stale_filter(cutoff_running)
 
     stats = {"breaches": 0, "resolved": 0}
+    groupable_email_buffer: List[Dict[str, Any]] = []
 
     # A) PENDING stuck: next_run_at or created_at <= cutoff_pending
     cursor = db.compliance_recalc_queue.find(
@@ -230,29 +315,33 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
             "last_error": job.get("last_error"),
         }
         await _upsert_alert_and_maybe_send(
-            db, property_id, client_id, ALERT_PENDING_STUCK, SEVERITY_WARN, details, now
+            db, property_id, client_id, ALERT_PENDING_STUCK, SEVERITY_WARN, details, now,
+            groupable_email_buffer=groupable_email_buffer,
         )
         stats["breaches"] += 1
 
-    # B) RUNNING stuck: updated_at <= cutoff_running
-    cursor = db.compliance_recalc_queue.find(
-        {"status": STATUS_RUNNING, "updated_at": {"$lte": cutoff_running}}
-    )
+    # B) RUNNING stuck: liveness (heartbeat_at vs updated_at) older than cutoff_running
+    cursor = db.compliance_recalc_queue.find(running_stale_filter)
     async for job in cursor:
         property_id = job.get("property_id")
         client_id = job.get("client_id", "")
         updated = _parse_iso(job.get("updated_at"))
-        age_sec = (now - updated).total_seconds() if updated else 0
+        hb = _parse_iso(job.get("heartbeat_at"))
+        liveness_candidates = [d for d in (updated, hb) if d is not None]
+        liveness = max(liveness_candidates) if liveness_candidates else None
+        age_sec = (now - liveness).total_seconds() if liveness else 0
         details = {
             "job_id": str(job.get("_id")),
             "status": job.get("status"),
             "attempts": job.get("attempts", 0),
             "updated_at": job.get("updated_at"),
+            "heartbeat_at": job.get("heartbeat_at"),
             "age_seconds": round(age_sec),
             "last_error": job.get("last_error"),
         }
         await _upsert_alert_and_maybe_send(
-            db, property_id, client_id, ALERT_RUNNING_STUCK, SEVERITY_CRIT, details, now
+            db, property_id, client_id, ALERT_RUNNING_STUCK, SEVERITY_CRIT, details, now,
+            groupable_email_buffer=groupable_email_buffer,
         )
         stats["breaches"] += 1
 
@@ -280,7 +369,10 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
             "updated_at": job.get("updated_at"),
             "last_error": job.get("last_error"),
         }
-        await _upsert_alert_and_maybe_send(db, property_id, client_id, alert_type, severity, details, now)
+        await _upsert_alert_and_maybe_send(
+            db, property_id, client_id, alert_type, severity, details, now,
+            groupable_email_buffer=groupable_email_buffer,
+        )
         stats["breaches"] += 1
 
     # D) Property pending too long: compliance_score_pending=true and (no last_calculated or very old)
@@ -302,9 +394,12 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
             "sla_pending_seconds": SLA_PENDING_SECONDS,
         }
         await _upsert_alert_and_maybe_send(
-            db, property_id, client_id, ALERT_PROPERTY_PENDING_TOO_LONG, SEVERITY_WARN, details, now
+            db, property_id, client_id, ALERT_PROPERTY_PENDING_TOO_LONG, SEVERITY_WARN, details, now,
+            groupable_email_buffer=groupable_email_buffer,
         )
         stats["breaches"] += 1
+
+    await _flush_groupable_queue_property_emails(groupable_email_buffer, now=now)
 
     # Resolutions: mark active=false where condition no longer holds
     # PENDING_STUCK: job no longer PENDING (DONE/FAILED/DEAD) or next_run_at fresh
@@ -322,7 +417,7 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
                 stats["resolved"] += 1
         elif alert_type == ALERT_RUNNING_STUCK:
             job = await db.compliance_recalc_queue.find_one(
-                {"property_id": property_id, "status": STATUS_RUNNING, "updated_at": {"$lte": cutoff_running}}
+                {"property_id": property_id, **running_stale_filter}
             )
             if not job:
                 await _resolve_alert(db, property_id, alert_type, client_id, now)
