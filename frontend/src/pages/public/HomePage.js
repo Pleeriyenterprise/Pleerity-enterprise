@@ -24,6 +24,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '../../components/ui/accordion';
+import {
+  marketingLightSurfaceSecondaryButtonClassName,
+  marketingMidnightSecondaryButtonClassName,
+} from '../../config/branding';
 
 const HomePage = () => {
   const trustBullets = [
@@ -223,7 +227,7 @@ const HomePage = () => {
                 <p className="text-xs text-gray-500 text-center max-w-sm px-2">
                   Short questionnaire — not your live in-app PDF reports.{' '}
                   <Link to="/pricing" className="text-electric-teal font-medium hover:underline">
-                    Plans with reports
+                    Pricing with reports
                   </Link>
                 </p>
               </div>
@@ -364,8 +368,13 @@ const HomePage = () => {
             <Button size="lg" className="bg-electric-teal hover:bg-electric-teal/90 text-white w-full sm:w-auto min-h-[48px]" asChild>
               <Link to="/risk-check">Check Your Compliance Risk</Link>
             </Button>
-            <Button size="lg" variant="outline" className="border-electric-teal text-electric-teal w-full sm:w-auto min-h-[48px]" asChild>
-              <Link to="/pricing">View plans</Link>
+            <Button
+              size="lg"
+              variant="outline"
+              className={`${marketingLightSurfaceSecondaryButtonClassName} w-full sm:w-auto min-h-[48px]`}
+              asChild
+            >
+              <Link to="/pricing">View pricing</Link>
             </Button>
           </div>
         </div>
@@ -399,7 +408,7 @@ const HomePage = () => {
           <p className="text-base sm:text-lg text-gray-300 mb-6 sm:mb-8 leading-relaxed">
             Start your structured compliance tracking today.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center max-w-xl mx-auto w-full">
             <Button
               size="lg"
               className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8 w-full sm:w-auto min-h-[48px]"
@@ -410,7 +419,7 @@ const HomePage = () => {
             <Button
               size="lg"
               variant="outline"
-              className="border-white text-white hover:bg-white/10 w-full sm:w-auto min-h-[48px]"
+              className={`${marketingMidnightSecondaryButtonClassName} w-full sm:w-auto min-h-[48px]`}
               asChild
             >
               <Link to="/compliance-vault-pro">View Platform Overview</Link>

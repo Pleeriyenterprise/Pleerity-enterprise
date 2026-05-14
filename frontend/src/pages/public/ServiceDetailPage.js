@@ -27,6 +27,7 @@ import {
 import client from '../../api/client';
 import { capturePricing, captureAutomationEnquiry, captureMarketResearchEnquiry } from '../../api/leadsApi';
 import { toast } from '@/utils/portalNotifications';
+import { marketingMidnightSecondaryButtonClassName } from '../../config/branding';
 
 // Map service codes to icons
 const SERVICE_ICONS = {
@@ -491,7 +492,7 @@ const ServiceDetailPage = () => {
             <Button
               size="lg"
               variant="outline"
-              className="border-white text-white hover:bg-white hover:text-midnight-blue"
+              className={marketingMidnightSecondaryButtonClassName}
               asChild
             >
               <Link to="/services/catalogue">View All Services</Link>

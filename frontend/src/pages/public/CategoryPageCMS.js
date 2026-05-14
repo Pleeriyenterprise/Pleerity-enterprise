@@ -26,6 +26,7 @@ import {
   Lock,
 } from 'lucide-react';
 import client from '../../api/client';
+import { marketingMidnightSecondaryButtonClassName } from '../../config/branding';
 
 // Icon mapping
 const CATEGORY_ICONS = {
@@ -291,7 +292,7 @@ const CategoryPageCMS = () => {
             <Button
               size="lg"
               variant="outline"
-              className="border-white text-white hover:bg-white/10"
+              className={marketingMidnightSecondaryButtonClassName}
               asChild
             >
               <Link to="/services">

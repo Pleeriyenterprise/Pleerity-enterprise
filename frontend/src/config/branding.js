@@ -85,4 +85,19 @@ export const SITE_URL = 'https://pleerityenterprise.co.uk';
 /** Schema/SEO logo URL (absolute). */
 export const SCHEMA_LOGO_URL = `${SITE_URL}/branding/pleerity-logo.png`;
 
+/**
+ * Secondary CTA — solid white fill + midnight label (never inherit `text-white` from parent).
+ * shadcn `outline` adds `bg-card` (white); on midnight bands inherited white text is invisible.
+ */
+const marketingSecondaryButtonCore =
+  'bg-white text-midnight-blue border border-slate-300 shadow-sm hover:bg-slate-50 hover:text-[#08162d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electric-teal focus-visible:ring-offset-2';
+
+/** Pre-footer / full-width midnight CTA bands. */
+export const marketingMidnightSecondaryButtonClassName =
+  `${marketingSecondaryButtonCore} focus-visible:ring-offset-midnight-blue`;
+
+/** Light neutral bands (e.g. `bg-gray-50`) so the focus ring offset matches the surface. */
+export const marketingLightSurfaceSecondaryButtonClassName =
+  `${marketingSecondaryButtonCore} focus-visible:ring-offset-gray-50`;
+
 export default branding;

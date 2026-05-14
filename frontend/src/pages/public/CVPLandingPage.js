@@ -27,6 +27,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '../../components/ui/accordion';
+import { marketingMidnightSecondaryButtonClassName } from '../../config/branding';
 
 const CVPLandingPage = () => {
   const trustBullets = [
@@ -516,7 +517,7 @@ const CVPLandingPage = () => {
           <p className="text-base sm:text-lg text-gray-300 mb-6 sm:mb-8 leading-relaxed">
             Track certificates, get reminders, and generate clear reports — all in one place.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center max-w-xl mx-auto w-full">
             <Button
               size="lg"
               className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8 w-full sm:w-auto min-h-[48px]"
@@ -527,7 +528,7 @@ const CVPLandingPage = () => {
             <Button
               size="lg"
               variant="outline"
-              className="border-white text-white hover:bg-white/10 w-full sm:w-auto min-h-[48px]"
+              className={`${marketingMidnightSecondaryButtonClassName} w-full sm:w-auto min-h-[48px]`}
               asChild
             >
               <Link to="/risk-check">Check your compliance risk</Link>

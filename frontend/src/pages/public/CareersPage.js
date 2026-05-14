@@ -5,6 +5,7 @@ import { SEOHead } from '../../components/public/SEOHead';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { Briefcase, CheckCircle, ArrowRight, Users, Shield, Zap, BookOpen } from 'lucide-react';
+import { marketingMidnightSecondaryButtonClassName } from '../../config/branding';
 
 const CareersPage = () => {
   const benefits = [
@@ -253,10 +254,10 @@ const CareersPage = () => {
           <p className="text-lg text-gray-300 mb-8 max-w-2xl mx-auto">
             Submit your details to our Talent Pool and we'll contact you when suitable roles become available.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-stretch sm:items-center max-w-xl mx-auto w-full">
             <Button
               size="lg"
-              className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8"
+              className="bg-electric-teal hover:bg-electric-teal/90 text-white px-8 w-full sm:w-auto min-h-[48px]"
               asChild
             >
               <Link to="/careers/talent-pool">
@@ -264,7 +265,12 @@ const CareersPage = () => {
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8" asChild>
+            <Button
+              size="lg"
+              variant="outline"
+              className={`${marketingMidnightSecondaryButtonClassName} px-8 w-full sm:w-auto min-h-[48px]`}
+              asChild
+            >
               <Link to="/contractors/register">Apply as a field contractor</Link>
             </Button>
           </div>

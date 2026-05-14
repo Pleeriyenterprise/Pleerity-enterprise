@@ -27,6 +27,7 @@ import {
 } from '../../components/ui/accordion';
 import { capturePricing } from '../../api/leadsApi';
 import { toast } from '@/utils/portalNotifications';
+import { marketingMidnightSecondaryButtonClassName } from '../../config/branding';
 
 function getUtmParams() {
   if (typeof window === 'undefined') return {};
@@ -448,7 +449,7 @@ const PricingPage = () => {
             <Button
               size="lg"
               variant="outline"
-              className="border-white text-white hover:bg-white hover:text-midnight-blue"
+              className={marketingMidnightSecondaryButtonClassName}
               asChild
             >
               <Link to="/booking">Talk to Sales</Link>

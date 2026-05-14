@@ -21,6 +21,7 @@ import {
   FileText,
   Eye,
 } from 'lucide-react';
+import { marketingMidnightSecondaryButtonClassName } from '../../config/branding';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -332,11 +333,11 @@ const InsightsHubPage = () => {
               <p className="text-gray-300 mb-6">
                 Explore our services or get in touch with our team.
               </p>
-              <div className="flex justify-center gap-4">
+              <div className="mt-12 flex flex-col sm:flex-row justify-center gap-4 items-stretch sm:items-center">
                 <Button asChild className="bg-electric-teal hover:bg-electric-teal/90">
                   <Link to="/services/catalogue">Browse Services</Link>
                 </Button>
-                <Button asChild variant="outline" className="border-white text-white hover:bg-white hover:text-midnight-blue">
+                <Button asChild variant="outline" className={marketingMidnightSecondaryButtonClassName}>
                   <Link to="/contact">Contact Us</Link>
                 </Button>
               </div>
