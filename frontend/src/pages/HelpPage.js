@@ -15,6 +15,8 @@ import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 import { PortalFilterStack, PortalLoadingPanel } from '../components/client/ClientPortalPatterns';
 import { getHelpArticleFallback } from '../content/helpArticleFallbacks';
 import HelpArticleMarkdown from '../components/help/HelpArticleMarkdown';
+import KbArticleFeedbackBlock from '../components/help/KbArticleFeedbackBlock';
+import { Badge } from '../components/ui/badge';
 
 export default function HelpPage() {
   const navigate = useNavigate();
@@ -154,16 +156,37 @@ export default function HelpPage() {
           ) : resolvedArticle ? (
             <Card>
               <CardContent className="pt-6">
-                {article && (article.version || article.updated_at) ? (
-                  <div className="text-sm text-gray-500 mb-2">
-                    {article.version && `Version ${article.version}`}
-                    {article.updated_at && ` · Updated ${new Date(article.updated_at).toLocaleDateString()}`}
+                {article && (article.category_name || article.updated_at) ? (
+                  <div className="text-sm text-gray-500 mb-3 space-y-1">
+                    {article.category_name && (
+                      <p>
+                        {article.category_icon ? `${article.category_icon} ` : ''}
+                        <span className="font-medium text-gray-700">{article.category_name}</span>
+                      </p>
+                    )}
+                    {article.updated_at && (
+                      <p>Updated {new Date(article.updated_at).toLocaleDateString()}</p>
+                    )}
                   </div>
                 ) : null}
                 <h2 className="text-xl font-semibold text-midnight-blue mb-4">{resolvedArticle.title}</h2>
+                {article?.tags?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {article.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="text-xs font-normal">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
                 <div className="text-sm text-gray-700">
                   <HelpArticleMarkdown markdown={resolvedArticle.content} />
                 </div>
+                {article?.article_id && (
+                  <div className="mt-8 pt-6 border-t border-gray-200">
+                    <KbArticleFeedbackBlock articleId={article.article_id} mode="client" />
+                  </div>
+                )}
                 {article?.related_articles?.length > 0 && (
                   <div className="mt-8 pt-6 border-t">
                     <h3 className="text-sm font-medium text-gray-500 mb-2">Related articles</h3>

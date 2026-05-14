@@ -17,6 +17,7 @@ import { Badge } from '../../components/ui/badge';
 import { Card, CardContent } from '../../components/ui/card';
 import PublicLayout from '../../components/public/PublicLayout';
 import HelpArticleMarkdown from '../../components/help/HelpArticleMarkdown';
+import KbArticleFeedbackBlock from '../../components/help/KbArticleFeedbackBlock';
 import {
   Book,
   Search,
@@ -434,14 +435,22 @@ function ArticleView({ slug }) {
                   {/* Header */}
                   <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 mb-4">{article.title}</h1>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                      {article.category_name && (
+                        <span className="font-medium text-gray-700">
+                          {article.category_icon ? `${article.category_icon} ` : ''}
+                          {article.category_name}
+                        </span>
+                      )}
                       <span className="flex items-center gap-1">
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-4 w-4" aria-hidden />
                         {article.view_count || 0} views
                       </span>
-                      <span>
-                        Updated: {new Date(article.updated_at).toLocaleDateString()}
-                      </span>
+                      {article.updated_at && (
+                        <span>
+                          Updated: {new Date(article.updated_at).toLocaleDateString()}
+                        </span>
+                      )}
                     </div>
                     {article.tags?.length > 0 && (
                       <div className="flex gap-2 mt-4">
@@ -459,15 +468,7 @@ function ArticleView({ slug }) {
 
                   {/* Feedback */}
                   <div className="mt-12 pt-8 border-t">
-                    <p className="text-gray-600 mb-4">Was this article helpful?</p>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        👍 Yes
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        👎 No
-                      </Button>
-                    </div>
+                    <KbArticleFeedbackBlock articleId={article.article_id} mode="public" />
                   </div>
                 </CardContent>
               </Card>

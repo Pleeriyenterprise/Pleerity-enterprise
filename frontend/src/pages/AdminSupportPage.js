@@ -9,7 +9,7 @@
  * - Audit log viewer
  * - CRN lookup
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import {
@@ -31,6 +31,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from '@/utils/portalNotifications';
 import client from '../api/client';
+import { deriveSupportOperatorInsights } from '../utils/supportOperatorInsights';
 
 // Status colors
 const STATUS_COLORS = {
@@ -104,6 +105,11 @@ function TicketRow({ ticket, onSelect, isSelected }) {
             <Badge className={PRIORITY_COLORS[ticket.priority] || PRIORITY_COLORS.medium}>
               {ticket.priority}
             </Badge>
+            {(ticket.ticket_source === 'portal_assistant' || ticket.assistant_conversation_id) && (
+              <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-800 bg-indigo-50/50">
+                Portal Assistant
+              </Badge>
+            )}
             {ticket.assistant_handoff_summary && (
               <Badge variant="outline" className="text-xs border-teal-300 text-teal-700 bg-teal-50/50">
                 AI handoff
@@ -199,16 +205,19 @@ function ConversationRow({ conversation, onSelect, isSelected }) {
 function TranscriptViewer({ messages = [], systemEvents = [], cannedResponses = [], onReply }) {
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
+  const [systemExpanded, setSystemExpanded] = useState(false);
 
   // Merge messages and system events by timestamp for display order
   const timeline = React.useMemo(() => {
-    const items = [
-      ...messages.map((m) => ({ type: 'message', ...m, sortAt: m.timestamp })),
-      ...systemEvents.map((e, i) => ({ type: 'system', ...e, sortAt: e.timestamp || '', id: `evt-${i}` })),
-    ];
+    const msgItems = messages.map((m) => ({ type: 'message', ...m, sortAt: m.timestamp }));
+    const sysItems =
+      systemExpanded && systemEvents.length > 0
+        ? systemEvents.map((e, i) => ({ type: 'system', ...e, sortAt: e.timestamp || '', id: `evt-${i}` }))
+        : [];
+    const items = [...msgItems, ...sysItems];
     items.sort((a, b) => (a.sortAt || '').localeCompare(b.sortAt || ''));
     return items;
-  }, [messages, systemEvents]);
+  }, [messages, systemEvents, systemExpanded]);
 
   const handleSend = async () => {
     if (!replyText.trim()) return;
@@ -225,6 +234,19 @@ function TranscriptViewer({ messages = [], systemEvents = [], cannedResponses = 
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {systemEvents.length > 0 && (
+          <div className="flex justify-center pb-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-xs h-7"
+              onClick={() => setSystemExpanded((v) => !v)}
+            >
+              {systemExpanded ? 'Hide' : 'Show'} system events ({systemEvents.length})
+            </Button>
+          </div>
+        )}
         {timeline.map((item, idx) => {
           if (item.type === 'system') {
             return (
@@ -507,6 +529,32 @@ export default function AdminSupportPage() {
       setItemDetail(null);
     }
   }, [selectedItem, fetchItemDetail]);
+
+  const operatorInsights = useMemo(() => {
+    if (!itemDetail) return null;
+    if (itemDetail.conversation?.conversation_id) {
+      return deriveSupportOperatorInsights({
+        conversation: itemDetail.conversation,
+        messages: itemDetail.messages || [],
+        linkedTicket: itemDetail.linked_ticket || null,
+      });
+    }
+    if (itemDetail.ticket) {
+      const t = itemDetail.ticket;
+      return deriveSupportOperatorInsights({
+        conversation: {
+          channel: t.contact_method,
+          status: t.status,
+          service_area: t.service_area,
+          category: t.category,
+          urgency: ['urgent', 'high'].includes(t.priority) ? t.priority : null,
+        },
+        messages: itemDetail.messages || [],
+        linkedTicket: t,
+      });
+    }
+    return null;
+  }, [itemDetail]);
 
   const openContextPanel = useCallback((clientId) => {
     setContextClientId(clientId);
@@ -828,6 +876,26 @@ export default function AdminSupportPage() {
                   {itemDetail.ticket && (
                     <div className="mt-3 text-sm text-gray-600 space-y-1">
                       <p><strong>Description:</strong> {itemDetail.ticket.description}</p>
+                      {(itemDetail.ticket.ticket_source === 'portal_assistant'
+                        || itemDetail.ticket.assistant_conversation_id) && (
+                        <div
+                          className="rounded-md border border-indigo-200 bg-indigo-50/70 px-3 py-2 text-indigo-900 space-y-1"
+                          data-testid="portal-assistant-ticket-source"
+                        >
+                          <p className="font-medium text-sm">Source: Portal Assistant</p>
+                          {itemDetail.ticket.assistant_conversation_id && (
+                            <p className="font-mono text-xs break-all">
+                              Assistant conversation: {itemDetail.ticket.assistant_conversation_id}
+                            </p>
+                          )}
+                          <p className="text-xs">
+                            Transcript availability:{' '}
+                            {itemDetail.ticket.transcript_available
+                              ? 'Transcript embedded in ticket description'
+                              : 'Not recorded on ticket'}
+                          </p>
+                        </div>
+                      )}
                       {itemDetail.ticket.email && (
                         <p><strong>Email:</strong> {itemDetail.ticket.email}</p>
                       )}
@@ -837,6 +905,37 @@ export default function AdminSupportPage() {
                     </div>
                   )}
                 </CardHeader>
+
+                {operatorInsights && (
+                  <div
+                    className="border-b bg-slate-50 px-4 py-3 shrink-0 text-sm space-y-1"
+                    data-testid="support-operator-insights"
+                  >
+                    <h4 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Operator view</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-slate-800">
+                      <p>
+                        <span className="text-slate-500">Likely intent / area:</span>{' '}
+                        {operatorInsights.likelyIntent}
+                      </p>
+                      <p>
+                        <span className="text-slate-500">Channel:</span> {operatorInsights.channel}
+                      </p>
+                      {operatorInsights.escalationReason && (
+                        <p className="sm:col-span-2">
+                          <span className="text-slate-500">Escalation:</span> {operatorInsights.escalationReason}
+                        </p>
+                      )}
+                      {operatorInsights.sentimentOrRisk && (
+                        <p className="sm:col-span-2">
+                          <span className="text-slate-500">Signals:</span> {operatorInsights.sentimentOrRisk}
+                        </p>
+                      )}
+                      <p className="sm:col-span-2 text-slate-700">
+                        <span className="text-slate-500">Suggested next:</span> {operatorInsights.suggestedNext}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <CardContent className="flex-1 p-0 overflow-hidden flex flex-col">
                   {(itemDetail.assistant_handoff_summary || itemDetail.conversation?.last_assistant_handoff_summary) && (
@@ -849,8 +948,19 @@ export default function AdminSupportPage() {
                   )}
                   {itemDetail.handover_summary && (
                     <div className="border-b bg-amber-50 px-4 py-2">
-                      <h4 className="text-xs font-semibold text-amber-800 uppercase mb-1">Handover summary</h4>
-                      <p className="text-sm text-amber-900 whitespace-pre-wrap">{itemDetail.handover_summary.description_preview}</p>
+                      <h4 className="text-xs font-semibold text-amber-800 uppercase mb-1">
+                        {itemDetail.handover_summary.source === 'portal_assistant'
+                          ? 'Portal Assistant handover'
+                          : 'Handover summary'}
+                      </h4>
+                      {itemDetail.handover_summary.assistant_conversation_id && (
+                        <p className="text-xs font-mono text-amber-900 mb-1 break-all">
+                          Assistant: {itemDetail.handover_summary.assistant_conversation_id}
+                        </p>
+                      )}
+                      <p className="text-sm text-amber-900 whitespace-pre-wrap">
+                        {itemDetail.handover_summary.description_preview}
+                      </p>
                     </div>
                   )}
                   {itemDetail.messages?.length > 0 || itemDetail.system_events?.length > 0 ? (

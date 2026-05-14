@@ -10,12 +10,13 @@ draft/publish/archive, search + analytics, PDF export, audit logging.
 """
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from enum import Enum
-from middleware import admin_route_guard, client_route_guard
+from middleware import admin_route_guard, client_route_guard, get_current_user
 from database import database
+from services import kb_article_feedback_service as kb_article_feedback_svc
 import logging
 import uuid
 import json
@@ -32,6 +33,17 @@ ARTICLES_COLLECTION = "kb_articles"
 CATEGORIES_COLLECTION = "kb_categories"
 SEARCH_ANALYTICS_COLLECTION = "kb_search_analytics"
 FEEDBACK_COLLECTION = "assistant_feedback"
+
+
+async def sync_public_support_index_for_kb_article(article_id: str) -> None:
+    """Keep support_public_content_chunks aligned with strict USER published articles."""
+    try:
+        from services.support_public_content_index_service import reindex_kb_article_by_id
+
+        await reindex_kb_article_by_id(article_id)
+    except Exception as e:
+        logger.warning("sync_public_support_index_for_kb_article(%s): %s", article_id, e)
+
 
 # Help Assistant: fallback when no published docs match (doc-grounded only)
 HELP_ASSISTANT_FALLBACK = (
@@ -180,6 +192,31 @@ class HelpAssistantFeedbackRequest(BaseModel):
     response_id: Optional[str] = None
 
 
+class KbArticleFeedbackPublicBody(BaseModel):
+    """Article helpful vote from public KB (anonymous session or optional portal JWT)."""
+    feedback_type: str = Field(..., description="helpful | not_helpful")
+    session_id: Optional[str] = Field(None, max_length=128)
+
+    @field_validator("feedback_type")
+    @classmethod
+    def _ft(cls, v: str) -> str:
+        if v not in ("helpful", "not_helpful"):
+            raise ValueError("feedback_type must be helpful or not_helpful")
+        return v
+
+
+class KbArticleFeedbackClientBody(BaseModel):
+    """Article helpful vote from authenticated client Help Centre."""
+    feedback_type: str = Field(...)
+
+    @field_validator("feedback_type")
+    @classmethod
+    def _ft(cls, v: str) -> str:
+        if v not in ("helpful", "not_helpful"):
+            raise ValueError("feedback_type must be helpful or not_helpful")
+        return v
+
+
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
@@ -260,6 +297,79 @@ async def log_search_analytics(query: str, results_count: int, ip_address: str =
         "ip_address": ip_address,
         "searched_at": now,
     })
+
+
+def _published_user_article_base_filter() -> Dict[str, Any]:
+    """Match published, active, USER-facing help articles (public + client Help Centre)."""
+    return {
+        "status": ArticleStatus.PUBLISHED.value,
+        "is_active": True,
+        "$or": [
+            {"audience": ArticleAudience.USER.value},
+            {"audience": {"$exists": False}},
+        ],
+    }
+
+
+async def get_published_user_article_by_id(article_id: str) -> Optional[Dict[str, Any]]:
+    db = database.get_db()
+    q = {"article_id": article_id, **_published_user_article_base_filter()}
+    return await db[ARTICLES_COLLECTION].find_one(q, {"_id": 0})
+
+
+async def category_lookup_map_for_kb() -> Dict[str, Dict[str, Any]]:
+    db = database.get_db()
+    cursor = db[CATEGORIES_COLLECTION].find(
+        {"is_active": True},
+        {"_id": 0, "category_id": 1, "name": 1, "icon": 1},
+    )
+    rows = await cursor.to_list(length=300)
+    return {r["category_id"]: r for r in rows if r.get("category_id")}
+
+
+def serialize_user_facing_kb_article(
+    article: Dict[str, Any],
+    cat_map: Dict[str, Dict[str, Any]],
+    *,
+    include_content: bool,
+    related_raw: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """
+    Strip internal metadata from KB article payloads for public + client Help Centre.
+    Do not expose draft status, admin audience labels, or version to end users.
+    """
+    cid = article.get("category_id")
+    cat = cat_map.get(cid) or {}
+    out: Dict[str, Any] = {
+        "article_id": article.get("article_id"),
+        "slug": article.get("slug"),
+        "title": article.get("title"),
+        "excerpt": article.get("excerpt"),
+        "tags": article.get("tags") or [],
+        "view_count": article.get("view_count", 0),
+        "updated_at": article.get("updated_at"),
+        "published_at": article.get("published_at"),
+        "category_id": cid,
+        "category_name": cat.get("name"),
+        "category_icon": cat.get("icon"),
+        "order": article.get("order"),
+    }
+    if include_content:
+        out["content"] = article.get("content") or ""
+    rel = related_raw or []
+    out["related_articles"] = []
+    for r in rel:
+        out["related_articles"].append(
+            {
+                "article_id": r.get("article_id"),
+                "slug": r.get("slug"),
+                "title": r.get("title"),
+                "excerpt": r.get("excerpt"),
+                "view_count": r.get("view_count", 0),
+                "category_id": r.get("category_id"),
+            }
+        )
+    return out
 
 
 def _allowed_audiences_for_role(role: str) -> List[str]:
@@ -509,7 +619,11 @@ async def list_public_articles(
         ip = request.client.host if request and request.client else None
         await log_search_analytics(search, len(articles), ip)
 
-    return {"articles": articles, "total": total}
+    cat_map = await category_lookup_map_for_kb()
+    safe_articles = [
+        serialize_user_facing_kb_article(a, cat_map, include_content=False) for a in articles
+    ]
+    return {"articles": safe_articles, "total": total}
 
 
 @public_router.get("/articles/{slug}")
@@ -558,11 +672,60 @@ async def get_public_article(
         {"_id": 0, "content": 0}
     ).limit(3)
     related = await related_cursor.to_list(length=3)
-    
-    return {
-        **article,
-        "related_articles": related,
+
+    article["view_count"] = int(article.get("view_count") or 0) + 1
+    cat_map = await category_lookup_map_for_kb()
+    return serialize_user_facing_kb_article(
+        article,
+        cat_map,
+        include_content=True,
+        related_raw=related,
+    )
+
+
+@public_router.post("/articles/{article_id}/feedback")
+async def post_public_kb_article_feedback(
+    article_id: str,
+    data: KbArticleFeedbackPublicBody,
+    request: Request,
+):
+    """
+    Record helpful / not helpful for a published USER-facing article (public KB).
+    Anonymous callers must send ``session_id`` (stable browser UUID). Authenticated portal users may omit it (dedupe by user).
+    """
+    article = await get_published_user_article_by_id(article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    user = await get_current_user(request)
+    portal_uid = (user or {}).get("portal_user_id")
+
+    snapshot = {
+        "slug": article.get("slug"),
+        "title": article.get("title"),
+        "category_id": article.get("category_id"),
+        "audience": article.get("audience") or ArticleAudience.USER.value,
     }
+    try:
+        result = await kb_article_feedback_svc.submit_article_feedback(
+            article_id=article_id,
+            feedback_type=data.feedback_type,
+            source_surface="public_kb",
+            session_id=data.session_id,
+            portal_user_id=portal_uid,
+            article_snapshot=snapshot,
+        )
+    except ValueError as exc:
+        msg = str(exc)
+        if msg == "session_id_required":
+            raise HTTPException(
+                status_code=400,
+                detail="session_id is required for anonymous feedback (send a stable UUID from the browser)",
+            ) from exc
+        if msg == "invalid_feedback_type":
+            raise HTTPException(status_code=400, detail="Invalid feedback_type") from exc
+        raise HTTPException(status_code=400, detail="Invalid feedback") from exc
+    return result
 
 
 @public_router.get("/categories")
@@ -620,7 +783,14 @@ async def get_featured_articles():
     ).sort("published_at", -1).limit(5)
     recent = await recent_cursor.to_list(length=5)
 
-    return {"popular": popular, "recent": recent}
+    cat_map = await category_lookup_map_for_kb()
+    popular_safe = [
+        serialize_user_facing_kb_article(a, cat_map, include_content=False) for a in popular
+    ]
+    recent_safe = [
+        serialize_user_facing_kb_article(a, cat_map, include_content=False) for a in recent
+    ]
+    return {"popular": popular_safe, "recent": recent_safe}
 
 
 @public_router.get("/tags/popular")
@@ -688,7 +858,9 @@ async def client_help_list_articles(
     ).sort([("order", 1), ("published_at", -1)]).skip(skip).limit(limit)
     articles = await cursor.to_list(length=limit)
     total = await db[ARTICLES_COLLECTION].count_documents(filter_query)
-    return {"articles": articles, "total": total}
+    cat_map = await category_lookup_map_for_kb()
+    safe = [serialize_user_facing_kb_article(a, cat_map, include_content=False) for a in articles]
+    return {"articles": safe, "total": total}
 
 
 @client_help_router.get("/articles/{slug}")
@@ -722,7 +894,14 @@ async def client_help_get_article(
         "$or": [{"audience": ArticleAudience.USER.value}, {"audience": {"$exists": False}}],
     }
     related = await db[ARTICLES_COLLECTION].find(related_filter, {"_id": 0, "content": 0}).limit(3).to_list(length=3)
-    return {**article, "related_articles": related}
+    article["view_count"] = int(article.get("view_count") or 0) + 1
+    cat_map = await category_lookup_map_for_kb()
+    return serialize_user_facing_kb_article(
+        article,
+        cat_map,
+        include_content=True,
+        related_raw=related,
+    )
 
 
 @client_help_router.get("/categories")
@@ -795,6 +974,37 @@ async def client_help_assistant_feedback(
     }
     await db[FEEDBACK_COLLECTION].insert_one(doc)
     return {"ok": True, "feedback_id": doc["feedback_id"]}
+
+
+@client_help_router.post("/articles/{article_id}/feedback")
+async def client_help_article_feedback(
+    article_id: str,
+    data: KbArticleFeedbackClientBody,
+    current_user: dict = Depends(client_route_guard),
+):
+    """Record helpful / not helpful for a Help Centre article (dedupe per portal user)."""
+    article = await get_published_user_article_by_id(article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    portal_uid = current_user.get("portal_user_id") or current_user.get("client_id")
+    snapshot = {
+        "slug": article.get("slug"),
+        "title": article.get("title"),
+        "category_id": article.get("category_id"),
+        "audience": article.get("audience") or ArticleAudience.USER.value,
+    }
+    try:
+        return await kb_article_feedback_svc.submit_article_feedback(
+            article_id=article_id,
+            feedback_type=data.feedback_type,
+            source_surface="client_help",
+            session_id=None,
+            portal_user_id=portal_uid,
+            article_snapshot=snapshot,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid feedback") from exc
 
 
 # ============================================================================
@@ -1031,7 +1241,9 @@ async def admin_update_article(
         before_state=before_state,
         after_state=updated,
     )
-    
+
+    await sync_public_support_index_for_kb_article(article_id)
+
     return {"success": True, "article": updated}
 
 
@@ -1070,7 +1282,9 @@ async def admin_publish_article(
         actor_email=current_user.get("email"),
         details={"before_status": before_status},
     )
-    
+
+    await sync_public_support_index_for_kb_article(article_id)
+
     return {"success": True, "status": "published"}
 
 
@@ -1102,7 +1316,9 @@ async def admin_unpublish_article(
         resource_id=article_id,
         actor_email=current_user.get("email"),
     )
-    
+
+    await sync_public_support_index_for_kb_article(article_id)
+
     return {"success": True, "status": "draft"}
 
 
@@ -1130,6 +1346,9 @@ async def admin_archive_article(
         resource_id=article_id,
         actor_email=current_user.get("email"),
     )
+
+    await sync_public_support_index_for_kb_article(article_id)
+
     return {"success": True, "status": "archived"}
 
 
@@ -1163,7 +1382,9 @@ async def admin_deactivate_article(
         resource_id=article_id,
         actor_email=current_user.get("email"),
     )
-    
+
+    await sync_public_support_index_for_kb_article(article_id)
+
     return {"success": True, "message": "Article deactivated"}
 
 
@@ -1348,6 +1569,20 @@ async def admin_get_analytics(
         "top_searches": top_searches,
         "searches_with_no_results": no_results,
     }
+
+
+@admin_router.get("/feedback-summary")
+async def admin_kb_article_feedback_summary(
+    days: int = Query(30, ge=1, le=365),
+    limit: int = Query(25, ge=1, le=200),
+    current_user: dict = Depends(admin_route_guard),
+):
+    """
+    Aggregated helpful / not helpful votes for KB articles (public + client Help Centre).
+    Intended for admin dashboards; does not expose raw session identifiers.
+    """
+    _ = current_user
+    return await kb_article_feedback_svc.aggregate_feedback_summary(days=days, low_rated_limit=limit)
 
 
 # ============================================================================

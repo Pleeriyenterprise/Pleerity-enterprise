@@ -17,6 +17,7 @@ Admin endpoints:
 - POST /api/admin/support/conversation/{id}/reply - Admin reply to conversation
 - POST /api/admin/support/lookup-by-crn - Admin account lookup
 - GET /api/admin/support/audit-log - View audit logs
+- POST /api/admin/support/public-content/reindex - Rebuild public support content index (KC + allowlisted site)
 - POST /api/admin/support/remediation-correlation-view - Stream C internal correlation (feature-flagged)
 """
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
@@ -24,7 +25,7 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime, timezone, timedelta
 from middleware import require_support_or_above, client_route_guard, require_owner_or_admin, get_current_user
-from utils.rate_limiter import rate_limiter
+from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from services.support_service import (
     ConversationService, MessageService, TicketService, SupportAuditService,
     ConversationCreate, MessageCreate, TicketCreate,
@@ -34,15 +35,21 @@ from services.support_service import (
 )
 from services.support_chatbot import (
     handle_chat_message, lookup_account_by_crn, get_client_snapshot,
-    generate_whatsapp_link, is_legal_advice_request,
+    is_legal_advice_request,
     detect_service_area, detect_category, detect_urgency,
-    get_canned_response, get_all_quick_actions, CANNED_RESPONSES
+    get_canned_response, get_all_quick_actions, CANNED_RESPONSES,
+    build_public_handoff_options,
 )
 from database import database
 import logging
 import os
 
 logger = logging.getLogger(__name__)
+
+SUPPORT_CHAT_RATE_LIMIT_MESSAGE = (
+    "We're handling a high volume of messages right now. "
+    "Please wait a moment before trying again — or use email ticket from the menu if it's urgent."
+)
 
 # Create routers
 public_router = APIRouter(prefix="/api/support", tags=["support-public"])
@@ -69,6 +76,8 @@ class ChatResponse(BaseModel):
     handoff_options: Optional[Dict[str, Any]] = None
     conversation_context: Optional[Dict[str, Any]] = None  # updated context for next turn
     actions: Optional[List[Dict[str, Any]]] = None  # [{ label, url }] for clickable links in UI
+    # Canonical handoff narrative for ticket prefill (also stored on conversation); not duplicated in metadata in API responses.
+    handoff_summary: Optional[str] = None
 
 
 class LookupRequest(BaseModel):
@@ -96,6 +105,12 @@ class AdminCreateTicketFromConversationRequest(BaseModel):
     """Optional subject/description when creating a ticket from a conversation."""
     subject: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = Field(None, min_length=1, max_length=5000)
+
+
+class PublicContentReindexRequest(BaseModel):
+    """Rebuild indexed chunks for public support assistant (no per-chat crawl)."""
+    scope: Literal["kb", "site", "all"] = "kb"
+    site_base_url: Optional[str] = None  # optional override for marketing origin
 
 
 class AdminLookupRequest(BaseModel):
@@ -131,6 +146,48 @@ async def chat_endpoint(
     Creates or continues a conversation.
     """
     try:
+        client_ip = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or (
+            request.client.host if request.client else "unknown"
+        )
+        ip_key = f"support_chat:ip:{client_ip}"
+        allowed_ip, _ = await rate_limiter.check_rate_limit(
+            key=ip_key,
+            max_attempts=45,
+            window_minutes=10,
+        )
+        if not allowed_ip:
+            log_rate_limit_event("support_chat", "ip", client_ip)
+            await SupportAuditService.log_action(
+                action="public_chat_rate_limited",
+                actor_type="user",
+                actor_id=None,
+                resource_type="conversation",
+                resource_id=body.conversation_id or "new",
+                details={},
+                ip_address=client_ip,
+            )
+            raise HTTPException(status_code=429, detail=SUPPORT_CHAT_RATE_LIMIT_MESSAGE)
+
+        if body.conversation_id:
+            conv_key = f"support_chat:conv:{body.conversation_id}"
+            allowed_conv, _ = await rate_limiter.check_rate_limit(
+                key=conv_key,
+                max_attempts=80,
+                window_minutes=10,
+            )
+            if not allowed_conv:
+                log_rate_limit_event("support_chat", "conv", client_ip)
+                await SupportAuditService.log_action(
+                    action="public_chat_rate_limited",
+                    actor_type="user",
+                    actor_id=None,
+                    resource_type="conversation",
+                    resource_id=body.conversation_id,
+                    details={"scope": "conversation"},
+                    ip_address=client_ip,
+                )
+                raise HTTPException(status_code=429, detail=SUPPORT_CHAT_RATE_LIMIT_MESSAGE)
+
         # Get or create conversation
         if body.conversation_id:
             conversation = await ConversationService.get_conversation(body.conversation_id)
@@ -207,42 +264,38 @@ async def chat_endpoint(
             ip_address=request.client.host if request.client else None
         )
         
+        resp_meta = dict(result.get("metadata", {}) or {})
+        hs_top = result.get("handoff_summary")
+        if hs_top is None:
+            hs_top = resp_meta.pop("handoff_summary", None)
+        else:
+            resp_meta.pop("handoff_summary", None)
+
         # Build response
         response = ChatResponse(
             conversation_id=conversation_id,
             response=result["response"],
             action=result["action"],
-            metadata=result.get("metadata", {}),
+            metadata=resp_meta,
             conversation_context=result.get("conversation_context"),
             actions=result.get("actions"),
-            handoff_summary=result.get("handoff_summary"),
+            handoff_summary=hs_top,
         )
         
         # Add handoff options if needed
         if result["action"] == "handoff":
-            handoff_data = result.get("handoff_data", {})
-            response.handoff_options = {
-                "live_chat": {
-                    "available": True,  # Could check business hours
-                    "provider": "tawk.to",
-                },
-                "email_ticket": {
-                    "available": True,
-                },
-                "whatsapp": {
-                    "available": True,
-                    "link": generate_whatsapp_link(
-                        conversation_id,
-                        conversation.get("crn"),
-                        body.message[:50]
-                    ),
-                },
-                "conversation_id": conversation_id,
-                "transcript_summary": f"{len(history)} messages in conversation",
-            }
-        
+            ho = build_public_handoff_options(
+                conversation_id=conversation_id,
+                crn=conversation.get("crn"),
+                message_snippet=body.message,
+                transcript_summary=f"{len(history)} messages in conversation",
+            )
+            response.handoff_options = ho
+
         return response
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Chat endpoint error: {e}")
         raise HTTPException(status_code=500, detail="Failed to process message")
@@ -336,15 +389,12 @@ async def trigger_quick_action(
     
     # Add handoff options if this is a handoff action
     if canned.get("action") == "handoff":
-        response_data["handoff_options"] = {
-            "live_chat": {"available": True, "provider": "tawk.to"},
-            "email_ticket": {"available": True},
-            "whatsapp": {
-                "available": True,
-                "link": generate_whatsapp_link(conversation_id, None, action_id),
-            },
-            "conversation_id": conversation_id,
-        }
+        response_data["handoff_options"] = build_public_handoff_options(
+            conversation_id=conversation_id,
+            crn=None,
+            message_snippet=action_id,
+            transcript_summary="quick action",
+        )
     
     return response_data
 
@@ -443,6 +493,8 @@ async def create_ticket_endpoint(
             ticket_data,
             conversation_id=body.conversation_id,
             assistant_handoff_summary=assistant_hs,
+            ticket_source="public_support",
+            transcript_available=bool(body.conversation_id),
         )
         
         # Get transcript if conversation linked
@@ -566,6 +618,8 @@ async def live_chat_handoff(
         ticket_data,
         conversation_id=conversation_id,
         assistant_handoff_summary=assistant_hs,
+        ticket_source="public_support",
+        transcript_available=True,
     )
 
     await SupportAuditService.log_action(
@@ -777,12 +831,20 @@ async def get_ticket_detail(
         conversation = await ConversationService.get_conversation(ticket["conversation_id"])
         messages = await MessageService.get_messages(ticket["conversation_id"])
 
-    # Handover summary when ticket is from Portal Assistant escalation
-    handover_summary = None
+    is_portal_assistant = (
+        ticket.get("ticket_source") == "portal_assistant"
+        or bool(ticket.get("assistant_conversation_id"))
+    )
     subj = (ticket.get("subject") or "").strip()
-    desc = (ticket.get("description") or "")
-    if "Portal Assistant escalation" in subj or "User requested human handover" in desc:
+    desc = ticket.get("description") or ""
+    legacy_portal = "Portal Assistant escalation" in subj or "User requested human handover" in desc
+
+    handover_summary = None
+    if is_portal_assistant or legacy_portal:
         handover_summary = {
+            "source": "portal_assistant",
+            "assistant_conversation_id": ticket.get("assistant_conversation_id"),
+            "transcript_available": ticket.get("transcript_available", legacy_portal or is_portal_assistant),
             "reason": "Portal Assistant escalation",
             "description_preview": desc[:1500] + ("..." if len(desc) > 1500 else ""),
         }
@@ -869,6 +931,8 @@ async def create_ticket_from_conversation(
         ticket_data,
         conversation_id=conversation_id,
         assistant_handoff_summary=assistant_hs,
+        ticket_source="support_conversation",
+        transcript_available=True,
     )
 
     await SupportAuditService.log_action(
@@ -1093,6 +1157,48 @@ async def remediation_correlation_view(
             status_code=404,
             detail="Anchor not found for client_id, property_id, and entry",
         ) from None
+
+
+@admin_router.post("/public-content/reindex")
+async def admin_reindex_public_support_content(
+    body: PublicContentReindexRequest,
+    current_user: dict = Depends(require_support_or_above),
+):
+    """
+    Rebuild support_public_content_chunks from published USER KC articles and/or
+    allowlisted marketing pages. Site fetch runs only here (scheduled/manual), not per chat.
+    """
+    from services.support_public_content_index_service import (
+        full_reindex_public_support_content,
+        reindex_all_published_user_kb_articles,
+        reindex_allowlisted_site_pages,
+        ensure_support_public_content_indexes,
+    )
+
+    try:
+        await ensure_support_public_content_indexes()
+        if body.scope == "kb":
+            out = await reindex_all_published_user_kb_articles()
+        elif body.scope == "site":
+            out = await reindex_allowlisted_site_pages(base_url=body.site_base_url)
+        else:
+            out = await full_reindex_public_support_content(
+                include_site=True,
+                site_base_url=body.site_base_url,
+            )
+        await SupportAuditService.log_action(
+            action="public_support_content_reindex",
+            actor_type="admin",
+            actor_id=current_user.get("email"),
+            resource_type="support_public_content",
+            resource_id=body.scope,
+            details={"result": out},
+            ip_address=None,
+        )
+        return {"success": True, "result": out}
+    except Exception as e:
+        logger.error("public-content reindex failed: %s", e)
+        raise HTTPException(status_code=500, detail="Reindex failed") from e
 
 
 @admin_router.get("/stats")

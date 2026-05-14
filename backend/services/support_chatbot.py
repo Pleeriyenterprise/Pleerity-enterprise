@@ -200,31 +200,36 @@ def get_chatbot_knowledge_base() -> Dict[str, Any]:
 # ============================================================================
 
 LEGAL_ADVICE_PATTERNS = [
-    r"is this (legal|lawful|illegal|unlawful)",
-    r"can (i|they|the landlord|the tenant) legally",
-    r"what (are|is) the (legal|penalty|fine|enforcement)",
-    r"will (i|the council|they) (be|get) (fined|prosecuted|penalized)",
-    r"(interpret|meaning of) (the law|legislation|regulation|act)",
-    r"(legal|council|enforcement) (action|consequences|penalties)",
-    r"(can|will) the council (enforce|prosecute|take action)",
-    r"what happens if (i|we) (don't|fail to) comply",
-    r"(am i|is this) (breaking|violating) (the law|any law)",
-    r"legal (advice|opinion|interpretation)",
-    r"(should i|do i need to) (sue|take legal action|prosecute)",
+    r"\bis it legal\b",
+    r"\bis this (legal|lawful|illegal|unlawful)\b",
+    r"\bcan (i|we|they|the landlord|the tenant|my landlord|my tenant)\s+legally\b",
+    r"\bcan (i|we)\s+evict\b",
+    r"\bcan my landlord\b.*\b(evict|kick me out|remove me|end my tenancy)\b",
+    r"\bcan i evict\b",
+    r"\b(am i|are we|is my property|is this property)\s+(legally\s+)?compliant\b",
+    r"\b(will i|would i|can i|could i)\s+pass\s+(an?\s+)?inspection\b",
+    r"\b(pass|passed|passing)\s+(the\s+|an?\s+)?inspection\b",
+    r"\bwhat should i legally\b",
+    r"\bwhat (are|is) the (legal|penalty|fine|enforcement)\b",
+    r"\bwill (i|the council|they) (be|get) (fined|prosecuted|penalized)\b",
+    r"\b(interpret|meaning of) (the law|legislation|regulation|act)\b",
+    r"\b(legal|council|enforcement) (action|consequences|penalties)\b",
+    r"\b(can|will) the council (enforce|prosecute|take action)\b",
+    r"\bwhat happens if (i|we) (don't|fail to) comply\b",
+    r"\b(am i|is this) (breaking|violating) (the law|any law)\b",
+    r"\blegal (advice|opinion|interpretation)\b",
+    r"\b(should i|do i need to) (sue|take legal action|prosecute)\b",
+    r"\bdo i have a (legal )?case\b",
+    r"\b(is|are) (this|that) (allowed|permitted) (under )?law\b",
 ]
 
-LEGAL_REFUSAL_RESPONSE = """I'm not able to provide legal advice, interpret legislation, or predict council enforcement actions. For legal questions, please consult:
+LEGAL_REFUSAL_RESPONSE = """I'm not able to provide legal advice, interpret legislation, or say whether you, a tenant, or a landlord are acting lawfully in a specific situation. I also cannot guarantee inspection outcomes or council enforcement. For those questions, please consult a qualified solicitor, your local council housing or licensing team, or Citizens Advice.
 
-• A qualified solicitor specializing in property law
-• Your local council's licensing team
-• Citizens Advice Bureau (free guidance)
-• NRLA (National Residential Landlords Association) for members
-
-I can help with:
-✓ How to use Pleerity services
-✓ Your account and orders
-✓ General compliance information (not legal interpretation)
-✓ Technical support
+**What Pleerity can help with instead (not legal advice):**
+• **Records and evidence in the platform** — where to upload, download, or organise documents you already hold
+• **Account, billing, and orders** — access, CRN, subscriptions, and purchase history
+• **Using the product** — navigation, features, and how tools work
+• **Support escalation** — say **speak to a human** or use **Talk to support** in this chat if you need our team for account or product issues (we still cannot provide legal advice)
 
 Would you like help with any of these instead?"""
 
@@ -765,6 +770,120 @@ def needs_human_handoff(message: str) -> bool:
     return False
 
 
+_SMALL_TALK_PHRASES = frozenset(
+    {
+        "hi",
+        "hello",
+        "hey",
+        "hiya",
+        "yo",
+        "thanks",
+        "thank you",
+        "thx",
+        "cheers",
+        "ok",
+        "okay",
+        "kk",
+        "how are you",
+        "sup",
+        "whats up",
+        "what's up",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "morning",
+        "evening",
+    }
+)
+
+
+def try_small_talk_reply(message: str, ctx: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Short social / acknowledgement messages — answer briefly and steer to support
+    without invoking pricing/compliance qualification or the router LLM path.
+    """
+    raw = (message or "").strip()
+    if not raw or len(raw) > 120:
+        return None
+    if needs_human_handoff(raw):
+        return None
+    norm = raw.lower().strip()
+    norm = re.sub(r"[!?.]+$", "", norm).strip()
+    if norm not in _SMALL_TALK_PHRASES:
+        return None
+    return {
+        "response": (
+            "I'm here and ready to help with Pleerity — pricing, compliance, account access, "
+            "or getting you to a human when you need one. What would you like to do today?"
+        ),
+        "action": "respond",
+        "metadata": {"small_talk": True, "service_area": "other", "category": "other"},
+        "conversation_context": ctx,
+    }
+
+
+LIVE_CHAT_UNAVAILABLE_COPY = (
+    "Live chat is not available right now. You can still create a ticket."
+)
+
+
+def tawk_live_chat_configured() -> bool:
+    """True when Tawk widget env is present (backend or shared REACT_APP_* names)."""
+    pid = (
+        os.environ.get("TAWKTO_PROPERTY_ID")
+        or os.environ.get("REACT_APP_TAWKTO_PROPERTY_ID")
+        or ""
+    ).strip()
+    wid = (
+        os.environ.get("TAWKTO_WIDGET_ID")
+        or os.environ.get("REACT_APP_TAWKTO_WIDGET_ID")
+        or ""
+    ).strip()
+    if not pid or not wid:
+        return False
+    bad = {"your_property_id", "your_widget_id", "placeholder", "xxx"}
+    if pid.lower() in bad or wid.lower() in bad:
+        return False
+    return True
+
+
+def whatsapp_handoff_configured() -> bool:
+    """True when a plausible WhatsApp number is configured for deeplink handoff."""
+    raw = (os.environ.get("SUPPORT_WHATSAPP_NUMBER") or "").strip()
+    if not raw or raw.upper() in ("DISABLED", "NONE", "OFF", "0", "FALSE"):
+        return False
+    digits = re.sub(r"\D", "", raw)
+    return len(digits) >= 10
+
+
+def build_public_handoff_options(
+    *,
+    conversation_id: str,
+    crn: Optional[str],
+    message_snippet: str,
+    transcript_summary: str,
+) -> Dict[str, Any]:
+    """Handoff payload for public widget: respects Tawk / WhatsApp configuration."""
+    tawk_ok = tawk_live_chat_configured()
+    wa_ok = whatsapp_handoff_configured()
+    out: Dict[str, Any] = {
+        "live_chat": {"available": tawk_ok, "provider": "tawk.to"},
+        "email_ticket": {"available": True},
+        "whatsapp": {"available": wa_ok, "link": None},
+        "conversation_id": conversation_id,
+        "transcript_summary": transcript_summary,
+    }
+    if not tawk_ok:
+        out["live_chat_notice"] = LIVE_CHAT_UNAVAILABLE_COPY
+    if wa_ok:
+        out["whatsapp"]["link"] = generate_whatsapp_link(
+            conversation_id,
+            crn,
+            message_snippet[:50] if message_snippet else None,
+        )
+    return out
+
+
 # ============================================================================
 # ACCOUNT LOOKUP (SANITIZED)
 # ============================================================================
@@ -963,6 +1082,9 @@ def _count_recent_fallback_responses(conversation_history: List[Dict[str, Any]])
             or meta.get("matched_faq")
             or meta.get("legal_refusal")
             or meta.get("retrieval_matched")
+            or meta.get("kc_article_matched")
+            or meta.get("site_page_matched")
+            or meta.get("public_content_retrieval")
             or meta.get("clarifying")
             or meta.get("tool")
             or meta.get("grounded")
@@ -1056,6 +1178,16 @@ async def handle_chat_message(
     ctx.setdefault("problem_intent", None)
     if ctx.get("intent") and not ctx.get("primary_goal"):
         ctx["primary_goal"] = ctx["intent"]
+
+    # Legal / statutory advice boundary — must run before problem routing, onboarding,
+    # small-talk, router_turn, retrieval, pricing shortcuts, and LLM (no legal guarantees).
+    if is_legal_advice_request(message):
+        return {
+            "response": LEGAL_REFUSAL_RESPONSE,
+            "action": "respond",
+            "metadata": {"legal_refusal": True, "service_area": "other", "category": "other"},
+            "conversation_context": ctx,
+        }
 
     # --- Problem-based entry: detect problem intent and set product intent from map ---
     problem = detect_problem_intent(message)
@@ -1160,16 +1292,12 @@ async def handle_chat_message(
             },
             "conversation_context": ctx,
         }
-    
-    # Check for legal advice request
-    if is_legal_advice_request(message):
-        return {
-            "response": LEGAL_REFUSAL_RESPONSE,
-            "action": "respond",
-            "metadata": {"legal_refusal": True, "service_area": "other", "category": "other"},
-            "conversation_context": ctx,
-        }
-    
+
+    if ctx.get("onboarding_step") not in ("qualification", "portfolio_size"):
+        st = try_small_talk_reply(message, ctx)
+        if st:
+            return st
+
     from services.support_assistant_orchestrator import router_turn
 
     routed = await router_turn(
@@ -1283,6 +1411,17 @@ async def handle_chat_message(
             "conversation_context": ctx,
         }
 
+    # Indexed Knowledge Centre / allowlisted site chunks (Mongo only — no live crawl per turn)
+    try:
+        from services.support_public_content_retrieval import try_public_support_content_answer
+
+        pub = await try_public_support_content_answer(message, ctx)
+        if pub:
+            ctx["last_action"] = "public_content_index"
+            return pub
+    except Exception as e:
+        logger.warning("support_chatbot: public content retrieval failed: %s", e)
+
     # Structured KB retrieval: answer from knowledge base when confidence is high (avoid LLM hallucination)
     try:
         from services.support_chatbot_retrieval import (
@@ -1307,6 +1446,14 @@ async def handle_chat_message(
                     "retrieval_matched": True,
                     "kb_id": best_entry.get("id"),
                     "category": best_entry.get("category"),
+                    "sources": [
+                        {
+                            "source_type": "static_qna",
+                            "kb_id": best_entry.get("id"),
+                            "title": best_entry.get("title"),
+                        }
+                    ],
+                    "retrieval_path": ["static_qna"],
                 },
                 "conversation_context": ctx,
                 "actions": actions,
@@ -1318,7 +1465,7 @@ async def handle_chat_message(
                 return {
                     "response": clarifying,
                     "action": "respond",
-                    "metadata": {"clarifying": True},
+                    "metadata": {"clarifying": True, "retrieval_path": ["static_qna"]},
                     "conversation_context": ctx,
                 }
     except Exception as e:
@@ -1341,14 +1488,16 @@ async def handle_chat_message(
         handoff["response"] = ESCALATION_MESSAGE
         return handoff
 
-    # Generate AI response (existing behaviour)
+    # Generate AI response (existing behaviour); registry facts remain in system prompt via approved JSON
     response, metadata = await generate_ai_response(
         message, conversation_history, client_context, conversation_context=ctx
     )
+    meta = dict(metadata or {})
+    meta.setdefault("retrieval_path", ["llm_fallback"])
     return {
         "response": response,
         "action": "respond",
-        "metadata": metadata,
+        "metadata": meta,
         "conversation_context": ctx,
     }
 

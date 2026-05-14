@@ -338,21 +338,31 @@ function QuickActionsPanel({ onAction, onReset, loading }) {
 
 // Handoff options component
 function HandoffOptions({ options, onSelect, conversationId, onWhatsAppClick }) {
+  const liveAvailable = options?.live_chat?.available;
+  const notice = options?.live_chat_notice;
+
   return (
     <div className="bg-blue-50 rounded-lg p-4 mb-3">
       <p className="text-sm font-medium text-blue-800 mb-3">
         Choose how you&apos;d like to continue:
       </p>
+      {notice && (
+        <p className="text-xs text-blue-900 bg-blue-100/80 border border-blue-200 rounded-md px-3 py-2 mb-3">
+          {notice}
+        </p>
+      )}
       <div className="space-y-2">
         <Button
           variant="outline"
           className="w-full justify-start gap-2 bg-white hover:bg-gray-50"
           onClick={() => onSelect('livechat')}
+          disabled={!liveAvailable}
+          title={!liveAvailable ? 'Live chat is not configured' : undefined}
         >
           <MessageSquare className="w-4 h-4 text-green-600" />
           <span>Live Chat with Agent</span>
           <Badge variant="secondary" className="ml-auto text-xs">
-            {options?.live_chat?.available ? 'Online' : 'Offline'}
+            {liveAvailable ? 'Online' : 'Unavailable'}
           </Badge>
         </Button>
         
@@ -827,7 +837,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
 
       setMessages(prev => [...prev, botMessage]);
 
-      const hs = response.data.handoff_summary || response.data.metadata?.handoff_summary;
+      const hs = response.data.handoff_summary;
       if (hs) {
         setTicketPrefill({
           subject: 'Support request — Pleerity assistant',
@@ -842,7 +852,12 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
       }
     } catch (err) {
       console.error('Chat error:', err);
-      toast.error('Failed to send message. Please try again.');
+      const detail = err.response?.data?.detail;
+      if (err.response?.status === 429 && typeof detail === 'string') {
+        toast.error(detail);
+      } else {
+        toast.error('Failed to send message. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -882,7 +897,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
         actions: response.data.actions ?? null,
       };
       setMessages(prev => [...prev, botMsg]);
-      const hs2 = response.data.handoff_summary || response.data.metadata?.handoff_summary;
+      const hs2 = response.data.handoff_summary;
       if (hs2) {
         setTicketPrefill({
           subject: 'Support request — Pleerity assistant',
@@ -895,7 +910,12 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
       }
     } catch (err) {
       console.error('Chat error:', err);
-      toast.error('Failed to send message. Please try again.');
+      const detail = err.response?.data?.detail;
+      if (err.response?.status === 429 && typeof detail === 'string') {
+        toast.error(detail);
+      } else {
+        toast.error('Failed to send message. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -913,6 +933,13 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   // Handle handoff selection
   const handleHandoffSelect = (option) => {
     if (option === 'livechat') {
+      if (handoffOptions && handoffOptions.live_chat && !handoffOptions.live_chat.available) {
+        toast.error(
+          handoffOptions.live_chat_notice
+            || 'Live chat is not available right now. You can still create a ticket.'
+        );
+        return;
+      }
       // Record handoff and create ticket so it appears in admin queue (non-blocking)
       if (conversationId) {
         client.post(`/support/conversation/${conversationId}/live-chat-handoff`)

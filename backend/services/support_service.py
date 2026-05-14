@@ -360,6 +360,9 @@ class TicketService:
         data: TicketCreate,
         conversation_id: Optional[str] = None,
         assistant_handoff_summary: Optional[str] = None,
+        assistant_conversation_id: Optional[str] = None,
+        ticket_source: Optional[str] = None,
+        transcript_available: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Create a support ticket."""
         db = database.get_db()
@@ -389,7 +392,18 @@ class TicketService:
         }
         if summary_clean:
             ticket["assistant_handoff_summary"] = summary_clean
-        
+        if assistant_conversation_id:
+            aid = assistant_conversation_id.strip()
+            if aid:
+                ticket["assistant_conversation_id"] = aid
+                ticket.setdefault("ticket_source", ticket_source or "portal_assistant")
+                if transcript_available is not None:
+                    ticket["transcript_available"] = transcript_available
+                else:
+                    ticket["transcript_available"] = True
+        elif ticket_source:
+            ticket["ticket_source"] = ticket_source
+
         await db[TICKETS_COLLECTION].insert_one(ticket)
         
         # If linked to conversation, escalate it
@@ -582,6 +596,7 @@ async def create_support_indexes():
     # Tickets
     await db[TICKETS_COLLECTION].create_index("ticket_id", unique=True)
     await db[TICKETS_COLLECTION].create_index("conversation_id")
+    await db[TICKETS_COLLECTION].create_index("assistant_conversation_id", sparse=True)
     await db[TICKETS_COLLECTION].create_index("status")
     await db[TICKETS_COLLECTION].create_index("priority")
     await db[TICKETS_COLLECTION].create_index("category")
@@ -592,5 +607,12 @@ async def create_support_indexes():
     await db[AUDIT_COLLECTION].create_index("timestamp")
     await db[AUDIT_COLLECTION].create_index("resource_type")
     await db[AUDIT_COLLECTION].create_index("resource_id")
-    
+
+    try:
+        from services.support_public_content_index_service import ensure_support_public_content_indexes
+
+        await ensure_support_public_content_indexes()
+    except Exception as e:
+        logger.warning("Support public content chunk indexes skipped: %s", e)
+
     logger.info("Support system indexes created")

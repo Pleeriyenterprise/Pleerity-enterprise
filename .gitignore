@@ -3,6 +3,8 @@
 # IDE and editors
 .idea/
 .vscode/
+# Cursor: terminal session logs can contain pasted env vars (e.g. MONGO_URL); keep out of git if copied into tree
+.cursor/terminals/
 
 # Dependencies
 node_modules/

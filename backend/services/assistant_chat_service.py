@@ -429,7 +429,13 @@ async def escalate_assistant_conversation(
         email=client_email or None,
         crn=client_crn or None,
     )
-    ticket = await TicketService.create_ticket(ticket_data, conversation_id=None)
+    ticket = await TicketService.create_ticket(
+        ticket_data,
+        conversation_id=None,
+        assistant_conversation_id=conversation_id,
+        ticket_source="portal_assistant",
+        transcript_available=True,
+    )
     internal_sent = await send_internal_ticket_notification(
         ticket_id=ticket["ticket_id"],
         customer_email=client_email,
