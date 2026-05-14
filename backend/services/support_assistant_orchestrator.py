@@ -57,6 +57,8 @@ async def router_turn(
         is_legal_advice_request,
         needs_human_handoff,
         _get_guided_actions,
+        build_public_handoff_options,
+        format_handoff_intro_message,
     )
 
     text = (message or "").strip()
@@ -86,13 +88,14 @@ async def router_turn(
             extra={"engagement_mode": mode},
         )
         return {
-            "response": """I'll connect you with a human agent. You can:
-
-1. **Live Chat** — Mon–Fri 9am–6pm GMT
-2. **Email ticket** — we respond within 24 hours
-3. **WhatsApp** — include your conversation reference
-
-Which would you prefer?""",
+            "response": format_handoff_intro_message(
+                build_public_handoff_options(
+                    conversation_id=conversation_id,
+                    crn=None,
+                    message_snippet=text[:200],
+                    transcript_summary=f"{len(conversation_history)} messages in conversation",
+                )
+            ),
             "action": "handoff",
             "metadata": {
                 "service_area": service_area,

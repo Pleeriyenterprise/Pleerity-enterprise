@@ -6,11 +6,17 @@ import asyncio
 import pytest
 from unittest.mock import AsyncMock
 
-from routes.support import ChatResponse, SUPPORT_CHAT_RATE_LIMIT_MESSAGE
+from routes.support import (
+    ChatResponse,
+    SUPPORT_CHAT_RATE_LIMIT_MESSAGE,
+    build_public_ticket_created_response,
+)
 from services.support_chatbot import (
     try_small_talk_reply,
     needs_human_handoff,
     build_public_handoff_options,
+    format_handoff_intro_message,
+    try_vague_account_help_clarification,
     is_legal_advice_request,
 )
 
@@ -95,8 +101,101 @@ def test_try_small_talk_how_are_you():
     out = try_small_talk_reply("how are you?", ctx)
     assert out is not None
     assert out["action"] == "respond"
-    assert "pleerity" in out["response"].lower()
+    text = out["response"].lower()
+    assert "pleerity" not in text
+    assert "thanks for asking" in text or "doing well" in text
+    assert "help" in text
     assert out["metadata"].get("small_talk") is True
+
+
+def test_try_small_talk_hello_is_short_and_helpful():
+    ctx = {}
+    out = try_small_talk_reply("hello", ctx)
+    assert out is not None
+    low = out["response"].lower()
+    assert "pleerity" not in low
+    assert "hi" in low or "help" in low
+
+
+def test_try_small_talk_thanks_and_ok():
+    ctx = {}
+    th = try_small_talk_reply("thanks", ctx)
+    assert th and "pleerity" not in th["response"].lower()
+    ctx2 = {}
+    ok = try_small_talk_reply("ok", ctx2)
+    assert ok and "pleerity" not in ok["response"].lower()
+
+
+def test_try_vague_account_help_asks_clarification_first():
+    ctx = {}
+    out = try_vague_account_help_clarification("I need help with my account", ctx)
+    assert out is not None
+    assert out["metadata"].get("account_clarify") is True
+    assert "login" in out["response"].lower()
+    assert "password reset" in out["response"].lower()
+    assert "billing" in out["response"].lower()
+    assert ctx.get("account_clarify_pending") is True
+
+
+def test_try_vague_account_help_skips_clear_password_login_billing():
+    ctx = {}
+    assert try_vague_account_help_clarification("I forgot my password", ctx) is None
+    assert try_vague_account_help_clarification("I cannot log in", ctx) is None
+    assert try_vague_account_help_clarification("I need billing help", ctx) is None
+
+
+def test_format_handoff_intro_no_connect_phrase_when_live_unavailable(monkeypatch):
+    monkeypatch.setenv("TAWKTO_PROPERTY_ID", "")
+    monkeypatch.setenv("TAWKTO_WIDGET_ID", "")
+    monkeypatch.setenv("SUPPORT_WHATSAPP_NUMBER", "")
+    ho = build_public_handoff_options(
+        conversation_id="CONV-abc",
+        crn=None,
+        message_snippet="hi",
+        transcript_summary="2 messages",
+    )
+    assert ho["live_chat"]["configured"] is False
+    msg = format_handoff_intro_message(ho)
+    low = msg.lower()
+    assert "reach our support team" in low
+    assert "connect you" not in low
+    assert "whatsapp" not in low
+    assert "email ticket" in low
+    assert "tawk" not in low
+
+
+def test_format_handoff_intro_whatsapp_only_when_configured(monkeypatch):
+    monkeypatch.setenv("TAWKTO_PROPERTY_ID", "")
+    monkeypatch.setenv("TAWKTO_WIDGET_ID", "")
+    monkeypatch.setenv("SUPPORT_WHATSAPP_NUMBER", "+441234567890")
+    ho = build_public_handoff_options(
+        conversation_id="CONV-wa",
+        crn=None,
+        message_snippet="handoff",
+        transcript_summary="1 messages",
+    )
+    msg = format_handoff_intro_message(ho)
+    assert "whatsapp" in msg.lower()
+    assert "deeplink" in msg.lower() or "prefilled" in msg.lower()
+
+
+def test_build_public_ticket_created_response_includes_reference_and_sla():
+    body = build_public_ticket_created_response(
+        ticket_id="TKT-123",
+        conversation_id="CONV-456",
+        transcript_included=True,
+        email_sent=True,
+        internal_notification_sent=False,
+    )
+    assert body["ticket_id"] == "TKT-123"
+    assert body["conversation_id"] == "CONV-456"
+    assert body["response_channel"] == "email"
+    assert "24 hours" in body["response_window"]
+    assert body["transcript_included"] is True
+    m = body["message"]
+    assert "TKT-123" in m
+    assert "CONV-456" in m
+    assert "transcript" in m.lower()
 
 
 def test_try_small_talk_skips_human_handoff():
@@ -151,6 +250,10 @@ def test_is_legal_advice_request_does_not_match_normal_queries():
 def test_build_public_handoff_options_tawk_whatsapp(monkeypatch, env, expect_live, expect_link):
     for k, v in env.items():
         monkeypatch.setenv(k, v)
+    monkeypatch.setattr(
+        "services.support_chatbot.within_public_support_hours",
+        lambda now=None: expect_live,
+    )
     ho = build_public_handoff_options(
         conversation_id="CONV-x",
         crn=None,
@@ -158,11 +261,64 @@ def test_build_public_handoff_options_tawk_whatsapp(monkeypatch, env, expect_liv
         transcript_summary="1 messages",
     )
     assert ho["live_chat"]["available"] is expect_live
+    assert ho["live_chat"]["configured"] is bool(env.get("TAWKTO_PROPERTY_ID"))
     if expect_link:
         assert ho["whatsapp"]["link"] and "wa.me" in ho["whatsapp"]["link"]
     if not expect_live:
         assert ho.get("live_chat_notice")
         assert "ticket" in ho["live_chat_notice"].lower()
+
+
+def test_tawk_configured_outside_hours_live_chat_unavailable(monkeypatch):
+    monkeypatch.setenv("TAWKTO_PROPERTY_ID", "pid")
+    monkeypatch.setenv("TAWKTO_WIDGET_ID", "wid")
+    monkeypatch.setenv("SUPPORT_WHATSAPP_NUMBER", "")
+    monkeypatch.setattr("services.support_chatbot.within_public_support_hours", lambda now=None: False)
+    ho = build_public_handoff_options(
+        conversation_id="CONV-h",
+        crn=None,
+        message_snippet="hi",
+        transcript_summary="1 messages",
+    )
+    assert ho["live_chat"]["configured"] is True
+    assert ho["live_chat"]["available"] is False
+    assert ho["live_chat"]["within_support_hours"] is False
+    assert "support hours" in ho["live_chat_notice"].lower()
+
+
+def test_support_live_chat_enabled_off_disables_handoff(monkeypatch):
+    monkeypatch.setenv("TAWKTO_PROPERTY_ID", "pid")
+    monkeypatch.setenv("TAWKTO_WIDGET_ID", "wid")
+    monkeypatch.setenv("SUPPORT_LIVE_CHAT_ENABLED", "0")
+    monkeypatch.setattr("services.support_chatbot.within_public_support_hours", lambda now=None: True)
+    ho = build_public_handoff_options(
+        conversation_id="CONV-off",
+        crn=None,
+        message_snippet="hi",
+        transcript_summary="1 messages",
+    )
+    assert ho["live_chat"]["configured"] is True
+    assert ho["live_chat"]["enabled"] is False
+    assert ho["live_chat"]["available"] is False
+
+
+def test_human_handoff_intro_matches_channel_list(monkeypatch):
+    """Intro lists the same channels as handoff_options when live + WhatsApp are on."""
+    monkeypatch.setenv("TAWKTO_PROPERTY_ID", "pid")
+    monkeypatch.setenv("TAWKTO_WIDGET_ID", "wid")
+    monkeypatch.setenv("SUPPORT_WHATSAPP_NUMBER", "+441234567890")
+    monkeypatch.setattr("services.support_chatbot.within_public_support_hours", lambda now=None: True)
+    ho = build_public_handoff_options(
+        conversation_id="CONV-hum",
+        crn=None,
+        message_snippet="human",
+        transcript_summary="2 messages",
+    )
+    intro = format_handoff_intro_message(ho)
+    assert ho["live_chat"]["available"] is True
+    assert "tawk" in intro.lower()
+    assert "email ticket" in intro.lower()
+    assert "whatsapp" in intro.lower()
 
 
 def test_escalate_assistant_passes_bridge_fields(monkeypatch):

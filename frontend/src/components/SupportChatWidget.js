@@ -336,10 +336,25 @@ function QuickActionsPanel({ onAction, onReset, loading }) {
   );
 }
 
-// Handoff options component
-function HandoffOptions({ options, onSelect, conversationId, onWhatsAppClick }) {
-  const liveAvailable = options?.live_chat?.available;
+// Handoff options component (live chat row hidden when Tawk is not configured)
+function HandoffOptions({ options, onSelect, conversationId, onWhatsAppClick, tawkVisitorStatus }) {
+  const lc = options?.live_chat || {};
+  const hideLiveChat = lc.configured === false;
   const notice = options?.live_chat_notice;
+  const serverAvailable = !!lc.available;
+  const widgetOffline = serverAvailable && tawkVisitorStatus === 'offline';
+  const liveClickable = serverAvailable && !widgetOffline;
+
+  let liveBadge = 'Unavailable';
+  if (hideLiveChat) {
+    liveBadge = '';
+  } else if (widgetOffline) {
+    liveBadge = 'No agent online';
+  } else if (serverAvailable) {
+    liveBadge = 'Try live chat';
+  } else if (lc.configured) {
+    liveBadge = 'Outside hours';
+  }
 
   return (
     <div className="bg-blue-50 rounded-lg p-4 mb-3">
@@ -352,20 +367,30 @@ function HandoffOptions({ options, onSelect, conversationId, onWhatsAppClick }) 
         </p>
       )}
       <div className="space-y-2">
-        <Button
-          variant="outline"
-          className="w-full justify-start gap-2 bg-white hover:bg-gray-50"
-          onClick={() => onSelect('livechat')}
-          disabled={!liveAvailable}
-          title={!liveAvailable ? 'Live chat is not configured' : undefined}
-        >
-          <MessageSquare className="w-4 h-4 text-green-600" />
-          <span>Live Chat with Agent</span>
-          <Badge variant="secondary" className="ml-auto text-xs">
-            {liveAvailable ? 'Online' : 'Unavailable'}
-          </Badge>
-        </Button>
-        
+        {!hideLiveChat && (
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2 bg-white hover:bg-gray-50"
+            onClick={() => onSelect('livechat')}
+            disabled={!liveClickable}
+            title={
+              !liveClickable && serverAvailable && widgetOffline
+                ? 'The chat widget shows no agents online right now'
+                : !serverAvailable
+                  ? 'Live chat is only offered during configured support hours when Tawk is set up'
+                  : undefined
+            }
+          >
+            <MessageSquare className="w-4 h-4 text-green-600" />
+            <span>Live Chat with Agent</span>
+            {liveBadge ? (
+              <Badge variant="secondary" className="ml-auto text-xs">
+                {liveBadge}
+              </Badge>
+            ) : null}
+          </Button>
+        )}
+
         <Button
           variant="outline"
           className="w-full justify-start gap-2 bg-white hover:bg-gray-50"
@@ -417,13 +442,19 @@ function EmailTicketForm({ conversationId, onSubmit, onCancel, initialSubject = 
     setSubmitting(true);
     
     try {
-      await client.post('/support/ticket', {
+      const res = await client.post('/support/ticket', {
         ...form,
         conversation_id: conversationId,
         contact_method: 'email',
       });
-      toast.success('Ticket created! Check your email for confirmation.');
-      onSubmit();
+      const d = res.data || {};
+      const tid = d.ticket_id || '';
+      toast.success(
+        tid
+          ? `Ticket ${tid} created. We aim to reply by email within 24 hours.`
+          : 'Your support ticket has been created.',
+      );
+      if (typeof onSubmit === 'function') onSubmit(d);
     } catch (err) {
       toast.error('Failed to create ticket. Please try again.');
     } finally {
@@ -640,6 +671,19 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   });
   const [leadCaptureSubmitted, setLeadCaptureSubmitted] = useState(false);
   const messagesEndRef = useRef(null);
+  const [tawkVisitorStatus, setTawkVisitorStatus] = useState(null);
+
+  useEffect(() => {
+    if (typeof TawkToAPI.getVisitorStatus === 'function') {
+      setTawkVisitorStatus(TawkToAPI.getVisitorStatus());
+    }
+    if (typeof TawkToAPI.onVisitorStatusChange !== 'function') {
+      return undefined;
+    }
+    return TawkToAPI.onVisitorStatusChange((status) => {
+      setTawkVisitorStatus(status);
+    });
+  }, []);
 
   const resetConversation = useCallback(() => {
     setConversationId(null);
@@ -933,6 +977,17 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   // Handle handoff selection
   const handleHandoffSelect = (option) => {
     if (option === 'livechat') {
+      const widgetStatus = typeof window !== 'undefined' ? window.__PLEERITY_TAWK_STATUS : null;
+      if (handoffOptions?.live_chat?.configured === false) {
+        return;
+      }
+      if (handoffOptions?.live_chat?.available && widgetStatus === 'offline') {
+        toast.error(
+          handoffOptions.live_chat_notice
+            || 'Live chat is not available right now. You can still create a ticket.'
+        );
+        return;
+      }
       if (handoffOptions && handoffOptions.live_chat && !handoffOptions.live_chat.available) {
         toast.error(
           handoffOptions.live_chat_notice
@@ -1165,6 +1220,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
                 onSelect={handleHandoffSelect}
                 conversationId={conversationId}
                 onWhatsAppClick={handleWhatsAppClick}
+                tawkVisitorStatus={tawkVisitorStatus}
               />
             )}
             
@@ -1174,11 +1230,14 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
                 conversationId={conversationId}
                 initialSubject={ticketPrefill.subject}
                 initialDescription={ticketPrefill.description}
-                onSubmit={() => {
+                onSubmit={(ticketPayload) => {
                   setShowTicketForm(false);
+                  const text =
+                    (ticketPayload && ticketPayload.message) ||
+                    "Your support ticket has been created. You'll receive a confirmation email shortly.";
                   setMessages(prev => [...prev, {
                     id: Date.now().toString(),
-                    text: "✅ Your support ticket has been created. You'll receive a confirmation email shortly.",
+                    text,
                     sender: 'bot',
                     timestamp: new Date().toISOString(),
                   }]);

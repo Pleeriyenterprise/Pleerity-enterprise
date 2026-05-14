@@ -19,6 +19,7 @@ import json
 import logging
 from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from database import database
 
 logger = logging.getLogger(__name__)
@@ -225,7 +226,7 @@ LEGAL_ADVICE_PATTERNS = [
 
 LEGAL_REFUSAL_RESPONSE = """I'm not able to provide legal advice, interpret legislation, or say whether you, a tenant, or a landlord are acting lawfully in a specific situation. I also cannot guarantee inspection outcomes or council enforcement. For those questions, please consult a qualified solicitor, your local council housing or licensing team, or Citizens Advice.
 
-**What Pleerity can help with instead (not legal advice):**
+**What we can help with instead (not legal advice):**
 • **Records and evidence in the platform** — where to upload, download, or organise documents you already hold
 • **Account, billing, and orders** — access, CRN, subscriptions, and purchase history
 • **Using the product** — navigation, features, and how tools work
@@ -811,11 +812,23 @@ def try_small_talk_reply(message: str, ctx: Dict[str, Any]) -> Optional[Dict[str
     norm = re.sub(r"[!?.]+$", "", norm).strip()
     if norm not in _SMALL_TALK_PHRASES:
         return None
+    thanks = {"thanks", "thank you", "thx", "cheers"}
+    greetings = {"hi", "hello", "hey", "hiya", "yo", "good morning", "good afternoon", "good evening", "morning", "evening"}
+    ack = {"ok", "okay", "kk"}
+    if norm in thanks:
+        text = "Glad to help. If something else comes up — account access, billing, or compliance tools — just say what you’re trying to do."
+    elif norm == "how are you":
+        text = "Doing well — thanks for asking. I can help with compliance, account access, pricing, or getting you to the right support. What do you need?"
+    elif norm in greetings:
+        text = "Hi — what can I help you with today? (Account access, billing, compliance tools, or a quick product question.)"
+    elif norm in ack:
+        text = "Sounds good. Tell me what you’d like to do next whenever you’re ready."
+    elif norm in {"sup", "whats up", "what's up"}:
+        text = "Here when you need me. What should we tackle — account, billing, compliance, or something else?"
+    else:
+        text = "Doing well, thanks. What can I help you with?"
     return {
-        "response": (
-            "I'm here and ready to help with Pleerity — pricing, compliance, account access, "
-            "or getting you to a human when you need one. What would you like to do today?"
-        ),
+        "response": text,
         "action": "respond",
         "metadata": {"small_talk": True, "service_area": "other", "category": "other"},
         "conversation_context": ctx,
@@ -847,6 +860,104 @@ def tawk_live_chat_configured() -> bool:
     return True
 
 
+def public_live_chat_enabled_from_env() -> bool:
+    """
+    Operator kill-switch for live chat handoff (Tawk widget may still load elsewhere).
+    Default: enabled when unset. Set SUPPORT_LIVE_CHAT_ENABLED=0|false|off to hide handoff.
+    """
+    raw = (os.environ.get("SUPPORT_LIVE_CHAT_ENABLED") or "").strip().lower()
+    if raw in ("0", "false", "off", "no", "disabled"):
+        return False
+    if raw in ("1", "true", "on", "yes", "enabled"):
+        return True
+    return True
+
+
+def public_support_schedule_label() -> str:
+    """Human-readable schedule line for notices (driven by SUPPORT_LIVE_CHAT_* env)."""
+    tz_name = (os.environ.get("SUPPORT_LIVE_CHAT_TIMEZONE") or "Europe/London").strip() or "Europe/London"
+    try:
+        start_h = int(os.environ.get("SUPPORT_LIVE_CHAT_START_HOUR", "9") or 9)
+    except ValueError:
+        start_h = 9
+    try:
+        end_h = int(os.environ.get("SUPPORT_LIVE_CHAT_END_HOUR", "18") or 18)
+    except ValueError:
+        end_h = 18
+    wd_raw = (os.environ.get("SUPPORT_LIVE_CHAT_WEEKDAYS") or "0,1,2,3,4").strip()
+    if wd_raw in ("*", "all", "everyday"):
+        days = "every day"
+    else:
+        days = "Mon–Fri"
+    return f"{days}, {start_h:02d}:00–{end_h:02d}:00 ({tz_name})"
+
+
+def within_public_support_hours(now: Optional[datetime] = None) -> bool:
+    """
+    Whether the current time falls inside the configured live-chat window in SUPPORT_LIVE_CHAT_TIMEZONE.
+    Weekdays: SUPPORT_LIVE_CHAT_WEEKDAYS comma list, 0=Mon .. 6=Sun (default Mon–Fri).
+    Hours: [START, END) local hours (defaults 9–18).
+    """
+    now = now or datetime.now(timezone.utc)
+    tz_name = (os.environ.get("SUPPORT_LIVE_CHAT_TIMEZONE") or "Europe/London").strip() or "Europe/London"
+    try:
+        tz = ZoneInfo(tz_name)
+    except Exception:
+        tz = ZoneInfo("UTC")
+    local = now.astimezone(tz)
+    wd = local.weekday()
+    wd_raw = (os.environ.get("SUPPORT_LIVE_CHAT_WEEKDAYS") or "0,1,2,3,4").strip().lower()
+    if wd_raw in ("*", "all", "everyday"):
+        allowed = {0, 1, 2, 3, 4, 5, 6}
+    else:
+        allowed = {int(x.strip()) for x in wd_raw.split(",") if x.strip().isdigit()}
+        if not allowed:
+            allowed = {0, 1, 2, 3, 4}
+    if wd not in allowed:
+        return False
+    try:
+        start_h = int(os.environ.get("SUPPORT_LIVE_CHAT_START_HOUR", "9") or 9)
+    except ValueError:
+        start_h = 9
+    try:
+        end_h = int(os.environ.get("SUPPORT_LIVE_CHAT_END_HOUR", "18") or 18)
+    except ValueError:
+        end_h = 18
+    hour_frac = local.hour + local.minute / 60.0 + local.second / 3600.0
+    return float(start_h) <= hour_frac < float(end_h)
+
+
+def compute_public_live_chat_state(
+    *,
+    now: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """
+    Single source of truth for public live-chat handoff (backend).
+    Does not call Tawk HTTP APIs — only env + wall-clock schedule.
+    """
+    configured = tawk_live_chat_configured()
+    enabled = public_live_chat_enabled_from_env()
+    in_hours = within_public_support_hours(now) if configured and enabled else False
+    available = bool(configured and enabled and in_hours)
+    schedule_label = public_support_schedule_label()
+    notice: Optional[str] = None
+    if not configured or not enabled:
+        notice = LIVE_CHAT_UNAVAILABLE_COPY
+    elif not available:
+        notice = (
+            "Live chat is not available right now. You can still create a ticket. "
+            f"(Live chat may be available during support hours: {schedule_label}.)"
+        )
+    return {
+        "configured": configured,
+        "enabled": enabled,
+        "within_support_hours": in_hours,
+        "available": available,
+        "schedule_label": schedule_label,
+        "live_chat_notice": notice,
+    }
+
+
 def whatsapp_handoff_configured() -> bool:
     """True when a plausible WhatsApp number is configured for deeplink handoff."""
     raw = (os.environ.get("SUPPORT_WHATSAPP_NUMBER") or "").strip()
@@ -863,18 +974,26 @@ def build_public_handoff_options(
     message_snippet: str,
     transcript_summary: str,
 ) -> Dict[str, Any]:
-    """Handoff payload for public widget: respects Tawk / WhatsApp configuration."""
-    tawk_ok = tawk_live_chat_configured()
+    """Handoff payload for public widget — single source of truth with compute_public_live_chat_state."""
+    lc_state = compute_public_live_chat_state()
     wa_ok = whatsapp_handoff_configured()
     out: Dict[str, Any] = {
-        "live_chat": {"available": tawk_ok, "provider": "tawk.to"},
+        "live_chat": {
+            "available": lc_state["available"],
+            "configured": lc_state["configured"],
+            "enabled": lc_state["enabled"],
+            "within_support_hours": lc_state["within_support_hours"],
+            "provider": "tawk.to",
+            "schedule_label": lc_state["schedule_label"],
+        },
         "email_ticket": {"available": True},
         "whatsapp": {"available": wa_ok, "link": None},
         "conversation_id": conversation_id,
         "transcript_summary": transcript_summary,
+        "live_chat_schedule_label": lc_state["schedule_label"],
     }
-    if not tawk_ok:
-        out["live_chat_notice"] = LIVE_CHAT_UNAVAILABLE_COPY
+    if lc_state.get("live_chat_notice"):
+        out["live_chat_notice"] = lc_state["live_chat_notice"]
     if wa_ok:
         out["whatsapp"]["link"] = generate_whatsapp_link(
             conversation_id,
@@ -882,6 +1001,100 @@ def build_public_handoff_options(
             message_snippet[:50] if message_snippet else None,
         )
     return out
+
+
+def format_handoff_intro_message(ho: Dict[str, Any]) -> str:
+    """
+    Bot copy for handoff — must match channel availability in build_public_handoff_options
+    (no implied live transfer; no WhatsApp when not configured; no live chat bullet when unavailable).
+    """
+    lc = ho.get("live_chat") or {}
+    configured = bool(lc.get("configured"))
+    enabled = lc.get("enabled", True)
+    available = bool(lc.get("available"))
+    schedule = (lc.get("schedule_label") or ho.get("live_chat_schedule_label") or "").strip()
+    wa_ok = bool((ho.get("whatsapp") or {}).get("available")) and bool((ho.get("whatsapp") or {}).get("link"))
+
+    lines: List[str] = [
+        "I can help you reach our support team through one of the options below.",
+        "",
+    ]
+
+    if configured and not enabled:
+        lines.append(
+            "**Live chat** is turned off for this site right now. Please use **email ticket** for the fastest reliable reply."
+        )
+        lines.append("")
+    elif configured and enabled and not available:
+        sch = f" ({schedule})" if schedule else ""
+        lines.append(
+            "**Live chat** may be available during support hours"
+            f"{sch}. It is not available from this widget right now — please use **email ticket** for the fastest reliable reply."
+        )
+        lines.append("")
+
+    opts: List[str] = []
+    if available:
+        opts.append(
+            "**Live chat** — opens the Tawk chat widget. An agent may join when staffed; real-time availability is not guaranteed."
+        )
+    opts.append("**Email ticket** — we aim to reply within **24 hours**")
+    if wa_ok:
+        opts.append(
+            "**WhatsApp** — opens a prefilled chat on your device (deeplink handoff; not a full in-app thread)"
+        )
+    lines.append("Here's what you can use:")
+    for i, o in enumerate(opts, 1):
+        lines.append(f"{i}. {o}")
+    lines.extend(["", "Use the buttons below when you're ready."])
+    return "\n".join(lines)
+
+
+_ACCOUNT_HELP_STRONG = re.compile(
+    r"(forgot|reset)\s+password|password\s+reset|can't\s+log\s+in|cannot\s+log\s+in|cant\s+log\s+in|"
+    r"locked\s+out|\bbilling\b|\bsubscription\b|\bpayment\b|\binvoice\b|\breceipt\b|"
+    r"\bcrn\b|customer\s+reference|order\s+(status|ref|reference)|sign\s*in\s+(issue|problem|error)|"
+    r"log\s*in\s+(issue|problem|error)|\b2fa\b|\bmfa\b",
+    re.I,
+)
+
+
+def try_vague_account_help_clarification(message: str, ctx: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Vague account/help phrasing → one clarifying question before showing deep links/cards.
+    Clears one-shot latch after ask; next user message runs the full pipeline.
+    """
+    if ctx.get("account_clarify_pending"):
+        ctx["account_clarify_pending"] = False
+        return None
+    raw = (message or "").strip()
+    if not raw or len(raw) > 280:
+        return None
+    low = raw.lower()
+    if needs_human_handoff(raw):
+        return None
+    if _ACCOUNT_HELP_STRONG.search(low):
+        return None
+    if not re.search(r"\baccount\b", low):
+        return None
+    vague = re.search(
+        r"(need|want|get)\s+(some\s+)?(help|support)\s+(with\s+)?(my\s+)?account|"
+        r"\bmy\s+account\b.*(not\s+work|problem|issue|wrong|help)|"
+        r"\baccount\s+(issue|problem|help|not\s+work|isn't\s+work|is\s+not\s+work)",
+        low,
+    )
+    if not vague:
+        return None
+    ctx["account_clarify_pending"] = True
+    return {
+        "response": (
+            "What kind of account issue is it: **login**, **password reset**, **billing**, "
+            "**account setup**, or **something else**? A few words is enough — then I’ll point you to the right step."
+        ),
+        "action": "respond",
+        "metadata": {"account_clarify": True, "service_area": "other", "category": "other"},
+        "conversation_context": ctx,
+    }
 
 
 # ============================================================================
@@ -1056,8 +1269,8 @@ async def generate_fallback_response(
 • **Market Research** - Property market insights
 • **Account & Billing** - Orders, payments, subscriptions
 
-What would you like help with? Or if you'd prefer, I can connect you with a human agent."""
-    
+What would you like help with? If you’d rather reach our team, use **Talk to support** in this chat when it appears below."""
+
     return response, {
         "ai_generated": False,
         "fallback": True,
@@ -1081,6 +1294,8 @@ def _count_recent_fallback_responses(conversation_history: List[Dict[str, Any]])
             meta.get("guided")
             or meta.get("matched_faq")
             or meta.get("legal_refusal")
+            or meta.get("small_talk")
+            or meta.get("account_clarify")
             or meta.get("retrieval_matched")
             or meta.get("kc_article_matched")
             or meta.get("site_page_matched")
@@ -1129,14 +1344,15 @@ def _standard_handoff_response_dict(
     }
     if metadata_extra:
         meta.update(metadata_extra)
+    ho = build_public_handoff_options(
+        conversation_id=conversation_id,
+        crn=None,
+        message_snippet=message[:200],
+        transcript_summary=f"{len(conversation_history)} messages in conversation",
+    )
+    response_text = format_handoff_intro_message(ho)
     return {
-        "response": """I'll connect you with a human agent. You have three options:
-
-1. **Live Chat** - Chat with an agent now (Mon-Fri 9am-6pm GMT)
-2. **Email Ticket** - We'll respond within 24 hours
-3. **WhatsApp** - Continue on WhatsApp with your reference
-
-Which would you prefer?""",
+        "response": response_text,
         "action": "handoff",
         "metadata": meta,
         "handoff_data": {
@@ -1176,6 +1392,7 @@ async def handle_chat_message(
     ctx.setdefault("primary_goal", None)
     ctx.setdefault("secondary_need", None)
     ctx.setdefault("problem_intent", None)
+    ctx.setdefault("account_clarify_pending", False)
     if ctx.get("intent") and not ctx.get("primary_goal"):
         ctx["primary_goal"] = ctx["intent"]
 
@@ -1297,6 +1514,10 @@ async def handle_chat_message(
         st = try_small_talk_reply(message, ctx)
         if st:
             return st
+
+    vac = try_vague_account_help_clarification(message, ctx)
+    if vac:
+        return vac
 
     from services.support_assistant_orchestrator import router_turn
 
@@ -1557,7 +1778,7 @@ Or sign in and open **My Orders** on your dashboard for live status.""",
 2. **Or contact your account administrator**—they can send you a new setup link from the Compliance Vault Pro admin portal.
 3. Once you receive the email, click the link and set your new password. Links expire after 1 hour.
 
-Need more help? I can connect you with a human agent.""",
+Need more help? Use **Talk to support** in this chat when it appears below — you’ll see the channel options that are actually available.""",
         "action": "respond",
         "metadata": {"canned": True, "category": "login"}
     },
@@ -1590,7 +1811,7 @@ Case-by-case basis. Contact support with your order reference.
 **Q: How do I update my payment card?**
 Dashboard → Billing → Update Payment Method.
 
-Need to discuss something specific? I can connect you with our billing team.""",
+Need to discuss something specific? You can reach our billing team using **email ticket** from the support options below.""",
         "action": "respond",
         "metadata": {"canned": True, "category": "billing", "service_area": "billing"}
     },
@@ -1604,13 +1825,7 @@ Need to discuss something specific? I can connect you with our billing team.""",
     
     "speak_to_human": {
         "trigger": "speak_to_human",
-        "response": """I'll connect you with a human agent. You have three options:
-
-1. **💬 Live Chat** - Chat with an agent now (Mon-Fri 9am-6pm GMT)
-2. **📧 Email Ticket** - We'll respond within 24 hours
-3. **📱 WhatsApp** - Continue on WhatsApp with your reference
-
-Which would you prefer?""",
+        "response": "",
         "action": "handoff",
         "metadata": {"canned": True, "category": "other"}
     },
@@ -1680,7 +1895,7 @@ Your complete property compliance management platform.
 2. **Or contact your account administrator**—they can send you a new setup link from the Compliance Vault Pro admin portal.
 3. Once you receive the email, click the link and set your new password. Links expire after 1 hour.
 
-Need more help? I can connect you with a human agent."""
+If you still need a person, choose **Talk to support** in this chat when it appears below."""
         out["actions"] = [
             {"label": "Sign in", "url": f"{_chatbot_app_base()}/login/client"},
             {"label": "Talk to support", "url": None},

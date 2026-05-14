@@ -48,6 +48,13 @@ export default function TawkToWidget() {
       
       // Hide widget by default (our chatbot is primary)
       window.Tawk_API.hideWidget();
+
+      window.Tawk_API.onStatusChange = function (status) {
+        window.__PLEERITY_TAWK_STATUS = status;
+        if (typeof window.__PLEERITY_TAWK_STATUS_LISTENER === 'function') {
+          window.__PLEERITY_TAWK_STATUS_LISTENER(status);
+        }
+      };
     };
 
     // Cleanup
@@ -138,6 +145,23 @@ export const TawkToAPI = {
    */
   isLoaded: () => {
     return !!(window.Tawk_API && window.Tawk_API.maximize);
+  },
+
+  /** Last visitor-facing widget status from Tawk ('online' | 'away' | 'offline') if reported. */
+  getVisitorStatus: () => window.__PLEERITY_TAWK_STATUS || null,
+
+  /**
+   * Register a callback for Tawk visitor widget status changes (requires widget loaded).
+   * Returns an unsubscribe function.
+   */
+  onVisitorStatusChange: (cb) => {
+    if (typeof cb !== 'function') return () => {};
+    window.__PLEERITY_TAWK_STATUS_LISTENER = cb;
+    return () => {
+      if (window.__PLEERITY_TAWK_STATUS_LISTENER === cb) {
+        window.__PLEERITY_TAWK_STATUS_LISTENER = null;
+      }
+    };
   },
 
   /**

@@ -39,6 +39,7 @@ from services.support_chatbot import (
     detect_service_area, detect_category, detect_urgency,
     get_canned_response, get_all_quick_actions, CANNED_RESPONSES,
     build_public_handoff_options,
+    format_handoff_intro_message,
 )
 from database import database
 import logging
@@ -95,6 +96,52 @@ class TicketRequest(BaseModel):
     email: Optional[EmailStr] = None
     crn: Optional[str] = None
     conversation_id: Optional[str] = None
+
+
+def build_public_ticket_created_response(
+    *,
+    ticket_id: str,
+    conversation_id: Optional[str],
+    transcript_included: bool,
+    email_sent: bool,
+    internal_notification_sent: bool,
+) -> Dict[str, Any]:
+    """
+    User-facing ticket confirmation for public API and chat widget.
+    Keeps ticket id, optional conversation id, channel/SLA, and transcript note aligned.
+    """
+    lines = [
+        "Your support ticket has been created.",
+        "",
+        f"Ticket reference: **{ticket_id}**",
+    ]
+    if conversation_id:
+        lines.append(f"Conversation reference: **{conversation_id}**")
+    lines.extend(
+        [
+            "",
+            "Our team will reply **by email** within **24 hours**.",
+        ]
+    )
+    if transcript_included:
+        lines.append("Your conversation transcript has been included.")
+    elif conversation_id:
+        lines.append(
+            "A conversation was linked, but no transcript text was available yet."
+        )
+    else:
+        lines.append("No chat transcript was linked to this ticket.")
+    return {
+        "success": True,
+        "ticket_id": ticket_id,
+        "conversation_id": conversation_id,
+        "response_channel": "email",
+        "response_window": "within 24 hours",
+        "transcript_included": transcript_included,
+        "message": "\n".join(lines),
+        "email_sent": email_sent,
+        "internal_notification_sent": internal_notification_sent,
+    }
 
 
 class AdminReplyRequest(BaseModel):
@@ -230,13 +277,24 @@ async def chat_endpoint(
             is_authenticated=bool(snapshot),
             conversation_context=body.conversation_context,
         )
-        
+
+        display_response = result["response"]
+        handoff_opts = None
+        if result["action"] == "handoff":
+            handoff_opts = build_public_handoff_options(
+                conversation_id=conversation_id,
+                crn=conversation.get("crn"),
+                message_snippet=body.message,
+                transcript_summary=f"{len(history)} messages in conversation",
+            )
+            display_response = format_handoff_intro_message(handoff_opts)
+
         # Save bot response (include actions in metadata for history to show clickable links)
         bot_metadata = dict(result.get("metadata", {}))
         if result.get("actions"):
             bot_metadata["actions"] = result["actions"]
         bot_msg = MessageCreate(
-            message_text=result["response"],
+            message_text=display_response,
             sender=MessageSender.BOT,
             metadata=bot_metadata
         )
@@ -274,7 +332,7 @@ async def chat_endpoint(
         # Build response
         response = ChatResponse(
             conversation_id=conversation_id,
-            response=result["response"],
+            response=display_response,
             action=result["action"],
             metadata=resp_meta,
             conversation_context=result.get("conversation_context"),
@@ -284,13 +342,7 @@ async def chat_endpoint(
         
         # Add handoff options if needed
         if result["action"] == "handoff":
-            ho = build_public_handoff_options(
-                conversation_id=conversation_id,
-                crn=conversation.get("crn"),
-                message_snippet=body.message,
-                transcript_summary=f"{len(history)} messages in conversation",
-            )
-            response.handoff_options = ho
+            response.handoff_options = handoff_opts
 
         return response
 
@@ -349,13 +401,24 @@ async def trigger_quick_action(
         metadata={"quick_action": action_id}
     )
     await MessageService.add_message(conversation_id, user_msg)
-    
+
+    bot_text = canned.get("response") or ""
+    handoff_opts = None
+    if canned.get("action") == "handoff":
+        handoff_opts = build_public_handoff_options(
+            conversation_id=conversation_id,
+            crn=None,
+            message_snippet=action_id,
+            transcript_summary="quick action",
+        )
+        bot_text = format_handoff_intro_message(handoff_opts)
+
     # Save the canned response as bot message (include actions in metadata for clickable links)
     bot_meta = dict(canned.get("metadata", {}))
     if canned.get("actions"):
         bot_meta["actions"] = canned["actions"]
     bot_msg = MessageCreate(
-        message_text=canned["response"],
+        message_text=bot_text,
         sender=MessageSender.BOT,
         metadata=bot_meta
     )
@@ -380,22 +443,16 @@ async def trigger_quick_action(
     # Build response
     response_data = {
         "conversation_id": conversation_id,
-        "response": canned["response"],
+        "response": bot_text,
         "action": canned.get("action", "respond"),
         "metadata": canned.get("metadata", {}),
         "conversation_context": conversation_context,
         "actions": canned.get("actions"),
     }
-    
-    # Add handoff options if this is a handoff action
-    if canned.get("action") == "handoff":
-        response_data["handoff_options"] = build_public_handoff_options(
-            conversation_id=conversation_id,
-            crn=None,
-            message_snippet=action_id,
-            transcript_summary="quick action",
-        )
-    
+
+    if handoff_opts is not None:
+        response_data["handoff_options"] = handoff_opts
+
     return response_data
 
 
@@ -489,6 +546,11 @@ async def create_ticket_endpoint(
             if conv:
                 assistant_hs = conv.get("last_assistant_handoff_summary")
 
+        transcript = None
+        if body.conversation_id:
+            transcript = await MessageService.get_transcript(body.conversation_id)
+        transcript_included = bool((transcript or "").strip())
+
         ticket = await TicketService.create_ticket(
             ticket_data,
             conversation_id=body.conversation_id,
@@ -496,11 +558,6 @@ async def create_ticket_endpoint(
             ticket_source="public_support",
             transcript_available=bool(body.conversation_id),
         )
-        
-        # Get transcript if conversation linked
-        transcript = None
-        if body.conversation_id:
-            transcript = await MessageService.get_transcript(body.conversation_id)
         
         # Send confirmation email to customer
         customer_email_sent = False
@@ -545,13 +602,13 @@ async def create_ticket_endpoint(
             ip_address=request.client.host if request.client else None
         )
         
-        return {
-            "success": True,
-            "ticket_id": ticket["ticket_id"],
-            "message": f"Support ticket {ticket['ticket_id']} created. We'll respond within 24 hours.",
-            "email_sent": customer_email_sent,
-            "internal_notification_sent": internal_email_sent,
-        }
+        return build_public_ticket_created_response(
+            ticket_id=ticket["ticket_id"],
+            conversation_id=body.conversation_id,
+            transcript_included=transcript_included,
+            email_sent=customer_email_sent,
+            internal_notification_sent=internal_email_sent,
+        )
         
     except Exception as e:
         logger.error(f"Ticket creation error: {e}")

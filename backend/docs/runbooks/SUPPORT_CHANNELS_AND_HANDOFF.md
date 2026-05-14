@@ -5,8 +5,10 @@ This note complements the public support retrieval runbook (`SUPPORT_PUBLIC_CONT
 ## Tawk.to live chat
 
 - Live chat is hosted by **Tawk.to** (external). The Pleerity widget only opens the provider session when `TAWKTO_PROPERTY_ID` / `TAWKTO_WIDGET_ID` (or `REACT_APP_*` equivalents) are configured on the environment that serves the widget and the API.
+- **Availability (backend, single source of truth for bot copy + `handoff_options`):** `compute_public_live_chat_state()` in `services/support_chatbot.py` sets `live_chat.configured`, `enabled`, `within_support_hours`, and `available`. There is **no** call to Tawk’s HTTP APIs from the backend; wall-clock uses `SUPPORT_LIVE_CHAT_TIMEZONE` (default `Europe/London`), `SUPPORT_LIVE_CHAT_WEEKDAYS` (default `0,1,2,3,4` = Mon–Fri), and `SUPPORT_LIVE_CHAT_START_HOUR` / `SUPPORT_LIVE_CHAT_END_HOUR` (default `9`–`18`, half-open local interval). Set `SUPPORT_LIVE_CHAT_ENABLED=0|false|off` to hide live chat handoff even if Tawk IDs are present.
+- **Visitor widget status (frontend only):** After the Tawk script loads, `Tawk_API.onStatusChange` updates `window.__PLEERITY_TAWK_STATUS` (`online` | `away` | `offline`). The support handoff panel may **disable** the live chat button when the widget reports `offline`, even inside support hours — without changing the initial bot paragraph (copy stays conservative and does not claim an agent is online).
 - **Transcripts may not fully sync** into Pleerity `support_conversations` / `support_messages`. Operators must use Tawk’s own history when investigating what was said in the external session.
-- When Tawk is not configured, the public API marks live chat as **unavailable**, shows user-facing copy (“Live chat is not available right now…”), and still offers **email ticket** (and WhatsApp only when configured).
+- When Tawk is not configured, `live_chat.configured` is **false**: the handoff **panel hides** the live chat row, bot intro lists only email (and WhatsApp when configured), and `live_chat_notice` still carries the short “not available / create a ticket” line where useful.
 
 ## WhatsApp
 

@@ -186,6 +186,11 @@ class TestSupportPublicEndpoints:
         assert data["success"] == True, "Ticket creation failed"
         assert "ticket_id" in data, "Missing ticket_id"
         assert data["ticket_id"].startswith("TKT-"), f"Invalid ticket_id format: {data['ticket_id']}"
+        assert data.get("response_channel") == "email"
+        assert "24 hours" in (data.get("response_window") or "").lower()
+        assert data.get("transcript_included") is False
+        assert data["ticket_id"] in (data.get("message") or "")
+        assert "no chat transcript" in (data.get("message") or "").lower()
         
         print(f"SUCCESS: Created ticket {data['ticket_id']}")
         return data["ticket_id"]
@@ -215,6 +220,11 @@ class TestSupportPublicEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] == True
+        assert data.get("conversation_id") == conv_id
+        assert data["ticket_id"] in (data.get("message") or "")
+        assert conv_id in (data.get("message") or "")
+        assert data.get("transcript_included") is True
+        assert "transcript" in (data.get("message") or "").lower()
         
         print(f"SUCCESS: Created ticket {data['ticket_id']} linked to {conv_id}")
 
