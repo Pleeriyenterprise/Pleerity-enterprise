@@ -32,7 +32,16 @@ _INTENT_RULES: Tuple[Tuple[SupportAssistantIntent, Tuple[str, ...]], ...] = (
         r"\b(customer service|support agent|human support)\b",
     )),
     (SupportAssistantIntent.PASSWORD_LOGIN, (
-        r"\b(forgot password|reset password|password reset|can't log in|cannot log in|locked out|sign in problem|login issue)\b",
+        r"\b(forgot|forgotten)\s+(my\s+)?password\b",
+        r"\bforgot\s+password\b",
+        r"\breset\s+my\s+password\b",
+        r"\bchange\s+my\s+password\b",
+        r"\breset\s+password\b",
+        r"\bpassword\s+reset\b",
+        r"\b(can't|cannot|cant)\s+log\s+in\b",
+        r"\blocked\s+out\b",
+        r"\bsign\s+in\s+problem\b",
+        r"\blogin\s+issue\b",
     )),
     (SupportAssistantIntent.RECEIPTS_INVOICES, (
         r"\b(receipt|receipts|invoice|invoices|vat invoice|payment confirmation|proof of payment)\b",
@@ -58,7 +67,7 @@ _INTENT_RULES: Tuple[Tuple[SupportAssistantIntent, Tuple[str, ...]], ...] = (
         r"\b(document packs?|essential pack|tenancy pack|ultimate pack|landlord documents|ast\b|tenancy agreement)\b",
     )),
     (SupportAssistantIntent.COMPANY_ABOUT, (
-        r"\b(who are you|what is pleerity|about pleerity|company|contact pleerity)\b",
+        r"\b(what is pleerity|about pleerity|company|contact pleerity)\b",
     )),
 )
 

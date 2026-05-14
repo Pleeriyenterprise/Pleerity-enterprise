@@ -35,7 +35,7 @@ const QUICK_ACTION_ICONS = {
 };
 
 // Onboarding welcome (task: exact wording; module-level for stable useEffect dependency)
-const WELCOME_MESSAGE = 'Hello, welcome to Pleerity. What are you trying to do today?';
+const WELCOME_MESSAGE = 'Hello - what are you trying to get done today?';
 
 // Match URLs for linkification (http/https, optional trailing punctuation stripped for display)
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
@@ -102,7 +102,7 @@ function MessageBubble({ message, isUser }) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 text-teal-700 text-sm font-medium hover:bg-teal-100 transition-colors"
+                  className="inline-flex items-center px-2.5 py-1 rounded-md border border-gray-200 bg-white text-gray-700 text-xs font-medium hover:bg-gray-50 transition-colors"
                   data-testid={`message-action-${i}`}
                 >
                   {label}
@@ -112,7 +112,7 @@ function MessageBubble({ message, isUser }) {
             return (
               <span
                 key={i}
-                className="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-600 text-sm"
+                className="inline-flex items-center px-2.5 py-1 rounded-md border border-gray-200 bg-gray-50 text-gray-600 text-xs"
               >
                 {label}
               </span>
@@ -290,7 +290,7 @@ function LeadCaptureBlock({ onSubmitted, onDismiss, conversationId, serviceInter
   );
 }
 
-// Quick Actions Panel (order per task: CVP, Document Packs, Pricing, Reset Password, Talk to Support, Start New Chat)
+// Quick Actions — optional shortcuts (collapsed by default so the chat stays conversational)
 function QuickActionsPanel({ onAction, onReset, loading }) {
   const actions = [
     { id: 'cvp_info', label: 'Compliance Vault Pro', icon: '🏠', color: 'bg-cyan-50 hover:bg-cyan-100 border-cyan-200' },
@@ -303,36 +303,41 @@ function QuickActionsPanel({ onAction, onReset, loading }) {
   ];
 
   return (
-    <div className="p-3 bg-gray-50 border-b">
-      <p className="text-xs text-gray-500 mb-2 font-medium">Quick Actions</p>
-      <div className="grid grid-cols-3 gap-2">
-        {actions.map((action) => (
-          <button
-            key={action.id}
-            type="button"
-            onClick={() => onAction(action.id)}
-            disabled={loading}
-            className={`flex flex-col items-center p-2 rounded-lg border transition-colors text-center ${action.color} disabled:opacity-50`}
-            data-testid={`quick-action-${action.id}`}
-          >
-            <span className="text-lg mb-1">{action.icon}</span>
-            <span className="text-xs text-gray-700 leading-tight">{action.label}</span>
-          </button>
-        ))}
-        {onReset && (
-          <button
-            type="button"
-            onClick={onReset}
-            disabled={loading}
-            className="flex flex-col items-center p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-center disabled:opacity-50"
-            data-testid="quick-action-start_new_chat"
-          >
-            <span className="text-lg mb-1">🔄</span>
-            <span className="text-xs text-gray-700 leading-tight">Start New Chat</span>
-          </button>
-        )}
+    <details className="border-b bg-gray-50/90 group">
+      <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-800 flex items-center justify-between">
+        <span>Shortcuts (optional)</span>
+        <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div className="p-3 pt-0">
+        <div className="grid grid-cols-3 gap-2">
+          {actions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              onClick={() => onAction(action.id)}
+              disabled={loading}
+              className={`flex flex-col items-center p-2 rounded-lg border transition-colors text-center ${action.color} disabled:opacity-50`}
+              data-testid={`quick-action-${action.id}`}
+            >
+              <span className="text-lg mb-1">{action.icon}</span>
+              <span className="text-xs text-gray-700 leading-tight">{action.label}</span>
+            </button>
+          ))}
+          {onReset && (
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={loading}
+              className="flex flex-col items-center p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-center disabled:opacity-50"
+              data-testid="quick-action-start_new_chat"
+            >
+              <span className="text-lg mb-1">🔄</span>
+              <span className="text-xs text-gray-700 leading-tight">Start New Chat</span>
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    </details>
   );
 }
 
@@ -648,7 +653,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [activeTab, setActiveTab] = useState('faq'); // 'faq' or 'chat'
-  const [showQuickActions, setShowQuickActions] = useState(true);
+  const [showQuickActions, setShowQuickActions] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -702,7 +707,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     });
     setLeadCaptureSubmitted(false);
     setShowHandoff(false);
-    setShowQuickActions(true);
+    setShowQuickActions(false);
     setShowTicketForm(false);
     setTicketPrefill({ subject: '', description: '' });
   }, []);
@@ -1099,7 +1104,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
               data-testid="faq-tab"
             >
               <Book className="h-4 w-4" />
-              FAQ
+              Help articles
             </button>
             <button
               onClick={() => setActiveTab('chat')}
@@ -1139,29 +1144,28 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
                     loading={loading}
                   />
                 )}
-                {/* Quick Actions Panel - after first exchange (support options + Start New Chat) */}
-                {showQuickActions && messages.length > 1 && (
-                  <QuickActionsPanel onAction={handleQuickAction} onReset={resetConversation} loading={loading} />
-                )}
-                {messages.length > 1 && !showQuickActions && (
-                  <button
-                    onClick={() => setShowQuickActions(true)}
-                    className="w-full px-3 py-2 bg-gray-50 text-xs text-gray-600 hover:bg-gray-100 flex items-center justify-center gap-1 border-b"
-                  >
-                    <ChevronDown className="w-3 h-3" />
-                    Show Quick Actions
-                  </button>
-                )}
-                {showQuickActions && messages.length > 1 && (
-                  <>
-                    <QuickActionsPanel onAction={handleQuickAction} onReset={resetConversation} loading={loading} />
+                {messages.length > 1 && (
+                  showQuickActions ? (
+                    <>
+                      <QuickActionsPanel onAction={handleQuickAction} onReset={resetConversation} loading={loading} />
+                      <button
+                        type="button"
+                        onClick={() => setShowQuickActions(false)}
+                        className="w-full px-3 py-1.5 bg-gray-50 text-xs text-gray-500 hover:bg-gray-100 border-b border-gray-100"
+                      >
+                        Hide shortcuts
+                      </button>
+                    </>
+                  ) : (
                     <button
-                      onClick={() => setShowQuickActions(false)}
-                      className="w-full px-3 py-1 bg-gray-100 text-xs text-gray-500 hover:bg-gray-200"
+                      type="button"
+                      onClick={() => setShowQuickActions(true)}
+                      className="w-full px-3 py-2 bg-gray-50/80 text-xs text-gray-600 hover:bg-gray-100 flex items-center justify-center gap-1 border-b border-gray-100"
                     >
-                      Hide Quick Actions
+                      <ChevronDown className="w-3 h-3" />
+                      Shortcuts
                     </button>
-                  </>
+                  )
                 )}
 
                 {/* Messages */}

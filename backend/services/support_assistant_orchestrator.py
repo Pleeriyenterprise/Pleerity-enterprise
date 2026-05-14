@@ -54,6 +54,7 @@ async def router_turn(
         detect_service_area,
         detect_urgency,
         get_guided_knowledge,
+        is_informational_public_support_query,
         is_legal_advice_request,
         needs_human_handoff,
         _get_guided_actions,
@@ -216,56 +217,59 @@ async def router_turn(
         SupportAssistantIntent.COMPLIANCE_CRN,
     )
     if router_intent in account_intents and conf >= 0.5:
-        if not (tok["crn"] and tok["email"]):
-            return {
-                "response": ASK_VERIFY,
-                "action": "respond",
-                "metadata": {"router_intent": router_intent.value, "clarifying": True, "needs_verification": True},
-                "conversation_context": ctx,
-            }
-        client = await resolve_client_by_crn_email(tok["crn"], tok["email"])
-        if not client:
-            return {
-                "response": "We could not verify those details. Check your CRN and email, or use **Talk to support**.",
-                "action": "respond",
-                "metadata": {"router_intent": router_intent.value, "tool": "verify_account", "result": "failed"},
-                "conversation_context": ctx,
-                "actions": _actions_signin_support(),
-            }
-        snap = await get_onboarding_snapshot_for_verified_client(client)
-        billing = await get_billing_subscription_snapshot(client["client_id"])
-        receipts = await list_recent_checkout_receipt_summaries(client["client_id"])
-        body = format_tool_answer_account_overview(snap, billing, receipts)
-        if router_intent == SupportAssistantIntent.ONBOARDING_SETUP:
-            body += "\n\n**Activation / invite resends:** " + (approved.get("policies") or {}).get(
-                "resend_activation", ""
-            )
-        elif router_intent == SupportAssistantIntent.COMPLIANCE_CRN:
-            extras = []
-            if "score" in text.lower():
-                extras.append(
-                    "**Compliance score:** shown per property in the portal after sign-in; public chat cannot display your live score."
+        has_ver = bool(tok["crn"] and tok["email"])
+        if not has_ver:
+            if not is_informational_public_support_query(text):
+                return {
+                    "response": ASK_VERIFY,
+                    "action": "respond",
+                    "metadata": {"router_intent": router_intent.value, "clarifying": True, "needs_verification": True},
+                    "conversation_context": ctx,
+                }
+        if has_ver:
+            client = await resolve_client_by_crn_email(tok["crn"], tok["email"])
+            if not client:
+                return {
+                    "response": "We could not verify those details. Check your CRN and email, or use **Talk to support**.",
+                    "action": "respond",
+                    "metadata": {"router_intent": router_intent.value, "tool": "verify_account", "result": "failed"},
+                    "conversation_context": ctx,
+                    "actions": _actions_signin_support(),
+                }
+            snap = await get_onboarding_snapshot_for_verified_client(client)
+            billing = await get_billing_subscription_snapshot(client["client_id"])
+            receipts = await list_recent_checkout_receipt_summaries(client["client_id"])
+            body = format_tool_answer_account_overview(snap, billing, receipts)
+            if router_intent == SupportAssistantIntent.ONBOARDING_SETUP:
+                body += "\n\n**Activation / invite resends:** " + (approved.get("policies") or {}).get(
+                    "resend_activation", ""
                 )
-            if "verification" in text.lower() or "pending" in text.lower():
-                extras.append(
-                    f"**Uploads in queue:** {snap.get('documents_awaiting_processing_count', 0)} document(s) currently in **UPLOADED** status."
-                )
-            if extras:
-                body += "\n\n" + "\n\n".join(extras)
-        return {
-            "response": body,
-            "action": "respond",
-            "metadata": {
-                "router_intent": router_intent.value,
-                "tool": "verified_account_snapshot",
-                "verified": True,
-            },
-            "conversation_context": ctx,
-            "actions": [
-                {"label": "Sign in to portal", "url": links.get("client_signin")},
-                {"label": "Talk to support", "url": None},
-            ],
-        }
+            elif router_intent == SupportAssistantIntent.COMPLIANCE_CRN:
+                extras = []
+                if "score" in text.lower():
+                    extras.append(
+                        "**Compliance score:** shown per property in the portal after sign-in; public chat cannot display your live score."
+                    )
+                if "verification" in text.lower() or "pending" in text.lower():
+                    extras.append(
+                        f"**Uploads in queue:** {snap.get('documents_awaiting_processing_count', 0)} document(s) currently in **UPLOADED** status."
+                    )
+                if extras:
+                    body += "\n\n" + "\n\n".join(extras)
+            return {
+                "response": body,
+                "action": "respond",
+                "metadata": {
+                    "router_intent": router_intent.value,
+                    "tool": "verified_account_snapshot",
+                    "verified": True,
+                },
+                "conversation_context": ctx,
+                "actions": [
+                    {"label": "Sign in to portal", "url": links.get("client_signin")},
+                    {"label": "Talk to support", "url": None},
+                ],
+            }
 
     # Company / about
     if router_intent == SupportAssistantIntent.COMPANY_ABOUT and conf >= 0.9:
@@ -321,10 +325,10 @@ async def router_turn(
             ],
         }
 
-    # General chit-chat — short steer
-    if router_intent == SupportAssistantIntent.GENERAL_CHAT and conf >= 0.65 and len(text) < 80:
+    # General chit-chat — only very short nudges; longer lines fall through to retrieval / LLM
+    if router_intent == SupportAssistantIntent.GENERAL_CHAT and conf >= 0.65 and len(text) < 50:
         return {
-            "response": "Hello — I’m here for Pleerity product and account help (Compliance Vault Pro, document packs, billing, and setup). What do you need today?",
+            "response": "Hey — what do you want to tackle?",
             "action": "respond",
             "metadata": {"router_intent": router_intent.value, "chitchat_steered": True},
             "conversation_context": ctx,

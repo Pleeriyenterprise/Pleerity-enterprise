@@ -214,3 +214,5 @@ async def test_kc_preferred_over_site_when_both_match():
     assert out is not None
     assert out["metadata"]["retrieval_path"] == ["kc_article"]
     assert out["metadata"]["sources"][0]["source_type"] == "kb_article"
+    assert out["metadata"].get("conversational_synthesis") is True
+    assert "gist" in out["response"].lower() or "walkthrough" in out["response"].lower()

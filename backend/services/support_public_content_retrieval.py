@@ -86,35 +86,59 @@ async def _load_and_score(
     return scored
 
 
-def _build_kb_response_text(top_docs: List[Dict[str, Any]]) -> str:
-    """Single-message answer from top chunk(s); soft source hint at end."""
-    parts: List[str] = []
-    for i, d in enumerate(top_docs[:2], 1):
-        title = d.get("title") or "Knowledge Centre"
-        body = (d.get("chunk_text") or "").strip()
-        if not body:
-            continue
-        parts.append(f"**{title}**\n\n{body}")
-    text = "\n\n---\n\n".join(parts).strip()
-    if not text:
+def _body_conversational_preview(body: str, max_chars: int = 420) -> str:
+    """Strip heading lines and return a readable excerpt (not a raw chunk dump)."""
+    raw = (body or "").replace("\r\n", "\n").strip()
+    if not raw:
         return ""
-    text += "\n\n_Source: Pleerity Knowledge Centre._"
-    return text
+    lines_out: List[str] = []
+    for line in raw.split("\n"):
+        s = line.strip()
+        if s.startswith("#"):
+            continue
+        if s == "---":
+            break
+        lines_out.append(line.rstrip())
+    text = "\n".join(lines_out).strip()
+    if len(text) <= max_chars:
+        return text
+    cut = text[:max_chars]
+    last_sp = cut.rfind(" ")
+    if last_sp > max_chars * 0.55:
+        cut = cut[:last_sp]
+    return cut.rstrip(" ,;:") + "…"
+
+
+def _build_kb_response_text(top_docs: List[Dict[str, Any]]) -> str:
+    """Conversational gist + optional read-more; full text stays behind CTA."""
+    d0 = top_docs[0]
+    title = (d0.get("title") or "this article").strip()
+    body = _body_conversational_preview(d0.get("chunk_text") or "", 420)
+    if not body:
+        return ""
+    lines = [
+        f"Here's the gist from **{title}**:\n\n{body}",
+        "",
+        "For the full walkthrough, open **Read full article** below.",
+    ]
+    return "\n".join(lines).rstrip() + "\n\n_From Knowledge Centre._"
 
 
 def _build_site_response_text(top_docs: List[Dict[str, Any]]) -> str:
+    d = top_docs[0]
+    title = (d.get("title") or "this page").strip()
+    body = _body_conversational_preview(d.get("chunk_text") or "", 380)
+    url = (d.get("url") or "").strip()
+    if not body and not url:
+        return ""
     parts: List[str] = []
-    for d in top_docs[:1]:
-        title = d.get("title") or "Website"
-        body = (d.get("chunk_text") or "").strip()
-        url = d.get("url") or ""
-        if body:
-            parts.append(f"**{title}**\n\n{body}")
-        if url:
-            parts.append(f"\n\nRead more: {url}")
+    if body:
+        parts.append(f"From our website (**{title}**):\n\n{body}")
+    if url:
+        parts.append(f"\n\nRead more: {url}")
     text = "\n".join(parts).strip()
     if text:
-        text += "\n\n_Source: Pleerity website._"
+        text += "\n\n_From website content._"
     return text
 
 
@@ -185,8 +209,16 @@ async def try_public_support_content_answer(
             "metadata": {
                 "kc_article_matched": True,
                 "public_content_retrieval": True,
+                "conversational_synthesis": True,
                 "sources": _sources_from_docs(docs, "kb_article"),
                 "retrieval_path": ["kc_article"],
+                "_synthesis_context": [
+                    {
+                        "title": (d.get("title") or "").strip(),
+                        "excerpt": _body_conversational_preview(d.get("chunk_text") or "", 720),
+                    }
+                    for d in docs[:2]
+                ],
             },
             "conversation_context": ctx,
             "actions": actions or None,
@@ -203,8 +235,16 @@ async def try_public_support_content_answer(
             "metadata": {
                 "site_page_matched": True,
                 "public_content_retrieval": True,
+                "conversational_synthesis": True,
                 "sources": _sources_from_docs(docs, "site_page"),
                 "retrieval_path": ["site_page"],
+                "_synthesis_context": [
+                    {
+                        "title": (d.get("title") or "").strip(),
+                        "excerpt": _body_conversational_preview(d.get("chunk_text") or "", 720),
+                    }
+                    for d in docs[:1]
+                ],
             },
             "conversation_context": ctx,
             "actions": None,

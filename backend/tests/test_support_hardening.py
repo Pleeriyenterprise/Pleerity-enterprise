@@ -17,6 +17,7 @@ from services.support_chatbot import (
     build_public_handoff_options,
     format_handoff_intro_message,
     try_vague_account_help_clarification,
+    defer_public_kb_for_operational_routing,
     is_legal_advice_request,
 )
 
@@ -103,9 +104,17 @@ def test_try_small_talk_how_are_you():
     assert out["action"] == "respond"
     text = out["response"].lower()
     assert "pleerity" not in text
-    assert "thanks for asking" in text or "doing well" in text
-    assert "help" in text
+    assert "doing well" in text or "thanks" in text
+    assert "brought" in text or "here" in text
     assert out["metadata"].get("small_talk") is True
+
+
+def test_try_small_talk_who_are_you():
+    ctx = {}
+    out = try_small_talk_reply("who are you?", ctx)
+    assert out is not None
+    assert "pleerity" not in out["response"].lower()
+    assert "support assistant" in out["response"].lower()
 
 
 def test_try_small_talk_hello_is_short_and_helpful():
@@ -114,7 +123,7 @@ def test_try_small_talk_hello_is_short_and_helpful():
     assert out is not None
     low = out["response"].lower()
     assert "pleerity" not in low
-    assert "hi" in low or "help" in low
+    assert "hi" in low or "help" in low or "mind" in low
 
 
 def test_try_small_talk_thanks_and_ok():
@@ -132,7 +141,7 @@ def test_try_vague_account_help_asks_clarification_first():
     assert out is not None
     assert out["metadata"].get("account_clarify") is True
     assert "login" in out["response"].lower()
-    assert "password reset" in out["response"].lower()
+    assert "password" in out["response"].lower()
     assert "billing" in out["response"].lower()
     assert ctx.get("account_clarify_pending") is True
 
@@ -142,6 +151,21 @@ def test_try_vague_account_help_skips_clear_password_login_billing():
     assert try_vague_account_help_clarification("I forgot my password", ctx) is None
     assert try_vague_account_help_clarification("I cannot log in", ctx) is None
     assert try_vague_account_help_clarification("I need billing help", ctx) is None
+
+
+def test_try_vague_account_problems_phrasing():
+    ctx = {}
+    out = try_vague_account_help_clarification("I have problems with my account", ctx)
+    assert out is not None
+    assert out["metadata"].get("account_clarify") is True
+
+
+def test_defer_public_kb_for_operational_pricing():
+    assert defer_public_kb_for_operational_routing("How much does CVP cost per month?", {}) is True
+
+
+def test_defer_public_kb_not_general_chitchat():
+    assert defer_public_kb_for_operational_routing("What is the weather like today?", {}) is False
 
 
 def test_format_handoff_intro_no_connect_phrase_when_live_unavailable(monkeypatch):
@@ -157,7 +181,7 @@ def test_format_handoff_intro_no_connect_phrase_when_live_unavailable(monkeypatc
     assert ho["live_chat"]["configured"] is False
     msg = format_handoff_intro_message(ho)
     low = msg.lower()
-    assert "reach our support team" in low
+    assert "here's how you can reach us" in low or "how you can reach us" in low
     assert "connect you" not in low
     assert "whatsapp" not in low
     assert "email ticket" in low

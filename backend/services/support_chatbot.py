@@ -771,6 +771,110 @@ def needs_human_handoff(message: str) -> bool:
     return False
 
 
+_INFO_HELP_LEARNING = re.compile(
+    r"(?i)(\bhow\s+(do|can|could|would)\s+(i|we)\b|\bwhat\s+(is|does)\b|\bwhere\s+(can|do)\s+i\b|"
+    r"\bwhy\b|\bexplain\b|\btell\s+me\s+about\b|\bhelp\s+me\s+understand\b|"
+    r"\bmeaning\s+of\b|\bhow\s+to\s+(access|use|find|get|read|see|understand|download|update)\b|"
+    r"\bcan\s+you\s+explain\b|\blooking\s+for\s+information\b)",
+)
+
+
+def is_informational_public_support_query(message: str) -> bool:
+    """
+    True when the user is asking for education / how-it-works style help rather than
+    an operational lookup of their own account data.
+
+    Used to keep conversational retrieval before CRN/email verification flows.
+    """
+    t = (message or "").strip()
+    if not t or len(t) > 520:
+        return False
+    low = t.lower()
+    if not _INFO_HELP_LEARNING.search(low):
+        return False
+    # Strong operational signals → still route through tools / verification
+    if re.search(
+        r"(?i)(\b(my|our)\s+(actual|current|live)\s+(score|status|balance)\b|"
+        r"\bwhat'?s\s+my\s+(compliance\s+)?score\b|\bshow\s+me\s+my\b|\blook\s+up\s+my\b|"
+        r"\bpull\s+up\s+my\b|\bverify\s+my\s+(account|crn|email)\b|"
+        r"\b(customer\s+reference|crn)\s*[:#]?\s*[A-Z0-9]{5,}\b)",
+        low,
+    ):
+        return False
+    return True
+
+
+def defer_public_kb_for_operational_routing(message: str, ctx: Dict[str, Any]) -> bool:
+    """
+    When True, skip early Knowledge Centre / site chunk answers so operational routing
+    (pricing registry, orders, CRN verify, handoff, company facts) runs first.
+    """
+    t = (message or "").strip()
+    if not t:
+        return True
+    if needs_human_handoff(t):
+        return True
+    low = t.lower()
+    if any(
+        w in low
+        for w in (
+            "pricing",
+            "price",
+            "how much",
+            "cost",
+            "plans",
+            "subscribe",
+            "subscription",
+            "invoice",
+            "receipt",
+            "refund",
+            "cancel subscription",
+            "payment failed",
+        )
+    ):
+        return True
+    if any(
+        w in low
+        for w in (
+            "order ref",
+            "order reference",
+            "track order",
+            "order status",
+            "my order",
+            "where is my order",
+            "delivery",
+            "shipment",
+        )
+    ):
+        return True
+    from services.support_assistant_tools import extract_verification_tokens
+
+    tok = extract_verification_tokens(t)
+    if tok.get("order_ref") or tok.get("crn"):
+        return True
+    from services.support_assistant_intent import SupportAssistantIntent, classify_support_intent
+
+    ri, conf = classify_support_intent(t, ctx)
+    if ri == SupportAssistantIntent.HUMAN_HANDOFF:
+        return True
+    if ri == SupportAssistantIntent.PASSWORD_LOGIN and conf >= 0.99:
+        return True
+    if ri in (
+        SupportAssistantIntent.ACCOUNT_BILLING,
+        SupportAssistantIntent.RECEIPTS_INVOICES,
+        SupportAssistantIntent.ONBOARDING_SETUP,
+        SupportAssistantIntent.COMPLIANCE_CRN,
+    ) and conf >= 0.45:
+        if is_informational_public_support_query(t):
+            return False
+        return True
+    if ri == SupportAssistantIntent.CVP_PRICING and conf >= 0.55:
+        return True
+    if ri == SupportAssistantIntent.COMPANY_ABOUT and conf >= 1.0:
+        return True
+    return False
+
+
 _SMALL_TALK_PHRASES = frozenset(
     {
         "hi",
@@ -786,9 +890,13 @@ _SMALL_TALK_PHRASES = frozenset(
         "okay",
         "kk",
         "how are you",
+        "who are you",
+        "what are you",
         "sup",
         "whats up",
         "what's up",
+        "whats your name",
+        "what's your name",
         "good morning",
         "good afternoon",
         "good evening",
@@ -815,18 +923,24 @@ def try_small_talk_reply(message: str, ctx: Dict[str, Any]) -> Optional[Dict[str
     thanks = {"thanks", "thank you", "thx", "cheers"}
     greetings = {"hi", "hello", "hey", "hiya", "yo", "good morning", "good afternoon", "good evening", "morning", "evening"}
     ack = {"ok", "okay", "kk"}
+    identity = {"who are you", "what are you", "whats your name", "what's your name"}
     if norm in thanks:
-        text = "Glad to help. If something else comes up — account access, billing, or compliance tools — just say what you’re trying to do."
+        text = "You're welcome — happy to help if anything else comes up."
     elif norm == "how are you":
-        text = "Doing well — thanks for asking. I can help with compliance, account access, pricing, or getting you to the right support. What do you need?"
+        text = "Doing well, thanks - what brought you here today?"
     elif norm in greetings:
-        text = "Hi — what can I help you with today? (Account access, billing, compliance tools, or a quick product question.)"
+        text = "Hi - what's on your mind?"
     elif norm in ack:
-        text = "Sounds good. Tell me what you’d like to do next whenever you’re ready."
+        text = "Sounds good - say when you're ready with the next step."
+    elif norm in identity:
+        text = (
+            "I'm the on-site support assistant - I answer from our help articles and website, "
+            "and I can connect you with the team if you need a person."
+        )
     elif norm in {"sup", "whats up", "what's up"}:
-        text = "Here when you need me. What should we tackle — account, billing, compliance, or something else?"
+        text = "Here when you need me - what's going on?"
     else:
-        text = "Doing well, thanks. What can I help you with?"
+        text = "Here when you need me — what’s going on?"
     return {
         "response": text,
         "action": "respond",
@@ -1016,7 +1130,7 @@ def format_handoff_intro_message(ho: Dict[str, Any]) -> str:
     wa_ok = bool((ho.get("whatsapp") or {}).get("available")) and bool((ho.get("whatsapp") or {}).get("link"))
 
     lines: List[str] = [
-        "I can help you reach our support team through one of the options below.",
+        "Here's how you can reach us:",
         "",
     ]
 
@@ -1080,7 +1194,9 @@ def try_vague_account_help_clarification(message: str, ctx: Dict[str, Any]) -> O
     vague = re.search(
         r"(need|want|get)\s+(some\s+)?(help|support)\s+(with\s+)?(my\s+)?account|"
         r"\bmy\s+account\b.*(not\s+work|problem|issue|wrong|help)|"
-        r"\baccount\s+(issue|problem|help|not\s+work|isn't\s+work|is\s+not\s+work)",
+        r"\baccount\s+(issue|problem|help|not\s+work|isn't\s+work|is\s+not\s+work)|"
+        r"\b(problems?|issues?|troubles?)\s+(with\s+)?(my\s+)?account\b|"
+        r"\b(have|having)\s+(a\s+)?(problem|issue|trouble)\s+(with\s+)?(my\s+)?account\b",
         low,
     )
     if not vague:
@@ -1393,11 +1509,15 @@ async def handle_chat_message(
     ctx.setdefault("secondary_need", None)
     ctx.setdefault("problem_intent", None)
     ctx.setdefault("account_clarify_pending", False)
+    ctx.setdefault("last_conversational_topic", None)
+    from services.support_conversational_orchestrator import ensure_conversation_memory_defaults
+
+    ensure_conversation_memory_defaults(ctx)
     if ctx.get("intent") and not ctx.get("primary_goal"):
         ctx["primary_goal"] = ctx["intent"]
 
     # Legal / statutory advice boundary — must run before problem routing, onboarding,
-    # small-talk, router_turn, retrieval, pricing shortcuts, and LLM (no legal guarantees).
+    # small-talk, early KC/site retrieval, router_turn, static retrieval, pricing shortcuts, and LLM.
     if is_legal_advice_request(message):
         return {
             "response": LEGAL_REFUSAL_RESPONSE,
@@ -1519,6 +1639,53 @@ async def handle_chat_message(
     if vac:
         return vac
 
+    from services.support_gpt_first_planner import (
+        run_gpt_first_public_turn,
+        support_gpt_first_enabled,
+        try_gpt_first_deterministic_shortcuts,
+    )
+
+    if support_gpt_first_enabled() and not is_authenticated:
+        from services.support_conversational_orchestrator import touch_session_memory, try_generalist_help_starter
+
+        touch_session_memory(message, ctx)
+        gf_starter = try_generalist_help_starter(message, ctx)
+        if gf_starter:
+            return gf_starter
+        gts = await try_gpt_first_deterministic_shortcuts(
+            conversation_id=conversation_id,
+            message=message,
+            conversation_history=conversation_history,
+            ctx=ctx,
+            client_context=client_context,
+        )
+        if gts:
+            return gts
+        gpt_out = await run_gpt_first_public_turn(
+            conversation_id=conversation_id,
+            message=message,
+            conversation_history=conversation_history,
+            ctx=ctx,
+        )
+        if gpt_out:
+            return gpt_out
+
+    from services.support_conversational_orchestrator import run_conversational_first_turn
+
+    conv_first = await run_conversational_first_turn(
+        conversation_id=conversation_id,
+        message=message,
+        conversation_history=conversation_history,
+        ctx=ctx,
+        is_authenticated=is_authenticated,
+        client_context=client_context,
+    )
+    if conv_first:
+        rp = (conv_first.get("metadata") or {}).get("retrieval_path")
+        if rp and isinstance(rp, list) and rp:
+            ctx["last_conversational_topic"] = rp[0]
+        return conv_first
+
     from services.support_assistant_orchestrator import router_turn
 
     routed = await router_turn(
@@ -1632,16 +1799,21 @@ async def handle_chat_message(
             "conversation_context": ctx,
         }
 
-    # Indexed Knowledge Centre / allowlisted site chunks (Mongo only — no live crawl per turn)
-    try:
-        from services.support_public_content_retrieval import try_public_support_content_answer
+    # Indexed Knowledge Centre / allowlisted site chunks — portal sessions only here
+    # (anonymous web chat runs this earlier, before operational routing).
+    if is_authenticated:
+        try:
+            from services.support_public_content_retrieval import try_public_support_content_answer
 
-        pub = await try_public_support_content_answer(message, ctx)
-        if pub:
-            ctx["last_action"] = "public_content_index"
-            return pub
-    except Exception as e:
-        logger.warning("support_chatbot: public content retrieval failed: %s", e)
+            pub = await try_public_support_content_answer(message, ctx)
+            if pub:
+                ctx["last_action"] = "public_content_index"
+                rp = (pub.get("metadata") or {}).get("retrieval_path")
+                if rp:
+                    ctx["last_conversational_topic"] = rp[0]
+                return pub
+        except Exception as e:
+            logger.warning("support_chatbot: public content retrieval failed: %s", e)
 
     # Structured KB retrieval: answer from knowledge base when confidence is high (avoid LLM hallucination)
     try:
