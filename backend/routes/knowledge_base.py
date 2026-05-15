@@ -217,6 +217,32 @@ class KbArticleFeedbackClientBody(BaseModel):
         return v
 
 
+class KbArticleFeedbackCommentPublicBody(BaseModel):
+    """Optional written note after voting (public KB); must match session or auth dedupe from prior vote."""
+    session_id: Optional[str] = Field(None, max_length=128)
+    comment: str = Field(..., max_length=kb_article_feedback_svc.MAX_ARTICLE_FEEDBACK_COMMENT_LEN)
+
+    @field_validator("comment")
+    @classmethod
+    def _comment_nonempty(cls, v: str) -> str:
+        s = (v or "").strip()
+        if not s:
+            raise ValueError("comment must not be empty")
+        return s
+
+
+class KbArticleFeedbackCommentClientBody(BaseModel):
+    comment: str = Field(..., max_length=kb_article_feedback_svc.MAX_ARTICLE_FEEDBACK_COMMENT_LEN)
+
+    @field_validator("comment")
+    @classmethod
+    def _comment_nonempty(cls, v: str) -> str:
+        s = (v or "").strip()
+        if not s:
+            raise ValueError("comment must not be empty")
+        return s
+
+
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
@@ -728,6 +754,49 @@ async def post_public_kb_article_feedback(
     return result
 
 
+@public_router.post("/articles/{article_id}/feedback/comment")
+async def post_public_kb_article_feedback_comment(
+    article_id: str,
+    data: KbArticleFeedbackCommentPublicBody,
+    request: Request,
+):
+    """
+    Add a one-time written note to the caller's existing helpfulness vote (same article, same dedupe).
+    """
+    article = await get_published_user_article_by_id(article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    user = await get_current_user(request)
+    portal_uid = (user or {}).get("portal_user_id")
+
+    try:
+        return await kb_article_feedback_svc.append_comment_to_article_feedback(
+            article_id=article_id,
+            comment=data.comment,
+            source_surface="public_kb",
+            session_id=data.session_id,
+            portal_user_id=portal_uid,
+        )
+    except ValueError as exc:
+        msg = str(exc)
+        if msg == "session_id_required":
+            raise HTTPException(
+                status_code=400,
+                detail="session_id is required for anonymous feedback (send a stable UUID from the browser)",
+            ) from exc
+        if msg == "comment_required":
+            raise HTTPException(status_code=400, detail="comment is required") from exc
+        if msg == "comment_too_long":
+            raise HTTPException(status_code=400, detail="comment is too long") from exc
+        if msg == "feedback_not_found":
+            raise HTTPException(
+                status_code=404,
+                detail="No feedback found for this article; submit helpfulness first",
+            ) from exc
+        raise HTTPException(status_code=400, detail="Invalid comment") from exc
+
+
 @public_router.get("/categories")
 async def list_public_categories():
     """List active USER-scoped categories with article counts (published USER articles only)."""
@@ -1005,6 +1074,40 @@ async def client_help_article_feedback(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid feedback") from exc
+
+
+@client_help_router.post("/articles/{article_id}/feedback/comment")
+async def client_help_article_feedback_comment(
+    article_id: str,
+    data: KbArticleFeedbackCommentClientBody,
+    current_user: dict = Depends(client_route_guard),
+):
+    """Attach written note to existing vote (authenticated client)."""
+    article = await get_published_user_article_by_id(article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    portal_uid = current_user.get("portal_user_id") or current_user.get("client_id")
+    try:
+        return await kb_article_feedback_svc.append_comment_to_article_feedback(
+            article_id=article_id,
+            comment=data.comment,
+            source_surface="client_help",
+            session_id=None,
+            portal_user_id=portal_uid,
+        )
+    except ValueError as exc:
+        msg = str(exc)
+        if msg == "feedback_not_found":
+            raise HTTPException(
+                status_code=404,
+                detail="No feedback found for this article; submit helpfulness first",
+            ) from exc
+        if msg == "comment_required":
+            raise HTTPException(status_code=400, detail="comment is required") from exc
+        if msg == "comment_too_long":
+            raise HTTPException(status_code=400, detail="comment is too long") from exc
+        raise HTTPException(status_code=400, detail="Invalid comment") from exc
 
 
 # ============================================================================

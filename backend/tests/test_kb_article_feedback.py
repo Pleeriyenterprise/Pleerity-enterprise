@@ -152,6 +152,58 @@ def test_kb_public_feedback_unknown_article(client):
 
 
 @pytest.mark.integration
+def test_kb_public_feedback_comment_after_vote(client):
+    """Written note attaches to existing anonymous vote; second submit is idempotent duplicate."""
+    sdb = _sync_db()
+    aid, _slug = _seed_published_user_article_sync(sdb)
+    session_id = f"pytest-sess-{uuid.uuid4().hex[:16]}"
+    try:
+        r_vote = client.post(
+            f"/api/kb/articles/{aid}/feedback",
+            json={"feedback_type": "helpful", "session_id": session_id},
+        )
+        assert r_vote.status_code == 200
+
+        r_com = client.post(
+            f"/api/kb/articles/{aid}/feedback/comment",
+            json={"session_id": session_id, "comment": "  Needs clearer steps  "},
+        )
+        assert r_com.status_code == 200, r_com.text
+        assert r_com.json()["ok"] is True
+        assert r_com.json()["duplicate"] is False
+
+        row = sdb["kb_article_feedback"].find_one({"article_id": aid})
+        assert row.get("comment") == "Needs clearer steps"
+        assert row.get("comment_source_surface") == "public_kb"
+
+        r_dup = client.post(
+            f"/api/kb/articles/{aid}/feedback/comment",
+            json={"session_id": session_id, "comment": "Another note"},
+        )
+        assert r_dup.status_code == 200
+        assert r_dup.json()["duplicate"] is True
+        row2 = sdb["kb_article_feedback"].find_one({"article_id": aid})
+        assert row2.get("comment") == "Needs clearer steps"
+    finally:
+        _cleanup_sync(sdb, aid)
+
+
+@pytest.mark.integration
+def test_kb_public_feedback_comment_requires_prior_vote(client):
+    sdb = _sync_db()
+    aid, _slug = _seed_published_user_article_sync(sdb)
+    session_id = f"pytest-sess-{uuid.uuid4().hex[:16]}"
+    try:
+        r = client.post(
+            f"/api/kb/articles/{aid}/feedback/comment",
+            json={"session_id": session_id, "comment": "orphan note"},
+        )
+        assert r.status_code == 404
+    finally:
+        _cleanup_sync(sdb, aid)
+
+
+@pytest.mark.integration
 def test_kb_client_help_feedback_uses_authenticated_dedupe_key(client):
     """Item 3: client path dedupes on user:* not session:*."""
     from middleware import client_route_guard
@@ -189,6 +241,40 @@ def test_kb_client_help_feedback_uses_authenticated_dedupe_key(client):
         assert r2.status_code == 200
         assert r2.json()["duplicate"] is True
         assert sdb["kb_article_feedback"].count_documents({"article_id": aid}) == 1
+    finally:
+        app.dependency_overrides.pop(client_route_guard, None)
+        _cleanup_sync(sdb, aid)
+
+
+@pytest.mark.integration
+def test_kb_client_help_feedback_comment_after_vote(client):
+    from middleware import client_route_guard
+
+    sdb = _sync_db()
+    aid, _slug = _seed_published_user_article_sync(sdb)
+    portal_user_id = f"pytest-portal-{uuid.uuid4().hex[:12]}"
+
+    async def _fake_client_user():
+        return {
+            "portal_user_id": portal_user_id,
+            "client_id": "pytest-client-x",
+            "role": "USER",
+        }
+
+    app = __import__("server", fromlist=["app"]).app
+    app.dependency_overrides[client_route_guard] = _fake_client_user
+    try:
+        rv = client.post(f"/api/client/help/articles/{aid}/feedback", json={"feedback_type": "not_helpful"})
+        assert rv.status_code == 200
+
+        rc = client.post(
+            f"/api/client/help/articles/{aid}/feedback/comment",
+            json={"comment": "Still unclear on renewals"},
+        )
+        assert rc.status_code == 200, rc.text
+        row = sdb["kb_article_feedback"].find_one({"article_id": aid})
+        assert row.get("comment") == "Still unclear on renewals"
+        assert row.get("comment_source_surface") == "client_help"
     finally:
         app.dependency_overrides.pop(client_route_guard, None)
         _cleanup_sync(sdb, aid)

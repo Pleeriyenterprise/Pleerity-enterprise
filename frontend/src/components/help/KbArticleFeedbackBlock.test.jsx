@@ -50,6 +50,42 @@ describe('KbArticleFeedbackBlock', () => {
     expect(screen.getByText('Thanks for your feedback')).toBeInTheDocument();
   });
 
+  it('Tell us more: textarea is editable and POSTs feedback comment', async () => {
+    postSpy.mockImplementation((url) => {
+      if (String(url).includes('/feedback/comment')) {
+        return Promise.resolve({ data: { ok: true, duplicate: false } });
+      }
+      return Promise.resolve({
+        data: { ok: true, duplicate: false, totals: { total: 1, helpful: 1, not_helpful: 0, helpful_pct: 100 } },
+      });
+    });
+
+    render(<KbArticleFeedbackBlock articleId={articleId} mode={mode} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /yes, this article was helpful/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('kb-article-feedback-thanks')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /tell us more/i }));
+
+    const ta = screen.getByRole('textbox', { name: /optional written feedback about this article/i });
+    expect(ta).not.toBeDisabled();
+
+    fireEvent.change(ta, { target: { value: 'Needs clearer steps' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /^send note$/i }));
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledWith(
+        `/kb/articles/${encodeURIComponent(articleId)}/feedback/comment`,
+        expect.objectContaining({ comment: 'Needs clearer steps', session_id: expect.any(String) })
+      );
+    });
+    expect(toast.success).toHaveBeenCalled();
+  });
+
   it('remount shows thanks from localStorage without calling API again (item 8)', async () => {
     const key = `cvp_kb_article_vote_${mode}_${articleId}`;
     localStorage.setItem(key, JSON.stringify({ feedback_type: 'helpful', at: Date.now() }));

@@ -1,6 +1,7 @@
 /**
  * Helpful / not helpful feedback for a single KB article (public or client Help Centre).
  * Persists thanks state in localStorage; debounces submits; accessible controls.
+ * Optional written note after vote via POST .../feedback/comment (same dedupe as thumbs).
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import client from '../../api/client';
@@ -11,6 +12,7 @@ import { ThumbsDown, ThumbsUp, ChevronDown } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
 
 const SESSION_KEY = 'cvp_kb_feedback_session_v1';
+const COMMENT_MAX_LEN = 2000;
 
 function getOrCreateSessionId() {
   if (typeof window === 'undefined') return 'server';
@@ -52,12 +54,31 @@ function readPersistedVote(mode, articleId) {
 
 function persistVote(mode, articleId, feedbackType) {
   try {
+    const prev = readPersistedVote(mode, articleId) || {};
     localStorage.setItem(
       voteStorageKey(mode, articleId),
-      JSON.stringify({ feedback_type: feedbackType, at: Date.now() })
+      JSON.stringify({
+        ...prev,
+        feedback_type: feedbackType,
+        at: Date.now(),
+      })
     );
   } catch {
     /* ignore quota */
+  }
+}
+
+function persistCommentSubmitted(mode, articleId) {
+  try {
+    const key = voteStorageKey(mode, articleId);
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    o.comment_submitted = true;
+    o.comment_submitted_at = Date.now();
+    localStorage.setItem(key, JSON.stringify(o));
+  } catch {
+    /* ignore */
   }
 }
 
@@ -71,14 +92,27 @@ export default function KbArticleFeedbackBlock({ articleId, mode = 'public' }) {
   const [done, setDone] = useState(!!persisted);
   const [submitting, setSubmitting] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentSaved, setCommentSaved] = useState(!!persisted?.comment_submitted);
+  const commentRef = useRef(null);
   const lastClickRef = useRef(0);
 
   useEffect(() => {
     const p = readPersistedVote(mode, articleId);
     if (p) {
       setDone(true);
+      setCommentSaved(!!p.comment_submitted);
     }
   }, [articleId, mode]);
+
+  useEffect(() => {
+    if (!commentSaved && moreOpen && commentRef.current) {
+      const t = window.requestAnimationFrame(() => commentRef.current?.focus());
+      return () => window.cancelAnimationFrame(t);
+    }
+    return undefined;
+  }, [moreOpen, commentSaved]);
 
   const submit = useCallback(
     async (feedbackType) => {
@@ -118,6 +152,38 @@ export default function KbArticleFeedbackBlock({ articleId, mode = 'public' }) {
     [articleId, mode, submitting, done]
   );
 
+  const submitComment = useCallback(async () => {
+    const trimmed = commentText.trim();
+    if (!trimmed || commentSubmitting || commentSaved || !articleId) return;
+
+    setCommentSubmitting(true);
+    try {
+      const path =
+        mode === 'client'
+          ? `/client/help/articles/${encodeURIComponent(articleId)}/feedback/comment`
+          : `/kb/articles/${encodeURIComponent(articleId)}/feedback/comment`;
+
+      const body =
+        mode === 'client'
+          ? { comment: trimmed }
+          : { comment: trimmed, session_id: getOrCreateSessionId() };
+
+      const res = await client.post(path, body);
+      persistCommentSubmitted(mode, articleId);
+      setCommentSaved(true);
+      setCommentText('');
+      if (res.data?.duplicate) {
+        toast.message('Your note was already saved.');
+      } else {
+        toast.success('Thanks — we received your note.');
+      }
+    } catch (e) {
+      toast.error('Unable to save your note right now. Please try again later.');
+    } finally {
+      setCommentSubmitting(false);
+    }
+  }, [articleId, mode, commentText, commentSubmitting, commentSaved]);
+
   if (!articleId) return null;
 
   if (done) {
@@ -133,21 +199,61 @@ export default function KbArticleFeedbackBlock({ articleId, mode = 'public' }) {
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-1 text-sm text-electric-teal hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-electric-teal rounded"
+              className="flex items-center gap-1 text-sm text-electric-teal hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-electric-teal rounded px-0.5 -mx-0.5 min-h-10"
               aria-expanded={moreOpen}
             >
-              <ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${moreOpen ? 'rotate-180' : ''}`} aria-hidden />
               Tell us more
             </button>
           </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2">
-            <Textarea
-              readOnly
-              disabled
-              placeholder="Optional written feedback will be available in a future update."
-              className="min-h-[88px] resize-none bg-white text-gray-600 cursor-not-allowed"
-              aria-label="Written feedback (coming soon)"
-            />
+          <CollapsibleContent className="mt-2 overflow-hidden">
+            {commentSaved ? (
+              <p className="text-sm text-gray-600 rounded-md border border-dashed border-gray-300 bg-gray-100/80 px-3 py-3">
+                Thanks — we've saved your note. Your thumbs feedback stays on record for this article.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <label htmlFor={`kb-feedback-comment-${articleId}`} className="sr-only">
+                  Optional written feedback about this article
+                </label>
+                <Textarea
+                  ref={commentRef}
+                  id={`kb-feedback-comment-${articleId}`}
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value.slice(0, COMMENT_MAX_LEN))}
+                  placeholder="What would make this article clearer? (optional)"
+                  maxLength={COMMENT_MAX_LEN}
+                  rows={4}
+                  className="min-h-[96px] resize-y bg-white text-gray-900 border-gray-300 focus-visible:ring-2 focus-visible:ring-electric-teal"
+                  aria-label="Optional written feedback about this article"
+                  disabled={commentSubmitting}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={commentSubmitting || !commentText.trim()}
+                    onClick={() => submitComment()}
+                    className="min-h-10 focus-visible:ring-2 focus-visible:ring-electric-teal"
+                  >
+                    {commentSubmitting ? 'Sending…' : 'Send note'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={commentSubmitting}
+                    className="min-h-10"
+                    onClick={() => setMoreOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <span className="text-xs text-gray-500 ml-auto" aria-live="polite">
+                    {commentText.length}/{COMMENT_MAX_LEN}
+                  </span>
+                </div>
+              </div>
+            )}
           </CollapsibleContent>
         </Collapsible>
       </div>

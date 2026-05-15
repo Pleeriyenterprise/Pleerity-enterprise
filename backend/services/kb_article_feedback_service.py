@@ -22,6 +22,9 @@ KB_ARTICLE_FEEDBACK_COLLECTION = "kb_article_feedback"
 
 _SESSION_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{8,128}$")
 
+# Optional written note after helpful / not helpful (same dedupe row as the vote)
+MAX_ARTICLE_FEEDBACK_COMMENT_LEN = 2000
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -137,6 +140,61 @@ async def submit_article_feedback(
 
     totals = await _totals_for_article(db, article_id)
     return {"ok": True, "duplicate": False, "article_id": article_id, "totals": totals}
+
+
+async def append_comment_to_article_feedback(
+    *,
+    article_id: str,
+    comment: str,
+    source_surface: str,
+    session_id: Optional[str],
+    portal_user_id: Optional[str],
+) -> Dict[str, Any]:
+    """
+    Attach a one-time written note to the voter's existing feedback row (same dedupe_key as submit_article_feedback).
+    Idempotent: if ``comment`` is already set, returns duplicate without overwriting.
+    """
+    text = (comment or "").strip()
+    if not text:
+        raise ValueError("comment_required")
+    if len(text) > MAX_ARTICLE_FEEDBACK_COMMENT_LEN:
+        raise ValueError("comment_too_long")
+
+    await ensure_kb_article_feedback_indexes()
+    db = database.get_db()
+    coll = db[KB_ARTICLE_FEEDBACK_COLLECTION]
+
+    dedupe_key, _voter_kind = _build_dedupe_key(portal_user_id=portal_user_id, session_id=session_id)
+    row = await coll.find_one({"article_id": article_id, "dedupe_key": dedupe_key}, {"_id": 1, "comment": 1})
+    if not row:
+        raise ValueError("feedback_not_found")
+
+    existing = (row.get("comment") or "").strip()
+    if existing:
+        return {"ok": True, "duplicate": True, "article_id": article_id}
+
+    res = await coll.update_one(
+        {
+            "article_id": article_id,
+            "dedupe_key": dedupe_key,
+            "$or": [
+                {"comment": {"$exists": False}},
+                {"comment": None},
+                {"comment": ""},
+            ],
+        },
+        {
+            "$set": {
+                "comment": text,
+                "comment_at": _now_iso(),
+                "comment_source_surface": source_surface,
+            }
+        },
+    )
+    if res.modified_count == 0:
+        return {"ok": True, "duplicate": True, "article_id": article_id}
+
+    return {"ok": True, "duplicate": False, "article_id": article_id}
 
 
 async def aggregate_feedback_summary(*, days: int = 30, low_rated_limit: int = 25) -> Dict[str, Any]:
