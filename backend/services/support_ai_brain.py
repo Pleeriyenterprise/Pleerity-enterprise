@@ -389,20 +389,9 @@ async def _gather_retrieval_context(
 
 
 def _update_session_memory_from_brain(ctx: Dict[str, Any], parsed: Dict[str, Any], message: str) -> None:
-    from services.support_conversational_orchestrator import touch_session_memory
+    from services.support_planner_memory import apply_brain_turn_memory_update
 
-    touch_session_memory(message, ctx)
-    if parsed.get("user_goal"):
-        ctx["last_user_goal"] = parsed["user_goal"][:280]
-    if parsed.get("topic"):
-        ctx["active_topic"] = parsed["topic"][:80]
-        ctx["last_support_area"] = parsed["topic"][:80]
-    if parsed.get("needs_clarification") and parsed.get("clarification_question"):
-        ctx["last_clarification_question"] = parsed["clarification_question"][:400]
-        ctx["clarification_pending"] = True
-    else:
-        ctx["clarification_pending"] = False
-    ctx["last_action"] = "support_ai_brain"
+    apply_brain_turn_memory_update(ctx, message=message, parsed=parsed)
 
 
 async def run_support_ai_brain_turn(
@@ -461,15 +450,9 @@ async def run_support_ai_brain_turn(
         "whatsapp_is_deeplink_only": True,
     }
 
-    memory = {
-        "active_topic": ctx.get("active_topic"),
-        "last_user_goal": ctx.get("last_user_goal"),
-        "last_support_area": ctx.get("last_support_area"),
-        "last_clarification_question": ctx.get("last_clarification_question"),
-        "clarification_pending": ctx.get("clarification_pending"),
-        "recent_entities": (ctx.get("recent_entities") or [])[-4:],
-        "note": "Hints only; latest user_message overrides when topic changed.",
-    }
+    from services.support_planner_memory import build_planner_conversation_memory
+
+    memory = build_planner_conversation_memory(ctx)
     conversation_state = {
         "last_assistant_action_type": ctx.get("last_assistant_action_type"),
         "pending_handoff": bool(ctx.get("pending_handoff")),

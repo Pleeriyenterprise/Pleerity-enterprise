@@ -42,6 +42,37 @@ const QUICK_ACTION_ICONS = {
 // Onboarding welcome (task: exact wording; module-level for stable useEffect dependency)
 const WELCOME_MESSAGE = 'Hello - what are you trying to get done today?';
 
+const SUPPORT_AVATAR_SRC = `${process.env.PUBLIC_URL || ''}/images/support-assistant-avatar.png`;
+
+/** Branded assistant avatar with Bot icon fallback if the image fails to load. */
+function SupportAssistantAvatar({ className = '', size = 'md' }) {
+  const [imgError, setImgError] = useState(false);
+  const box = size === 'sm' ? 'w-7 h-7' : 'w-8 h-8';
+  const icon = size === 'sm' ? 'w-4 h-4' : 'w-4 h-4';
+
+  if (imgError) {
+    return (
+      <div
+        className={`${box} rounded-full bg-gray-200 flex items-center justify-center shrink-0 ${className}`}
+        aria-hidden
+      >
+        <Bot className={`${icon} text-gray-600`} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={SUPPORT_AVATAR_SRC}
+      alt=""
+      role="presentation"
+      onError={() => setImgError(true)}
+      className={`${box} rounded-full object-cover shrink-0 ${className}`}
+      data-testid="support-assistant-avatar"
+    />
+  );
+}
+
 // Match URLs for linkification (http/https, optional trailing punctuation stripped for display)
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
 
@@ -82,9 +113,7 @@ function SupportTypingIndicator() {
       data-testid="support-typing-indicator"
     >
       <div className="flex items-start gap-2 max-w-[85%]">
-        <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
-          <Bot className="w-4 h-4 text-gray-600" />
-        </div>
+        <SupportAssistantAvatar size="sm" />
         <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-3">
           <div className="flex items-center gap-1 h-4">
             <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:0ms]" />
@@ -159,15 +188,13 @@ function MessageBubble({ message, isUser }) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
       <div className={`flex items-start gap-2 max-w-[85%] ${isUser ? 'flex-row-reverse' : ''}`}>
-        <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-          isUser ? 'bg-teal-500' : 'bg-gray-200'
-        }`}>
-          {isUser ? (
+        {isUser ? (
+          <div className="w-7 h-7 rounded-full bg-teal-500 flex items-center justify-center shrink-0">
             <User className="w-4 h-4 text-white" />
-          ) : (
-            <Bot className="w-4 h-4 text-gray-600" />
-          )}
-        </div>
+          </div>
+        ) : (
+          <SupportAssistantAvatar size="sm" />
+        )}
         <div className={`px-4 py-2 rounded-2xl ${
           isUser 
             ? 'bg-teal-500 text-white rounded-tr-sm' 
@@ -1082,13 +1109,11 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
       {/* Header */}
       <div className="bg-gradient-to-r from-teal-600 to-teal-500 text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-            <MessageCircle className="w-4 h-4" />
-          </div>
+          <SupportAssistantAvatar className="ring-2 ring-white/30" />
           <div>
             <h3 className="font-semibold text-sm">Pleerity Support</h3>
             {!isMinimized && (
-              <p className="text-xs text-teal-100">AI Assistant • 24/7</p>
+              <p className="text-xs text-teal-100">Help assistant</p>
             )}
           </div>
         </div>

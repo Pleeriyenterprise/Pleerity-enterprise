@@ -20,7 +20,39 @@ _WORKFLOW_GROUPS = (
     ("communication", "Reminders & notifications"),
     ("portal", "Tenant access"),
     ("integration", "Integrations"),
+    ("advanced", "Advanced / agency"),
 )
+
+# Friendlier public-support labels (registry keys unchanged).
+_SUPPORT_FEATURE_LABEL_OVERRIDES: Dict[str, str] = {
+    "tenant_portal": "Tenant portal (read-only view for tenants)",
+    "tenant_portal_access": "Tenant portal (read-only view for tenants)",
+    "ai_extraction_basic": "AI reads dates and document type from uploads",
+    "ai_extraction_advanced": "Advanced AI extraction with confidence checks",
+    "extraction_review_ui": "Review AI-extracted fields before saving",
+    "ai_review_interface": "Review AI-extracted fields before saving",
+    "document_upload_bulk_zip": "Bulk upload via ZIP file",
+    "zip_upload": "Bulk upload via ZIP file",
+    "webhooks": "Webhooks and API event notifications",
+}
+
+
+def _public_feature_label(feature_key: str, meta: Dict[str, Any]) -> str:
+    if feature_key in _SUPPORT_FEATURE_LABEL_OVERRIDES:
+        return _SUPPORT_FEATURE_LABEL_OVERRIDES[feature_key]
+    return (meta.get("name") or feature_key).strip()
+
+
+def _dedupe_labels(labels: List[str]) -> List[str]:
+    seen: set = set()
+    out: List[str] = []
+    for label in labels:
+        key = label.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(label)
+    return out
 
 
 def _category_for_key(feature_key: str, meta: Dict[str, Any]) -> str:
@@ -52,8 +84,10 @@ def build_cvp_plan_features_for_support() -> Dict[str, Any]:
                 continue
             meta = FEATURE_METADATA.get(feature_key, {}) or {}
             cat = _category_for_key(feature_key, meta)
-            label = (meta.get("name") or feature_key).strip()
+            label = _public_feature_label(feature_key, meta)
             enabled_by_category.setdefault(cat, []).append(label)
+        for cat_key in list(enabled_by_category.keys()):
+            enabled_by_category[cat_key] = _dedupe_labels(enabled_by_category[cat_key])
 
         plans_out.append(
             {

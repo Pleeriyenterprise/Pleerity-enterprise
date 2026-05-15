@@ -142,6 +142,19 @@ def test_cvp_workflow_explanations():
     assert "audit" in text or "reminder" in text or "certificate" in text
 
 
+def test_memory_weighting_guidance():
+    text = build_support_ai_system_instruction().lower()
+    assert "shallow" in text or "weak" in text
+    assert "interruption" in text or "corrected" in text
+
+
+def test_evidence_and_score_grounding_sections():
+    text = build_support_ai_system_instruction().lower()
+    assert "compliance score" in text
+    assert "evidence" in text
+    assert "plan comparison" in text or "plan_feature_facts" in text
+
+
 def test_planner_payload_includes_conversation_state():
     blob = json.loads(
         build_planner_user_payload(

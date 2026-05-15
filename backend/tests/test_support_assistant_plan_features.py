@@ -23,3 +23,11 @@ def test_format_includes_grounding_rule():
     assert "registry-backed" in text.lower()
     assert "do not guess" in text.lower() or "only assert" in text.lower()
     assert "Solo" in text or "PLAN_1" in text
+
+
+def test_tenant_portal_label_deduped():
+    snap = build_cvp_plan_features_for_support()
+    pro = next(p for p in snap["plans"] if p["code"] == "PLAN_3_PRO")
+    portal = pro.get("enabled_features_by_category", {}).get("portal", [])
+    tenant_labels = [x for x in portal if "tenant" in x.lower()]
+    assert len(tenant_labels) == 1

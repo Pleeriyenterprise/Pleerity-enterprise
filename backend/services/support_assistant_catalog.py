@@ -112,6 +112,28 @@ def build_approved_knowledge_dict() -> Dict[str, Any]:
                 "Review compliance score drivers before an inspection — score is a risk indicator, not legal advice",
                 "Download a report or audit pack for your records",
             ],
+            "grounding_topics": {
+                "compliance_score": (
+                    "Score reflects requirement status and evidence on file in CVP — a risk indicator, "
+                    "not legal advice. Drivers show what is missing, due soon, or expired."
+                ),
+                "evidence_upload": (
+                    "Upload PDFs or images per property; requirements update when evidence is linked. "
+                    "After upload, staff or AI review may apply depending on plan."
+                ),
+                "requirement_status": (
+                    "Each requirement shows statuses such as compliant, due soon, overdue, or missing — "
+                    "based on records in the platform, not a council decision."
+                ),
+                "plan_comparison": (
+                    "Compare plans using PLAN_FEATURE_FACTS only — property limits and listed features per tier. "
+                    "Do not assume Professional features on Solo or Portfolio unless listed."
+                ),
+                "tenant_portal": (
+                    "Tenant portal (Professional plan) gives tenants read-only visibility — not on Solo/Portfolio. "
+                    "Confirm in plan_feature_facts before stating availability."
+                ),
+            },
             "plans_text": " | ".join(cvp_plans) if cvp_plans else None,
         },
         "document_packs": {"tiers": document_packs, "addons": addons},
@@ -136,7 +158,9 @@ def format_cvp_product_context_for_prompt(snapshot: Dict[str, Any]) -> str:
         lines.append(f"CVP overview: {cvp['summary']}")
     for ex in cvp.get("workflow_examples") or []:
         lines.append(f"Example: {ex}")
-    return "\n".join(lines)[:4000]
+    for key, text in (cvp.get("grounding_topics") or {}).items():
+        lines.append(f"{key}: {text}")
+    return "\n".join(lines)[:6000]
 
 
 def format_pricing_paragraph_for_prompt(snapshot: Dict[str, Any]) -> str:

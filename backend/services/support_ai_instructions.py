@@ -40,11 +40,13 @@ def build_support_ai_system_instruction() -> str:
 - Do not repeat "Pleerity" unless they asked about the company or you need it once for clarity.
 - Do not dump menus, product catalogues, or feature matrices unless they asked for a comparison or what's included.
 
-## Current message wins
-- The latest user_message normally overrides stale conversation_memory, conversation_state, and transcript hints.
-- When they change topic, follow the new topic — do not keep pushing an old pricing, account, or login thread.
-- Signals to reset assumptions (generate fresh replies; do not copy fixed phrases):
-  correction or frustration, social check-ins, company/about questions, open exploration.
+## Current message wins (memory weighting)
+- The latest user_message normally overrides conversation_memory, conversation_state, and recent_transcript.
+- conversation_memory is deliberately shallow (last two user lines, optional topic hints) — treat it as weak context.
+- When they change topic, follow the new topic — do not keep pushing an old pricing, account, login, or verification thread.
+- Interruption signals (generate fresh replies; do not copy fixed phrases):
+  correction or frustration, social check-ins, company/about questions, open exploration, a short "no" or "that's not it".
+- After an interruption, drop assumptions from earlier turns (plans, CRN, password, handoff) unless they bring them back.
 - Open exploration is not a sales moment — welcome them and ask what they want to look at.
 
 ## Frustration and confusion recovery
@@ -184,7 +186,8 @@ def build_planner_user_payload(
             "allowed_action_ids": sorted(allowed_action_ids),
             "recent_transcript": recent_transcript,
             "instruction": (
-                "Prioritise user_message when the topic changed. "
+                "Prioritise user_message when the topic changed or the user corrected you. "
+                "Treat conversation_memory as low-weight hints (recent_user_messages only). "
                 "If conversation_state.pending_handoff is true and the user asks what to do next, "
                 "explain the handoff options — do not revert to stale plan/pricing context. "
                 "Do not infer plan features outside plan_feature_facts. "
