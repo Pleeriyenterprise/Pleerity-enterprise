@@ -65,7 +65,12 @@ logger = logging.getLogger(__name__)
 SUBSCRIPTION_RENEWAL_RECEIPT_BILLING_REASONS = frozenset({"subscription_cycle", "subscription_update"})
 
 
-def _extract_successful_invoice_payment_fields(invoice: Dict[str, Any]) -> Dict[str, Any]:
+def _extract_successful_invoice_payment_fields(
+    invoice: Dict[str, Any],
+    *,
+    source_event_id: Optional[Any] = None,
+    source_event_type: Optional[str] = None,
+) -> Dict[str, Any]:
     """Persist last successful charge metadata from a paid Stripe invoice (subscription)."""
     out: Dict[str, Any] = {}
     st = invoice.get("status_transitions") or {}
@@ -89,6 +94,18 @@ def _extract_successful_invoice_payment_fields(invoice: Dict[str, Any]) -> Dict[
     if inv_id:
         out["last_payment_stripe_invoice_id"] = inv_id
         out["latest_invoice_id"] = inv_id
+    icur = invoice.get("currency")
+    if icur:
+        try:
+            out["last_payment_currency"] = str(icur).lower().strip()
+        except Exception:
+            pass
+    sie = str(source_event_id).strip() if source_event_id else ""
+    if sie:
+        out["last_payment_source_event_id"] = sie
+    setype = str(source_event_type or "").strip()
+    if setype:
+        out["last_payment_source_event_type"] = setype
     nxt = invoice.get("next_payment_attempt")
     try:
         if nxt:
@@ -1226,6 +1243,61 @@ class StripeWebhookService:
         except Exception as flow_err:
             logger.warning("Post-payment automation trigger skipped for client %s: %s", client_id, flow_err)
 
+        # Paid checkout: persist canonical ledger + last-payment fields when Stripe invoice is confirmed paid.
+        try:
+            ps_checkout = str(session.get("payment_status") or "").lower()
+            if ps_checkout == "paid":
+                inv_raw = session.get("invoice")
+                inv_ck: Optional[str] = None
+                if isinstance(inv_raw, dict):
+                    inv_ck = str(inv_raw.get("id") or "").strip()
+                elif isinstance(inv_raw, str):
+                    inv_ck = inv_raw.strip()
+                if not inv_ck:
+                    li = subscription.get("latest_invoice") if subscription is not None else None
+                    if isinstance(li, dict):
+                        inv_ck = str(li.get("id") or "").strip()
+                    elif isinstance(li, str):
+                        inv_ck = li.strip()
+                if inv_ck and inv_ck.startswith("in_"):
+                    inv_c = stripe.Invoice.retrieve(
+                        inv_ck, expand=["lines.data.price", "payment_intent", "charge"]
+                    )
+                    inv_c_dict = inv_c.to_dict() if hasattr(inv_c, "to_dict") else dict(inv_c)
+                    if str(inv_c_dict.get("status") or "").lower() == "paid":
+                        from services.subscription_payment_ledger_service import (
+                            upsert_subscription_payment_ledger_row,
+                        )
+
+                        evt_id_ck = str((event or {}).get("id") or "").strip()
+                        await upsert_subscription_payment_ledger_row(
+                            client_id=client_id,
+                            stripe_customer_id=str(stripe_customer_id or ""),
+                            stripe_subscription_id=str(stripe_subscription_id or ""),
+                            invoice_dict=inv_c_dict,
+                            source_event_type="checkout.session.completed",
+                            source_event_id=evt_id_ck or None,
+                        )
+                        chk_pay = _extract_successful_invoice_payment_fields(
+                            inv_c_dict,
+                            source_event_id=(event or {}).get("id"),
+                            source_event_type="checkout.session.completed",
+                        )
+                        if chk_pay:
+                            chk_pay["updated_at"] = datetime.now(timezone.utc)
+                            await db.client_billing.update_one(
+                                {"client_id": client_id},
+                                {"$set": chk_pay},
+                            )
+        except Exception as chk_led_err:
+            logger.warning(
+                "checkout payment ledger + last_payment mirror failed client_id=%s checkout=%s: %s",
+                client_id,
+                checkout_session_id,
+                chk_led_err,
+                exc_info=True,
+            )
+
         return {
             "handled": True,
             "client_id": client_id,
@@ -1746,7 +1818,9 @@ class StripeWebhookService:
         try:
             inv_id = invoice.get("id")
             if inv_id:
-                inv_full = stripe.Invoice.retrieve(inv_id, expand=["lines.data.price"])
+                inv_full = stripe.Invoice.retrieve(
+                    inv_id, expand=["lines.data.price", "payment_intent", "charge"]
+                )
                 inv_d = inv_full.to_dict() if hasattr(inv_full, "to_dict") else dict(inv_full)
                 from services.billing_line_normalization import breakdown_from_invoice_lines
 
@@ -1782,7 +1856,34 @@ class StripeWebhookService:
             )
             logger.warning("sync_subscription_lifecycle after invoice.paid failed: %s", lc_err)
 
-        pay_set = _extract_successful_invoice_payment_fields(invoice)
+        merged_invoice: Dict[str, Any] = dict(invoice)
+        if inv_d:
+            merged_invoice = {**merged_invoice, **inv_d}
+        try:
+            from services.subscription_payment_ledger_service import upsert_subscription_payment_ledger_row
+
+            await upsert_subscription_payment_ledger_row(
+                client_id=client_id,
+                stripe_customer_id=str(stripe_customer_id or ""),
+                stripe_subscription_id=str(subscription_id or ""),
+                invoice_dict=merged_invoice,
+                source_event_type=event_type,
+                source_event_id=str((event or {}).get("id") or ""),
+            )
+        except Exception as ledger_ex:
+            logger.warning(
+                "subscription_payment_ledger upsert failed client_id=%s invoice_id=%s: %s",
+                client_id,
+                merged_invoice.get("id"),
+                ledger_ex,
+                exc_info=True,
+            )
+
+        pay_set = _extract_successful_invoice_payment_fields(
+            merged_invoice,
+            source_event_id=(event or {}).get("id"),
+            source_event_type=event_type,
+        )
         now_p = datetime.now(timezone.utc)
         if pay_set:
             pay_set["updated_at"] = now_p
@@ -2043,18 +2144,21 @@ class StripeWebhookService:
         inv_pid = (invoice.get("id") or "").strip()
         payment_row_key = f"stripe_invoice:{inv_pid}:paid" if inv_pid else event_id_raw
         if payment_row_key and client_id:
-            charge_id = invoice.get("charge")
-            if isinstance(charge_id, dict):
-                charge_id = charge_id.get("id") if charge_id else None
+            charge_raw = merged_invoice.get("charge")
+            charge_id = charge_raw.get("id") if isinstance(charge_raw, dict) else charge_raw
+            pi_raw = merged_invoice.get("payment_intent")
+            pi_resolve = pi_raw.get("id") if isinstance(pi_raw, dict) else pi_raw
+            stripe_pi = str(pi_resolve).strip() if isinstance(pi_resolve, str) and pi_resolve.strip() else None
             await self._insert_payment(
                 client_id=client_id,
                 stripe_event_id=payment_row_key,
-                amount=invoice.get("amount_paid") or 0,
-                currency=(invoice.get("currency") or "gbp").lower(),
+                amount=merged_invoice.get("amount_paid") or 0,
+                currency=(merged_invoice.get("currency") or "gbp").lower(),
                 type="subscription",
                 status="paid",
-                stripe_invoice_id=invoice.get("id"),
+                stripe_invoice_id=merged_invoice.get("id"),
                 stripe_charge_id=charge_id,
+                stripe_payment_intent_id=stripe_pi,
             )
         return {
             "handled": True,

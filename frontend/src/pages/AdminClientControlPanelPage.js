@@ -1362,7 +1362,7 @@ const AdminClientControlPanelPage = () => {
       </SectionCard>
       <CollapsibleBlock
         title="Payment history & receipts"
-        subtitle={`${receiptRows.length} in view (total ${receiptsMeta.total ?? receiptRows.length})`}
+        subtitle={`${receiptRows.length} in view (filtered total ${receiptsMeta.count ?? receiptRows.length})`}
         defaultOpen={false}
       >
         <AdminPaymentHistoryTable
@@ -1370,6 +1370,11 @@ const AdminClientControlPanelPage = () => {
           loading={loading}
           error={paymentHistoryError}
           compact
+          reconciliationHint={
+            receiptsMeta.stripe_activity_without_payment_ledger
+              ? 'Stripe processed subscription billing webhooks, but no paid-invoice ledger rows matched this client yet. Use Admin Billing Centre → Reconcile payment ledger.'
+              : ''
+          }
           onDownload={handleReceiptDownload}
           onResend={(r) =>
             runAction('Resend receipt', () =>

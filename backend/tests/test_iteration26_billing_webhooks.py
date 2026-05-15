@@ -330,7 +330,11 @@ def test_invoice_paid_updates_last_payment_and_enabled_canonical(
     assert ren.get("amount_total_pence") == 1900
     assert ren.get("invoice_number", "").startswith("INV-")
 
-
+    led = sync_db.subscription_payment_ledger.find_one({"stripe_invoice_id": inv_id}, {"_id": 0})
+    assert led is not None
+    assert led.get("amount_paid") == 1900
+    assert led.get("currency") == "gbp"
+    assert led.get("source_event_type") == "invoice.paid"
 def test_customer_subscription_updated_persists_stripe_truth(
     client, mongodb_reachable, sync_db, iter26_ids, cleanup_iter26, no_notifications
 ):
@@ -362,8 +366,7 @@ def test_customer_subscription_updated_persists_stripe_truth(
     row = sync_db.client_billing.find_one({"client_id": iter26_ids["client_id"]}, {"_id": 0})
     assert row.get("subscription_status") == "PAST_DUE"
     assert row.get("canonical_entitlement_state") in ("GRACE", "SUSPENDED", "ENABLED")
-
-
+    assert sync_db.subscription_payment_ledger.count_documents({"client_id": iter26_ids["client_id"]}) == 0
 @pytest.mark.asyncio
 async def test_stale_subscription_reconcile_skips_without_stripe_key(mongodb_reachable):
     from services.stripe_subscription_reconcile_job import reconcile_all_stripe_subscriptions
@@ -1068,3 +1071,103 @@ def test_checkout_session_completed_mock_still_returns_200(client, no_notificati
         sync_db.clients.delete_many({"client_id": cid_checkout})
         sync_db.client_billing.delete_many({"client_id": cid_checkout})
         sync_db.provisioning_jobs.delete_many({"client_id": cid_checkout})
+
+
+def test_checkout_session_completed_paid_creates_ledger(client, sync_db, no_notifications, mongodb_reachable):
+    from services.plan_registry import PlanCode, plan_registry
+
+    sub_id = f"sub_iter26_ckp_{uuid.uuid4().hex[:8]}"
+    cs_id = f"cs_iter26_ckp_{uuid.uuid4().hex[:8]}"
+    inv_id = f"in_iter26_ckp_{uuid.uuid4().hex[:8]}"
+    cid = f"client_iter26_ckp_{uuid.uuid4().hex[:8]}"
+    try:
+        price_row = plan_registry.get_stripe_price_ids(PlanCode.PLAN_1_SOLO)
+        pid = (price_row.get("subscription_price_id") or "").strip()
+    except Exception as exc:
+        pytest.skip(f"{exc}")
+    if not pid:
+        pytest.skip("subscription_price_id missing in plan_registry for PLAN_1_SOLO")
+
+    now = datetime.now(timezone.utc)
+    paid_raw = int(now.timestamp())
+    sync_db.clients.replace_one(
+        {"client_id": cid},
+        {
+            "client_id": cid,
+            "email": "ckpledger@pleerity.test",
+            "full_name": "Checkout Ledger Client",
+            "onboarding_status": "PROVISIONED",
+            "subscription_status": "ACTIVE",
+            "billing_plan": "PLAN_1_SOLO",
+            "created_at": now,
+            "updated_at": now,
+        },
+        upsert=True,
+    )
+    now_ts = int(now.timestamp())
+    session_dict = {
+        "id": cs_id,
+        "mode": "subscription",
+        "customer": "cus_iter26_ckp",
+        "subscription": sub_id,
+        "payment_status": "paid",
+        "invoice": inv_id,
+        "metadata": {"client_id": cid, "plan_code": PlanCode.PLAN_1_SOLO.value},
+        "line_items": {
+            "data": [{"amount": 1900, "price": {"id": pid}, "description": "Solo monthly"}]
+        },
+    }
+    sub_dict = {
+        "id": sub_id,
+        "status": "active",
+        "customer": "cus_iter26_ckp",
+        "cancel_at_period_end": False,
+        "latest_invoice": inv_id,
+        "current_period_start": now_ts,
+        "current_period_end": now_ts + 86400 * 30,
+        "billing_cycle_anchor": now_ts,
+        "items": {"data": [{"price": {"id": pid}}]},
+    }
+    inv_payload = {
+        "id": inv_id,
+        "customer": "cus_iter26_ckp",
+        "subscription": sub_id,
+        "status": "paid",
+        "amount_paid": 1900,
+        "currency": "gbp",
+        "number": "CKPLY-0099",
+        "hosted_invoice_url": "https://invoice.stripe.com/i/test_ckp",
+        "status_transitions": {"paid_at": paid_raw},
+    }
+    inv_obj = MagicMock()
+    inv_obj.to_dict = lambda: dict(inv_payload)
+    body = {"id": _evt(), "type": "checkout.session.completed", "data": {"object": dict(session_dict)}}
+    try:
+        with (
+            patch(
+                "services.stripe_webhook_service.stripe.checkout.Session.retrieve",
+                return_value=session_dict,
+            ),
+            patch(
+                "services.stripe_webhook_service.stripe.Subscription.retrieve",
+                return_value=sub_dict,
+            ),
+            patch(
+                "services.stripe_webhook_service.stripe.Invoice.retrieve",
+                return_value=inv_obj,
+            ),
+        ):
+            r = client.post(STRIPE_WEBHOOK_PATH_PRIMARY, json=body)
+        assert r.status_code == 200
+        ledger = sync_db.subscription_payment_ledger.find_one({"stripe_invoice_id": inv_id}, {"_id": 0})
+        assert ledger is not None and ledger.get("client_id") == cid
+        assert ledger.get("source_event_type") == "checkout.session.completed"
+        prow = sync_db.client_billing.find_one({"client_id": cid}, {"_id": 0})
+        assert prow and prow.get("last_payment_amount_pence") == 1900
+        assert prow.get("last_payment_stripe_invoice_id") == inv_id
+    finally:
+        sync_db.clients.delete_many({"client_id": cid})
+        sync_db.client_billing.delete_many({"client_id": cid})
+        sync_db.provisioning_jobs.delete_many({"client_id": cid})
+        sync_db.subscription_payment_ledger.delete_many({"client_id": cid})
+

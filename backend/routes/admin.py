@@ -5402,8 +5402,14 @@ async def get_client_control_panel(request: Request, client_id: str):
                 "stripe_webhook_last_event_type": wh_type,
                 "billing_last_synced_at": billing_last_synced_at,
                 "billing_sync_state": billing_sync_state,
-                "last_payment": _iso_or_none((billing or {}).get("last_payment_at"))
+                "last_payment": _iso_or_none(sub_status.get("last_payment_at"))
+                or _iso_or_none((billing or {}).get("last_payment_at"))
                 or _iso_or_none(client.get("last_payment_date")),
+                "last_payment_amount_pence": sub_status.get("last_payment_amount_pence"),
+                "last_payment_currency": sub_status.get("last_payment_currency"),
+                "last_payment_stripe_invoice_id": sub_status.get("last_payment_stripe_invoice_id"),
+                "last_payment_invoice_number": sub_status.get("last_payment_invoice_number"),
+                "last_payment_status": sub_status.get("last_payment_status"),
                 "next_billing_date": _iso_or_none_billing_period((billing or {}).get("current_period_end")),
                 "open_invoice_status": (billing or {}).get("open_invoice_status"),
                 "stripe_next_payment_attempt_at": _iso_or_none((billing or {}).get("stripe_next_payment_attempt_at")),

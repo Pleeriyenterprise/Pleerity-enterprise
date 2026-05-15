@@ -494,6 +494,24 @@ class StripeService:
                     e,
                 )
 
+        if not billing.get("last_payment_at"):
+            try:
+                from services.subscription_payment_ledger_service import (
+                    fetch_latest_paid_ledger_for_client,
+                    ledger_row_to_billing_payment_overlay,
+                )
+
+                _led = await fetch_latest_paid_ledger_for_client(client_id)
+                if _led:
+                    billing = dict(billing)
+                    billing.update(ledger_row_to_billing_payment_overlay(_led))
+            except Exception as _led_err:
+                logger.warning(
+                    "get_subscription_status: ledger fallback skipped client_id=%s: %s",
+                    client_id,
+                    _led_err,
+                )
+
         cpe_out = cpe.isoformat() if cpe else None
         cps_out = cps.isoformat() if cps else None
         g_end = billing.get("grace_period_ends_at")
@@ -546,6 +564,11 @@ class StripeService:
             subscription_status_upper=sub_u,
         )
 
+        display_currency = str((plan_def or {}).get("currency") or "gbp")
+        lpc = billing.get("last_payment_currency")
+        if lpc:
+            display_currency = str(lpc).lower()
+
         if client_facing:
             return build_client_billing_payload(
                 has_subscription=True,
@@ -569,7 +592,7 @@ class StripeService:
                 charge_automatically=charge_automatically,
                 billing_last_synced_at_iso=billing_last_iso,
                 billing_sync_state=api_billing_sync_state,
-                currency=str((plan_def or {}).get("currency") or "gbp"),
+                currency=display_currency,
                 canonical_entitlement_state=canon,
                 last_payment_at_iso=_billing_timestamp_iso(billing.get("last_payment_at")),
                 last_payment_amount_pence=billing.get("last_payment_amount_pence"),
@@ -581,7 +604,6 @@ class StripeService:
                 last_invoice_failure_message=billing.get("last_invoice_failure_message"),
             )
 
-        cur_currency = str((plan_def or {}).get("currency") or "gbp")
         g_iso = g_end.isoformat() if g_end else None
         lp_at_iso = _billing_timestamp_iso(billing.get("last_payment_at"))
         lp_pence = billing.get("last_payment_amount_pence")
@@ -589,7 +611,7 @@ class StripeService:
             grace_period_ends_at_iso=g_iso,
             last_payment_at_iso=lp_at_iso,
             last_payment_amount_pence=lp_pence,
-            currency=cur_currency,
+            currency=display_currency,
         )
         renewal_display = renewal_date_display_from_period_end_iso(cpe_out)
         open_inv = billing.get("open_invoice_status")
@@ -658,6 +680,8 @@ class StripeService:
             "last_payment_status": billing.get("last_payment_status"),
             "last_payment_stripe_invoice_id": billing.get("last_payment_stripe_invoice_id"),
             "last_payment_invoice_number": billing.get("last_payment_invoice_number"),
+            "last_payment_currency": billing.get("last_payment_currency"),
+            "last_payment_source_event_id": billing.get("last_payment_source_event_id"),
             "open_invoice_id": billing.get("open_invoice_id"),
             "open_invoice_status": billing.get("open_invoice_status"),
             "stripe_next_payment_attempt_at": _billing_timestamp_iso(billing.get("stripe_next_payment_attempt_at")),

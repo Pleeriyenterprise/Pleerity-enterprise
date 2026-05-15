@@ -17,6 +17,7 @@ export default function AdminPaymentHistoryTable({
   onDownload,
   onResend,
   compact = false,
+  reconciliationHint = '',
 }) {
   if (loading && (!rows || rows.length === 0)) {
     return (
@@ -30,7 +31,16 @@ export default function AdminPaymentHistoryTable({
     return <p className="text-sm text-red-700 py-6 text-center border border-red-200 rounded-md bg-red-50/60">{error}</p>;
   }
   if (!rows || rows.length === 0) {
-    return <p className="text-sm text-gray-600 py-6 text-center border border-dashed rounded-md bg-gray-50/50">No payment history recorded yet.</p>;
+    return (
+      <div className="space-y-3">
+        {reconciliationHint ? (
+          <p className="text-sm text-amber-900 border border-amber-200 bg-amber-50/80 rounded-md px-3 py-2">{reconciliationHint}</p>
+        ) : null}
+        <p className="text-sm text-gray-600 py-6 text-center border border-dashed rounded-md bg-gray-50/50">
+          No payment history rows in this view (checkout PDFs, paid ledger, or orders).
+        </p>
+      </div>
+    );
   }
 
   if (compact) {

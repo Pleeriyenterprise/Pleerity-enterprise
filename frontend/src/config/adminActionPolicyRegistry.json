@@ -49,6 +49,16 @@
     "affects_multiple_customers": false,
     "irreversible": false
   },
+  "reconcile_subscription_payment_ledger": {
+    "action_id": "reconcile_subscription_payment_ledger",
+    "risk_class": "high_impact_operational",
+    "operator_level": "billing_specialist",
+    "requires_reason": false,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
   "unlock_account": {
     "action_id": "unlock_account",
     "risk_class": "high_impact_operational",

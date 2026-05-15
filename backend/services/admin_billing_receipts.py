@@ -25,6 +25,10 @@ from services.order_receipt_service import (
     read_receipt_pdf_bytes,
 )
 from services.plan_registry import plan_registry
+from services.subscription_payment_ledger_service import (
+    COLLECTION_NAME as SUBSCRIPTION_PAYMENT_LEDGER_COLLECTION,
+    PAYMENT_EVIDENCE_STRIPE_EVENT_TYPES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +149,44 @@ def _renewal_row(doc: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _ledger_payment_row(doc: Dict[str, Any]) -> Dict[str, Any]:
+    inv_id = doc.get("stripe_invoice_id") or ""
+    paid = doc.get("paid_at")
+    cur = (doc.get("currency") or "gbp").upper()
+    try:
+        pence = int(doc.get("amount_paid") or 0)
+    except (TypeError, ValueError):
+        pence = 0
+    return {
+        "source": "subscription",
+        "source_detail": "subscription_payment_ledger",
+        "receipt_key": f"subscription_ledger:{inv_id}",
+        "invoice_number": doc.get("stripe_invoice_number") or inv_id,
+        "order_reference": str(inv_id),
+        "stripe_checkout_session_id": None,
+        "stripe_invoice_id": str(inv_id),
+        "date_issued": _dt_iso(paid),
+        "amount_total_pence": pence,
+        "amount_display": _money_display(pence, cur),
+        "currency": cur,
+        "payment_status": str(doc.get("status") or "paid").upper(),
+        "payment_method": "Card (Stripe) — ledger",
+        "hosted_invoice_url": doc.get("hosted_invoice_url"),
+        "invoice_pdf_url": doc.get("invoice_pdf"),
+        "receipt_url": doc.get("receipt_url"),
+        "source_event_type": doc.get("source_event_type"),
+        "source_event_id": doc.get("source_event_id"),
+        "financial_evidence_ledger_row": True,
+        "stripe_checkout_document": False,
+        "pdf_available": False,
+        "receipt_generated_at": None,
+        "email_sent_at": None,
+        "synthetic_ledger": False,
+        "billing_period_start": _dt_iso(doc.get("period_start")),
+        "billing_period_end": _dt_iso(doc.get("period_end")),
+    }
+
+
 def _order_row(order: Dict[str, Any]) -> Dict[str, Any]:
     oid = order.get("order_id") or ""
     snap = order.get("pricing_snapshot") or {}
@@ -193,6 +235,40 @@ def _enrich_admin_payment_row(row: Dict[str, Any]) -> Dict[str, Any]:
     retry_state_label = str(row.get("retry_state_label") or "").strip() or None
     next_retry_at_utc = row.get("next_retry_at_utc")
     grace_period_ends_at_utc = row.get("grace_period_ends_at_utc")
+    sd = str(row.get("source_detail") or "").strip()
+
+    failed_attempt_marker = payment_status in {"FAILED", "PAST_DUE", "UNPAID", "OPEN"}
+    failed_attempt_reason = (
+        "Payment requires support follow-up."
+        if failed_attempt_marker
+        else None
+    )
+
+    if source == "subscription" and sd == "subscription_payment_ledger":
+        recv = str(row.get("receipt_url") or "").strip() or None
+        inv_pdf_u = str(row.get("invoice_pdf_url") or "").strip() or None
+        opened = bool(hosted_invoice_url or recv or inv_pdf_u)
+        row["payment_reference_display"] = ref or stripe_invoice_id or "—"
+        row["stripe_reference_display"] = stripe_invoice_id or recv or inv_pdf_u or hosted_invoice_url
+        row["download_available"] = False
+        row["download_unavailable_reason"] = (
+            "Checkout / renewal PDF rows above are Pleerity-generated artefacts — this entry is Stripe-backed paid-invoice ledger (financial evidence)."
+        )
+        row["resend_available"] = False
+        row["resend_unavailable_reason"] = (
+            "Resend targets Pleerity-generated receipt emails, not Stripe invoice URLs."
+        )
+        row["failed_attempt_marker"] = failed_attempt_marker
+        row["failed_attempt_reason"] = failed_attempt_reason
+        row["can_open_hosted_invoice"] = opened
+        row["hosted_invoice_unavailable_reason"] = (
+            None if opened else "No hosted invoice URL, receipt URL, or Stripe PDF pointer on ledger row yet."
+        )
+        row["retry_state_label"] = retry_state_label or ("Payment retry in progress" if failed_attempt_marker else "No retry in progress")
+        row["next_retry_at_utc"] = next_retry_at_utc
+        row["grace_period_ends_at_utc"] = grace_period_ends_at_utc
+        row["billing_anomaly_flags"] = row.get("billing_anomaly_flags") or []
+        return row
 
     download_available = False
     download_unavailable_reason = None
@@ -220,13 +296,6 @@ def _enrich_admin_payment_row(row: Dict[str, Any]) -> Dict[str, Any]:
                 download_available = True
             else:
                 download_unavailable_reason = "Receipt PDF is not available yet."
-
-    failed_attempt_marker = payment_status in {"FAILED", "PAST_DUE", "UNPAID", "OPEN"}
-    failed_attempt_reason = (
-        "Payment requires support follow-up."
-        if failed_attempt_marker
-        else None
-    )
 
     row["download_available"] = download_available
     row["download_unavailable_reason"] = download_unavailable_reason
@@ -317,6 +386,15 @@ async def list_receipts_for_client(
         for d in renewals:
             rows.append(_enrich_admin_payment_row(_renewal_row(d)))
 
+    if type_filter in ("all", "subscription", "subscription_ledger"):
+        l_col = db[SUBSCRIPTION_PAYMENT_LEDGER_COLLECTION]
+        ledger_cur = l_col.find({"client_id": client_id, "status": "paid"}).sort("paid_at", -1).limit(500)
+        ledger_docs = await ledger_cur.to_list(500)
+        for ld in ledger_docs:
+            ld_copy = dict(ld)
+            ld_copy.pop("_id", None)
+            rows.append(_enrich_admin_payment_row(_ledger_payment_row(ld_copy)))
+
     # --- Orders (paid / post-payment) ---
     if type_filter in ("all", "order", "intake_order", "one_off_order", "cvp_order"):
         or_clauses: List[Dict[str, Any]] = [{"client_id": client_id}]
@@ -404,10 +482,25 @@ async def list_receipts_for_client(
         row["stripe_sync_updated_at_utc"] = _dt_iso(billing.get("billing_last_synced_at"))
     rows = rows[:limit]
 
+    ledger_paid_total = await db[SUBSCRIPTION_PAYMENT_LEDGER_COLLECTION].count_documents(
+        {"client_id": client_id, "status": "paid"}
+    )
+    stripe_payment_evidence_processed = await db.stripe_events.count_documents(
+        {
+            "related_client_id": client_id,
+            "status": "PROCESSED",
+            "type": {"$in": sorted(PAYMENT_EVIDENCE_STRIPE_EVENT_TYPES)},
+        }
+    )
+
     meta = {
         "client_id": client_id,
         "count": len(rows),
         "email_match_used": bool(emails),
+        "subscription_payment_ledger_paid_total": ledger_paid_total,
+        "stripe_payment_related_processed_webhooks": stripe_payment_evidence_processed,
+        "stripe_activity_without_payment_ledger": ledger_paid_total == 0
+        and stripe_payment_evidence_processed > 0,
     }
     return rows, meta
 

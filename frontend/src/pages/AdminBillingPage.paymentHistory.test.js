@@ -52,7 +52,7 @@ describe('AdminBillingPage payment history states', () => {
         });
       }
       if (String(url).startsWith('/admin/billing/clients/client-1/receipts?')) {
-        return Promise.resolve({ data: { receipts } });
+        return Promise.resolve({ data: { receipts, meta: {} } });
       }
       return Promise.resolve({ data: {} });
     });
@@ -62,7 +62,7 @@ describe('AdminBillingPage payment history states', () => {
   it('empty payment history shows required empty-state copy', async () => {
     mockCommonApi({ receipts: [] });
     render(<AdminBillingPage />);
-    expect(await screen.findByText('No payment history recorded yet.')).toBeInTheDocument();
+    expect(await screen.findByText(/No payment history rows in this view/i)).toBeInTheDocument();
   });
 
   it('renders populated and failed rows; disables unavailable actions with reason', async () => {
@@ -142,7 +142,7 @@ describe('AdminBillingPage payment history states', () => {
         });
       }
       if (String(url).startsWith('/admin/billing/clients/client-1/receipts?')) {
-        return Promise.resolve({ data: { receipts: [] } });
+        return Promise.resolve({ data: { receipts: [], meta: {} } });
       }
       return Promise.resolve({ data: {} });
     });
@@ -159,7 +159,7 @@ describe('AdminBillingPage payment history states', () => {
     expect(inLifecycle.getByText('Reconciliation reason')).toBeInTheDocument();
     expect(inLifecycle.getByText('clients_update_failed_after_billing_sync')).toBeInTheDocument();
     expect(screen.getByText('Reconciliation required: clients_update_failed_after_billing_sync')).toBeInTheDocument();
-    expect(screen.getByText('No payment history recorded yet.')).toBeInTheDocument();
+    expect(screen.getByText(/No payment history rows in this view/i)).toBeInTheDocument();
   });
 });
 

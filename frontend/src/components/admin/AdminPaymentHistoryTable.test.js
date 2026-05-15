@@ -5,7 +5,7 @@ import AdminPaymentHistoryTable from './AdminPaymentHistoryTable';
 describe('AdminPaymentHistoryTable', () => {
   it('shows exact empty-state copy', () => {
     render(<AdminPaymentHistoryTable rows={[]} loading={false} error="" />);
-    expect(screen.getByText('No payment history recorded yet.')).toBeInTheDocument();
+    expect(screen.getByText(/No payment history rows in this view/i)).toBeInTheDocument();
   });
 
   it('renders retry timeline fields from backend', () => {

@@ -698,6 +698,23 @@ class Database:
                 await self.db.payments.create_index([("client_id", 1), ("created_at", -1)])
                 await self.db.payments.create_index("stripe_charge_id", sparse=True)
                 await self.db.payments.create_index("stripe_invoice_id", sparse=True)
+            # Canonical subscription payment ledger (paid invoices; idempotent by stripe_invoice_id)
+            try:
+                await self.db.subscription_payment_ledger.create_index(
+                    "stripe_invoice_id", unique=True, sparse=True
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.subscription_payment_ledger.create_index(
+                    [("client_id", 1), ("paid_at", -1)]
+                )
+            except Exception:
+                pass
+            try:
+                await self.db.subscription_payment_ledger.create_index("source_event_id", sparse=True)
+            except Exception:
+                pass
             # MRR snapshots for NRR (Executive Overview)
             if hasattr(self.db, "mrr_snapshots"):
                 try:

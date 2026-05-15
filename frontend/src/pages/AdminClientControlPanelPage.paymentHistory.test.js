@@ -72,7 +72,7 @@ describe('AdminClientControlPanelPage payment history collapsible', () => {
     const toggle = await screen.findByRole('button', { name: /Payment history & receipts/i });
     fireEvent.click(toggle);
 
-    expect(await screen.findByText('No payment history recorded yet.')).toBeInTheDocument();
+    expect(await screen.findByText(/No payment history rows in this view/i)).toBeInTheDocument();
     expect(screen.getByText('Open full Admin Billing Centre')).toBeInTheDocument();
   });
 

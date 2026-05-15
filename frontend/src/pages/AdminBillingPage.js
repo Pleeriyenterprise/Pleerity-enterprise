@@ -37,6 +37,7 @@ import AdminPendingPaymentsPage from './AdminPendingPaymentsPage';
 import AdminPaymentHistoryTable from '../components/admin/AdminPaymentHistoryTable';
 import AdminClientSupportSearch from '../components/admin/AdminClientSupportSearch';
 import {
+  getAdminActionPolicy,
   getGovernanceConfirmationWording,
   getGovernanceEscalationGuidance,
   getGovernanceRiskBadgeClass,
@@ -114,11 +115,13 @@ const AdminBillingPage = () => {
     return trimmed;
   }, []);
   const [stripeReconcileRunning, setStripeReconcileRunning] = useState(false);
+  const [paymentLedgerReconcileRunning, setPaymentLedgerReconcileRunning] = useState(false);
 
   // Receipts & invoices (canonical ledger + orders)
   const [receipts, setReceipts] = useState([]);
   const [receiptsLoading, setReceiptsLoading] = useState(false);
   const [receiptsError, setReceiptsError] = useState('');
+  const [receiptsMeta, setReceiptsMeta] = useState({});
   const [receiptTypeFilter, setReceiptTypeFilter] = useState('all');
   const [receiptStatusFilter, setReceiptStatusFilter] = useState('');
   const [receiptDateFrom, setReceiptDateFrom] = useState('');
@@ -160,12 +163,14 @@ const AdminBillingPage = () => {
       if (receiptDateTo.trim()) params.set('date_to', receiptDateTo.trim());
       const response = await api.get(`/admin/billing/clients/${clientId}/receipts?${params.toString()}`);
       setReceipts(response.data.receipts || []);
+      setReceiptsMeta(response.data.meta || {});
     } catch (error) {
       console.error('Receipts fetch error:', error);
       const msg = error.response?.data?.detail || 'Failed to load payment history';
       setReceiptsError(typeof msg === 'string' ? msg : 'Failed to load payment history');
       toast.error(msg);
       setReceipts([]);
+      setReceiptsMeta({});
     } finally {
       setReceiptsLoading(false);
     }
@@ -176,6 +181,7 @@ const AdminBillingPage = () => {
       fetchClientReceipts(selectedClientId);
     } else {
       setReceipts([]);
+      setReceiptsMeta({});
     }
   }, [selectedClientId, fetchClientReceipts]);
 
@@ -263,6 +269,46 @@ const AdminBillingPage = () => {
       toast.error(error.response?.data?.detail || 'Stripe reconcile job failed');
     } finally {
       setStripeReconcileRunning(false);
+    }
+  };
+
+  const handleReconcileSubscriptionPaymentLedger = async () => {
+    if (!selectedClientId) return;
+    const pol = getAdminActionPolicy('reconcile_subscription_payment_ledger');
+    if (pol?.requires_confirmation) {
+      const ok = window.confirm(
+        `${getGovernanceConfirmationWording('reconcile_subscription_payment_ledger')}\n\n` +
+          'Materialize paid Stripe invoices into the internal payment ledger (idempotent).',
+      );
+      if (!ok) return;
+    }
+    if (pol?.requires_reason) {
+      const reason = getRequiredReason(
+        'reconcile_subscription_payment_ledger',
+        'Reconcile subscription payment ledger',
+      );
+      if (!reason) return;
+    }
+    setPaymentLedgerReconcileRunning(true);
+    try {
+      const response = await api.post(
+        `/admin/billing/clients/${selectedClientId}/reconcile-payment-ledger`,
+        { from_stripe_events: true, from_stripe_invoice_api_limit: 0 },
+      );
+      const d = response.data || {};
+      toast.success('Payment ledger reconciliation finished', {
+        description: `Upserted invoice rows: ${d.upsert_count ?? 0}. Last payment fields synced: ${d.client_billing_last_payment_synced ? 'yes' : 'no'}.`,
+      });
+      if (d.errors?.length) {
+        toast.warning('Reconciliation completed with errors — see server logs / response payload.');
+      }
+      await fetchBillingSnapshot(selectedClientId);
+      fetchClientReceipts(selectedClientId);
+    } catch (error) {
+      console.error('Payment ledger reconcile error:', error);
+      toast.error(error.response?.data?.detail || 'Payment ledger reconciliation failed');
+    } finally {
+      setPaymentLedgerReconcileRunning(false);
     }
   };
 
@@ -882,13 +928,22 @@ const AdminBillingPage = () => {
                         <p className="font-medium text-xs">
                           {formatAdminDate(billingSnapshot.last_payment_at) || '—'}
                           {typeof billingSnapshot.last_payment_amount_pence === 'number'
-                            ? ` · £${(billingSnapshot.last_payment_amount_pence / 100).toFixed(2)}`
+                            ? (() => {
+                                const cc = String(billingSnapshot.last_payment_currency || 'gbp').toUpperCase();
+                                const sym = cc === 'GBP' ? '£' : `${cc} `;
+                                return ` · ${sym}${(billingSnapshot.last_payment_amount_pence / 100).toFixed(2)}`;
+                              })()
                             : ''}
                           {billingSnapshot.last_payment_status ? ` · ${billingSnapshot.last_payment_status}` : ''}
                         </p>
                         {billingSnapshot.last_payment_stripe_invoice_id && (
                           <p className="font-mono text-[10px] text-gray-500 break-all mt-0.5">
                             {billingSnapshot.last_payment_stripe_invoice_id}
+                          </p>
+                        )}
+                        {billingSnapshot.last_payment_source_event_id && (
+                          <p className="font-mono text-[10px] text-gray-500 break-all mt-0.5">
+                            source event {billingSnapshot.last_payment_source_event_id}
                           </p>
                         )}
                       </div>
@@ -1215,10 +1270,28 @@ const AdminBillingPage = () => {
                       Receipts &amp; Invoices
                     </CardTitle>
                     <CardDescription>
-                      Subscription checkout PDFs and paid service orders for this client (canonical GridFS storage). Use filters to narrow the list.
-                    </CardDescription>
+                    Checkout / renewal PDF artefacts, paid-invoice ledger rows (financial evidence), and paid service
+                    orders for this client (date filter uses each row&apos;s issued / paid timestamp).
+                  </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {(receiptsMeta.stripe_activity_without_payment_ledger ||
+                      billingSnapshot?.payment_reconciliation?.stripe_evidence_but_no_payment_ledger_rows) && (
+                      <Alert className="border-amber-300 bg-amber-50/90" data-testid="payment-ledger-reconcile-hint">
+                        <AlertTriangle className="w-4 h-4 text-amber-800" />
+                        <AlertDescription className="text-sm text-amber-950">
+                          Stripe subscription webhooks are on file, but no paid-invoice payment ledger rows were found
+                          yet. Operational activity is not financial evidence — run reconciliation to materialize paid
+                          Stripe invoices into the ledger (idempotent).
+                          {typeof receiptsMeta.subscription_payment_ledger_paid_total === 'number' ? (
+                            <span className="block mt-1 text-xs text-amber-900/90">
+                              Ledger paid rows (total): {receiptsMeta.subscription_payment_ledger_paid_total}; processed
+                              payment-like webhooks: {receiptsMeta.stripe_payment_related_processed_webhooks ?? '—'}.
+                            </span>
+                          ) : null}
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     <div className="flex flex-wrap gap-2 items-end">
                       <div className="space-y-1">
                         <label className="text-xs text-gray-500">Type</label>
@@ -1230,6 +1303,7 @@ const AdminBillingPage = () => {
                         >
                           <option value="all">All</option>
                           <option value="subscription">Subscription only</option>
+                          <option value="subscription_ledger">Stripe payment ledger only</option>
                           <option value="order">Orders only</option>
                           <option value="intake_order">Intake orders</option>
                           <option value="one_off_order">One-off services</option>
@@ -1275,6 +1349,22 @@ const AdminBillingPage = () => {
                         {receiptsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                         <span className="ml-1">Refresh</span>
                       </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleReconcileSubscriptionPaymentLedger}
+                        disabled={receiptsLoading || paymentLedgerReconcileRunning || !selectedClientId}
+                        data-testid="receipt-ledger-reconcile"
+                        title={getGovernanceWarning('reconcile_subscription_payment_ledger')}
+                      >
+                        {paymentLedgerReconcileRunning ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <CreditCard className="w-4 h-4" />
+                        )}
+                        <span className="ml-1">Reconcile payment ledger</span>
+                      </Button>
                     </div>
 
                     <AdminPaymentHistoryTable
@@ -1284,6 +1374,11 @@ const AdminBillingPage = () => {
                       actionKey={receiptActionKey}
                       onDownload={handleReceiptDownload}
                       onResend={handleReceiptResend}
+                      reconciliationHint={
+                        receiptsMeta.stripe_activity_without_payment_ledger
+                          ? 'Stripe processed subscription payment webhooks on file, but no paid-invoice payment ledger rows matched this client yet. Use “Reconcile payment ledger” above to materialize paid Stripe invoices (financial evidence).'
+                          : ''
+                      }
                     />
                   </CardContent>
                 </Card>

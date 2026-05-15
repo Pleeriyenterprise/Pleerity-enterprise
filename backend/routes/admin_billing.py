@@ -14,6 +14,7 @@ Endpoints:
 - POST /api/admin/billing/jobs/subscription-lifecycle - Run subscription lifecycle batch (same runner as scheduled job)
 - POST /api/admin/billing/jobs/renewal-reminders - Alias of subscription lifecycle batch (backward compatible)
 - POST /api/admin/billing/clients/{client_id}/receipts/subscription/{ref}/regenerate - Rebuild itemised CVP checkout PDF from Stripe (keeps invoice number)
+- POST /api/admin/billing/clients/{client_id}/reconcile-payment-ledger - Hydrate paid-invoice payment ledger (+ optional last_payment mirror) from webhook pointers / Stripe
 
 NON-NEGOTIABLE RULES:
 1. Stripe is the billing authority. App is the entitlement authority.
@@ -47,6 +48,10 @@ from services.stripe_service import StripeService
 from services.billing_audit_normalization import normalized_billing_audit_metadata
 from services.admin_client_support_search import run_admin_client_support_search
 from services.admin_action_governance import ensure_action_reason, normalized_admin_action_metadata
+from services.subscription_payment_ledger_service import (
+    PAYMENT_EVIDENCE_STRIPE_EVENT_TYPES,
+    reconcile_client_subscription_payment_ledger,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/billing", tags=["admin-billing"], dependencies=[Depends(admin_route_guard)])
@@ -109,6 +114,18 @@ class AdminReceiptResendBody(BaseModel):
     """Resend receipt email for a subscription ledger row or paid order."""
     source: str = Field(..., description="subscription | order")
     ref: str = Field(..., description="Invoice number / cs_ session id, or order_id")
+
+
+class ReconcileSubscriptionPaymentLedgerBody(BaseModel):
+    """Hydrate canonical paid-invoice ledger rows from webhook evidence / Stripe Invoice API."""
+
+    from_stripe_events: bool = True
+    from_stripe_invoice_api_limit: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+        description="Stripe Invoice.list limit for this customer (0 = skip). Low values only — rate-limit safe.",
+    )
 
 
 # =============================================================================
@@ -228,6 +245,16 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
 
         checkout_receipt_count = await db.stripe_checkout_invoices.count_documents({"client_id": client_id})
         renewal_receipt_count = await db.cvp_subscription_renewal_receipts.count_documents({"client_id": client_id})
+        subscription_ledger_paid_count = await db.subscription_payment_ledger.count_documents(
+            {"client_id": client_id, "status": "paid"}
+        )
+        stripe_payment_evidence_event_count = await db.stripe_events.count_documents(
+            {
+                "related_client_id": client_id,
+                "status": "PROCESSED",
+                "type": {"$in": sorted(PAYMENT_EVIDENCE_STRIPE_EVENT_TYPES)},
+            }
+        )
 
         # Get property count
         property_count = await db.properties.count_documents({"client_id": client_id})
@@ -282,6 +309,8 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             "stripe_timeline": stripe_timeline,
             "checkout_receipt_ledger_count": checkout_receipt_count,
             "renewal_receipt_ledger_count": renewal_receipt_count,
+            "subscription_payment_ledger_paid_count": subscription_ledger_paid_count,
+            "stripe_payment_evidence_webhook_count": stripe_payment_evidence_event_count,
             "next_billing_date": billing.get("current_period_end") if billing else None,
             "last_stripe_invoice_id": billing.get("latest_invoice_id") if billing else None,
             
@@ -346,6 +375,8 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             snapshot["last_payment_status"] = sub_status.get("last_payment_status")
             snapshot["last_payment_stripe_invoice_id"] = sub_status.get("last_payment_stripe_invoice_id")
             snapshot["last_payment_invoice_number"] = sub_status.get("last_payment_invoice_number")
+            snapshot["last_payment_currency"] = sub_status.get("last_payment_currency")
+            snapshot["last_payment_source_event_id"] = sub_status.get("last_payment_source_event_id")
             snapshot["open_invoice_id"] = sub_status.get("open_invoice_id")
             snapshot["open_invoice_status"] = sub_status.get("open_invoice_status")
             snapshot["stripe_next_payment_attempt_at"] = sub_status.get("stripe_next_payment_attempt_at")
@@ -354,6 +385,25 @@ async def get_client_billing_snapshot(request: Request, client_id: str):
             snapshot["stripe_webhook_last_event_type"] = sub_status.get("stripe_webhook_last_event_type")
         else:
             snapshot["stripe_subscription_status"] = None
+
+        sub_upper = str((billing or {}).get("subscription_status") or client.get("subscription_status") or "").upper()
+        active_like_sub = sub_upper in ("ACTIVE", "TRIALING")
+        stripe_ids_ok = bool((billing or {}).get("stripe_subscription_id") and (billing or {}).get("stripe_customer_id"))
+        stripe_activity_no_ledger = (
+            stripe_payment_evidence_event_count > 0 and subscription_ledger_paid_count == 0
+        )
+        subscription_active_without_ledger = active_like_sub and stripe_ids_ok and subscription_ledger_paid_count == 0
+        snapshot["payment_reconciliation"] = {
+            "subscription_payment_ledger_paid_row_count": subscription_ledger_paid_count,
+            "stripe_payment_related_webhook_row_count": stripe_payment_evidence_event_count,
+            "stripe_evidence_but_no_payment_ledger_rows": stripe_activity_no_ledger,
+            "active_subscription_but_no_payment_ledger_rows": subscription_active_without_ledger,
+            "action_hint": (
+                "Run payment ledger reconciliation (admin) to materialize paid-invoice ledger rows from stored webhook pointers / Stripe invoices."
+                if stripe_activity_no_ledger or subscription_active_without_ledger
+                else None
+            ),
+        }
 
         last_renewal = await db.cvp_subscription_renewal_receipts.find_one(
             {"client_id": client_id},
@@ -507,7 +557,13 @@ def _parse_admin_date(q: Optional[str]) -> Optional[datetime]:
 @router.get("/clients/{client_id}/receipts")
 async def list_admin_client_receipts(
     client_id: str,
-    type: str = Query("all", description="all | subscription | order | intake_order | one_off_order | cvp_order"),
+    type: str = Query(
+        "all",
+        description=(
+            "all | subscription | subscription_checkout | subscription_renewal | subscription_ledger | "
+            "order | intake_order | one_off_order | cvp_order"
+        ),
+    ),
     status: Optional[str] = Query(None, description="Filter by payment_status e.g. PAID"),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
@@ -532,6 +588,48 @@ async def list_admin_client_receipts(
     if not rows and not meta.get("client_id"):
         raise HTTPException(status_code=404, detail="Client not found")
     return {"receipts": rows, "meta": meta}
+
+
+@router.post("/clients/{client_id}/reconcile-payment-ledger")
+async def reconcile_subscription_payment_ledger_admin(
+    request: Request,
+    client_id: str,
+    payload: Optional[ReconcileSubscriptionPaymentLedgerBody] = Body(default=None),
+):
+    """Materialize paid Stripe invoices into ``subscription_payment_ledger`` (idempotent).
+
+    Never mutates ``stripe_events``. Optional Stripe API listing is rate-limit conscious.
+    """
+    admin = await admin_route_guard(request)
+    db = database.get_db()
+    found = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "client_id": 1})
+    if not found:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    body = payload if payload is not None else ReconcileSubscriptionPaymentLedgerBody()
+    result = await reconcile_client_subscription_payment_ledger(
+        client_id,
+        from_stripe_events=body.from_stripe_events,
+        from_stripe_invoice_api_limit=body.from_stripe_invoice_api_limit,
+    )
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role=UserRole.ROLE_ADMIN,
+        actor_id=admin.get("portal_user_id"),
+        client_id=client_id,
+        metadata={
+            "action_type": "SUBSCRIPTION_PAYMENT_LEDGER_RECONCILE",
+            "result": {
+                k: result.get(k)
+                for k in ("upsert_count", "client_billing_last_payment_synced", "errors")
+            },
+            **normalized_admin_action_metadata(
+                "reconcile_subscription_payment_ledger",
+                "Admin ran subscription payment ledger reconciliation from stored webhook evidence.",
+            ),
+        },
+    )
+    return result
 
 
 @router.get("/clients/{client_id}/receipts/subscription/{ref:path}/download")
