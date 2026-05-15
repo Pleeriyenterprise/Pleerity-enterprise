@@ -15,6 +15,8 @@ from services.incident_service import (
     SEVERITY_P0,
     SEVERITY_P1,
     SEVERITY_P2,
+    STATUS_OPEN,
+    create_incident,
 )
 from services.incident_lifecycle_service import (
     mark_open_alert_sent,
@@ -83,7 +85,6 @@ async def _touch_persistent_incident_ticks(
 ) -> None:
     """Backward-compatible tick helper (tests + legacy callers)."""
     from bson import ObjectId
-    from services.incident_service import STATUS_OPEN
 
     oid = incident_oid if isinstance(incident_oid, ObjectId) else ObjectId(str(incident_oid))
     set_doc: Dict[str, Any] = {
