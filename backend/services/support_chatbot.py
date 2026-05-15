@@ -1516,8 +1516,7 @@ async def handle_chat_message(
     if ctx.get("intent") and not ctx.get("primary_goal"):
         ctx["primary_goal"] = ctx["intent"]
 
-    # Legal / statutory advice boundary — must run before problem routing, onboarding,
-    # small-talk, early KC/site retrieval, router_turn, static retrieval, pricing shortcuts, and LLM.
+    # Legal / statutory advice boundary — must run before AI brain or legacy orchestration.
     if is_legal_advice_request(message):
         return {
             "response": LEGAL_REFUSAL_RESPONSE,
@@ -1525,6 +1524,42 @@ async def handle_chat_message(
             "metadata": {"legal_refusal": True, "service_area": "other", "category": "other"},
             "conversation_context": ctx,
         }
+
+    # AI-first brain (anonymous, flag on): protected shortcuts + planner; legacy only on fallback.
+    if not is_authenticated:
+        from services.support_ai_brain import run_public_support_ai_brain, support_ai_brain_enabled
+
+        if support_ai_brain_enabled():
+            brain_out = await run_public_support_ai_brain(
+                conversation_id=conversation_id,
+                message=message,
+                conversation_history=conversation_history,
+                ctx=ctx,
+                client_context=client_context,
+            )
+            if brain_out:
+                return brain_out
+
+    return await _run_legacy_public_support_orchestration(
+        conversation_id=conversation_id,
+        message=message,
+        conversation_history=conversation_history,
+        client_context=client_context,
+        is_authenticated=is_authenticated,
+        ctx=ctx,
+    )
+
+
+async def _run_legacy_public_support_orchestration(
+    *,
+    conversation_id: str,
+    message: str,
+    conversation_history: List[Dict[str, Any]],
+    client_context: Optional[Dict[str, Any]],
+    is_authenticated: bool,
+    ctx: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Router/guided/onboarding/retrieval/LLM path — fallback when AI brain is off or unavailable."""
 
     # --- Problem-based entry: detect problem intent and set product intent from map ---
     problem = detect_problem_intent(message)
@@ -1638,37 +1673,6 @@ async def handle_chat_message(
     vac = try_vague_account_help_clarification(message, ctx)
     if vac:
         return vac
-
-    from services.support_gpt_first_planner import (
-        run_gpt_first_public_turn,
-        support_gpt_first_enabled,
-        try_gpt_first_deterministic_shortcuts,
-    )
-
-    if support_gpt_first_enabled() and not is_authenticated:
-        from services.support_conversational_orchestrator import touch_session_memory, try_generalist_help_starter
-
-        touch_session_memory(message, ctx)
-        gf_starter = try_generalist_help_starter(message, ctx)
-        if gf_starter:
-            return gf_starter
-        gts = await try_gpt_first_deterministic_shortcuts(
-            conversation_id=conversation_id,
-            message=message,
-            conversation_history=conversation_history,
-            ctx=ctx,
-            client_context=client_context,
-        )
-        if gts:
-            return gts
-        gpt_out = await run_gpt_first_public_turn(
-            conversation_id=conversation_id,
-            message=message,
-            conversation_history=conversation_history,
-            ctx=ctx,
-        )
-        if gpt_out:
-            return gpt_out
 
     from services.support_conversational_orchestrator import run_conversational_first_turn
 

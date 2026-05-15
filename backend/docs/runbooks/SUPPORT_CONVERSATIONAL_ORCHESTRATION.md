@@ -1,18 +1,22 @@
-# Public support assistant — conversational orchestration
+# Public support assistant — orchestration
 
 Incremental behaviour (no replacement of tickets, escalation, retrieval, or guardrails).
 
-## Turn order (anonymous web widget)
+## Turn order when `SUPPORT_GPT_FIRST_ENABLED=true` (anonymous web widget)
 
-1. **Legal / statutory advice** — `is_legal_advice_request` → refusal (no LLM, no retrieval sales path).
-2. **Problem → product map** — existing `detect_problem_intent` / onboarding steps.
-3. **Small-talk** — short social replies; no escalation from these alone.
-4. **Vague account clarify** — one clarifying question before account cards / deep routing.
-5. **Conversational-first stage** (`run_conversational_first_turn` in `support_conversational_orchestrator.py`, anonymous only) — light `conversation_context` memory; very short generic “help” starters; then `defer_public_kb_for_operational_routing` (pricing/orders/tokens/handoff/password/high-confidence ops **except** `is_informational_public_support_query` for account/compliance/receipts/onboarding intents so “how does X work?” can use KC first); then `try_public_support_content_answer`. Optional Gemini synthesis as before. `_synthesis_context` never returned to clients.
-6. **`router_turn`** — operational tools; **ASK_VERIFY** is skipped for the same informational pattern (no CRN+email yet) so the main pipeline can answer educationally.
-7. **Guided / intent / pricing shortcuts** — unchanged registry-backed paths.
-8. **Static Q&A retrieval** — legacy keyword KB.
-9. **Escalation counters** then **LLM** with approved knowledge JSON.
+1. **Rate limit** — `routes/support.py` (IP + conversation buckets).
+2. **Legal / statutory advice** — `is_legal_advice_request` → refusal.
+3. **AI support brain** (`support_ai_brain.py`) — single primary path:
+   - **Protected shortcuts:** human handoff, password reset (canned), order ref+email lookup, CRN+email verified snapshot, order clarify prompt.
+   - **Brain turn:** centralized instructions (`support_ai_instructions.py`) + KC/site retrieval (always for grounding) + registry pricing facts + one Gemini JSON planner call → natural `reply_text`, optional allowlisted actions, metadata.
+4. **Legacy fallback only** if brain returns `None` (flag off, no API key, LLM/parse failure): `_run_legacy_public_support_orchestration` in `support_chatbot.py` (onboarding, small-talk, conversational-first, `router_turn`, guided, static Q&A, escalation, legacy LLM).
+
+**Old router/guided/menu layers do not run before the brain when the flag is on.**
+
+## Turn order when flag is off (or signed-in portal)
+
+1. Legal refusal.
+2. Legacy orchestration (problem map, onboarding, small-talk, vague account clarify, conversational-first for anonymous, `router_turn`, guided, static retrieval, LLM).
 
 ## Signed-in portal
 
@@ -31,17 +35,23 @@ Indexed chunks: **KC (`kb_article`)** over **site (`site_page`)** when KC clears
 
 `active_topic`, `last_user_goal`, `last_support_area`, `recent_entities` (bounded list of recent user lines, truncated), `escalation_context` (reserved). Populated by the conversational-first stage where applicable; does not replace audit logs or server-side session stores.
 
-## GPT-first mode (optional)
+## AI brain schema (planner JSON)
 
-Set `SUPPORT_GPT_FIRST_ENABLED=true` (or `1`/`yes`/`on`) for **anonymous** public widget sessions only.
+`reply_text`, `intent_summary`, `user_goal`, `topic`, `needs_clarification`, `clarification_question`, `show_actions`, `actions` (allowlisted ids), `escalation_suggested`, `safety_boundary`, `sources_used`, `confidence`.
 
-Order after vague account clarify:
+Allowlisted actions: `view_pricing`, `create_account`, `check_compliance_risk`, `sign_in`, `reset_password`, `create_ticket`, `talk_to_support`, `open_help_article`, `open_compliance_vault`, `open_services` (plus legacy alias ids mapped in `support_ai_brain._map_action_ids_to_buttons`).
 
-1. `touch_session_memory` + `try_generalist_help_starter` (same as before; no LLM).
-2. `try_gpt_first_deterministic_shortcuts`: explicit human handoff, high-confidence password reset canned path, verified **order ref + email** lookup, verified **CRN + email** snapshot, or order clarifying prompt when an order question lacks tokens.
-3. `run_gpt_first_public_turn`: one Gemini planner call with KC/site chunk excerpts (unless `defer_public_kb_for_operational_routing`), `format_pricing_paragraph_for_prompt` registry facts, policy snippets, compact transcript, and handoff channel flags. Returns JSON-shaped plan → `reply_text`, metadata (`intent_summary`, `confidence`, `should_show_actions`, `needs_clarification`, `escalation_recommended`, `safety_boundary`, `sources_used`), and optional **allowlisted** action buttons (`sign_in`, `pricing`, `services`, `compliance_vault`, `dashboard`, `talk_to_support`).
+## Staging verification
 
-If the flag is off, the planner is skipped. If the flag is on but there is no `LLM_API_KEY`, JSON parse fails, or the model errors, execution falls through to `run_conversational_first_turn` → `router_turn` → existing guided/static/LLM paths (no crash).
+Set `SUPPORT_GPT_FIRST_ENABLED=true` and `LLM_API_KEY` on **staging only**. Run `python -m scripts.verify_support_gpt_first_staging` with `SUPPORT_STAGING_BASE_URL` set (see script docstring).
+
+## Staging verification (operator-run)
+
+With staging env `SUPPORT_GPT_FIRST_ENABLED=true`, `LLM_API_KEY` set, and KC/site index populated, run:
+
+`python -m scripts.verify_support_gpt_first_staging` from `backend/` after setting `SUPPORT_STAGING_BASE_URL` to the staging API origin (see script docstring). This prints redacted transcripts, latency, and metadata subsets for legal/password/handoff/CRN and conversational cases.
+
+For **LLM-off fallback**, temporarily clear `LLM_API_KEY` on a throwaway staging slot (or local), re-run the same script; responses should still return HTTP 200 via the legacy stack.
 
 ## Known limitations
 

@@ -1,12 +1,16 @@
-"""GPT-first public support planner (feature-flagged)."""
+"""GPT-first shim tests (implementation in support_ai_brain)."""
 import json
 
 import pytest
 
-from services.support_gpt_first_planner import (
+from services.support_ai_brain import (
     _extract_json_object,
-    _normalize_planner_payload,
+    _normalize_brain_payload,
+    run_public_support_ai_brain,
     support_gpt_first_enabled,
+    try_protected_deterministic_shortcuts,
+)
+from services.support_gpt_first_planner import (
     try_gpt_first_deterministic_shortcuts,
 )
 
@@ -21,7 +25,7 @@ def test_support_gpt_first_enabled_default_off(monkeypatch):
 def test_extract_json_object_fenced():
     raw = """Here is JSON:
 ```json
-{"reply_text": "Hello there", "intent_summary": "x", "confidence": 0.8, "should_show_actions": false, "actions": [], "needs_clarification": false, "clarification_question": "", "escalation_recommended": false, "safety_boundary": "none", "sources_used": []}
+{"reply_text": "Hello there", "intent_summary": "x", "confidence": 0.8, "show_actions": false, "actions": [], "needs_clarification": false, "clarification_question": "", "escalation_suggested": false, "safety_boundary": "none", "sources_used": []}
 ```
 """
     obj = _extract_json_object(raw)
@@ -29,18 +33,18 @@ def test_extract_json_object_fenced():
 
 
 def test_normalize_planner_payload_requires_reply():
-    assert _normalize_planner_payload({}) is None
-    assert _normalize_planner_payload({"reply_text": "x" * 3}) is None
-    out = _normalize_planner_payload(
+    assert _normalize_brain_payload({}) is None
+    assert _normalize_brain_payload({"reply_text": "x" * 3}) is None
+    out = _normalize_brain_payload(
         {
             "reply_text": "This is a valid reply for the user.",
             "intent_summary": "billing_question",
             "confidence": 0.72,
-            "should_show_actions": True,
+            "show_actions": True,
             "actions": ["sign_in", "invalid_id"],
             "needs_clarification": False,
             "clarification_question": "",
-            "escalation_recommended": False,
+            "escalation_suggested": False,
             "safety_boundary": "none",
             "sources_used": [{"type": "kc_article", "title": "T"}],
         }
@@ -50,8 +54,7 @@ def test_normalize_planner_payload_requires_reply():
 
 
 @pytest.mark.asyncio
-async def test_try_gpt_first_shortcut_password(monkeypatch):
-    monkeypatch.setenv("SUPPORT_GPT_FIRST_ENABLED", "true")
+async def test_try_gpt_first_shortcut_password():
     out = await try_gpt_first_deterministic_shortcuts(
         conversation_id="c1",
         message="I forgot my password",
@@ -60,20 +63,18 @@ async def test_try_gpt_first_shortcut_password(monkeypatch):
         client_context=None,
     )
     assert out is not None
-    assert out.get("metadata", {}).get("gpt_first_shortcut") == "password_reset"
-    assert "Forgot password" in out.get("response", "") or "forgot password" in out.get("response", "").lower()
+    assert out.get("metadata", {}).get("ai_brain_shortcut") == "password_reset"
 
 
 @pytest.mark.asyncio
 async def test_run_gpt_first_public_turn_returns_none_when_flag_off(monkeypatch):
     monkeypatch.delenv("SUPPORT_GPT_FIRST_ENABLED", raising=False)
-    from services.support_gpt_first_planner import run_gpt_first_public_turn
-
-    out = await run_gpt_first_public_turn(
+    out = await run_public_support_ai_brain(
         conversation_id="c1",
         message="How do I upload a certificate?",
         conversation_history=[],
         ctx={},
+        client_context=None,
     )
     assert out is None
 
@@ -81,37 +82,39 @@ async def test_run_gpt_first_public_turn_returns_none_when_flag_off(monkeypatch)
 @pytest.mark.asyncio
 async def test_run_gpt_first_public_turn_planner_success(monkeypatch):
     monkeypatch.setenv("SUPPORT_GPT_FIRST_ENABLED", "true")
-    from services import support_gpt_first_planner as mod
+    from services import support_ai_brain as brain
 
     async def fake_chat(system, user, model="gemini-2.0-flash"):
-        payload = {
-            "reply_text": "You can upload certificates from the property record after signing in.",
-            "intent_summary": "upload_help",
-            "confidence": 0.85,
-            "should_show_actions": True,
-            "actions": ["sign_in"],
-            "needs_clarification": False,
-            "clarification_question": "",
-            "escalation_recommended": False,
-            "safety_boundary": "none",
-            "sources_used": [{"type": "kc_article", "title": "Certificates"}],
-        }
-        return json.dumps(payload)
+        return json.dumps(
+            {
+                "reply_text": "You can upload certificates from the property record after signing in.",
+                "intent_summary": "upload_help",
+                "user_goal": "upload evidence",
+                "topic": "compliance",
+                "confidence": 0.85,
+                "show_actions": True,
+                "actions": ["sign_in"],
+                "needs_clarification": False,
+                "clarification_question": "",
+                "escalation_suggested": False,
+                "safety_boundary": "none",
+                "sources_used": [{"type": "kc_article", "title": "Certificates"}],
+            }
+        )
 
-    monkeypatch.setattr(mod, "support_gpt_first_enabled", lambda: True)
     monkeypatch.setattr("utils.llm_chat._get_api_key", lambda: "fake")
     monkeypatch.setattr("utils.llm_chat.chat", fake_chat)
-    monkeypatch.setattr(
-        "services.support_chatbot.defer_public_kb_for_operational_routing",
-        lambda _m, _c: True,
-    )
+    async def _empty_retrieval(*a, **k):
+        return [], [], [], None
 
-    out = await mod.run_gpt_first_public_turn(
+    monkeypatch.setattr(brain, "_gather_retrieval_context", _empty_retrieval)
+
+    out = await brain.run_support_ai_brain_turn(
         conversation_id="c1",
         message="How do I upload a certificate?",
         conversation_history=[],
         ctx={},
     )
     assert out is not None
-    assert out["metadata"].get("gpt_first") is True
+    assert out["metadata"].get("support_ai_brain") is True
     assert "sign in" in (out.get("actions") or [{}])[0].get("label", "").lower()

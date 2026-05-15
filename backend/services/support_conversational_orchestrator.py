@@ -28,6 +28,7 @@ def ensure_conversation_memory_defaults(ctx: Dict[str, Any]) -> None:
     ctx.setdefault("recent_entities", [])
     ctx.setdefault("escalation_context", None)
     ctx.setdefault("last_clarification_question", None)
+    ctx.setdefault("clarification_pending", False)
 
 
 def touch_session_memory(message: str, ctx: Dict[str, Any]) -> None:
