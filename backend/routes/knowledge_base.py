@@ -1161,7 +1161,9 @@ async def admin_create_article(
     )
     
     logger.info(f"KB article created: {article_id} by {current_user.get('email')}")
-    
+
+    await sync_public_support_index_for_kb_article(article_id)
+
     return {
         "success": True,
         "article_id": article_id,
