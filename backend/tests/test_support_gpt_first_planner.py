@@ -84,26 +84,41 @@ async def test_run_gpt_first_public_turn_planner_success(monkeypatch):
     monkeypatch.setenv("SUPPORT_GPT_FIRST_ENABLED", "true")
     from services import support_ai_brain as brain
 
-    async def fake_chat(system, user, model="gemini-2.0-flash"):
-        return json.dumps(
-            {
-                "reply_text": "You can upload certificates from the property record after signing in.",
-                "intent_summary": "upload_help",
-                "user_goal": "upload evidence",
-                "topic": "compliance",
-                "confidence": 0.85,
-                "show_actions": True,
-                "actions": ["sign_in"],
-                "needs_clarification": False,
-                "clarification_question": "",
-                "escalation_suggested": False,
-                "safety_boundary": "none",
-                "sources_used": [{"type": "kc_article", "title": "Certificates"}],
-            }
+    async def _fake_llm(system, user, **kwargs):
+        from services.support_llm_gateway import SupportLLMResult
+
+        return SupportLLMResult(
+            text=json.dumps(
+                {
+                    "reply_text": "You can upload certificates from the property record after signing in.",
+                    "intent_summary": "upload_help",
+                    "user_goal": "upload evidence",
+                    "topic": "compliance",
+                    "confidence": 0.85,
+                    "show_actions": True,
+                    "actions": ["sign_in"],
+                    "needs_clarification": False,
+                    "clarification_question": "",
+                    "escalation_suggested": False,
+                    "safety_boundary": "none",
+                    "sources_used": [{"type": "kc_article", "title": "Certificates"}],
+                }
+            ),
+            provider_used="openai",
+            model_used="gpt-4o-mini",
+            fallback_used=False,
+            llm_latency_ms=50,
+            primary_provider="openai",
         )
 
-    monkeypatch.setattr("utils.llm_chat._get_api_key", lambda: "fake")
-    monkeypatch.setattr("utils.llm_chat.chat", fake_chat)
+    monkeypatch.setattr(
+        "services.support_llm_gateway.is_any_support_llm_configured",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "services.support_llm_gateway.complete_support_planner",
+        _fake_llm,
+    )
     async def _empty_retrieval(*a, **k):
         return [], [], [], None
 

@@ -41,9 +41,24 @@ Indexed chunks: **KC (`kb_article`)** over **site (`site_page`)** when KC clears
 
 Allowlisted actions: `view_pricing`, `create_account`, `check_compliance_risk`, `sign_in`, `reset_password`, `create_ticket`, `talk_to_support`, `open_help_article`, `open_compliance_vault`, `open_services` (plus legacy alias ids mapped in `support_ai_brain._map_action_ids_to_buttons`).
 
+## LLM providers (support AI brain)
+
+| Env | Purpose |
+|-----|---------|
+| `SUPPORT_GPT_FIRST_ENABLED` | `true` to enable AI-first path (anonymous widget) |
+| `SUPPORT_AI_PRIMARY_PROVIDER` | Default `openai` |
+| `SUPPORT_AI_FALLBACK_PROVIDER` | Default `gemini` |
+| `SUPPORT_AI_OPENAI_MODEL` | Overrides model; else `AI_MODEL` (default `gpt-4o-mini`) |
+| `SUPPORT_AI_GEMINI_MODEL` | Default `gemini-2.0-flash` |
+| `OPENAI_API_KEY` | OpenAI primary (via `utils.ai_config`) |
+| `LLM_API_KEY` | Gemini fallback (Google Generative AI) |
+| `SUPPORT_AI_LLM_TIMEOUT_SECONDS` | Per-provider timeout (default `45`) |
+
+Gateway: `services/support_llm_gateway.py` — OpenAI first; Gemini only on failure, timeout, or invalid planner JSON. Response metadata may include `provider_used`, `model_used`, `fallback_used`, `llm_latency_ms`, `llm_error_class` (redacted). Prompts and keys are not logged.
+
 ## Staging verification
 
-Set `SUPPORT_GPT_FIRST_ENABLED=true` and `LLM_API_KEY` on **staging only**. Run `python -m scripts.verify_support_gpt_first_staging` with `SUPPORT_STAGING_BASE_URL` set (see script docstring).
+Set `SUPPORT_GPT_FIRST_ENABLED=true`, `OPENAI_API_KEY` (and optionally `LLM_API_KEY` for fallback) on **staging only**. Run `python -m scripts.verify_support_gpt_first_staging` with `SUPPORT_STAGING_BASE_URL` set (see script docstring).
 
 ## Staging verification (operator-run)
 

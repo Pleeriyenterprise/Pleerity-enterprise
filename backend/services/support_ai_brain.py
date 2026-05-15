@@ -15,9 +15,8 @@ import re
 from typing import Any, Dict, List, Optional
 
 from services.support_ai_instructions import (
-    build_brain_json_schema_instruction,
+    build_full_planner_system_prompt,
     build_planner_user_payload,
-    build_support_ai_system_instruction,
 )
 
 logger = logging.getLogger(__name__)
@@ -417,11 +416,9 @@ async def run_support_ai_brain_turn(
     if not support_ai_brain_enabled():
         return None
 
-    try:
-        from utils.llm_chat import chat, _get_api_key
-    except Exception:
-        return None
-    if not _get_api_key():
+    from services.support_llm_gateway import complete_support_planner, is_any_support_llm_configured
+
+    if not is_any_support_llm_configured():
         return None
 
     from services.support_assistant_catalog import build_approved_knowledge_dict, format_pricing_paragraph_for_prompt
@@ -467,7 +464,7 @@ async def run_support_ai_brain_turn(
     }
 
     allowed = sorted(ALLOWED_ACTION_IDS)
-    system = build_support_ai_system_instruction() + "\n\n" + build_brain_json_schema_instruction(allowed)
+    system = build_full_planner_system_prompt(allowed)
     user_blob = build_planner_user_payload(
         user_message=text,
         conversation_memory=memory,
@@ -483,13 +480,18 @@ async def run_support_ai_brain_turn(
         allowed_action_ids=allowed,
     )
 
-    try:
-        raw = await chat(system, user_blob, model="gemini-2.0-flash")
-    except Exception as e:
-        logger.warning("support_ai_brain: LLM failed: %s", e)
+    def _planner_output_valid(raw: str) -> bool:
+        return _normalize_brain_payload(_extract_json_object(raw) or {}) is not None
+
+    llm_result = await complete_support_planner(
+        system,
+        user_blob,
+        validate_output=_planner_output_valid,
+    )
+    if not llm_result:
         return None
 
-    parsed = _normalize_brain_payload(_extract_json_object(raw) or {})
+    parsed = _normalize_brain_payload(_extract_json_object(llm_result.text) or {})
     if not parsed:
         return None
 
@@ -537,7 +539,13 @@ async def run_support_ai_brain_turn(
         "sources": meta_sources[:20],
         "sources_used": parsed["sources_used"],
         "retrieval_path": retrieval_path or ["support_ai_brain"],
+        "provider_used": llm_result.provider_used,
+        "model_used": llm_result.model_used,
+        "fallback_used": llm_result.fallback_used,
+        "llm_latency_ms": llm_result.llm_latency_ms,
     }
+    if llm_result.llm_error_class:
+        metadata["llm_error_class"] = llm_result.llm_error_class
     if parsed.get("escalation_suggested"):
         metadata["suggested_handoff"] = True
 

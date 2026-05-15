@@ -9,7 +9,7 @@ from services.support_ai_brain import (
     support_ai_brain_enabled,
     try_protected_deterministic_shortcuts,
 )
-from services.support_ai_instructions import build_support_ai_system_instruction
+from services.support_ai_instructions import build_full_planner_system_prompt
 
 
 def test_support_ai_brain_enabled_flag(monkeypatch):
@@ -20,10 +20,10 @@ def test_support_ai_brain_enabled_flag(monkeypatch):
 
 
 def test_system_instruction_covers_tone_and_boundaries():
-    text = build_support_ai_system_instruction().lower()
+    text = build_full_planner_system_prompt(["sign_in"]).lower()
     assert "legal" in text
-    assert "registry" in text or "pricing" in text
-    assert "menu" in text or "sales" in text
+    assert "registry_facts" in text
+    assert "menu" in text or "router" in text
 
 
 def test_normalize_brain_payload_new_schema():
@@ -79,26 +79,42 @@ async def test_brain_turn_success(monkeypatch):
     monkeypatch.setenv("SUPPORT_GPT_FIRST_ENABLED", "true")
     from services import support_ai_brain as brain
 
-    async def fake_chat(system, user, model="gemini-2.0-flash"):
-        return json.dumps(
-            {
-                "reply_text": "We're a property compliance platform for landlords and managers.",
-                "intent_summary": "company_about",
-                "user_goal": "understand the business",
-                "topic": "company",
-                "confidence": 0.88,
-                "show_actions": False,
-                "actions": [],
-                "needs_clarification": False,
-                "clarification_question": "",
-                "escalation_suggested": False,
-                "safety_boundary": "none",
-                "sources_used": [],
-            }
+    async def _fake_llm(system, user, **kwargs):
+        from services.support_llm_gateway import SupportLLMResult
+
+        return SupportLLMResult(
+            text=json.dumps(
+                {
+                    "reply_text": "We're a property compliance platform for landlords and managers.",
+                    "intent_summary": "company_about",
+                    "user_goal": "understand the business",
+                    "topic": "company",
+                    "confidence": 0.88,
+                    "show_actions": False,
+                    "actions": [],
+                    "needs_clarification": False,
+                    "clarification_question": "",
+                    "escalation_suggested": False,
+                    "safety_boundary": "none",
+                    "sources_used": [],
+                }
+            ),
+            provider_used="openai",
+            model_used="gpt-4o-mini",
+            fallback_used=False,
+            llm_latency_ms=120,
+            primary_provider="openai",
         )
 
-    monkeypatch.setattr("utils.llm_chat._get_api_key", lambda: "fake")
-    monkeypatch.setattr("utils.llm_chat.chat", fake_chat)
+    monkeypatch.setattr(
+        "services.support_llm_gateway.is_any_support_llm_configured",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "services.support_llm_gateway.complete_support_planner",
+        _fake_llm,
+    )
+
     async def _empty_retrieval(*a, **k):
         return [], [], [], None
 
@@ -112,4 +128,5 @@ async def test_brain_turn_success(monkeypatch):
     )
     assert out is not None
     assert out["metadata"].get("support_ai_brain") is True
+    assert out["metadata"].get("provider_used") == "openai"
     assert "compliance" in out["response"].lower() or "property" in out["response"].lower()
