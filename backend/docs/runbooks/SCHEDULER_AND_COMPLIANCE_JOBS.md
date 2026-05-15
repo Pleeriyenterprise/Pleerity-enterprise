@@ -40,10 +40,34 @@ This runbook explains how background jobs are expected to run in production and 
 
 - `build_recalc_queue_operational_snapshot` exposes **`stale_running_reclaimed_last_24h`** and stuck-running counts based on the same **liveness** model as reclaim/SLA.
 
+## Incident lifecycle and alert quality (operational)
+
+Incidents use **`lifecycle_state`** in addition to workflow **`status`** (`open` / `acknowledged` / `resolved`):
+
+| Lifecycle | Meaning |
+|-----------|---------|
+| **OPEN** | First detection; one email per incident (idempotent) unless severity escalates |
+| **DEGRADED** | Condition persisted beyond `INCIDENT_DEGRADED_AFTER_SECONDS` (default 10 min); dashboard shows repeat count |
+| **RECOVERED** | Underlying health cleared for `INCIDENT_RECOVERY_STABLE_SECONDS` (default 5 min); **one recovery email** per incident |
+| **RESOLVED** | Auto-closed after stable recovery (`INCIDENT_AUTO_RESOLVE_AFTER_RECOVERY_SECONDS`, default 15 min) or manual resolve |
+
+**Dedupe:** `incident_fingerprint` (source + job + triggering reason) — repeated watchdog ticks update the same row (`repeat_count`, `last_detected_at`) instead of creating new incidents or emails.
+
+**Suppression (email only):** P0 ~15 min, P1 ~30 min, P2 ~60 min between repeat emails for the same incident. **Never suppressed:** severity escalation, recovery emails, materially different fingerprints.
+
+**Deployment windows:** set `PLATFORM_DEPLOY_SUPPRESSION_UNTIL` (ISO UTC) during deploys to mark `deployment_related_possible` and suppress **P2 transient missed-SLA** emails only. P0/P1 and queue blockages still alert.
+
+**Flapping:** repeated unhealthy/healthy transitions in `INCIDENT_FLAP_WINDOW_SECONDS` mark `flapping=true` — investigate in Admin → Incidents.
+
+**Queue visibility:** System Health `GET /health-summary` includes `recalc_queue_health` (depth, dead letter, stuck markers). Incident recovery emails attach queue snapshot when available.
+
+**When to investigate vs monitor:** OPEN/DEGRADED with low repeat count — monitor if deploy window active. DEGRADED + high `repeat_count` or flapping — investigate. RECOVERED — confirm no customer impact; keep watching 24h.
+
 ## Related code
 
 - `backend/job_runner.py` — worker + heartbeat loop  
 - `backend/services/compliance_recalc_running_reclaim.py` — reclaim  
 - `backend/services/compliance_sla_monitor.py` — per-property SLA emails  
 - `backend/services/sla_watchdog.py` — `job_runs` + heartbeat incidents  
+- `backend/services/incident_lifecycle_service.py` — lifecycle, dedupe, recovery emails  
 - `backend/services/job_schedule_registry.py` — `max_delay_minutes` source of truth  

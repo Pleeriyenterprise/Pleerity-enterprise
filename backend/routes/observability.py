@@ -133,12 +133,23 @@ async def get_incidents_list(
     request: Request,
     status: Optional[str] = None,
     severity: Optional[str] = None,
+    lifecycle_state: Optional[str] = Query(None, description="OPEN, DEGRADED, RECOVERED, RESOLVED"),
+    deployment_related: Optional[bool] = Query(None),
+    flapping: Optional[bool] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     skip: int = Query(0, ge=0),
 ):
     """List incidents with optional filters. Admin only."""
     await admin_route_guard(request)
-    data = await list_incidents(status=status, severity=severity, limit=limit, skip=skip)
+    data = await list_incidents(
+        status=status,
+        severity=severity,
+        lifecycle_state=lifecycle_state,
+        deployment_related=deployment_related,
+        flapping=flapping,
+        limit=limit,
+        skip=skip,
+    )
     for item in data.get("items") or []:
         item["presentation"] = build_operational_presentation_for_incident(item, for_email_links=False)
     return data
@@ -753,6 +764,11 @@ async def build_health_summary_payload() -> Dict[str, Any]:
             f"{not_yet_due_count} critical job(s) have not had their first scheduled run yet; no incident created (grace period)."
             if not_yet_due_count > 0 else None
         ),
+        "recalc_queue_health": recalc_queue_health,
+        "deployment_suppression": {
+            "active": deploy_active,
+            "note": deploy_note,
+        },
     }
 
 

@@ -5,18 +5,20 @@ Runs every 10 minutes. Uses job_schedule_registry for single source of truth on 
 import os
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
 from services.incident_service import (
-    STATUS_OPEN,
-    create_incident,
     SOURCE_JOB_MONITOR,
     SOURCE_HEARTBEAT,
     SOURCE_DELIVERY_UNKNOWN,
     SEVERITY_P0,
     SEVERITY_P1,
     SEVERITY_P2,
+)
+from services.incident_lifecycle_service import (
+    mark_open_alert_sent,
+    record_operational_detection,
 )
 from services.job_run_service import COLLECTION as JOB_RUNS_COLLECTION, STATUS_SUCCESS, STATUS_DEGRADED
 from services.job_schedule_registry import CRITICAL_JOB_REGISTRY, HEARTBEAT_STALE_SECONDS
@@ -32,6 +34,46 @@ from services.internal_alert_registry import (
 logger = logging.getLogger(__name__)
 
 
+async def _detect_and_alert(
+    severity: str,
+    title: str,
+    description: str,
+    source: str,
+    *,
+    related_job_name: Optional[str] = None,
+    related_job_run_id: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> Tuple[bool, bool]:
+    """
+    Upsert incident via lifecycle service; send email only when dedupe/suppression allows.
+    Returns (incident_created, alert_email_sent).
+    """
+    outcome = await record_operational_detection(
+        severity,
+        title,
+        description,
+        source,
+        related_job_name=related_job_name,
+        related_job_run_id=related_job_run_id,
+        metadata=metadata,
+    )
+    alert_sent = False
+    if outcome.should_send_open_alert:
+        meta = metadata or {}
+        if await _send_incident_alert_email(
+            outcome.incident_id,
+            title,
+            description,
+            severity,
+            source=source,
+            metadata=meta,
+            related_job_name=related_job_name,
+        ):
+            await mark_open_alert_sent(outcome.incident_id)
+            alert_sent = True
+    return outcome.created, alert_sent
+
+
 async def _touch_persistent_incident_ticks(
     db,
     incident_oid,
@@ -39,14 +81,15 @@ async def _touch_persistent_incident_ticks(
     *,
     snapshot: Optional[Dict[str, Any]] = None,
 ) -> None:
-    """
-    While a watchdog condition stays true, bump metadata counters on the existing **open**
-    incident. Does not send email or change severity.
-    """
+    """Backward-compatible tick helper (tests + legacy callers)."""
     from bson import ObjectId
+    from services.incident_service import STATUS_OPEN
 
     oid = incident_oid if isinstance(incident_oid, ObjectId) else ObjectId(str(incident_oid))
-    set_doc: Dict[str, Any] = {"updated_at": now.isoformat()}
+    set_doc: Dict[str, Any] = {
+        "updated_at": now.isoformat(),
+        "last_detected_at": now.isoformat(),
+    }
     if snapshot:
         for k, v in snapshot.items():
             set_doc[f"metadata.{k}"] = v
@@ -256,34 +299,21 @@ async def run_sla_watchdog() -> Dict[str, Any]:
         "outcome_metrics.delivery_unknown": {"$gt": 0},
     })
     if delivery_stale_count > 0:
-        existing = await db.incidents.find_one(
-            {"status": STATUS_OPEN, "source": SOURCE_DELIVERY_UNKNOWN},
-            {"_id": 1},
+        created, sent = await _detect_and_alert(
+            SEVERITY_P2,
+            "Delivery unknown unresolved",
+            f"{delivery_stale_count} run(s) still have delivery_unknown beyond {DELIVERY_UNKNOWN_STALE_HOURS}h. Check provider webhooks and Message logs.",
+            SOURCE_DELIVERY_UNKNOWN,
+            metadata={
+                "stale_run_count": delivery_stale_count,
+                "stale_hours": DELIVERY_UNKNOWN_STALE_HOURS,
+                "triggering_reason": "delivery_unknown_stale",
+            },
         )
-        if existing:
-            await _touch_persistent_incident_ticks(
-                db,
-                existing["_id"],
-                now,
-                snapshot={
-                    "last_stale_delivery_unknown_count": delivery_stale_count,
-                    "last_watchdog_tick_reason": "delivery_unknown_stale",
-                },
-            )
-        if not existing:
-            incident_id = await create_incident(
-                severity=SEVERITY_P2,
-                title="Delivery unknown unresolved",
-                description=f"{delivery_stale_count} run(s) still have delivery_unknown beyond {DELIVERY_UNKNOWN_STALE_HOURS}h. Check provider webhooks and Message logs.",
-                source=SOURCE_DELIVERY_UNKNOWN,
-                metadata={"stale_run_count": delivery_stale_count, "stale_hours": DELIVERY_UNKNOWN_STALE_HOURS, "triggering_reason": "delivery_unknown_stale"},
-            )
+        if created:
             incidents_created += 1
-            if await _send_incident_alert_email(
-                incident_id, "Delivery unknown unresolved", f"{delivery_stale_count} runs have delivery_unknown unresolved. Check webhooks.", SEVERITY_P2,
-                source=SOURCE_DELIVERY_UNKNOWN, metadata={"stale_run_count": delivery_stale_count, "stale_hours": DELIVERY_UNKNOWN_STALE_HOURS},
-            ):
-                alerts_sent += 1
+        if sent:
+            alerts_sent += 1
 
     # 3) Per-job SLA (grace period: do not create incident if next run is still in the future)
     next_runs = _get_scheduler_next_runs()
@@ -299,36 +329,18 @@ async def run_sla_watchdog() -> Dict[str, Any]:
             next_run = next_runs.get(job_name)
             if next_run and (next_run - now).total_seconds() > GRACE_PERIOD_NEXT_RUN_FUTURE_SEC:
                 continue  # Not yet due since startup; no incident
-            existing = await db.incidents.find_one(
-                {"status": STATUS_OPEN, "related_job_name": job_name, "source": SOURCE_JOB_MONITOR},
-                {"_id": 1, "metadata": 1},
+            created, sent = await _detect_and_alert(
+                severity,
+                f"Job {job_name} has not succeeded",
+                description + " No successful run found. Job is overdue.",
+                SOURCE_JOB_MONITOR,
+                related_job_name=job_name,
+                metadata={"max_delay_minutes": max_delay_minutes, "triggering_reason": "job_never_succeeded"},
             )
-            if existing:
-                if not (existing.get("metadata") or {}).get("degraded_run"):
-                    await _touch_persistent_incident_ticks(
-                        db,
-                        existing["_id"],
-                        now,
-                        snapshot={
-                            "last_watchdog_tick_reason": "job_never_succeeded_still",
-                            "related_job_name": job_name,
-                        },
-                    )
-            if not existing:
-                incident_id = await create_incident(
-                    severity=severity,
-                    title=f"Job {job_name} has not succeeded",
-                    description=description + " No successful run found. Job is overdue.",
-                    source=SOURCE_JOB_MONITOR,
-                    related_job_name=job_name,
-                    metadata={"max_delay_minutes": max_delay_minutes, "triggering_reason": "job_never_succeeded"},
-                )
+            if created:
                 incidents_created += 1
-                if await _send_incident_alert_email(
-                    incident_id, f"Job {job_name} has not succeeded", description, severity,
-                    source=SOURCE_JOB_MONITOR, metadata={"max_delay_minutes": max_delay_minutes}, related_job_name=job_name,
-                ):
-                    alerts_sent += 1
+            if sent:
+                alerts_sent += 1
             continue
 
         finished_str = last_success["finished_at"]
@@ -345,91 +357,47 @@ async def run_sla_watchdog() -> Dict[str, Any]:
         if delay_minutes <= max_delay_minutes:
             # Within SLA window: if last run was degraded, create incident so admin sees repeated degraded runs
             if last_success.get("status") == STATUS_DEGRADED:
-                existing_degraded = await db.incidents.find_one(
-                    {
-                        "status": STATUS_OPEN,
-                        "related_job_name": job_name,
-                        "source": SOURCE_JOB_MONITOR,
-                        "metadata.degraded_run": True,
-                    },
-                    {"_id": 1},
+                last_pure_success = await db[JOB_RUNS_COLLECTION].find_one(
+                    {"job_name": job_name, "status": STATUS_SUCCESS},
+                    {"_id": 0, "finished_at": 1},
+                    sort=[("finished_at", -1)],
                 )
-                if existing_degraded:
-                    await _touch_persistent_incident_ticks(
-                        db,
-                        existing_degraded["_id"],
-                        now,
-                        snapshot={
-                            "last_degraded_finished_at_seen": finished_str,
-                            "last_watchdog_tick_reason": "degraded_still",
-                        },
-                    )
-                if not existing_degraded:
-                    last_pure_success = await db[JOB_RUNS_COLLECTION].find_one(
-                        {"job_name": job_name, "status": STATUS_SUCCESS},
-                        {"_id": 0, "finished_at": 1},
-                        sort=[("finished_at", -1)],
-                    )
-                    last_success_at = last_pure_success.get("finished_at") if last_pure_success else None
-                    incident_id = await create_incident(
-                        severity=SEVERITY_P2,
-                        title=f"Job {job_name} last run was degraded",
-                        description=f"Job completed but some outputs failed or were skipped. {description} Last run: {finished_str}. Check Automation Centre outcome_metrics.",
-                        source=SOURCE_JOB_MONITOR,
-                        related_job_name=job_name,
-                        metadata={
-                            "last_finished_at": finished_str,
-                            "last_successful_at": last_success_at,
-                            "degraded_run": True,
-                            "triggering_reason": "degraded_run",
-                        },
-                    )
+                last_success_at = last_pure_success.get("finished_at") if last_pure_success else None
+                created, sent = await _detect_and_alert(
+                    SEVERITY_P2,
+                    f"Job {job_name} last run was degraded",
+                    f"Job completed but some outputs failed or were skipped. {description} Last run: {finished_str}. Check Automation Centre outcome_metrics.",
+                    SOURCE_JOB_MONITOR,
+                    related_job_name=job_name,
+                    metadata={
+                        "last_finished_at": finished_str,
+                        "last_successful_at": last_success_at,
+                        "degraded_run": True,
+                        "triggering_reason": "degraded_run",
+                    },
+                )
+                if created:
                     incidents_created += 1
-                    if await _send_incident_alert_email(
-                        incident_id, f"Job {job_name} last run was degraded", f"Job completed with degraded outcome. Last run: {finished_str}. Check outcome_metrics in Automation Centre.", SEVERITY_P2,
-                        source=SOURCE_JOB_MONITOR,
-                        metadata={
-                            "last_finished_at": finished_str,
-                            "last_successful_at": last_success_at,
-                            "degraded_run": True,
-                        },
-                        related_job_name=job_name,
-                    ):
-                        alerts_sent += 1
+                if sent:
+                    alerts_sent += 1
             continue
 
-        existing = await db.incidents.find_one(
-            {"status": STATUS_OPEN, "related_job_name": job_name, "source": SOURCE_JOB_MONITOR},
-            {"_id": 1, "metadata": 1},
-        )
-        if existing:
-            # Do not attach missed-SLA tick snapshots to the degraded-only incident (same job, open).
-            if not (existing.get("metadata") or {}).get("degraded_run"):
-                await _touch_persistent_incident_ticks(
-                    db,
-                    existing["_id"],
-                    now,
-                    snapshot={
-                        "last_delay_minutes_seen": round(delay_minutes, 2),
-                        "last_finished_at_seen": finished_str,
-                        "last_watchdog_tick_reason": "missed_sla_still",
-                    },
-                )
-            continue
-
-        incident_id = await create_incident(
-            severity=severity,
-            title=f"Job {job_name} missed SLA",
-            description=description + f" Last success: {finished_str}. Delay: {delay_minutes:.0f} min.",
-            source=SOURCE_JOB_MONITOR,
+        created, sent = await _detect_and_alert(
+            severity,
+            f"Job {job_name} missed SLA",
+            description + f" Last success: {finished_str}. Delay: {delay_minutes:.0f} min.",
+            SOURCE_JOB_MONITOR,
             related_job_name=job_name,
-            metadata={"last_finished_at": finished_str, "delay_minutes": delay_minutes, "max_delay_minutes": max_delay_minutes, "triggering_reason": "missed_sla"},
+            metadata={
+                "last_finished_at": finished_str,
+                "delay_minutes": delay_minutes,
+                "max_delay_minutes": max_delay_minutes,
+                "triggering_reason": "missed_sla",
+            },
         )
-        incidents_created += 1
-        if await _send_incident_alert_email(
-            incident_id, f"Job {job_name} missed SLA", description, severity,
-            source=SOURCE_JOB_MONITOR, metadata={"last_finished_at": finished_str, "delay_minutes": delay_minutes, "max_delay_minutes": max_delay_minutes}, related_job_name=job_name,
-        ):
+        if created:
+            incidents_created += 1
+        if sent:
             alerts_sent += 1
 
     return {

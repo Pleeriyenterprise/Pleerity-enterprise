@@ -14,11 +14,10 @@ from models import AuditAction
 from utils.audit import create_audit_log
 
 from services.incident_service import (
-    STATUS_OPEN,
-    create_incident,
     SOURCE_RISK_REGEN_QUEUE,
     SEVERITY_P2,
 )
+from services.incident_lifecycle_service import mark_open_alert_sent, record_operational_detection
 from services.notification_failure_spike_monitor import _admin_recipients
 from services.risk_signal_regen_queue import get_regen_queue_summary
 
@@ -53,33 +52,6 @@ async def run_risk_signal_regen_alert_monitor() -> Dict[str, Any]:
             "alert_sent": False,
         }
 
-    db = database.get_db()
-    existing = await db.incidents.find_one(
-        {"status": STATUS_OPEN, "source": SOURCE_RISK_REGEN_QUEUE},
-        {"_id": 1},
-    )
-    if existing:
-        now = datetime.now(timezone.utc)
-        await db.incidents.update_one(
-            {"_id": existing["_id"], "status": STATUS_OPEN},
-            {
-                "$set": {
-                    "updated_at": now.isoformat(),
-                    "metadata.counts_by_status": counts,
-                    "metadata.last_regen_summary_at": now.isoformat(),
-                },
-                "$inc": {"metadata.regen_alert_monitor_ticks": 1},
-            },
-        )
-        return {
-            "attention_required": True,
-            "counts_by_status": counts,
-            "incidents_created": 0,
-            "already_open": True,
-            "incidents_resolved": resolved,
-            "alert_sent": False,
-        }
-
     dead = summary.get("recent_dead") or []
     failed = summary.get("recent_failed") or []
     oldest = summary.get("oldest_pending_job") or {}
@@ -103,17 +75,19 @@ async def run_risk_signal_regen_alert_monitor() -> Dict[str, Any]:
     lines.append("See GET /api/admin/ops/risk-signal-regen-queue-summary and audit_logs RISK_SIGNAL_REGEN_FAILED.")
     description = "\n".join(lines)
 
-    incident_id = await create_incident(
-        severity=SEVERITY_P2,
-        title="Risk signal regeneration queue needs attention",
-        description=description,
-        source=SOURCE_RISK_REGEN_QUEUE,
+    outcome = await record_operational_detection(
+        SEVERITY_P2,
+        "Risk signal regeneration queue needs attention",
+        description,
+        SOURCE_RISK_REGEN_QUEUE,
         metadata={
             "triggering_reason": "queue_health",
             "counts_by_status": counts,
             "sample_limit": summary.get("sample_limit"),
         },
     )
+    incident_id = outcome.incident_id
+    already_open = not outcome.created
 
     await create_audit_log(
         action=AuditAction.RISK_REGEN_QUEUE_HEALTH_INCIDENT,
@@ -128,7 +102,7 @@ async def run_risk_signal_regen_alert_monitor() -> Dict[str, Any]:
 
     alert_sent = False
     recipients = _admin_recipients()
-    if recipients:
+    if recipients and outcome.should_send_open_alert:
         now = datetime.now(timezone.utc)
         subject = "[P2] Risk signal regeneration queue needs attention"
         try:
@@ -152,16 +126,20 @@ async def run_risk_signal_regen_alert_monitor() -> Dict[str, Any]:
                 )
                 if result.outcome in ("sent", "duplicate_ignored"):
                     alert_sent = True
+            if alert_sent:
+                await mark_open_alert_sent(incident_id)
         except Exception as e:
             logger.exception("Risk regen queue OPS email failed: %s", e)
-    else:
+    elif outcome.should_send_open_alert:
         logger.warning("ADMIN_ALERT_EMAILS / OPS_ALERT_EMAIL not set; risk regen queue alert email skipped")
 
     return {
         "attention_required": True,
         "counts_by_status": counts,
-        "incidents_created": 1,
+        "incidents_created": 1 if outcome.created else 0,
+        "already_open": already_open,
         "incident_id": incident_id,
         "incidents_resolved": resolved,
         "alert_sent": alert_sent,
+        "repeat_count": outcome.repeat_count,
     }

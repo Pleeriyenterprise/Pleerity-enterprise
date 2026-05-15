@@ -8,7 +8,6 @@ from typing import Optional
 from database import database
 
 from services.incident_service import (
-    resolve_incident_auto_recovery,
     SOURCE_JOB_MONITOR,
     SOURCE_HEARTBEAT,
     SOURCE_DELIVERY_UNKNOWN,
@@ -16,6 +15,7 @@ from services.incident_service import (
     STATUS_OPEN,
     STATUS_ACKNOWLEDGED,
 )
+from services.incident_lifecycle_service import process_incident_recovery_lifecycle
 from services.job_run_service import COLLECTION as JOB_RUNS_COLLECTION, STATUS_SUCCESS, STATUS_DEGRADED
 from services.job_schedule_registry import HEARTBEAT_STALE_SECONDS, get_job_entry
 from services.delivery_reconciliation import RECONCILIATION_JOBS, DELIVERY_UNKNOWN_STALE_HOURS
@@ -23,6 +23,34 @@ from services.delivery_reconciliation import RECONCILIATION_JOBS, DELIVERY_UNKNO
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+async def _queue_health_snapshot() -> dict:
+    try:
+        from services.compliance_recalc_operational_snapshot import (
+            build_recalc_queue_health_summary,
+            build_recalc_queue_operational_snapshot,
+        )
+
+        snap = await build_recalc_queue_operational_snapshot(max_sample=10)
+        return build_recalc_queue_health_summary(snap)
+    except Exception:
+        return {}
+
+
+async def _process_open_incidents_recovery(cursor, note: str) -> int:
+    resolved = 0
+    qh = await _queue_health_snapshot()
+    async for doc in cursor:
+        incident_id = str(doc["_id"])
+        result = await process_incident_recovery_lifecycle(
+            incident_id,
+            note,
+            queue_health=qh or None,
+        )
+        if result.get("auto_resolved"):
+            resolved += 1
+    return resolved
 
 
 async def compute_recovery_state_for_incident(incident: dict) -> dict:
@@ -156,8 +184,12 @@ async def resolve_recovered_incidents_for_job(
             note = f"Automatically resolved after run of job {job_name} at {latest_run_finished_at} (status={latest_run_status})."
         if job_run_id:
             note += f" Run id: {job_run_id}."
-        ok = await resolve_incident_auto_recovery(incident_id, note)
-        if ok:
+        result = await process_incident_recovery_lifecycle(
+            incident_id,
+            note,
+            queue_health=await _queue_health_snapshot() or None,
+        )
+        if result.get("auto_resolved"):
             resolved_count += 1
     return resolved_count
 
@@ -185,14 +217,8 @@ async def check_and_resolve_heartbeat_incidents() -> int:
         {"status": {"$in": [STATUS_OPEN, STATUS_ACKNOWLEDGED]}, "source": SOURCE_HEARTBEAT},
         {"_id": 1},
     )
-    resolved_count = 0
-    async for doc in cursor:
-        incident_id = str(doc["_id"])
-        note = f"Automatically resolved: scheduler heartbeat is fresh (last_heartbeat_at={last_hb})."
-        ok = await resolve_incident_auto_recovery(incident_id, note)
-        if ok:
-            resolved_count += 1
-    return resolved_count
+    note = f"Recovery detected: scheduler heartbeat is fresh (last_heartbeat_at={last_hb})."
+    return await _process_open_incidents_recovery(cursor, note)
 
 
 async def check_and_resolve_risk_regen_queue_incidents() -> int:
@@ -213,17 +239,11 @@ async def check_and_resolve_risk_regen_queue_incidents() -> int:
         {"status": {"$in": [STATUS_OPEN, STATUS_ACKNOWLEDGED]}, "source": SOURCE_RISK_REGEN_QUEUE},
         {"_id": 1},
     )
-    resolved_count = 0
-    async for doc in cursor:
-        incident_id = str(doc["_id"])
-        note = (
-            "Automatically resolved: risk_signal_regen_queue counts are healthy "
-            "(no DEAD jobs; FAILED count at or below threshold)."
-        )
-        ok = await resolve_incident_auto_recovery(incident_id, note)
-        if ok:
-            resolved_count += 1
-    return resolved_count
+    note = (
+        "Recovery detected: risk_signal_regen_queue counts are healthy "
+        "(no DEAD jobs; FAILED count at or below threshold)."
+    )
+    return await _process_open_incidents_recovery(cursor, note)
 
 
 async def check_and_resolve_delivery_unknown_incidents() -> int:
@@ -246,11 +266,5 @@ async def check_and_resolve_delivery_unknown_incidents() -> int:
         {"status": {"$in": [STATUS_OPEN, STATUS_ACKNOWLEDGED]}, "source": SOURCE_DELIVERY_UNKNOWN},
         {"_id": 1},
     )
-    resolved_count = 0
-    async for doc in cursor:
-        incident_id = str(doc["_id"])
-        note = f"Automatically resolved: no runs with delivery_unknown beyond {DELIVERY_UNKNOWN_STALE_HOURS}h threshold."
-        ok = await resolve_incident_auto_recovery(incident_id, note)
-        if ok:
-            resolved_count += 1
-    return resolved_count
+    note = f"Recovery detected: no runs with delivery_unknown beyond {DELIVERY_UNKNOWN_STALE_HOURS}h threshold."
+    return await _process_open_incidents_recovery(cursor, note)

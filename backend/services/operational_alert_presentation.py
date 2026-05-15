@@ -651,6 +651,16 @@ def build_operational_presentation_for_incident(
         related_job_run_id=related_job_run_id,
     )
 
+    lifecycle_state = incident.get("lifecycle_state") or "OPEN"
+    repeat_count = incident.get("repeat_count")
+    trend = "stable"
+    if incident.get("flapping"):
+        trend = "flapping"
+    elif lifecycle_state == "DEGRADED":
+        trend = "worsening"
+    elif lifecycle_state == "RECOVERED":
+        trend = "recovering"
+
     return {
         "presentation_title": presentation_title,
         "operational_summary": operational_summary,
@@ -667,6 +677,14 @@ def build_operational_presentation_for_incident(
         "urgency_guidance": urgency_guidance,
         "if_ignored_guidance": if_ignored_guidance,
         "alert_type": alert_type,
+        "lifecycle_state": lifecycle_state,
+        "repeat_count": repeat_count,
+        "trend_direction": trend,
+        "deployment_related_possible": bool(incident.get("deployment_related_possible")),
+        "total_impact_duration_seconds": incident.get("total_impact_duration_seconds"),
+        "first_detected_at": incident.get("first_detected_at"),
+        "last_detected_at": incident.get("last_detected_at"),
+        "recovered_at": incident.get("recovered_at"),
     }
 
 
@@ -764,6 +782,101 @@ def build_internal_alert_email_context(
         "resolution_links": pres["resolution_links"],
         "technical_details": technical,
         "timestamp": timestamp,
+    }
+
+
+def build_operational_recovery_email_context(incident: Dict[str, Any]) -> Dict[str, Any]:
+    """INTERNAL_ALERT context for RECOVERED lifecycle notifications (one per incident)."""
+    meta = incident.get("metadata") or {}
+    incident_id = incident.get("id") or ""
+    title = incident.get("title") or "Operational incident"
+    stored_severity = incident.get("severity") or "P2"
+    pres = build_operational_presentation_for_incident(incident, for_email_links=True)
+    first_at = incident.get("first_detected_at") or incident.get("created_at")
+    recovered_at = incident.get("recovered_at") or ""
+    impact_sec = incident.get("total_impact_duration_seconds")
+    impact_human = f"{impact_sec // 60} min" if isinstance(impact_sec, int) and impact_sec >= 60 else (
+        f"{impact_sec}s" if isinstance(impact_sec, int) else "—"
+    )
+    qh = meta.get("queue_health_at_recovery") or {}
+    queue_lines = []
+    if qh:
+        for k in (
+            "queue_depth_pending",
+            "active_running",
+            "dead_letter",
+            "retrying_failed",
+            "oldest_pending_age_seconds",
+        ):
+            if k in qh:
+                queue_lines.append(f"{k}: {qh[k]}")
+    repeat = incident.get("repeat_count") or 1
+    flapping = incident.get("flapping")
+    customer_delay = "Possible" if stored_severity in ("P0", "P1") or meta.get("delay_minutes") else "Unlikely"
+    if meta.get("degraded_run"):
+        customer_delay = "Possible (partial processing)"
+
+    operational_summary = (
+        f"RECOVERED: {pres['presentation_title']}. "
+        f"Impact window ~{impact_human} ({first_at or '—'} → {recovered_at or 'now'}). "
+        f"Detections during incident: {repeat}."
+    )
+    if flapping:
+        operational_summary += " Incident showed flapping; engineering review recommended."
+
+    follow_up = (
+        "Monitor System Health for 24h. Re-open if condition returns. "
+        "Investigate root cause if customer-visible delay occurred."
+    )
+    if incident.get("deployment_related_possible"):
+        follow_up = (
+            "This incident may have coincided with a deployment. "
+            + follow_up
+        )
+
+    technical = build_technical_details_text(
+        stored_severity=stored_severity,
+        metadata=meta,
+        related_job_name=incident.get("related_job_name"),
+        related_job_run_id=incident.get("related_job_run_id"),
+        extra_context={
+            "lifecycle_state": incident.get("lifecycle_state"),
+            "recovery_note": meta.get("recovery_note"),
+            "queue_health": qh,
+        },
+    )
+    if queue_lines:
+        technical += "\nQueue health at recovery:\n" + "\n".join(queue_lines)
+
+    primary = (pres["resolution_links"] or {}).get("incident") or pres.get("resolution_link") or ""
+
+    return {
+        "recipient": "",
+        "subject": f"[RECOVERED] {pres['presentation_title']}",
+        "severity": stored_severity,
+        "severity_label": "RECOVERED",
+        "title": f"Recovered: {pres['presentation_title']}",
+        "presentation_title": f"Recovered: {pres['presentation_title']}",
+        "operational_summary": operational_summary,
+        "business_impact": pres.get("business_impact") or "",
+        "customer_impact": f"Customer-visible delay: {customer_delay}",
+        "operator_urgency_note": follow_up,
+        "if_ignored_guidance": "No immediate action if health remains stable.",
+        "affected_component": pres.get("affected_component") or "",
+        "affected_scope": pres.get("affected_scope") or "",
+        "description": meta.get("recovery_note") or incident.get("description") or "",
+        "component": pres.get("affected_component") or "",
+        "current_status": "Healthy — condition cleared",
+        "possible_impact": pres.get("customer_impact") or "",
+        "suggested_action": follow_up,
+        "recommended_actions": follow_up,
+        "dashboard_link": (pres["resolution_links"] or {}).get("observability") or "",
+        "resolution_link": primary,
+        "incident_link": primary,
+        "resolution_links": pres.get("resolution_links") or {},
+        "technical_details": technical,
+        "timestamp": recovered_at,
+        "recovery_notification": True,
     }
 
 

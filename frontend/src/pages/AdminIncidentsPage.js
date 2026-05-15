@@ -14,6 +14,8 @@ export default function AdminIncidentsPage() {
   const [data, setData] = useState({ items: [], total: 0 });
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState(initialStatus);
+  const [lifecycleFilter, setLifecycleFilter] = useState('');
+  const [opsFilter, setOpsFilter] = useState('');
   const [ackNote, setAckNote] = useState({});
   const [resolveNote, setResolveNote] = useState({});
 
@@ -30,12 +32,16 @@ export default function AdminIncidentsPage() {
 
   const load = useCallback(() => {
     setLoading(true);
+    const params = { status: statusFilter, limit: 50 };
+    if (lifecycleFilter) params.lifecycle_state = lifecycleFilter;
+    if (opsFilter === 'deployment') params.deployment_related = true;
+    if (opsFilter === 'flapping') params.flapping = true;
     adminAPI
-      .getIncidents({ status: statusFilter, limit: 50 })
+      .getIncidents(params)
       .then((res) => setData(res.data))
       .catch(() => toast.error('Failed to load incidents'))
       .finally(() => setLoading(false));
-  }, [statusFilter]);
+  }, [statusFilter, lifecycleFilter, opsFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -207,6 +213,11 @@ export default function AdminIncidentsPage() {
                     )}
                     <p className="text-xs text-gray-400 mt-2">
                       Created {formatTime(inc.created_at)}
+                      {inc.first_detected_at && inc.first_detected_at !== inc.created_at && (
+                        <> · First detected {formatTime(inc.first_detected_at)}</>
+                      )}
+                      {inc.last_detected_at && <> · Last seen {formatTime(inc.last_detected_at)}</>}
+                      {inc.recovered_at && <> · Recovered {formatTime(inc.recovered_at)}</>}
                       {inc.acknowledged_by && ` · Acked by ${inc.acknowledged_by} ${formatTime(inc.acknowledged_at)}`}
                       {inc.resolved_by && ` · Resolved by ${inc.resolved_by} ${formatTime(inc.resolved_at)}`}
                     </p>

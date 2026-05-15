@@ -90,6 +90,9 @@ async def create_incident(
 async def list_incidents(
     status: Optional[str] = None,
     severity: Optional[str] = None,
+    lifecycle_state: Optional[str] = None,
+    deployment_related: Optional[bool] = None,
+    flapping: Optional[bool] = None,
     limit: int = 50,
     skip: int = 0,
 ) -> Dict[str, Any]:
@@ -100,6 +103,12 @@ async def list_incidents(
         query["status"] = status
     if severity:
         query["severity"] = severity
+    if lifecycle_state:
+        query["lifecycle_state"] = lifecycle_state
+    if deployment_related is True:
+        query["deployment_related_possible"] = True
+    if flapping is True:
+        query["flapping"] = True
     total = await db[COLLECTION].count_documents(query)
     cursor = db[COLLECTION].find(query).sort("created_at", -1).skip(skip).limit(limit)
     docs = await cursor.to_list(limit)

@@ -123,11 +123,16 @@ async def test_risk_regen_monitor_ticks_when_incident_already_open(monkeypatch):
     oid = ObjectId()
     incidents = MagicMock()
     incidents.find_one = AsyncMock(return_value={"_id": oid})
-    incidents.update_one = AsyncMock()
+    incidents.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
     db = MagicMock()
     db.incidents = incidents
+    db.__getitem__ = MagicMock(side_effect=lambda key: incidents if key == "incidents" else MagicMock())
 
     monkeypatch.setattr(mod, "database", MagicMock(get_db=lambda: db))
+    monkeypatch.setattr(
+        "services.incident_lifecycle_service.database",
+        MagicMock(get_db=lambda: db),
+    )
 
     async def fake_resolve():
         return 0
@@ -142,16 +147,28 @@ async def test_risk_regen_monitor_ticks_when_incident_already_open(monkeypatch):
             "sample_limit": 5,
         }
 
+    existing_incident = {
+        "id": str(oid),
+        "severity": "P2",
+        "lifecycle_state": "OPEN",
+        "repeat_count": 2,
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "first_detected_at": "2026-01-01T00:00:00+00:00",
+        "lifecycle_history": [],
+    }
+
     monkeypatch.setattr(
         "services.incident_recovery.check_and_resolve_risk_regen_queue_incidents",
         fake_resolve,
     )
     monkeypatch.setattr(mod, "get_regen_queue_summary", fake_summary)
     monkeypatch.setattr(mod, "_admin_recipients", lambda: [])
+    monkeypatch.setattr(
+        "services.incident_lifecycle_service.find_open_incident",
+        AsyncMock(return_value=existing_incident),
+    )
 
     out = await mod.run_risk_signal_regen_alert_monitor()
     assert out.get("already_open") is True
-    assert incidents.update_one.await_count == 1
-    _flt, upd = incidents.update_one.call_args[0]
-    assert upd["$inc"]["metadata.regen_alert_monitor_ticks"] == 1
-    assert upd["$set"]["metadata.counts_by_status"] == {"FAILED": 2}
+    assert out.get("incidents_created") == 0
+    assert incidents.update_one.await_count >= 1
