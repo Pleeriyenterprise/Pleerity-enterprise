@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from starlette.responses import Response
 import uuid
 from contextlib import asynccontextmanager
 from database import database
@@ -1139,7 +1140,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 # Correlation ID for tracing (set or forward X-Correlation-Id on every request/response)
-from middleware import CorrelationIdMiddleware
+from middleware import CORRELATION_ID_HEADER, CorrelationIdMiddleware
 app.add_middleware(CorrelationIdMiddleware)
 
 
@@ -1197,11 +1198,56 @@ async def _security_monitoring_gate(request: Request, call_next):
     return response
 
 
+async def _readiness_gate_call_next(request: Request, call_next):
+    """
+    BaseHTTPMiddleware (used for this gate and others) raises RuntimeError when the inner ASGI app
+    finishes without emitting http.response.start — common when the client disconnects mid-request or
+    (rarely) when an endpoint fails to return/sends no response. Map that to a safe Response here so
+    the server logs context and returns a deterministic status instead of an unhandled RuntimeError.
+    """
+    try:
+        return await call_next(request)
+    except RuntimeError as exc:
+        if "no response returned" not in str(exc).lower():
+            raise
+        correlation_id = getattr(getattr(request, "state", None), "correlation_id", None) or str(
+            uuid.uuid4()
+        )
+        path = getattr(getattr(request, "url", None), "path", "") or ""
+        method = (getattr(request, "method", "") or "").upper()
+        try:
+            client_disconnected = await request.is_disconnected()
+        except Exception:
+            client_disconnected = False
+        if client_disconnected:
+            logger.warning(
+                "http.no_response_returned (client disconnect suspected) method=%s path=%s correlation_id=%s",
+                method,
+                path,
+                correlation_id,
+            )
+            return Response(
+                status_code=499,
+                headers={CORRELATION_ID_HEADER: correlation_id},
+            )
+        logger.error(
+            "http.no_response_returned (ASGI stack completed without response) method=%s path=%s correlation_id=%s",
+            method,
+            path,
+            correlation_id,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error", "correlation_id": correlation_id},
+            headers={CORRELATION_ID_HEADER: correlation_id},
+        )
+
+
 @app.middleware("http")
 async def _startup_readiness_gate(request: Request, call_next):
     """On Render, PORT must open before heavy startup finishes; return 503 until DB/scheduler ready."""
     if getattr(request.app.state, "db_ready", True):
-        return await call_next(request)
+        return await _readiness_gate_call_next(request, call_next)
     path = request.url.path
     allowed = (
         "/",
@@ -1213,7 +1259,7 @@ async def _startup_readiness_gate(request: Request, call_next):
         "/favicon.ico",
     )
     if path in allowed or path.startswith("/docs/"):
-        return await call_next(request)
+        return await _readiness_gate_call_next(request, call_next)
     return JSONResponse(
         status_code=503,
         content={"detail": "Service is starting; retry shortly."},
