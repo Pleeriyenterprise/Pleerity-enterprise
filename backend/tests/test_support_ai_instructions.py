@@ -1,7 +1,10 @@
 """Central support AI system instructions — content audit guards."""
+import json
+
 from services.support_ai_instructions import (
     build_brain_json_schema_instruction,
     build_full_planner_system_prompt,
+    build_planner_user_payload,
     build_support_ai_system_instruction,
 )
 
@@ -27,8 +30,8 @@ def test_concise_conversational_tone():
 
 def test_branding_restraint():
     text = build_support_ai_system_instruction().lower()
-    assert "company name" in text or "brand" in text
-    assert "marketing" in text
+    assert "pleerity" in text
+    assert "marketing" in text or "do not repeat" in text
 
 
 def test_clarification_and_recovery():
@@ -100,3 +103,59 @@ def test_vague_help_clarify_before_cards():
     text = build_support_ai_system_instruction().lower()
     assert "clarif" in text
     assert "do not immediately" in text or "before" in text
+
+
+def test_anti_template_tone_guidance():
+    text = build_support_ai_system_instruction().lower()
+    assert "template" in text or "corporate" in text
+    assert "plain" in text or "practical" in text
+
+
+def test_grounding_tiers_and_plan_features():
+    text = build_support_ai_system_instruction().lower()
+    assert "plan_feature_facts" in text or "plan feature" in text
+    assert "do not infer" in text or "do not guess" in text
+    assert "registry_facts" in text
+
+
+def test_frustration_recovery_guidance():
+    text = build_support_ai_system_instruction().lower()
+    assert "misunderstood" in text or "misunderstand" in text
+    assert "verbatim" in text or "repeat" in text
+
+
+def test_handoff_continuity_in_instructions():
+    text = build_support_ai_system_instruction().lower()
+    assert "pending_handoff" in text
+    assert "conversation_state" in text
+
+
+def test_confidence_aware_behaviour():
+    text = build_support_ai_system_instruction().lower()
+    assert "confidence" in text
+    assert "0.75" in text or "high confidence" in text
+
+
+def test_cvp_workflow_explanations():
+    text = build_support_ai_system_instruction().lower()
+    assert "workflow" in text or "landlord" in text
+    assert "audit" in text or "reminder" in text or "certificate" in text
+
+
+def test_planner_payload_includes_conversation_state():
+    blob = json.loads(
+        build_planner_user_payload(
+            user_message="what do I do with this",
+            conversation_memory={},
+            conversation_state={"pending_handoff": True},
+            retrieval_chunks=[],
+            registry_facts="",
+            plan_feature_facts="",
+            policy_snippets={},
+            handoff_channels={},
+            recent_transcript="",
+            allowed_action_ids=["talk_to_support"],
+        )
+    )
+    assert blob["conversation_state"]["pending_handoff"] is True
+    assert "plan_feature_facts" in blob

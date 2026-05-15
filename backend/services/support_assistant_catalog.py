@@ -100,7 +100,18 @@ def build_approved_knowledge_dict() -> Dict[str, Any]:
             "risk_check": f"{base}/risk-check",
         },
         "compliance_vault_pro": {
-            "summary": "Property compliance management: certificates, reminders, compliance score, document storage, portfolio and licensing tracking.",
+            "summary": (
+                "Compliance Vault Pro helps UK landlords and agents track property compliance in one place: "
+                "add properties, upload certificates and evidence, see requirement statuses and renewal dates, "
+                "get reminders before things expire, monitor portfolio compliance from a dashboard, "
+                "and pull reports or audit packs when preparing for inspections or lender questions."
+            ),
+            "workflow_examples": [
+                "Upload a gas safety or EICR certificate and see it tied to the property record",
+                "Check which requirements are due soon on the renewals calendar",
+                "Review compliance score drivers before an inspection — score is a risk indicator, not legal advice",
+                "Download a report or audit pack for your records",
+            ],
             "plans_text": " | ".join(cvp_plans) if cvp_plans else None,
         },
         "document_packs": {"tiers": document_packs, "addons": addons},
@@ -117,12 +128,26 @@ def build_approved_knowledge_dict() -> Dict[str, Any]:
     }
 
 
+def format_cvp_product_context_for_prompt(snapshot: Dict[str, Any]) -> str:
+    """Practical CVP product context for explanations (not pricing)."""
+    cvp = snapshot.get("compliance_vault_pro") or {}
+    lines = []
+    if cvp.get("summary"):
+        lines.append(f"CVP overview: {cvp['summary']}")
+    for ex in cvp.get("workflow_examples") or []:
+        lines.append(f"Example: {ex}")
+    return "\n".join(lines)[:4000]
+
+
 def format_pricing_paragraph_for_prompt(snapshot: Dict[str, Any]) -> str:
     """Compact text block for LLM system prompt."""
     cvp = snapshot.get("compliance_vault_pro") or {}
     parts = []
+    product_ctx = format_cvp_product_context_for_prompt(snapshot)
+    if product_ctx:
+        parts.append(product_ctx)
     if cvp.get("plans_text"):
-        parts.append(f"CVP plans: {cvp['plans_text']}")
+        parts.append(f"CVP plans (pricing): {cvp['plans_text']}")
     dp = snapshot.get("document_packs") or {}
     tiers = dp.get("tiers") or {}
     if tiers:

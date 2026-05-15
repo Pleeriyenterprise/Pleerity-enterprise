@@ -29,6 +29,32 @@ def ensure_conversation_memory_defaults(ctx: Dict[str, Any]) -> None:
     ctx.setdefault("escalation_context", None)
     ctx.setdefault("last_clarification_question", None)
     ctx.setdefault("clarification_pending", False)
+    # Continuity hints for GPT-first brain (not a state machine)
+    ctx.setdefault("last_assistant_action_type", None)
+    ctx.setdefault("pending_handoff", False)
+    ctx.setdefault("pending_ticket_flow", False)
+    ctx.setdefault("pending_clarification", False)
+
+
+def mark_handoff_offered(ctx: Dict[str, Any]) -> None:
+    """Record that the widget last showed human-support / handoff options."""
+    ensure_conversation_memory_defaults(ctx)
+    ctx["pending_handoff"] = True
+    ctx["pending_ticket_flow"] = False
+    ctx["last_assistant_action_type"] = "handoff_offered"
+
+
+def mark_ticket_flow_started(ctx: Dict[str, Any]) -> None:
+    ensure_conversation_memory_defaults(ctx)
+    ctx["pending_ticket_flow"] = True
+    ctx["pending_handoff"] = True
+    ctx["last_assistant_action_type"] = "ticket_flow"
+
+
+def clear_handoff_pending(ctx: Dict[str, Any]) -> None:
+    ensure_conversation_memory_defaults(ctx)
+    ctx["pending_handoff"] = False
+    ctx["pending_ticket_flow"] = False
 
 
 def touch_session_memory(message: str, ctx: Dict[str, Any]) -> None:

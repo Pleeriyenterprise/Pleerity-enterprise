@@ -231,6 +231,9 @@ async def try_protected_deterministic_shortcuts(
         return None
 
     if needs_human_handoff(text):
+        from services.support_conversational_orchestrator import mark_handoff_offered
+
+        mark_handoff_offered(ctx)
         return _standard_handoff_response_dict(
             conversation_id=conversation_id,
             message=text,
@@ -422,6 +425,10 @@ async def run_support_ai_brain_turn(
         return None
 
     from services.support_assistant_catalog import build_approved_knowledge_dict, format_pricing_paragraph_for_prompt
+    from services.support_assistant_plan_features import (
+        build_cvp_plan_features_for_support,
+        format_plan_features_for_prompt,
+    )
     from services.support_chatbot import build_public_handoff_options
     from services.support_conversational_orchestrator import ensure_conversation_memory_defaults
 
@@ -430,6 +437,7 @@ async def run_support_ai_brain_turn(
     approved = build_approved_knowledge_dict()
     links = approved.get("frontend_links") or {}
     registry_facts = (format_pricing_paragraph_for_prompt(approved) or "")[:9000]
+    plan_feature_facts = format_plan_features_for_prompt(build_cvp_plan_features_for_support())
     policies = approved.get("policies") or {}
 
     retrieval_chunks, retrieval_meta_sources, retrieval_path, article_url = await _gather_retrieval_context(
@@ -460,7 +468,17 @@ async def run_support_ai_brain_turn(
         "last_clarification_question": ctx.get("last_clarification_question"),
         "clarification_pending": ctx.get("clarification_pending"),
         "recent_entities": (ctx.get("recent_entities") or [])[-4:],
-        "note": "Treat as hints only; latest user_message overrides when topic changed.",
+        "note": "Hints only; latest user_message overrides when topic changed.",
+    }
+    conversation_state = {
+        "last_assistant_action_type": ctx.get("last_assistant_action_type"),
+        "pending_handoff": bool(ctx.get("pending_handoff")),
+        "pending_ticket_flow": bool(ctx.get("pending_ticket_flow")),
+        "pending_clarification": bool(ctx.get("pending_clarification") or ctx.get("clarification_pending")),
+        "note": (
+            "If pending_handoff and the user asks what to do / how this works / which option, "
+            "explain handoff channels — not prior pricing or plan topics."
+        ),
     }
 
     allowed = sorted(ALLOWED_ACTION_IDS)
@@ -468,8 +486,10 @@ async def run_support_ai_brain_turn(
     user_blob = build_planner_user_payload(
         user_message=text,
         conversation_memory=memory,
+        conversation_state=conversation_state,
         retrieval_chunks=retrieval_chunks,
         registry_facts=registry_facts,
+        plan_feature_facts=plan_feature_facts,
         policy_snippets={
             "no_legal_advice": policies.get("no_legal_advice", ""),
             "password_reset": policies.get("password_reset", ""),
@@ -506,12 +526,6 @@ async def run_support_ai_brain_turn(
         }
 
     reply = parsed["reply_text"]
-    if retrieval_chunks and retrieval_path:
-        rp0 = retrieval_path[0] if retrieval_path else ""
-        if rp0 == "site_page":
-            reply = reply.rstrip() + "\n\n_From website content._"
-        elif rp0 == "kc_article":
-            reply = reply.rstrip() + "\n\n_From Knowledge Centre._"
 
     actions_out: Optional[List[Dict[str, Any]]] = None
     if parsed["show_actions"] and parsed["action_ids"]:
