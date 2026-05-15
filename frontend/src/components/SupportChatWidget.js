@@ -210,25 +210,73 @@ function MessageBubble({ message, isUser }) {
   );
 }
 
-// Onboarding: 5 options when chat is empty (task: welcome + 5 options)
-function OnboardingOptionsPanel({ options, onSelect, loading }) {
+// Welcome-state popular tasks (same backend hooks as prior onboarding buttons)
+const ONBOARDING_TASK_ITEMS = [
+  { id: 'compliance', chipLabel: 'Compliance', testId: 'onboarding-option-compliance', message: 'Manage property compliance' },
+  { id: 'documents', chipLabel: 'Documents', testId: 'onboarding-option-documents', message: 'Get landlord documents' },
+  { id: 'automation', chipLabel: 'Workflows', testId: 'onboarding-option-automation', message: 'Automate workflows' },
+  { id: 'research', chipLabel: 'Research', testId: 'onboarding-option-research', message: 'Get market research' },
+  { id: 'support', chipLabel: 'Support', testId: 'onboarding-option-support', quickAction: 'speak_to_human' },
+];
+
+// Mid-conversation shortcuts (collapsed by default; same quick-action API)
+const SHORTCUT_TASK_ITEMS = [
+  { id: 'cvp_info', chipLabel: 'Compliance', testId: 'quick-action-cvp_info', actionId: 'cvp_info' },
+  { id: 'document_packs_info', chipLabel: 'Documents', testId: 'quick-action-document_packs_info', actionId: 'document_packs_info' },
+  { id: 'pricing', chipLabel: 'Pricing', testId: 'quick-action-pricing', actionId: 'pricing' },
+  { id: 'speak_to_human', chipLabel: 'Support', testId: 'quick-action-speak_to_human', actionId: 'speak_to_human' },
+  { id: 'reset_password', chipLabel: 'Password', testId: 'quick-action-reset_password', actionId: 'reset_password' },
+  { id: 'check_order_status', chipLabel: 'Orders', testId: 'quick-action-check_order_status', actionId: 'check_order_status' },
+  { id: 'billing_help', chipLabel: 'Billing', testId: 'quick-action-billing_help', actionId: 'billing_help' },
+  { id: 'start_new_chat', chipLabel: 'New chat', testId: 'quick-action-start_new_chat', isReset: true },
+];
+
+/** Collapsed-by-default popular tasks — chips when expanded; conversation stays primary. */
+function PopularTasksSection({ items, onSelect, onReset, loading, alignWithBot = false }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const handleChipClick = (item) => {
+    if (item.isReset) {
+      onReset?.();
+      setExpanded(false);
+      return;
+    }
+    onSelect(item);
+    setExpanded(false);
+  };
+
   return (
-    <div className="p-3 bg-gray-50 border-b">
-      <div className="grid grid-cols-1 gap-2">
-        {options.map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => onSelect(opt)}
-            disabled={loading}
-            className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 bg-white hover:bg-teal-50 hover:border-teal-200 text-left text-sm font-medium text-gray-800 disabled:opacity-50 transition-colors"
-            data-testid={`onboarding-option-${opt.id}`}
-          >
-            <span className="text-teal-600">{opt.id === 'compliance' ? '🏠' : opt.id === 'documents' ? '📄' : opt.id === 'automation' ? '⚙️' : opt.id === 'research' ? '📊' : '👤'}</span>
-            {opt.label}
-          </button>
-        ))}
-      </div>
+    <div
+      className={alignWithBot ? 'pl-9 mt-1' : ''}
+      data-testid="popular-tasks-section"
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded((open) => !open)}
+        aria-expanded={expanded}
+        className="flex items-center gap-1 text-xs text-gray-500 hover:text-teal-700 transition-colors py-0.5"
+        data-testid="popular-tasks-toggle"
+      >
+        <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        <span>Popular tasks</span>
+        {!expanded && <span className="text-gray-400 font-normal">· optional</span>}
+      </button>
+      {expanded && (
+        <div className="flex flex-wrap gap-1.5 mt-2 max-w-full">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              disabled={loading}
+              onClick={() => handleChipClick(item)}
+              className="px-2.5 py-1 rounded-full border border-gray-200 bg-white text-xs text-gray-700 hover:bg-teal-50 hover:border-teal-200 transition-colors disabled:opacity-50"
+              data-testid={item.testId}
+            >
+              {item.chipLabel}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -347,57 +395,6 @@ function LeadCaptureBlock({ onSubmitted, onDismiss, conversationId, serviceInter
         </Button>
       </div>
     </form>
-  );
-}
-
-// Quick Actions — optional shortcuts (collapsed by default so the chat stays conversational)
-function QuickActionsPanel({ onAction, onReset, loading }) {
-  const actions = [
-    { id: 'cvp_info', label: 'Compliance Vault Pro', icon: '🏠', color: 'bg-cyan-50 hover:bg-cyan-100 border-cyan-200' },
-    { id: 'document_packs_info', label: 'Document Packs', icon: '📄', color: 'bg-green-50 hover:bg-green-100 border-green-200' },
-    { id: 'pricing', label: 'Pricing', icon: '💳', color: 'bg-purple-50 hover:bg-purple-100 border-purple-200' },
-    { id: 'reset_password', label: 'Reset Password', icon: '🔑', color: 'bg-amber-50 hover:bg-amber-100 border-amber-200' },
-    { id: 'speak_to_human', label: 'Talk to Support', icon: '👤', color: 'bg-rose-50 hover:bg-rose-100 border-rose-200' },
-    { id: 'check_order_status', label: 'Check Order Status', icon: '📦', color: 'bg-blue-50 hover:bg-blue-100 border-blue-200' },
-    { id: 'billing_help', label: 'Billing Help', icon: '💳', color: 'bg-slate-50 hover:bg-slate-100 border-slate-200' },
-  ];
-
-  return (
-    <details className="border-b bg-gray-50/90 group">
-      <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-800 flex items-center justify-between">
-        <span>Shortcuts (optional)</span>
-        <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
-      </summary>
-      <div className="p-3 pt-0">
-        <div className="grid grid-cols-3 gap-2">
-          {actions.map((action) => (
-            <button
-              key={action.id}
-              type="button"
-              onClick={() => onAction(action.id)}
-              disabled={loading}
-              className={`flex flex-col items-center p-2 rounded-lg border transition-colors text-center ${action.color} disabled:opacity-50`}
-              data-testid={`quick-action-${action.id}`}
-            >
-              <span className="text-lg mb-1">{action.icon}</span>
-              <span className="text-xs text-gray-700 leading-tight">{action.label}</span>
-            </button>
-          ))}
-          {onReset && (
-            <button
-              type="button"
-              onClick={onReset}
-              disabled={loading}
-              className="flex flex-col items-center p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-center disabled:opacity-50"
-              data-testid="quick-action-start_new_chat"
-            >
-              <span className="text-lg mb-1">🔄</span>
-              <span className="text-xs text-gray-700 leading-tight">Start New Chat</span>
-            </button>
-          )}
-        </div>
-      </div>
-    </details>
   );
 }
 
@@ -713,7 +710,6 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [activeTab, setActiveTab] = useState('faq'); // 'faq' or 'chat'
-  const [showQuickActions, setShowQuickActions] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -823,7 +819,6 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     });
     setLeadCaptureSubmitted(false);
     setShowHandoff(false);
-    setShowQuickActions(false);
     setShowTicketForm(false);
     setTicketPrefill({ subject: '', description: '' });
   }, [clearActionRevealTimers]);
@@ -860,14 +855,6 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     }
   }, [isOpen, activeTab, messages.length]);
 
-  // Onboarding options (task: 5 options that set intent)
-  const ONBOARDING_OPTIONS = [
-    { id: 'compliance', label: 'Manage property compliance', message: 'Manage property compliance' },
-    { id: 'documents', label: 'Get landlord documents', message: 'Get landlord documents' },
-    { id: 'automation', label: 'Automate workflows', message: 'Automate workflows' },
-    { id: 'research', label: 'Get market research', message: 'Get market research' },
-    { id: 'support', label: 'Contact support', quickAction: 'speak_to_human' },
-  ];
 
   // Handle WhatsApp click with proper window.open and audit logging
   const handleWhatsAppClick = async (whatsappLink) => {
@@ -901,7 +888,6 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   const handleQuickAction = async (actionId) => {
     setLoading(true);
     setShowHandoff(false);
-    setShowQuickActions(false);
     const startedAt = Date.now();
 
     try {
@@ -962,7 +948,6 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     setInput('');
     setLoading(true);
     setShowHandoff(false);
-    setShowQuickActions(false);
     const startedAt = Date.now();
 
     try {
@@ -1005,7 +990,6 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     setInput('');
     setLoading(true);
     setShowHandoff(false);
-    setShowQuickActions(false);
     const startedAt = Date.now();
     try {
       const response = await client.post('/support/chat', {
@@ -1032,13 +1016,18 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     }
   };
 
-  // Onboarding: user picked one of the 5 options
-  const handleOnboardingSelect = async (option) => {
-    if (option.quickAction) {
-      await handleQuickAction(option.quickAction);
+  const handlePopularTaskSelect = async (item) => {
+    if (item.quickAction) {
+      await handleQuickAction(item.quickAction);
       return;
     }
-    await sendMessageAs(option.message);
+    if (item.actionId) {
+      await handleQuickAction(item.actionId);
+      return;
+    }
+    if (item.message) {
+      await sendMessageAs(item.message);
+    }
   };
 
   // Handle handoff selection
@@ -1194,42 +1183,8 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
           {/* Chat Tab Content */}
           {activeTab === 'chat' && (
             <div className="flex flex-col flex-1 min-h-0">
-              {/* Scrollable area: onboarding options + messages so nothing is cut off on short viewports */}
               <div className="flex-1 min-h-0 overflow-y-auto">
-                {/* Onboarding: 5 options when only welcome is shown (task: exact 5 options) */}
-                {messages.length === 1 && messages[0].sender === 'bot' && (
-                  <OnboardingOptionsPanel
-                    options={ONBOARDING_OPTIONS}
-                    onSelect={handleOnboardingSelect}
-                    loading={loading}
-                  />
-                )}
-                {messages.length > 1 && (
-                  showQuickActions ? (
-                    <>
-                      <QuickActionsPanel onAction={handleQuickAction} onReset={resetConversation} loading={loading} />
-                      <button
-                        type="button"
-                        onClick={() => setShowQuickActions(false)}
-                        className="w-full px-3 py-1.5 bg-gray-50 text-xs text-gray-500 hover:bg-gray-100 border-b border-gray-100"
-                      >
-                        Hide shortcuts
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowQuickActions(true)}
-                      className="w-full px-3 py-2 bg-gray-50/80 text-xs text-gray-600 hover:bg-gray-100 flex items-center justify-center gap-1 border-b border-gray-100"
-                    >
-                      <ChevronDown className="w-3 h-3" />
-                      Shortcuts
-                    </button>
-                  )
-                )}
-
-                {/* Messages */}
-                <div className="p-4 min-h-[280px]">
+                <div className="p-4 pb-2 min-h-[12rem]">
             {messages.map((msg, idx) => (
               <div key={msg.id}>
                 <MessageBubble
@@ -1252,6 +1207,15 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
                 )}
               </div>
             ))}
+            {messages.length === 1 && messages[0]?.sender === 'bot' && (
+              <PopularTasksSection
+                items={ONBOARDING_TASK_ITEMS}
+                onSelect={handlePopularTaskSelect}
+                onReset={resetConversation}
+                loading={loading}
+                alignWithBot
+              />
+            )}
             {/* Lead capture: show when last bot message offers it and not yet submitted */}
             {messages.length > 0 && (() => {
               const last = messages[messages.length - 1];
@@ -1318,6 +1282,17 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
             <div ref={messagesEndRef} />
                 </div>
               </div>
+
+              {messages.length > 1 && (
+                <div className="px-4 py-2 border-t border-gray-100 shrink-0 bg-white">
+                  <PopularTasksSection
+                    items={SHORTCUT_TASK_ITEMS}
+                    onSelect={handlePopularTaskSelect}
+                    onReset={resetConversation}
+                    loading={loading}
+                  />
+                </div>
+              )}
 
               {/* Input */}
               <div className="p-3 border-t shrink-0">
