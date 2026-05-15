@@ -408,7 +408,6 @@ const CVPLandingPage = () => {
           <p className="text-center text-[0.9375rem] sm:text-base text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed">
             Organisational reports for internal use or to share with advisers — not legal advice.
           </p>
-          {/* TODO: Replace with sample report preview image when available */}
           <div className="max-w-2xl mx-auto bg-gray-50 border border-gray-200 rounded-xl p-6">
             <h3 className="font-semibold text-midnight-blue mb-4">Sample report preview</h3>
             <ul className="space-y-2 text-sm text-gray-700">
@@ -421,8 +420,18 @@ const CVPLandingPage = () => {
               <li>• Audit log summary</li>
               <li>• Disclaimer (informational only)</li>
             </ul>
-            <div className="mt-4 h-32 flex items-center justify-center border border-dashed border-gray-300 rounded-lg text-gray-500 text-sm">
-              Report preview image placeholder
+            <div className="mt-4">
+              <ProductScreenshot className="shadow-sm">
+                <MarketingImage
+                  name="cvp-report-preview"
+                  alt="Sample Compliance Vault Pro report preview"
+                  width={2400}
+                  height={1350}
+                  className="w-full h-auto max-w-full object-contain object-center block mx-auto"
+                  loading="lazy"
+                  placeholderText="Report preview unavailable"
+                />
+              </ProductScreenshot>
             </div>
           </div>
         </div>
