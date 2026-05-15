@@ -58,7 +58,7 @@ class TestNurtureTemplatesRender:
         )
         assert "Compliance Risk Snapshot" in subject or "Risk" in subject
         assert "65" in body
-        assert "Activate Compliance Monitoring" in body
+        assert "Start Compliance Monitoring" in body
         assert "lead_token=abc" in body or "app.example.com" in body
 
     def test_transactional_risk_builder_does_not_expose_lead_id(self):

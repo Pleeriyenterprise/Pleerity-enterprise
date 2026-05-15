@@ -313,7 +313,11 @@ async def risk_check_lead_from_token(lead_token: Optional[str] = None):
     lead = await db[COLLECTION].find_one({"lead_id": lead_id}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
-    # Sanitized payload for intake prefill only (no score, no exposure)
+    from services.intake_plan_recommendation import build_intake_plan_recommendation_from_risk_lead
+
+    rec = build_intake_plan_recommendation_from_risk_lead(lead)
+    # Sanitized payload for intake prefill only (no score, no exposure).
+    # Plan fields are UX hints from stored risk-check answers — not billing authority.
     return {
         "lead_id": lead.get("lead_id"),
         "email": lead.get("email") or "",
@@ -325,6 +329,7 @@ async def risk_check_lead_from_token(lead_token: Optional[str] = None):
         "gas_status": lead.get("gas_status"),
         "eicr_status": lead.get("eicr_status"),
         "tracking_method": lead.get("tracking_method"),
+        **rec,
     }
 
 

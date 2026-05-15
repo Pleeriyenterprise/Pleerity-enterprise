@@ -45,6 +45,25 @@ def _strip_html_to_text(html: str) -> str:
     return text[:5000] if len(text) > 5000 else text
 
 
+def _context_message_is_full_html_document(context: Dict) -> bool:
+    """
+    True when context['message'] is a full HTML document meant to be the entire email body.
+
+    Used for admin-manual: DB templates often wrap {{message}} in a customer shell; passing a
+    complete <html> document would nest two shells. Fragments (<p>, <div>, …) still use the DB path.
+    """
+    msg = context.get("message")
+    if msg is None:
+        return False
+    s = str(msg).strip().lstrip("\ufeff")
+    if not s:
+        return False
+    head = s[:512].lower()
+    if head.startswith("<!doctype html"):
+        return True
+    return bool(re.match(r"<\s*html\b", head))
+
+
 DEFAULT_SENDER = os.getenv("EMAIL_SENDER", "info@pleerityenterprise.co.uk")
 POSTMARK_MESSAGE_STREAM = os.getenv("POSTMARK_MESSAGE_STREAM", "outbound").strip() or "outbound"
 EMAIL_REPLY_TO = (os.getenv("EMAIL_REPLY_TO") or "").strip()
@@ -814,6 +833,14 @@ class NotificationOrchestrator:
             html = str(context["message"])
             text = (context.get("text_message") or "").strip() or _strip_html_to_text(html)
             subj = (context.get("subject") or default_subject)
+            return html, text, subj
+        # admin-manual: when message is already a full HTML document, skip DB merge — otherwise
+        # {{message}} is embedded in a second shell (e.g. LEAD_FOLLOWUP markdown_to_html + admin-manual row).
+        if alias_str == "admin-manual" and _context_message_is_full_html_document(context):
+            msg = str(context.get("message") or "").strip()
+            html = msg
+            text = (context.get("text_message") or "").strip() or _strip_html_to_text(html)
+            subj = (context.get("subject") or default_subject).strip()
             return html, text, subj
         # Subscription payment receipt: always use code-built layout (structured context from Stripe webhook).
         if alias_str == "payment-receipt" and context.get("payment_receipt_layout") == "structured":

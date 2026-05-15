@@ -200,9 +200,33 @@ def test_lead_from_token_returns_200_with_sanitized_payload(mock_get_db, client)
     assert data["first_name"] == "Jane"
     assert data["property_count"] == 3
     assert data["any_hmo"] is True
+    assert data["recommended_plan_code"] == "PLAN_2_PORTFOLIO"
+    assert data["recommendation_basis"] == "property_count"
+    assert data["recommendation_property_count"] == 3
     assert "computed_score" not in data
     assert "risk_band" not in data
     assert "exposure_range_label" not in data
+
+
+@patch("routes.risk_check.database.get_db")
+def test_lead_from_token_omits_plan_recommendation_without_property_count(mock_get_db, client):
+    db_mock = MagicMock()
+    fake_lead = {
+        "lead_id": "RISK-NOCOUNT",
+        "email": "x@y.co",
+        "first_name": "A",
+        "property_count": None,
+    }
+    coll_mock = MagicMock()
+    coll_mock.find_one = AsyncMock(return_value=fake_lead)
+    db_mock.__getitem__ = MagicMock(return_value=coll_mock)
+    mock_get_db.return_value = db_mock
+    with patch("utils.risk_lead_token.verify_lead_token", return_value="RISK-NOCOUNT"):
+        response = client.get("/api/risk-check/lead-from-token", params={"lead_token": "valid-token"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["recommended_plan_code"] is None
+    assert data["recommendation_basis"] is None
 
 
 def test_lead_from_token_missing_token_returns_400(client):

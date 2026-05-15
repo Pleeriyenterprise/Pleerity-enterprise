@@ -70,6 +70,22 @@ const PLAN_NAMES = {
   PLAN_6_15: 'Professional'
 };
 
+/** Map legacy / API plan codes to canonical intake billing_plan values. */
+function normalizeIntakeBillingPlanCode(code) {
+  if (code == null || code === '') return null;
+  const c = String(code).trim().toUpperCase();
+  const legacy = {
+    PLAN_1: 'PLAN_1_SOLO',
+    PLAN_2_5: 'PLAN_2_PORTFOLIO',
+    PLAN_6_15: 'PLAN_3_PRO',
+  };
+  return legacy[c] || c;
+}
+
+function isValidIntakeBillingPlanCode(code) {
+  return Boolean(code && Object.prototype.hasOwnProperty.call(PLAN_LIMITS, code));
+}
+
 // Property types
 const PROPERTY_TYPES = [
   { value: 'flat', label: 'Flat/Apartment' },
@@ -245,6 +261,8 @@ const IntakePage = () => {
   const [propertyLimitError, setPropertyLimitError] = useState(null);
   const [prefillFromRiskCheck, setPrefillFromRiskCheck] = useState(false);
   const [leadPropertyCountHint, setLeadPropertyCountHint] = useState(null);
+  /** UX-only: plan suggested from verified lead_token + server recommendation (not billing authority). */
+  const [intakePlanRecommendation, setIntakePlanRecommendation] = useState(null);
 
   // URL marketing params (lead_id, from=risk-check) for conversion linking
   useEffect(() => {
@@ -253,7 +271,7 @@ const IntakePage = () => {
     }
   }, [leadIdParam, sourceParam]);
 
-  // lead_token prefill: fetch lead-from-token and prefill form (no plan, no consents)
+  // lead_token prefill: fetch lead-from-token and prefill form (server may suggest plan from risk-check data)
   useEffect(() => {
     if (!leadTokenParam || !leadTokenParam.trim()) return;
     let cancelled = false;
@@ -262,6 +280,11 @@ const IntakePage = () => {
         const { data } = await intakeAPI.getLeadFromToken(leadTokenParam.trim());
         if (cancelled) return;
         setMarketing({ lead_id: data.lead_id || leadIdParam, source: (sourceParam && sourceParam.trim()) || 'risk-check' });
+        const normalizedRec = normalizeIntakeBillingPlanCode(data.recommended_plan_code);
+        const recApplied =
+          data.recommendation_basis === 'property_count' &&
+          normalizedRec &&
+          isValidIntakeBillingPlanCode(normalizedRec);
         setFormData((prev) => {
           const next = { ...prev };
           if (data.full_name != null && data.full_name !== '') next.full_name = String(data.full_name).trim();
@@ -276,8 +299,24 @@ const IntakePage = () => {
             if (t.includes('automated')) next.document_submission_method = 'UPLOAD';
             else if (t.includes('manual') || t.includes('spreadsheet')) next.document_submission_method = 'EMAIL';
           }
+          if (recApplied) {
+            next.billing_plan = normalizedRec;
+          }
           return next;
         });
+        if (recApplied) {
+          const pc =
+            data.recommendation_property_count != null && data.recommendation_property_count !== ''
+              ? Number(data.recommendation_property_count)
+              : null;
+          setIntakePlanRecommendation({
+            basis: 'property_count',
+            planCode: normalizedRec,
+            propertyCount: Number.isFinite(pc) ? pc : null,
+          });
+        } else {
+          setIntakePlanRecommendation(null);
+        }
         setPrefillFromRiskCheck(true);
         const count = data.property_count != null ? Math.max(1, parseInt(data.property_count, 10) || 1) : null;
         setLeadPropertyCountHint(count > 1 ? count : null);
@@ -1040,7 +1079,19 @@ const IntakePage = () => {
         {prefillFromRiskCheck && (
           <Alert className="mb-6 border-blue-200 bg-blue-50" data-testid="intake-prefill-banner">
             <Info className="h-4 w-4" />
-            <AlertDescription>We preloaded your setup from your risk check. You can change anything.</AlertDescription>
+            <AlertDescription>
+              {intakePlanRecommendation?.basis === 'property_count' ? (
+                <>
+                  We preloaded your details from your risk check and suggested a subscription tier from the property count
+                  you reported. You can change anything.
+                </>
+              ) : (
+                <>
+                  We preloaded your details from your risk check. On the plan step, choose the tier that fits you—we
+                  could not suggest one automatically from your saved answers. You can change anything.
+                </>
+              )}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -1068,6 +1119,8 @@ const IntakePage = () => {
             plans={plans}
             onNext={nextStep}
             onBack={prevStep}
+            intakePlanRecommendation={intakePlanRecommendation}
+            prefillFromRiskCheck={prefillFromRiskCheck}
           />
         )}
 
@@ -1329,14 +1382,46 @@ const Step1YourDetails = ({
 // ============================================================================
 // STEP 2: SELECT PLAN
 // ============================================================================
-const Step2SelectPlan = ({ formData, setFormData, plans, onNext, onBack }) => {
+const Step2SelectPlan = ({
+  formData,
+  setFormData,
+  plans,
+  onNext,
+  onBack,
+  intakePlanRecommendation,
+  prefillFromRiskCheck,
+}) => {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-2xl text-midnight-blue">Select Your Plan</CardTitle>
-        <CardDescription>Choose the plan that fits your portfolio size</CardDescription>
+        <CardDescription>
+          {intakePlanRecommendation?.basis === 'property_count' ? (
+            <>We suggested a plan from your risk check answers. You can change anything below.</>
+          ) : prefillFromRiskCheck ? (
+            <>
+              Choose the plan that fits your portfolio. We could not auto-suggest a tier from your risk check (missing
+              or unclear property count).
+            </>
+          ) : (
+            <>Choose the plan that fits your portfolio size</>
+          )}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {intakePlanRecommendation?.basis === 'property_count' && (
+          <Alert className="border-slate-200 bg-slate-50 text-slate-800" role="status" data-testid="intake-plan-recommendation-note">
+            <Info className="h-4 w-4 text-midnight-blue" />
+            <AlertDescription>
+              Recommended based on your reported property count
+              {typeof intakePlanRecommendation.propertyCount === 'number' &&
+              !Number.isNaN(intakePlanRecommendation.propertyCount)
+                ? ` (${intakePlanRecommendation.propertyCount}).`
+                : '.'}{' '}
+              This is a suggestion only — pick any plan that fits you.
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="grid gap-4">
           {plans.map((plan) => (
             <button
@@ -1352,8 +1437,14 @@ const Step2SelectPlan = ({ formData, setFormData, plans, onNext, onBack }) => {
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-lg font-semibold text-midnight-blue">{plan.display_name || plan.name}</h3>
+                    {intakePlanRecommendation?.basis === 'property_count' &&
+                      intakePlanRecommendation.planCode === plan.plan_id && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium border border-electric-teal/40 bg-white text-midnight-blue">
+                          Suggested from risk check
+                        </span>
+                      )}
                     {plan.is_popular && (
                       <span className="text-xs px-2 py-0.5 bg-electric-teal/10 text-midnight-blue rounded-full font-medium border border-electric-teal/20">
                         {plan.badge || 'Popular'}
