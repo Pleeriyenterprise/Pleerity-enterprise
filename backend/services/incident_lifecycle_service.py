@@ -349,18 +349,33 @@ async def _record_repeat(
     should_send = False
     suppressed_reason = "repeat_within_suppression_window"
 
+    meta_existing = existing.get("metadata") or {}
+    trig = (metadata.get("triggering_reason") or meta_existing.get("triggering_reason") or "").strip()
+
     if escalation:
         should_send = True
         suppressed_reason = None
     elif not last_alert_at:
-        should_send = False
-        suppressed_reason = "open_alert_already_sent"
+        # Initial alert never recorded (deploy-window suppression, muted recipients, send failure): retry —
+        # but preserve deploy-only suppression for eligible P2 transients while window is active.
+        deploy_now, _ = is_deployment_suppression_active(now)
+        if deploy_now and severity == SEVERITY_P2 and trig in ("missed_sla", "job_never_succeeded"):
+            should_send = False
+            suppressed_reason = "deployment_window_p2_transient"
+        else:
+            should_send = True
+            suppressed_reason = None
     else:
         last_alert_dt = _parse_iso(last_alert_at)
         if last_alert_dt and (now - last_alert_dt).total_seconds() >= suppression_sec:
             if lifecycle_state == LIFECYCLE_DEGRADED:
-                should_send = True
-                suppressed_reason = None
+                deploy_now, _ = is_deployment_suppression_active(now)
+                if deploy_now and severity == SEVERITY_P2 and trig in ("missed_sla", "job_never_succeeded"):
+                    should_send = False
+                    suppressed_reason = "deployment_window_p2_transient"
+                else:
+                    should_send = True
+                    suppressed_reason = None
 
     # Flap detection
     flap_window = DEFAULT_FLAP_WINDOW_SECONDS

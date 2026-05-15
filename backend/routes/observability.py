@@ -718,6 +718,22 @@ async def build_health_summary_payload() -> Dict[str, Any]:
     alert_emails = (os.getenv("ADMIN_ALERT_EMAILS") or os.getenv("OPS_ALERT_EMAIL") or "").strip()
     alerting_configured = bool(alert_emails)
 
+    recalc_queue_health: Dict[str, Any] = {}
+    try:
+        from services.compliance_recalc_operational_snapshot import (
+            build_recalc_queue_health_summary,
+            build_recalc_queue_operational_snapshot,
+        )
+
+        snap = await build_recalc_queue_operational_snapshot(max_sample=15)
+        recalc_queue_health = build_recalc_queue_health_summary(snap)
+    except Exception:
+        pass
+
+    from services.incident_lifecycle_service import is_deployment_suppression_active
+
+    deploy_active, deploy_note = is_deployment_suppression_active(now)
+
     # Expose DB name so operators can verify scheduler and observability use the same DB (runtime truth gap investigation)
     # PyMongo Database does not support bool(); use "is not None" to avoid NotImplementedError
     observability_db_name = getattr(db, "name", None) if db is not None else None

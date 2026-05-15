@@ -15,6 +15,7 @@ if str(backend_root) not in sys.path:
 @pytest.mark.asyncio
 async def test_watchdog_creates_incident_when_compliance_worker_overdue():
     from services.sla_watchdog import run_sla_watchdog
+    from services.incident_lifecycle_service import DetectionOutcome, LIFECYCLE_OPEN
 
     real_now = datetime.now(timezone.utc)
     old_finish = (real_now - timedelta(days=1)).isoformat()
@@ -51,6 +52,28 @@ async def test_watchdog_creates_incident_when_compliance_worker_overdue():
 
     fake_config = [("compliance_recalc_worker", 1, 10, "P2", "compliance worker must run")]
 
+    from bson import ObjectId
+
+    oid_inc = ObjectId()
+
+    async def fake_record_detection(*args, **kwargs):
+        # Only count the missed-SLA path for compliance_recalc_worker
+        if kwargs.get("related_job_name") == "compliance_recalc_worker":
+            return DetectionOutcome(
+                incident_id=str(oid_inc),
+                created=True,
+                should_send_open_alert=True,
+                lifecycle_state=LIFECYCLE_OPEN,
+                repeat_count=1,
+            )
+        return DetectionOutcome(
+            incident_id="ffffffffffffffffffffffff",
+            created=False,
+            should_send_open_alert=False,
+            lifecycle_state=LIFECYCLE_OPEN,
+            repeat_count=0,
+        )
+
     with patch("services.sla_watchdog.database.get_db", return_value=mock_db):
         with patch(
             "services.incident_recovery.check_and_resolve_heartbeat_incidents",
@@ -70,9 +93,9 @@ async def test_watchdog_creates_incident_when_compliance_worker_overdue():
                     with patch("services.sla_watchdog._get_scheduler_next_runs", return_value={}):
                         with patch("services.sla_watchdog.DEFAULT_SLA_CONFIG", fake_config):
                             with patch(
-                                "services.sla_watchdog.create_incident",
+                                "services.sla_watchdog.record_operational_detection",
                                 new_callable=AsyncMock,
-                                return_value="inc-1",
+                                side_effect=fake_record_detection,
                             ):
                                 with patch(
                                     "services.sla_watchdog._send_incident_alert_email",
