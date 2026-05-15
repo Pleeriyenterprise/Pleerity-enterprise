@@ -23,6 +23,11 @@ import { Badge } from './ui/badge';
 import { toast } from '@/utils/portalNotifications';
 import client from '../api/client';
 import { TawkToAPI } from './TawkToWidget';
+import {
+  computeReplyPacingDelay,
+  sleep,
+  SUPPORT_ACTIONS_REVEAL_MS,
+} from '../utils/supportChatPacing';
 
 // Quick action icons mapping
 const QUICK_ACTION_ICONS = {
@@ -67,6 +72,31 @@ function linkifyText(text) {
   return parts.length ? parts : [{ type: 'text', value: text }];
 }
 
+/** Lightweight typing indicator while awaiting the assistant. */
+function SupportTypingIndicator() {
+  return (
+    <div
+      className="flex justify-start mb-3"
+      aria-live="polite"
+      aria-label="Assistant is typing"
+      data-testid="support-typing-indicator"
+    >
+      <div className="flex items-start gap-2 max-w-[85%]">
+        <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
+          <Bot className="w-4 h-4 text-gray-600" />
+        </div>
+        <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-3">
+          <div className="flex items-center gap-1 h-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:0ms]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:150ms]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:300ms]" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Message bubble component – bot messages get linkified URLs + optional action buttons/links
 function MessageBubble({ message, isUser }) {
   const content = isUser ? (
@@ -90,8 +120,11 @@ function MessageBubble({ message, isUser }) {
           )
         )}
       </div>
-      {!isUser && message.actions && message.actions.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-3" data-testid="message-actions">
+      {!isUser && message.actions && message.actions.length > 0 && message.actionsVisible && (
+        <div
+          className="flex flex-wrap gap-2 mt-3 transition-opacity duration-200 ease-out"
+          data-testid="message-actions"
+        >
           {message.actions.map((action, i) => {
             const label = action.label ?? '';
             const url = action.url;
@@ -676,7 +709,62 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   });
   const [leadCaptureSubmitted, setLeadCaptureSubmitted] = useState(false);
   const messagesEndRef = useRef(null);
+  const actionRevealTimersRef = useRef([]);
   const [tawkVisitorStatus, setTawkVisitorStatus] = useState(null);
+
+  const clearActionRevealTimers = useCallback(() => {
+    actionRevealTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+    actionRevealTimersRef.current = [];
+  }, []);
+
+  const scheduleActionsReveal = useCallback((messageId) => {
+    const timerId = setTimeout(() => {
+      actionRevealTimersRef.current = actionRevealTimersRef.current.filter((t) => t !== timerId);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, actionsVisible: true } : m))
+      );
+    }, SUPPORT_ACTIONS_REVEAL_MS);
+    actionRevealTimersRef.current.push(timerId);
+  }, []);
+
+  const buildBotMessageFromResponse = useCallback((responseData) => {
+    const hasActions = Array.isArray(responseData.actions) && responseData.actions.length > 0;
+    return {
+      id: `${Date.now()}-bot`,
+      text: responseData.response,
+      sender: 'bot',
+      timestamp: new Date().toISOString(),
+      metadata: responseData.metadata || null,
+      actions: responseData.actions ?? null,
+      actionsVisible: !hasActions,
+    };
+  }, []);
+
+  const applyHandoffFromResponse = useCallback((responseData) => {
+    const hs = responseData.handoff_summary;
+    if (hs) {
+      setTicketPrefill({
+        subject: 'Support request — Pleerity assistant',
+        description: hs,
+      });
+    }
+    if (responseData.action === 'handoff') {
+      setShowHandoff(true);
+      setHandoffOptions(responseData.handoff_options);
+    }
+  }, []);
+
+  const deliverAssistantReply = useCallback(async (responseData, startedAt) => {
+    await sleep(computeReplyPacingDelay(Date.now() - startedAt));
+    const botMessage = buildBotMessageFromResponse(responseData);
+    setMessages((prev) => [...prev, botMessage]);
+    if (botMessage.actions?.length > 0 && !botMessage.actionsVisible) {
+      scheduleActionsReveal(botMessage.id);
+    }
+    applyHandoffFromResponse(responseData);
+  }, [applyHandoffFromResponse, buildBotMessageFromResponse, scheduleActionsReveal]);
+
+  useEffect(() => () => clearActionRevealTimers(), [clearActionRevealTimers]);
 
   useEffect(() => {
     if (typeof TawkToAPI.getVisitorStatus === 'function') {
@@ -691,6 +779,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   }, []);
 
   const resetConversation = useCallback(() => {
+    clearActionRevealTimers();
     setConversationId(null);
     setMessages([]);
     setConversationContext({
@@ -710,7 +799,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     setShowQuickActions(false);
     setShowTicketForm(false);
     setTicketPrefill({ subject: '', description: '' });
-  }, []);
+  }, [clearActionRevealTimers]);
 
   // Expose open function globally for external triggers
   useEffect(() => {
@@ -786,6 +875,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     setLoading(true);
     setShowHandoff(false);
     setShowQuickActions(false);
+    const startedAt = Date.now();
 
     try {
       const response = await client.post(`/support/quick-action/${actionId}`, null, {
@@ -797,7 +887,6 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
         setConversationContext(response.data.conversation_context);
       }
 
-      // Add user action as message
       const actionLabels = {
         check_order_status: '📦 Check Order Status',
         reset_password: '🔑 Reset Password',
@@ -815,21 +904,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
         timestamp: new Date().toISOString(),
       }]);
 
-      // Add bot response (with metadata and actions for clickable links)
-      setMessages(prev => [...prev, {
-        id: Date.now().toString() + '-bot',
-        text: response.data.response,
-        sender: 'bot',
-        timestamp: new Date().toISOString(),
-        metadata: response.data.metadata || null,
-        actions: response.data.actions ?? null,
-      }]);
-
-      // Handle handoff if needed
-      if (response.data.action === 'handoff') {
-        setShowHandoff(true);
-        setHandoffOptions(response.data.handoff_options);
-      }
+      await deliverAssistantReply(response.data, startedAt);
     } catch (err) {
       console.error('Quick action error:', err);
       toast.error('Failed to process. Please try again.');
@@ -861,6 +936,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     setLoading(true);
     setShowHandoff(false);
     setShowQuickActions(false);
+    const startedAt = Date.now();
 
     try {
       const response = await client.post('/support/chat', {
@@ -875,30 +951,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
         setConversationContext(response.data.conversation_context);
       }
 
-      const botMessage = {
-        id: Date.now().toString() + '-bot',
-        text: response.data.response,
-        sender: 'bot',
-        timestamp: new Date().toISOString(),
-        metadata: response.data.metadata || null,
-        actions: response.data.actions ?? null,
-      };
-
-      setMessages(prev => [...prev, botMessage]);
-
-      const hs = response.data.handoff_summary;
-      if (hs) {
-        setTicketPrefill({
-          subject: 'Support request — Pleerity assistant',
-          description: hs,
-        });
-      }
-
-      // Handle handoff
-      if (response.data.action === 'handoff') {
-        setShowHandoff(true);
-        setHandoffOptions(response.data.handoff_options);
-      }
+      await deliverAssistantReply(response.data, startedAt);
     } catch (err) {
       console.error('Chat error:', err);
       const detail = err.response?.data?.detail;
@@ -926,6 +979,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
     setLoading(true);
     setShowHandoff(false);
     setShowQuickActions(false);
+    const startedAt = Date.now();
     try {
       const response = await client.post('/support/chat', {
         message: userMessage.text,
@@ -937,26 +991,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
       if (response.data.conversation_context) {
         setConversationContext(response.data.conversation_context);
       }
-      const botMsg = {
-        id: Date.now().toString() + '-bot',
-        text: response.data.response,
-        sender: 'bot',
-        timestamp: new Date().toISOString(),
-        metadata: response.data.metadata || null,
-        actions: response.data.actions ?? null,
-      };
-      setMessages(prev => [...prev, botMsg]);
-      const hs2 = response.data.handoff_summary;
-      if (hs2) {
-        setTicketPrefill({
-          subject: 'Support request — Pleerity assistant',
-          description: hs2,
-        });
-      }
-      if (response.data.action === 'handoff') {
-        setShowHandoff(true);
-        setHandoffOptions(response.data.handoff_options);
-      }
+      await deliverAssistantReply(response.data, startedAt);
     } catch (err) {
       console.error('Chat error:', err);
       const detail = err.response?.data?.detail;
@@ -1040,7 +1075,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   return (
     <div
       className={`fixed bottom-24 right-6 bg-white rounded-2xl shadow-2xl z-50 transition-all overflow-hidden flex flex-col ${
-        isMinimized ? 'w-72 h-14' : 'w-96 h-[550px] max-h-[calc(100vh-6rem)]'
+        isMinimized ? 'w-72 h-14' : 'w-[min(24rem,calc(100vw-3rem))] h-[550px] max-h-[calc(100vh-6rem)]'
       }`}
       data-testid="support-chat-widget"
     >
@@ -1253,14 +1288,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
               />
             )}
             
-            {/* Loading indicator */}
-            {loading && (
-              <div className="flex justify-start mb-3">
-                <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-2">
-                  <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
-                </div>
-              </div>
-            )}
+            {loading && <SupportTypingIndicator />}
             
             <div ref={messagesEndRef} />
                 </div>
