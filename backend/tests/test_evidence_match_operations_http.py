@@ -294,6 +294,10 @@ async def test_admin_resolve_evidence_match_approve_direct():
         out = await admin_resolve_evidence_match(request, doc_id, body)
 
     assert out.get("document_id") == doc_id
+    assert out.get("verification_status") == "pending"
+    assert out.get("match_resolution") == "requirement_link_confirmed"
+    assert "verification is still required" in (out.get("message") or "").lower()
+    assert "verify" not in (out.get("message") or "").lower() or "still required" in (out.get("message") or "").lower()
     pn = out.get("propagation_notice") or {}
     assert pn.get("code") == NOTICE_AUTHORITY_SYNC_DEFERRED
 

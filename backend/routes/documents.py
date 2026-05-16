@@ -3269,9 +3269,12 @@ async def list_documents(request: Request, property_id: str = None, requirement_
             {"_id": 0, "file_path": 0}  # Don't expose file path
         ).sort("uploaded_at", -1).to_list(100)
         from services.evidence_review_migration import effective_assurance_tier, effective_evidence_review_state
+        from services.document_operational_state import attach_document_operational_projection
+
         for d in documents:
             d["evidence_review_state"] = effective_evidence_review_state(d)
             d["assurance_tier"] = effective_assurance_tier(d)
+            attach_document_operational_projection(d)
             d.setdefault("latest_validation_snapshot", None)
             d.setdefault("review_required", None)
             d.setdefault("review_decision_at", None)

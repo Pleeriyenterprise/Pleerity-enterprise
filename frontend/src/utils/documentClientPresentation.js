@@ -1,13 +1,17 @@
 /**
  * Client-facing document row presentation with admin evidence decision precedence.
  *
+ * When API provides document_operational_state (canonical backend projection), prefer it
+ * to reduce frontend precedence drift. Falls back to local derivation for older payloads.
+ *
  * Precedence (highest first):
  * A. Rejected / invalid evidence
  * B. Admin accepted or externally verified evidence
  * C. Pending admin review
- * D. AI extraction awaiting user confirmation
- * E. Extraction in progress
- * F. Uploaded / unreviewed
+ * D. Match resolved — verification still pending
+ * E. AI extraction awaiting user confirmation
+ * F. Extraction in progress
+ * G. Uploaded / unreviewed
  */
 
 import {
@@ -17,11 +21,66 @@ import {
   reviewStateLabel,
 } from './evidenceReviewUi';
 
+/** @type {Record<string, { key: string, label: string, color: string }>} */
+const OPERATIONAL_EVIDENCE_BADGE = {
+  EVIDENCE_REJECTED: { key: 'REJECTED', label: reviewStateLabel('REJECTED'), color: 'bg-red-100 text-red-800' },
+  EXTERNALLY_VERIFIED: { key: 'VERIFIED', label: 'Externally verified', color: 'bg-green-100 text-green-800' },
+  EVIDENCE_VERIFIED: { key: 'VERIFIED', label: reviewStateLabel('VERIFIED'), color: 'bg-green-100 text-green-800' },
+  EVIDENCE_ACCEPTED_ON_FILE: {
+    key: 'ACCEPTED_UNVERIFIED',
+    label: reviewStateLabel('ACCEPTED_UNVERIFIED'),
+    color: 'bg-teal-100 text-teal-800',
+  },
+  EVIDENCE_EXPIRED: { key: 'EXPIRED', label: reviewStateLabel('EXPIRED'), color: 'bg-red-100 text-red-800' },
+  EVIDENCE_SUPERSEDED: { key: 'SUPERSEDED', label: reviewStateLabel('SUPERSEDED'), color: 'bg-gray-100 text-gray-700' },
+  ADMIN_REVIEW_PENDING: {
+    key: 'UNDER_REVIEW',
+    label: reviewStateLabel('UNDER_REVIEW'),
+    color: 'bg-indigo-100 text-indigo-800',
+  },
+  MATCH_RESOLVED_VERIFICATION_PENDING: {
+    key: 'MATCH_PENDING_VERIFY',
+    label: 'Requirement linked — verification pending',
+    color: 'bg-sky-100 text-sky-900',
+  },
+  EXTRACTION_CONFIRMATION_PENDING: {
+    key: 'EXTRACTION_PENDING',
+    label: 'AI data needs review',
+    color: 'bg-amber-100 text-amber-800',
+  },
+  EXTRACTION_IN_PROGRESS: {
+    key: 'PROCESSING',
+    label: 'Extraction in progress',
+    color: 'bg-blue-100 text-blue-800',
+  },
+  EXTRACTION_FAILED: {
+    key: 'EXTRACTION_FAILED',
+    label: 'Extraction failed',
+    color: 'bg-red-100 text-red-800',
+  },
+  UPLOADED_AWAITING_REVIEW: {
+    key: 'UPLOADED',
+    label: reviewStateLabel('UPLOADED'),
+    color: 'bg-gray-100 text-gray-700',
+  },
+};
+
+/**
+ * @param {Record<string, unknown>} doc
+ */
+export function hasCanonicalOperationalState(doc = {}) {
+  return Boolean(String(doc.document_operational_state || '').trim());
+}
+
 /**
  * @param {Record<string, unknown>} doc
  */
 export function hasAdminSupersededExtractionConfirmation(doc = {}) {
   if (doc.extraction_confirmation_superseded === true) return true;
+  const codes = doc.document_operational_reason_codes;
+  if (Array.isArray(codes) && codes.includes('EXTRACTION_CONFIRMATION_SUPERSEDED')) {
+    return true;
+  }
   const ai = doc.ai_extraction;
   if (ai && typeof ai === 'object' && ai.superseded_by_admin_decision) return true;
   return false;
@@ -31,6 +90,10 @@ export function hasAdminSupersededExtractionConfirmation(doc = {}) {
  * @param {Record<string, unknown>} doc
  */
 export function isAdminEvidenceDecisionAccepted(doc = {}) {
+  const op = String(doc.document_operational_state || '');
+  if (op === 'EVIDENCE_ACCEPTED_ON_FILE' || op === 'EVIDENCE_VERIFIED' || op === 'EXTERNALLY_VERIFIED') {
+    return true;
+  }
   const review = effectiveEvidenceReviewState(doc);
   if (review === 'REJECTED' || review === 'EXPIRED') return false;
   if (review === 'ACCEPTED_UNVERIFIED' || review === 'VERIFIED') return true;
@@ -44,6 +107,7 @@ export function isAdminEvidenceDecisionAccepted(doc = {}) {
  * @param {Record<string, unknown>} doc
  */
 export function isAdminEvidenceDecisionRejected(doc = {}) {
+  if (doc.document_operational_state === 'EVIDENCE_REJECTED') return true;
   const review = effectiveEvidenceReviewState(doc);
   if (review === 'REJECTED') return true;
   return String(doc.status || '').toUpperCase() === 'REJECTED';
@@ -53,6 +117,9 @@ export function isAdminEvidenceDecisionRejected(doc = {}) {
  * @param {Record<string, unknown>} doc
  */
 export function isExtractionConfirmationPending(doc = {}) {
+  if (hasCanonicalOperationalState(doc)) {
+    return doc.document_operational_state === 'EXTRACTION_CONFIRMATION_PENDING';
+  }
   if (isAdminEvidenceDecisionAccepted(doc) || isAdminEvidenceDecisionRejected(doc)) {
     return false;
   }
@@ -83,6 +150,14 @@ export function isExtractionConfirmationPending(doc = {}) {
  * @param {Record<string, unknown>} doc
  */
 export function getClientDocumentEvidenceBadge(doc = {}) {
+  const op = String(doc.document_operational_state || '');
+  if (op && OPERATIONAL_EVIDENCE_BADGE[op]) {
+    return OPERATIONAL_EVIDENCE_BADGE[op];
+  }
+  if (doc.document_operational_label && op) {
+    return { key: op, label: String(doc.document_operational_label), color: 'bg-gray-100 text-gray-700' };
+  }
+
   if (isAdminEvidenceDecisionRejected(doc)) {
     return { label: reviewStateLabel('REJECTED'), color: 'bg-red-100 text-red-800', key: 'REJECTED' };
   }
@@ -126,6 +201,16 @@ export function getClientExtractionPipelineBadge(doc = {}, extractingDocumentId 
   if (extractingDocumentId && doc.document_id === extractingDocumentId) {
     return { label: 'Extracting…', color: 'bg-blue-100 text-blue-800' };
   }
+  const op = String(doc.document_operational_state || '');
+  if (op === 'EVIDENCE_ACCEPTED_ON_FILE' || op === 'EVIDENCE_VERIFIED' || op === 'EXTERNALLY_VERIFIED') {
+    return { label: 'Confirmed by review', color: 'bg-green-100 text-green-800' };
+  }
+  if (op === 'EVIDENCE_REJECTED') {
+    return { label: 'Not applied — rejected', color: 'bg-gray-100 text-gray-600' };
+  }
+  if (op === 'MATCH_RESOLVED_VERIFICATION_PENDING') {
+    return { label: 'Verification still pending', color: 'bg-sky-100 text-sky-900' };
+  }
   if (isAdminEvidenceDecisionAccepted(doc)) {
     return { label: 'Confirmed by review', color: 'bg-green-100 text-green-800' };
   }
@@ -149,10 +234,13 @@ export function getClientExtractionPipelineBadge(doc = {}, extractingDocumentId 
  * @param {Record<string, unknown>} doc
  */
 export function shouldShowReviewAndApplyData(doc = {}) {
+  if (!isExtractionConfirmationPending(doc)) {
+    return false;
+  }
   if (!doc.ai_extraction?.data && doc.extraction_status !== 'EXTRACTED' && doc.extraction_status !== 'NEEDS_REVIEW') {
     return false;
   }
-  return isExtractionConfirmationPending(doc);
+  return true;
 }
 
 /**
@@ -178,6 +266,9 @@ export function shouldShowAiExtractedDataPanel(doc = {}) {
  * @param {Record<string, unknown>} doc
  */
 export function getClientDocumentRowStatusLabel(doc = {}) {
+  if (doc.document_operational_label) {
+    return String(doc.document_operational_label);
+  }
   const badge = getClientDocumentEvidenceBadge(doc);
   return badge.label;
 }
@@ -186,6 +277,9 @@ export function getClientDocumentRowStatusLabel(doc = {}) {
  * @param {Record<string, unknown>} doc
  */
 export function isPendingConfirmationForRequirementAttention(doc = {}) {
+  if (doc.document_operational_state === 'MATCH_RESOLVED_VERIFICATION_PENDING') {
+    return false;
+  }
   const hasExtraction = doc?.extraction_id || (doc?.ai_extraction?.status === 'completed' && doc?.ai_extraction?.data);
   return Boolean(hasExtraction) && isExtractionConfirmationPending(doc) && !isPositiveEvidenceState(doc);
 }

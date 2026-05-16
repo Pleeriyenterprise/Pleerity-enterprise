@@ -190,7 +190,7 @@ export default function PendingVerificationTable({
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-teal-900 bg-teal-100 hover:bg-teal-200 rounded"
                         data-testid={`resolve-match-${doc?.document_id}`}
                       >
-                        Resolve match
+                        Link requirement
                       </button>
                       <button
                         type="button"

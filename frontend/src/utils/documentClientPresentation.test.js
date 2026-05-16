@@ -1,6 +1,7 @@
 import {
   getClientDocumentEvidenceBadge,
   getClientExtractionPipelineBadge,
+  hasCanonicalOperationalState,
   isExtractionConfirmationPending,
   isPendingConfirmationForRequirementAttention,
   shouldShowReviewAndApplyData,
@@ -98,5 +99,35 @@ describe('documentClientPresentation precedence', () => {
   it('requirement attention pending only when extraction still needs confirm and not accepted', () => {
     expect(isPendingConfirmationForRequirementAttention(pendingExtractionDoc)).toBe(true);
     expect(isPendingConfirmationForRequirementAttention(adminAcceptedDoc)).toBe(false);
+  });
+
+  it('uses canonical operational state when provided by API', () => {
+    const canonical = {
+      ...adminAcceptedDoc,
+      document_operational_state: 'EVIDENCE_ACCEPTED_ON_FILE',
+      document_operational_label: 'Accepted on file (not externally verified)',
+      document_operational_reason_codes: ['EVIDENCE_ACCEPTED_ON_FILE', 'EXTRACTION_CONFIRMATION_SUPERSEDED'],
+    };
+    expect(hasCanonicalOperationalState(canonical)).toBe(true);
+    expect(isExtractionConfirmationPending(canonical)).toBe(false);
+    expect(shouldShowReviewAndApplyData(canonical)).toBe(false);
+    const badge = getClientDocumentEvidenceBadge(canonical);
+    expect(badge.key).toBe('ACCEPTED_UNVERIFIED');
+    expect(badge.label).toContain('Accepted on file');
+  });
+
+  it('match resolved pending verification does not show Review and Apply', () => {
+    const matchPending = {
+      document_id: 'd-match',
+      status: 'UPLOADED',
+      document_operational_state: 'MATCH_RESOLVED_VERIFICATION_PENDING',
+      document_operational_label: 'Requirement linked — verification still pending',
+      ai_extraction: { status: 'completed', review_status: 'PENDING', data: { x: 1 } },
+      extraction_status: 'NEEDS_REVIEW',
+    };
+    expect(isExtractionConfirmationPending(matchPending)).toBe(false);
+    expect(shouldShowReviewAndApplyData(matchPending)).toBe(false);
+    const pipeline = getClientExtractionPipelineBadge(matchPending);
+    expect(pipeline.label).toContain('Verification still pending');
   });
 });

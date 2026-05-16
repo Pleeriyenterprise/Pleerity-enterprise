@@ -600,3 +600,57 @@ export function buildTechnicalDetailsRows(doc = {}) {
   }
   return rows.filter((r) => r.value != null && r.value !== '');
 }
+
+const MATCH_RESOLUTION_PRESENTATION = {
+  approve_override: {
+    label: 'Requirement link confirmed',
+    tone: 'info',
+    helper: 'Matching resolved only. Use Verify to accept evidence on file — this is not verification.',
+    toast: 'Requirement link confirmed. Evidence verification is still required.',
+  },
+  reject_evidence: {
+    label: 'Evidence rejected',
+    tone: 'danger',
+    helper: 'Document marked rejected; extraction confirmation closed.',
+    toast: 'Evidence rejected. Document is not accepted on file.',
+  },
+  relink_requirement: {
+    label: 'Requirement relinked',
+    tone: 'info',
+    helper: 'Obligation link updated. Verification is still required before acceptance.',
+    toast: 'Requirement relinked successfully. Evidence verification is still required.',
+  },
+};
+
+/**
+ * Admin evidence match resolution (distinct from Verify / accept on file).
+ * @param {string} action
+ */
+export function getMatchResolutionActionPresentation(action) {
+  const key = String(action || '').trim().toLowerCase();
+  const mapped = MATCH_RESOLUTION_PRESENTATION[key];
+  if (mapped) {
+    return presentationBadge(mapped.label, mapped.tone, key, mapped.helper);
+  }
+  return presentationBadge('Match resolution', 'neutral', key, 'Admin action on document–requirement matching.');
+}
+
+/**
+ * @param {string} action
+ */
+export function getMatchResolutionSuccessToast(action) {
+  const key = String(action || '').trim().toLowerCase();
+  return MATCH_RESOLUTION_PRESENTATION[key]?.toast || 'Match resolution recorded.';
+}
+
+/**
+ * Evidence verify / accept on file (distinct from match resolution).
+ */
+export function getEvidenceVerifyActionPresentation() {
+  return presentationBadge(
+    'Verify evidence',
+    'success',
+    'verify',
+    'Accepts evidence on file after review. Does not only resolve document–requirement matching.',
+  );
+}

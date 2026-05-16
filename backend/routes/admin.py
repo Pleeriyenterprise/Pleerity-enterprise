@@ -471,12 +471,15 @@ async def list_pending_verification_documents(
                 rid = r.get("requirement_id")
                 if rid:
                     req_map[str(rid)] = r
+        from services.document_operational_state import attach_document_operational_projection
+
         for d in items:
             info = clients_map.get(d.get("client_id"), {})
             d["client_name"] = info.get("client_name", "-")
             d["crn"] = info.get("crn", "-")
             d["evidence_review_state"] = effective_evidence_review_state(d)
             d["assurance_tier"] = effective_assurance_tier(d)
+            attach_document_operational_projection(d)
             d.setdefault("latest_validation_snapshot", None)
             d.setdefault("review_required", None)
             d.setdefault("review_decision_at", None)
@@ -951,7 +954,16 @@ async def admin_resolve_evidence_match(
                 "reason": (body.reason or "")[:2000],
             },
         )
-        out_approve: Dict[str, Any] = {"message": "Evidence match approved (override)", "document_id": document_id}
+        out_approve: Dict[str, Any] = {
+            "message": "Requirement link confirmed. Evidence verification is still required.",
+            "operational_note": (
+                "This action resolves document–requirement matching only; "
+                "it does not verify or accept evidence on file."
+            ),
+            "document_id": document_id,
+            "match_resolution": "requirement_link_confirmed",
+            "verification_status": "pending",
+        }
         if prior_rid:
             notice_approve = build_propagation_notice_from_transition_fanout(ov_fanout)
             if notice_approve:
@@ -1007,7 +1019,12 @@ async def admin_resolve_evidence_match(
                 "reason": (body.reason or "")[:2000],
             },
         )
-        out_reject: Dict[str, Any] = {"message": "Evidence rejected", "document_id": document_id}
+        out_reject: Dict[str, Any] = {
+            "message": "Evidence rejected — document marked rejected and extraction confirmation closed.",
+            "document_id": document_id,
+            "match_resolution": "evidence_rejected",
+            "verification_status": "rejected",
+        }
         if prior_rid:
             notice_reject = build_propagation_notice_from_transition_fanout(rej_match_fanout)
             if notice_reject:
@@ -1139,7 +1156,10 @@ async def admin_resolve_evidence_match(
             ordered_relink.append(fanout_prior)
         ordered_relink.append(fanout_new)
         out_relink: Dict[str, Any] = {
-            "message": "Requirement relinked; match re-evaluated from extraction where available.",
+            "message": "Requirement relinked successfully. Evidence verification is still required.",
+            "operational_note": "Relinking updates the obligation link only; it does not verify or accept evidence.",
+            "match_resolution": "requirement_relinked",
+            "verification_status": "pending",
             "document_id": document_id,
         }
         notice_relink = merge_propagation_notice_from_ordered_transition_fanouts(ordered_relink)
@@ -1320,6 +1340,65 @@ async def admin_backfill_evidence_review_v2(request: Request, body: AdminEvidenc
             "scanned": result.get("scanned"),
             "updated": result.get("updated"),
             "planned_updates": result.get("planned_updates"),
+        },
+    )
+    return result
+
+
+class AdminExtractionSupersessionReconcileBody(BaseModel):
+    limit: int = Field(500, ge=1, le=5000)
+    dry_run: bool = True
+    client_id: Optional[str] = Field(None, description="Optional client scope")
+    reason: Optional[str] = Field(
+        None,
+        max_length=500,
+        description="Audit reason recorded on reconciled documents",
+    )
+
+
+@router.post(
+    "/documents/reconcile-extraction-supersession",
+    dependencies=[Depends(require_owner_or_admin)],
+)
+async def admin_reconcile_extraction_supersession(
+    request: Request,
+    body: AdminExtractionSupersessionReconcileBody,
+):
+    """
+    Reconcile historical documents where evidence review supersedes stale extraction
+    confirmation fields. Idempotent and additive.
+    """
+    user = await admin_route_guard(request)
+    db = database.get_db()
+    from services.evidence_extraction_reconciliation import (
+        RECONCILIATION_REASON_HISTORICAL,
+        scan_extraction_supersession_reconciliation,
+    )
+
+    reconciliation_reason = (body.reason or "").strip() or RECONCILIATION_REASON_HISTORICAL
+    result = await scan_extraction_supersession_reconciliation(
+        db,
+        limit=body.limit,
+        dry_run=body.dry_run,
+        actor_id=user.get("portal_user_id"),
+        reconciliation_reason=reconciliation_reason,
+        client_id=body.client_id,
+    )
+
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user.get("portal_user_id"),
+        client_id=body.client_id,
+        resource_type="document",
+        resource_id="batch",
+        metadata={
+            "action_type": "EXTRACTION_SUPERSESSION_RECONCILIATION",
+            "dry_run": body.dry_run,
+            "limit": body.limit,
+            "scanned": result.get("scanned"),
+            "needs_reconciliation": result.get("needs_reconciliation"),
+            "updated": result.get("updated"),
+            "reconciliation_reason": reconciliation_reason,
         },
     )
     return result

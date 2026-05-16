@@ -9,6 +9,7 @@ import {
   getCanonicalDocumentTypePresentation,
   getMismatchReasonPresentation,
   getConfidencePresentation,
+  getMatchResolutionSuccessToast,
 } from '../utils/adminOperationalPresentation';
 import PendingVerificationTable from '../components/admin/PendingVerificationTable';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
@@ -4793,7 +4794,7 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
     if (!doc?.document_id) return;
     try {
       await adminAPI.verifyDocument(doc.document_id, {});
-      toast.success('Document verified');
+      toast.success('Evidence reviewed and accepted on file');
       fetchPendingVerification();
       fetchStats();
     } catch (e) {
@@ -4802,7 +4803,7 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
         setVerifyOverrideModal({ doc, detail: s });
         setVerifyOverrideReason('');
         toast.error(
-          s?.message || 'Automated evidence check blocked verification. Use override after manual review, or Resolve match.',
+          s?.message || 'Automated evidence check blocked verification. Use override after manual review, or Link requirement if matching is wrong.',
         );
         return;
       }
@@ -4852,13 +4853,7 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
         ...(action === 'relink_requirement' ? { relink_requirement_id: resolveRelinkId.trim() } : {}),
       };
       await adminAPI.resolveEvidenceMatch(doc.document_id, body);
-      const auditHint =
-        action === 'approve_override'
-          ? 'EVIDENCE_MATCH_ADMIN_APPROVE_OVERRIDE'
-          : action === 'reject_evidence'
-            ? 'EVIDENCE_MATCH_ADMIN_REJECT'
-            : 'EVIDENCE_MATCH_ADMIN_RELINK';
-      toast.success(`Resolution recorded (${auditHint})`);
+      toast.success(getMatchResolutionSuccessToast(action));
       setResolveMatchModal(null);
       setResolveMatchReason('');
       setResolveRelinkId('');
@@ -5725,9 +5720,10 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
       {resolveMatchModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-labelledby="resolve-match-title">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-            <h2 id="resolve-match-title" className="text-lg font-semibold text-midnight-blue mb-2">Resolve evidence match</h2>
+            <h2 id="resolve-match-title" className="text-lg font-semibold text-midnight-blue mb-2">Link or correct requirement match</h2>
             <p className="text-sm text-gray-600 mb-4">
-              Document {resolveMatchModal.document_id} — audited admin action on the evidence document matching queue.
+              Document {resolveMatchModal.document_id} — resolves document–requirement matching only.
+              Use <strong>Verify</strong> separately to accept evidence on file.
             </p>
             <label className="block text-sm font-medium text-gray-700 mb-2">Action</label>
             <select
@@ -5736,9 +5732,9 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3"
               data-testid="resolve-match-action"
             >
-              <option value="approve_override">Approve override (treat as matching obligation)</option>
-              <option value="reject_evidence">Reject evidence (document REJECTED)</option>
-              <option value="relink_requirement">Relink to another requirement (scope-checked)</option>
+              <option value="approve_override">Confirm requirement link (verification still required)</option>
+              <option value="reject_evidence">Reject evidence (marks document rejected)</option>
+              <option value="relink_requirement">Relink to another requirement (verification still required)</option>
             </select>
             {resolveMatchAction === 'relink_requirement' && (
               <label className="block text-sm font-medium text-gray-700 mb-2">
