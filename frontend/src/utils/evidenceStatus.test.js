@@ -62,5 +62,15 @@ describe('getEvidenceStatus', () => {
     });
     expect(s.subline).toBe('Agreement recorded — unsigned');
   });
+
+  it('uses API client_lifecycle_state chip when set (overrides workflow-only wording)', () => {
+    const s = getEvidenceStatus('MISSING', {
+      workflow_class: 'MULTI_EVIDENCE',
+      client_lifecycle_state: 'PENDING_REVIEW',
+      client_lifecycle_label: 'Awaiting review',
+    });
+    expect(s.text).toBe('Awaiting review');
+    expect(s.className).toContain('amber');
+  });
 });
 

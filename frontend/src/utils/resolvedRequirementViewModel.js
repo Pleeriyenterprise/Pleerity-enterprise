@@ -10,6 +10,8 @@
 import { getEvidenceStatus, workflowAwareMissingEvidenceLabel } from './evidenceStatus';
 import { resolveRequirementActionWithRowContext } from './requirementCtaParity';
 import { requirementUsesServerTakeActionPrimary } from './requirementTakeActionResolver';
+import { resolveClientRequirementLifecycle } from './clientRequirementLifecycle';
+import { applyLifecycleAwareCtaPresentation } from './requirementLifecyclePresentation';
 import {
   isConditionStandardWorkflowHint,
   isMultiEvidenceStyleWorkflow,
@@ -58,6 +60,7 @@ export function missingEvidenceLabelFromPriorityTaskMeta(meta) {
  *   is_condition_standard: boolean,
  *   server_take_action_primary: boolean,
  *   cta: ReturnType<typeof resolveRequirementActionWithRowContext>,
+ *   lifecycle: ReturnType<typeof resolveClientRequirementLifecycle>,
  *   missing_evidence_label: string,
  *   evidenceStatusForStatus: (status: string) => ReturnType<typeof getEvidenceStatus>,
  * }}
@@ -69,13 +72,17 @@ export function projectResolvedRequirementSemantics(requirement, options = {}) {
   const workflow_class_normalized = normalizeWorkflowClass(wfRaw);
   const workflow_class_present = String(wfRaw ?? '').trim() !== '';
 
+  const rawCta = resolveRequirementActionWithRowContext(row, pagePropertyId);
+  const cta = applyLifecycleAwareCtaPresentation(row, rawCta);
+
   return {
     workflow_class_normalized,
     workflow_class_present,
     is_multi_evidence_style: isMultiEvidenceStyleWorkflow(wfRaw),
     is_condition_standard: isConditionStandardWorkflowHint(wfRaw, row),
     server_take_action_primary: requirementUsesServerTakeActionPrimary(row),
-    cta: resolveRequirementActionWithRowContext(row, pagePropertyId),
+    cta,
+    lifecycle: resolveClientRequirementLifecycle(row),
     missing_evidence_label: workflowAwareMissingEvidenceLabel(row),
     evidenceStatusForStatus: (status) => getEvidenceStatus(status, row),
   };

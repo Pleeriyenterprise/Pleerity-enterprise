@@ -32,6 +32,10 @@ import {
   projectResolvedRequirementSemantics,
 } from '../../utils/resolvedRequirementViewModel';
 import {
+  getLifecycleTierBadge,
+  getRequirementLifecycleCardShellClass,
+} from '../../utils/requirementLifecyclePresentation';
+import {
   PortalLoadingPanel,
   portalPrimaryButtonClass,
   portalSecondaryButtonClass,
@@ -456,6 +460,7 @@ export default function PropertyOperatingHub({
               const sem = projectResolvedRequirementSemantics(r, { pagePropertyId: propertyId });
               const statusUi = sem.evidenceStatusForStatus(r.status);
               const Icon = statusUi.icon;
+              const tierBadge = getLifecycleTierBadge(r);
               const linked = !!r.evidence_doc_id;
               const due = rowExpiry(r);
               const est = r.date_source === 'SYSTEM_ESTIMATED';
@@ -482,7 +487,11 @@ export default function PropertyOperatingHub({
                 }
               };
               return (
-                <li key={rowReqId(r) || r.requirement_code} className="rounded-xl border border-gray-200 bg-white p-4 min-w-0 shadow-sm">
+                <li
+                  key={rowReqId(r) || r.requirement_code}
+                  className={cn(getRequirementLifecycleCardShellClass(r), 'p-4 min-w-0')}
+                  data-testid={tierBadge ? `hub-req-tier-${rid || 'unknown'}` : undefined}
+                >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-medium text-midnight-blue leading-snug">{rowTitle(r)}</p>
@@ -491,6 +500,11 @@ export default function PropertyOperatingHub({
                           <Icon className="w-3.5 h-3.5 shrink-0" />
                           {statusUi.text}
                         </span>
+                        {tierBadge ? (
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${tierBadge.className}`}>
+                            {tierBadge.text}
+                          </span>
+                        ) : null}
                         <span className="text-xs text-gray-500">Document: {linked ? 'Linked' : 'None'}</span>
                       </div>
                       {statusUi.subline ? (

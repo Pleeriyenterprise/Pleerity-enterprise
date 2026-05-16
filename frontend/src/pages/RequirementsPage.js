@@ -45,6 +45,11 @@ import {
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
 import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
 import {
+  getLifecycleTierBadge,
+  getRequirementLifecycleIconTone,
+  getRequirementLifecycleRowSurfaceClass,
+} from '../utils/requirementLifecyclePresentation';
+import {
   executeRequirementPrimaryCta,
   GUIDED_CTA_UNAVAILABLE_TITLE,
 } from '../utils/requirementCtaParity';
@@ -149,7 +154,8 @@ const RequirementsPage = () => {
   const getStatusConfig = (req, semOpt) => {
     const sem = semOpt || projectResolvedRequirementSemantics(req, { pagePropertyId: null });
     const config = sem.evidenceStatusForStatus(req.status);
-    const color = config.className.includes('green') ? 'green' : config.className.includes('amber') ? 'amber' : config.className.includes('red') ? 'red' : config.className.includes('blue') ? 'blue' : 'gray';
+    const cn = String(config.className || '');
+    const color = cn.includes('red') ? 'red' : cn.includes('amber') ? 'amber' : cn.includes('emerald') ? 'emerald' : cn.includes('green') ? 'green' : cn.includes('blue') ? 'blue' : 'gray';
     return { ...config, color };
   };
 
@@ -373,9 +379,19 @@ const RequirementsPage = () => {
       String(req.engine_client_visibility || req.client_visibility || '').toLowerCase() === 'informational';
 
     const publishedWhy = String(req.why_it_matters_short || '').trim();
+    const lcState = sem.lifecycle.state;
     const requirementPreActionFallback = () => {
       if (informational) {
         return 'This is a tenancy or legal obligation to keep on record; it does not create an urgent task in Today.';
+      }
+      if (lcState === 'PENDING_REVIEW') {
+        return 'Your submission is in the review queue. We will tell you if anything else is required.';
+      }
+      if (lcState === 'SATISFIED_UNVERIFIED' || lcState === 'VERIFIED') {
+        return 'Evidence is on file for this requirement. Keep renewal dates updated to stay in control.';
+      }
+      if (lcState === 'NOT_APPLICABLE') {
+        return 'This item is not applicable for this property under current settings.';
       }
       const st = String(req.status || '').toUpperCase();
       if (st === 'OVERDUE') return 'This requirement is overdue and affects compliance status for this property.';
@@ -395,31 +411,33 @@ const RequirementsPage = () => {
       if (s === 'baseline') return 'Core rules';
       return null;
     })();
-    const lc = resolveClientRequirementLifecycle(req).state;
-    const lifecycleBorder =
-      lc === 'ACTION_REQUIRED'
-        ? 'border-l-4 border-l-red-500'
-        : lc === 'PENDING_REVIEW'
-          ? 'border-l-4 border-l-amber-500'
-          : lc === 'SATISFIED_UNVERIFIED'
-            ? 'border-l-4 border-l-emerald-500'
-            : lc === 'VERIFIED'
-              ? 'border-l-4 border-l-green-600'
-              : lc === 'NOT_APPLICABLE'
-                ? 'border-l-4 border-l-gray-300'
-                : '';
+    const tierBadge = getLifecycleTierBadge(req);
+    const iconTone = getRequirementLifecycleIconTone(req);
+    const iconWell =
+      iconTone === 'red'
+        ? { bg: 'bg-red-100', ic: 'text-red-600' }
+        : iconTone === 'amber'
+          ? { bg: 'bg-amber-100', ic: 'text-amber-700' }
+          : iconTone === 'emerald'
+            ? { bg: 'bg-emerald-100', ic: 'text-emerald-700' }
+            : iconTone === 'green'
+              ? { bg: 'bg-green-100', ic: 'text-green-700' }
+              : iconTone === 'slate'
+                ? { bg: 'bg-slate-100', ic: 'text-slate-600' }
+                : { bg: 'bg-gray-100', ic: 'text-gray-600' };
+    const rowSurface = getRequirementLifecycleRowSurfaceClass(req);
     return (
       <div
         key={req.requirement_id}
-        className={`p-4 hover:bg-gray-50 transition-colors ${lifecycleBorder} ${
+        className={`p-4 hover:bg-gray-50/80 transition-colors ${rowSurface} ${
           flashRequirementId === req.requirement_id ? 'ring-2 ring-electric-teal/70 bg-teal-50/40 rounded-lg' : ''
         }`}
         data-testid={`requirement-row-${req.requirement_id}`}
       >
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div className="flex items-start gap-4 flex-1 min-w-0">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${statusConfig.color === 'green' ? 'bg-green-100' : statusConfig.color === 'amber' ? 'bg-amber-100' : statusConfig.color === 'red' ? 'bg-red-100' : statusConfig.color === 'blue' ? 'bg-blue-100' : 'bg-gray-100'}`}>
-              <StatusIcon className={`w-5 h-5 ${statusConfig.color === 'green' ? 'text-green-600' : statusConfig.color === 'amber' ? 'text-amber-600' : statusConfig.color === 'red' ? 'text-red-600' : statusConfig.color === 'blue' ? 'text-blue-600' : 'text-gray-600'}`} />
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${iconWell.bg}`}>
+              <StatusIcon className={`w-5 h-5 ${iconWell.ic}`} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -431,6 +449,14 @@ const RequirementsPage = () => {
                     'Requirement'}
                 </h3>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusConfig.className}`}>{statusConfig.text}</span>
+                {tierBadge ? (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${tierBadge.className}`}
+                    data-testid={`lifecycle-tier-${req.requirement_id}`}
+                  >
+                    {tierBadge.text}
+                  </span>
+                ) : null}
                 {req.evidence_completeness?.summary_label && req.evidence_completeness.summary_label !== 'Complete' ? (
                   <span
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-900 border border-amber-200"

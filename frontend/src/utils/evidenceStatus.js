@@ -66,32 +66,37 @@ function lifecycleDerivedChip(resolved, row) {
       return {
         icon: Clock,
         text,
-        className: 'bg-amber-100 text-amber-800 border-amber-200',
+        className: 'bg-amber-100 text-amber-900 border-amber-300 font-medium',
         subline: 'Renew or confirm before expiry.',
       };
     }
-    return { icon: CheckCircle, text, className: 'bg-green-100 text-green-700 border-green-200' };
+    return {
+      icon: CheckCircle,
+      text,
+      className: 'bg-green-100 text-green-900 border-green-300 font-medium',
+      subline: null,
+    };
   }
   if (resolved.state === 'SATISFIED_UNVERIFIED') {
     return {
       icon: CheckCircle,
       text,
-      className: 'bg-emerald-50 text-emerald-900 border-emerald-200',
-      subline: 'On file — verification may still be pending.',
+      className: 'bg-emerald-100 text-emerald-950 border-emerald-300 font-medium',
+      subline: null,
     };
   }
   if (resolved.state === 'PENDING_REVIEW') {
     return {
       icon: HelpCircle,
       text,
-      className: 'bg-amber-100 text-amber-900 border-amber-200',
-      subline: 'Internal review — no further upload required unless we request it.',
+      className: 'bg-amber-100 text-amber-950 border-amber-400 font-medium',
+      subline: null,
     };
   }
   return {
     icon: AlertTriangle,
     text,
-    className: 'bg-red-100 text-red-800 border-red-200',
+    className: 'bg-red-100 text-red-950 border-red-300 font-medium',
     subline: workflowAwareMissingEvidenceLabel(r),
   };
 }
@@ -138,10 +143,13 @@ export function workflowAwareMissingEvidenceLabel(row) {
  * @param {object} [row] requirement row with optional evidence_doc_id
  */
 export function getEvidenceStatus(status, row) {
-  if (row && typeof row === 'object' && row.client_lifecycle_state) {
-    const resolved = resolveClientRequirementLifecycle(row);
-    const out = lifecycleDerivedChip(resolved, row);
-    return mergeGovernanceUxPilotChip(out, row);
+  if (row && typeof row === 'object') {
+    const rawLc = String(row.client_lifecycle_state || '').trim().toUpperCase();
+    if (rawLc) {
+      const resolved = resolveClientRequirementLifecycle(row);
+      const out = lifecycleDerivedChip(resolved, row);
+      return mergeGovernanceUxPilotChip(out, row);
+    }
   }
   const key = (status || '').toUpperCase().trim();
   const linked = !!(row && row.evidence_doc_id);

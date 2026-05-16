@@ -80,6 +80,11 @@ import {
   requirementMapFromList,
 } from '../utils/portalRequirementAttention';
 import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
+import {
+  getLifecycleTierBadge,
+  getRequirementLifecycleCardShellClass,
+  getRequirementLifecycleRowSurfaceClass,
+} from '../utils/requirementLifecyclePresentation';
 import { resolveRiskSignalPrimaryKey } from '../utils/primaryActionResolver';
 import {
   canonicalComplianceInlineNarrative,
@@ -1967,12 +1972,13 @@ export default function PropertyDetailPage() {
                       const statusUi = getStatus(r);
                       const stdStatus = complianceObligationStatusLabel(r);
                       const taRow = projectResolvedRequirementSemantics(r, { pagePropertyId: propertyId }).cta;
+                      const tierBadge = getLifecycleTierBadge(r);
                       const explainOpen = urgentExplainOpenId === rid;
                       const explainPayload = canonicalComplianceInlineNarrative(r);
                       const showNonUploadSecondary =
                         taRow.secondary_action?.route && !isRedundantUploadStyleSecondaryAction(taRow);
                       return (
-                        <div key={rid} className="rounded border border-amber-200 bg-white overflow-hidden">
+                        <div key={rid} className={cn(getRequirementLifecycleCardShellClass(r), 'overflow-hidden')}>
                           <div className="flex flex-col gap-3 p-3">
                             <div className="min-w-0">
                               <p className="font-medium text-midnight-blue">{rowCompactTitle(r)}</p>
@@ -1981,6 +1987,16 @@ export default function PropertyDetailPage() {
                                 <span className="text-gray-400"> · </span>
                                 Risk: {complianceImpactLabel(r).label}
                               </p>
+                              {tierBadge ? (
+                                <span
+                                  className={cn(
+                                    'inline-flex mt-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border',
+                                    tierBadge.className,
+                                  )}
+                                >
+                                  {tierBadge.text}
+                                </span>
+                              ) : null}
                               {statusUi.subline ? <p className="text-xs text-gray-500 mt-1">{statusUi.subline}</p> : null}
                             </div>
                             <div className="flex w-full flex-col gap-2 sm:max-w-md">
@@ -2118,10 +2134,14 @@ export default function PropertyDetailPage() {
                         const explainPayload = canonicalComplianceInlineNarrative(r);
                         const showComplianceMatrixSecondary =
                           taRow.secondary_action?.route && !isRedundantUploadStyleSecondaryAction(taRow);
+                        const tierBadge = getLifecycleTierBadge(r);
                         return (
                           <React.Fragment key={rowReqId(r) || r.requirement_code || idx}>
                             <tr
-                              className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                              className={cn(
+                                'border-b border-gray-100 hover:bg-gray-50/90 cursor-pointer',
+                                getRequirementLifecycleRowSurfaceClass(r),
+                              )}
                               data-compliance-req-id={complianceDomId}
                               onClick={() => setComplianceExpandedReqId(complianceExpandedReqId === (rowReqId(r) || r.requirement_code) ? null : (rowReqId(r) || r.requirement_code))}
                               data-req-code={r.requirement_code || r.requirement_type || ''}
@@ -2136,6 +2156,16 @@ export default function PropertyDetailPage() {
                                     <Icon className="w-3.5 h-3.5" />
                                     {stdStatus}
                                   </span>
+                                  {tierBadge ? (
+                                    <span
+                                      className={cn(
+                                        'inline-flex items-center ml-2 px-2 py-0.5 rounded-full text-xs font-semibold border align-middle',
+                                        tierBadge.className,
+                                      )}
+                                    >
+                                      {tierBadge.text}
+                                    </span>
+                                  ) : null}
                                   {status.subline ? (
                                     <p className="text-xs text-gray-500 mt-1 max-w-xs">{status.subline}</p>
                                   ) : null}
@@ -2309,11 +2339,17 @@ export default function PropertyDetailPage() {
                   const complianceDomId = rowReqId(r) || `rc:${propertyId}:${normalizeRequirementCode(r.requirement_code || r.requirement_type || `m${idx}`)}`;
                   const showComplianceMobileSecondary =
                     taRow.secondary_action?.route && !isRedundantUploadStyleSecondaryAction(taRow);
+                  const tierBadge = getLifecycleTierBadge(r);
                   return (
-                    <Card key={rowReqId(r) || idx} className="border border-gray-200 p-3" data-compliance-req-id={complianceDomId}>
+                    <Card key={rowReqId(r) || idx} className={cn(getRequirementLifecycleCardShellClass(r), 'p-3')} data-compliance-req-id={complianceDomId}>
                       <div className="font-medium text-midnight-blue">{rowTitle(r)}</div>
                       <div className="flex flex-wrap gap-2 mt-2">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs ${status.className}`}><Icon className="w-3 h-3" />{stdStatus}</span>
+                        {tierBadge ? (
+                          <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border', tierBadge.className)}>
+                            {tierBadge.text}
+                          </span>
+                        ) : null}
                         <span className={`inline-flex px-2 py-0.5 rounded border text-xs ${impact.className}`}>Risk: {impact.label}</span>
                       </div>
                       {status.subline ? <p className="text-xs text-gray-500 mt-1">{status.subline}</p> : null}
