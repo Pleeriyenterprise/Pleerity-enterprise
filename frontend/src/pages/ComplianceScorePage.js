@@ -37,6 +37,7 @@ import {
   GUIDED_CTA_UNAVAILABLE_TITLE,
 } from '../utils/requirementCtaParity';
 import { projectResolvedRequirementSemantics } from '../utils/resolvedRequirementViewModel';
+import { useComplianceOutcomeRefresh } from '../utils/useComplianceOutcomeRefresh';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 import { requirementDisplayTitle } from '../domain/presentDomain';
@@ -85,7 +86,7 @@ function scoreDriverEvidenceLabel(driver, requirements) {
  * {@link requirementUsesServerTakeActionPrimary} may render actionable labels/routes.
  * Heuristic driver `actions` (UPLOAD/VIEW/CONFIRM) are not used for navigation.
  */
-function ScoreDriverRemediationActions({ driver, requirements, navigate, openGuidedEvidence }) {
+function ScoreDriverRemediationActions({ driver, requirements, navigate, openGuidedEvidence, onRequirementActionComplete }) {
   const req = findRequirementRowForScoreDriver(requirements, driver);
   const hasTakeAction = !!(req && typeof req.take_action === 'object');
   const sem =
@@ -137,6 +138,7 @@ function ScoreDriverRemediationActions({ driver, requirements, navigate, openGui
         navigate(resolveClientPortalPath(raw, '/properties'));
       },
       openGuidedEvidence,
+      onSubmitted: onRequirementActionComplete,
       guidedInitialOverride: ta.guided_initial_evidence_mode || undefined,
     });
   };
@@ -327,6 +329,8 @@ const ComplianceScorePage = () => {
       setLoading(false);
     }
   };
+
+  useComplianceOutcomeRefresh(fetchData, []);
 
   const portfolioRecalcPendingLine = useMemo(
     () => resolvePortfolioScoreRecalcPendingNote(scoreData),
@@ -858,6 +862,7 @@ const ComplianceScorePage = () => {
                                 requirements={requirements}
                                 navigate={navigate}
                                 openGuidedEvidence={openGuidedEvidence}
+                                onRequirementActionComplete={fetchData}
                               />
                             </td>
                           </tr>
@@ -891,6 +896,7 @@ const ComplianceScorePage = () => {
                           requirements={requirements}
                           navigate={navigate}
                           openGuidedEvidence={openGuidedEvidence}
+                          onRequirementActionComplete={fetchData}
                         />
                       </div>
                     </div>

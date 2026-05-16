@@ -32,16 +32,7 @@ from services.compliance_evidence_record_service import (
     validate_tenancy_agreement_structured_declaration_fields,
 )
 from services.requirement_code_registry import normalize_requirement_code
-from services.compliance_recalc_queue import (
-    ACTOR_CLIENT,
-    TRIGGER_DOC_STATUS_CHANGED,
-    enqueue_compliance_recalc,
-)
-from services.requirement_evidence_authority import sync_requirement_evidence_authority
-from services.requirement_transition_observability import (
-    attach_downstream_trigger_observation,
-    ensure_requirement_transition_correlation_id,
-)
+from services.requirement_action_orchestration import propagate_requirement_evidence_outcome
 from utils.audit import create_audit_log
 from utils.request_ip import get_client_ip
 
@@ -384,49 +375,18 @@ async def post_compliance_evidence(
             ) from e
         raise HTTPException(status_code=400, detail=msg) from e
 
-    transition_fanout: Dict[str, Any] = {}
     eid = str((rec or {}).get("evidence_record_id") or "").strip() or "new"
-    recalc_correlation_id = f"GUIDED_EVIDENCE_AUTHORITY:{property_id}:{requirement_id}:{eid}"
-    sync_correlation_id = ensure_requirement_transition_correlation_id(
-        requirement_id=str(requirement_id),
-        property_id=str(property_id),
-        client_id=str(client_id),
-        correlation_id=recalc_correlation_id,
-    )
-    await sync_requirement_evidence_authority(
+    correlation_base = f"GUIDED_EVIDENCE_AUTHORITY:{property_id}:{requirement_id}:{eid}"
+    outcome = await propagate_requirement_evidence_outcome(
         db,
-        requirement_id,
-        property_id_hint=property_id,
-        correlation_id=sync_correlation_id,
+        requirement_id=requirement_id,
+        property_id=property_id,
+        client_id=str(client_id),
+        actor_user_id=str(uid),
+        correlation_base=correlation_base,
         transition_origin="client_compliance_evidence.post_compliance_evidence",
-        transition_observability_out=transition_fanout,
     )
-    recalc_result = None
-    recalc_exc: Optional[Exception] = None
-    try:
-        recalc_result = await enqueue_compliance_recalc(
-            property_id=property_id,
-            client_id=str(client_id),
-            trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
-            actor_type=ACTOR_CLIENT,
-            actor_id=str(uid),
-            correlation_id=recalc_correlation_id,
-        )
-    except Exception as exc:
-        recalc_exc = exc
-        logger.warning("enqueue_compliance_recalc after guided evidence failed: %s", exc)
-    if transition_fanout:
-        attach_downstream_trigger_observation(
-            transition_fanout,
-            downstream_target="compliance_recalc_queue.enqueue_compliance_recalc",
-            trigger_mode="async_queue",
-            propagation_stage="post_authority_sync",
-            downstream_correlation_id=getattr(recalc_result, "correlation_id", None) if recalc_result is not None else recalc_correlation_id,
-            trigger_origin="client_compliance_evidence.post_compliance_evidence",
-            enqueue_result=recalc_result,
-            enqueue_exc=recalc_exc,
-        )
-    return {"ok": True, "evidence_record": rec}
+    return {**outcome, "evidence_record": rec}
 
 
 @router.post("/properties/{property_id}/requirements/{requirement_id}/compliance-evidence/{evidence_record_id}/verification")
@@ -468,48 +428,17 @@ async def post_evidence_verification(
         raise HTTPException(status_code=400, detail=str(e)) from e
     if not updated:
         raise HTTPException(status_code=404, detail="Evidence record not found")
-    transition_fanout: Dict[str, Any] = {}
-    recalc_correlation_id = f"GUIDED_EVIDENCE_VERIFY:{property_id}:{requirement_id}:{evidence_record_id}"
-    sync_correlation_id = ensure_requirement_transition_correlation_id(
-        requirement_id=str(requirement_id),
-        property_id=str(property_id),
-        client_id=str(client_id),
-        correlation_id=recalc_correlation_id,
-    )
-    await sync_requirement_evidence_authority(
+    correlation_base = f"GUIDED_EVIDENCE_VERIFY:{property_id}:{requirement_id}:{evidence_record_id}"
+    outcome = await propagate_requirement_evidence_outcome(
         db,
-        requirement_id,
-        property_id_hint=property_id,
-        correlation_id=sync_correlation_id,
+        requirement_id=requirement_id,
+        property_id=property_id,
+        client_id=str(client_id),
+        actor_user_id=str(uid),
+        correlation_base=correlation_base,
         transition_origin="client_compliance_evidence.post_evidence_verification",
-        transition_observability_out=transition_fanout,
     )
-    recalc_result = None
-    recalc_exc: Optional[Exception] = None
-    try:
-        recalc_result = await enqueue_compliance_recalc(
-            property_id=property_id,
-            client_id=str(client_id),
-            trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
-            actor_type=ACTOR_CLIENT,
-            actor_id=str(uid),
-            correlation_id=recalc_correlation_id,
-        )
-    except Exception as exc:
-        recalc_exc = exc
-        logger.warning("enqueue_compliance_recalc after evidence verification failed: %s", exc)
-    if transition_fanout:
-        attach_downstream_trigger_observation(
-            transition_fanout,
-            downstream_target="compliance_recalc_queue.enqueue_compliance_recalc",
-            trigger_mode="async_queue",
-            propagation_stage="post_authority_sync",
-            downstream_correlation_id=getattr(recalc_result, "correlation_id", None) if recalc_result is not None else recalc_correlation_id,
-            trigger_origin="client_compliance_evidence.post_evidence_verification",
-            enqueue_result=recalc_result,
-            enqueue_exc=recalc_exc,
-        )
-    return {"ok": True, "evidence_record": updated}
+    return {**outcome, "evidence_record": updated}
 
 
 @router.get("/properties/{property_id}/requirements/{requirement_id}/compliance-evidence")

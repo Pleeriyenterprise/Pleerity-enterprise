@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Label } from './ui/label';
 import { toast } from '../utils/portalNotifications';
+import { dispatchComplianceOutcome, toastComplianceActionOutcome } from '../utils/complianceActionOutcome';
 import { validateDepositStructuredDeclarationFields } from '../utils/depositStructuredDeclarationValidation';
 import { normalizeRequirementCode } from '../domain/presentDomain';
 import { validateLeadTestingStructuredDeclarationFields } from '../utils/leadTestingStructuredValidation';
@@ -205,7 +206,12 @@ export default function ComplianceEvidenceResolveModal({
       setSupportingUploads((prev) => [...prev, ...uploaded]);
       setSupportingFiles([]);
       if (uploaded.length > 0) {
-        toast.success(`Uploaded ${uploaded.length} supporting file${uploaded.length === 1 ? '' : 's'}.`);
+        const pending = uploaded.some((u) => u.requirement_workflow_pending);
+        toast.success(
+          pending
+            ? `Uploaded ${uploaded.length} supporting file${uploaded.length === 1 ? '' : 's'}. Complete the form below to record this requirement.`
+            : `Uploaded ${uploaded.length} supporting file${uploaded.length === 1 ? '' : 's'}.`,
+        );
       }
     } catch (e) {
       toast.error(e?.response?.data?.detail || 'Could not upload supporting files');
@@ -299,13 +305,16 @@ export default function ComplianceEvidenceResolveModal({
     body.supporting_attachment_document_ids = supportingUploads.map((x) => x.document_id);
     setSaving(true);
     try {
-      await clientAPI.postComplianceEvidence(propertyId, rid, body);
-      toast.success('Evidence submitted for review.');
-      if (typeof window !== 'undefined' && propertyId) {
-        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: propertyId } }));
+      const res = await clientAPI.postComplianceEvidence(propertyId, rid, body);
+      const data = res?.data || {};
+      const complete = toastComplianceActionOutcome(data, {
+        defaultSuccess: 'Requirement recorded and compliance status is updating.',
+      });
+      if (complete) {
+        dispatchComplianceOutcome(propertyId, { requirement_id: rid });
+        onOpenChange(false);
+        onSubmitted?.();
       }
-      onOpenChange(false);
-      onSubmitted?.();
     } catch (e) {
       const d = e?.response?.data?.detail;
       const msg =

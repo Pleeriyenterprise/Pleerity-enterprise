@@ -56,6 +56,7 @@ import {
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
 import { NotApplicableGovernedNotice } from '../utils/notApplicableGovernedCopy';
+import { useComplianceOutcomeRefresh } from '../utils/useComplianceOutcomeRefresh';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -145,6 +146,8 @@ const RequirementsPage = () => {
       setLoading(false);
     }
   };
+
+  useComplianceOutcomeRefresh(fetchData, []);
 
   const getPropertyById = (propertyId) => {
     return properties.find(p => p.property_id === propertyId) || {};
@@ -529,6 +532,7 @@ const RequirementsPage = () => {
                   pagePropertyId: null,
                   navigate,
                   openGuidedEvidence,
+                  onSubmitted: fetchData,
                 });
                 if (!handled && !ta.primary_route) {
                   openViewRequirementModal(req);
@@ -987,6 +991,7 @@ const RequirementsPage = () => {
           open={!!viewRequirementModal}
           requirementId={viewRequirementModal?.requirement?.requirement_id || null}
           seedRequirement={viewRequirementModal?.requirement || null}
+          onEvidenceSubmitted={fetchData}
           propertyLabel={
             viewRequirementModal?.requirement?.property_id
               ? getPropertyById(viewRequirementModal.requirement.property_id).nickname

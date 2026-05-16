@@ -68,6 +68,7 @@ export default function RequirementIntelligenceModal({
   propertyLabel = null,
   onClose,
   onNavigate,
+  onEvidenceSubmitted,
   showEditDatesAndApplicability = false,
   onEditDates,
   onMarkNotApplicable,
@@ -171,6 +172,7 @@ export default function RequirementIntelligenceModal({
         propertyId: pid,
         requirement: merged || { requirement_id: rid },
         initialEvidenceMode: resolved.guided_initial_evidence_mode || undefined,
+        onSubmitted: onEvidenceSubmitted,
       });
       return;
     }

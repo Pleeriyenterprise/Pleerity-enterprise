@@ -61,13 +61,7 @@ export function executeRequirementPrimaryCta(ctx) {
   }
   if (ta.primary_action_handler === 'guided_evidence') {
     const mode = guidedInitialOverride || ta.guided_initial_evidence_mode || undefined;
-    if (
-      openGuidedEvidence &&
-      effectivePid &&
-      rid &&
-      pagePropertyId &&
-      String(pagePropertyId) === String(effectivePid)
-    ) {
+    if (openGuidedEvidence && effectivePid && rid) {
       openGuidedEvidence({
         propertyId: effectivePid,
         requirement,
@@ -79,15 +73,6 @@ export function executeRequirementPrimaryCta(ctx) {
     const link = buildPropertyComplianceResolveQueryLink(effectivePid, String(rid), { initialEvidenceMode: mode });
     if (link && navigate) {
       navigate(link);
-      return { handled: true, ta };
-    }
-    if (openGuidedEvidence && effectivePid && rid) {
-      openGuidedEvidence({
-        propertyId: effectivePid,
-        requirement,
-        onSubmitted,
-        initialEvidenceMode: mode,
-      });
       return { handled: true, ta };
     }
     return { handled: false, ta };

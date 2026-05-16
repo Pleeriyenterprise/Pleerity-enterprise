@@ -1552,6 +1552,9 @@ async def perform_client_document_upload(
         validation_result=validation_result_persist,
     )
 
+    source_stored = (source.strip() if isinstance(source, str) and source.strip() else None) or "portal"
+    is_supporting_only_upload = source_stored == "supporting_evidence_attachment"
+
     doc = document.model_dump()
     doc["uploaded_at"] = doc["uploaded_at"].isoformat()
     doc.update(match_evaluation_to_persisted_document_fields(evidence_match_evaluation))
@@ -1571,9 +1574,11 @@ async def perform_client_document_upload(
         ) from ve
 
     apply_v2_defaults_to_new_upload(doc)
+    if is_supporting_only_upload:
+        doc["source"] = source_stored
     await db.documents.insert_one(doc)
     client_upload_fanout: Optional[Dict[str, Any]] = None
-    if requirement_id:
+    if requirement_id and not is_supporting_only_upload:
         await safe_upsert_document_upload_evidence_for_linked_document(
             db,
             client_id=user["client_id"],
@@ -1609,20 +1614,22 @@ async def perform_client_document_upload(
 
     from services.provisioning import provisioning_service
 
-    await provisioning_service._update_property_compliance(property_id)
+    if not is_supporting_only_upload:
+        await provisioning_service._update_property_compliance(property_id)
     from services.compliance_recalc_queue import TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
 
-    await _document_path_enqueue_recalc(
-        client_upload_fanout,
-        property_id=property_id,
-        client_id=user["client_id"],
-        trigger_reason=TRIGGER_DOC_UPLOADED,
-        actor_type=ACTOR_CLIENT,
-        actor_id=user.get("portal_user_id"),
-        correlation_id=f"DOC_UPLOADED:{document.document_id}",
-        trigger_origin="routes.documents.perform_client_document_upload",
-        propagation_stage="post_client_upload_authority_sync",
-    )
+    if not is_supporting_only_upload:
+        await _document_path_enqueue_recalc(
+            client_upload_fanout,
+            property_id=property_id,
+            client_id=user["client_id"],
+            trigger_reason=TRIGGER_DOC_UPLOADED,
+            actor_type=ACTOR_CLIENT,
+            actor_id=user.get("portal_user_id"),
+            correlation_id=f"DOC_UPLOADED:{document.document_id}",
+            trigger_origin="routes.documents.perform_client_document_upload",
+            propagation_stage="post_client_upload_authority_sync",
+        )
     try:
         from services.score_events_service import write_score_event, EVENT_DOCUMENT_UPLOADED, ACTOR_ROLE_CLIENT
 
@@ -1664,44 +1671,45 @@ async def perform_client_document_upload(
         pass
     logger.info("Document uploaded: %s", document.document_id)
     outcome = None
-    try:
-        from services.compliance_outcome_engine import (
-            apply_action_outcome,
-            EVENT_CERTIFICATE_UPLOADED,
-        )
+    if not is_supporting_only_upload:
+        try:
+            from services.compliance_outcome_engine import (
+                apply_action_outcome,
+                EVENT_CERTIFICATE_UPLOADED,
+            )
 
-        outcome = await apply_action_outcome(
-            {
-                "event_type": EVENT_CERTIFICATE_UPLOADED,
-                "client_id": user["client_id"],
-                "property_id": property_id,
-                "asset_id": None,
-                "requirement_type": (requirement or {}).get("requirement_type"),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "source_id": document.document_id,
-                "dedupe_key": f"{EVENT_CERTIFICATE_UPLOADED}:{document.document_id}",
-                "actor_id": user.get("portal_user_id"),
-                "actor_role": "CLIENT",
-                "metadata": {
-                    "document_id": document.document_id,
-                    "evidence_pending_user_confirmation": True,
-                },
-            }
-        )
-    except Exception as outcome_err:
-        logger.warning(
-            "Action outcome skip for document upload: %s",
-            outcome_err,
-            extra=compliance_fanout_extra(
-                op="outcome_apply",
-                stage="failed",
-                client_id=str(user.get("client_id") or ""),
-                property_id=str(property_id or "") or None,
-                requirement_id=str(requirement_id) if requirement_id else None,
-                correlation_id=f"certificate_uploaded:{document.document_id}",
-                exc_type=type(outcome_err).__name__,
-            ),
-        )
+            outcome = await apply_action_outcome(
+                {
+                    "event_type": EVENT_CERTIFICATE_UPLOADED,
+                    "client_id": user["client_id"],
+                    "property_id": property_id,
+                    "asset_id": None,
+                    "requirement_type": (requirement or {}).get("requirement_type"),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "source_id": document.document_id,
+                    "dedupe_key": f"{EVENT_CERTIFICATE_UPLOADED}:{document.document_id}",
+                    "actor_id": user.get("portal_user_id"),
+                    "actor_role": "CLIENT",
+                    "metadata": {
+                        "document_id": document.document_id,
+                        "evidence_pending_user_confirmation": True,
+                    },
+                }
+            )
+        except Exception as outcome_err:
+            logger.warning(
+                "Action outcome skip for document upload: %s",
+                outcome_err,
+                extra=compliance_fanout_extra(
+                    op="outcome_apply",
+                    stage="failed",
+                    client_id=str(user.get("client_id") or ""),
+                    property_id=str(property_id or "") or None,
+                    requirement_id=str(requirement_id) if requirement_id else None,
+                    correlation_id=f"certificate_uploaded:{document.document_id}",
+                    exc_type=type(outcome_err).__name__,
+                ),
+            )
 
     workflow_activation_observability: Optional[Dict[str, Any]] = None
     if requirement_id and client_upload_fanout is not None:
@@ -1715,9 +1723,14 @@ async def perform_client_document_upload(
             )
 
     out: Dict[str, Any] = {
-        "message": "Document uploaded successfully",
+        "message": (
+            "Supporting file uploaded. Complete the requirement record to update compliance status."
+            if is_supporting_only_upload
+            else "Document uploaded successfully"
+        ),
         "document_id": document.document_id,
         "outcome": outcome,
+        "requirement_workflow_pending": bool(is_supporting_only_upload and requirement_id),
     }
     out["evidence_match"] = {
         "match_outcome": evidence_match_evaluation.get("match_outcome"),

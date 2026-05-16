@@ -4275,6 +4275,11 @@ export default function PropertyDetailPage() {
                     );
                     setNotApplicableModal(null);
                     fetchData();
+                    if (typeof window !== 'undefined' && propertyId) {
+                      window.dispatchEvent(
+                        new CustomEvent('compliance-outcome', { detail: { property_id: propertyId } }),
+                      );
+                    }
                   } catch (err) {
                     toast.error(err.response?.data?.detail || 'Failed to update');
                   } finally {

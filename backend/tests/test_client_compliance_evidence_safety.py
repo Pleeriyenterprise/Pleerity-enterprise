@@ -748,8 +748,18 @@ async def test_post_right_to_rent_accepts_unlimited_follow_up_no_without_follow_
     )
     with patch.object(route.database, "get_db", return_value=db):
         with patch.object(route, "create_compliance_evidence_record", create_mock):
-            with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
-                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
+            with patch.object(
+                route,
+                "propagate_requirement_evidence_outcome",
+                AsyncMock(
+                    return_value={
+                        "ok": True,
+                        "workflow_complete": True,
+                        "authority_synced": True,
+                        "recalc_enqueued": True,
+                    }
+                ),
+            ):
                     out = await route.post_compliance_evidence(
                         property_id="p1",
                         requirement_id="r1",
@@ -940,8 +950,18 @@ async def test_post_deposit_accepts_no_deposit_and_not_served():
     )
     with patch.object(route.database, "get_db", return_value=db):
         with patch.object(route, "create_compliance_evidence_record", create_mock):
-            with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
-                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
+            with patch.object(
+                route,
+                "propagate_requirement_evidence_outcome",
+                AsyncMock(
+                    return_value={
+                        "ok": True,
+                        "workflow_complete": True,
+                        "authority_synced": True,
+                        "recalc_enqueued": True,
+                    }
+                ),
+            ):
                     out = await route.post_compliance_evidence(
                         property_id="p1",
                         requirement_id="r1",
@@ -1082,8 +1102,18 @@ async def test_post_occupation_contract_non_wales_context_unaffected():
     )
     with patch.object(route.database, "get_db", return_value=db):
         with patch.object(route, "create_compliance_evidence_record", create_mock):
-            with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
-                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
+            with patch.object(
+                route,
+                "propagate_requirement_evidence_outcome",
+                AsyncMock(
+                    return_value={
+                        "ok": True,
+                        "workflow_complete": True,
+                        "authority_synced": True,
+                        "recalc_enqueued": True,
+                    }
+                ),
+            ):
                     out = await route.post_compliance_evidence(
                         property_id="p1",
                         requirement_id="rwoc",
@@ -1293,8 +1323,18 @@ async def test_post_legionella_valid_structured_submission_passes():
     )
     with patch.object(route.database, "get_db", return_value=db):
         with patch.object(route, "create_compliance_evidence_record", create_mock):
-            with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
-                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
+            with patch.object(
+                route,
+                "propagate_requirement_evidence_outcome",
+                AsyncMock(
+                    return_value={
+                        "ok": True,
+                        "workflow_complete": True,
+                        "authority_synced": True,
+                        "recalc_enqueued": True,
+                    }
+                ),
+            ):
                     out = await route.post_compliance_evidence(
                         property_id="p1",
                         requirement_id="rleg",
@@ -1401,8 +1441,18 @@ async def test_post_smoke_heat_structured_declaration_unaffected_by_r2r_follow_u
     )
     with patch.object(route.database, "get_db", return_value=db):
         with patch.object(route, "create_compliance_evidence_record", create_mock):
-            with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
-                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
+            with patch.object(
+                route,
+                "propagate_requirement_evidence_outcome",
+                AsyncMock(
+                    return_value={
+                        "ok": True,
+                        "workflow_complete": True,
+                        "authority_synced": True,
+                        "recalc_enqueued": True,
+                    }
+                ),
+            ):
                     out = await route.post_compliance_evidence(
                         property_id="p1",
                         requirement_id="rsm",
@@ -1438,27 +1488,31 @@ async def test_authority_sync_runs_after_evidence_creation_and_legacy_payload_wo
         }
     )
     create_mock = AsyncMock(return_value={"evidence_record_id": "cer_1"})
-    sync_mock = AsyncMock()
-    enqueue_mock = AsyncMock(return_value=True)
+    propagate_mock = AsyncMock(
+        return_value={
+            "ok": True,
+            "workflow_complete": True,
+            "authority_synced": True,
+            "recalc_enqueued": True,
+        }
+    )
     with patch.object(route.database, "get_db", return_value=db):
         with patch.object(route, "create_compliance_evidence_record", create_mock):
-            with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
-                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
-                    out = await route.post_compliance_evidence(
-                        property_id="p1",
-                        requirement_id="r1",
-                        body=body,
-                        request=_req(),
-                        user={"client_id": "c1", "portal_user_id": "u1"},
-                    )
+            with patch.object(route, "propagate_requirement_evidence_outcome", propagate_mock):
+                out = await route.post_compliance_evidence(
+                    property_id="p1",
+                    requirement_id="r1",
+                    body=body,
+                    request=_req(),
+                    user={"client_id": "c1", "portal_user_id": "u1"},
+                )
     assert out["ok"] is True
     create_mock.assert_awaited()
-    sync_mock.assert_awaited_once()
-    enqueue_mock.assert_awaited_once()
-    ek = enqueue_mock.await_args.kwargs
-    assert ek["property_id"] == "p1"
-    assert ek["client_id"] == "c1"
-    assert ek["correlation_id"] == "GUIDED_EVIDENCE_AUTHORITY:p1:r1:cer_1"
+    propagate_mock.assert_awaited_once()
+    pk = propagate_mock.await_args.kwargs
+    assert pk["property_id"] == "p1"
+    assert pk["client_id"] == "c1"
+    assert pk["correlation_base"] == "GUIDED_EVIDENCE_AUTHORITY:p1:r1:cer_1"
 
 
 @pytest.mark.asyncio
@@ -1473,34 +1527,38 @@ async def test_evidence_verification_enqueues_recalc_after_authority_sync():
         }
     )
     apply_mock = AsyncMock(return_value={"evidence_record_id": "cer_v1", "status": "VERIFIED"})
-    sync_mock = AsyncMock()
-    enqueue_mock = AsyncMock(return_value=True)
+    propagate_mock = AsyncMock(
+        return_value={
+            "ok": True,
+            "workflow_complete": True,
+            "authority_synced": True,
+            "recalc_enqueued": True,
+        }
+    )
     body = route.VerifyEvidenceRequest(decision="VERIFY")
     with patch.object(route.database, "get_db", return_value=db):
         with patch.object(route, "apply_verification_decision", apply_mock):
-            with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
-                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
-                    out = await route.post_evidence_verification(
-                        property_id="p1",
-                        requirement_id="r1",
-                        evidence_record_id="cer_v1",
-                        body=body,
-                        request=_req(),
-                        user={
-                            "client_id": "c1",
-                            "portal_user_id": "u1",
-                            "role": "ROLE_CLIENT_ADMIN",
-                        },
-                    )
+            with patch.object(route, "propagate_requirement_evidence_outcome", propagate_mock):
+                out = await route.post_evidence_verification(
+                    property_id="p1",
+                    requirement_id="r1",
+                    evidence_record_id="cer_v1",
+                    body=body,
+                    request=_req(),
+                    user={
+                        "client_id": "c1",
+                        "portal_user_id": "u1",
+                        "role": "ROLE_CLIENT_ADMIN",
+                    },
+                )
     assert out["ok"] is True
-    sync_mock.assert_awaited_once()
-    enqueue_mock.assert_awaited_once()
-    assert enqueue_mock.await_args.kwargs["correlation_id"] == "GUIDED_EVIDENCE_VERIFY:p1:r1:cer_v1"
+    propagate_mock.assert_awaited_once()
+    assert propagate_mock.await_args.kwargs["correlation_base"] == "GUIDED_EVIDENCE_VERIFY:p1:r1:cer_v1"
 
 
 @pytest.mark.asyncio
 async def test_post_compliance_evidence_propagates_sync_failure_no_enqueue_no_ok():
-    """If sync_requirement_evidence_authority raises after create, request fails and recalc is not enqueued."""
+    """If authority propagation fails after create, response reports partial success (workflow incomplete)."""
     db = MagicMock()
     db.requirements.find_one = AsyncMock(
         return_value={
@@ -1523,31 +1581,34 @@ async def test_post_compliance_evidence_propagates_sync_failure_no_enqueue_no_ok
         }
     )
     create_mock = AsyncMock(return_value={"evidence_record_id": "cer_sync_fail"})
-    sync_mock = AsyncMock(side_effect=RuntimeError("authority_sync_failed"))
-    enqueue_mock = AsyncMock(return_value=True)
-    audit_mock = AsyncMock()
+    propagate_mock = AsyncMock(
+        return_value={
+            "ok": True,
+            "workflow_complete": False,
+            "authority_synced": False,
+            "recalc_enqueued": False,
+            "message": "Evidence saved, but requirement status could not be refreshed.",
+        }
+    )
     with patch.object(route.database, "get_db", return_value=db):
         with patch.object(route, "create_compliance_evidence_record", create_mock):
-            with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
-                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
-                    with patch.object(route, "create_audit_log", audit_mock):
-                        with pytest.raises(RuntimeError, match="authority_sync_failed"):
-                            await route.post_compliance_evidence(
-                                property_id="p1",
-                                requirement_id="r1",
-                                body=body,
-                                request=_req(),
-                                user={"client_id": "c1", "portal_user_id": "u1"},
-                            )
+            with patch.object(route, "propagate_requirement_evidence_outcome", propagate_mock):
+                out = await route.post_compliance_evidence(
+                    property_id="p1",
+                    requirement_id="r1",
+                    body=body,
+                    request=_req(),
+                    user={"client_id": "c1", "portal_user_id": "u1"},
+                )
     create_mock.assert_awaited_once()
-    sync_mock.assert_awaited_once()
-    enqueue_mock.assert_not_awaited()
-    audit_mock.assert_not_awaited()
+    propagate_mock.assert_awaited_once()
+    assert out["workflow_complete"] is False
+    assert out["authority_synced"] is False
 
 
 @pytest.mark.asyncio
 async def test_post_evidence_verification_propagates_sync_failure_no_enqueue_no_ok():
-    """If sync_requirement_evidence_authority raises after verify, request fails and recalc is not enqueued."""
+    """If authority propagation fails after verify, response reports partial success (workflow incomplete)."""
     db = MagicMock()
     db.compliance_evidence_records.find_one = AsyncMock(
         return_value={
@@ -1558,29 +1619,30 @@ async def test_post_evidence_verification_propagates_sync_failure_no_enqueue_no_
         }
     )
     apply_mock = AsyncMock(return_value={"evidence_record_id": "cer_v1", "status": "VERIFIED"})
-    sync_mock = AsyncMock(side_effect=RuntimeError("authority_sync_failed"))
-    enqueue_mock = AsyncMock(return_value=True)
-    audit_mock = AsyncMock()
+    propagate_mock = AsyncMock(
+        return_value={
+            "ok": True,
+            "workflow_complete": False,
+            "authority_synced": False,
+            "recalc_enqueued": False,
+        }
+    )
     body = route.VerifyEvidenceRequest(decision="VERIFY")
     with patch.object(route.database, "get_db", return_value=db):
         with patch.object(route, "apply_verification_decision", apply_mock):
-            with patch.object(route, "sync_requirement_evidence_authority", sync_mock):
-                with patch.object(route, "enqueue_compliance_recalc", enqueue_mock):
-                    with patch.object(route, "create_audit_log", audit_mock):
-                        with pytest.raises(RuntimeError, match="authority_sync_failed"):
-                            await route.post_evidence_verification(
-                                property_id="p1",
-                                requirement_id="r1",
-                                evidence_record_id="cer_v1",
-                                body=body,
-                                request=_req(),
-                                user={
-                                    "client_id": "c1",
-                                    "portal_user_id": "u1",
-                                    "role": "ROLE_CLIENT_ADMIN",
-                                },
-                            )
+            with patch.object(route, "propagate_requirement_evidence_outcome", propagate_mock):
+                out = await route.post_evidence_verification(
+                    property_id="p1",
+                    requirement_id="r1",
+                    evidence_record_id="cer_v1",
+                    body=body,
+                    request=_req(),
+                    user={
+                        "client_id": "c1",
+                        "portal_user_id": "u1",
+                        "role": "ROLE_CLIENT_ADMIN",
+                    },
+                )
     apply_mock.assert_awaited_once()
-    sync_mock.assert_awaited_once()
-    enqueue_mock.assert_not_awaited()
-    audit_mock.assert_not_awaited()
+    propagate_mock.assert_awaited_once()
+    assert out["workflow_complete"] is False
