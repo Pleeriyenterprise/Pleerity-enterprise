@@ -1,0 +1,35 @@
+{
+  "captured_at_utc": "2026-05-16T18:46:23.098522+00:00",
+  "phase": "C1_before_IN_PROGRESS",
+  "reclaim_config": {
+    "COMPLIANCE_RECALC_RUNNING_STALE_SECONDS": "1800",
+    "COMPLIANCE_RECALC_HEARTBEAT_SECONDS": "45",
+    "DB_NAME": "pleerity_staging"
+  },
+  "operational_snapshot_excerpt": {
+    "running_job_count": 0,
+    "pending_job_count": 0,
+    "dead_job_count": 0,
+    "duplicate_suppression_enqueue_total": 6,
+    "reconciliation_observability": {
+      "stale_pending_recalc_count": 0,
+      "stuck_running_count": 0,
+      "stale_running_reclaimed_last_24h": 0,
+      "orphaned_running_sample": [],
+      "regeneration_pending_backlog": 0,
+      "regeneration_stale_pending_estimate": 0,
+      "inconsistent_state_warnings": [],
+      "queue_age_visibility": {
+        "average_pending_age_seconds": null,
+        "pending_rows_sampled_for_age": 0
+      },
+      "non_blocking": true
+    }
+  },
+  "stuck_running_on_pilot": [],
+  "operator_detection_paths": [
+    "GET /health-summary \u2192 recalc_queue_health",
+    "build_recalc_queue_operational_snapshot",
+    "RUNBOOK \u00a712.7 C1 + SCHEDULER_AND_COMPLIANCE_JOBS.md"
+  ]
+}

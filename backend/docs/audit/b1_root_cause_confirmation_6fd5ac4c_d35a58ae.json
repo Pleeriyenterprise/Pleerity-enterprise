@@ -1,0 +1,32 @@
+{
+  "captured_at_utc": "2026-05-16T18:00:00.000000+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "primary_mechanism": "B1-RC-3-variant",
+  "primary_branch_label": "Materialise reopen blocked by any not_required_reason (including automated not_applicable preset)",
+  "secondary_contributors": ["B1-RC-2"],
+  "mechanism_counts": {
+    "automated_not_applicable_in_plan": 10,
+    "operator_curated_in_plan": 0,
+    "reconciled_obsolete": 1
+  },
+  "wrongly_not_required_in_plan_count": 10,
+  "code_mechanism": {
+    "file": "services/requirement_materialization_service.py",
+    "prior_logic": "skip update when applicability=NOT_REQUIRED AND not_required_reason is truthy",
+    "effect": "reopen path (UNKNOWN/PENDING) never runs for bulk not_applicable presets while type remains in planner"
+  },
+  "fix_boundary": {
+    "preserve_operator_curated": "is_operator_curated_not_required (override, audit reason >=10 chars, OPERATOR_OVERRIDE source)",
+    "reopen_automated_in_plan": "materialize_requirements_for_property upsert path",
+    "automated_provenance": "registry_metadata.automated_not_required on reconcile_obsolete",
+    "no_runtime_filter_weakening": true,
+    "no_blanket_reopen": true
+  },
+  "audit_event_type_counts": {
+    "MATERIALIZATION_RECONCILE_OBSOLETE_APPLICABILITY": 1
+  },
+  "b1_subdivision_required": false,
+  "b1_subdivision_rationale": "Single conflated skip predicate; fix is one governance helper + materialise path adjustment",
+  "conclusion": "Primary root cause confirmed: automated not_applicable presets treated as immutable operator decisions. B1 remains a single safe unit."
+}

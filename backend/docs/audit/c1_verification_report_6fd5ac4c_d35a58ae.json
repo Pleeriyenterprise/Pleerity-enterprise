@@ -1,0 +1,26 @@
+{
+  "captured_at_utc": "2026-05-16T18:53:01.264805+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "queue_before_total": 115,
+  "queue_after_total": 117,
+  "c1_pass": true,
+  "checks": {
+    "r1_enqueue_and_complete": true,
+    "stable_replay_suppressed_r2_r3": true,
+    "duplicate_reason_r2": "duplicate_pending",
+    "duplicate_reason_r3": "duplicate_pending",
+    "recalc_fingerprint_stable_r2_r3": true,
+    "recalc_last_calculated_stable_r2_r3": true,
+    "score_history_delta_r3": 0,
+    "legitimate_m2_enqueued": true,
+    "stuck_running_zero": true,
+    "no_unexpected_fanout_boundary": true
+  },
+  "artifacts": {
+    "replay": "docs\\audit\\c1_replay_6fd5ac4c_d35a58ae.json",
+    "queue_after": "docs/audit/c1_queue_after_6fd5ac4c_d35a58ae.json",
+    "recalc_stability": "docs/audit/c1_recalc_stability_6fd5ac4c_d35a58ae.json",
+    "reclaim_observability": "docs/audit/c1_reclaim_observability_6fd5ac4c_d35a58ae.json"
+  }
+}

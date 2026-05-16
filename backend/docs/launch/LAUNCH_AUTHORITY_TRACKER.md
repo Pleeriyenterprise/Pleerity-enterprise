@@ -6,7 +6,9 @@
 
 **Allowed status values only:** `READY` | `PARTIAL` | `BLOCKED` | `DEFERRED_FOR_POST_LAUNCH` | `ACCEPTED_LAUNCH_RISK`
 
-**Last tracker update:** 2026-05-13 (RUNBOOK §12–§13 pre-pilot rehearsal checklist + instrumentation observation; mental-model copy module `workspaceOrientationCopy.js` on client KPI surfaces)
+**Last tracker update:** 2026-05-16 (C1 **DONE** — administrative closure; C2 DoD drafting only)
+
+**TIER_0 routing:** [GOVERNANCE_INDEX.md](../GOVERNANCE_INDEX.md) — canonical navigation spine; this tracker remains launch gate status only (no duplicate recovery authority).
 
 ---
 
@@ -689,4 +691,991 @@ Operators trace sends via **`message_logs`** + orchestrator metadata; mis-tenant
 
 ---
 
-*Maintainers: after each stabilization pass, update the audit register rows, readiness scores, gate checklist, and explicit recommendation; apply the **Finishable unit contract** so PARTIAL rows decompose into READY units where possible. Do not declare wider launch without updating this file and the ten-gate table.*
+## Recovery appendix — obligation & workflow (A→G)
+
+**Purpose:** Lightweight **status + links** for the governed recovery sequence. **Do not** duplicate behavioural authority here — use [GOVERNANCE_INDEX.md § Recovery map](../GOVERNANCE_INDEX.md#recovery-governance-map-obligation--workflow).
+
+**Proof methodology:** `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12 (extend with Mongo/API checks below). **Admin explain (B):** `GET /api/admin/compliance/registry/runtime-requirements/explain?client_id=&property_id=` (read-only).
+
+| Step | Area | Canonical authority | Verification | Owner | Risk | Status | Closure evidence |
+|------|------|---------------------|--------------|-------|------|--------|------------------|
+| **A** | Materialisation | Code: `provisioning.py` → `materialize_requirements_for_property`; doc: [PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md](../PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md) | `clients.onboarding_status`, `provisioning_jobs`, `requirements.count` per property, `requirement_generation_source` | Platform / provisioning | **LAUNCH_CRITICAL** | **IN_PROGRESS** (proof pass 2026-05-16) | Per-tenant: `onboarding_status=PROVISIONED` + `requirements` rows exist with `catalog_registry` source; admin `GET /provisioning/{client_id}` |
+| **B** | Client runtime visibility | Code: `requirement_client_runtime_surface.py`; doc: [COMPLIANCE_CLIENT_STATUS_AUTHORITY.md](../COMPLIANCE_CLIENT_STATUS_AUTHORITY.md) | Raw vs filtered: explain endpoint + client `GET /api/properties/{id}/requirements` vs admin unfiltered read | Registry + client surfaces | **LAUNCH_CRITICAL** | **IN_PROGRESS** (proof pass 2026-05-16) | `included_count` / `raw_count` on explain; exclusion_reason populated; client API count ≤ raw |
+| **C** | Scheduler / queue | [runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md](../runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md); **L-006** | `job_runs`, `compliance_recalc_queue`, `scheduler_heartbeat` | Platform ops | **LAUNCH_CRITICAL** | **DONE** (unit **C1** 2026-05-16) | Pilot queue replay + M2; see C1 closure evidence |
+| **D** | Workflow propagation fanout | `authority_mutation_fanout.py`; [STREAM_E_MUTATION_FANOUT_MATRIX.md](../STREAM_E_MUTATION_FANOUT_MATRIX.md); **L-009** | Transition fanout traces after governed mutation | Compliance platform | **LAUNCH_CRITICAL** | **NOT_STARTED** | Fanout row + enqueue or documented gate-block + `propagation_notice` |
+| **E** | Evidence / document state | [COMPLIANCE_CLIENT_STATUS_AUTHORITY.md](../COMPLIANCE_CLIENT_STATUS_AUTHORITY.md); [AUTHORITY_WRITE_PATH_RECONCILIATION.md](../audit/AUTHORITY_WRITE_PATH_RECONCILIATION.md); **L-004** | Admin verify → client list parity | Evidence review | **LAUNCH_CRITICAL** | **NOT_STARTED** | Client projection matches authority after verify (no dual pending badges) |
+| **F** | Notification governance | [NOTIFICATION_GOVERNANCE_INVENTORY.json](../audit/NOTIFICATION_GOVERNANCE_INVENTORY.json); **L-008** | `message_logs`; orchestrator path only | Notifications | **PILOT_TOLERABLE** until A–D pass | **NOT_STARTED** | Send proves delivery only — **not** obligation health |
+| **G** | Support operations | [RUNBOOK_CONTROLLED_BETA_OPERATIONS.md](../RUNBOOK_CONTROLLED_BETA_OPERATIONS.md); [STREAM_F_FORENSICS_JOIN_RECIPE.md](../STREAM_F_FORENSICS_JOIN_RECIPE.md) | Support rehearsal §12–§13 | Support / ops | **PILOT_TOLERABLE** | **CONTINUOUS** | Rehearsal checklist signed per pilot cohort |
+
+**Sequence rule:** Complete **A → B** proof per affected tenant before **C**; do not treat **F** as proof of obligation workflows.
+
+**Proof audit source (2026-05-16):** Architectural A→B proof — materialisation at **provisioning** (not intake); client visibility gated by **published overlay** when active published map is non-null. Verification commands: `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7.
+
+**Tracker rows:** Add **L-0xx** launch items here only when a step is **BLOCKED** for pilot — do not create a separate recovery tracker. **Finishable units** below (`A1`…`G2`) are the implementation plan; cross-stream mapping: `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` § Obligation recovery programme.
+
+**Implementation gate:** No product implementation for a selected unit until **§ Recovery unit implementation contract** is satisfied (Definition of Done written; status lifecycle followed). Stabilization slices (**L-00x**) continue to use **§ Finishable unit contract** above; recovery units (**A1–G2**) use the recovery contract below (stricter end-to-end rule).
+
+---
+
+## Recovery unit implementation contract (mandatory)
+
+Applies to every **A1–G2** unit selected for implementation. Supplements **§ Finishable unit contract** (does not relax it).
+
+### Non-negotiable implementation rules
+
+| Rule | Requirement |
+|------|-------------|
+| **No partial implementation** | A unit is not shippable if any required layer in its Definition of Done is missing or stubbed. |
+| **No placeholder wiring** | No TODO routes, dead UI buttons, feature flags that always return success, or “backend only for now” without a tracked follow-up sub-unit. |
+| **No backend-only fix** | If client UI, admin tools, runbook, tests, or governance docs are in scope for the unit, they ship in the **same** change train. |
+| **No immediate DONE** | After code merge, status is **`IMPLEMENTED_PENDING_VERIFICATION`** until staging verification and governance closure complete. |
+| **Split before coding** | If a unit cannot be completed end-to-end safely in one reviewable PR, **split into sub-units** (e.g. `B2a`, `B2b`) in this tracker **before** `IN_PROGRESS`, each with its own Definition of Done. |
+
+### End-to-end layers (implement all that apply)
+
+When a unit is selected, implement across **every applicable** layer — mark **N/A** in Definition of Done only with explicit rationale:
+
+| Layer | Examples |
+|-------|----------|
+| Backend services | Authority modules, materialisation, filters, fanout |
+| Routes / endpoints | Client + admin HTTP; explain/diagnostic APIs |
+| Data model / migrations / indexes | Only when schema/index change is required |
+| Admin tools / explain views | Provisioning panel, explain endpoint UX, ops signals |
+| Client UI | Requirements lists, honesty copy, empty states |
+| Scheduler / queue / fanout | When unit touches async propagation |
+| Audit logs / observability | `create_audit_log`, fanout traces, admin-visible failure reasons |
+| Tests | Unit + HTTP/integration; CI green |
+| Runbook | `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7+ as applicable |
+| Governance docs | Canonical authority docs listed on the unit row |
+| Tracker closure | Status, evidence paste, next unit unlock |
+
+### Allowed unit statuses (only these)
+
+| Status | Meaning |
+|--------|---------|
+| **NOT_STARTED** | Not selected; or split sub-units not yet defined. |
+| **BLOCKED** | Waiting on prior unit, A1 classification, or explicit approval. |
+| **IN_PROGRESS** | Definition of Done approved; implementation active. |
+| **IMPLEMENTED_PENDING_VERIFICATION** | Code/docs merged; staging verification not yet recorded. |
+| **READY_FOR_STAGING_VERIFICATION** | Deployed or available on staging; verifier assigned. |
+| **VERIFIED** | Staging evidence captured; governance docs updated pending final DONE. |
+| **DONE** | All ten DONE gates below satisfied; closure evidence pasted. |
+| **DEFERRED** | Explicitly deferred with approver + rationale; not blocking false DONE. |
+| **SUPERSEDED** | Replaced by a sub-unit or renamed unit; do not implement. |
+
+**Forbidden as terminal status:** `READY`, `PARTIAL`, `REQUIRED_BEFORE_FIX` on recovery units — use the table above.
+
+### Status transitions (mandatory path)
+
+```
+NOT_STARTED → BLOCKED → IN_PROGRESS → IMPLEMENTED_PENDING_VERIFICATION
+  → READY_FOR_STAGING_VERIFICATION → VERIFIED → DONE
+```
+
+- **Do not skip** `IMPLEMENTED_PENDING_VERIFICATION` or `VERIFIED`.
+- **Do not** move to **DONE** in the same PR as the initial implementation without a separate verification pass recorded in the tracker.
+- Reopen: **DONE → IN_PROGRESS** only with incident/rationale row (date, approver).
+
+### Definition of Done (write before `IN_PROGRESS`)
+
+Each selected unit (or sub-unit) must add a **Definition of Done** block under its row **before** coding. Template:
+
+| Element | Content |
+|---------|---------|
+| **Root cause proven** | Cite A1 classification, explain output, or incident ID |
+| **Layers in scope** | Checklist from end-to-end table; list **N/A** with reason |
+| **Exact acceptance criteria** | Observable, testable (API counts, fields, UI strings, job states) |
+| **Files / routes in scope** | Explicit list |
+| **Tests required** | Named modules + commands |
+| **Staging verification steps** | RUNBOOK §12.7 refs or unit-specific steps |
+| **Governance docs to update** | From unit row |
+| **Rollback / safety** | Idempotency, revert path, forbidden ops |
+| **Out of scope** | Prevents scope creep |
+| **Sub-units** | If split: IDs and dependencies |
+
+### DONE gates (all ten required)
+
+A unit may move to **DONE** only when **all** are true:
+
+1. **Root cause proven** — evidence linked (A1 row, explain JSON, fanout trace, etc.).
+2. **Implementation complete** — every in-scope layer from Definition of Done shipped; no partial paths.
+3. **Tests pass** — required suites green in CI (or documented env skip with approver).
+4. **Staging verification** — passed **or** documented evidence attached (commands, screenshots, API snippets, dates).
+5. **Runbook updated** — operator can repeat verification without reading PR diff.
+6. **Governance docs updated** — canonical authority docs reflect behaviour.
+7. **Rollback / safety recorded** — in tracker closure block.
+8. **Closure evidence pasted** — below the unit (summary + key metrics + PR link).
+9. **No known partial paths** — no open “follow-up” for the same concern without a new sub-unit ID.
+10. **Next gated unit unlocked** — exactly one sentence naming the next unit ID and trigger.
+
+### Closure evidence block (paste when reaching DONE)
+
+```markdown
+#### <UNIT-ID> closure evidence (YYYY-MM-DD)
+- Classification / root cause:
+- PR(s):
+- Staging verification (who/when/env):
+- Tests:
+- Governance docs touched:
+- Rollback note:
+- Next unit unlocked:
+```
+
+### Splitting oversized units
+
+If implementation discovery shows the unit is too large:
+
+1. Set parent to **DEFERRED** or keep **IN_PROGRESS** only as umbrella (not DONE).
+2. Add sub-units `<ID>a`, `<ID>b`, … each with full Definition of Done and own status.
+3. Parent reaches **DONE** only when **all** children are **DONE** and parent closure summarizes children.
+
+---
+
+## Recovery implementation plan (finishable units)
+
+**Unit status:** Use **§ Recovery unit implementation contract** statuses only.
+
+**Safety (all units):** No raw Mongo hand-edits to `requirements` / score / queue unless **emergency recovery** is explicitly approved in writing. Use provisioning repair, `requirements/sync`, governed reconciliation jobs, audited admin actions only.
+
+### A1 — Tenant-level classification
+
+| Field | Value |
+|-------|-------|
+| **ID** | A1 |
+| **Priority** | P0 — **REQUIRED BEFORE FIX** |
+| **Trigger** | Before any A2/B1 product fix |
+| **Purpose** | Classify one affected `CID`/`PID` as **A-only** (obligations absent), **B-only** (hidden), **A+B** (both), or **Neither** (downstream — proceed to C only after A+B pass) |
+| **Canonical authority** | [GOVERNANCE_INDEX.md](../GOVERNANCE_INDEX.md); [PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md](../PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md) |
+| **Code areas** | Read-only: `provisioning.py`, `requirement_client_runtime_surface.py`, `explain_runtime_requirement_rows_for_property` |
+| **Unit status** | **DONE** (2026-05-16) — lifecycle: IN_PROGRESS → READY_FOR_STAGING_VERIFICATION → VERIFIED → DONE |
+| **Required evidence** | `onboarding_status`; `provisioning_jobs` status; `properties` count; `raw_count` (Mongo or explain); `included_count` (explain); top `exclusion_reason` values; classification label recorded in this tracker |
+| **Verification** | RUNBOOK §12.7 checklist complete; classification row filled below |
+| **Governance docs after** | This appendix (A1 result row); optional **L-0xx** if pilot-blocked |
+| **Regression tests** | Script smoke (`--help`); optional CI job to run script in staging pipeline — **N/A** for product pytest |
+| **Rollback / safety** | Read-only; no mutations |
+
+#### A1 — Definition of Done (ops unit; approved 2026-05-16)
+
+| Layer | In scope? |
+|-------|-----------|
+| Backend services | **N/A** — read-only script calls existing explain |
+| Routes | **N/A** |
+| Data model | **N/A** |
+| Admin tools | **N/A** — uses existing explain HTTP if manual |
+| Client UI | **N/A** |
+| Scheduler / fanout | **N/A** |
+| Audit / observability | **N/A** |
+| Tests | Script import/`--help`; optional staging harness |
+| Runbook | §12.7 commands + script documented |
+| Governance | A1 classification row + unlock next unit |
+| Tracker closure | Classification + top exclusions pasted |
+
+**Acceptance:** Script output or manual O1–O8 → classification **A-only \| B-only \| A+B \| Neither** recorded; status → **VERIFIED** then **DONE** after row filled (no code PR).
+
+**A1 classification record (staging — 2026-05-16):**
+
+| CID | PID | Class | raw_count | included_count | onboarding_status | Date |
+|-----|-----|-------|-----------|----------------|-------------------|------|
+| `6fd5ac4c-3fd4-4112-ade7-156977deb49f` | `d35a58ae-3c81-491c-9694-1d021dd3b8ad` | **A+B** | 21 | 4 | PROVISIONED | 2026-05-16 |
+
+**Tenant selection rationale:** Discovered via `--discover-affected` (score 97): `visibility_gap_raw_21_included_4` on Wales HMO property; exhibits admin/client mismatch (21 Mongo rows vs 4 client-runtime rows). Not INTAKE_PENDING/checkout-incomplete. Not zero-requirement PROVISIONED.
+
+**First divergence point:** **B** — `B: partial visibility suppression (4/21 included)` — materialisation present; client filter excludes 17 rows (primary: `not_required_row` ×13).
+
+**Failure characterization:** **Deterministic** + **migration/reconciliation-related** (bulk `NOT_REQUIRED` updates ~2026-04-14 on many rows) + **registry-publish-related** (published overlay keys present on excluded rows, e.g. `EICR|DEFAULT`, `LEGIONELLA|DEFAULT`). **Not** scheduler-first (recalc queue `DONE`; worker `success`). **Not** intermittent on this read (stable counts at query time).
+
+**Full structured output:** [audit/a1_tenant_classification_2026-05-16_6fd5ac4c.json](../audit/a1_tenant_classification_2026-05-16_6fd5ac4c.json)
+
+**A1 runner:** `backend/scripts/a1_obligation_tenant_classification.py` (`--discover-affected`, `--json`). RUNBOOK §12.7.
+
+#### A1 closure evidence (2026-05-16)
+
+- **Classification / root cause:** **A+B** label; operational root cause is **B1** (persisted `status`/`applicability` = `NOT_REQUIRED` on rows that still carry published registry matches). Provisioning **succeeded** 2026-04-03 (`PROVISIONED`, `provisioning_completed_at` set); **A2 not triggered** for this CID.
+- **PR(s):** None (ops read-only). Script enhancement for full JSON capture only.
+- **Staging verification:** `pleerity_staging` DB; run_at `2026-05-16T17:00:46Z`; verifier: A1 script.
+- **Tests:** Script `--help`; staging classification run.
+- **Governance docs touched:** This tracker (A1 record + unlock matrix).
+- **Rollback note:** N/A (read-only).
+- **Next units unlocked (this tenant only):**
+  - **B1** — **UNLOCKED** (primary): fix proven `not_required_row` / applicability truth for active obligations.
+  - **A3** — **UNLOCKED** (secondary): investigate 2026-04-14 reconciliation wave vs current planner; controlled sync if plan drift.
+  - **B2** — **BLOCKED** until B1: overlay keys often present on excluded rows; open only if B1 leaves overlay gaps.
+  - **A2** — **NOT UNLOCKED** (materialisation present: 21 rows, `catalog_registry` on active PENDING rows).
+  - **C1** — **DONE** (2026-05-16); **C2** DoD drafting unlocked.
+
+**Top exclusion_reason (explain):** `not_required_row` (13), `excluded_by_alias_dedupe_or_runtime_policy` (3), `not_in_planner_membership` (1).
+
+**Included types (4) at A1 time:** `gas_safety`, `fire_alarm`, `occupation_contract`, `hmo_fire_risk_evidence` (alias winner over `hmo_fire_risk`).
+
+**Published registry:** 23 active entries; `active_published_updated_at` 2026-04-26T15:34:25Z.
+
+#### A1 post-B1 acceptance note (2026-05-16 — product/governance)
+
+**Classification label remains `A+B`** (materialisation present + client-runtime count &lt; raw Mongo). **Operational interpretation after B1 + product sign-off:**
+
+| Topic | Accepted truth |
+|-------|----------------|
+| **Client-visible obligations** | **8 planner-aligned families** on property `d35a58ae…`: `eicr`, `legionella`, `epc`, `gas_safety`, `hmo_license`, `fire_alarm`, `hmo_fire_risk_evidence`, `occupation_contract`. Client API count = explain `included_count` = **8**. |
+| **Raw vs included** | **21 raw** Mongo rows include legacy duplicates, alias siblings, reconciled-obsolete, and out-of-jurisdiction types — **not** a target of 21/21 client visibility. |
+| **`emergency_lighting` / `fire_extinguisher`** | **Intentionally non-visible** for Wales HMO pilot — no overlay publication, no planner expansion, no filter change. Materialised rows may exist; runtime correctly excludes (missing published overlay). |
+| **Residual exclusions** | **Expected governance behaviour** (reconcile obsolete, alias dedupe winners, out-of-planner, jurisdiction) or **legacy/admin hygiene residue** (stale `not_applicable` on loser rows) — **not** launch-blocking product defects for this tenant. |
+| **B1 outcome** | Primary persistence defect fixed (`included_count` **4→8**). Remaining gap vs raw_count is **by design**, not open B-layer work. |
+| **Downstream** | **C1** may proceed (queue/workflow proof) — visibility acceptance decouples scheduler verification from closing 21/21 raw parity. |
+
+**Post-B1 artifact:** [audit/a1_tenant_classification_post_b1_6fd5ac4c_d35a58ae.json](../audit/a1_tenant_classification_post_b1_6fd5ac4c_d35a58ae.json) · [audit/b1_verification_report_6fd5ac4c_d35a58ae.json](../audit/b1_verification_report_6fd5ac4c_d35a58ae.json)
+
+---
+
+### Post-A1 unlock matrix (tenant `6fd5ac4c…`)
+
+| Unit | Status after A1 | Notes |
+|------|-----------------|-------|
+| **A1** | **DONE** | — |
+| **A2** | **BLOCKED** | Not triggered — PROVISIONED + raw_count=21 |
+| **A3** | **NOT_STARTED** (unlocked) | Applicability/NOT_REQUIRED reconciliation timing |
+| **B1** | **DONE** | Closed 2026-05-16; Wales HMO 8-family visibility accepted |
+| **B2** | **BLOCKED** | **Product decision** — no overlay work; emergency_lighting/fire_extinguisher intentionally non-visible |
+| **B3** | **BLOCKED** | No projection drift on pilot; defer |
+| **C1** | **DONE** (2026-05-16) | Administrative closure; evidence § C1 closure below |
+| **C2** | **BLOCKED** (DoD **not drafted**) | **Unlocked:** DoD drafting only — no implementation |
+| **C3+** | **BLOCKED** | After C2 |
+
+---
+
+### A2 — Provisioning / materialisation repair
+
+| Field | Value |
+|-------|-------|
+| **ID** | A2 |
+| **Priority** | P0 |
+| **Trigger** | **Only if A1 = A-only or A+B** |
+| **Scope** | Retry/complete stuck provisioning; prove `_generate_requirements` per property; prove `materialize_requirements_for_property` persists canonical rows; failures visible in admin provisioning tools; **no** raw Mongo edits |
+| **Canonical authority** | `services/provisioning.py`; `services/requirement_materialization_service.py`; [PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md](../PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md) § Materialisation timing |
+| **Code areas likely affected** | `provisioning.py`, `routes/admin_billing.py` (`force_provision_client`), provisioning job runner, admin `GET /provisioning/{client_id}` |
+| **Unit status** | **BLOCKED** (A1 DONE — **not triggered** for tenant `6fd5ac4c…`; materialisation present) |
+| **Verification evidence** | `requirements.count` > 0 per affected property; `requirement_generation_source` present (`catalog_registry` expected); correct `client_id`/`property_id`; `onboarding_status=PROVISIONED` / `provisioning_status` aligned; `audit_logs` / provisioning job records |
+| **Governance docs after** | `PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md`; this tracker A2 → **READY**; RUNBOOK §12.7 |
+| **Regression tests** | Extend provisioning/materialisation integration tests if behaviour changes |
+| **Rollback / safety** | Re-run provision is idempotent; document client_id before force-provision |
+
+---
+
+### A3 — Registry / materialisation sync after publish
+
+| Field | Value |
+|-------|-------|
+| **ID** | A3 |
+| **Priority** | P0 |
+| **Trigger** | A1 passes materialisation presence but rows **stale** vs registry plan, or registry publish changed expected obligations |
+| **Scope** | `POST /api/admin/properties/{property_id}/requirements/sync-from-registry` or client `POST /api/properties/{property_id}/requirements/sync`; confirm publish does **not** fleet-rematerialise; controlled per-property sync only |
+| **Canonical authority** | `compliance_registry_publish_service.REMATERIALISATION_INFO`; [PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md](../PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md) § Controlled sync |
+| **Code areas likely affected** | `routes/admin.py`, `routes/properties.py`, `requirement_materialization_service.py` (if sync semantics change) |
+| **Unit status** | **NOT_STARTED** (unlocked for tenant `6fd5ac4c…` — applicability/NOT_REQUIRED reconciliation wave) |
+| **Verification evidence** | Raw rows match `build_requirement_plan_for_property` for property; no surprise mass `NOT_REQUIRED`; sync audited (`audit_logs` / admin action) |
+| **Governance docs after** | `PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md`; registry publish runbook cross-ref |
+| **Regression tests** | `test_properties_requirement_materialisation_http.py`; materialisation policy tests |
+| **Rollback / safety** | `reconcile_obsolete=True` may mark obsolete rows — capture before/after counts |
+
+---
+
+### B1 — Runtime visibility repair (NOT_REQUIRED / applicability persistence)
+
+| Field | Value |
+|-------|-------|
+| **ID** | B1 |
+| **Priority** | P0 |
+| **Trigger** | A1 **DONE** — tenant `6fd5ac4c…` / `d35a58ae…`: **A+B**; `raw_count=21`, `included_count=4`; **13** × `not_required_row` |
+| **Scope** | Fix **persisted** `status` / `applicability` = `NOT_REQUIRED` on obligations that are **genuinely applicable** under current planner + Wales HMO property metadata + published registry; **do not** change client runtime filter semantics |
+| **Canonical authority** | `requirement_materialization_service.py` (write/reconcile); `applicability_provenance_pipeline.py`; `requirement_client_runtime_surface.py` (read gate only); [COMPLIANCE_CLIENT_STATUS_AUTHORITY.md](../COMPLIANCE_CLIENT_STATUS_AUTHORITY.md) |
+| **A1 artifact** | [audit/a1_tenant_classification_2026-05-16_6fd5ac4c.json](../audit/a1_tenant_classification_2026-05-16_6fd5ac4c.json) |
+| **Unit status** | **DONE** (2026-05-16) — VERIFIED after reconcile idempotency fix + triple-sync re-run |
+| **Staging artifacts** | [b1_explain_before_6fd5ac4c_d35a58ae.json](../audit/b1_explain_before_6fd5ac4c_d35a58ae.json), [b1_explain_after_6fd5ac4c_d35a58ae.json](../audit/b1_explain_after_6fd5ac4c_d35a58ae.json), [b1_replay_after_6fd5ac4c_d35a58ae.json](../audit/b1_replay_after_6fd5ac4c_d35a58ae.json), [b1_verification_report_6fd5ac4c_d35a58ae.json](../audit/b1_verification_report_6fd5ac4c_d35a58ae.json), [a1_tenant_classification_post_b1_6fd5ac4c_d35a58ae.json](../audit/a1_tenant_classification_post_b1_6fd5ac4c_d35a58ae.json) |
+| **Closure** | Primary fix: `is_operator_curated_not_required` + reopen in-plan automated rows; `is_already_reconciled_obsolete` skip on repeat reconcile. Pilot: `included_count` **4→8**; `not_required_row` **13→9**; replay hash stable; `reconciled_obsolete=0` runs 2–3; audit/queue delta 0 on run 3. **Product sign-off (2026-05-16):** 8 visible families = accepted operational truth; residual exclusions expected; no further B-layer work for this tenant. |
+| **B2 unlock** | **Not triggered — blocked by product** — Wales HMO pilot: `emergency_lighting` and `fire_extinguisher` **must not** be client-visible; no overlay publication |
+| **C1 unlock** | **DONE** (2026-05-16) — queue/workflow proof complete; **C2** DoD drafting unlocked |
+| **Watchlist** | In-plan upsert `updated_at` churn on repeat sync (11 rows) — no proven queue/audit side effect; future hardening only |
+| **Rollback / safety** | Governed rematerialise/sync only; preserve user-curated `not_required_reason` rows; no filter weakening |
+
+---
+
+#### B1 — Definition of Done (rev 2 — 2026-05-16; approved with mandatory additions)
+
+##### 1. Root-cause proof (required before IN_PROGRESS)
+
+**Observed (A1):** PROVISIONED client; materialisation succeeded 2026-04-03; **21** Mongo rows; **4** client-runtime rows; **13** excluded with `exclusion_reason: not_required_row`; many rows `legacy_requirement_state: active` while `status`/`applicability` = `NOT_REQUIRED`; excluded rows often have `matched_published_key` (e.g. `EICR|DEFAULT`, `LEGIONELLA|DEFAULT`) — overlay present, filter not the first bug.
+
+**Investigation branches (must prove or rule out per branch):**
+
+| # | Hypothesis | Evidence to collect | Likely code / data |
+|---|------------|---------------------|-------------------|
+| **B1-RC-1** | **`reconcile_obsolete`** marked in-plan types obsolete when planner snapshot differed, then planner/registry caught up without rematerialise reopen | `registry_metadata.reconciled_obsolete`, `reconciled_at` on excluded rows; `applicability_resolution_audit` `event_type=MATERIALIZATION_RECONCILE_OBSOLETE_APPLICABILITY`; compare `planned_types` today vs row types | `requirement_materialization_service.py` L287–338 |
+| **B1-RC-2** | **2026-04-14 bulk wave** — migration, registry publish, batch sync, or fleet script | Cluster `updated_at` ~2026-04-14T22:28–22:30Z on 10+ rows; `audit_logs` / admin actions that day; git history of scripts run on staging | `scripts/published_registry_client_truth_migration.py`, `scripts/sync_registry_properties_batch.py`, `scripts/backfill_applicability_provenance.py`, `scripts/run_policy_backfill.py` |
+| **B1-RC-3** | **Materialise reopen path not applied** — rows `NOT_REQUIRED` **without** `not_required_reason` should reset to `UNKNOWN`/`PENDING` on sync (L211–214) but were not rematerialised since April | Run **dry** trace: `build_requirement_plan_for_property` includes `eicr`, `legionella`, etc.; confirm sync not run post-publish; check `not_required_reason` absent on wrongly suppressed rows | `materialize_requirements_for_property` L205–226 |
+| **B1-RC-4** | **Applicability pipeline** — `resolve_policy_facts` / `pipeline_applicability_state` incorrectly `NOT_REQUIRED` for Wales HMO | `applicability_state`, `pipeline_applicability_state`, provenance fields on sample rows | `policy_field_normalizer.py`, `applicability_effective_resolver.py`, `applicability_provenance_pipeline.py` |
+| **B1-RC-5** | **Operator override** — `MARK_NOT_APPLICABLE` / catalog with `not_required_reason` | `not_required_reason` preset present; `applicability_resolution_audit` operator events | `requirement_mark_not_applicable_catalog.py`, `applicability_operator_actions.py` |
+| **B1-RC-6** | **Property metadata change** — jurisdiction Wales / `is_hmo` toggles changed planner membership | `property.updated_at` 2026-05-05 vs row timestamps; planner diff before/after | `routes/properties.py` PATCH materialise path |
+| **B1-RC-7** | **Legacy migration** — `legacy_requirement_state: active` + `hidden_deprecated` mixed with `NOT_REQUIRED` | Per-row `legacy_requirement_state`, `client_surface_visible` | `scripts/published_registry_client_truth_migration.py`, ghost audit scripts |
+| **B1-RC-8** | **Registry planner mismatch** — type not in `planned_types` but published overlay exists | Explain `not_in_planner_membership` (1 row) + per-type planner membership | `compliance_requirement_registry.build_requirement_plan_for_property` |
+
+**Root-cause proof deliverable:** One-page conclusion in tracker B1 closure naming **primary** branch (expected: **B1-RC-1** and/or **B1-RC-3** with **B1-RC-2** contributing to April wave) with Mongo/audit excerpts for tenant PID.
+
+##### 1b. Reconciliation reversibility and idempotency (mandatory)
+
+B1 must **prove in code and staging** (not assume) that materialisation / reconcile / sync behaviour is:
+
+| Property | Requirement | Verification |
+|----------|-------------|--------------|
+| **Reversible** | When a type **enters** `planned_types` after previously being reconciled obsolete, governed materialise **reopens** without manual Mongo | Test: remove type from plan → reconcile NOT_REQUIRED → add back to plan → sync → row applicable again |
+| **Deterministic** | Same property doc + published snapshot + client doc → same post-sync row states | Two consecutive runs produce identical `status`/`applicability`/provenance hashes per `requirement_id` |
+| **Convergent** | Repeated materialise/sync (≥3 runs) reaches **stable** state — no further row mutations on run 3 | Compare row checksums / `updated_at` after run 2 vs run 3 |
+| **No oscillation** | Rows do not flip `NOT_REQUIRED` ↔ `PENDING`/`UNKNOWN` across replays when planner membership unchanged | Test + staging: triple sync with frozen property/registry inputs |
+
+**Explicit replay-safety checks:**
+
+- Log `planned_types`, `reconciled_obsolete` count, reopen count per run in materialisation return payload (extend if missing).
+- Staging: `POST …/requirements/sync` ×3 on pilot PID; assert explain `included_count` and per-row `status`/`applicability` **unchanged** between run 2 and run 3.
+- Regression: `test_b1_materialisation_convergence_idempotent.py` (or extend materialisation tests) — triple `materialize_requirements_for_property` mock DB.
+
+##### 2. Affected code paths (inspect list)
+
+| Area | Path | Role in B1 |
+|------|------|------------|
+| Materialisation + reconcile | `services/requirement_materialization_service.py` | Upsert plan rows; **reconcile_obsolete** → `NOT_REQUIRED`; reopen rows without `not_required_reason` |
+| Runtime visibility (read-only) | `services/requirement_client_runtime_surface.py` | `not_required_row` gate L402–403 — **verify unchanged** |
+| Applicability writes | `services/applicability_provenance_pipeline.py` | Provenance + `maybe_audit_applicability_transition` |
+| Policy facts | `services/policy_field_normalizer.py`, `resolve_policy_facts` | Pipeline applicability on materialise |
+| Effective read | `services/applicability_effective_resolver.py` | Client/admin read alignment |
+| Operator N/A | `services/requirement_mark_not_applicable_catalog.py`, `applicability_operator_actions.py` | Legitimate NOT_REQUIRED — must remain |
+| Planner | `services/compliance_requirement_registry.py` | Wales HMO plan membership |
+| Property rematerialise | `routes/properties.py` (PATCH), `provisioning.py` `_generate_requirements` | Trigger paths |
+| Admin sync | `routes/admin.py` `requirements/sync-from-registry`, `routes/properties.py` `requirements/sync` | Governed repair |
+| Explain | `explain_runtime_requirement_rows_for_property`, `routes/admin_compliance_registry.py` | Verification + clearer `exclusion_reason` if needed |
+| Client API | `routes/properties.py` list/requirements + `project_requirement_row_client_runtime` | Parity proof |
+| Migrations / ops | `scripts/published_registry_client_truth_migration.py`, `scripts/sync_registry_properties_batch.py`, `scripts/backfill_applicability_provenance.py`, `scripts/run_policy_backfill.py` | Historical cause only — no re-run without approval |
+| Audit | `applicability_resolution_audit`, `audit_logs` | Prove write actor + event type |
+
+##### 3. Safe implementation boundary
+
+| Allowed | Forbidden |
+|---------|-----------|
+| Fix **materialisation / reconcile / applicability write** logic so in-plan applicable rows are not left wrongly `NOT_REQUIRED` | Raw Mongo `$set` on `requirements.status` / `applicability` |
+| Governed **`POST …/requirements/sync`** on **one** affected property **after** code fix (staging proof) | **Fleet-wide** rematerialisation or batch sync across all clients |
+| Re-open rows **without** `not_required_reason` that are in current `planned_types` | **Blanket-reopen** all `NOT_REQUIRED` rows |
+| Preserve rows with **explicit** `not_required_reason` (user/operator curated) | Bypass **planner membership** or revive **genuinely non-applicable** obligations |
+| Add audit/provenance for **automated** NOT_REQUIRED / reopen (§3b) | **Weaken** `requirement_client_runtime_surface` filter semantics |
+| Idempotent converge + reversibility tests (§1b) | Hide `exclusion_reason` or degrade explain tooling |
+| Before/after explain snapshots (§6b) | Scheduler/notification proof as visibility proof |
+| Sub-unit split if reconcile fix ≠ reopen fix | — |
+
+##### 3b. Mandatory automated provenance for NOT_REQUIRED (mandatory)
+
+All **automated/system** transitions to `NOT_REQUIRED` (including `reconcile_obsolete`, pipeline applicability, automated reopen **from** NOT_REQUIRED) must persist **governed provenance** so future audits and explain tooling can answer *why* a row became `NOT_REQUIRED`.
+
+| Field | Required on automated transition | Notes |
+|-------|----------------------------------|-------|
+| **reason** | Machine-readable code (e.g. `RECONCILE_OBSOLETE`, `PIPELINE_NOT_APPLICABLE`) | Distinct from user `not_required_reason` presets |
+| **source subsystem** | e.g. `requirement_materialization`, `applicability_provenance_pipeline` | Service name constant |
+| **reconcile / materialisation source** | `reconcile_obsolete`, `MATERIALIZATION_PIPELINE`, etc. | Align with `applicability_resolution_audit.event_type` |
+| **planner / applicability context** | Snapshot: `planned_types` hash or list, `published_line_version`, `pipeline_applicability_state` | Where available at write time |
+| **timestamp** | ISO UTC on row + audit row | `updated_at`, audit `created_at` |
+| **classification** | `automated` vs `manual` | Manual operator paths **unchanged** — do not weaken `not_required_reason` / operator audit |
+
+**Storage (minimum):** `applicability_resolution_audit` append + row-level provenance fields via `merge_provenance_into_requirement_patch` / `registry_metadata` as appropriate. **Explain endpoint** should surface provenance summary on excluded rows when present (B1 scope if ops-critical).
+
+**Out of scope for B1:** Changing operator `MARK_NOT_APPLICABLE` governance or consent flows.
+
+##### 4. Desired architectural outcome
+
+| Principle | Outcome |
+|-----------|---------|
+| **Applicable obligations** | Reopen **deterministically** through governed materialisation / reconciliation paths when planner + property + registry say they belong |
+| **Non-applicable obligations** | Remain `NOT_REQUIRED` with **explainable** automated or manual provenance |
+| **Runtime visibility** | Remains governed by **canonical filters** (`requirement_client_runtime_surface`) — B1 fixes persistence, not filter bypass |
+| **Explain tooling** | Operationally trustworthy: exclusion reason + provenance + planner membership visible for support |
+
+**Tenant `6fd5ac4c…` targets:** `included_count` ↑ from 4; `not_required_row` ↓ only where justified; **eicr** and other in-plan Wales HMO types visible when applicable; England-only types stay excluded; no duplicate alias rows.
+
+##### 5. End-to-end layers
+
+| Layer | In scope for B1? | Acceptance |
+|-------|------------------|------------|
+| Backend authority / materialisation | **Yes** | Reconcile + reopen semantics correct |
+| Applicability provenance | **Yes** | §3b mandatory fields on automated NOT_REQUIRED / reopen |
+| Admin explain | **Yes** | Provenance + suppression fields on excluded rows; before/after snapshots §6b |
+| Client API projection | **Verify only** | No change unless projection drops new fields |
+| Audit logs | **Yes** | `MATERIALIZATION_*` / applicability audit rows |
+| Runbook | **Yes** | §12.7 B1 verification steps |
+| Regression tests | **Yes** | See §7 |
+| Governance docs | **Yes** | See §8 |
+| Frontend UI | **N/A** unless client list uses field absent from API — verify only |
+| Scheduler / queue / notifications | **Out of scope** | C1 blocked until B1 DONE |
+
+##### 6. Verification (staging — tenant `6fd5ac4c…` / `d35a58ae…`)
+
+| Step | Command / action | Pass criteria |
+|------|------------------|---------------|
+| V1 | `python -m scripts.a1_obligation_tenant_classification ... --json` | `included_count` **>** 4; `not_required_row` **↓** only where justified |
+| V2 | `GET /api/admin/compliance/registry/runtime-requirements/explain?...` | `eicr` (if applicable) `included: true` or valid manual `not_required_reason` + provenance |
+| V3 | Client `GET /api/properties/{pid}/requirements` | Length **=** explain `included_count` |
+| V4 | Wales-inappropriate types (`right_to_rent`, etc.) | Remain excluded |
+| V5 | Alias families | No duplicate client-visible rows |
+| V6 | No notification/queue proof | — |
+
+##### 6b. Before/after explain snapshots (mandatory)
+
+Capture and persist **full** explain JSON for pilot PID:
+
+| Artifact | When | Path (governed) |
+|----------|------|-----------------|
+| **Before** | First action after B1 → **IN_PROGRESS** (pre-code or pre-deploy baseline) | `backend/docs/audit/b1_explain_before_6fd5ac4c_d35a58ae.json` |
+| **After** | `VERIFIED` staging pass | `backend/docs/audit/b1_explain_after_6fd5ac4c_d35a58ae.json` |
+| **Diff summary** | B1 closure | Tracker closure + optional `b1_explain_diff_6fd5ac4c.md` in same folder |
+
+**Compare (per row + totals):** `raw_count`, `included_count`, `exclusion_reason`, `matched_published_key`, planner membership (`baseline_key` / in-plan), `applicability` / provenance fields, `included` flag.
+
+**Baseline:** A1 artifact remains historical baseline; **before** snapshot must be taken at B1 implementation start (may match A1 if no drift).
+
+##### 6c. Replay / sync verification (mandatory)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| R1 | `POST …/requirements/sync` (or admin sync-from-registry) **×3** on same PID without property/registry change between runs 2–3 | Run 2 ≡ run 3: same `included_count`, same per-`requirement_id` `status`/`applicability` |
+| R2 | A1 script after each run (optional runs 1–3) | No oscillation: counts stable after run 2 |
+| R3 | Explain after triple sync | Payload **stabilises** — byte-stable or semantically equal row decisions |
+| R4 | Alias / dedupe check | No new duplicate winners; no reopen/reclose churn in audit log for frozen inputs |
+
+**Status path after implementation:** `IN_PROGRESS` → `IMPLEMENTED_PENDING_VERIFICATION` → `READY_FOR_STAGING_VERIFICATION` → `VERIFIED` → **DONE**.
+
+##### 7. Regression tests required
+
+| Test module | Scenario |
+|-------------|----------|
+| `tests/test_requirement_materialization_policy_fields.py` (extend) | `NOT_REQUIRED` without `not_required_reason` + in `planned_types` → rematerialise reopens to non-NOT_REQUIRED |
+| `tests/test_requirement_materialization_policy_fields.py` (extend) | `NOT_REQUIRED` **with** `not_required_reason` → rematerialise **preserves** |
+| `tests/test_requirement_materialization_policy_fields.py` (extend) | `reconcile_obsolete` does not mark type that is in current `planned_types` |
+| `tests/test_requirement_materialization_policy_fields.py` (extend) | **Triple materialise** → stable row states (idempotency / convergence) |
+| `tests/test_requirement_materialization_policy_fields.py` (extend) | Planner membership change → reconcile reversible → re-sync reopens |
+| `tests/test_requirement_materialization_policy_fields.py` (extend) | Automated NOT_REQUIRED writes provenance fields + audit event |
+| `tests/test_requirement_client_runtime_surface.py` (extend) | Row `NOT_REQUIRED` excluded with `not_required_row`; row `PENDING` + published overlay **included** |
+| `tests/test_requirement_client_runtime_surface.py` (new) | Wales HMO fixture: applicable core types pass gates when not NOT_REQUIRED |
+| `tests/test_mixed_jurisdiction_portfolio_runtime.py` (extend if needed) | Wales property does not show England-only applicable types |
+| `tests/test_properties_requirement_materialisation_http.py` (extend) | Sync endpoint triggers reopen semantics |
+| New: `tests/test_b1_not_required_reopen_wales_hmo.py` (optional consolidate) | End-to-end materialise + filter for Wales HMO |
+| Admin explain | HTTP or unit test: excluded rows expose provenance + `exclusion_reason`; snapshot fields stable |
+
+**CI:** All above green; no flake on Mongo-less mocks.
+
+##### 8. Governance updates (on DONE)
+
+| Document | Update |
+|----------|--------|
+| `LAUNCH_AUTHORITY_TRACKER.md` | B1 closure evidence; unlock matrix; link explain before/after artifacts |
+| `PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md` | § NOT_REQUIRED vs reconcile_obsolete; § automated provenance; reversibility |
+| `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md` | Only if client-visible status strings for reopened rows need matrix row |
+| `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 | B1 substeps: explain snapshots, triple-sync convergence, provenance interpretation |
+| `backend/docs/audit/b1_explain_before_*.json`, `b1_explain_after_*.json` | Persisted regression evidence (commit in B1 PR) |
+
+##### 9. Completion rules & next-unit unlock
+
+| Gate | Requirement |
+|------|-------------|
+| Start implementation | DoD **rev 2 approved** → status **IN_PROGRESS**; capture **explain before** snapshot first |
+| **DONE** | §1b reversibility proved; §3b provenance shipped; §6b–6c snapshots + triple-sync; §7 tests; §8 docs |
+| **Unlock on DONE** | **B2** only if A1 re-run still shows overlay-missing exclusions; **B3** if projection drift found; **C1** only after B1 **DONE** and A1 re-classification **Neither** or partial B resolved |
+| **Do not unlock** | **A2** (not triggered); **F1** / notifications |
+
+**Suspected primary fix (hypothesis — prove in RC phase):** Correct **reconcile_obsolete** scope and/or ensure **in-plan** rows without `not_required_reason` are reopened on materialise; staging may require one governed **sync** after code deploy — not a substitute for code fix.
+
+---
+
+### B2 — Published registry overlay coverage
+
+| Field | Value |
+|-------|-------|
+| **ID** | B2 |
+| **Priority** | P0 |
+| **Trigger** | B1 implicates **missing published overlay** (`exclusion_reason` implicit: no overlay + not legacy_readonly) or empty published map suppressing catalog rows — **not** Wales HMO pilot types ruled non-visible by product (2026-05-16) |
+| **Scope** | Align published entries with canonical types; avoid duplicate aliases; preserve planner membership; **governance decision** if empty published map should suppress — default: fix coverage, do not weaken gate without sign-off |
+| **Canonical authority** | `compliance_registry_publish_service.py`; `audit/REGISTRY_WORKFLOW_DRIFT_AUDIT.md`; [PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md](../PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md) |
+| **Code areas likely affected** | Registry publish queue, admin compliance registry routes, `scripts/repair_published_registry_coverage.py` (ops) |
+| **Unit status** | **BLOCKED** — **product decision (2026-05-16):** Wales HMO pilot — `emergency_lighting` and `fire_extinguisher` **intentionally non-visible**; no overlay publication |
+| **Verification evidence** | N/A for pilot tenant — B2 not in scope; re-open only if a **new** tenant requires missing-overlay repair |
+| **Governance docs after** | `PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md`; `NOTIFICATION_GOVERNANCE_INVENTORY.json` N/A |
+| **Regression tests** | `test_registry_runtime_jurisdiction_and_publish_hardening.py`; published-mode surface tests |
+| **Rollback / safety** | Publish is versioned; document published line version before change |
+
+---
+
+### B3 — Projection parity enforcement
+
+| Field | Value |
+|-------|-------|
+| **ID** | B3 |
+| **Priority** | P1 |
+| **Trigger** | After B1/B2 stable for pilot tenant; or audit finds client route bypassing filter |
+| **Scope** | Endpoint audit: all client/runtime paths use `filter_requirement_rows_for_client_runtime_surfaces` + `project_requirement_row_client_runtime`; document intentional admin raw bypasses; extend `kpi_authority_projection_contract` if needed |
+| **Canonical authority** | `kpi_authority_projection_contract.py`; `GOVERNANCE_CONSUMPTION_MAP.md`; Stream B matrix |
+| **Code areas likely affected** | `routes/properties.py`, `routes/client.py`, dashboard/command centre services, `governance_coverage_registry.py` |
+| **Unit status** | **BLOCKED** (pending B1/B2) |
+| **Verification evidence** | Projection map updated; grep/CI shows no new unfiltered client KPI paths |
+| **Governance docs after** | `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`; `GOVERNANCE_CONSUMPTION_MAP.md` |
+| **Regression tests** | `test_kpi_authority_projection_contract.py` |
+| **Rollback / safety** | Additive CI guards preferred over behaviour change |
+
+---
+
+### C1 — Scheduler and queue proof
+
+| Field | Value |
+|-------|-------|
+| **ID** | C1 |
+| **Priority** | P0 (launch) |
+| **Trigger** | Materialisation present; **B-layer visibility accepted** for pilot tenant (A1 post-B1 note) — queue/workflow proof may proceed without 21/21 raw parity |
+| **Scope** | Prove `compliance_recalc_queue` enqueue after materialisation/mutation; worker processes queue; stuck RUNNING/PENDING handling; `job_runs`; scheduler owner per Render |
+| **Canonical authority** | [runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md](../runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md); **L-006** |
+| **Code areas likely affected** | `server.py`, `job_runner.py`, `compliance_recalc_queue.py`, `compliance_recalc_running_reclaim.py` (if reclaim gaps) |
+| **Unit status** | **DONE** (2026-05-16) — lifecycle: IN_PROGRESS → READY_FOR_STAGING_VERIFICATION → VERIFIED → **DONE** |
+| **Pilot tenant** | `6fd5ac4c-3fd4-4112-ade7-156977deb49f` / `d35a58ae-3c81-491c-9694-1d021dd3b8ad` (Wales HMO) |
+| **Verification evidence** | See § C1 Definition of Done below — artifacts under `backend/docs/audit/c1_*` |
+| **Governance docs after** | This tracker; `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 C1; `SCHEDULER_AND_COMPLIANCE_JOBS.md` (if semantics change); `GOVERNANCE_INDEX.md` cross-ref |
+| **Regression tests** | `test_compliance_recalc_queue_stabilization_phase1.py` + new/extended C1 convergence tests |
+| **Rollback / safety** | Do not mark queue `DONE` / `DEAD` manually; do not raw-insert queue rows; document scheduler owner before tests |
+
+---
+
+#### C1 — Definition of Done (rev 2 — 2026-05-16; approved — **DONE** 2026-05-16)
+
+**Purpose:** Prove **deterministic** downstream **enqueue → worker pickup → queue completion → recalc execution → downstream convergence** after **governed authoritative mutations**. C1 is **not** general workflow repair, notification dispatch, reminder systems, or scheduler redesign.
+
+**Upstream precondition (accepted):** A1 **DONE**, B1 **DONE**, Wales HMO pilot visibility accepted (8 families). Materialisation/reconcile state trustworthy enough to test queue layer in isolation.
+
+##### 1. Root-cause scope isolation (mandatory branches)
+
+C1 investigations and staging failures must classify into **one primary branch** (secondary tags allowed). Do **not** collapse into a generic “workflow broken” ticket.
+
+| Branch | ID | Symptom / detection | Primary authority |
+|--------|-----|---------------------|-------------------|
+| Enqueue never created | **C1-RC-1** | Mutation succeeds; no `compliance_recalc_queue` row; `compliance_score_pending` not set | `compliance_recalc_queue.enqueue_compliance_recalc`, activation gate logs |
+| Enqueue suppressed (idempotent duplicate) | **C1-RC-1b** | `EnqueueComplianceRecalcResult.enqueued=false`, `duplicate_suppression_reason` set | `compliance_recalc_correlation`, unique index `(property_id, correlation_id)` |
+| Worker never picks up | **C1-RC-2** | Row `PENDING` beyond SLA; no matching `job_runs` for `compliance_recalc_worker` | `job_runner.run_compliance_recalc_worker`, scheduler owner |
+| Worker fails mid-run | **C1-RC-2b** | Row `FAILED` / retry; `job_runs.status=failed` | `job_runner`, worker exception logs |
+| Stuck `RUNNING` | **C1-RC-4** | Row `RUNNING` with stale `heartbeat_at` / `updated_at` | `compliance_recalc_running_reclaim`, `COMPLIANCE_RECALC_RUNNING_STALE_SECONDS` |
+| Reclaim misbehaviour | **C1-RC-3** | Rows flip `RUNNING`→`PENDING`/`DEAD` incorrectly; retry storms | `compliance_recalc_running_reclaim.py` |
+| Recalc execution failure | **C1-RC-5** | Queue `DONE` but score not updated / `validate` mismatch | `compliance_scoring_service.recalculate_and_persist` |
+| Downstream projection lag | **C1-RC-6** | Queue `DONE`, score fresh, but gaps/dashboard/priority stream stale | Stream C/E services (observe only; **C2** owns full fanout convergence) |
+| Unintended notification/fanout | **C1-RC-7** | Replay creates notification jobs / fanout rows not attributable to mutation | `authority_mutation_fanout`, notification collections — **observe & bound only** |
+| Semantic recalc churn on stable replay | **C1-RC-8** | R2/R3 change persisted score, freshness, projection timestamps, or score-history/audit writes without semantic compliance change | `recalculate_and_persist`, `property_compliance_score_history`, score-event audit |
+
+##### 2. Governed mutation sources (verification only)
+
+| Allowed (primary for pilot) | Endpoint / flow | Enqueue | Correlation id |
+|----------------------------|-----------------|---------|----------------|
+| **C1-M1 (recommended replay)** | Client `POST /api/properties/{property_id}/requirements/sync` | Yes — `TRIGGER_PROPERTY_UPDATED`, `ACTOR_CLIENT` | **Stable:** `REQUIREMENTS_SYNC:{property_id}` |
+| **C1-M2 (admin proof)** | Admin `POST /api/admin/properties/{property_id}/requirements/sync-from-registry` | Yes — `TRIGGER_ADMIN_MANUAL_JOB`, `ACTOR_ADMIN` | **New per call:** `ADMIN_MANUAL_JOB:REGISTRY_SYNC:{property_id}:{uuid}` — use for **first enqueue** proof only, not replay-idempotency proof |
+| **C1-M3 (optional)** | Admin property PATCH that materialises + enqueues (jurisdiction / `is_hmo`) | Per route | Document correlation from route |
+
+| Forbidden as proof | Reason |
+|------------------|--------|
+| `python -m scripts.*` materialise-only (no enqueue) | B1 path; does not exercise C1 |
+| Raw Mongo insert into `compliance_recalc_queue` | Bypasses governance |
+| Synthetic fake queue rows | Not production path |
+| Manual `$set` of `status: DONE` / `DEAD` | Invalid proof |
+| Fleet batch enqueue scripts without approval | Out of C1 tenant scope |
+
+**Pilot tenant:** `client_id=6fd5ac4c-3fd4-4112-ade7-156977deb49f`, `property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad`, staging `pleerity_staging`.
+
+##### 3. Queue lifecycle verification plan
+
+**Pre-mutation snapshot (artifact `c1_queue_before_{slug}.json`):**
+
+- `compliance_recalc_queue.find({property_id})` — last 10 rows (all statuses)
+- Counts by `status` for property + client
+- Property: `compliance_score_pending`, `compliance_last_calculated_at`, `compliance_score` (if present)
+- `job_runs` last 5 for `job_name=compliance_recalc_worker`
+- `scheduler_heartbeat.last_heartbeat_at` (if readable)
+
+**Mutation (single governed call):** **C1-M1** preferred — client requirements sync with pilot auth token.
+
+**Post-mutation poll (bounded, e.g. max 10 min):**
+
+| Step | Pass criterion |
+|------|----------------|
+| Enqueue | Exactly **one** new queue row for the mutation’s `(property_id, correlation_id)` OR idempotent suppression documented with `duplicate_suppression_reason` on replay |
+| Pending flag | `properties.compliance_score_pending === true` after enqueue (until worker completes) |
+| Worker pickup | Row transitions `PENDING` → `RUNNING` → `DONE` (or documented `FAILED`→retry→`DONE`) |
+| Job evidence | ≥1 `job_runs` row for `compliance_recalc_worker` with `started_at` / `finished_at` overlapping queue row window |
+| Completion | Queue row `status=DONE`; `finished_at` / `updated_at` set |
+| Pending clear | `compliance_score_pending === false` after `DONE` |
+| Score freshness | `compliance_last_calculated_at` advances (or equals now within skew) |
+
+**Post-mutation snapshot (artifact `c1_queue_after_{slug}.json`):** same shape as before + enqueue result fields if captured from API response/logs.
+
+##### 4. Replay methodology
+
+**Goal:** Repeated **identical** governed mutations must not cause queue storms, duplicate downstream work, or stale pending markers.
+
+| Run | Mutation | Expected enqueue | Expected queue depth delta |
+|-----|----------|------------------|----------------------------|
+| R1 | **C1-M1** client sync ×1 | 1 row inserted (or 1 pending cycle) | +1 pending → processed |
+| R2 | **C1-M1** client sync ×1 (same correlation) | **No new row** — `duplicate_suppression_reason` OR regeneration semantics per `EnqueueComplianceRecalcResult` | 0 new `PENDING` after R1 `DONE` |
+| R3 | **C1-M1** client sync ×1 | Same as R2 | 0 |
+
+**Compare (queue layer):** queue row counts by `correlation_id`, `job_runs` count delta, property `compliance_score_pending` between R2 and R3.
+
+**Explicit non-goals on replay:** Do not use **C1-M2** admin sync for replay-idempotency proof (new correlation per call by design).
+
+**Queue replay safety alone is insufficient.** C1 must also prove **recalc convergence stability** (§4b).
+
+##### 4c. Duplicate suppression vs legitimate regeneration (mandatory — rev 2 final)
+
+C1 must **explicitly distinguish** two behaviours and prove **both** without hardening the queue into over-suppression.
+
+| Behaviour | Definition | How to verify | Pass criterion |
+|-----------|------------|---------------|----------------|
+| **Duplicate enqueue suppression** | Same `(property_id, correlation_id)` while an existing queue row is active or terminal (`PENDING`/`RUNNING`/`DONE`/`DEAD`) | **C1-M1** stable replay R2/R3 with correlation `REQUIREMENTS_SYNC:{property_id}` | `EnqueueComplianceRecalcResult.enqueued=false`; `duplicate_suppression_reason` set (e.g. `duplicate_pending` when prior row `DONE`); **no** new queue row; **no** queue amplification |
+| **Legitimate enqueue / recalc** | Governed mutation that **meaningfully** changes compliance inputs or uses a **new** correlation contract | **C1-M2** admin `sync-from-registry` (new `ADMIN_MANUAL_JOB:REGISTRY_SYNC:…` correlation per call) **or** documented semantic mutation (C1-M3) with **new** correlation | **New** queue row inserted **or** documented `FAILED`→retry path; worker runs; `compliance_score_pending` cycle; score/recalc outputs update when inputs changed |
+
+**Risk-signal regen** (`regeneration_requeued` on `EnqueueComplianceRecalcResult`) is a **separate debounced path** (`risk_signal_regen_queue`) — log in artifacts but **do not** confuse with compliance-queue duplicate suppression.
+
+**Anti-pattern (forbidden in C1 fixes):** Changes that cause stable replay to suppress **new** legitimate work after semantic mutation, or that block `FAILED` retry requeue semantics (`retry_requeued` classification).
+
+**Artifact:** Record per-run in `c1_replay_{slug}.json`: `enqueued`, `duplicate_suppression_reason`, `regeneration_requeued`, `correlation_id`, queue row `status` before/after.
+
+##### 4b. No-op recalculation churn verification (mandatory — rev 2)
+
+After R1 completes and semantic compliance inputs are unchanged, **R2 and R3** must not produce persistent downstream recalculation churn.
+
+**Capture per run (R1, R2, R3)** — snapshot after each sync + after queue drain (if any):
+
+| Field / signal | Compare R1 → R2 → R3 |
+|----------------|----------------------|
+| Persisted **compliance score** values (headline + material fields used by validate) | **Stable** on R2/R3 (hash or field-wise equality) |
+| **`compliance_last_calculated_at`** | Must **not** advance on R2/R3 if no semantic change (or document single R1 advance only) |
+| **Score freshness metadata** (`compliance_score_pending`, pending honesty fields on property/client if present) | **Stable** false after R1; no flip-flop on R2/R3 |
+| **Downstream projection timestamps** (e.g. gap `updated_at`, priority stream cursor — spot-check) | **No churn** on R2/R3 beyond documented tolerance |
+| **Audit noise** (`score_events`, `property_compliance_score_history` insert count, applicability audit unrelated to mutation) | **Δ = 0** on R2/R3 vs post-R1 baseline |
+| **Unnecessary recalc persistence writes** | No new score-history rows / duplicate `COMPLIANCE_SCORE_UPDATED`-class events on R2/R3 |
+
+**Pass criterion:** Repeated governed replay with **unchanged semantic compliance state** creates **no** persistent recalculation churn. If `recalculate_and_persist` runs on R2/R3, persisted outputs must be **byte/logically identical** to post-R1 state.
+
+**Artifact:** `c1_recalc_stability_{slug}.json` — per-run field hashes, timestamp matrix, audit deltas (R1/R2/R3 columns). May extend `c1_replay_{slug}.json` if combined.
+
+##### 5. Stale / reclaim verification plan (minimum observability mandatory — rev 2)
+
+**Synthetic reclaim simulation may be deferred**, but **minimum reclaim observability proof is required** for C1 **DONE**.
+
+**5a. Configuration & assumptions (document in `c1_reclaim_observability_{slug}.json`):**
+
+| Item | Source |
+|------|--------|
+| `COMPLIANCE_RECALC_RUNNING_STALE_SECONDS` | env / default (1800) |
+| `COMPLIANCE_RECALC_HEARTBEAT_SECONDS` | env / default (45) |
+| Worker cadence | `server.py` — 15s, `max_instances=1` |
+| Scheduler owner | Render service name running APScheduler (`SCHEDULER_AND_COMPLIANCE_JOBS.md`) |
+| Reclaim implementation | `compliance_recalc_running_reclaim.py` |
+
+**5b. Operational detection path (mandatory capture):**
+
+- `build_recalc_queue_operational_snapshot` or admin **System Health** / `GET /health-summary` → `recalc_queue_health` (stuck RUNNING, dead letter, `stale_running_reclaimed_last_24h`)
+- Operator runbook pointer: where stuck `RUNNING` is detected (`RUNBOOK_CONTROLLED_BETA_OPERATIONS.md`, `SCHEDULER_AND_COMPLIANCE_JOBS.md`)
+- Screenshot or JSON excerpt in artifact — not prose-only
+
+**5c. Pilot tenant verification (mandatory):**
+
+- During full C1 window (R1–R3): **zero hidden stale `RUNNING`** rows for `property_id=d35a58ae…` (query `compliance_recalc_queue` where `status=RUNNING` and liveness exceeded threshold)
+- After each run: stuck RUNNING count for property = **0** unless actively processing
+
+**5d. Simulation (optional):**
+
+| Mode | Action | Pass criterion |
+|------|--------|----------------|
+| **Simulate (staging only, if safe)** | Test harness stale `RUNNING` injection (not raw Mongo proof path) | Reclaim → `PENDING` or `DEAD` per policy — append to `c1_reclaim_observability_{slug}.json` |
+
+If simulation deferred: closure must still include **5a–5c** evidence; label simulation **DEFERRED**, not **WAIVED**.
+
+##### 6. Downstream convergence proof (C1 boundary)
+
+After queue `DONE`, within documented SLA (≤10 min worker schedule registry max delay unless incident):
+
+| Surface | Check | C1 scope |
+|---------|-------|----------|
+| Property score | `compliance_score_pending=false`; `compliance_last_calculated_at` fresh | **In scope** |
+| Score vs requirements | No contradiction: included obligations reflected in score inputs (spot-check via admin validate or explain) | **In scope (spot-check)** |
+| Compliance gaps | Gap rows exist / update for property (no mass stale `OPEN` inconsistent with score) | **Observe** |
+| Dashboard / priority stream / today tasks | Timestamps align with recalc window | **Observe only** — full proof is **C2** |
+| Notifications / reminders | Count before/after replay — **no storm** on R2/R3 | **Boundary: count only** |
+
+**Artifact:** `c1_convergence_{slug}.json` — property score fields, optional gap count, notification job count delta (if easily queried), timestamp alignment notes.
+
+##### 7. C1 boundary (explicit — rev 2)
+
+**C1 remains:**
+
+| In scope | Out of scope |
+|----------|--------------|
+| Queue / recalc **lifecycle** verification (enqueue → worker → DONE → pending clear) | Scheduler redesign |
+| Replay safety (queue + **semantic recalc** stability) | Write optimization / noop timestamp normalization |
+| Minimum **reclaim observability** proof | Notification overhaul |
+| Downstream convergence **spot-check** + R2/R3 stability | Workflow architecture refactor |
+| Correlation-id enqueue idempotency | Materialisation `updated_at` churn fixes (B1 watchlist) |
+
+**B1 `updated_at` churn watchlist:** Remains **non-blocking** unless C1 proof shows it **creates extra queue rows**, **triggers repeated recalcs**, or **generates downstream propagation noise**. Observing churn alone does not expand C1 scope.
+
+##### 8. Notification and fanout boundary
+
+| In scope | Out of scope |
+|----------|--------------|
+| Prove replay does **not** multiply `enqueue_compliance_recalc` rows beyond idempotency rules | Fixing reminder templates |
+| Prove R2/R3 do **not** increase notification/fanout counts vs post-R1 baseline | Full workflow orchestration |
+| Log if `enqueue_compliance_recalc_with_fanout` observation rows appear on sync path | Scheduler architecture redesign |
+
+##### 9. Required artifact capture (staging)
+
+All under `backend/docs/audit/` (commit in C1 PR):
+
+| Artifact | Contents |
+|----------|----------|
+| `c1_queue_before_{slug}.json` | Pre-mutation queue + property + job_runs |
+| `c1_queue_after_{slug}.json` | Post-mutation queue + property + job_runs |
+| `c1_replay_{slug}.json` | R1–R3 enqueue + queue outcomes |
+| `c1_recalc_stability_{slug}.json` | R1/R2/R3 score, freshness, projection timestamps, audit deltas (§4b) |
+| `c1_job_runs_{slug}.json` | Worker runs overlapping proof window |
+| `c1_convergence_{slug}.json` | Score pending clear + downstream spot-check |
+| `c1_reclaim_observability_{slug}.json` | Thresholds, health snapshot, operator path, pilot RUNNING scan (§5); simulation optional |
+| `c1_verification_report_{slug}.json` | Summary, branch IDs, pass/fail, unlock recommendation |
+
+Optional script (implementation phase): `scripts/c1_staging_verification.py` — read-only snapshots + HTTP mutation driver (no raw Mongo writes).
+
+##### 10. Regression test plan (implementation phase)
+
+Extend / add tests (names indicative):
+
+| Test area | File (existing or new) | Assertions |
+|-----------|------------------------|------------|
+| Enqueue idempotency | `test_compliance_recalc_queue_stabilization_phase1.py` | Same `(property_id, correlation_id)` → no duplicate insert |
+| Replay safety | new `test_c1_enqueue_replay_idempotent.py` | Triple enqueue mock → ≤1 effective pending job |
+| Queue completion | stabilization tests | `PENDING`→`DONE` sets pending false on property |
+| Reclaim | `test_compliance_recalc_running_reclaim.py` (if exists) or extend | Stale RUNNING → `PENDING`/`DEAD` per policy |
+| HTTP sync enqueue | `test_properties_requirement_materialisation_http.py` / `test_admin_property_requirements_sync_from_registry_http.py` | Sync calls `enqueue_compliance_recalc` with expected trigger/correlation |
+| Convergence | new `test_c1_recalc_clears_pending_marker.py` | Worker completion clears `compliance_score_pending` |
+| No duplicate on stable replay | new | Second sync with same correlation → `enqueued=false` or safe regeneration path documented |
+| No-op recalc churn | new `test_c1_replay_no_semantic_recalc_churn.py` | Triple sync/recalc path → persisted score + history unchanged when inputs unchanged |
+| Recalc stability | extend convergence test | `compliance_last_calculated_at` / score fields stable on suppressed replay |
+
+**CI:** All above green; no flake on Mongo-less mocks.
+
+##### 11. Governance updates (on C1 DONE)
+
+| Document | Update |
+|----------|--------|
+| `LAUNCH_AUTHORITY_TRACKER.md` | C1 closure evidence; C2 unlock matrix; link `c1_*` artifacts |
+| `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 | C1 substeps: snapshots, C1-M1/M2, replay, reclaim note |
+| `runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md` | Only if reclaim/heartbeat semantics changed in code |
+| `GOVERNANCE_INDEX.md` | C1 → C2 handoff cross-ref if needed |
+| `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` | Stream C1 row → DONE |
+
+##### 12. Rollback / safety
+
+- Do not manually set queue `status` to `DONE`/`DEAD` to “fix” staging.
+- Do not delete queue rows without incident record.
+- If worker stuck: use documented reclaim + scheduler owner check before re-enqueue storm.
+- Record Render service name owning scheduler before starting proof.
+
+##### 13. Completion gates
+
+| Gate | Requirement |
+|------|-------------|
+| **Start `IN_PROGRESS`** | **DoD rev 2 + §4c approved**; pilot tenant + C1-M1/C1-M2 identified; before artifacts captured; §4b + §5 in plan |
+| **`IMPLEMENTED_PENDING_VERIFICATION`** | Code/tests merged (if any fixes); snapshot script optional |
+| **`READY_FOR_STAGING_VERIFICATION`** | All §9 artifacts captured (incl. `c1_recalc_stability_*`, `c1_reclaim_observability_*`) |
+| **`VERIFIED`** | §3–§6 pass; **queue** R2=R3 stable; **semantic recalc** R2=R3 stable (§4b); reclaim observability (§5a–5c) |
+| **`DONE`** | §10 tests green; §11 docs updated; closure row; **C2 unlock decision** documented |
+
+**C1 cannot move to DONE unless all of the following are proven on staging:**
+
+1. Stable replay → **no queue amplification** (§4).
+2. Stable replay → **no semantic recalc churn** (§4b) — persisted score, freshness, projections, audit stable across R2/R3.
+3. **Reclaim observability** captured (§5a–5c) — simulation optional, observability **not** optional.
+4. **Downstream convergence** stable across R2/R3 replay (§6) — pending clear, no contradictory state.
+
+**Unlock on DONE:** **C2** — **DoD drafting only** (implementation remains **BLOCKED** until C2 DoD approved). **Do not unlock** notification overhaul, B2, or B3 from C1 alone.
+
+**Watchlist (non-blocking unless proven causal):** In-plan materialisation `updated_at` churn (B1) — C1 staging proved **11 upsert passes per sync do not** cause extra compliance-queue rows or recalc churn on suppressed replay (R2/R3).
+
+#### C1 — Closure evidence (2026-05-16 — **DONE**)
+
+**Pilot:** `client_id=6fd5ac4c-3fd4-4112-ade7-156977deb49f`, `property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad`, `pleerity_staging`.
+
+**Governed mutations:** **C1-M1** (stable `REQUIREMENTS_SYNC:{property_id}`) ×3 replay; **C1-M2** (new `ADMIN_MANUAL_JOB:REGISTRY_SYNC:…` correlation per call) legitimate enqueue.
+
+| Proof | Result |
+|-------|--------|
+| **R1** | `enqueued=true` → queue **DONE**; worker `compliance_recalc_worker` success; score 23→52; `compliance_score_pending` cleared |
+| **R2** | `enqueued=false`, `duplicate_suppression_reason=duplicate_pending`; queue TOTAL Δ **0** |
+| **R3** | Same as R2; `suppressed_duplicate_enqueue_count=2` on stable row |
+| **C1-M2** | `enqueued=true` → new correlation → **DONE** (+1 queue row) |
+| **Recalc stability (§4b)** | R2/R3: fingerprint stable; `score_history`/`score_events` Δ **0**; `compliance_last_calculated_at` unchanged |
+| **Reclaim observability (§5)** | Thresholds documented; ops snapshot `stuck_running=0`; pilot stale RUNNING **[]** |
+| **Notification boundary** | `notification_retry_pending` **0** throughout; no storm |
+| **Queue before/after** | 115 → 117 TOTAL (+2 expected: R1 + M2 rows only) |
+
+**Artifacts (committed under `backend/docs/audit/`):**
+
+- `c1_queue_before_6fd5ac4c_d35a58ae.json`
+- `c1_queue_after_6fd5ac4c_d35a58ae.json`
+- `c1_replay_6fd5ac4c_d35a58ae.json`
+- `c1_recalc_stability_6fd5ac4c_d35a58ae.json`
+- `c1_reclaim_observability_6fd5ac4c_d35a58ae.json`
+- `c1_reclaim_observability_before_6fd5ac4c_d35a58ae.json`
+- `c1_verification_report_6fd5ac4c_d35a58ae.json`
+
+**Regression (§9):** **41 passed** — `test_compliance_recalc_queue_stabilization_phase1.py`, `test_c1_enqueue_suppression_vs_regeneration.py`, `test_compliance_recalc_running_reclaim.py`, `test_properties_requirement_materialisation_http.py`, `test_admin_property_requirements_sync_from_registry_http.py`, `test_compliance_recalc_worker_job_outcomes.py`.
+
+**PR(s):** C1 verification scripts (`c1_preflight_capture.py`, `c1_staging_verification.py`); B1 materialisation governance (prior PR). No queue semantics code change required for C1 pass.
+
+**Governance docs:** This tracker; `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 C1; `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` recovery row. `SCHEDULER_AND_COMPLIANCE_JOBS.md` **unchanged** (semantics unchanged).
+
+**DONE gates (administrative closure 2026-05-16):** Ten recovery gates satisfied — staging artifacts committed; §9 regression **41 passed**; governance docs updated; no queue semantics code change required; C2 unlock = **DoD drafting only**.
+
+**Next approved step:** Draft **C2** Definition of Done only. **Do not** start C2 implementation, notifications/fanout work, `updated_at` optimization, or scheduler redesign.
+
+---
+
+### C2 — Authoritative convergence verification
+
+| Field | Value |
+|-------|-------|
+| **ID** | C2 |
+| **Priority** | P1 |
+| **Trigger** | After C1 |
+| **Scope** | Prove downstream convergence: requirements → gaps → risk → priority stream → dashboard → score → today/tasks within bounded time |
+| **Canonical authority** | `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` Streams B, C, E; `STREAM_E_MUTATION_FANOUT_MATRIX.md` |
+| **Code areas likely affected** | `compliance_gap_sync.py`, `client_priority_stream.py`, `unified_tasks_service.py`, `compliance_scoring_service.py` |
+| **Unit status** | **BLOCKED** (implementation) — **UNLOCKED for DoD drafting only** after C1 **DONE**; DoD **not drafted** |
+| **Verification evidence** | No stale conflicting state across surfaces; timestamps/audit align; bounded lag documented |
+| **Governance docs after** | Closed-loop tracker stream notes; gap analysis cross-ref |
+| **Regression tests** | Stream E fanout tests; gap sync tests |
+| **Rollback / safety** | Use validate-compliance-score diagnose before fix |
+
+---
+
+### D1 — Workflow propagation fanout
+
+| Field | Value |
+|-------|-------|
+| **ID** | D1 |
+| **Priority** | P0 (launch) |
+| **Trigger** | **Only after A+B+C pass** for pilot tenant |
+| **Scope** | `authority_mutation_fanout`; RST backbone gate; recalc/regen enqueue; document activation-blocked cases |
+| **Canonical authority** | `authority_mutation_fanout.py`; `workflow_runtime_activation_registry.py`; **L-009**; `STREAM_E_MUTATION_FANOUT_MATRIX.md` |
+| **Code areas likely affected** | Fanout, evidence verify paths, `requirement_transition_observability.py` |
+| **Unit status** | **BLOCKED** (pending C) |
+| **Verification evidence** | Fanout trace on governed mutation; blocked case has `propagation_notice` / activation reason |
+| **Governance docs after** | **L-009** inventory if new route; AUTHORITY_WRITE_PATH |
+| **Regression tests** | `test_requirement_transition_fanout_phase4.py`, L-009 HTTP suites |
+| **Rollback / safety** | Do not bypass activation registry |
+
+---
+
+### D2 — Legacy path and compatibility bridge review
+
+| Field | Value |
+|-------|-------|
+| **ID** | D2 |
+| **Priority** | P2 |
+| **Trigger** | Parallel to D1 or after B stable |
+| **Scope** | Classify bridges: transitional / deprecated / permanent; retirement conditions; no duplicate runtime authorities |
+| **Canonical authority** | [PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md](../PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md); `WORKFLOW_BEHAVIOUR_GOVERNANCE.md` |
+| **Code areas likely affected** | `REQUIREMENT_GENERATION_SOURCE_DB_RULE`, legacy_readonly paths, order workflow (out of scope for obligations) |
+| **Unit status** | **NOT_STARTED** |
+| **Verification evidence** | Inventory table in published-registry audit; deprecated paths tagged in tracker |
+| **Governance docs after** | `PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md`; `GOVERNANCE_INDEX.md` TIER_4 list |
+| **Regression tests** | N/A unless deprecation removes path |
+| **Rollback / safety** | Do not remove legacy_readonly without migration bucket |
+
+---
+
+### E1 — Evidence / document state authority
+
+| Field | Value |
+|-------|-------|
+| **ID** | E1 |
+| **Priority** | P0 |
+| **Trigger** | After A–D stable for pilot tenant |
+| **Scope** | Upload/verify/reject → authority state; no stale extraction overriding human review (**L-004**) |
+| **Canonical authority** | `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`; `audit/AUTHORITY_WRITE_PATH_RECONCILIATION.md`; **L-004**, **L-005** |
+| **Code areas likely affected** | `evidence_review_verify.py`, `document_operational_state.py`, extraction supersession services |
+| **Unit status** | **BLOCKED** (pending D) |
+| **Verification evidence** | Verify changes requirement projection; gap sync follows; audit event |
+| **Governance docs after** | **L-004** row; AUTHORITY_WRITE_PATH |
+| **Regression tests** | Evidence review HTTP suites; operational state tests |
+| **Rollback / safety** | Reconciliation job dry_run first |
+
+---
+
+### F1 — Notification governance
+
+| Field | Value |
+|-------|-------|
+| **ID** | F1 |
+| **Priority** | P2 (pilot) |
+| **Trigger** | **Only after A–E pass** |
+| **Scope** | Eligibility; `NOTIFICATION_DISPATCH` global flag; orchestrator vs obligation health separation |
+| **Canonical authority** | `audit/NOTIFICATION_GOVERNANCE_INVENTORY.json`; **L-008** |
+| **Code areas likely affected** | `notification_orchestrator.py`, `jobs.py` — **not** materialisation |
+| **Unit status** | **BLOCKED** (pending E) |
+| **Verification evidence** | `message_logs`; blocked sends have governed reason; **no** notification as obligation-creation proof |
+| **Governance docs after** | JSON inventory if policy changes |
+| **Regression tests** | L-008 contract tests |
+| **Rollback / safety** | Do not globally activate NOTIFICATION_DISPATCH without program sign-off |
+
+---
+
+### G1 — Support / admin operational recovery
+
+| Field | Value |
+|-------|-------|
+| **ID** | G1 |
+| **Priority** | P1 |
+| **Trigger** | After A–F; continuous improvement |
+| **Scope** | Admin explain tools; support playbook; safe sync/retry; classify A/B/C from UI/runbook |
+| **Canonical authority** | `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md`; `SUPPORT_REMEDIATION_CORRELATION_VIEW_V1.md` |
+| **Code areas likely affected** | Admin SPA provisioning panel, explain endpoint discoverability |
+| **Unit status** | **NOT_STARTED** |
+| **Verification evidence** | Support drill: classify failure without Mongo; closure in tracker |
+| **Governance docs after** | RUNBOOK §12.6–§12.7 |
+| **Regression tests** | N/A |
+| **Rollback / safety** | Correlation view remains non-authoritative |
+
+---
+
+### G2 — Operational observability hardening
+
+| Field | Value |
+|-------|-------|
+| **ID** | G2 |
+| **Priority** | P2 |
+| **Trigger** | Parallel G1; after A1 proves explain endpoint |
+| **Scope** | Diagnose materialisation, visibility, queue, fanout, activation, exclusions **without** Mongo for routine ops |
+| **Canonical authority** | `GOVERNANCE_INDEX.md`; admin explain + provisioning GET + automation centre |
+| **Code areas likely affected** | Observability routes, admin dashboard signals |
+| **Unit status** | **NOT_STARTED** |
+| **Verification evidence** | Operator flow tested; explain documented in RUNBOOK |
+| **Governance docs after** | RUNBOOK §12.7; `GOVERNANCE_INDEX.md` |
+| **Regression tests** | N/A |
+| **Rollback / safety** | Additive admin fields only |
+
+---
+
+### Implementation sequence (mandatory)
+
+```
+A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
+  → C1 → C2 → D1 (+ D2 in parallel) → E1 → F1 → G1/G2 continuous
+```
+
+**Next approved step:** Draft **C2** Definition of Done only (downstream convergence). **C2 implementation BLOCKED** until C2 DoD approved. **B2** BLOCKED (product); **B3** BLOCKED/deferred.
+
+---
+
+*Maintainers: **L-00x** rows use **§ Finishable unit contract**; **A1–G2** rows use **§ Recovery unit implementation contract** (end-to-end, status lifecycle, ten DONE gates). After each pass: update statuses (never skip `IMPLEMENTED_PENDING_VERIFICATION` → `VERIFIED` → `DONE`), paste closure evidence, unlock next unit. Do not declare wider launch without updating this file and the ten-gate table.*

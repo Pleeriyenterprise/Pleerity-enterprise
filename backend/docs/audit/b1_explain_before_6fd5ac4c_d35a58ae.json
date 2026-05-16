@@ -1,0 +1,448 @@
+{
+  "captured_at_utc": "2026-05-16T17:25:54.891524+00:00",
+  "phase": "B1_before_IN_PROGRESS",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "planned_types": [
+    "eicr",
+    "emergency_lighting",
+    "epc",
+    "fire_alarm",
+    "fire_extinguisher",
+    "gas_safety",
+    "hmo_fire_risk",
+    "hmo_fire_risk_evidence",
+    "hmo_license",
+    "legionella",
+    "occupation_contract"
+  ],
+  "planned_types_count": 11,
+  "explain": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "property_jurisdiction": "Wales",
+    "jurisdiction_source": "property_explicit",
+    "included_count": 4,
+    "raw_count": 21,
+    "rows": [
+      {
+        "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+        "requirement_type": "right_to_rent",
+        "requirement_code": "right_to_rent",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": null,
+        "baseline_key": "right_to_rent",
+        "conditions_satisfied": null,
+        "conditions": null,
+        "source": "baseline",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "216ed196-883b-42a2-9011-39918534d32d",
+        "requirement_type": "eicr",
+        "requirement_code": null,
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "EICR|DEFAULT",
+        "baseline_key": "eicr",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": []
+        },
+        "source": "both",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "62eb591f-c26d-4271-b28b-841db65e08fa",
+        "requirement_type": "fire_risk_assessment",
+        "requirement_code": "fire_risk_assessment",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "FIRE_RISK_ASSESSMENT|DEFAULT",
+        "baseline_key": "fire_risk_assessment",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": [
+            {
+              "field": "is_hmo",
+              "op": "true"
+            }
+          ]
+        },
+        "source": "published",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+        "requirement_type": "fire_alarm",
+        "requirement_code": "fire_alarm",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "SMOKE_HEAT_ALARMS|DEFAULT",
+        "baseline_key": "smoke_heat_alarms",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": []
+        },
+        "source": "both",
+        "included": true,
+        "inclusion_reason": "passes_runtime_surface_gates",
+        "alias_dedupe_decision": "kept_single_family_row",
+        "trace": {
+          "included": true,
+          "inclusion_reason": "passes_runtime_surface_gates",
+          "matched_published_overlay": true,
+          "source": "both",
+          "alias_family": "fire_detection_alias_family",
+          "dedupe_decision": "kept_single_family_row",
+          "dedupe_candidates": [
+            "69fc66fe-e196-44d4-a20e-3fe68d316f7f"
+          ]
+        }
+      },
+      {
+        "requirement_id": "19d087fa-3d74-4977-8753-23cfcf5bb4b6",
+        "requirement_type": "fire_detection",
+        "requirement_code": "fire_detection",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "SMOKE_HEAT_ALARMS|DEFAULT",
+        "baseline_key": "smoke_heat_alarms",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": []
+        },
+        "source": "published",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+        "requirement_type": "legionella",
+        "requirement_code": null,
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "LEGIONELLA|DEFAULT",
+        "baseline_key": "legionella",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": []
+        },
+        "source": "both",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "202ece94-7e97-460e-b1fe-5ad78e2214f9",
+        "requirement_type": "co_alarms",
+        "requirement_code": "co_alarms",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "SMOKE_HEAT_ALARMS|DEFAULT",
+        "baseline_key": "smoke_heat_alarms",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": []
+        },
+        "source": "published",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "bb3eb656-7186-4ae0-9bef-5c796ed14fe6",
+        "requirement_type": "how_to_rent",
+        "requirement_code": "how_to_rent",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": null,
+        "baseline_key": "how_to_rent",
+        "conditions_satisfied": null,
+        "conditions": null,
+        "source": "baseline",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "6c09c366-1625-42c8-b267-e269a5822001",
+        "requirement_type": "tenancy_agreement",
+        "requirement_code": "tenancy_agreement",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "TENANCY_AGREEMENT|DEFAULT",
+        "baseline_key": "tenancy_agreement",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": []
+        },
+        "source": "published",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "316d0956-4787-40e8-92c8-9ff02f27129a",
+        "requirement_type": "portable_appliance_test",
+        "requirement_code": null,
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "PAT_TESTING|DEFAULT",
+        "baseline_key": "portable_appliance_test",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": []
+        },
+        "source": "published",
+        "included": false,
+        "exclusion_reason": "not_in_planner_membership",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "c6f57f19-8481-4c07-8809-7198adb7dfb3",
+        "requirement_type": "smoke_alarms",
+        "requirement_code": "smoke_alarms",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "SMOKE_HEAT_ALARMS|DEFAULT",
+        "baseline_key": "smoke_heat_alarms",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": []
+        },
+        "source": "published",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "86b9fe01-4ed3-451f-9aa9-a6c5f4f71048",
+        "requirement_type": "deposit_pi",
+        "requirement_code": "deposit_pi",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": null,
+        "baseline_key": "deposit_pi",
+        "conditions_satisfied": null,
+        "conditions": null,
+        "source": "baseline",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "71e89158-5de0-422a-970c-5a2163fcc823",
+        "requirement_type": "hmo_license",
+        "requirement_code": "hmo_license",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "HMO_LICENSING|DEFAULT",
+        "baseline_key": "hmo_license",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": [
+            {
+              "field": "is_hmo",
+              "op": "true"
+            }
+          ]
+        },
+        "source": "both",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+        "requirement_type": "gas_safety",
+        "requirement_code": "gas_safety",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "GAS_SAFETY|DEFAULT",
+        "baseline_key": "gas_safety",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": []
+        },
+        "source": "both",
+        "included": true,
+        "inclusion_reason": "passes_runtime_surface_gates",
+        "alias_dedupe_decision": null,
+        "trace": {
+          "included": true,
+          "inclusion_reason": "passes_runtime_surface_gates",
+          "matched_published_overlay": true,
+          "source": "both"
+        }
+      },
+      {
+        "requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+        "requirement_type": "epc",
+        "requirement_code": null,
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "EPC|DEFAULT",
+        "baseline_key": "epc",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": []
+        },
+        "source": "both",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "8ada7bce-4887-4a1b-ac51-6c9dd2431ceb",
+        "requirement_type": "fire_extinguisher",
+        "requirement_code": "fire_extinguisher",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": null,
+        "baseline_key": "fire_extinguisher",
+        "conditions_satisfied": null,
+        "conditions": null,
+        "source": "baseline",
+        "included": false,
+        "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+        "requirement_type": "occupation_contract",
+        "requirement_code": "occupation_contract",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "OCCUPATION_CONTRACT|DEFAULT",
+        "baseline_key": "occupation_contract",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": []
+        },
+        "source": "both",
+        "included": true,
+        "inclusion_reason": "passes_runtime_surface_gates",
+        "alias_dedupe_decision": null,
+        "trace": {
+          "included": true,
+          "inclusion_reason": "passes_runtime_surface_gates",
+          "matched_published_overlay": true,
+          "source": "both"
+        }
+      },
+      {
+        "requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+        "requirement_type": "hmo_fire_risk_evidence",
+        "requirement_code": "hmo_fire_risk_evidence",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "HMO_FIRE_RISK|DEFAULT",
+        "baseline_key": "hmo_fire_risk_evidence",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": [
+            {
+              "field": "is_hmo",
+              "op": "true"
+            }
+          ]
+        },
+        "source": "both",
+        "included": true,
+        "inclusion_reason": "passes_runtime_surface_gates",
+        "alias_dedupe_decision": "kept_winner_alias_row",
+        "trace": {
+          "included": true,
+          "inclusion_reason": "passes_runtime_surface_gates",
+          "matched_published_overlay": true,
+          "source": "both",
+          "alias_family": "hmo_fire_risk_alias_family",
+          "dedupe_decision": "kept_winner_alias_row",
+          "dedupe_candidates": [
+            "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+            "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6"
+          ],
+          "dedupe_excluded": [
+            "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6"
+          ]
+        }
+      },
+      {
+        "requirement_id": "83412d09-e6c8-45a9-a544-bc0a242555e8",
+        "requirement_type": "landlord_registration_ni",
+        "requirement_code": "landlord_registration_ni",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": null,
+        "baseline_key": "landlord_registration_ni",
+        "conditions_satisfied": null,
+        "conditions": null,
+        "source": "baseline",
+        "included": false,
+        "exclusion_reason": "not_required_row",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "b3ded9ac-67c3-46de-94b4-14916140ceaf",
+        "requirement_type": "emergency_lighting",
+        "requirement_code": "emergency_lighting",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": null,
+        "baseline_key": "emergency_lighting",
+        "conditions_satisfied": null,
+        "conditions": null,
+        "source": "baseline",
+        "included": false,
+        "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      },
+      {
+        "requirement_id": "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6",
+        "requirement_type": "hmo_fire_risk",
+        "requirement_code": "hmo_fire_risk",
+        "property_jurisdiction": "Wales",
+        "jurisdiction_source": "property_explicit",
+        "matched_published_key": "HMO_FIRE_RISK|DEFAULT",
+        "baseline_key": "hmo_fire_risk",
+        "conditions_satisfied": true,
+        "conditions": {
+          "logic": "ALL",
+          "rules": [
+            {
+              "field": "is_hmo",
+              "op": "true"
+            }
+          ]
+        },
+        "source": "both",
+        "included": false,
+        "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy",
+        "alias_dedupe_decision": "excluded_or_not_selected"
+      }
+    ]
+  }
+}

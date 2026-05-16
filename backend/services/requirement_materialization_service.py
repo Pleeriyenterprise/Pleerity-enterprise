@@ -28,6 +28,11 @@ from services.policy_field_normalizer import resolve_policy_facts
 from services.portfolio_risk_policy import POLICY_CLASSIFICATION_VERSION
 from services.requirement_action_resolver import infer_action_type
 from services.requirement_evidence_authority import normalized_evidence_state_for_policy
+from services.requirement_not_required_governance import (
+    build_automated_not_required_metadata,
+    is_already_reconciled_obsolete,
+    is_operator_curated_not_required,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +159,7 @@ async def materialize_requirements_for_property(
     planned_types: Set[str] = {p.requirement_type for p in plan}
     now = datetime.now(timezone.utc)
     upserted = 0
+    reopened_from_not_required = 0
 
     for item in plan:
         existing = await db.requirements.find_one(
@@ -206,12 +212,20 @@ async def materialize_requirements_for_property(
             rid = existing.get("requirement_id")
             if not rid:
                 continue
-            if (existing.get("applicability") or "").upper() == "NOT_REQUIRED" and existing.get("not_required_reason"):
+            if (existing.get("applicability") or "").upper() == "NOT_REQUIRED" and is_operator_curated_not_required(
+                existing
+            ):
                 continue
-            if (existing.get("applicability") or "").upper() == "NOT_REQUIRED" and not existing.get("not_required_reason"):
+            is_reopen = (existing.get("applicability") or "").upper() == "NOT_REQUIRED"
+            if is_reopen:
                 patch["applicability"] = "UNKNOWN"
                 patch["status"] = RequirementStatus.PENDING.value
                 patch["not_required_reason"] = None
+                patch["client_surface_visible"] = csv
+                reopened_from_not_required += 1
+            unset_fields: Dict[str, str] = {}
+            if is_reopen:
+                unset_fields["not_applicable_audit_reason"] = ""
             prov_patch = await apply_provenance_and_audit_after_requirement_patch(
                 db,
                 client_id=client_id,
@@ -219,11 +233,18 @@ async def materialize_requirements_for_property(
                 requirement_id=str(rid),
                 before=dict(existing),
                 pipeline_applicability_state=str(policy_facts["pipeline_applicability_state"]),
-                event_type="MATERIALIZATION_PIPELINE_APPLICABILITY",
+                event_type=(
+                    "MATERIALIZATION_REOPEN_FROM_NOT_REQUIRED"
+                    if is_reopen
+                    else "MATERIALIZATION_PIPELINE_APPLICABILITY"
+                ),
                 actor={"type": "system", "id": "requirement_materialization"},
             )
             patch.update(prov_patch)
-            await db.requirements.update_one({"requirement_id": rid}, {"$set": patch})
+            update_doc: Dict[str, Any] = {"$set": patch}
+            if unset_fields:
+                update_doc["$unset"] = unset_fields
+            await db.requirements.update_one({"requirement_id": rid}, update_doc)
         else:
             due = now + timedelta(days=int(item.warning_days))
             req = Requirement(
@@ -299,13 +320,24 @@ async def materialize_requirements_for_property(
                 continue
             if row.get("evidence_doc_id"):
                 continue
-            if row.get("not_required_reason"):
+            if is_operator_curated_not_required(row):
+                continue
+            if is_already_reconciled_obsolete(row):
                 continue
             st = (row.get("status") or "").upper()
             if st in ("COMPLIANT", "VERIFIED"):
                 continue
             rid_obs = row.get("requirement_id")
             prov_obs = merge_provenance_into_requirement_patch(dict(row), "NOT_REQUIRED")
+            reg_meta = dict(row.get("registry_metadata") or {})
+            reg_meta["reconciled_obsolete"] = True
+            reg_meta["reconciled_at"] = now.isoformat()
+            reg_meta["automated_not_required"] = build_automated_not_required_metadata(
+                reason_code="RECONCILE_OBSOLETE",
+                source_subsystem="requirement_materialization",
+                reconcile_source="MATERIALIZATION_RECONCILE_OBSOLETE_APPLICABILITY",
+                planned_types_snapshot=sorted(planned_types),
+            )
             set_body = {
                 "applicability": "NOT_REQUIRED",
                 "status": RequirementStatus.NOT_REQUIRED.value,
@@ -314,11 +346,7 @@ async def materialize_requirements_for_property(
                 "requires_document": False,
                 "requires_job": False,
                 "updated_at": now.isoformat(),
-                "registry_metadata": {
-                    **(row.get("registry_metadata") or {}),
-                    "reconciled_obsolete": True,
-                    "reconciled_at": now.isoformat(),
-                },
+                "registry_metadata": reg_meta,
             }
             set_body.update(prov_obs)
             await db.requirements.update_one(
@@ -342,6 +370,7 @@ async def materialize_requirements_for_property(
         "property_id": property_id,
         "planned_types": sorted(planned_types),
         "upsert_passes": upserted,
+        "reopened_from_not_required": reopened_from_not_required,
         "reconciled_obsolete": reconciled,
     }
 

@@ -1,0 +1,239 @@
+{
+  "captured_at_utc": "2026-05-16T17:25:54.891524+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "rows": [
+    {
+      "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+      "requirement_type": "right_to_rent",
+      "state_sig": "b471346df69191a5",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": "not_applicable",
+      "reconciled_obsolete": false,
+      "in_planned_types": false,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "216ed196-883b-42a2-9011-39918534d32d",
+      "requirement_type": "eicr",
+      "state_sig": "862e2675405436ce",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": "not_applicable",
+      "reconciled_obsolete": false,
+      "in_planned_types": true,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "62eb591f-c26d-4271-b28b-841db65e08fa",
+      "requirement_type": "fire_risk_assessment",
+      "state_sig": "38a894f70d8a9860",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": "not_applicable",
+      "reconciled_obsolete": false,
+      "in_planned_types": false,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+      "requirement_type": "fire_alarm",
+      "state_sig": "dd1f54692ef310d0",
+      "status": "PENDING",
+      "applicability": "UNKNOWN",
+      "not_required_reason": null,
+      "reconciled_obsolete": false,
+      "in_planned_types": true,
+      "requirement_generation_source": "catalog_registry"
+    },
+    {
+      "requirement_id": "19d087fa-3d74-4977-8753-23cfcf5bb4b6",
+      "requirement_type": "fire_detection",
+      "state_sig": "1fe7afa30c86f4d0",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": "not_applicable",
+      "reconciled_obsolete": false,
+      "in_planned_types": false,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "requirement_type": "legionella",
+      "state_sig": "30c70ef3bd1eaf30",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": "not_applicable",
+      "reconciled_obsolete": false,
+      "in_planned_types": true,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "202ece94-7e97-460e-b1fe-5ad78e2214f9",
+      "requirement_type": "co_alarms",
+      "state_sig": "69b0da39c80cf433",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": "not_applicable",
+      "reconciled_obsolete": false,
+      "in_planned_types": false,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "bb3eb656-7186-4ae0-9bef-5c796ed14fe6",
+      "requirement_type": "how_to_rent",
+      "state_sig": "8b1d81bdc5da24cc",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": "not_applicable",
+      "reconciled_obsolete": false,
+      "in_planned_types": false,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "6c09c366-1625-42c8-b267-e269a5822001",
+      "requirement_type": "tenancy_agreement",
+      "state_sig": "1bfb6c4fcfcd717b",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": "not_applicable",
+      "reconciled_obsolete": false,
+      "in_planned_types": false,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "316d0956-4787-40e8-92c8-9ff02f27129a",
+      "requirement_type": "portable_appliance_test",
+      "state_sig": "e545503dc820d245",
+      "status": "PENDING",
+      "applicability": "UNKNOWN",
+      "not_required_reason": null,
+      "reconciled_obsolete": false,
+      "in_planned_types": false,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "c6f57f19-8481-4c07-8809-7198adb7dfb3",
+      "requirement_type": "smoke_alarms",
+      "state_sig": "3065f53310429faf",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": "not_applicable",
+      "reconciled_obsolete": false,
+      "in_planned_types": false,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "86b9fe01-4ed3-451f-9aa9-a6c5f4f71048",
+      "requirement_type": "deposit_pi",
+      "state_sig": "4b4a47dd669ccc8c",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": "not_applicable",
+      "reconciled_obsolete": false,
+      "in_planned_types": false,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "71e89158-5de0-422a-970c-5a2163fcc823",
+      "requirement_type": "hmo_license",
+      "state_sig": "9abaebd0faa6326b",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": "not_applicable",
+      "reconciled_obsolete": false,
+      "in_planned_types": true,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+      "requirement_type": "gas_safety",
+      "state_sig": "73df3cd32af0830b",
+      "status": "PENDING",
+      "applicability": "UNKNOWN",
+      "not_required_reason": null,
+      "reconciled_obsolete": false,
+      "in_planned_types": true,
+      "requirement_generation_source": "catalog_registry"
+    },
+    {
+      "requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+      "requirement_type": "epc",
+      "state_sig": "1abf5d1952e9bd25",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": "not_applicable",
+      "reconciled_obsolete": false,
+      "in_planned_types": true,
+      "requirement_generation_source": ""
+    },
+    {
+      "requirement_id": "8ada7bce-4887-4a1b-ac51-6c9dd2431ceb",
+      "requirement_type": "fire_extinguisher",
+      "state_sig": "c9979999975c1ba1",
+      "status": "PENDING",
+      "applicability": "UNKNOWN",
+      "not_required_reason": null,
+      "reconciled_obsolete": false,
+      "in_planned_types": true,
+      "requirement_generation_source": "catalog_registry"
+    },
+    {
+      "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+      "requirement_type": "occupation_contract",
+      "state_sig": "7d1fd4e8f588afcb",
+      "status": "PENDING",
+      "applicability": "UNKNOWN",
+      "not_required_reason": null,
+      "reconciled_obsolete": false,
+      "in_planned_types": true,
+      "requirement_generation_source": "catalog_registry"
+    },
+    {
+      "requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+      "requirement_type": "hmo_fire_risk_evidence",
+      "state_sig": "17427a14c27c1f1e",
+      "status": "PENDING",
+      "applicability": "UNKNOWN",
+      "not_required_reason": null,
+      "reconciled_obsolete": false,
+      "in_planned_types": true,
+      "requirement_generation_source": "catalog_registry"
+    },
+    {
+      "requirement_id": "83412d09-e6c8-45a9-a544-bc0a242555e8",
+      "requirement_type": "landlord_registration_ni",
+      "state_sig": "0fa67c5a7a9387b9",
+      "status": "NOT_REQUIRED",
+      "applicability": "NOT_REQUIRED",
+      "not_required_reason": null,
+      "reconciled_obsolete": true,
+      "in_planned_types": false,
+      "requirement_generation_source": "catalog_registry"
+    },
+    {
+      "requirement_id": "b3ded9ac-67c3-46de-94b4-14916140ceaf",
+      "requirement_type": "emergency_lighting",
+      "state_sig": "891e476e44f1986d",
+      "status": "PENDING",
+      "applicability": "UNKNOWN",
+      "not_required_reason": null,
+      "reconciled_obsolete": false,
+      "in_planned_types": true,
+      "requirement_generation_source": "catalog_registry"
+    },
+    {
+      "requirement_id": "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6",
+      "requirement_type": "hmo_fire_risk",
+      "state_sig": "63ed7669abd25a53",
+      "status": "PENDING",
+      "applicability": "UNKNOWN",
+      "not_required_reason": null,
+      "reconciled_obsolete": false,
+      "in_planned_types": true,
+      "requirement_generation_source": "catalog_registry"
+    }
+  ],
+  "aggregate_state_hash": "e5d0ab8c4be87ef9af0fe11fa2497f42"
+}

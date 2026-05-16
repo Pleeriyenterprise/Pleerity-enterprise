@@ -338,6 +338,99 @@ Controlled beta may proceed with discipline; **public launch** remains gated unt
 | R2 | `validate-compliance-score` `fix=false` then `fix=true` on a **non-prod** property documented. | ☐ |
 | R3 | Affected users identified via audit / property scope — not ad hoc guesswork. | ☐ |
 
+### 12.7 Obligation materialisation & visibility (A1–B proof)
+
+**Authority:** `LAUNCH_AUTHORITY_TRACKER.md` § Recovery implementation plan (**A1–G2**) + § **Recovery unit implementation contract**; `PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md`; `GOVERNANCE_INDEX.md`. **Do not** use notifications or queue health as proof of obligation creation.
+
+**Recovery unit verification:** After implementing any **A2+** unit, operators must complete that unit’s Definition of Done staging steps before the launch tracker moves to **DONE**. Status must pass through **`IMPLEMENTED_PENDING_VERIFICATION`** → **`VERIFIED`** (not straight to DONE after merge).
+
+**Prerequisites:** Staging `MONGO_URL`, `DB_NAME`; admin token; one affected `CID` + `PID`.
+
+#### A1 — Classification checklist
+
+| # | Check | Command / endpoint | Record |
+|---|-------|-------------------|--------|
+| O1 | Client onboarding | `db.clients.findOne({client_id:"CID"},{onboarding_status:1,provisioning_status:1,subscription_status:1,_id:0})` | |
+| O2 | Provisioning job | `db.provisioning_jobs.find({client_id:"CID"}).sort({updated_at:-1}).limit(1)` | |
+| O3 | Properties | `db.properties.countDocuments({client_id:"CID"})` | |
+| O4 | Raw requirements | `db.requirements.countDocuments({client_id:"CID",property_id:"PID"})` | |
+| O5 | Admin provisioning (HTTP) | `GET /api/admin/provisioning/CID` | |
+| O6 | Runtime explain | `GET /api/admin/compliance/registry/runtime-requirements/explain?client_id=CID&property_id=PID` → `raw_count`, `included_count`, top `exclusion_reason` | |
+| O7 | Client API (filtered) | `GET /api/properties/PID/requirements` (client auth) — count vs O6 `included_count` | |
+| O8 | **Classification** | **A-only** if O4=0 and not PROVISIONED or provision failed; **B-only** if O4>0 and O6 `included_count`=0; **A+B** if both; **Neither** if O4>0 and O6≈O7 and obligations visible | |
+
+**Script (recommended):** From `backend/` with `MONGO_URL` + `DB_NAME` set:
+
+`python -m scripts.a1_obligation_tenant_classification --client-id CID --property-id PID`
+
+Add `--json` for machine-readable output. Records classification + top `exclusion_reason` values.
+
+Record result in tracker **A1 classification record** table.
+
+#### A2 — Materialisation repair (if A-only / A+B)
+
+| # | Action | Verification |
+|---|--------|--------------|
+| O9 | Admin: complete/retry provisioning (`force_provision` / billing path per policy) — **not** raw Mongo | O1 → `PROVISIONED`; O4 > 0 |
+| O10 | Confirm generation source | `db.requirements.findOne({client_id:"CID",property_id:"PID"},{requirement_generation_source:1,requirement_type:1,_id:0})` → expect `catalog_registry` for plan rows |
+
+#### A3 — Controlled sync (if stale vs registry)
+
+| # | Action | Verification |
+|---|--------|--------------|
+| O11 | `POST /api/admin/properties/PID/requirements/sync-from-registry` (staff) or client sync with audit | Re-run O6; plan types match property attributes |
+
+#### B1 — NOT_REQUIRED persistence repair (B-only / A+B)
+
+| # | Check | Notes |
+|---|-------|-------|
+| B1-1 | **Before explain** | `python -m scripts.b1_preflight_capture --client-id CID --property-id PID` → `docs/audit/b1_explain_before_*.json` |
+| B1-2 | **Governed triple-sync** | `materialize_requirements_for_property(CID, PID, reconcile_obsolete=True)` ×3 (tenant-scoped only; no fleet rematerialise) |
+| B1-3 | **Replay** | Run 2 `aggregate_state_hash` = run 3; `reopened_from_not_required=0`; `reconciled_obsolete=0` on runs 2–3 |
+| B1-4 | **Reconcile idempotency** | Converged `registry_metadata.reconciled_obsolete` rows must not refresh `updated_at` / audit on repeat sync |
+| B1-5 | **After explain + report** | `python -m scripts.b1_staging_verification --client-id CID --property-id PID` → `b1_explain_after_*.json`, `b1_verification_report_*.json` |
+| B1-6 | **Parity** | O6 `included_count` = client API array length |
+| B1-7 | **A1 re-run** | `python -m scripts.a1_obligation_tenant_classification --client-id CID --property-id PID --json` |
+
+**Provenance:** automated `NOT_REQUIRED` uses `registry_metadata.automated_not_required`; operator-curated rows (override, audit reason ≥10 chars) are preserved. Do not weaken `requirement_client_runtime_surface` filters.
+
+**Wales HMO pilot acceptance (2026-05-16):** After B1, **8** client-visible planner-aligned families is accepted operational truth for tenant `6fd5ac4c…`. `emergency_lighting` / `fire_extinguisher` are **not** defects — intentionally non-visible (no overlay). **C1** queue proof **DONE** on this tenant (2026-05-16); see §12.7 C1 below.
+
+#### B2 — Published registry overlay (if overlay-missing only)
+
+| # | Check | Notes |
+|---|-------|-------|
+| O12 | Explain exclusions | Group `exclusion_reason` on excluded rows — fix **one** proven cause per PR |
+| O13 | Published registry | Confirm active published snapshot covers portfolio label for missing types |
+| O14 | Parity | O6 `included_count` = client API array length |
+
+#### C1 — Queue / recalc convergence (only after B-layer accepted; launch unit **C1**)
+
+**Authority:** `LAUNCH_AUTHORITY_TRACKER.md` § **C1** (rev 2 DoD); `runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md` (semantics unchanged). **Not** notification dispatch, scheduler redesign, or `updated_at` write optimization.
+
+**Prerequisites:** B1 visibility accepted for tenant; staging `MONGO_URL` + `DB_NAME`; pilot `CID` + `PID` documented in tracker.
+
+| # | Step | Command / action | Pass criteria |
+|---|------|------------------|---------------|
+| C1-0 | **Preflight** | `python -m scripts.c1_preflight_capture --client-id CID --property-id PID` | Writes `docs/audit/c1_queue_before_*.json` (queue counts, pending markers, reclaim thresholds) |
+| C1-1 | **R1 — first enqueue (C1-M1)** | Client `POST /api/properties/PID/requirements/sync` (or script equivalent) | `enqueued=true`; new `REQUIREMENTS_SYNC:PID` row → `DONE`; `compliance_score_pending` clears; `job_runs` success for `compliance_recalc_worker` |
+| C1-2 | **R2 — stable replay** | Repeat C1-M1 once | `enqueued=false`, `duplicate_suppression_reason` set (e.g. `duplicate_pending`); **no** new queue row |
+| C1-3 | **R3 — stable replay** | Repeat C1-M1 again | Same as R2; score fingerprint / `compliance_last_calculated_at` / score-history Δ **0** |
+| C1-4 | **M2 — legitimate regeneration** | Admin `POST /api/admin/properties/PID/requirements/sync-from-registry` **once** | `enqueued=true` with **new** `ADMIN_MANUAL_JOB:REGISTRY_SYNC:…` correlation; row → `DONE` |
+| C1-5 | **Recalc stability** | Inspect `c1_recalc_stability_*.json` from verification script | R2/R3: no semantic score churn; no score-history / score-event writes |
+| C1-6 | **Reclaim observability** | `c1_reclaim_observability_*.json`; optional `db.compliance_recalc_queue.find({property_id:"PID",status:"RUNNING"})` | `stuck_running=0` on pilot; reclaim thresholds documented |
+| C1-7 | **Notification boundary** | Preflight/after snapshots | `notification_retry_pending` stable at **0**; no fanout storm |
+| C1-8 | **Full verification** | `python -m scripts.c1_staging_verification --client-id CID --property-id PID` | Writes `c1_replay_*`, `c1_queue_after_*`, `c1_verification_report_*` |
+| C1-9 | **Regression (§9)** | `pytest` files listed in tracker C1 DoD §9 | All pass before **VERIFIED** / **DONE** |
+
+**Watchlist (non-blocking):** Materialisation may log **11 upsert passes** per sync — C1 staging proved this does **not** cause extra queue rows or recalc churn on suppressed replay (R2/R3).
+
+**Correlation rules:** Use **C1-M1** (stable `REQUIREMENTS_SYNC:{property_id}`) for replay-idempotency proof only. Do **not** use **C1-M2** admin sync for R2/R3 (new correlation per call by design).
+
+**Forbidden:** Raw Mongo enqueue; manual queue `DONE`/`DEAD`; fleet batch enqueue; direct `$set` on `requirements.status`; treating `message_logs` as obligation or queue health proof.
+
+**Pilot reference (2026-05-16):** `6fd5ac4c-3fd4-4112-ade7-156977deb49f` / `d35a58ae-3c81-491c-9694-1d021dd3b8ad` — artifacts under `backend/docs/audit/c1_*`. Tracker status: **DONE**.
+
 ---
 
 ## 13. Instrumentation & analytics (pilot observation)

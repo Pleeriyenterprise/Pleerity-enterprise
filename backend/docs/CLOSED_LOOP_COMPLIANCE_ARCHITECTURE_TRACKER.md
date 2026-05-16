@@ -4,7 +4,9 @@
 
 **Companion:** `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` (audit / gap framing; normative doctrine **§18**). **Controlled beta (support/admin operations):** `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md`. **Product governance (value, trust, retention, workflow continuity — not a tracker):** `PROPERTY_COMPLIANCE_OS_GAP_AND_RETENTION_AUDIT.md`. **Product value / retention gap tracker (not architecture):** `PRODUCT_VALUE_GAP_TRACKER.md`.
 
-**Last updated:** 2026-04-30 (Controlled beta operations runbook; Stream B PDF snapshot honesty; matrix §7).
+**Last updated:** 2026-05-16 (Recovery unit implementation contract — end-to-end DoD; launch tracker A1–G2).
+
+**Launch-gated obligation recovery:** Finishable units **A1–G2** live in `docs/launch/LAUNCH_AUTHORITY_TRACKER.md` § Recovery implementation plan. **No duplicate tracker.** This section maps streams only.
 
 ---
 
@@ -74,6 +76,30 @@ Execute in this order unless a stream’s **blocked-by** requires a pause (docum
 5. ~~**Stream C —** Remediation correlation runbook~~ — **Done (2026-04-30):** `STREAM_C_REMEDIATION_CORRELATION_RUNBOOK.md` (stable keys, closure vs non-closure, `remediation_key` / `source_system`, MV row shape, dedupe/closure/forbidden rules; companion to `STREAM_F_FORENSICS_JOIN_RECIPE.md`).
 6. ~~**Stream C —** Internal read-model spike (v1)~~ — **Shipped (2026-05-01):** `POST /api/admin/support/remediation-correlation-view` behind `FEATURE_REMEDIATION_CORRELATION_VIEW_V1`; `services/remediation_correlation_view.py`; runbook §11; tests `test_remediation_correlation_view_v1.py`. Portfolio-wide / client-wide scans and deferred sources remain out of scope (see runbook §11).
 7. **Stream A —** Residual provenance sweeps (grep merge/read paths; reader alignment; operator regression tests) after matrices and runbook reduce blind spots.
+
+**Obligation recovery programme (launch-gated, 2026-05-16):** Execute **only** via `LAUNCH_AUTHORITY_TRACKER.md` units **A1→G2**. **No implementation PR** for streams B–F obligation visibility until **A1** classifies tenant and **A2/A3/B1/B2** complete when triggered.
+
+| Launch unit | Primary stream(s) | Named authority (reuse) | Blocked until |
+|-------------|-------------------|---------------------------|---------------|
+| **A1** | — (ops proof) | `PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md` | — |
+| **A2, A3** | A (materialisation) | `materialize_requirements_for_property`, `provisioning._generate_requirements` | A1 |
+| **B1, B2, B3** | B (read alignment) + registry | `requirement_client_runtime_surface`, `kpi_authority_projection_contract` | A1 (+ A2 if A-only) |
+| **C1** | B, E | `recalculate_and_persist`, `enqueue_compliance_recalc`, `compliance_recalc_queue` | **DONE** 2026-05-16 — pilot R1/R2/R3 replay stability, C1-M2 legitimate enqueue, recalc stability, reclaim observability, §9 regression (41 passed); artifacts `backend/docs/audit/c1_*`; watchlist: 11 upsert passes do not cause queue/recalc churn on R2/R3 (`LAUNCH_AUTHORITY_TRACKER.md` § C1 closure) |
+| **C2** | B, E | fanout matrix, gaps → risk → priority stream → dashboard/tasks | **BLOCKED** (implementation) — **DoD drafting only** unlocked; DoD not drafted |
+| **D1, D2** | E, F | `authority_mutation_fanout`, activation registry | C pass |
+| **E1** | B, E, F | evidence authority + AUTHORITY_WRITE_PATH | D pass |
+| **F1** | — (notifications) | `NOTIFICATION_GOVERNANCE_INVENTORY.json` | E pass |
+| **G1, G2** | F, controlled beta | `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` | Continuous |
+
+**PR naming when recovery touches a stream:** `Stream <X> — <launch unit> — <short description>` (e.g. `Stream E — D1 — provisioning fanout trace`).
+
+**Recovery implementation rules (mandatory):** Each launch unit **A1–G2** selected for coding must follow `LAUNCH_AUTHORITY_TRACKER.md` § **Recovery unit implementation contract**:
+
+- No partial implementation; no placeholder wiring; no backend-only if other layers are required.
+- Definition of Done written **before** `IN_PROGRESS`.
+- Status path: `IN_PROGRESS` → `IMPLEMENTED_PENDING_VERIFICATION` → `READY_FOR_STAGING_VERIFICATION` → `VERIFIED` → **DONE** (ten gates).
+- Split into sub-units (e.g. `B2a`) before coding if not safely end-to-end in one train.
+- PR must update **both** this tracker (stream row) and launch tracker (unit status + closure evidence).
 
 ---
 

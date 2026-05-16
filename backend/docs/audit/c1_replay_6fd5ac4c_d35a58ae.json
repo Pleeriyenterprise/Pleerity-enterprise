@@ -1,0 +1,522 @@
+{
+  "captured_at_utc": "2026-05-16T18:53:01.264805+00:00",
+  "stable_correlation": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "runs": [
+    {
+      "run": "R1",
+      "mutation": "C1-M1",
+      "outcome": {
+        "mutation": "C1-M1",
+        "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "materialize": {
+          "ok": true,
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "planned_types": [
+            "eicr",
+            "emergency_lighting",
+            "epc",
+            "fire_alarm",
+            "fire_extinguisher",
+            "gas_safety",
+            "hmo_fire_risk",
+            "hmo_fire_risk_evidence",
+            "hmo_license",
+            "legionella",
+            "occupation_contract"
+          ],
+          "upsert_passes": 11,
+          "reopened_from_not_required": 0,
+          "reconciled_obsolete": 0
+        },
+        "enqueue": {
+          "enqueued": true,
+          "duplicate_suppression_reason": null,
+          "regeneration_requeued": true
+        }
+      },
+      "queue_row": {
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "trigger_reason": "PROPERTY_UPDATED",
+        "actor_type": "CLIENT",
+        "actor_id": null,
+        "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "status": "DONE",
+        "attempts": 0,
+        "retry_count": 0,
+        "retry_exhausted": false,
+        "next_run_at": "2026-05-16T18:53:04.607312+00:00",
+        "last_error": null,
+        "created_at": "2026-05-16T18:53:04.607312+00:00",
+        "updated_at": "2026-05-16T18:53:29.344209+00:00",
+        "recalc_execution_signals": {
+          "degraded_execution": false,
+          "partial_recovery": false,
+          "retry_pending": false,
+          "reconciliation_recommended": false
+        }
+      },
+      "before": {
+        "property": {
+          "compliance_score": 23,
+          "compliance_score_pending": false,
+          "compliance_last_calculated_at": "2026-05-16T09:01:16.035690+00:00",
+          "fingerprint": "cee1f50e01435e42"
+        },
+        "queue_counts": {
+          "DONE": 115,
+          "TOTAL": 115
+        },
+        "audit_count": 1,
+        "score_events_count": 116,
+        "score_history_count": 119,
+        "boundary_counts": {
+          "risk_signal_regen_pending": 0,
+          "notification_retry_pending": 0
+        }
+      },
+      "after": {
+        "property": {
+          "compliance_score": 52,
+          "compliance_score_pending": false,
+          "compliance_last_calculated_at": "2026-05-16T18:53:10.325640+00:00",
+          "fingerprint": "c68989cd42adde1a"
+        },
+        "queue_counts": {
+          "DONE": 116,
+          "TOTAL": 116
+        },
+        "audit_count": 1,
+        "score_events_count": 117,
+        "score_history_count": 120,
+        "boundary_counts": {
+          "risk_signal_regen_pending": 1,
+          "notification_retry_pending": 0
+        },
+        "job_runs_recent": [
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:53:08.395556+00:00",
+            "finished_at": "2026-05-16T18:53:29.469653+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:52:53.276528+00:00",
+            "finished_at": "2026-05-16T18:52:53.636432+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:52:38.400726+00:00",
+            "finished_at": "2026-05-16T18:52:38.994873+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:52:23.279497+00:00",
+            "finished_at": "2026-05-16T18:52:23.640169+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:52:08.399748+00:00",
+            "finished_at": "2026-05-16T18:52:08.766151+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:51:53.274987+00:00",
+            "finished_at": "2026-05-16T18:51:53.634656+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:51:38.401781+00:00",
+            "finished_at": "2026-05-16T18:51:38.763331+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:51:23.276107+00:00",
+            "finished_at": "2026-05-16T18:51:23.644057+00:00"
+          }
+        ]
+      },
+      "deltas": {
+        "audit": 0,
+        "score_events": 1,
+        "score_history": 1,
+        "queue_total": 1
+      }
+    },
+    {
+      "run": "R2",
+      "mutation": "C1-M1",
+      "outcome": {
+        "mutation": "C1-M1",
+        "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "materialize": {
+          "ok": true,
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "planned_types": [
+            "eicr",
+            "emergency_lighting",
+            "epc",
+            "fire_alarm",
+            "fire_extinguisher",
+            "gas_safety",
+            "hmo_fire_risk",
+            "hmo_fire_risk_evidence",
+            "hmo_license",
+            "legionella",
+            "occupation_contract"
+          ],
+          "upsert_passes": 11,
+          "reopened_from_not_required": 0,
+          "reconciled_obsolete": 0
+        },
+        "enqueue": {
+          "enqueued": false,
+          "duplicate_suppression_reason": "duplicate_pending",
+          "regeneration_requeued": true
+        }
+      },
+      "queue_row": {
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "trigger_reason": "PROPERTY_UPDATED",
+        "actor_type": "CLIENT",
+        "actor_id": null,
+        "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "status": "DONE",
+        "attempts": 0,
+        "retry_count": 0,
+        "retry_exhausted": false,
+        "next_run_at": "2026-05-16T18:53:04.607312+00:00",
+        "last_error": null,
+        "created_at": "2026-05-16T18:53:04.607312+00:00",
+        "updated_at": "2026-05-16T18:53:29.344209+00:00",
+        "recalc_execution_signals": {
+          "degraded_execution": false,
+          "partial_recovery": false,
+          "retry_pending": false,
+          "reconciliation_recommended": false
+        },
+        "last_duplicate_enqueue_at": "2026-05-16T18:53:32.829745+00:00",
+        "last_duplicate_enqueue_trigger": "PROPERTY_UPDATED",
+        "last_duplicate_suppression_reason": "duplicate_pending",
+        "suppressed_duplicate_enqueue_count": 1
+      },
+      "before": {
+        "property": {
+          "compliance_score": 52,
+          "compliance_score_pending": false,
+          "compliance_last_calculated_at": "2026-05-16T18:53:10.325640+00:00",
+          "fingerprint": "c68989cd42adde1a"
+        },
+        "queue_counts": {
+          "DONE": 116,
+          "TOTAL": 116
+        },
+        "audit_count": 1,
+        "score_events_count": 117,
+        "score_history_count": 120,
+        "boundary_counts": {
+          "risk_signal_regen_pending": 1,
+          "notification_retry_pending": 0
+        }
+      },
+      "after": {
+        "property": {
+          "compliance_score": 52,
+          "compliance_score_pending": false,
+          "compliance_last_calculated_at": "2026-05-16T18:53:10.325640+00:00",
+          "fingerprint": "c68989cd42adde1a"
+        },
+        "queue_counts": {
+          "DONE": 116,
+          "TOTAL": 116
+        },
+        "audit_count": 1,
+        "score_events_count": 117,
+        "score_history_count": 120,
+        "boundary_counts": {
+          "risk_signal_regen_pending": 1,
+          "notification_retry_pending": 0
+        },
+        "job_runs_recent": [
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:53:08.395556+00:00",
+            "finished_at": "2026-05-16T18:53:29.469653+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:52:53.276528+00:00",
+            "finished_at": "2026-05-16T18:52:53.636432+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:52:38.400726+00:00",
+            "finished_at": "2026-05-16T18:52:38.994873+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:52:23.279497+00:00",
+            "finished_at": "2026-05-16T18:52:23.640169+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:52:08.399748+00:00",
+            "finished_at": "2026-05-16T18:52:08.766151+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:51:53.274987+00:00",
+            "finished_at": "2026-05-16T18:51:53.634656+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:51:38.401781+00:00",
+            "finished_at": "2026-05-16T18:51:38.763331+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:51:23.276107+00:00",
+            "finished_at": "2026-05-16T18:51:23.644057+00:00"
+          }
+        ]
+      },
+      "deltas": {
+        "audit": 0,
+        "score_events": 0,
+        "score_history": 0,
+        "queue_total": 0
+      }
+    },
+    {
+      "run": "R3",
+      "mutation": "C1-M1",
+      "outcome": {
+        "mutation": "C1-M1",
+        "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "materialize": {
+          "ok": true,
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "planned_types": [
+            "eicr",
+            "emergency_lighting",
+            "epc",
+            "fire_alarm",
+            "fire_extinguisher",
+            "gas_safety",
+            "hmo_fire_risk",
+            "hmo_fire_risk_evidence",
+            "hmo_license",
+            "legionella",
+            "occupation_contract"
+          ],
+          "upsert_passes": 11,
+          "reopened_from_not_required": 0,
+          "reconciled_obsolete": 0
+        },
+        "enqueue": {
+          "enqueued": false,
+          "duplicate_suppression_reason": "duplicate_pending",
+          "regeneration_requeued": true
+        }
+      },
+      "queue_row": {
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "trigger_reason": "PROPERTY_UPDATED",
+        "actor_type": "CLIENT",
+        "actor_id": null,
+        "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "status": "DONE",
+        "attempts": 0,
+        "retry_count": 0,
+        "retry_exhausted": false,
+        "next_run_at": "2026-05-16T18:53:04.607312+00:00",
+        "last_error": null,
+        "created_at": "2026-05-16T18:53:04.607312+00:00",
+        "updated_at": "2026-05-16T18:53:29.344209+00:00",
+        "recalc_execution_signals": {
+          "degraded_execution": false,
+          "partial_recovery": false,
+          "retry_pending": false,
+          "reconciliation_recommended": false
+        },
+        "last_duplicate_enqueue_at": "2026-05-16T18:53:36.347787+00:00",
+        "last_duplicate_enqueue_trigger": "PROPERTY_UPDATED",
+        "last_duplicate_suppression_reason": "duplicate_pending",
+        "suppressed_duplicate_enqueue_count": 2
+      },
+      "before": {
+        "property": {
+          "compliance_score": 52,
+          "compliance_score_pending": false,
+          "compliance_last_calculated_at": "2026-05-16T18:53:10.325640+00:00",
+          "fingerprint": "c68989cd42adde1a"
+        },
+        "queue_counts": {
+          "DONE": 116,
+          "TOTAL": 116
+        },
+        "audit_count": 1,
+        "score_events_count": 117,
+        "score_history_count": 120,
+        "boundary_counts": {
+          "risk_signal_regen_pending": 1,
+          "notification_retry_pending": 0
+        }
+      },
+      "after": {
+        "property": {
+          "compliance_score": 52,
+          "compliance_score_pending": false,
+          "compliance_last_calculated_at": "2026-05-16T18:53:10.325640+00:00",
+          "fingerprint": "c68989cd42adde1a"
+        },
+        "queue_counts": {
+          "DONE": 116,
+          "TOTAL": 116
+        },
+        "audit_count": 1,
+        "score_events_count": 117,
+        "score_history_count": 120,
+        "boundary_counts": {
+          "risk_signal_regen_pending": 1,
+          "notification_retry_pending": 0
+        },
+        "job_runs_recent": [
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:53:08.395556+00:00",
+            "finished_at": "2026-05-16T18:53:29.469653+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:52:53.276528+00:00",
+            "finished_at": "2026-05-16T18:52:53.636432+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:52:38.400726+00:00",
+            "finished_at": "2026-05-16T18:52:38.994873+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:52:23.279497+00:00",
+            "finished_at": "2026-05-16T18:52:23.640169+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:52:08.399748+00:00",
+            "finished_at": "2026-05-16T18:52:08.766151+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:51:53.274987+00:00",
+            "finished_at": "2026-05-16T18:51:53.634656+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:51:38.401781+00:00",
+            "finished_at": "2026-05-16T18:51:38.763331+00:00"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "status": "success",
+            "started_at": "2026-05-16T18:51:23.276107+00:00",
+            "finished_at": "2026-05-16T18:51:23.644057+00:00"
+          }
+        ]
+      },
+      "deltas": {
+        "audit": 0,
+        "score_events": 0,
+        "score_history": 0,
+        "queue_total": 0
+      }
+    }
+  ],
+  "legitimate_mutation": {
+    "outcome": {
+      "mutation": "C1-M2",
+      "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2818c7817f6f",
+      "materialize": {
+        "ok": true,
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "planned_types": [
+          "eicr",
+          "emergency_lighting",
+          "epc",
+          "fire_alarm",
+          "fire_extinguisher",
+          "gas_safety",
+          "hmo_fire_risk",
+          "hmo_fire_risk_evidence",
+          "hmo_license",
+          "legionella",
+          "occupation_contract"
+        ],
+        "upsert_passes": 11,
+        "reopened_from_not_required": 0,
+        "reconciled_obsolete": 0
+      },
+      "enqueue": {
+        "enqueued": true,
+        "duplicate_suppression_reason": null,
+        "regeneration_requeued": true
+      }
+    },
+    "queue_row": {
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "trigger_reason": "ADMIN_MANUAL_JOB",
+      "actor_type": "ADMIN",
+      "actor_id": null,
+      "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2818c7817f6f",
+      "status": "DONE",
+      "attempts": 0,
+      "retry_count": 0,
+      "retry_exhausted": false,
+      "next_run_at": "2026-05-16T18:53:39.485330+00:00",
+      "last_error": null,
+      "created_at": "2026-05-16T18:53:39.485330+00:00",
+      "updated_at": "2026-05-16T18:54:15.216485+00:00",
+      "recalc_execution_signals": {
+        "degraded_execution": false,
+        "partial_recovery": false,
+        "retry_pending": false,
+        "reconciliation_recommended": false
+      }
+    },
+    "boundary_before": {
+      "risk_signal_regen_pending": 1,
+      "notification_retry_pending": 0
+    },
+    "boundary_after": {
+      "risk_signal_regen_pending": 1,
+      "notification_retry_pending": 0
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "captured_at_utc": "2026-05-16T17:55:30.416194+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "b1_pass": true,
+  "checks": {
+    "reconciled_obsolete_zero_run2": true,
+    "reconciled_obsolete_zero_run3": true,
+    "reconciled_row_updated_at_stable_run2_run3": true,
+    "audit_delta_zero_run3": true,
+    "queue_delta_zero_run3": true,
+    "replay_run2_equals_run3": true,
+    "included_count_increased": true,
+    "not_required_row_decreased": true,
+    "client_api_matches_explain_included": true,
+    "no_duplicate_requirement_types": true,
+    "eicr_included_if_planned": true,
+    "core_obligations_visible": true
+  },
+  "diff_summary": {
+    "before": {
+      "raw_count": 21,
+      "included_count": 4,
+      "exclusion_reasons": {
+        "not_required_row": 13,
+        "not_in_planner_membership": 1,
+        "excluded_by_alias_dedupe_or_runtime_policy": 3
+      },
+      "not_required_row_count": 13,
+      "included_types": [
+        "fire_alarm",
+        "gas_safety",
+        "hmo_fire_risk_evidence",
+        "occupation_contract"
+      ],
+      "automated_not_required_excluded": 0
+    },
+    "after": {
+      "raw_count": 21,
+      "included_count": 8,
+      "exclusion_reasons": {
+        "not_required_row": 9,
+        "not_in_planner_membership": 1,
+        "excluded_by_alias_dedupe_or_runtime_policy": 3
+      },
+      "not_required_row_count": 9,
+      "included_types": [
+        "eicr",
+        "epc",
+        "fire_alarm",
+        "gas_safety",
+        "hmo_fire_risk_evidence",
+        "hmo_license",
+        "legionella",
+        "occupation_contract"
+      ],
+      "automated_not_required_excluded": 9
+    },
+    "delta": {
+      "raw_count": 0,
+      "included_count": 4,
+      "not_required_row_count": -4
+    },
+    "planned_types_unchanged": true,
+    "core_visibility": {
+      "eicr": true,
+      "legionella": true,
+      "epc": true,
+      "hmo_license": true,
+      "gas_safety": true
+    },
+    "a1_classification_after": "A+B",
+    "a1_first_divergence_after": "B: partial visibility suppression (8/21 included)"
+  },
+  "artifacts": {
+    "explain_after": "docs\\audit\\b1_explain_after_6fd5ac4c_d35a58ae.json",
+    "replay_after": "docs\\audit\\b1_replay_after_6fd5ac4c_d35a58ae.json",
+    "a1_post_b1": "docs\\audit\\a1_tenant_classification_post_b1_6fd5ac4c_d35a58ae.json",
+    "report": "docs\\audit\\b1_verification_report_6fd5ac4c_d35a58ae.json"
+  },
+  "b2_still_needed": true,
+  "c1_blocked": false
+}

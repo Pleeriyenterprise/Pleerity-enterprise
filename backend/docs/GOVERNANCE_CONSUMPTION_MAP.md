@@ -1,7 +1,11 @@
 # Governance consumption map
 
-**Status:** Phase 1 inventory — drives CI validation and drift audits.  
-**Audience:** Backend and frontend engineers, platform architects.  
+**Navigation:** For full governance topology, tiers, recovery map, and document inventory, see **[GOVERNANCE_INDEX.md](./GOVERNANCE_INDEX.md)** (canonical router). This file remains the **surface-level consumption** inventory for CI.
+
+**Status:** ACTIVE (TIER_2 — partial inventory)  
+**Authority Level:** TIER_2  
+**Related Docs:** GOVERNANCE_INDEX.md, WORKFLOW_BEHAVIOUR_GOVERNANCE.md, governance_coverage_registry.py  
+**Last Governance Review:** 2026-05-16  
 **Non-goals:** This file is not runtime configuration; it does not replace `WORKFLOW_BEHAVIOUR_GOVERNANCE.md` or registry authority.
 
 ## Legend

@@ -1,0 +1,92 @@
+{
+  "captured_at_utc": "2026-05-16T18:53:01.264805+00:00",
+  "phase": "C1_after_verification",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "queue_counts": {
+    "DONE": 117,
+    "TOTAL": 117
+  },
+  "property": {
+    "compliance_score": 52,
+    "compliance_score_pending": false,
+    "compliance_last_calculated_at": "2026-05-16T18:53:55.202970+00:00",
+    "fingerprint": "adb115c83be3a553"
+  },
+  "stable_correlation_row": {
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "trigger_reason": "PROPERTY_UPDATED",
+    "actor_type": "CLIENT",
+    "actor_id": null,
+    "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "status": "DONE",
+    "attempts": 0,
+    "retry_count": 0,
+    "retry_exhausted": false,
+    "next_run_at": "2026-05-16T18:53:04.607312+00:00",
+    "last_error": null,
+    "created_at": "2026-05-16T18:53:04.607312+00:00",
+    "updated_at": "2026-05-16T18:53:29.344209+00:00",
+    "recalc_execution_signals": {
+      "degraded_execution": false,
+      "partial_recovery": false,
+      "retry_pending": false,
+      "reconciliation_recommended": false
+    },
+    "last_duplicate_enqueue_at": "2026-05-16T18:53:36.347787+00:00",
+    "last_duplicate_enqueue_trigger": "PROPERTY_UPDATED",
+    "last_duplicate_suppression_reason": "duplicate_pending",
+    "suppressed_duplicate_enqueue_count": 2
+  },
+  "job_runs_recent": [
+    {
+      "job_name": "compliance_recalc_worker",
+      "status": "success",
+      "started_at": "2026-05-16T18:53:53.275366+00:00",
+      "finished_at": "2026-05-16T18:54:15.339047+00:00"
+    },
+    {
+      "job_name": "compliance_recalc_worker",
+      "status": "success",
+      "started_at": "2026-05-16T18:53:38.394038+00:00",
+      "finished_at": "2026-05-16T18:53:38.753935+00:00"
+    },
+    {
+      "job_name": "compliance_recalc_worker",
+      "status": "success",
+      "started_at": "2026-05-16T18:53:08.395556+00:00",
+      "finished_at": "2026-05-16T18:53:29.469653+00:00"
+    },
+    {
+      "job_name": "compliance_recalc_worker",
+      "status": "success",
+      "started_at": "2026-05-16T18:52:53.276528+00:00",
+      "finished_at": "2026-05-16T18:52:53.636432+00:00"
+    },
+    {
+      "job_name": "compliance_recalc_worker",
+      "status": "success",
+      "started_at": "2026-05-16T18:52:38.400726+00:00",
+      "finished_at": "2026-05-16T18:52:38.994873+00:00"
+    },
+    {
+      "job_name": "compliance_recalc_worker",
+      "status": "success",
+      "started_at": "2026-05-16T18:52:23.279497+00:00",
+      "finished_at": "2026-05-16T18:52:23.640169+00:00"
+    },
+    {
+      "job_name": "compliance_recalc_worker",
+      "status": "success",
+      "started_at": "2026-05-16T18:52:08.399748+00:00",
+      "finished_at": "2026-05-16T18:52:08.766151+00:00"
+    },
+    {
+      "job_name": "compliance_recalc_worker",
+      "status": "success",
+      "started_at": "2026-05-16T18:51:53.274987+00:00",
+      "finished_at": "2026-05-16T18:51:53.634656+00:00"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "captured_at_utc": "2026-05-16T18:46:23.098522+00:00",
+  "phase": "C1_before_IN_PROGRESS",
+  "baseline_run": "pre-R1",
+  "property_score_fingerprint": {
+    "compliance_score": 23,
+    "compliance_score_pending": false,
+    "compliance_last_calculated_at": "2026-05-16T09:01:16.035690+00:00"
+  },
+  "score_history_count": 119,
+  "gap_count": 6
+}

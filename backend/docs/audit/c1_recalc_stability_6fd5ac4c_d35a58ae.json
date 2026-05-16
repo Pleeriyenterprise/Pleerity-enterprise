@@ -1,0 +1,80 @@
+{
+  "captured_at_utc": "2026-05-16T18:53:01.264805+00:00",
+  "baseline_before_file": "docs\\audit\\c1_queue_before_6fd5ac4c_d35a58ae.json",
+  "verification_baseline": {
+    "queue_counts": {
+      "DONE": 115,
+      "TOTAL": 115
+    },
+    "property": {
+      "compliance_score": 23,
+      "compliance_score_pending": false,
+      "compliance_last_calculated_at": "2026-05-16T09:01:16.035690+00:00",
+      "fingerprint": "cee1f50e01435e42"
+    },
+    "audit_count": 1,
+    "score_events_count": 116,
+    "score_history_count": 119,
+    "boundary_counts": {
+      "risk_signal_regen_pending": 0,
+      "notification_retry_pending": 0
+    },
+    "job_runs_count": 355231
+  },
+  "runs": [
+    {
+      "run": "R1",
+      "property_before": {
+        "compliance_score": 23,
+        "compliance_score_pending": false,
+        "compliance_last_calculated_at": "2026-05-16T09:01:16.035690+00:00",
+        "fingerprint": "cee1f50e01435e42"
+      },
+      "property_after": {
+        "compliance_score": 52,
+        "compliance_score_pending": false,
+        "compliance_last_calculated_at": "2026-05-16T18:53:10.325640+00:00",
+        "fingerprint": "c68989cd42adde1a"
+      },
+      "score_history_delta": 1,
+      "score_events_delta": 1,
+      "compliance_last_calculated_at_after": "2026-05-16T18:53:10.325640+00:00"
+    },
+    {
+      "run": "R2",
+      "property_before": {
+        "compliance_score": 52,
+        "compliance_score_pending": false,
+        "compliance_last_calculated_at": "2026-05-16T18:53:10.325640+00:00",
+        "fingerprint": "c68989cd42adde1a"
+      },
+      "property_after": {
+        "compliance_score": 52,
+        "compliance_score_pending": false,
+        "compliance_last_calculated_at": "2026-05-16T18:53:10.325640+00:00",
+        "fingerprint": "c68989cd42adde1a"
+      },
+      "score_history_delta": 0,
+      "score_events_delta": 0,
+      "compliance_last_calculated_at_after": "2026-05-16T18:53:10.325640+00:00"
+    },
+    {
+      "run": "R3",
+      "property_before": {
+        "compliance_score": 52,
+        "compliance_score_pending": false,
+        "compliance_last_calculated_at": "2026-05-16T18:53:10.325640+00:00",
+        "fingerprint": "c68989cd42adde1a"
+      },
+      "property_after": {
+        "compliance_score": 52,
+        "compliance_score_pending": false,
+        "compliance_last_calculated_at": "2026-05-16T18:53:10.325640+00:00",
+        "fingerprint": "c68989cd42adde1a"
+      },
+      "score_history_delta": 0,
+      "score_events_delta": 0,
+      "compliance_last_calculated_at_after": "2026-05-16T18:53:10.325640+00:00"
+    }
+  ]
+}

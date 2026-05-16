@@ -28,6 +28,10 @@ from services.compliance_rules_registry import (
 )
 from services.provisioning import REQUIREMENT_GENERATION_SOURCE_DB_RULE
 from services.requirement_code_registry import normalize_requirement_code
+from services.requirement_not_required_governance import (
+    automated_not_required_from_row,
+    is_operator_curated_not_required,
+)
 
 
 CLIENT_RUNTIME_REQUIREMENT_SURFACE_INVARIANT = (
@@ -618,6 +622,18 @@ async def requirement_row_eligible_on_client_runtime_surfaces(
     return len(filtered) == 1
 
 
+def _not_required_persistence_snapshot_for_explain(row: Dict[str, Any]) -> Dict[str, Any]:
+    """B1: surface persisted NOT_REQUIRED provenance on explain rows (no filter bypass)."""
+    return {
+        "status": row.get("status"),
+        "applicability": row.get("applicability"),
+        "not_required_reason": row.get("not_required_reason"),
+        "operator_curated_not_required": is_operator_curated_not_required(row),
+        "automated_not_required": automated_not_required_from_row(row),
+        "reconciled_obsolete": bool((row.get("registry_metadata") or {}).get("reconciled_obsolete")),
+    }
+
+
 async def explain_runtime_requirement_rows_for_property(
     db,
     *,
@@ -677,6 +693,7 @@ async def explain_runtime_requirement_rows_for_property(
                     "inclusion_reason": ((ir.get("_runtime_trace") or {}).get("inclusion_reason") if isinstance(ir.get("_runtime_trace"), dict) else "included"),
                     "alias_dedupe_decision": ((ir.get("_runtime_trace") or {}).get("dedupe_decision") if isinstance(ir.get("_runtime_trace"), dict) else None),
                     "trace": ir.get("_runtime_trace"),
+                    "persistence": _not_required_persistence_snapshot_for_explain(row),
                 }
             )
             continue
@@ -708,6 +725,7 @@ async def explain_runtime_requirement_rows_for_property(
                 "included": False,
                 "exclusion_reason": reason or "excluded_by_alias_dedupe_or_runtime_policy",
                 "alias_dedupe_decision": "excluded_or_not_selected",
+                "persistence": _not_required_persistence_snapshot_for_explain(row),
             }
         )
     return {
