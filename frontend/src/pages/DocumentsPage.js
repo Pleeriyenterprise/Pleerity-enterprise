@@ -43,6 +43,8 @@ import {
   reviewStateLabel,
 } from '../utils/evidenceReviewUi';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
+import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
+import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
 import {
   openClientDocumentFileInNewTab,
   downloadClientDocumentFile,
@@ -801,10 +803,23 @@ const DocumentsPage = () => {
     () =>
       requirements.filter((r) => {
         if (!isRequirementIncludedInAttentionViews(r)) return false;
+        if (resolveClientRequirementLifecycle(r).state !== 'ACTION_REQUIRED') return false;
         const ev = String(r.evidence_state || '').toUpperCase();
-        if (ev !== 'MISSING') return false;
-        const s = String(r.status || '').toUpperCase();
-        return s === 'PENDING' || s === 'OVERDUE' || s === 'MISSING' || s === 'MISSING_EVIDENCE';
+        return (
+          isRequirementMissingDocument(r) ||
+          ev === 'AWAITING_USER_CONFIRM' ||
+          ev === 'MISMATCH_FLAGGED' ||
+          ev === 'MISSING'
+        );
+      }).length,
+    [requirements],
+  );
+
+  const requirementsAwaitingInternalReview = useMemo(
+    () =>
+      requirements.filter((r) => {
+        if (!isRequirementIncludedInAttentionViews(r)) return false;
+        return resolveClientRequirementLifecycle(r).state === 'PENDING_REVIEW';
       }).length,
     [requirements],
   );
@@ -908,6 +923,18 @@ const DocumentsPage = () => {
               <Link to="/compliance-score">How score counts missing evidence</Link>
             </Button>
             </div>
+          </div>
+        )}
+        {requirementsAwaitingInternalReview > 0 && (
+          <div
+            className="mb-6 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3"
+            data-testid="documents-awaiting-review-banner"
+          >
+            <p className="text-sm text-amber-950">
+              <span className="font-semibold">{requirementsAwaitingInternalReview}</span>{' '}
+              {requirementsAwaitingInternalReview === 1 ? 'requirement has' : 'requirements have'} evidence submitted
+              and awaiting review (no further upload required unless we request it).
+            </p>
           </div>
         )}
         {requirementsAwaitingEvidenceConfirm > 0 && (

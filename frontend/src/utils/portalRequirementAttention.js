@@ -1,24 +1,22 @@
 /**
- * Single client-portal rule for which requirement rows count toward urgent / needs-attention surfaces.
- * No API changes — uses fields already on requirement objects (applicability, status, optional is_tracked).
+ * Single client-portal rule for which requirement rows count toward tracked portfolio surfaces.
+ * Urgent vs review-pending is split via {@link isRequirementUrgentActionAttention} /
+ * {@link isRequirementPendingReviewAttention} on `client_lifecycle_state` from the API.
  */
 
-/**
- * @param {Record<string, unknown>|null|undefined} req
- * @returns {boolean}
- */
-export function isRequirementIncludedInAttentionViews(req) {
-  if (!req || typeof req !== 'object') return false;
-  if (req.is_tracked === false || req.tracked === false) return false;
-  const cls = String(req.compliance_requirement_class || req.requirement_class || '').toUpperCase();
-  if (cls === 'OBLIGATION' || cls === 'SYSTEM') return false;
-  if (cls && cls !== 'DOCUMENT' && cls !== 'JOB') return false;
-  const app = String(req.applicability || '').toUpperCase().trim();
-  if (app === 'NOT_REQUIRED') return false;
-  const st = String(req.status || '').toUpperCase();
-  if (st === 'NOT_REQUIRED') return false;
-  return true;
-}
+import {
+  isRequirementIncludedInAttentionViews,
+  isRequirementNotApplicableLifecycle,
+  isRequirementPendingReviewAttention,
+  isRequirementUrgentActionAttention,
+} from './clientRequirementLifecycle';
+
+export {
+  isRequirementIncludedInAttentionViews,
+  isRequirementNotApplicableLifecycle,
+  isRequirementPendingReviewAttention,
+  isRequirementUrgentActionAttention,
+};
 
 /**
  * @param {Array<Record<string, unknown>>|null|undefined} requirements

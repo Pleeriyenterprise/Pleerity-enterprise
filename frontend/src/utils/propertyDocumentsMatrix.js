@@ -3,6 +3,7 @@
  * missing-document detection, criticality ordering, and shared sorts.
  */
 import { normalizeRequirementCode, requirementTitleFromRow } from '../domain/presentDomain';
+import { resolveClientRequirementLifecycle } from './clientRequirementLifecycle';
 import { isMultiEvidenceStyleWorkflow } from './workflowSemantics';
 
 /** Same predicate as {@link projectResolvedRequirementSemantics}.is_multi_evidence_style — avoids resolver churn in hot loops. */
@@ -17,7 +18,7 @@ function incompleteMultiEvidenceFamily(r) {
 export function isRequirementMissingDocument(r) {
   const s = (r?.status || '').toUpperCase();
   if (s === 'MISSING' || s === 'MISSING_EVIDENCE') return true;
-  if (s === 'PENDING') return !r?.evidence_doc_id;
+  if (s === 'PENDING') return !(r?.evidence_doc_id || String(r?.document_id || '').trim());
   return false;
 }
 
@@ -62,7 +63,7 @@ export function requirementAttentionStatusRank(r) {
   if (u === 'EXPIRED' || u === 'FAILED') return 1;
   if (isHighRiskMissingEvidence) return 2;
   if (u === 'EXPIRING_SOON') return 3;
-  if (u === 'PENDING' && r?.evidence_doc_id) return 4;
+  if (u === 'PENDING' && (r?.evidence_doc_id || String(r?.document_id || '').trim())) return 4;
   if (incompleteRequiredEvidence) return 5;
   if (isRequirementMissingDocument(r)) return 6;
   return 9;
@@ -110,13 +111,24 @@ export function requirementNeedsAttentionUrgencyTier(r) {
 
 /** True when row should not appear in Needs Attention (valid/compliant with no follow-up or incomplete evidence). */
 export function isRequirementExcludedFromNeedsAttention(r) {
-  const s = String(r?.status || '').toUpperCase();
-  if (['NOT_APPLICABLE', 'NOT_REQUIRED', 'WAIVED'].includes(s)) return true;
-  const followUpDue = s === 'PENDING' && !!r?.evidence_doc_id;
+  const st = String(r?.status || '').toUpperCase();
+  if (st === 'EXPIRING_SOON') return false;
+  const { state } = resolveClientRequirementLifecycle(r);
+  if (state === 'PENDING_REVIEW' || state === 'NOT_APPLICABLE') return true;
+  if (state === 'VERIFIED' || state === 'SATISFIED_UNVERIFIED') {
+    const followUpDue = st === 'PENDING' && !!(r?.evidence_doc_id || String(r?.document_id || '').trim());
+    const evidenceSummary = String(r?.evidence_completeness?.summary_label || '').toUpperCase();
+    const incompleteRequiredEvidence =
+      incompleteMultiEvidenceFamily(r) || (evidenceSummary && evidenceSummary !== 'COMPLETE');
+    if (followUpDue || incompleteRequiredEvidence) return false;
+    return true;
+  }
+  const followUpDue = st === 'PENDING' && !!(r?.evidence_doc_id || String(r?.document_id || '').trim());
   const evidenceSummary = String(r?.evidence_completeness?.summary_label || '').toUpperCase();
   const incompleteRequiredEvidence =
     incompleteMultiEvidenceFamily(r) || (evidenceSummary && evidenceSummary !== 'COMPLETE');
-  if (['COMPLIANT', 'VALID'].includes(s)) {
+  if (['NOT_APPLICABLE', 'NOT_REQUIRED', 'WAIVED'].includes(st)) return true;
+  if (['COMPLIANT', 'VALID'].includes(st)) {
     if (followUpDue || incompleteRequiredEvidence) return false;
     return true;
   }
@@ -132,7 +144,11 @@ export function buildNeedsAttentionSubset(requirements, rowExpiry, cap = 8) {
   const filtered = (Array.isArray(requirements) ? requirements : []).filter((r) => {
     if (isRequirementExcludedFromNeedsAttention(r)) return false;
     const s = String(r?.status || '').toUpperCase();
-    const followUpDue = s === 'PENDING' && !!r?.evidence_doc_id;
+    const lc = resolveClientRequirementLifecycle(r).state;
+    const followUpDue =
+      s === 'PENDING' &&
+      !!(r?.evidence_doc_id || String(r?.document_id || '').trim()) &&
+      lc === 'ACTION_REQUIRED';
     const evidenceSummary = String(r?.evidence_completeness?.summary_label || '').toUpperCase();
     const incompleteRequiredEvidence =
       incompleteMultiEvidenceFamily(r) || (evidenceSummary && evidenceSummary !== 'COMPLETE');

@@ -287,6 +287,50 @@ async def load_evidence_state_by_requirement_id(
     return {rid: evidence_state_from_documents(lst) for rid, lst in by_rid.items()}
 
 
+async def load_linked_primary_documents_for_client_requirements(
+    db,
+    client_id: str,
+    requirements: List[Dict[str, Any]],
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Map requirement_id -> primary linked document row (for Evidence Review V2 + lifecycle).
+    Uses evidence_doc_id, then document_id, when set on the requirement row.
+    """
+    rid_to_doc_id: Dict[str, str] = {}
+    for r in requirements or []:
+        rid = r.get("requirement_id")
+        if not rid:
+            continue
+        did = str(r.get("evidence_doc_id") or r.get("document_id") or "").strip()
+        if did:
+            rid_to_doc_id[str(rid)] = did
+    if not rid_to_doc_id:
+        return {}
+    doc_ids = list({v for v in rid_to_doc_id.values() if v})
+    cursor = db.documents.find(
+        {"client_id": client_id, "document_id": {"$in": doc_ids}},
+        {
+            "_id": 0,
+            "document_id": 1,
+            "status": 1,
+            "evidence_review_state": 1,
+            "review_required": 1,
+            "assurance_tier": 1,
+        },
+    )
+    by_doc_id: Dict[str, Dict[str, Any]] = {}
+    async for d in cursor:
+        did = str(d.get("document_id") or "").strip()
+        if did:
+            by_doc_id[did] = d
+    out: Dict[str, Dict[str, Any]] = {}
+    for rid, did in rid_to_doc_id.items():
+        doc = by_doc_id.get(did)
+        if doc:
+            out[rid] = doc
+    return out
+
+
 def infer_date_source(requirement: Dict[str, Any], evidence_state: str) -> str:
     """
     Derive date_source from expiry_source + verification state.
@@ -473,6 +517,7 @@ def enrich_requirement_dict(
     published_registry_entries: Optional[Dict[str, Any]] = None,
     property_doc: Optional[Dict[str, Any]] = None,
     compliance_evidence_records: Optional[List[Dict[str, Any]]] = None,
+    linked_primary_document: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Mutates a shallow copy: adds presentation + truth fields. Keeps all original keys.
@@ -697,6 +742,11 @@ def enrich_requirement_dict(
         from presentation.requirement_display_contract import build_requirement_display
 
         out["requirement_display"] = build_requirement_display(out, audience=audience)
+        from services.client_requirement_lifecycle import derive_client_lifecycle_fields
+
+        out.update(derive_client_lifecycle_fields(out, linked_primary_document=linked_primary_document))
+        if not str(out.get("document_id") or "").strip() and str(out.get("evidence_doc_id") or "").strip():
+            out["document_id"] = str(out.get("evidence_doc_id")).strip()
 
     return out
 
@@ -783,6 +833,8 @@ async def enrich_requirements_for_client(
             db, client_id=client_id, requirement_ids=evidence_rids
         )
 
+    linked_by_rid = await load_linked_primary_documents_for_client_requirements(db, client_id, requirements)
+
     enriched = []
     for r in requirements:
         rid = r.get("requirement_id")
@@ -807,6 +859,7 @@ async def enrich_requirements_for_client(
                 published_registry_entries=published_entries,
                 property_doc=props_full.get(str(rc.get("property_id") or "")),
                 compliance_evidence_records=_cer,
+                linked_primary_document=linked_by_rid.get(str(rid)) if rid else None,
             )
         )
     return enriched, build_presentation_meta(enriched)

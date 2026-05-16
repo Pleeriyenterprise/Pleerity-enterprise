@@ -27,7 +27,7 @@ describe('governanceUxPilotAdapter', () => {
   it('exposes presentation for scoped states', () => {
     const p = getGovernanceUxPilotPresentation('CLIENT_STATUS_CHIP', 'DECLARATION_RECORDED');
     expect(p.compactLabel).toBe('Declaration recorded');
-    expect(p.subline).toContain('Independent verification');
+    expect(p.subline).toContain('Evidence recorded');
     expect(p.requiresDisclosure).toBe(true);
     expect(p.prohibitedSimplifications).toContain('Compliant');
   });

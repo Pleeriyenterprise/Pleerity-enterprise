@@ -60,6 +60,7 @@ import {
   alignTodayPayloadTaskSections,
   requirementMapFromList,
 } from '../utils/portalRequirementAttention';
+import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
 import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
 import {
   headlineScoreDisplayForDashboard,
@@ -839,15 +840,20 @@ const ClientDashboard = () => {
   // Whether to show the "documents missing" step: requirements that may need docs/confirmation (REQUIRED/UNKNOWN without confirmed expiry)
   const needsDocumentsStep = useMemo(() => {
     if (!requirementsList.length) return false;
-    const needsAttention = requirementsList.some(
-      (r) => (r.applicability === 'REQUIRED' || (r.applicability || 'UNKNOWN') === 'UNKNOWN') && !r.confirmed_expiry_date
-    );
-    return needsAttention;
+    return requirementsList.some((r) => {
+      if (resolveClientRequirementLifecycle(r).state === 'NOT_APPLICABLE') return false;
+      return (
+        (r.applicability === 'REQUIRED' || (r.applicability || 'UNKNOWN') === 'UNKNOWN') && !r.confirmed_expiry_date
+      );
+    });
   }, [requirementsList]);
 
   // Count requirements with a document uploaded but expiry not yet confirmed (for "X documents awaiting confirmation" banner)
   const documentsAwaitingConfirmationCount = useMemo(() => {
-    return requirementsList.filter((r) => r.document_id && !r.confirmed_expiry_date).length;
+    return requirementsList.filter((r) => {
+      const linked = Boolean(r.document_id || r.evidence_doc_id);
+      return linked && !r.confirmed_expiry_date;
+    }).length;
   }, [requirementsList]);
 
   const getComplianceColor = (status) => {

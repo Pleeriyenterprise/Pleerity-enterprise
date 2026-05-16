@@ -43,6 +43,7 @@ import {
   WORKSPACE_REQUIREMENTS_EMPTY_DESCRIPTION,
 } from '../utils/workspaceOrientationCopy';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
+import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
 import {
   executeRequirementPrimaryCta,
   GUIDED_CTA_UNAVAILABLE_TITLE,
@@ -325,7 +326,13 @@ const RequirementsPage = () => {
     if (statusFilter === 'DUE_SOON') {
       return req.status === 'EXPIRING_SOON';
     } else if (statusFilter === 'OVERDUE_OR_MISSING') {
-      return req.status === 'OVERDUE' || req.status === 'PENDING';
+      const lc = resolveClientRequirementLifecycle(req).state;
+      return (
+        lc === 'ACTION_REQUIRED' ||
+        req.status === 'OVERDUE' ||
+        req.status === 'MISSING' ||
+        req.status === 'MISSING_EVIDENCE'
+      );
     } else if (statusFilter !== 'all') {
       return req.status === statusFilter;
     }
@@ -388,10 +395,23 @@ const RequirementsPage = () => {
       if (s === 'baseline') return 'Core rules';
       return null;
     })();
+    const lc = resolveClientRequirementLifecycle(req).state;
+    const lifecycleBorder =
+      lc === 'ACTION_REQUIRED'
+        ? 'border-l-4 border-l-red-500'
+        : lc === 'PENDING_REVIEW'
+          ? 'border-l-4 border-l-amber-500'
+          : lc === 'SATISFIED_UNVERIFIED'
+            ? 'border-l-4 border-l-emerald-500'
+            : lc === 'VERIFIED'
+              ? 'border-l-4 border-l-green-600'
+              : lc === 'NOT_APPLICABLE'
+                ? 'border-l-4 border-l-gray-300'
+                : '';
     return (
       <div
         key={req.requirement_id}
-        className={`p-4 hover:bg-gray-50 transition-colors ${
+        className={`p-4 hover:bg-gray-50 transition-colors ${lifecycleBorder} ${
           flashRequirementId === req.requirement_id ? 'ring-2 ring-electric-teal/70 bg-teal-50/40 rounded-lg' : ''
         }`}
         data-testid={`requirement-row-${req.requirement_id}`}
@@ -620,10 +640,13 @@ const RequirementsPage = () => {
   const trackedAttentionCount = statsBase.length;
   const stats = {
     total: trackedAttentionCount,
-    compliant: statsBase.filter((r) => r.status === 'COMPLIANT').length,
+    compliant: statsBase.filter((r) => {
+      const s = resolveClientRequirementLifecycle(r).state;
+      return s === 'VERIFIED' || s === 'SATISFIED_UNVERIFIED';
+    }).length,
     expiringSoon: statsBase.filter((r) => r.status === 'EXPIRING_SOON').length,
-    overdue: statsBase.filter((r) => r.status === 'OVERDUE').length,
-    pending: statsBase.filter((r) => r.status === 'PENDING').length,
+    attentionAction: statsBase.filter((r) => resolveClientRequirementLifecycle(r).state === 'ACTION_REQUIRED').length,
+    pendingReview: statsBase.filter((r) => resolveClientRequirementLifecycle(r).state === 'PENDING_REVIEW').length,
   };
 
   if (loading) {
@@ -711,8 +734,13 @@ const RequirementsPage = () => {
             onClick={() => navigate('/requirements?status=OVERDUE_OR_MISSING')}
             data-testid="filter-overdue"
           >
-            <p className="text-2xl font-bold text-red-600">{stats.overdue + stats.pending}</p>
-            <p className="text-sm text-gray-500">Attention needed</p>
+            <p className="text-2xl font-bold text-red-600">{stats.attentionAction}</p>
+            <p className="text-sm text-gray-500">Action required</p>
+            {stats.pendingReview > 0 ? (
+              <p className="text-xs text-amber-700 mt-1 tabular-nums" data-testid="requirements-pending-review-hint">
+                {stats.pendingReview} awaiting review
+              </p>
+            ) : null}
           </button>
           <button
             className={`bg-white rounded-xl border p-4 text-left hover:shadow-md transition-shadow ${windowDays === '30' ? 'border-electric-teal ring-2 ring-electric-teal/20' : 'border-gray-200'}`}

@@ -9,6 +9,7 @@ import { CheckCircle, Clock, AlertTriangle, XCircle, FileText, HelpCircle } from
 import { documentVerificationAwaitingSubline } from '../domain/presentDomain';
 import { isConditionStandardWorkflowHint, isMultiEvidenceStyleWorkflow } from './workflowSemantics';
 import { mergeGovernanceUxPilotChip } from './governanceUxPilotAdapter';
+import { resolveClientRequirementLifecycle } from './clientRequirementLifecycle';
 
 function awaitingVerificationSubline() {
   const s = documentVerificationAwaitingSubline();
@@ -46,6 +47,54 @@ const ASSESSMENT_GAP_CHIP = {
   className: 'bg-gray-100 text-gray-700 border-gray-200',
 };
 const VERIFY_CHIP = { icon: Clock, text: 'Awaiting verification', className: 'bg-amber-100 text-amber-800 border-amber-200' };
+
+/**
+ * @param {{ state: string, label: string, reasonCodes: string[] }} resolved
+ * @param {object|null|undefined} row
+ */
+function lifecycleDerivedChip(resolved, row) {
+  const r = row && typeof row === 'object' ? row : {};
+  const text = resolved.label || 'Status';
+  if (resolved.state === 'NOT_APPLICABLE') {
+    return { ...EVIDENCE_STATUS_CONFIG.NOT_REQUIRED, text };
+  }
+  if (resolved.state === 'VERIFIED') {
+    const expiring =
+      String(r.status || '').toUpperCase() === 'EXPIRING_SOON' ||
+      (resolved.reasonCodes || []).some((c) => String(c).includes('EXPIRING'));
+    if (expiring) {
+      return {
+        icon: Clock,
+        text,
+        className: 'bg-amber-100 text-amber-800 border-amber-200',
+        subline: 'Renew or confirm before expiry.',
+      };
+    }
+    return { icon: CheckCircle, text, className: 'bg-green-100 text-green-700 border-green-200' };
+  }
+  if (resolved.state === 'SATISFIED_UNVERIFIED') {
+    return {
+      icon: CheckCircle,
+      text,
+      className: 'bg-emerald-50 text-emerald-900 border-emerald-200',
+      subline: 'On file — verification may still be pending.',
+    };
+  }
+  if (resolved.state === 'PENDING_REVIEW') {
+    return {
+      icon: HelpCircle,
+      text,
+      className: 'bg-amber-100 text-amber-900 border-amber-200',
+      subline: 'Internal review — no further upload required unless we request it.',
+    };
+  }
+  return {
+    icon: AlertTriangle,
+    text,
+    className: 'bg-red-100 text-red-800 border-red-200',
+    subline: workflowAwareMissingEvidenceLabel(r),
+  };
+}
 
 function _workflowClass(row) {
   return String(row?.workflow_class || '').trim().toUpperCase();
@@ -89,6 +138,11 @@ export function workflowAwareMissingEvidenceLabel(row) {
  * @param {object} [row] requirement row with optional evidence_doc_id
  */
 export function getEvidenceStatus(status, row) {
+  if (row && typeof row === 'object' && row.client_lifecycle_state) {
+    const resolved = resolveClientRequirementLifecycle(row);
+    const out = lifecycleDerivedChip(resolved, row);
+    return mergeGovernanceUxPilotChip(out, row);
+  }
   const key = (status || '').toUpperCase().trim();
   const linked = !!(row && row.evidence_doc_id);
   const tenancyStatus = _tenancyAgreementStatusText(row);

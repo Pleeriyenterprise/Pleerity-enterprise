@@ -53,7 +53,7 @@ function sanitizePilotCopy(text, semanticState) {
 const CHIP_PRESENTATION = {
   DECLARATION_RECORDED: {
     compactLabel: 'Declaration recorded',
-    subline: 'Independent verification pending',
+    subline: 'Evidence recorded',
     disclosure: 'Self-declared information may not yet be independently verified.',
     severity: 'attention',
     requiresDisclosure: true,
@@ -186,6 +186,9 @@ export function getGovernanceUxPilotPresentation(surface, semanticState) {
  * @returns {Record<string, unknown>}
  */
 export function mergeGovernanceUxPilotChip(baseChip, row) {
+  if (row && typeof row === 'object' && row.client_lifecycle_state) {
+    return baseChip;
+  }
   const st = derivePilotSemanticState(row);
   if (!st) return baseChip;
   const pilot = getGovernanceUxPilotPresentation('CLIENT_STATUS_CHIP', st);

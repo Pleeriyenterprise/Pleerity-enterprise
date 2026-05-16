@@ -301,6 +301,9 @@ export default function ComplianceEvidenceResolveModal({
     try {
       await clientAPI.postComplianceEvidence(propertyId, rid, body);
       toast.success('Evidence submitted for review.');
+      if (typeof window !== 'undefined' && propertyId) {
+        window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: propertyId } }));
+      }
       onOpenChange(false);
       onSubmitted?.();
     } catch (e) {

@@ -79,6 +79,7 @@ import {
   getTrackedRequirementsForProperty,
   requirementMapFromList,
 } from '../utils/portalRequirementAttention';
+import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
 import { resolveRiskSignalPrimaryKey } from '../utils/primaryActionResolver';
 import {
   canonicalComplianceInlineNarrative,
@@ -1205,9 +1206,14 @@ export default function PropertyDetailPage() {
 
   const hubPrioritizedRequirements = useMemo(() => {
     const scoped = getTrackedRequirementsForProperty(propertyId, requirements);
-    const filtered = scoped.filter((r) =>
-      ['OVERDUE', 'EXPIRED', 'EXPIRING_SOON', 'MISSING', 'PENDING'].includes((r.status || '').toUpperCase()),
-    );
+    const filtered = scoped.filter((r) => {
+      const st = (r.status || '').toUpperCase();
+      if (st === 'EXPIRING_SOON') return true;
+      const lc = resolveClientRequirementLifecycle(r).state;
+      if (lc === 'ACTION_REQUIRED') return true;
+      if (lc === 'PENDING_REVIEW' || lc === 'VERIFIED' || lc === 'SATISFIED_UNVERIFIED') return false;
+      return ['OVERDUE', 'EXPIRED', 'MISSING', 'PENDING'].includes(st);
+    });
     return sortRequirementsAttentionOrder(filtered, rowExpiry).slice(0, 8);
   }, [propertyId, requirements]);
 

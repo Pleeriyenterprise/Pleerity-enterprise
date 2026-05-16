@@ -10,6 +10,18 @@ All **client-facing** compliance counts, overdue logic, score `stats`, Command C
 
 Aggregated counts MUST use `compute_client_portal_requirement_stats` on the list from steps 1–3.
 
+## Client lifecycle projection (enriched requirements)
+
+For **row-level UX consistency** (chips, attention triage, documents banners), `GET /api/client/requirements` and any code path that calls `enrich_requirements_for_client` / `enrich_requirement_dict(..., audience="client")` adds **additive** fields (legacy `status` unchanged):
+
+| Field | Purpose |
+|-------|---------|
+| `client_lifecycle_state` | One of `ACTION_REQUIRED`, `PENDING_REVIEW`, `SATISFIED_UNVERIFIED`, `VERIFIED`, `NOT_APPLICABLE` — derived in `services/client_requirement_lifecycle.py` from `evidence_authority`, Evidence Review V2 fields on the linked primary document, semantic state, applicability, and legacy status fallbacks. |
+| `client_lifecycle_label` | Short headline label for chips (e.g. “Awaiting review”, “Evidence recorded”). |
+| `client_lifecycle_reason_codes` | Machine-readable nuance (`EA_PENDING_ADMIN_REVIEW`, `SEMANTIC_DECLARATION_RECORDED`, …). |
+
+**Portal attention / “needs action” counts** SHOULD prefer `client_lifecycle_state` over ad-hoc combinations of `status` + `evidence_doc_id` so “awaiting review” does not inflate “missing evidence”. KPI-authoritative aggregates in `compute_client_portal_requirement_stats` remain on projected `status` until explicitly migrated.
+
 ## Allowed status strings (projected)
 
 | Status | Meaning |
