@@ -109,6 +109,18 @@ async def execute_verify_document_v2(
         decision_reason=decision_reason,
     )
 
+    from services.evidence_extraction_supersession import (
+        ADMIN_DECISION_ACCEPTED,
+        supersede_extraction_confirmation_for_admin_decision,
+    )
+
+    await supersede_extraction_confirmation_for_admin_decision(
+        db,
+        document_id=document_id,
+        decision=ADMIN_DECISION_ACCEPTED,
+        actor_id=user.get("portal_user_id"),
+    )
+
     document_after = await db.documents.find_one({"document_id": document_id}, {"_id": 0}) or {}
 
     recalc_correlation_id = f"DOC_STATUS_CHANGED:{document_id}:VERIFIED"

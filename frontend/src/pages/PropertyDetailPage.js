@@ -100,9 +100,11 @@ import {
 import {
   clientFacingVerificationLabel,
   clientVerificationLabelRedundantWithPrimary,
-  effectiveEvidenceReviewState,
-  isPositiveEvidenceState,
 } from '../utils/evidenceReviewUi';
+import {
+  getClientDocumentRowStatusLabel,
+  isPendingConfirmationForRequirementAttention,
+} from '../utils/documentClientPresentation';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import ClientDocumentPreviewModal from '../components/client/ClientDocumentPreviewModal';
 import { downloadClientDocumentFile } from '../utils/clientDocumentPreview';
@@ -1129,25 +1131,7 @@ export default function PropertyDetailPage() {
     [propertyId, navigate, openGuidedEvidence, fetchData],
   );
 
-  const evidenceDocStatusLabel = (doc) => {
-    const reviewState = effectiveEvidenceReviewState(doc);
-    if (reviewState === 'VERIFIED') return 'Verified';
-    if (reviewState === 'ACCEPTED_UNVERIFIED') return 'Accepted on file (not externally verified)';
-    if (reviewState === 'REJECTED') return 'Rejected';
-    if (reviewState === 'EXPIRED') return 'Expired';
-    if (reviewState === 'NEEDS_INFORMATION') return 'Needs information';
-    if (reviewState === 'UNDER_REVIEW') return 'Under review';
-    if (reviewState === 'SUPERSEDED') return 'Superseded';
-    const s = (doc?.status || '').toUpperCase();
-    if (s === 'VERIFIED') return 'Accepted on file (not externally verified)';
-    if (s === 'REJECTED') return 'Rejected';
-    if (s === 'EXPIRED') return 'Expired';
-    const hasExtraction = doc?.extraction_id || (doc?.ai_extraction?.status === 'completed' && doc?.ai_extraction?.data);
-    if (hasExtraction && s !== 'VERIFIED') return 'Awaiting confirmation';
-    if (s === 'UPLOADED') return 'Extracted';
-    if (!doc?.requirement_id) return 'Unlinked';
-    return 'Uploaded';
-  };
+  const evidenceDocStatusLabel = (doc) => getClientDocumentRowStatusLabel(doc);
 
   const handleEvidenceDocumentDownload = async (doc) => {
     if (!doc?.document_id) return;
@@ -1160,10 +1144,7 @@ export default function PropertyDetailPage() {
     }
   };
 
-  const isPendingConfirmation = (doc) => {
-    const hasExtraction = doc?.extraction_id || (doc?.ai_extraction?.status === 'completed' && doc?.ai_extraction?.data);
-    return !!hasExtraction && !isPositiveEvidenceState(doc);
-  };
+  const isPendingConfirmation = (doc) => isPendingConfirmationForRequirementAttention(doc);
 
   const complianceImpactLabel = (r) => {
     const c = (r.criticality || '').toUpperCase();

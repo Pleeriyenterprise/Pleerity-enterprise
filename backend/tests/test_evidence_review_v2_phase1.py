@@ -180,6 +180,7 @@ def test_v2_verify_writes_review_event():
     mock_db.evidence_review_events.insert_one = AsyncMock(side_effect=capture_ev_insert)
 
     admin_user = {"portal_user_id": "adm1", "client_id": "c1", "role": "ROLE_ADMIN"}
+    mock_supersede = AsyncMock(return_value=True)
     with (
         patch("services.evidence_review_verify.create_audit_log", new_callable=AsyncMock),
         patch("services.evidence_review_verify.authority_sync_with_transition_observability", new_callable=AsyncMock),
@@ -187,6 +188,10 @@ def test_v2_verify_writes_review_event():
         patch("services.evidence_review_verify.enqueue_compliance_recalc_with_fanout", new_callable=AsyncMock),
         patch("services.enablement_service.emit_enablement_event", new_callable=AsyncMock),
         patch("services.compliance_outcome_engine.apply_action_outcome", new_callable=AsyncMock, return_value=None),
+        patch(
+            "services.evidence_extraction_supersession.supersede_extraction_confirmation_for_admin_decision",
+            mock_supersede,
+        ),
     ):
         out = asyncio.run(
             execute_verify_document_v2(
@@ -201,6 +206,8 @@ def test_v2_verify_writes_review_event():
 
     assert out.get("evidence_review_state") == "ACCEPTED_UNVERIFIED"
     assert inserted_events, "append-only ledger insert_one should run"
+    mock_supersede.assert_awaited_once()
+    assert mock_supersede.await_args.kwargs.get("decision") == "accepted"
 
 
 def test_v2_validation_fail_blocks_without_override(client):

@@ -2310,6 +2310,18 @@ async def verify_document(
             {"document_id": document_id},
             {"$set": {"status": DocumentStatus.VERIFIED.value}}
         )
+
+        from services.evidence_extraction_supersession import (
+            ADMIN_DECISION_ACCEPTED,
+            supersede_extraction_confirmation_for_admin_decision,
+        )
+
+        await supersede_extraction_confirmation_for_admin_decision(
+            db,
+            document_id=document_id,
+            decision=ADMIN_DECISION_ACCEPTED,
+            actor_id=user.get("portal_user_id"),
+        )
         
         # Update requirement status to COMPLIANT when linked
         verify_v1_fanout: Optional[Dict[str, Any]] = None
@@ -2520,6 +2532,18 @@ async def reject_document(request: Request, document_id: str, reason: str = Form
         await db.documents.update_one(
             {"document_id": document_id},
             {"$set": {"status": DocumentStatus.REJECTED.value}}
+        )
+
+        from services.evidence_extraction_supersession import (
+            ADMIN_DECISION_REJECTED,
+            supersede_extraction_confirmation_for_admin_decision,
+        )
+
+        await supersede_extraction_confirmation_for_admin_decision(
+            db,
+            document_id=document_id,
+            decision=ADMIN_DECISION_REJECTED,
+            actor_id=user.get("portal_user_id"),
         )
         
         reject_fanout: Dict[str, Any] = {}

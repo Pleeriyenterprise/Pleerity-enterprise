@@ -963,6 +963,17 @@ async def admin_resolve_evidence_match(
             {"document_id": document_id},
             {"$set": {"status": "REJECTED", "manual_review_flag": True}},
         )
+        from services.evidence_extraction_supersession import (
+            ADMIN_DECISION_REJECTED,
+            supersede_extraction_confirmation_for_admin_decision,
+        )
+
+        await supersede_extraction_confirmation_for_admin_decision(
+            db,
+            document_id=document_id,
+            decision=ADMIN_DECISION_REJECTED,
+            actor_id=user.get("portal_user_id"),
+        )
         if prior_rid:
             rej_match_fanout: Dict[str, Any] = {}
             await authority_sync_with_transition_observability(

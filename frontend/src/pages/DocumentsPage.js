@@ -39,9 +39,17 @@ import PropagationNoticeCallout from '../components/client/PropagationNoticeCall
 import { normalizeRequirementCode, documentListStatusLabel } from '../domain/presentDomain';
 import { WORKSPACE_DOCUMENTS_SUBTITLE, WORKSPACE_DOCUMENTS_EMPTY_DESCRIPTION } from '../utils/workspaceOrientationCopy';
 import {
-  effectiveEvidenceReviewState,
   reviewStateLabel,
 } from '../utils/evidenceReviewUi';
+import {
+  getClientDocumentEvidenceBadge,
+  getClientExtractionPipelineBadge,
+  hasAdminSupersededExtractionConfirmation,
+  isExtractionConfirmationPending,
+  shouldShowAiExtractedDataPanel,
+  shouldShowReviewAndApplyData,
+  shouldShowViewExtractedDataAction,
+} from '../utils/documentClientPresentation';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
 import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
 import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
@@ -49,11 +57,6 @@ import {
   openClientDocumentFileInNewTab,
   downloadClientDocumentFile,
 } from '../utils/clientDocumentPreview';
-
-function isExtractionReviewPending(reviewStatus) {
-  const s = String(reviewStatus || '').toUpperCase();
-  return !s || s === 'PENDING' || s === 'AWAITING_USER_CONFIRM';
-}
 
 const EVIDENCE_DOCUMENT_TYPES = [
   { value: '', label: 'Select type (optional)' },
@@ -679,37 +682,26 @@ const DocumentsPage = () => {
   };
 
   const getStatusBadge = (doc) => {
-    const key = effectiveEvidenceReviewState(doc);
-    const badges = {
-      PENDING: { icon: Clock, color: 'bg-yellow-100 text-yellow-800', label: 'Awaiting confirmation' },
-      UPLOADED: { icon: Clock, color: 'bg-blue-100 text-blue-800', label: reviewStateLabel('UPLOADED') },
-      VERIFIED: { icon: CheckCircle, color: 'bg-green-100 text-green-800', label: reviewStateLabel('VERIFIED') },
-      ACCEPTED_UNVERIFIED: { icon: Shield, color: 'bg-teal-100 text-teal-800', label: reviewStateLabel('ACCEPTED_UNVERIFIED') },
-      UNDER_REVIEW: { icon: Clock, color: 'bg-indigo-100 text-indigo-800', label: reviewStateLabel('UNDER_REVIEW') },
-      NEEDS_INFORMATION: { icon: AlertTriangle, color: 'bg-amber-100 text-amber-800', label: reviewStateLabel('NEEDS_INFORMATION') },
-      SUPERSEDED: { icon: XCircle, color: 'bg-gray-100 text-gray-700', label: reviewStateLabel('SUPERSEDED') },
-      REJECTED: { icon: XCircle, color: 'bg-red-100 text-red-800', label: reviewStateLabel('REJECTED') },
-      EXPIRED: { icon: XCircle, color: 'bg-red-100 text-red-800', label: reviewStateLabel('EXPIRED') },
+    const badge = getClientDocumentEvidenceBadge(doc);
+    const iconByKey = {
+      REJECTED: XCircle,
+      VERIFIED: CheckCircle,
+      ACCEPTED_UNVERIFIED: Shield,
+      UNDER_REVIEW: Clock,
+      NEEDS_INFORMATION: AlertTriangle,
+      EXTRACTION_PENDING: AlertTriangle,
+      PROCESSING: RefreshCw,
     };
-    const badge = badges[key] || {
-      icon: Clock,
-      color: 'bg-gray-100 text-gray-700',
-      label: documentListStatusLabel(doc?.status),
-    };
-    const Icon = badge.icon;
-    let displayLabel = badge.label;
-    if (String(doc?.assurance_tier || '').trim().toUpperCase() === 'EXTERNALLY_VERIFIED') {
-      displayLabel = 'Externally verified';
-    }
-    const externallyVerified = String(doc?.assurance_tier || '').trim().toUpperCase() === 'EXTERNALLY_VERIFIED';
+    const Icon = iconByKey[badge.key] || Clock;
+    const externallyVerified = badge.key === 'VERIFIED' && String(doc?.assurance_tier || '').toUpperCase() === 'EXTERNALLY_VERIFIED';
     return (
       <span
-        data-testid={`doc-status-${String(key || '').toLowerCase()}`}
+        data-testid={`doc-status-${String(badge.key || '').toLowerCase()}`}
         title={externallyVerified ? 'Externally verified assurance' : undefined}
         className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}
       >
         <Icon className="w-3 h-3" />
-        {displayLabel}
+        {badge.label}
         {externallyVerified ? <Award className="w-3 h-3 shrink-0" aria-hidden /> : null}
       </span>
     );
@@ -736,35 +728,24 @@ const DocumentsPage = () => {
   };
 
   const getExtractionStatusBadge = (doc, extractingId = null) => {
-    if (extractingId && doc.document_id === extractingId) {
-      return (
-        <span data-testid="extraction-status-extracting" className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800">
-          <RefreshCw className="w-3 h-3 animate-spin" />
-          Extracting…
-        </span>
-      );
-    }
-    const rs = doc.ai_extraction?.review_status;
-    const status = doc.extraction_status || (doc.ai_extraction?.status === 'completed'
-      ? (rs === 'approved' ? 'CONFIRMED' : rs === 'rejected' ? 'REJECTED' : 'NEEDS_REVIEW')
-      : doc.ai_extraction?.status === 'failed' ? 'FAILED' : 'PENDING');
-    const config = {
-      PENDING: { label: 'Awaiting confirmation', color: 'bg-gray-100 text-gray-700' },
-      EXTRACTED: { label: 'Extracted', color: 'bg-teal-100 text-teal-800' },
-      NEEDS_REVIEW: { label: 'Awaiting your confirmation', color: 'bg-amber-100 text-amber-800' },
-      CONFIRMED: { label: 'Confirmed', color: 'bg-green-100 text-green-800' },
-      REJECTED: { label: 'Rejected', color: 'bg-red-100 text-red-800' },
-      FAILED: { label: 'Failed', color: 'bg-red-100 text-red-800' }
-    };
-    const { label, color } = config[status] || config.PENDING;
+    const pipeline = getClientExtractionPipelineBadge(doc, extractingId);
+    if (!pipeline) return null;
+    const isSpinning = extractingId && doc.document_id === extractingId;
     return (
-      <span data-testid={`extraction-status-${(status || '').toLowerCase()}`} className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded ${color}`}>
-        {label}
+      <span
+        data-testid={`extraction-status-${pipeline.label.replace(/\s+/g, '-').toLowerCase()}`}
+        className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded ${pipeline.color}`}
+      >
+        {isSpinning ? <RefreshCw className="w-3 h-3 animate-spin" /> : null}
+        {pipeline.label}
       </span>
     );
   };
 
-  const getReviewStatusBadge = (status) => {
+  const getReviewStatusBadge = (doc, status) => {
+    if (hasAdminSupersededExtractionConfirmation(doc)) {
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Confirmed by review</span>;
+    }
     if (status === 'approved') {
       return <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">✓ Applied</span>;
     }
@@ -1277,9 +1258,7 @@ const DocumentsPage = () => {
 
                             {/* AI Extraction Results - only when extraction succeeded (no false confidence when failed) */}
                             {(() => {
-                              const extractionFailed = doc.extraction_status === 'FAILED' || doc.ai_extraction?.status === 'failed';
-                              const hasCompletedExtraction = doc.ai_extraction?.status === 'completed' && doc.ai_extraction?.data;
-                              if (extractionFailed || !hasCompletedExtraction) return null;
+                              if (!shouldShowAiExtractedDataPanel(doc)) return null;
                               return (
                             <div className="mt-3 p-3 bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg border border-teal-100">
                                 <div className="flex items-center justify-between mb-2">
@@ -1292,7 +1271,7 @@ const DocumentsPage = () => {
                                   </div>
                                   <div className="flex items-center gap-2">
                                     {doc.ai_extraction.extraction_quality && getQualityBadge(doc.ai_extraction.extraction_quality)}
-                                    {getReviewStatusBadge(doc.ai_extraction.review_status)}
+                                    {getReviewStatusBadge(doc, doc.ai_extraction.review_status)}
                                   </div>
                                 </div>
                                 
@@ -1347,8 +1326,7 @@ const DocumentsPage = () => {
                                   </div>
                                 )}
 
-                                {/* Review & Apply: available on all plans for user consent and accurate compliance */}
-                                {isExtractionReviewPending(doc.ai_extraction.review_status) && (
+                                {shouldShowReviewAndApplyData(doc) && (
                                   <div className="mt-3 pt-3 border-t border-teal-200">
                                     <Button
                                       size="sm"
@@ -1361,11 +1339,25 @@ const DocumentsPage = () => {
                                     </Button>
                                   </div>
                                 )}
+                                {shouldShowViewExtractedDataAction(doc) && !shouldShowReviewAndApplyData(doc) && (
+                                  <div className="mt-3 pt-3 border-t border-teal-200">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => openReviewModal(doc)}
+                                      className="w-full"
+                                      data-testid={`view-extracted-data-${doc.document_id}`}
+                                    >
+                                      <Eye className="w-4 h-4 mr-2" />
+                                      View extracted data
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             );
                             })()}
                             
-                            {(doc.extraction_status === 'EXTRACTED' || doc.extraction_status === 'NEEDS_REVIEW') && (
+                            {shouldShowReviewAndApplyData(doc) && !doc.ai_extraction?.data && (
                               <div className="mt-3 p-3 bg-teal-50 rounded-lg border border-teal-100">
                                 <p className="text-sm text-teal-800 mb-2">Extracted document details are ready for review.</p>
                                 <Button size="sm" onClick={() => openReviewModal(doc)} className="w-full" data-testid={`review-extraction-btn-${doc.document_id}`}>
@@ -1462,7 +1454,7 @@ const DocumentsPage = () => {
                                 )}
                               </Button>
                             )}
-                            {doc.ai_extraction?.data && !isExtractionReviewPending(doc.ai_extraction.review_status) && (
+                            {doc.ai_extraction?.data && !isExtractionConfirmationPending(doc) && (
                               <Button
                                 variant="ghost"
                                 size="sm"
