@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { toast } from '@/utils/portalNotifications';
 import api from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
+import { getExtractionStatusPresentation } from '../utils/adminOperationalPresentation';
 
 const AdminExtractionQueuePage = () => {
   const [items, setItems] = useState([]);
@@ -67,7 +68,7 @@ const AdminExtractionQueuePage = () => {
             Extraction Review Queue
           </CardTitle>
           <CardDescription>
-            Documents with extraction status NEEDS_REVIEW or FAILED. Confirm to apply extracted data to the requirement, or reject for manual entry.
+            Documents needing extraction review or that failed automated extraction. Confirm to apply extracted data to the requirement, or reject for manual entry.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -102,11 +103,14 @@ const AdminExtractionQueuePage = () => {
                       <td className="py-2">{row.file_name || row.document_id}</td>
                       <td className="py-2 font-mono text-xs">{row.client_id}</td>
                       <td className="py-2">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          row.status === 'FAILED' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
-                        }`}>
-                          {row.status}
+                        {(() => {
+                          const pres = getExtractionStatusPresentation(row.status);
+                          return (
+                        <span className={pres.badgeClass} title={pres.canonicalValue ? `Canonical: ${pres.canonicalValue}` : undefined}>
+                          {pres.label}
                         </span>
+                          );
+                        })()}
                         {row.errors?.message && (
                           <span className="ml-1 text-red-600 text-xs" title={row.errors.message}>
                             <AlertTriangle className="inline w-3 h-3" />

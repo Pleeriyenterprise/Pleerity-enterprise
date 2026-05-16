@@ -5,11 +5,12 @@ import api, { adminAPI, parseApiError, parseStructuredApiDetail } from '../api/c
 import { useStepUpApi } from '../hooks/useStepUpApi';
 import { toast } from '@/utils/portalNotifications';
 import {
-  assuranceTierLabel,
-  effectiveAssuranceTier,
-  effectiveEvidenceReviewState,
-  reviewStateLabel,
-} from '../utils/evidenceReviewUi';
+  getMatchOutcomePresentation,
+  getCanonicalDocumentTypePresentation,
+  getMismatchReasonPresentation,
+  getConfidencePresentation,
+} from '../utils/adminOperationalPresentation';
+import PendingVerificationTable from '../components/admin/PendingVerificationTable';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { presentScoreChangeReason } from '../utils/timelinePresent';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
@@ -4712,6 +4713,7 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
   const [pendingList, setPendingList] = useState({ documents: [], total: 0, returned: 0, has_more: false });
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingHours, setPendingHours] = useState(0);
+  const [expandedTechnicalDocId, setExpandedTechnicalDocId] = useState(null);
   const [pendingClientId, setPendingClientId] = useState('');
   const [pendingListWarning, setPendingListWarning] = useState(null);
   const [rejectModalDoc, setRejectModalDoc] = useState(null);
@@ -5371,221 +5373,31 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
             {backfillBusy ? 'Backfill…' : 'Backfill evidence match'}
           </button>
         </div>
-        {pendingLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <RefreshCw className="w-6 h-6 animate-spin text-electric-teal" />
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-600">
-                  <th className="py-2 pr-4">Document ID</th>
-                  <th className="py-2 pr-4">Client</th>
-                  <th className="py-2 pr-4">CRN</th>
-                  <th className="py-2 pr-4">Client ID</th>
-                  <th className="py-2 pr-4">Property ID</th>
-                  <th className="py-2 pr-4">Requirement</th>
-                  <th className="py-2 pr-4">Predicted type</th>
-                  <th className="py-2 pr-4">Match outcome</th>
-                  <th className="py-2 pr-4">Confidence</th>
-                  <th className="py-2 pr-4">Satisfies</th>
-                  <th className="py-2 pr-4">Mismatch reason</th>
-                  <th className="py-2 pr-4">Legacy</th>
-                  <th className="py-2 pr-4">Review state</th>
-                  <th className="py-2 pr-4">Assurance</th>
-                  <th className="py-2 pr-4">Validation</th>
-                  <th className="py-2 pr-4">AI warnings</th>
-                  <th className="py-2 pr-4">Anomaly risk</th>
-                  <th className="py-2 pr-4">Uploaded at</th>
-                  <th className="py-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(pendingList.documents ?? []).length === 0 ? (
-                  <tr><td colSpan={19} className="py-4 text-gray-500 text-center">No documents matching filters.</td></tr>
-                ) : (
-                  (pendingList.documents ?? []).filter(Boolean).map((doc, idx) => (
-                    <tr
-                      key={doc?.document_id ?? doc?.client_id ?? idx}
-                      className="border-b border-gray-100 hover:bg-gray-50"
-                    >
-                      <td
-                        className="py-2 pr-4 font-mono text-xs cursor-pointer"
-                        onClick={() => doc?.client_id && onSelectClient?.(doc.client_id)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && doc?.client_id) onSelectClient?.(doc.client_id); }}
-                      >{doc?.document_id ?? '—'}</td>
-                      <td
-                        className="py-2 pr-4 font-medium text-midnight-blue cursor-pointer"
-                        onClick={() => doc?.client_id && onSelectClient?.(doc.client_id)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && doc?.client_id) onSelectClient?.(doc.client_id); }}
-                      >{doc?.client_name ?? '—'}</td>
-                      <td className="py-2 pr-4 font-mono text-xs">{doc?.crn ?? '—'}</td>
-                      <td className="py-2 pr-4 font-mono text-xs">{doc?.client_id ?? '—'}</td>
-                      <td className="py-2 pr-4 font-mono text-xs">{doc?.property_id ?? '—'}</td>
-                      <td className="py-2 pr-4 text-xs max-w-[140px]" title={doc?.requirement_id || ''}>
-                        <div className="font-mono text-[11px] text-gray-700">{doc?.requirement_id ?? '—'}</div>
-                        {doc?.requirement_label && (
-                          <div className="text-gray-500 truncate mt-0.5">{doc.requirement_label}</div>
-                        )}
-                      </td>
-                      <td className="py-2 pr-4 text-xs">{doc?.predicted_document_type ?? '—'}</td>
-                      <td className="py-2 pr-4 text-xs">{doc?.match_outcome ?? '—'}</td>
-                      <td className="py-2 pr-4 text-xs">{doc?.match_confidence != null ? String(doc.match_confidence) : '—'}</td>
-                      <td className="py-2 pr-4 text-xs">
-                        {doc?.evidence_satisfies_requirement === true ? (
-                          <span className="text-green-700">Yes</span>
-                        ) : doc?.evidence_satisfies_requirement === false ? (
-                          <span className="text-amber-800">No</span>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td className="py-2 pr-4 text-xs max-w-[160px]">
-                        <div className="line-clamp-2" title={doc?.mismatch_reason_text || doc?.mismatch_reason_code || ''}>
-                          {doc?.mismatch_reason_text || doc?.mismatch_reason_code || '—'}
-                        </div>
-                      </td>
-                      <td className="py-2 pr-4 text-xs">
-                        {doc?.evidence_match_legacy_state ? (
-                          <span className="px-1.5 py-0.5 rounded bg-gray-200 text-gray-800" title="Pre-engine or unclassified — not a strong auto-match">
-                            {String(doc.evidence_match_legacy_state)}
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td className="py-2 pr-4 text-xs">
-                        {reviewStateLabel(effectiveEvidenceReviewState(doc))}
-                      </td>
-                      <td className="py-2 pr-4 text-xs">
-                        {assuranceTierLabel(effectiveAssuranceTier(doc))}
-                      </td>
-                      <td className="py-2 pr-4 text-xs max-w-[220px]">
-                        {(() => {
-                          const snap = doc?.latest_validation_snapshot || {};
-                          const status = String(snap.validation_status || '').toUpperCase();
-                          const warnings = Array.isArray(snap.warnings) ? snap.warnings : [];
-                          const failures = Array.isArray(snap.failures) ? snap.failures : [];
-                          if (!status && warnings.length === 0 && failures.length === 0) return '—';
-                          const summary = `${status || 'UNKNOWN'} · ${warnings.length} warning(s), ${failures.length} failure(s)`;
-                          const details = [
-                            warnings.length ? `Warnings: ${warnings.join(', ')}` : '',
-                            failures.length ? `Failures: ${failures.join(', ')}` : '',
-                          ].filter(Boolean).join(' | ');
-                          return (
-                            <span title={details || summary}>
-                              {summary}
-                            </span>
-                          );
-                        })()}
-                      </td>
-                      <td className="py-2 pr-4 text-xs max-w-[220px]">
-                        {(() => {
-                          const ai = doc?.ai_assistance || {};
-                          const warns = Array.isArray(ai.extraction_warnings) ? ai.extraction_warnings : [];
-                          const flags = Array.isArray(ai.ai_flags) ? ai.ai_flags : [];
-                          if (warns.length === 0 && flags.length === 0) return '—';
-                          const summary = `${warns.length} warning(s), ${flags.length} flag(s)`;
-                          const details = [
-                            warns.length ? `Warnings: ${warns.join(', ')}` : '',
-                            flags.length ? `Flags: ${flags.join(', ')}` : '',
-                          ].filter(Boolean).join(' | ');
-                          return <span title={details || summary}>{summary}</span>;
-                        })()}
-                      </td>
-                      <td className="py-2 pr-4 text-xs">
-                        {(() => {
-                          const ai = doc?.ai_assistance || {};
-                          const risk = Number(ai.anomaly_risk_score);
-                          if (Number.isNaN(risk)) return '—';
-                          const label = risk >= 0.65 ? 'High' : risk >= 0.35 ? 'Medium' : 'Low';
-                          return <span title={`Risk score: ${risk.toFixed(2)}`}>{`${label} (${risk.toFixed(2)})`}</span>;
-                        })()}
-                      </td>
-                      <td className="py-2 pr-4 text-gray-600">{doc?.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : '—'}</td>
-                      <td className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            onClick={() => handleViewDocument(doc)}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded"
-                            title="View document"
-                            data-testid={`view-doc-${doc?.document_id}`}
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            View
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadDocument(doc)}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded"
-                            title="Download document"
-                            data-testid={`download-doc-${doc?.document_id}`}
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            Download
-                          </button>
-                          {stats?.server_feature_flags?.evidence_review_v2_enabled === true && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAiReview(doc)}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded"
-                              data-testid={`ai-review-doc-${doc?.document_id}`}
-                            >
-                              AI review
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleVerifyDocument(doc)}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-100 hover:bg-green-200 rounded"
-                            data-testid={`verify-doc-${doc?.document_id}`}
-                          >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            Verify
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setResolveMatchModal(doc);
-                              setResolveMatchAction('approve_override');
-                              setResolveMatchReason('');
-                              setResolveRelinkId('');
-                            }}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-teal-900 bg-teal-100 hover:bg-teal-200 rounded"
-                            data-testid={`resolve-match-${doc?.document_id}`}
-                          >
-                            Resolve match
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setRejectModalDoc({ document_id: doc.document_id, client_name: doc.client_name }); setRejectReason(''); }}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded"
-                            data-testid={`reject-doc-${doc?.document_id}`}
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            Reject
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-            {pendingList.total > 0 && (
-              <p className="text-xs text-gray-500 mt-2">
-                Showing {pendingList.returned} of {pendingList.total}
-                {pendingList.has_more ? ' (more available)' : ''}.
-              </p>
-            )}
-          </div>
-        )}
+        <PendingVerificationTable
+          documents={pendingList.documents ?? []}
+          total={pendingList.total}
+          returned={pendingList.returned}
+          hasMore={pendingList.has_more}
+          loading={pendingLoading}
+          expandedTechnicalDocId={expandedTechnicalDocId}
+          onToggleTechnicalDetails={setExpandedTechnicalDocId}
+          onSelectClient={onSelectClient}
+          evidenceReviewV2Enabled={stats?.server_feature_flags?.evidence_review_v2_enabled === true}
+          onViewDocument={handleViewDocument}
+          onDownloadDocument={handleDownloadDocument}
+          onOpenAiReview={handleOpenAiReview}
+          onVerifyDocument={handleVerifyDocument}
+          onResolveMatch={(doc) => {
+            setResolveMatchModal(doc);
+            setResolveMatchAction('approve_override');
+            setResolveMatchReason('');
+            setResolveRelinkId('');
+          }}
+          onRejectDocument={(doc) => {
+            setRejectModalDoc({ document_id: doc.document_id, client_name: doc.client_name });
+            setRejectReason('');
+          }}
+        />
       </div>
 
       {aiReviewDoc && (
@@ -5853,13 +5665,29 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
               Document {verifyOverrideModal.doc?.document_id}
               {verifyOverrideModal.doc?.client_name && ` · ${verifyOverrideModal.doc.client_name}`}
             </p>
-            {verifyOverrideModal.detail?.evidence_match && (
-              <div className="text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 font-mono">
-                <div>Outcome: {verifyOverrideModal.detail.evidence_match.match_outcome ?? '—'}</div>
-                <div>Predicted: {verifyOverrideModal.detail.evidence_match.predicted_document_type ?? '—'}</div>
-                <div className="mt-1 text-gray-600">{verifyOverrideModal.detail.evidence_match.mismatch_reason_text ?? ''}</div>
-              </div>
-            )}
+            {verifyOverrideModal.detail?.evidence_match && (() => {
+              const em = verifyOverrideModal.detail.evidence_match;
+              const outcome = getMatchOutcomePresentation(em.match_outcome);
+              const type = getCanonicalDocumentTypePresentation(em.predicted_document_type);
+              const mismatch = getMismatchReasonPresentation(em.mismatch_reason_code, em.mismatch_reason_text);
+              const confidence = getConfidencePresentation(em.match_confidence);
+              return (
+                <div className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 space-y-2">
+                  <div><span className={outcome.badgeClass}>{outcome.label}</span></div>
+                  <div>{type.label}</div>
+                  {confidence.label !== 'Confidence unavailable' && (
+                    <div>
+                      <span className={confidence.badgeClass}>{confidence.label}</span>
+                      <span className="text-xs text-gray-500 ml-1">{confidence.tierLabel}</span>
+                    </div>
+                  )}
+                  {mismatch.label !== '—' && <p className="text-xs text-gray-600">{mismatch.label}</p>}
+                  <p className="text-xs font-mono text-gray-500 pt-1 border-t border-gray-200">
+                    Canonical: {em.match_outcome ?? '—'} · {em.predicted_document_type ?? '—'}
+                  </p>
+                </div>
+              );
+            })()}
             <p className="text-xs text-amber-800 mb-3">
               Override is audited (EVIDENCE_MATCH_OVERRIDE_VERIFY). Use only after manual review of the file against the obligation.
             </p>

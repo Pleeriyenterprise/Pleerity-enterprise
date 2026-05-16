@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DashboardOverview } from './AdminDashboard';
 
@@ -30,8 +30,16 @@ jest.mock('@/utils/portalNotifications', () => ({
   toast: { success: jest.fn(), error: jest.fn(), info: jest.fn() },
 }));
 
+const baseStats = {
+  total_clients: 1,
+  total_properties: 1,
+  active_clients: 1,
+  pending_clients: 0,
+  unverified_documents_count: 1,
+};
+
 describe('AdminDashboard pending verification queue', () => {
-  it('renders V2 review state, assurance, and validation warning/failure counts', async () => {
+  it('renders humanised review labels and does not leak raw enums in operational cells', async () => {
     const clientModule = await import('../api/client');
     const api = clientModule.default;
     const { adminAPI } = clientModule;
@@ -39,11 +47,7 @@ describe('AdminDashboard pending verification queue', () => {
     api.get.mockResolvedValue({
       data: {
         stats: {
-          total_clients: 1,
-          total_properties: 1,
-          active_clients: 1,
-          pending_clients: 0,
-          unverified_documents_count: 1,
+          ...baseStats,
         },
         compliance_overview: { GREEN: 0, AMBER: 0, RED: 0 },
         recent_activity: [],
@@ -60,9 +64,14 @@ describe('AdminDashboard pending verification queue', () => {
             client_id: 'client-1',
             property_id: 'prop-1',
             requirement_id: 'req-1',
-            client_name: 'Client One',
-            crn: 'CRN-1',
+            client_name: 'Felix Thompson',
+            crn: 'PLC-CUP-2826-000042',
+            file_name: 'right-to-rent.pdf',
             uploaded_at: '2026-04-28T06:00:00Z',
+            match_outcome: 'MATCH_LIKELY',
+            predicted_document_type: 'RIGHT_TO_RENT_EVIDENCE',
+            match_confidence: 0.57,
+            mismatch_reason_code: 'NO_REQUIREMENT_LINK',
             evidence_review_state: 'ACCEPTED_UNVERIFIED',
             assurance_tier: 'HUMAN_ACCEPTED',
             latest_validation_snapshot: {
@@ -83,7 +92,7 @@ describe('AdminDashboard pending verification queue', () => {
       },
     });
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <DashboardOverview onShowDrilldown={() => {}} onSelectClient={() => {}} />
       </MemoryRouter>
@@ -93,11 +102,26 @@ describe('AdminDashboard pending verification queue', () => {
 
     expect(screen.getByText('Accepted on file (not externally verified)')).toBeInTheDocument();
     expect(screen.getByText('Human accepted')).toBeInTheDocument();
-    expect(screen.getByText('WARN · 1 warning(s), 1 failure(s)')).toBeInTheDocument();
-    expect(screen.getByText('1 warning(s), 1 flag(s)')).toBeInTheDocument();
-    expect(screen.getByText('High (0.71)')).toBeInTheDocument();
+    expect(screen.getByText(/Likely match found/)).toBeInTheDocument();
+    expect(screen.getByText(/57% confidence/)).toBeInTheDocument();
+    expect(screen.getByText('Low confidence')).toBeInTheDocument();
+    expect(screen.getByText(/No matching requirement linked yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Warnings found/)).toBeInTheDocument();
+    expect(screen.getByText(/High-risk anomaly detected/)).toBeInTheDocument();
+
+    const row = screen.getByTestId('pending-verification-row-doc-v2-1');
+    expect(row.textContent).not.toContain('MATCH_LIKELY');
+    expect(row.textContent).not.toContain('RIGHT_TO_RENT_EVIDENCE');
+    expect(row.textContent).not.toContain('NO_REQUIREMENT_LINK');
+
+    fireEvent.click(screen.getByTestId('technical-details-doc-v2-1-toggle'));
+    const panel = screen.getByTestId('technical-details-doc-v2-1-panel');
+    expect(within(panel).getByText(/MATCH_LIKELY/)).toBeInTheDocument();
+    expect(within(panel).getByText(/RIGHT_TO_RENT_EVIDENCE/)).toBeInTheDocument();
+
     expect(screen.getByTestId('evidence-review-v2-disabled-hint')).toBeInTheDocument();
     expect(screen.queryByTestId('ai-review-doc-doc-v2-1')).not.toBeInTheDocument();
+    expect(container.querySelector('[colspan="19"]')).toBeNull();
   });
 
   it('requires override reason before AI field override action', async () => {
@@ -107,13 +131,7 @@ describe('AdminDashboard pending verification queue', () => {
 
     api.get.mockResolvedValue({
       data: {
-        stats: {
-          total_clients: 1,
-          total_properties: 1,
-          active_clients: 1,
-          pending_clients: 0,
-          unverified_documents_count: 1,
-        },
+        stats: { ...baseStats },
         compliance_overview: { GREEN: 0, AMBER: 0, RED: 0 },
         recent_activity: [],
         server_feature_flags: { evidence_review_v2_enabled: true },
@@ -163,7 +181,7 @@ describe('AdminDashboard pending verification queue', () => {
 
     api.get.mockResolvedValue({
       data: {
-        stats: { total_clients: 1, total_properties: 1, active_clients: 1, pending_clients: 0, unverified_documents_count: 1 },
+        stats: { ...baseStats },
         compliance_overview: { GREEN: 0, AMBER: 0, RED: 0 },
         recent_activity: [],
         server_feature_flags: { evidence_review_v2_enabled: true },
@@ -191,4 +209,3 @@ describe('AdminDashboard pending verification queue', () => {
     expect(screen.queryByText('Open official source')).not.toBeInTheDocument();
   });
 });
-

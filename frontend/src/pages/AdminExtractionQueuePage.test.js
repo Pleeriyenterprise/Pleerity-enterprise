@@ -52,7 +52,7 @@ describe('AdminExtractionQueuePage', () => {
       expect(screen.getByTestId('extraction-queue-table')).toBeInTheDocument();
     });
     expect(screen.getByText('Extraction Review Queue')).toBeInTheDocument();
-    expect(screen.getByText('NEEDS_REVIEW')).toBeInTheDocument();
+    expect(screen.getByText('Extraction needs review')).toBeInTheDocument();
     expect(screen.getByText(/gas-cert\.pdf/)).toBeInTheDocument();
   });
 
