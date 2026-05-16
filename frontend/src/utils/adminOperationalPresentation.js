@@ -355,6 +355,53 @@ export function getExtractionStatusPresentation(status) {
   return presentationBadge(operationalLabelForToken(raw, { emptyLabel: '—' }), 'neutral', raw);
 }
 
+export const ENRICHMENT_READINESS = {
+  READY: 'READY',
+  PROCESSING: 'PROCESSING',
+  PARTIAL: 'PARTIAL',
+  FAILED: 'FAILED',
+};
+
+/**
+ * @param {Record<string, unknown>} doc
+ */
+export function getEnrichmentReadinessPresentation(doc = {}) {
+  const readiness = String(doc.enrichment_readiness || '').toUpperCase();
+  const apiLabel = String(doc.enrichment_readiness_label || '').trim();
+  const detail = String(doc.enrichment_readiness_detail || '').trim();
+  if (readiness) {
+    const map = {
+      READY: { label: apiLabel || 'Ready for review', tone: 'success' },
+      PROCESSING: { label: apiLabel || 'Processing document…', tone: 'processing' },
+      PARTIAL: { label: apiLabel || 'Review preparation incomplete', tone: 'warning' },
+      FAILED: { label: apiLabel || 'Extraction failed — review manually', tone: 'danger' },
+    };
+    const mapped = map[readiness] || { label: apiLabel || 'Processing document…', tone: 'processing' };
+    return presentationBadge(mapped.label, mapped.tone, readiness, detail || apiLabel);
+  }
+  if (!hasMatchEvaluationAttempted(doc)) {
+    return presentationBadge('Review preparation in progress', 'processing', '', 'Waiting for extraction and matching.');
+  }
+  if (doc.extraction_status === 'FAILED' || doc.ai_extraction?.status === 'failed') {
+    return presentationBadge('Extraction failed — review manually', 'danger', 'FAILED');
+  }
+  return presentationBadge('Ready for review', 'success', 'READY');
+}
+
+/**
+ * @param {Record<string, unknown>} doc
+ */
+export function isEnrichmentReady(doc = {}) {
+  return String(doc.enrichment_readiness || '').toUpperCase() === ENRICHMENT_READINESS.READY;
+}
+
+/**
+ * @param {Record<string, unknown>} doc
+ */
+export function isEnrichmentProcessing(doc = {}) {
+  return String(doc.enrichment_readiness || '').toUpperCase() === ENRICHMENT_READINESS.PROCESSING;
+}
+
 /**
  * Client-side inference: has match engine written signals to this document row?
  * @param {Record<string, unknown>} doc
@@ -388,6 +435,21 @@ export function getRequirementLinkPresentation(doc = {}) {
  * @param {Record<string, unknown>} doc
  */
 export function getSuggestedMatchPresentation(doc = {}) {
+  const readiness = String(doc.enrichment_readiness || '').toUpperCase();
+  if (readiness === ENRICHMENT_READINESS.FAILED) {
+    return presentationBadge(
+      'Match unavailable — extraction failed',
+      'danger',
+      '',
+      'Resolve extraction or review the file manually before matching.',
+    );
+  }
+  if (readiness === ENRICHMENT_READINESS.PROCESSING || (!hasMatchEvaluationAttempted(doc) && readiness !== ENRICHMENT_READINESS.READY)) {
+    const label = readiness === ENRICHMENT_READINESS.PARTIAL
+      ? (String(doc.enrichment_readiness_label || '').includes('match') ? doc.enrichment_readiness_label : 'Matching requirement…')
+      : (doc.enrichment_readiness_label || 'Matching requirement…');
+    return presentationBadge(String(label), 'processing', '', doc.enrichment_readiness_detail || '');
+  }
   if (!hasMatchEvaluationAttempted(doc)) {
     return presentationBadge('Matching requirement…', 'processing', '', 'Automated matching is still in progress.');
   }
@@ -413,6 +475,31 @@ export function getSuggestedMatchPresentation(doc = {}) {
  * @param {Record<string, unknown>} doc
  */
 export function getPendingReviewStatusPresentation(doc = {}) {
+  const readiness = String(doc.enrichment_readiness || '').toUpperCase();
+  if (readiness === ENRICHMENT_READINESS.FAILED) {
+    return presentationBadge(
+      doc.enrichment_readiness_label || 'Extraction failed — review manually',
+      'danger',
+      '',
+      doc.enrichment_readiness_detail || 'Automated extraction did not complete.',
+    );
+  }
+  if (readiness === ENRICHMENT_READINESS.PROCESSING) {
+    return presentationBadge(
+      doc.enrichment_readiness_label || 'Review preparation in progress',
+      'processing',
+      '',
+      doc.enrichment_readiness_detail || 'Extraction and matching are still running.',
+    );
+  }
+  if (readiness === ENRICHMENT_READINESS.PARTIAL) {
+    return presentationBadge(
+      doc.enrichment_readiness_label || 'Review preparation incomplete',
+      'warning',
+      '',
+      doc.enrichment_readiness_detail || 'Some context is still loading.',
+    );
+  }
   if (!hasMatchEvaluationAttempted(doc)) {
     return presentationBadge('Review preparation in progress', 'processing', '', 'Extraction and matching are still running.');
   }
@@ -425,14 +512,19 @@ export function getPendingReviewStatusPresentation(doc = {}) {
 export function getPendingDocumentOperationalPresentation(doc = {}) {
   const fileName = String(doc.file_name || '').trim();
   const shortId = String(doc.document_id || '').slice(0, 8);
+  const readiness = getEnrichmentReadinessPresentation(doc);
+  const confidence = (isEnrichmentReady(doc) || hasMatchEvaluationAttempted(doc))
+    ? getConfidencePresentation(doc.match_confidence)
+    : getConfidencePresentation(null);
   return {
+    readiness,
     documentTitle: fileName || (shortId ? `Document ${shortId}…` : 'Document'),
     documentSubtitle: fileName && doc.document_id ? String(doc.document_id) : '',
     clientName: doc.client_name || '—',
     crn: doc.crn || '—',
     requirement: getRequirementLinkPresentation(doc),
     suggestedMatch: getSuggestedMatchPresentation(doc),
-    confidence: getConfidencePresentation(doc.match_confidence),
+    confidence,
     reviewStatus: getPendingReviewStatusPresentation(doc),
     assurance: getAssuranceTierPresentation(doc),
     validation: getValidationSnapshotPresentation(doc.latest_validation_snapshot),
@@ -469,6 +561,13 @@ export function buildTechnicalDetailsRows(doc = {}) {
     { key: 'document_type', label: 'Declared document type', value: doc.document_type },
     { key: 'manual_review_flag', label: 'Manual review flag', value: doc.manual_review_flag },
     { key: 'requirement_evidence_mismatch', label: 'Requirement evidence mismatch', value: doc.requirement_evidence_mismatch },
+    { key: 'enrichment_readiness', label: 'Enrichment readiness (canonical)', value: doc.enrichment_readiness },
+    { key: 'enrichment_readiness_label', label: 'Enrichment readiness label', value: doc.enrichment_readiness_label },
+    { key: 'extraction_status', label: 'Extraction status (canonical)', value: doc.extraction_status },
+    { key: 'match_status', label: 'Match status (canonical)', value: doc.match_status },
+    { key: 'enrichment_started_at', label: 'Enrichment started at', value: doc.enrichment_started_at },
+    { key: 'enrichment_completed_at', label: 'Enrichment completed at', value: doc.enrichment_completed_at },
+    { key: 'enrichment_latency_ms', label: 'Enrichment latency (ms)', value: doc.enrichment_latency_ms != null ? String(doc.enrichment_latency_ms) : null },
   ];
   const snap = doc.latest_validation_snapshot;
   if (snap && typeof snap === 'object') {

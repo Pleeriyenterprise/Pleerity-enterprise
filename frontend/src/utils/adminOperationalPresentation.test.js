@@ -8,7 +8,9 @@ import {
   getExtractionStatusPresentation,
   hasMatchEvaluationAttempted,
   getPendingDocumentOperationalPresentation,
+  getEnrichmentReadinessPresentation,
   buildTechnicalDetailsRows,
+  ENRICHMENT_READINESS,
 } from './adminOperationalPresentation';
 
 describe('adminOperationalPresentation', () => {
@@ -77,6 +79,43 @@ describe('adminOperationalPresentation', () => {
     const op = getPendingDocumentOperationalPresentation({ document_id: 'd1', status: 'UPLOADED' });
     expect(op.suggestedMatch.label).toBe('Matching requirement…');
     expect(op.reviewStatus.label).toBe('Review preparation in progress');
+  });
+
+  it('uses API enrichment readiness labels', () => {
+    const p = getEnrichmentReadinessPresentation({
+      enrichment_readiness: 'PROCESSING',
+      enrichment_readiness_label: 'Extraction in progress',
+    });
+    expect(p.label).toBe('Extraction in progress');
+    expect(p.canonicalValue).toBe('PROCESSING');
+  });
+
+  it('renders failed extraction distinctly from processing', () => {
+    const op = getPendingDocumentOperationalPresentation({
+      enrichment_readiness: ENRICHMENT_READINESS.FAILED,
+      enrichment_readiness_label: 'Extraction failed — review manually',
+      extraction_status: 'FAILED',
+    });
+    expect(op.readiness.tone).toBe('danger');
+    expect(op.suggestedMatch.label).toContain('failed');
+    expect(op.reviewStatus.label).toContain('failed');
+  });
+
+  it('shows confidence unavailable while not ready', () => {
+    const op = getPendingDocumentOperationalPresentation({
+      enrichment_readiness: 'PROCESSING',
+      match_confidence: 0.9,
+    });
+    expect(op.confidence.label).toBe('Confidence unavailable');
+  });
+
+  it('includes readiness fields in technical details', () => {
+    const rows = buildTechnicalDetailsRows({
+      enrichment_readiness: 'READY',
+      match_status: 'COMPLETE',
+      enrichment_latency_ms: 1200,
+    });
+    expect(rows.some((r) => r.key === 'enrichment_readiness' && r.value === 'READY')).toBe(true);
   });
 
   it('buildTechnicalDetailsRows preserves canonical values', () => {

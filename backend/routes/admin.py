@@ -436,9 +436,16 @@ async def list_pending_verification_documents(
                 "external_verification_method": 1,
                 "external_verification_reference": 1,
                 "ai_assistance": 1,
+                "extraction_status": 1,
+                "extraction_id": 1,
+                "ai_extraction": 1,
             },
         ).sort("uploaded_at", 1).skip(skip).limit(limit)
         items = await cursor.to_list(limit)
+        from services.admin_verification_readiness import (
+            attach_verification_readiness_fields,
+            load_extraction_records_by_id,
+        )
         from services.evidence_review_migration import effective_assurance_tier, effective_evidence_review_state
         # Enrich with client display name and CRN for admin table
         client_ids = list({d.get("client_id") for d in items if d.get("client_id")})
@@ -482,6 +489,9 @@ async def list_pending_verification_documents(
                 d["requirement_label"] = (rr.get("description") or rr.get("requirement_type") or rr.get("requirement_code") or d.get("requirement_id"))
             else:
                 d["requirement_label"] = None
+        ext_ids = [str(d["extraction_id"]) for d in items if d.get("extraction_id")]
+        extraction_by_id = await load_extraction_records_by_id(db, ext_ids)
+        pipeline_observability = attach_verification_readiness_fields(items, extraction_by_id)
         returned = len(items)
         return {
             "documents": items,
@@ -491,6 +501,7 @@ async def list_pending_verification_documents(
             "hours": hours,
             "client_id_filter": client_id,
             "property_id_filter": property_id,
+            "pipeline_observability": pipeline_observability,
         }
     except Exception as e:
         logger.error(f"Pending verification list error: {e}")

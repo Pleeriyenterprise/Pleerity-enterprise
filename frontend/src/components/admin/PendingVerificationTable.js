@@ -63,6 +63,15 @@ export default function PendingVerificationTable({
                   data-testid={`pending-verification-row-${doc?.document_id}`}
                 >
                   <td className="py-3 pr-4 max-w-xs">
+                    <div className="mb-1">
+                      <span
+                        className={op.readiness.badgeClass}
+                        title={op.readiness.helperText}
+                        data-testid={`readiness-badge-${doc?.document_id}`}
+                      >
+                        {op.readiness.label}
+                      </span>
+                    </div>
                     <div className="font-medium text-midnight-blue">{op.documentTitle}</div>
                     <button
                       type="button"

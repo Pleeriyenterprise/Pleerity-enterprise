@@ -68,6 +68,10 @@ describe('AdminDashboard pending verification queue', () => {
             crn: 'PLC-CUP-2826-000042',
             file_name: 'right-to-rent.pdf',
             uploaded_at: '2026-04-28T06:00:00Z',
+            enrichment_readiness: 'READY',
+            enrichment_readiness_label: 'Ready for review',
+            extraction_status: 'EXTRACTED',
+            match_status: 'COMPLETE',
             match_outcome: 'MATCH_LIKELY',
             predicted_document_type: 'RIGHT_TO_RENT_EVIDENCE',
             match_confidence: 0.57,
@@ -102,6 +106,7 @@ describe('AdminDashboard pending verification queue', () => {
 
     expect(screen.getByText('Accepted on file (not externally verified)')).toBeInTheDocument();
     expect(screen.getByText('Human accepted')).toBeInTheDocument();
+    expect(screen.getByTestId('readiness-badge-doc-v2-1')).toHaveTextContent('Ready for review');
     expect(screen.getByText(/Likely match found/)).toBeInTheDocument();
     expect(screen.getByText(/57% confidence/)).toBeInTheDocument();
     expect(screen.getByText('Low confidence')).toBeInTheDocument();

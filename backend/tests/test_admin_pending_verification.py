@@ -60,12 +60,18 @@ async def test_pending_verification_list_endpoint_shape_and_filtering():
 
     with patch("routes.admin.admin_route_guard", new_callable=AsyncMock), patch(
         "routes.admin.database.get_db", return_value=db
+    ), patch(
+        "services.admin_verification_readiness.load_extraction_records_by_id", new_callable=AsyncMock, return_value={}
     ):
         result = await list_pending_verification_documents(
             request, hours=24, client_id=None, limit=50, skip=0
         )
     assert "documents" in result
-    assert result["documents"] == sample_docs
+    assert len(result["documents"]) == 2
+    for doc in result["documents"]:
+        assert "enrichment_readiness" in doc
+        assert "enrichment_readiness_label" in doc
+        assert "match_status" in doc
     assert result["total"] == 2
     assert result["returned"] == 2
     assert result["has_more"] is False
@@ -82,11 +88,14 @@ async def test_pending_verification_list_endpoint_shape_and_filtering():
     ])
     with patch("routes.admin.admin_route_guard", new_callable=AsyncMock), patch(
         "routes.admin.database.get_db", return_value=db
+    ), patch(
+        "services.admin_verification_readiness.load_extraction_records_by_id", new_callable=AsyncMock, return_value={}
     ):
         result2 = await list_pending_verification_documents(
             request, hours=48, client_id="client-a", limit=50, skip=0
         )
-    assert result2["documents"] == [sample_docs[0]]
+    assert len(result2["documents"]) == 1
+    assert result2["documents"][0]["document_id"] == sample_docs[0]["document_id"]
     assert result2["total"] == 1
     assert result2["returned"] == 1
     assert result2["has_more"] is False
@@ -121,6 +130,8 @@ async def test_pending_verification_sort_order_oldest_first():
 
     with patch("routes.admin.admin_route_guard", new_callable=AsyncMock), patch(
         "routes.admin.database.get_db", return_value=db
+    ), patch(
+        "services.admin_verification_readiness.load_extraction_records_by_id", new_callable=AsyncMock, return_value={}
     ):
         await list_pending_verification_documents(
             request, hours=24, client_id=None, limit=50, skip=0
@@ -219,11 +230,14 @@ async def test_pending_verification_hours_zero_lists_all_uploaded_without_age_fi
 
     with patch("routes.admin.admin_route_guard", new_callable=AsyncMock), patch(
         "routes.admin.database.get_db", return_value=db
+    ), patch(
+        "services.admin_verification_readiness.load_extraction_records_by_id", new_callable=AsyncMock, return_value={}
     ):
-        await list_pending_verification_documents(
+        result = await list_pending_verification_documents(
             request, hours=0, client_id=None, limit=50, skip=0
         )
 
+    assert "pipeline_observability" in result
     q = db.documents.find.call_args[0][0]
     assert q.get("status") == "UPLOADED"
     assert "uploaded_at" not in q
