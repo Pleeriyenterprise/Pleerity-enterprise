@@ -1,0 +1,104 @@
+{
+  "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:a497a20c136b",
+  "queue_row_status": "DONE",
+  "score_history_recent": [
+    {
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "score": 51,
+      "breakdown_summary": {
+        "status_score": 55.5,
+        "expiry_score": 82.0,
+        "document_score": 0.0,
+        "overdue_penalty_score": 92.0,
+        "risk_score": 90.0
+      },
+      "created_at": "2026-05-17T13:52:49.888095+00:00",
+      "reason": "ADMIN_MANUAL_JOB",
+      "actor": {
+        "id": "system",
+        "role": "ADMIN"
+      },
+      "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:a497a20c136b"
+    },
+    {
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "score": 51,
+      "breakdown_summary": {
+        "status_score": 55.5,
+        "expiry_score": 82.0,
+        "document_score": 0.0,
+        "overdue_penalty_score": 92.0,
+        "risk_score": 90.0
+      },
+      "created_at": "2026-05-17T13:49:19.503336+00:00",
+      "reason": "ADMIN_MANUAL_JOB",
+      "actor": {
+        "id": "system",
+        "role": "ADMIN"
+      },
+      "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:fde2a0b8a85c"
+    },
+    {
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "score": 51,
+      "breakdown_summary": {
+        "status_score": 55.5,
+        "expiry_score": 82.0,
+        "document_score": 0.0,
+        "overdue_penalty_score": 92.0,
+        "risk_score": 90.0
+      },
+      "created_at": "2026-05-17T13:43:34.393769+00:00",
+      "reason": "ADMIN_MANUAL_JOB",
+      "actor": {
+        "id": "system",
+        "role": "ADMIN"
+      },
+      "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:c97a63603614"
+    },
+    {
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "score": 51,
+      "breakdown_summary": {
+        "status_score": 55.5,
+        "expiry_score": 82.0,
+        "document_score": 0.0,
+        "overdue_penalty_score": 92.0,
+        "risk_score": 90.0
+      },
+      "created_at": "2026-05-17T13:30:19.516075+00:00",
+      "reason": "ADMIN_MANUAL_JOB",
+      "actor": {
+        "id": "system",
+        "role": "ADMIN"
+      },
+      "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:6b6c53984f37"
+    },
+    {
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "score": 51,
+      "breakdown_summary": {
+        "status_score": 55.5,
+        "expiry_score": 82.0,
+        "document_score": 0.0,
+        "overdue_penalty_score": 92.0,
+        "risk_score": 90.0
+      },
+      "created_at": "2026-05-17T03:28:25.365011+00:00",
+      "reason": "SCHEDULED_PROPERTY_BATCH",
+      "actor": {
+        "id": "system",
+        "role": "SYSTEM"
+      },
+      "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-17"
+    }
+  ],
+  "open_gaps_sample": [],
+  "lineage_fingerprint": "cf2dab77db86a78134d55ba9be23208a",
+  "phase": "m2_legitimate_new_correlation"
+}

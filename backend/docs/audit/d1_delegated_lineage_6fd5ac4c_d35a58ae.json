@@ -1,0 +1,26 @@
+[
+  {
+    "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+    "delegated_origin_correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "delegated_branch_fingerprint": "ba9a266651b2349594c97fac72f967d9",
+    "propagation_stage": "d1_m1:recalc_enqueue:risk_regen_delegate_ok",
+    "parent_transition_id": "d1-D1_VERIFICATION:REQUIREMENTS_SYNC-d35a58ae-3c81-491c-9694-1d021dd3b8ad-def3beb9",
+    "detached": false
+  },
+  {
+    "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+    "delegated_origin_correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "delegated_branch_fingerprint": "ba9a266651b2349594c97fac72f967d9",
+    "propagation_stage": "d1_m1:recalc_enqueue:risk_regen_delegate_ok",
+    "parent_transition_id": "d1-D1_VERIFICATION:REQUIREMENTS_SYNC-d35a58ae-3c81-491c-9694-1d021dd3b8ad-4ffa10be",
+    "detached": false
+  },
+  {
+    "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+    "delegated_origin_correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "delegated_branch_fingerprint": "ba9a266651b2349594c97fac72f967d9",
+    "propagation_stage": "d1_m1:recalc_enqueue:risk_regen_delegate_ok",
+    "parent_transition_id": "d1-D1_VERIFICATION:REQUIREMENTS_SYNC-d35a58ae-3c81-491c-9694-1d021dd3b8ad-50ca9ba2",
+    "detached": false
+  }
+]

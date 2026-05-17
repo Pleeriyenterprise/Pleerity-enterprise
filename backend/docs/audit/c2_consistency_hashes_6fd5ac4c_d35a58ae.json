@@ -1,0 +1,27 @@
+{
+  "R1": {
+    "requirements_applicability": "f7b182b1a40badc328e084cad2867dce",
+    "gaps": "e09c239cbf37eb49f8b0494b8f1d9cc4",
+    "risk_signals": "7814f6072e20b3f9ba49f15bfa9d6ea9",
+    "priority_stream": "c17d23b874208216e29344b151e08d6a",
+    "tasks_today": "62c957fe1ca22589db0af66c177d0b53",
+    "kpi_dashboard": "fcc0130fbb9d19efd0d30b89297697b0"
+  },
+  "R2": {
+    "requirements_applicability": "f7b182b1a40badc328e084cad2867dce",
+    "gaps": "e09c239cbf37eb49f8b0494b8f1d9cc4",
+    "risk_signals": "7814f6072e20b3f9ba49f15bfa9d6ea9",
+    "priority_stream": "c17d23b874208216e29344b151e08d6a",
+    "tasks_today": "62c957fe1ca22589db0af66c177d0b53",
+    "kpi_dashboard": "fcc0130fbb9d19efd0d30b89297697b0"
+  },
+  "R3": {
+    "requirements_applicability": "f7b182b1a40badc328e084cad2867dce",
+    "gaps": "e09c239cbf37eb49f8b0494b8f1d9cc4",
+    "risk_signals": "7814f6072e20b3f9ba49f15bfa9d6ea9",
+    "priority_stream": "c17d23b874208216e29344b151e08d6a",
+    "tasks_today": "62c957fe1ca22589db0af66c177d0b53",
+    "kpi_dashboard": "fcc0130fbb9d19efd0d30b89297697b0"
+  },
+  "r2_equals_r3": true
+}

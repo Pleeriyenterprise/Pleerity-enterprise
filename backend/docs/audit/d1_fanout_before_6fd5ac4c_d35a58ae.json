@@ -1,0 +1,56 @@
+{
+  "stable_correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "queue_recent": [
+    {
+      "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-17",
+      "status": "DONE",
+      "updated_at": "2026-05-17T03:28:44.218166+00:00"
+    },
+    {
+      "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-17",
+      "status": "DONE",
+      "updated_at": "2026-05-17T00:18:53.686051+00:00"
+    },
+    {
+      "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2818c7817f6f",
+      "status": "DONE",
+      "updated_at": "2026-05-16T18:54:15.216485+00:00"
+    },
+    {
+      "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "status": "DONE",
+      "updated_at": "2026-05-16T18:53:29.344209+00:00"
+    },
+    {
+      "correlation_id": "REMINDER_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-16",
+      "status": "DONE",
+      "updated_at": "2026-05-16T09:01:35.244906+00:00"
+    },
+    {
+      "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-16",
+      "status": "DONE",
+      "updated_at": "2026-05-16T03:28:49.167408+00:00"
+    },
+    {
+      "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-16",
+      "status": "DONE",
+      "updated_at": "2026-05-16T00:17:15.765333+00:00"
+    },
+    {
+      "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-15",
+      "status": "DONE",
+      "updated_at": "2026-05-15T03:27:05.315826+00:00"
+    }
+  ],
+  "risk_regen_pending": 0,
+  "rst_core_backbone_activation": {
+    "permitted": true,
+    "activation_reason": "rst_core_backbone_registry_allows_authority_gap_recalc_regen_chain",
+    "activation_state": "ACTIVATION_LIMITED"
+  },
+  "fingerprint": "4e9cb1f5ea998aab45d1ab634954bab6",
+  "phase": "D1_fanout_before",
+  "captured_at_utc": "2026-05-17T13:27:53.777243+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+}

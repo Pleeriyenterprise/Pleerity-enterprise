@@ -1,0 +1,56 @@
+[
+  {
+    "observability_noise_delta": 0,
+    "audit_noise_delta": 0,
+    "blocked_overlay_noise_delta": 1,
+    "noise_pass": false,
+    "before": {
+      "audit_resolution_count": 1,
+      "queue_rows_for_correlation": 1,
+      "risk_regen_rows": 0,
+      "fanout_log_estimate": 0
+    },
+    "after": {
+      "audit_resolution_count": 1,
+      "queue_rows_for_correlation": 1,
+      "risk_regen_rows": 1,
+      "fanout_log_estimate": 0
+    }
+  },
+  {
+    "observability_noise_delta": 0,
+    "audit_noise_delta": 0,
+    "blocked_overlay_noise_delta": 1,
+    "noise_pass": false,
+    "before": {
+      "audit_resolution_count": 1,
+      "queue_rows_for_correlation": 1,
+      "risk_regen_rows": 1,
+      "fanout_log_estimate": 0
+    },
+    "after": {
+      "audit_resolution_count": 1,
+      "queue_rows_for_correlation": 1,
+      "risk_regen_rows": 1,
+      "fanout_log_estimate": 0
+    }
+  },
+  {
+    "observability_noise_delta": 0,
+    "audit_noise_delta": 0,
+    "blocked_overlay_noise_delta": 1,
+    "noise_pass": false,
+    "before": {
+      "audit_resolution_count": 1,
+      "queue_rows_for_correlation": 1,
+      "risk_regen_rows": 1,
+      "fanout_log_estimate": 0
+    },
+    "after": {
+      "audit_resolution_count": 1,
+      "queue_rows_for_correlation": 1,
+      "risk_regen_rows": 1,
+      "fanout_log_estimate": 0
+    }
+  }
+]

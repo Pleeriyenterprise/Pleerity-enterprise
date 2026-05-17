@@ -1,0 +1,40 @@
+{
+  "runs": [
+    {
+      "run": "R1",
+      "mutation": "D1-M1",
+      "downstream_targets": [
+        "compliance_recalc_queue.enqueue_compliance_recalc",
+        "risk_signal_regen_queue.enqueue_risk_signal_regen"
+      ],
+      "matrix_row_refs": [
+        10,
+        11
+      ]
+    },
+    {
+      "run": "R2",
+      "mutation": "D1-M1",
+      "downstream_targets": [
+        "compliance_recalc_queue.enqueue_compliance_recalc",
+        "risk_signal_regen_queue.enqueue_risk_signal_regen"
+      ],
+      "matrix_row_refs": [
+        10,
+        11
+      ]
+    },
+    {
+      "run": "R3",
+      "mutation": "D1-M1",
+      "downstream_targets": [
+        "compliance_recalc_queue.enqueue_compliance_recalc",
+        "risk_signal_regen_queue.enqueue_risk_signal_regen"
+      ],
+      "matrix_row_refs": [
+        10,
+        11
+      ]
+    }
+  ]
+}

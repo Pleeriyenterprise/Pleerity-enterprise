@@ -6,7 +6,7 @@
 
 **Allowed status values only:** `READY` | `PARTIAL` | `BLOCKED` | `DEFERRED_FOR_POST_LAUNCH` | `ACCEPTED_LAUNCH_RISK`
 
-**Last tracker update:** 2026-05-16 (C1 **DONE** — administrative closure; C2 DoD drafting only)
+**Last tracker update:** 2026-05-17 (D1 **DONE** via D1b authoritative staging; E1 DoD drafting **unlocked**)
 
 **TIER_0 routing:** [GOVERNANCE_INDEX.md](../GOVERNANCE_INDEX.md) — canonical navigation spine; this tracker remains launch gate status only (no duplicate recovery authority).
 
@@ -701,7 +701,7 @@ Operators trace sends via **`message_logs`** + orchestrator metadata; mis-tenant
 |------|------|---------------------|--------------|-------|------|--------|------------------|
 | **A** | Materialisation | Code: `provisioning.py` → `materialize_requirements_for_property`; doc: [PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md](../PUBLISHED_REGISTRY_CLIENT_TRUTH_AUDIT.md) | `clients.onboarding_status`, `provisioning_jobs`, `requirements.count` per property, `requirement_generation_source` | Platform / provisioning | **LAUNCH_CRITICAL** | **IN_PROGRESS** (proof pass 2026-05-16) | Per-tenant: `onboarding_status=PROVISIONED` + `requirements` rows exist with `catalog_registry` source; admin `GET /provisioning/{client_id}` |
 | **B** | Client runtime visibility | Code: `requirement_client_runtime_surface.py`; doc: [COMPLIANCE_CLIENT_STATUS_AUTHORITY.md](../COMPLIANCE_CLIENT_STATUS_AUTHORITY.md) | Raw vs filtered: explain endpoint + client `GET /api/properties/{id}/requirements` vs admin unfiltered read | Registry + client surfaces | **LAUNCH_CRITICAL** | **IN_PROGRESS** (proof pass 2026-05-16) | `included_count` / `raw_count` on explain; exclusion_reason populated; client API count ≤ raw |
-| **C** | Scheduler / queue | [runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md](../runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md); **L-006** | `job_runs`, `compliance_recalc_queue`, `scheduler_heartbeat` | Platform ops | **LAUNCH_CRITICAL** | **DONE** (unit **C1** 2026-05-16) | Pilot queue replay + M2; see C1 closure evidence |
+| **C** | Scheduler / queue + downstream convergence | [runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md](../runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md); **L-006**; C2 DoD | `job_runs`, `compliance_recalc_queue`; gap/risk/priority/tasks/KPI surfaces | Platform ops | **LAUNCH_CRITICAL** | **DONE** (units **C1** + **C2** 2026-05-16) | C1 queue/recalc replay; C2 downstream convergence — see § C1/C2 closure |
 | **D** | Workflow propagation fanout | `authority_mutation_fanout.py`; [STREAM_E_MUTATION_FANOUT_MATRIX.md](../STREAM_E_MUTATION_FANOUT_MATRIX.md); **L-009** | Transition fanout traces after governed mutation | Compliance platform | **LAUNCH_CRITICAL** | **NOT_STARTED** | Fanout row + enqueue or documented gate-block + `propagation_notice` |
 | **E** | Evidence / document state | [COMPLIANCE_CLIENT_STATUS_AUTHORITY.md](../COMPLIANCE_CLIENT_STATUS_AUTHORITY.md); [AUTHORITY_WRITE_PATH_RECONCILIATION.md](../audit/AUTHORITY_WRITE_PATH_RECONCILIATION.md); **L-004** | Admin verify → client list parity | Evidence review | **LAUNCH_CRITICAL** | **NOT_STARTED** | Client projection matches authority after verify (no dual pending badges) |
 | **F** | Notification governance | [NOTIFICATION_GOVERNANCE_INVENTORY.json](../audit/NOTIFICATION_GOVERNANCE_INVENTORY.json); **L-008** | `message_logs`; orchestrator path only | Notifications | **PILOT_TOLERABLE** until A–D pass | **NOT_STARTED** | Send proves delivery only — **not** obligation health |
@@ -937,8 +937,12 @@ If implementation discovery shows the unit is too large:
 | **B2** | **BLOCKED** | **Product decision** — no overlay work; emergency_lighting/fire_extinguisher intentionally non-visible |
 | **B3** | **BLOCKED** | No projection drift on pilot; defer |
 | **C1** | **DONE** (2026-05-16) | Administrative closure; evidence § C1 closure below |
-| **C2** | **BLOCKED** (DoD **not drafted**) | **Unlocked:** DoD drafting only — no implementation |
-| **C3+** | **BLOCKED** | After C2 |
+| **C2** | **DONE** (2026-05-16) | Normalized staging `c2_pass=true`; RC-8/RC-13/RC-14 cleared — § C2 closure |
+| **C2a** | **DONE** | Root cause: `regenerated_ids` + `verification_fingerprint_normalization`; no product fix |
+| **D1** | **DONE** (2026-05-17) | Authoritative `d1b_harness_rerun_v3` — `d1_pass=true`; § D1 closure below |
+| **D1b** | **DONE** (2026-05-17) | Harness refinement; `d1b_*` authoritative; original `d1_*` preserved |
+| **E1** | **NOT_STARTED** (DoD drafting **unlocked** 2026-05-17) | Implementation **blocked** until E1 DoD approved — **not** F1 |
+| **C3+** | **BLOCKED** | No formal unit |
 
 ---
 
@@ -1551,11 +1555,618 @@ Extend / add tests (names indicative):
 | **Scope** | Prove downstream convergence: requirements → gaps → risk → priority stream → dashboard → score → today/tasks within bounded time |
 | **Canonical authority** | `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` Streams B, C, E; `STREAM_E_MUTATION_FANOUT_MATRIX.md` |
 | **Code areas likely affected** | `compliance_gap_sync.py`, `client_priority_stream.py`, `unified_tasks_service.py`, `compliance_scoring_service.py` |
-| **Unit status** | **BLOCKED** (implementation) — **UNLOCKED for DoD drafting only** after C1 **DONE**; DoD **not drafted** |
-| **Verification evidence** | No stale conflicting state across surfaces; timestamps/audit align; bounded lag documented |
-| **Governance docs after** | Closed-loop tracker stream notes; gap analysis cross-ref |
-| **Regression tests** | Stream E fanout tests; gap sync tests |
-| **Rollback / safety** | Use validate-compliance-score diagnose before fix |
+| **Unit status** | **DONE** (2026-05-16) — lifecycle: IN_PROGRESS → READY_FOR_STAGING_VERIFICATION → VERIFIED → **DONE** |
+| **Verification evidence** | See § C2 Definition of Done below — artifacts under `backend/docs/audit/c2_*` |
+| **Governance docs after** | This tracker; `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 C2; `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md`; `STREAM_E_MUTATION_FANOUT_MATRIX.md` (observe-only cross-ref) |
+| **Regression tests** | Gap sync, priority stream, KPI contract, unified tasks — see C2 §9 |
+| **Rollback / safety** | `validate-compliance-score` diagnose before `fix=true`; no manual gap/task row edits |
+
+---
+
+#### C2 — Definition of Done (rev 4 — 2026-05-16; **approved** — **DONE** 2026-05-16)
+
+**Purpose:** Prove that after **successful compliance recalc** (queue `DONE`, `compliance_score_pending=false`, score persisted via `recalculate_and_persist`), **downstream operational surfaces converge** within bounded lag in a **sane temporal order**, remain **causally attributable** to the governing mutation, respect **authoritative precedence**, **decay stale residue**, preserve **deterministic replay lineage**, remain **stable on governed replay**, and cause **no cross-entity downstream bleed**. C2 is **downstream convergence verification only** — not distributed tracing redesign, event bus redesign, lineage infrastructure rewrite, fanout repair, scheduler redesign, notification overhaul, activation policy redesign, topology rewrite, or task-system redesign.
+
+**Upstream precondition (accepted):** A1 **DONE**, B1 **DONE**, C1 **DONE** on pilot tenant; B-layer visibility accepted (8 families Wales HMO); queue/recalc replay safety proven.
+
+**Pilot tenant (staging verification only):** `client_id=6fd5ac4c-3fd4-4112-ade7-156977deb49f`, `property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad`, `pleerity_staging`. Product logic must remain **tenant-agnostic** (no hardcoded IDs in services/tests).
+
+##### 1a. Authoritative precedence order (mandatory — rev 2)
+
+When surfaces disagree during or after convergence, C2 adjudicates using this **governed precedence chain** (highest authority first):
+
+```
+requirements / applicability truth (materialised + runtime surface)
+  → compliance gaps
+    → risk signals
+      → priority stream
+        → tasks / Today
+          → dashboard / KPI projections
+```
+
+| Rule | Requirement |
+|------|-------------|
+| **No downstream override** | Lower-order surfaces must **not** override upstream authority (e.g. KPI cannot imply an obligation state that contradicts included requirements + gaps) |
+| **Bounded lag** | Lower-order surfaces may **temporarily lag** upstream within §3 SLA — not a failure |
+| **Persistent contradiction** | Any contradiction **beyond documented SLA** without governed exclusion (§6b) is a **C2 failure** — classify **C2-RC-11** |
+| **Replay** | Precedence must hold on R2/R3, not only immediately post-R1 |
+
+**Artifact:** Record precedence spot-checks in `c2_verification_report_{slug}.json` (`precedence_violations[]` empty on pass).
+
+##### 1c. Temporal convergence ordering (mandatory — rev 3)
+
+C2 must verify that downstream convergence follows a **sane operational sequence** aligned with §1a precedence — not only that surfaces eventually match, but that they do not converge in **operationally contradictory order**.
+
+**Expected convergence order (approximate):**
+
+```
+requirements / applicability
+  → gaps
+    → risk
+      → priority stream
+        → tasks / Today
+          → dashboard / KPI
+```
+
+| Clarification | Rule |
+|---------------|------|
+| Timestamps | Exact strict serialization **not** required |
+| Consistency model | **Bounded eventual consistency** within §3 SLA is acceptable |
+| Failure | **Persistent** contradictory ordering **beyond SLA** → **C2-RC-13** |
+| Replay | R2/R3 must **not** reorder downstream convergence unpredictably vs R1 post-convergence baseline |
+
+**Invalid convergence examples (classify C2-RC-13 if persistent beyond SLA):**
+
+| Invalid pattern | Meaning |
+|-----------------|---------|
+| KPI clears before gaps close | Dashboard/KPI “healthy” while gaps still open/stale |
+| Tasks disappear before priority stream updates | Task surface ahead of stream authority |
+| Priority stream updates before upstream deficits exist | Actions without gap/risk/requirement basis |
+| Dashboard healthy while risk/gaps stale | Lower surfaces converged before upstream within SLA window expired |
+
+**Capture per poll tick:** `convergence_order_timeline[]` in `c2_verification_report_{slug}.json` — array of `{ "t": ISO, "requirements_ready": bool, "gaps_ready": bool, "risk_ready": bool, "priority_ready": bool, "tasks_ready": bool, "kpi_ready": bool, "ordering_violation": null | string }`.
+
+**Pass:** No entry with persistent `ordering_violation` beyond §3 bound; R2/R3 timelines **order-isomorphic** to R1 settled state (no new violations).
+
+##### 1. Governed mutation sources (verification only)
+
+C2 observes convergence **after** the C1-proven enqueue → worker → recalc chain. Mutations must use production HTTP/service paths (no raw Mongo writes to gaps/tasks/KPI collections).
+
+| Allowed (primary) | Endpoint / flow | Triggers recalc (C1 path) | Downstream chain under test |
+|-------------------|-----------------|---------------------------|-----------------------------|
+| **C2-M1 (primary)** | Client `POST /api/properties/{property_id}/requirements/sync` | Yes — stable `REQUIREMENTS_SYNC:{property_id}` | Materialise → enqueue → worker → `recalculate_and_persist` → gap sync / risk regen / priority stream / tasks |
+| **C2-M2 (semantic change)** | Admin `POST /api/admin/properties/{property_id}/requirements/sync-from-registry` | Yes — new `ADMIN_MANUAL_JOB:REGISTRY_SYNC:…` correlation | Same chain; use for **first convergence** after meaningful registry delta only |
+| **C2-M3 (optional observe)** | Governed requirement transition with fanout (e.g. evidence verify path per `STREAM_E_MUTATION_FANOUT_MATRIX.md`) | Per matrix row | **Observe only** — see §1b; no fanout/activation remediation in C2 |
+
+| Forbidden as proof | Reason |
+|--------------------|--------|
+| Raw Mongo `$set` on `compliance_gaps`, `risk_signals`, tasks, or score fields | Bypasses authority |
+| Manual gap close/open without operator command path | Not production convergence proof |
+| Fleet-wide backfill scripts without approval | Out of pilot scope |
+| C2-M2 for replay-idempotency proof | New correlation per call (same rule as C1) |
+| Notification send / reminder dispatch | Out of scope |
+
+**Replay mutations for §7:** Use **C2-M1** only (stable correlation), after initial convergence window completes.
+
+##### 1b. Fanout observation boundary (mandatory — rev 2)
+
+Fanout observation during C2 is **strictly non-mutating**:
+
+| Allowed during C2 | Forbidden during C2 |
+|-------------------|---------------------|
+| Read fanout / activation outcome rows | Mutate activation policy or registry |
+| Record propagation success/failure/block reason | Change queue topology or enqueue contracts |
+| Classify outcome into **C2-RC-10** (or related) | Alter fanout routing or matrix semantics |
+| Defer remediation to **D1** | Broaden scope into **D1** implementation |
+
+**Rule:** Any discovered activation/fanout corruption must be **classified** (primary branch **C2-RC-10**; secondary tags as needed), captured in artifacts, and **remediation deferred to D1** — C2 must not ship fanout fixes disguised as convergence proof.
+
+**Artifact:** `c2_fanout_observe_{slug}.json` (optional when C2-M3 exercised) — read-only traces; `mutations_attempted: false` attestation.
+
+##### 2. Before/after convergence snapshots (mandatory)
+
+Capture **before** first governed mutation and **after** bounded poll window (see §3). Optional mid-window snapshots at T+2m, T+5m if lag ambiguous.
+
+**Artifact:** `c2_convergence_before_{slug}.json`, `c2_convergence_after_{slug}.json`
+
+**Minimum snapshot fields (per surface):**
+
+| Surface | Authority / read path | Fields |
+|---------|----------------------|--------|
+| Property score | `properties` | `compliance_score`, `compliance_score_pending`, `compliance_last_calculated_at`, `risk_level`, `compliance_top_deficits`, `compliance_top_next_actions` |
+| Requirements (client) | `GET /api/properties/{id}/requirements` | Count, stable keys, status summary hash |
+| Requirements (explain) | Admin runtime explain | `raw_count`, `included_count`, top `exclusion_reason` |
+| Gaps | `compliance_gaps` | Counts by `status` for `(client_id, property_id)`; sample open rows: `gap_key`, `requirement_id`, `updated_at` |
+| Risk signals | `risk_signals` | Open count for property; sample `signal_key`, `updated_at` |
+| Risk regen queue | `risk_signal_regen_queue` | `PENDING`/`RUNNING` count for property (observe debounce — not C1 duplicate-suppression proof) |
+| Priority stream | `client_priority_stream` build or `GET` client tasks/priority API | Action count, top action keys, cursor/generation timestamp if exposed |
+| Dashboard / KPI | Client dashboard/compliance summary endpoints + `kpi_authority_projection_contract` | Headline score, pending honesty fields, deficit counts — **authoritative** fields only |
+| Today / tasks | `GET` unified tasks digest + Today-related client routes | Task count, top task ids, `remediation_key` / source_system where present |
+| Admin parity | Matching admin read where exists | No contradiction vs client filtered view on included obligations |
+
+**Pass (snapshot layer):** `c2_convergence_after` documents all surfaces captured; no missing mandatory section.
+
+##### 2b. Stale-surface decay verification (mandatory — rev 2)
+
+After upstream state resolves (requirement compliant, gap closed, risk cleared, recalc complete), C2 must verify **absence or governed decay** of stale downstream residue within §3 bounds.
+
+| Stale residue class | Verification | Pass criterion |
+|---------------------|--------------|----------------|
+| Pending badges | Client KPI / property pending flags | Cleared when score pending false and upstream terminal |
+| Orphaned priority actions | Priority stream vs gaps/requirements | No action for closed/excluded upstream keys |
+| Closed gap + active task | Tasks vs `compliance_gaps.status` | No active task solely referencing closed gap |
+| Resolved risk + stale KPI warning | KPI breakdown vs `risk_signals` | No warning contradicting resolved risk |
+| Today/task residue | Today + unified tasks after convergence | No “attention required” for resolved upstream items |
+| Stale attention markers | Dashboard/Today copy fields | Decay within SLA or governed exclusion documented |
+
+**Replay (R2/R3):** Stale residue counts must **not increase**; decay fingerprints stable (§7b).
+
+**Artifacts:** `c2_stale_decay_{slug}.json` — per-class before/after/R2/R3 counts; `c2_replay_{slug}.json` includes decay deltas.
+
+##### 3. Bounded lag expectations (mandatory)
+
+Document assumed scheduler cadence from `runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md` in `c2_verification_report_{slug}.json`.
+
+| Stage | Expected bound (pilot default) | Pass criterion |
+|-------|------------------------------|----------------|
+| Queue `DONE` → score persisted | ≤ **10 min** (worker schedule + processing) | `compliance_score_pending=false`; `compliance_last_calculated_at` fresh |
+| Score persisted → open gaps reflect requirements | ≤ **10 min** after recalc **or** synchronous on mutation path per matrix | No open gap contradicting included requirement terminal state (spot-check §4) |
+| Score persisted → risk regen processed | ≤ **15 min** (debounced `risk_signal_regen_queue`) | Regen queue not stuck `RUNNING`; open risk count stable post-window |
+| Gaps/risk → priority stream / tasks | ≤ **10 min** after upstream stable | Task/priority counts align with gap/risk spot-check |
+| Dashboard/KPI | ≤ **10 min** | Client KPI reads authoritative persisted headline; no “pending” lie |
+
+**Failure if:** Any surface remains contradictory **beyond documented bound** without classified branch (§8).
+
+**Poll protocol:** Max wait **15 min** per run; record `poll_timeline[]` in verification report.
+
+##### 4. Gap sync verification (mandatory)
+
+**Authority:** `compliance_gap_sync.sync_compliance_gaps_for_requirement`, `compliance_gap_engine`, `compliance_gap_policy_aggregate`.
+
+| Check | Method | Pass criterion |
+|-------|--------|----------------|
+| Gap existence | Mongo `compliance_gaps` for property | Open gaps have valid `gap_key`, `requirement_id` linkage |
+| Policy alignment | Compare gap `status`/reason to included requirement terminal states | No gap **OPEN** for requirement that is compliant/NOT_REQUIRED per runtime surface |
+| Quiet close | After replay (§7) | Open gap count **stable**; no close/reopen storm |
+| Sync errors | Service return `errors[]` on governed path (if exposed) | Empty on happy path |
+| Alias alignment | Spot-check known alias families (e.g. `hmo_fire_risk` vs `hmo_fire_risk_evidence`) | Scoring/gap alias rules per `test_scoring_gap_alias_alignment.py` |
+
+**Artifact:** `c2_gaps_{slug}.json` — before/after counts, sample rows, spot-check matrix.
+
+##### 5. Risk / priority stream verification (mandatory)
+
+**Authority:** `risk_signal_regen_queue.enqueue_risk_signal_regen` (post-recalc), `risk_signal_service`, `client_priority_stream`, `compliance_requirement_engine.requirement_row_in_client_priority_stream`.
+
+| Check | Method | Pass criterion |
+|-------|--------|----------------|
+| Risk regen enqueue | After recalc, observe `risk_signal_regen_queue` | ≤1 effective pending cycle per recalc window; debounced replay does not storm |
+| Risk signals | `risk_signals` for property | Signals consistent with open gaps/deficits (spot-check) |
+| Priority stream | Build stream or client API | Actions reference valid requirement/gap keys; no orphan actions for excluded types |
+| Dedupe | Repeat read | Stable action set post-convergence |
+
+**Artifact:** `c2_risk_priority_{slug}.json`
+
+##### 6. Dashboard / task parity verification (mandatory)
+
+**Authority:** `kpi_authority_projection_contract`, `unified_tasks_service`, `today_projection_service`, `command_center_service` (observe).
+
+| Check | Method | Pass criterion |
+|-------|--------|----------------|
+| KPI authority | Client compliance/dashboard endpoints | Headline score = persisted `properties.compliance_score`; pending flags honest |
+| Deficit parity | `compliance_top_deficits` vs gaps/tasks | Every deficit **either** appears downstream **or** has explicit governed exclusion (§6b) |
+| Unified tasks | `GET` client tasks / digest routes | Count and top items align with priority stream within tolerance; no silent omissions |
+| Today surface | Today page data path (API used by SPA) | No stale “all clear” when open gaps exist (spot-check) |
+| Admin vs client | Explain + client requirements count | `included_count` = client API length (B1 acceptance carries forward) |
+
+**Artifact:** `c2_dashboard_tasks_{slug}.json`
+
+##### 6b. Governed downstream exclusion reasons (mandatory — rev 2)
+
+**Silent disappearance is not acceptable.** Every entity present upstream but **missing** from a downstream surface must carry an **explicit governed exclusion reason** traceable to runtime explain or documented product governance.
+
+| Allowed exclusion provenance (examples) | Must be recorded |
+|----------------------------------------|------------------|
+| Intentionally excluded obligation family (product decision) | `exclusion_reason` / governance note |
+| Suppressed by planner policy | `not_in_planner_membership` or equivalent |
+| Hidden by product governance (non-client-visible) | Runtime surface + tracker acceptance |
+| Alias-family dedupe (loser row) | `excluded_by_alias_dedupe_or_runtime_policy` |
+| Non-client-visible category | Explain + B-layer acceptance reference |
+
+| Check | Pass criterion |
+|-------|----------------|
+| Missing gap/task/KPI for included obligation | **Fail** unless exclusion reason populated |
+| Missing priority action for open gap | **Fail** unless governed deferral reason documented |
+| Replay R2/R3 | Must **not** silently remove downstream representations |
+
+**Artifact:** `c2_exclusions_{slug}.json` — matrix: entity key → surfaces present → exclusion_reason or `present`.
+
+##### 7. Replay stability proof (mandatory)
+
+After **initial convergence** (§3–§6 pass on **C2-M1** run **R1**), repeat **C2-M1** ×2 (**R2**, **R3**) with unchanged semantic compliance state (same rules as C1 §4b).
+
+| Compare R1 → R2 → R3 | Pass criterion |
+|----------------------|----------------|
+| Open gap count / gap `updated_at` churn | **Δ = 0** spurious writes on R2/R3 |
+| Risk signal open count | Stable |
+| Priority stream action set hash | Stable |
+| Unified task count / top ids | Stable |
+| KPI headline + pending flags | Stable |
+| Score history / score_events beyond C1 proof | No **additional** churn attributable to downstream sync |
+
+**Artifact:** `c2_replay_{slug}.json` — per-run surface hashes, decay deltas (§2b), consistency fingerprints (§7b), **lineage fingerprints** (§7d), and `replay_lineage_drift[]` (§7d).
+
+**Explicit:** Queue/recalc suppression already proven in C1 — C2 replay failures are **downstream projection** failures (branch **C2-RC-8**).
+
+##### 7d. Causal traceability and replay lineage stability (mandatory — rev 4)
+
+C2 must prove downstream convergence is **operationally explainable** from the originating governed mutation — not merely “correct-looking but causally opaque.” C2 does **not** add global distributed tracing; it verifies traceability within **existing** governed `correlation_id` / lineage fields.
+
+**1. Causal traceability (all runs R1–R3 and M2 if used)**
+
+Downstream updates must remain attributable to:
+
+| Lineage anchor | Source |
+|----------------|--------|
+| **C2-M1** | Stable `REQUIREMENTS_SYNC:{property_id}` |
+| **C2-M2** | `ADMIN_MANUAL_JOB:REGISTRY_SYNC:{property_id}:{uuid}` |
+| Governed mutation | `TRIGGER_*`, `ACTOR_*`, fanout rows per matrix (observe only) |
+
+**Surfaces requiring lineage spot-check:**
+
+| Surface | Traceability expectation |
+|---------|-------------------------|
+| Gap updates | `compliance_gaps` rows link to `requirement_id` / `gap_key`; audit or metadata references mutation window |
+| Risk regen | `risk_signal_regen_queue` correlation prefix `RECALC:` + reason chain from recalc |
+| Priority stream | Actions reference requirement/gap keys present in upstream state |
+| Tasks / Today | `remediation_key` / `source_system` align with stream/gap lineage where supported |
+| KPI / dashboard freshness | Score history / `score_change_log` / audit carry `correlation_id` when governance supports |
+| Convergence artifacts | `c2_*` JSON records mutation `correlation_id` used per run |
+
+| Check | Pass criterion |
+|-------|----------------|
+| Lineage present | Where platform already stores `correlation_id` or equivalent — value matches governing mutation |
+| Operational explainability | Reviewer can narrate: mutation → recalc → gap/risk/stream/task/KPI without orphan writes |
+| Opaque convergence | Surfaces updated with **no** attributable lineage where expected → **C2-RC-15** |
+
+**Artifacts:**
+
+| Artifact | Contents |
+|----------|----------|
+| `c2_lineage_trace_{slug}.json` | Per-run: mutation id, queue row, recalc history ids, gap/risk/regen samples with correlation fields |
+| `c2_verification_report_{slug}.json` | `downstream_lineage_summary[]` — `{ surface, entity_key, correlation_id, attributable: bool, notes }` |
+
+**Failure branch:** **C2-RC-15** = downstream convergence not causally attributable to governed mutation lineage.
+
+**2. Replay lineage stability (R2/R3 vs R1 settled)**
+
+Stable replay must **not** fork downstream causal ancestry.
+
+| Must not occur on R2/R3 | Pass criterion |
+|-------------------------|----------------|
+| Duplicate lineage ancestry | No second parallel chain for same stable correlation |
+| Forked causal chains | Downstream artifacts do not split across conflicting parent ids |
+| Inconsistent `correlation_id` attachment | New writes must not bind to wrong correlation |
+| Lineage non-determinism | `lineage_fingerprint_r2` == `lineage_fingerprint_r3` == post-R1 settled fingerprint |
+
+**Capture in `c2_replay_{slug}.json`:**
+
+```json
+{
+  "lineage_fingerprint_r1": "...",
+  "lineage_fingerprint_r2": "...",
+  "lineage_fingerprint_r3": "...",
+  "replay_lineage_drift": [],
+  "r2_r3_lineage_equal": true
+}
+```
+
+`replay_lineage_drift[]` — list of `{ "run": "R2"|"R3", "surface", "drift_type", "detail" }` (empty on pass).
+
+**Clarification:** **Legitimate** new mutation (new **C2-M2** correlation per call) **may** create **new** lineage tree. **Stable C2-M1** replay of identical governed mutation **must not**.
+
+**Failure branch:** **C2-RC-16** = replay lineage divergence.
+
+##### 7b. Cross-surface consistency hashing (mandatory — rev 2)
+
+C2 must compute **convergence fingerprints** per surface to detect hidden churn despite stable queue/recalc (C1 proven).
+
+| Fingerprint key | Source (normalized) |
+|-----------------|---------------------|
+| `requirements_applicability` | Included requirement keys + terminal statuses + top exclusion_reason histogram |
+| `gaps` | Open/closed counts + sorted `gap_key` + status tuple |
+| `risk_signals` | Open count + sorted `signal_key` + severity tuple |
+| `priority_stream` | Sorted action keys + action_type tuple |
+| `tasks_today` | Task count + sorted task/remediation ids |
+| `kpi_dashboard` | Headline score + pending flags + top deficit keys |
+
+**Verification:**
+
+| Run | Pass criterion |
+|-----|----------------|
+| R2 vs R3 | **All fingerprints equal** (stable replay) |
+| R1 vs R2/R3 | May differ only on first convergence; thereafter stable |
+| vs C1 | Queue/recalc stable (C1) but fingerprint drift on R2/R3 → **C2-RC-8** |
+
+**Artifact:** `c2_consistency_hashes_{slug}.json` — `{ "R1": {...}, "R2": {...}, "R3": {...}, "r2_equals_r3": true }`.
+
+##### 7c. Unrelated-surface non-mutation verification (mandatory — rev 3)
+
+C2 replay/mutation proof on the **pilot** property must **not** create downstream bleed into **unrelated** entities. Queue replay storms often manifest as **cross-tenant** or **cross-property** gap/task/risk/KPI churn — C2 must explicitly rule this out for the pilot replay path.
+
+**Scope of “unrelated” (staging):** At minimum one **control** `client_id` + `property_id` pair (different from pilot) on same `pleerity_staging` DB, selected before proof and recorded in the verification report.
+
+| Must remain unchanged (Δ = 0 writes / fingerprint stable) | Fingerprint source |
+|-------------------------------------------------------------|-------------------|
+| Unrelated tenant aggregate | Gap/risk/regen-queue counts by `client_id` (control tenant) |
+| Unrelated property | Same counts + property score pending for control `property_id` |
+| Unrelated gaps/tasks/risk/KPI | Normalized hashes matching §7b keys for control entity |
+
+**Capture:**
+
+| Field | Location |
+|-------|----------|
+| `unrelated_control_client_id`, `unrelated_control_property_id` | `c2_verification_report_{slug}.json` |
+| Before/after unrelated fingerprints | `c2_unrelated_surface_integrity_{slug}.json` |
+| `unrelated_mutation_delta` | Per-collection write/count deltas (must be **0** on pass) |
+
+**Pass criterion:**
+
+- Unrelated tenants **not** mutated
+- Unrelated properties **not** recalculated (no new `compliance_last_calculated_at` advance on control)
+- Unrelated gaps/tasks/risk/KPI surfaces **unchanged**
+- Replay R2/R3 produces **no** cross-tenant propagation noise
+
+**Failure branch:** **C2-RC-14** = cross-entity / unrelated-surface downstream bleed.
+
+**Clarification:** This is **verification only** — not multi-tenant architecture redesign, fanout topology rewrite, scheduler redesign, or global propagation optimization (§12).
+
+##### 8. Failure taxonomy (mandatory)
+
+Classify staging failures into **one primary branch** (secondary tags allowed):
+
+| Branch | Symptom | Likely authority |
+|--------|---------|------------------|
+| **C2-RC-1** | Recalc done; gaps never appear/update | `compliance_gap_sync`, materialisation → gap hook |
+| **C2-RC-2** | Gaps stale vs included requirements | `compliance_gap_engine`, policy aggregate |
+| **C2-RC-3** | Risk regen stuck / never drains | `risk_signal_regen_queue`, worker |
+| **C2-RC-4** | Risk signals contradict gaps/score | `risk_signal_service` |
+| **C2-RC-5** | Priority stream missing/extra actions | `client_priority_stream` |
+| **C2-RC-6** | Tasks/Today disagree with stream | `unified_tasks_service`, `today_projection_service` |
+| **C2-RC-7** | Dashboard/KPI shows wrong score or pending | `kpi_authority_projection_contract`, client routes |
+| **C2-RC-8** | Replay causes downstream write churn | Gap sync idempotency, stream rebuild guards |
+| **C2-RC-9** | Lag exceeds bound without recovery | Scheduler cadence, worker ownership — **observe only**, no redesign in C2 |
+| **C2-RC-10** | Fanout blocked (activation gate) | `workflow_runtime_activation_registry` — **observe only** (§1b), defer fix to **D1** |
+| **C2-RC-11** | Persistent cross-surface contradiction beyond SLA | Precedence violation (§1a) — lower surface overrides upstream |
+| **C2-RC-12** | Stale downstream residue fails to decay | §2b — pending badges, orphan actions, closed-gap tasks, stale KPI/Today markers |
+| **C2-RC-13** | Temporal convergence contradiction | §1c — operationally invalid ordering beyond SLA; `convergence_order_timeline[]` |
+| **C2-RC-14** | Unrelated-surface downstream bleed | §7c — cross-tenant/property churn on pilot replay path |
+| **C2-RC-15** | Causally opaque downstream convergence | §7d — not attributable to C2-M1/M2 / governed lineage |
+| **C2-RC-16** | Replay lineage divergence | §7d — duplicate ancestry, forked chains, wrong correlation on R2/R3 |
+
+##### 9. Regression tests required (implementation phase)
+
+Extend / add (names indicative); all must pass before **VERIFIED**:
+
+| Test area | File (existing or new) | Assertions |
+|-----------|------------------------|------------|
+| Gap sync | `test_compliance_gap_sync.py`, `test_compliance_gap_engine_governed.py` | Governed requirement → gap rows |
+| Gap alias | `test_scoring_gap_alias_alignment.py` | Alias families align with scoring |
+| Priority / tasks | `test_phase21_priority_unification.py` | Stream → unified tasks shape |
+| KPI contract | `test_kpi_authority_projection_contract.py` | No unfiltered client KPI paths |
+| Downstream after recalc | **new** `test_c2_downstream_convergence_after_recalc.py` | Mock recalc → gap sync + regen enqueue called; pending clear |
+| Replay projection stability | **new** `test_c2_replay_no_downstream_churn.py` | Double sync mock → gap/task/priority write count stable |
+| Consistency fingerprints | **new** `test_c2_cross_surface_consistency_hashes.py` | R2=R3 hash equality on stable replay mock |
+| Stale decay | **new** `test_c2_stale_surface_decay.py` | Resolved upstream clears downstream residue in mock window |
+| Governed exclusions | **new** `test_c2_downstream_exclusion_provenance.py` | Missing representation requires exclusion_reason |
+| Temporal ordering | **new** `test_c2_temporal_convergence_ordering.py` | Mock timeline — no persistent ordering violation beyond bound |
+| Unrelated integrity | **new** `test_c2_unrelated_surface_non_mutation.py` | Pilot mutation does not mutate control tenant/property fingerprints |
+| Causal lineage | **new** `test_c2_downstream_causal_lineage.py` | Downstream writes carry expected correlation where supported |
+| Replay lineage stability | **new** `test_c2_replay_lineage_determinism.py` | Stable replay → equal lineage fingerprint; no forked ancestry |
+| C1 regression (no regress) | C1 suite (46 tests) | Still green |
+
+**CI:** Full C2 suite + C1 suite green; no flake on Mongo-less mocks.
+
+##### 10. Governance docs to update (on C2 DONE)
+
+| Document | Update |
+|----------|--------|
+| `LAUNCH_AUTHORITY_TRACKER.md` | C2 closure evidence; unlock **D1** decision |
+| `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 | Add **C2** substeps (snapshots, lag table, replay) |
+| `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` | C2 row → DONE; stream B/E notes |
+| `STREAM_E_MUTATION_FANOUT_MATRIX.md` | Cross-ref only if observe findings — **no matrix rewrite** unless D1 |
+| `GOVERNANCE_INDEX.md` | C2 handoff cross-ref |
+| `runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md` | Only if lag semantics change in code |
+
+##### 11. Completion gates
+
+| Gate | Requirement |
+|------|-------------|
+| **Start `IN_PROGRESS`** | C2 DoD rev 4 **approved**; pilot + control unrelated entities identified |
+| **`IMPLEMENTED_PENDING_VERIFICATION`** | Code/tests merged (if any fixes); `scripts/c2_*` optional |
+| **`READY_FOR_STAGING_VERIFICATION`** | All §2 + §2b + §7b + §7c + §7d artifacts captured on staging |
+| **`VERIFIED`** | §1a–§1c, §3–§7, §6b, §2b, §7b–§7d pass |
+| **`DONE`** | §9 tests green; §10 docs updated; §11 rev-4 DONE checklist; **D1** unlock decision documented |
+
+**C2 cannot move to DONE unless all proven on staging (rev 4 tightening):**
+
+1. Post-recalc **downstream surfaces converge** within §3 bounds.
+2. **Precedence ordering holds** (§1a) — no persistent downstream override beyond SLA.
+3. **Temporal convergence ordering is sane** (§1c) — no persistent contradictory ordering beyond SLA; replay does not unpredictably reorder.
+4. Gap/risk/priority/tasks/KPI **mutually consistent** (§4–§6) with **governed exclusions explainable** (§6b).
+5. **Stale residue decays correctly** (§2b) — no orphan pending/actions/tasks/KPI/Today markers beyond SLA.
+6. **Cross-surface hashes converge on replay** (§7b) — **R2 == R3**; no hidden churn despite stable queue/recalc (C1).
+7. **Unrelated downstream surfaces remain unchanged** (§7c) — `unrelated_mutation_delta` = 0; no cross-tenant bleed.
+8. **Downstream convergence remains causally attributable** (§7d) — `downstream_lineage_summary[]` clean; no **C2-RC-15**.
+9. **Replay lineage remains deterministic** (§7d) — `lineage_fingerprint_r2` == `lineage_fingerprint_r3`; `replay_lineage_drift[]` empty; no **C2-RC-16**.
+10. **R2/R3 replay** produces no downstream projection churn on pilot (§7).
+11. **Fanout observation remains non-mutating** (§1b) — any corruption classified and deferred to **D1**.
+12. No notification/fanout/activation/scheduler/lineage-infrastructure/global-propagation semantics change shipped under C2 guise.
+
+**Unlock on DONE:** **D1** DoD drafting (fanout propagation proof) — **not** F1 notifications, **not** B2 overlay.
+
+##### 12. Explicit out-of-scope boundaries (rev 4)
+
+**C2 remains:** downstream convergence verification after recalc (precedence, temporal ordering, causal lineage, replay lineage determinism, decay, hashes, governed exclusions, unrelated-surface integrity) — **verification only** within existing correlation/audit semantics.
+
+**C2 is NOT:**
+
+| Out of scope | Owner / note |
+|--------------|--------------|
+| Queue enqueue, worker, reclaim, duplicate suppression | **C1 DONE** |
+| Distributed tracing redesign | Platform — C2 uses existing fields only |
+| Event bus redesign | Platform |
+| Lineage infrastructure rewrite | Platform |
+| Topology refactor | **D1** / platform |
+| Multi-tenant architecture redesign | Platform — C2 **detects** bleed only |
+| Global propagation optimization | Platform / **D1** |
+| Fanout repair / routing changes | **D1** |
+| Activation policy redesign | **D1** |
+| Queue topology rewrite | **D1** / platform |
+| Notification overhaul, send paths, `message_logs` proof | **F1** |
+| Scheduler ownership redesign, new cron jobs | Platform — incident only |
+| Task system / Today architecture redesign | Product — out of C2 |
+| `authority_mutation_fanout` architecture rewrite | **D1** |
+| `updated_at` / materialisation write optimization | B1 watchlist — only if C2 proves causal downstream harm |
+| Zero-row / provisioning materialisation | **A2** |
+| Published overlay / 21/21 raw parity | **B2 BLOCKED** (product) |
+| Portfolio-wide batch convergence | Separate approved unit |
+| Fixing every “requirements not recorded” scenario | **A2/A3/B2** as classified |
+
+**C2 scope boundary (one line):** Proves **operational read surfaces converge after recalc** in **sane temporal order**, with **causal lineage, deterministic replay lineage, precedence, decay, fingerprinted replay stability, explainable exclusions, and no unrelated-entity bleed** — verification only within existing correlation semantics; not tracing/event-bus/lineage-infrastructure/topology/fanout/scheduler/notification redesign.
+
+##### C2 — Proposed verification method
+
+1. Select pilot `(CID, PID)` + control unrelated `(CID', PID')`; record in report
+2. `python -m scripts.c2_preflight_capture --client-id CID --property-id PID` → `c2_convergence_before_*` + `c2_unrelated_surface_integrity_*` (before)
+3. **R1:** **C2-M1** client sync → poll until queue `DONE` + §3 lag bounds; append `convergence_order_timeline[]` each tick
+4. Capture `c2_gaps_*`, `c2_risk_priority_*`, `c2_dashboard_tasks_*`, `c2_exclusions_*`, `c2_stale_decay_*`, `c2_consistency_hashes_*`, `c2_lineage_trace_*` (optional `c2_fanout_observe_*` if C2-M3)
+5. **R2/R3:** repeat **C2-M1** → `c2_replay_*` + update hashes/decay/timeline/lineage fingerprints/`replay_lineage_drift[]`/unrelated integrity (after)
+6. `python -m scripts.c2_staging_verification ...` → `c2_verification_report_*` (incl. `precedence_violations[]`, `r2_equals_r3`, `convergence_order_timeline[]`, `unrelated_mutation_delta`, `downstream_lineage_summary[]`)
+7. Run §9 pytest suite
+
+**Scripts (implementation phase, optional):** `scripts/c2_preflight_capture.py`, `scripts/c2_staging_verification.py` — read-only snapshots + HTTP drivers (mirror C1 pattern; CLI defaults overridable, no tenant logic in services).
+
+**Staging verification:** Initial run 2026-05-16 `c2_pass=false` (RC-8 tasks volatile-id fingerprint; RC-13 false positive on `pending=false`). **C2a DONE** — root cause `regenerated_ids` + `verification_fingerprint_normalization`; normalization + RC-13 semantics in `c2_snapshot.py` only. **Normalized rerun** 2026-05-16 `c2_pass=true` — `tasks_today` R2=R3=`62c957fe1ca22589db0af66c177d0b53`; `temporal_ordering_violations_empty`; control §7c delta zero after run-start normalized baseline. Report: [audit/c2_verification_report_6fd5ac4c_d35a58ae.json](../audit/c2_verification_report_6fd5ac4c_d35a58ae.json) (`verification_run=c2_normalized_rerun_c2a`). **RC-14** initial fail was preflight legacy fingerprint vs normalized end-state — not cross-tenant bleed.
+
+##### 1c-rev. Temporal ordering detector semantics (proposal — post C2 staging)
+
+**Problem:** Initial detector treated `compliance_score_pending=false` + open gaps as `kpi_clear_while_gaps_open` — conflates **settled recalc** with **resolved compliance**.
+
+| State | Definition | Example signals |
+|-------|------------|-----------------|
+| **Settled recalc** | Queue/recalc cycle complete; score persisted | `compliance_score_pending=false`, fresh `compliance_last_calculated_at` |
+| **Resolved compliance** | Upstream obligations/gaps no longer require action | Open gap count **0** for included families, or governed exclusions documented |
+
+**Revised C2-RC-13 rules (verification only):**
+
+| Fire C2-RC-13 | Do **not** fire C2-RC-13 |
+|---------------|-------------------------|
+| Dashboard/Today asserts **all clear** / **no action needed** while gaps **OPEN** | `pending=false` with **non-zero** open gaps and score **&lt; 100** (expected pilot state) |
+| KPI headline implies **fully compliant** while gaps contradict | Score settled at **52** with 5 open gaps — **settled recalc**, not temporal contradiction |
+| Tasks disappear **before** priority stream loses matching actions | Open gaps with stable priority stream keys |
+| Downstream surface converges **before** upstream deficits exist | Documented in `convergence_order_timeline[]` with SLA breach |
+
+**Detector rename (implementation in verification script, not product):** replace `kpi_clear_while_gaps_open` with `downstream_asserts_resolved_while_gaps_open` (requires explicit all-clear copy/flag, not pending flag alone).
+
+---
+
+### C2a — Task replay determinism investigation
+
+| Field | Value |
+|-------|-------|
+| **ID** | C2a |
+| **Parent** | **C2** (blocked on RC-8 tasks fingerprint) |
+| **Priority** | P1 |
+| **Trigger** | C2 staging `c2_pass=false`; `tasks_today` hash drift R1/R2/R3 while other surfaces stable |
+| **Scope** | **Investigate only** — classify drift source; no product fix until root cause proven and approved |
+| **Canonical authority** | `unified_tasks_service._action_to_task`, `_stable_source_id`; `client_priority_stream.fetch_client_priority_actions`; `risk_signal_regen_queue` |
+| **Unit status** | **DONE** (2026-05-16) — root cause: regenerated_ids + verification_fingerprint_normalization |
+| **Verification evidence** | `c2a_task_drift_analysis_{slug}.json`; updated recommendation in C2 report |
+| **Governance docs after** | This tracker; refine C2 §7b fingerprint rules after classification |
+| **Regression tests** | Extend `test_c2_verification_contract.py` with drift classification fixtures (no product change) |
+| **Rollback / safety** | Preserve all `c2_*` artifacts; analysis is additive only |
+
+#### C2a — Definition of Done (rev 1 — 2026-05-16)
+
+**Purpose:** Determine why `tasks_today` consistency fingerprint drifts on **stable C2-M1 replay** (R2/R3) when gaps, risk, priority stream, and KPI fingerprints are stable. **Not** a unified_tasks redesign.
+
+##### 1. Inputs (mandatory — preserved)
+
+| Input | Path |
+|-------|------|
+| C2 replay | `c2_replay_{slug}.json` |
+| C2 dashboard/tasks | `c2_dashboard_tasks_{slug}.json` |
+| C2 consistency hashes | `c2_consistency_hashes_{slug}.json` |
+| C2 risk/priority | `c2_risk_priority_{slug}.json` |
+| C2 verification report | `c2_verification_report_{slug}.json` |
+
+**Do not delete or overwrite existing `c2_*` artifacts.**
+
+##### 2. Drift classification (mandatory)
+
+Classify into **one primary** bucket:
+
+| Bucket | Meaning |
+|--------|---------|
+| **true_semantic_task_churn** | Task set/count/sections change with business meaning |
+| **ordering_instability** | Same tasks, different sort order in fingerprint input |
+| **volatile_fields** | Timestamps, scores, or labels in hash input |
+| **regenerated_ids** | Stable semantic task, unstable `task.id` (e.g. risk_signal suffix) |
+| **grouping_instability** | Section membership changes without semantic change |
+| **verification_fingerprint_normalization** | C2 script hashes wrong field; product behaviour acceptable |
+
+##### 3. Per-run diff (mandatory)
+
+| Run pair | Compare |
+|----------|---------|
+| R1 vs R2 | `task_ids_sample`, section counts, priority stream keys |
+| R2 vs R3 | Same |
+| R2 vs R3 hashes | `tasks_today` only |
+
+Record **exact field** that changed (e.g. `risk_signal:rs_*`).
+
+##### 4. Code-path trace (read-only)
+
+| Step | Module | Question |
+|------|--------|----------|
+| C2-M1 replay | `enqueue_compliance_recalc` | Is `regeneration_requeued=true` on suppressed replay? |
+| Risk regen | `risk_signal_regen_queue`, worker | New `signal_id` per regen? |
+| Priority stream | `client_priority_stream` | Stable `action_type\|title\|requirement_id` keys? |
+| Unified tasks | `_stable_source_id`, `_action_to_task` | Does `task_id` use volatile `related_risk_signal_id`? |
+
+##### 5. Recommendation output (mandatory — no implementation)
+
+One of:
+
+| Recommendation | When |
+|----------------|------|
+| **verification_normalization_only** | Semantic task set stable; fingerprint should use stream-stable keys not display `task.id` |
+| **targeted_task_determinism_fix** | Product should use stable risk identity (e.g. `signal_key`) in `_stable_source_id` for risk_signal only |
+| **true_downstream_semantic_defect** | Task set/sections materially change on replay without upstream change |
+
+##### 6. Completion gates
+
+| Gate | Requirement |
+|------|-------------|
+| **DONE** | Primary drift bucket + per-run diff + code-path trace + recommendation recorded in `c2a_task_drift_analysis_{slug}.json` |
+| **C2 unblock** | C2 governance updated per recommendation; separate approval for any product fix |
+
+**Out of scope:** `unified_tasks_service` redesign; notifications; D1/F1; queue/recalc changes; general task-system work.
+
+#### C2a — Investigation findings (2026-05-16 — pilot staging)
+
+**Artifact:** [audit/c2a_task_drift_analysis_6fd5ac4c_d35a58ae.json](../audit/c2a_task_drift_analysis_6fd5ac4c_d35a58ae.json)
+
+| Finding | Value |
+|---------|-------|
+| **Primary classification** | **regenerated_ids** (secondary: **verification_fingerprint_normalization**) |
+| **Exact drift** | Single task slot: `risk_signal:rs_*` — `rs_0f56a8454586` (R1) → `rs_77fd6f275f29` (R2) → `rs_a5210ba0f31d` (R3) |
+| **Stable across replay** | 6/7 task ids unchanged; section counts identical (urgent=1, upcoming=4, in_progress=2, total=7) |
+| **Priority stream** | Fingerprint **stable** R1–R3 (`risk_signal\|…\|Electrical safety concern`) |
+| **Enqueue side-effect** | Each C2-M1: `enqueued=false`, `regeneration_requeued=true` (risk regen debounce path fires on materialise despite queue suppression) |
+| **Recommendation** | **verification_normalization_only** for C2 re-run; optional **targeted_task_determinism_fix** (risk_signal `_stable_source_id` only) if product parity required — **declined** |
+
+**C2a closure (2026-05-16):** **DONE** — accepted classifications; applied `normalized_stable_business_keys_c2a` in `c2_snapshot.py`; C2-RC-13 detector revised (§1c-rev). No product change.
 
 ---
 
@@ -1569,11 +2180,596 @@ Extend / add tests (names indicative):
 | **Scope** | `authority_mutation_fanout`; RST backbone gate; recalc/regen enqueue; document activation-blocked cases |
 | **Canonical authority** | `authority_mutation_fanout.py`; `workflow_runtime_activation_registry.py`; **L-009**; `STREAM_E_MUTATION_FANOUT_MATRIX.md` |
 | **Code areas likely affected** | Fanout, evidence verify paths, `requirement_transition_observability.py` |
-| **Unit status** | **BLOCKED** (pending C) |
-| **Verification evidence** | Fanout trace on governed mutation; blocked case has `propagation_notice` / activation reason |
-| **Governance docs after** | **L-009** inventory if new route; AUTHORITY_WRITE_PATH |
-| **Regression tests** | `test_requirement_transition_fanout_phase4.py`, L-009 HTTP suites |
-| **Rollback / safety** | Do not bypass activation registry |
+| **Unit status** | **DONE** (2026-05-17) — lifecycle: IN_PROGRESS → VERIFIED (D1b) → **DONE** |
+| **Verification evidence** | Authoritative: `docs/audit/d1b_verification_report_6fd5ac4c_d35a58ae.json` (`verification_run=d1b_harness_rerun_v3`); full `d1b_*` set; original `d1_*` retained |
+| **Governance docs after** | This tracker; `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 D1; `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md`; `STREAM_E_MUTATION_FANOUT_MATRIX.md` (observe-only cross-ref) |
+| **Regression tests** | Fanout phase-4/5 suites + D1 §12 — see DoD |
+| **Rollback / safety** | Do not bypass activation registry; do not mutate fanout routing in D1 verification |
+
+---
+
+#### D1 — Definition of Done (rev 3 — 2026-05-16; **approved** — **DONE** 2026-05-17 via D1b authoritative staging)
+
+**Rev 2 additions (2026-05-16):** propagation cardinality (§3b); partial propagation convergence (§5b); replay collapse semantics (§4b); delegated lineage preservation (§9b); observability-noise stability (§10b); **D1-RC-11**–**D1-RC-15**; tightened DONE gates (§14).
+
+**Rev 3 additions (2026-05-16):** propagation behaviour classes (§3c); bounded propagation growth (§4c); suppression determinism (§10c); **D1-RC-16**–**D1-RC-18**; further DONE gate tightening (§14).
+
+**Purpose:** Prove **deterministic workflow propagation fanout** behaviour using **existing** governed propagation semantics (`authority_mutation_fanout.py`, `requirement_transition_observability.py`, `workflow_runtime_activation_registry.py`) aligned to `STREAM_E_MUTATION_FANOUT_MATRIX.md`. D1 verifies that governed mutations produce **expected, attributable, replay-stable propagation traces** — including **class-correct** branch behaviour, **cardinality-correct** branch counts, **bounded** propagation growth, activation-gated suppression, **deterministic** suppression on replay, duplicate downstream suppression, **replay-collapse** determinism, **delegated lineage** preservation, **partial-convergence** detection, **observability-noise** stability, and legitimate new-correlation propagation — without cross-tenant bleed, silent suppression, or propagation saturation.
+
+**Upstream precondition (accepted):** A1 **DONE**, B1 **DONE**, C1 **DONE**, C2 **DONE**, C2a **DONE** on pilot tenant. Queue/recalc replay safety and downstream convergence already proven; D1 does **not** re-prove C1 queue semantics or C2 surface fingerprints except where fanout lineage must chain to them.
+
+**Pilot tenant (staging verification only):** `client_id=6fd5ac4c-3fd4-4112-ade7-156977deb49f`, `property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad`, `pleerity_staging`. **Control unrelated** entity pair documented in `d1_control_selection_{slug}.json` (may reuse C2 control `04ceda9f…` / `6d939c70…` unless a fresher isolation candidate is recorded). Product logic must remain **tenant-agnostic** (no hardcoded IDs in services/tests).
+
+##### 1. Scope and authoritative boundary (mandatory)
+
+**D1 verifies (in scope):**
+
+| Layer | What D1 proves |
+|-------|----------------|
+| **Transition fanout trace** | `transition_fanout` / `build_transition_fanout_trace` shape; `downstream_rows[]`; `propagation_stage`; `downstream_target`; `enqueue_attempted` / `enqueue_result`; `duplicate_suppression_reason` |
+| **Authority fanout entrypoints** | `authority_sync_with_transition_observability`, `enqueue_compliance_recalc_with_fanout`, `attach_risk_regen_delegate_row` observation rows |
+| **Activation gating** | `resolve_requirement_state_transition_core_backbone_gate` outcomes merged via `merge_rst_core_backbone_activation_into_fanout` — permitted vs blocked paths **observable** |
+| **Matrix alignment** | Selected `STREAM_E_MUTATION_FANOUT_MATRIX.md` rows exercised on pilot match **documented** gap sync / recalc / quiet / Enq expectations (observe-only; matrix not rewritten in D1) |
+| **Replay propagation** | Stable governed replay does **not** multiply fanout branches; legitimate new-correlation mutation **does** propagate |
+| **Propagation cardinality** | Expected vs actual branch counts; suppressed/blocked/unexpected branches explicit (§3b) |
+| **Partial convergence** | Expected fanout branches vs downstream completion matrix — no silently stalled subtrees (§5b) |
+| **Replay collapse** | Redundant branch suppression on replay is deterministic and lineage-visible (§4b) |
+| **Delegated lineage** | Regen/delegate rows retain originating `correlation_id` ancestry (§9b) |
+| **Observability noise** | Stable replay does not amplify logs, overlays, audits, or blocked-state churn (§10b) |
+| **Propagation behaviour classes** | Each branch classified; expected vs observed replay behaviour explicit (§3c) |
+| **Bounded propagation growth** | Branch/delegate growth curves finite and convergent on replay cycles (§4c) |
+| **Suppression determinism** | Identical replay → identical suppression fingerprints (§10c) |
+| **Lineage** | Fanout `correlation_id` / `transition_id` chains to queue row, score history sample, and audit sample where matrix requires |
+| **Cross-tenant isolation** | Pilot fanout activity does not mutate control-tenant fanout fingerprints or unrelated downstream enqueue targets |
+| **Suppression provenance** | Every blocked or suppressed propagation path records a **governed reason** — silent suppression is **D1 failure** |
+
+**Ownership boundaries (explicit — D1 does not verify):**
+
+| Owner | Remains responsible for | D1 relationship |
+|-------|-------------------------|-----------------|
+| **C1 (C-layer)** | Queue enqueue/worker/reclaim/duplicate suppression on `compliance_recalc_queue`; recalc execution | D1 **consumes** C1 pass; may reference queue `correlation_id` in lineage joins — does not re-open C1 unless fanout proves enqueue contract regression |
+| **C2 (C-layer)** | Downstream surface convergence, precedence, stale decay, normalized task fingerprints | D1 **consumes** C2 pass; fanout proof must not contradict C2 lineage — does not re-run full C2 hash suite unless D1-RC implicates downstream churn |
+| **F1** | Notification orchestrator, `message_logs`, template governance (**L-008**) | **Out of scope** — D1 may **count** notification delegate rows in fanout trace if present but does **not** prove delivery, consent, or template correctness |
+| **Scheduler / runbook** | `job_runner` ownership, heartbeat, reclaim thresholds (`SCHEDULER_AND_COMPLIANCE_JOBS.md`) | **Observe only** — worker pickup already C1; D1 does not redesign cadence or ownership |
+| **Task systems** | `unified_tasks_service`, Today projection, volatile `risk_signal:rs_*` ids (C2a watchlist) | **Out of scope** — risk regen **delegate row** in fanout may be observed; task identity not remediated in D1 |
+
+**D1 is NOT:** notification overhaul; scheduler redesign; workflow rewrite; event bus redesign; queue topology redesign; fanout architecture replacement; activation-policy mutation; routing rewrites; task-system redesign; broad remediation disguised as verification.
+
+**One-line boundary:** D1 proves **governed propagation fanout is behaviour-class-correct, cardinality-correct, growth-bounded, deterministic on replay (incl. collapse + suppression), lineage-stable (incl. delegates), suppression-explainable, free of partial silent stall and saturation, observability-stable, temporally sane, and cross-tenant isolated** — using existing infrastructure only.
+
+##### 2. Governed mutation sources (verification only)
+
+Mutations must use **production HTTP/service paths** that populate `transition_fanout` via `authority_mutation_fanout` (or documented matrix-equivalent callers). **No raw Mongo** fanout injection. **No synthetic** `transition_fanout` fixtures in staging proof.
+
+| ID | Endpoint / flow | Matrix row(s) | Fanout under test | Correlation contract |
+|----|-----------------|----------------|-------------------|----------------------|
+| **D1-M1 (primary replay)** | Client `POST /api/properties/{property_id}/requirements/sync` | 10–11 (materialise touch) | Materialise → `enqueue_compliance_recalc_with_fanout` rows; risk regen delegate | **Stable:** `REQUIREMENTS_SYNC:{property_id}` |
+| **D1-M2 (legitimate new propagation)** | Admin `POST /api/admin/properties/{property_id}/requirements/sync-from-registry` | 10–11 | New fanout chain with **new** correlation | **New per call:** `ADMIN_MANUAL_JOB:REGISTRY_SYNC:…` |
+| **D1-M3 (transition fanout rich path)** | Governed requirement transition with fanout (pilot-safe): e.g. admin document verify / evidence review verify on linked requirement | 6–7 | `authority_sync_with_transition_observability` + enqueue fanout; optional outcome **Sync** row | Per route / transition (`DOCUMENT_VERIFIED`, etc.) |
+| **D1-M4 (quiet / governed suppression observe)** | Applicability operator action or matrix **Quiet** path — **observe only** if pilot has safe fixture | 12 | Gap sync quiet; **no** recalc enqueue expected — suppression must be **explicit** in trace | Per operator audit |
+| **D1-M5 (activation-blocked observe)** | Same as D1-M1 or D1-M3 with `rst_core_backbone_activation.permitted=false` staging state **or** read-only capture of blocked trace from audit | — | `rst_core_backbone_blocked_*` stages; `enqueue_attempted=false` | N/A — blocked path |
+
+| Forbidden as proof | Reason |
+|--------------------|--------|
+| Raw Mongo insert into `transition_fanout` collections or manual `downstream_rows` | Bypasses authority |
+| Direct `enqueue_compliance_recalc()` without fanout wrapper | Not propagation proof |
+| Fleet batch / admin recalculate-all-properties | Out of pilot scope; amplification risk |
+| Notification send / reminder dispatch as propagation proof | **F1** scope |
+| C1-M2 for **replay-idempotency** fanout proof | New correlation per call by design |
+| Scripts that only materialise without fanout observability | B-layer only |
+
+**Replay rule:** Use **D1-M1** only for R2/R3 fanout fingerprint comparison (stable correlation). Use **D1-M2** once per verification window for legitimate new-branch proof.
+
+##### 3. Propagation topology verification (mandatory)
+
+For each governed mutation (R1 and optional M3/M4/M5), capture **propagation topology snapshot** before/after:
+
+| Check | Pass criterion |
+|-------|----------------|
+| **Expected downstream paths** | Each matrix-selected mutation produces documented targets in `downstream_rows[]` (e.g. `compliance_recalc_queue.enqueue_compliance_recalc`, `risk_signal_regen_queue.enqueue_risk_signal_regen` delegate) when matrix expects **Enq** |
+| **Governed suppression paths** | Duplicate enqueue suppression surfaces `duplicate_suppression_reason` on fanout row **and** matches C1 `EnqueueComplianceRecalcResult` |
+| **Blocked propagation** | Activation-blocked paths show `enqueue_attempted=false`, `rst_core_backbone_activation` overlay, non-empty `activation_reason` |
+| **Quiet paths** | Quiet gap sync paths do **not** claim full recalc propagation; any skipped enqueue is **documented** (not silent) |
+| **Replay-safe propagation** | R2/R3 on D1-M1: fanout **branch-count** and **suppression-state fingerprint** stable |
+
+**Artifact:** `d1_propagation_topology_{slug}.json` — per run: `{ "mutation": "D1-M1", "run": "R1", "downstream_targets": [...], "branch_count": N, "blocked_count": N, "suppressed_count": N, "matrix_row_refs": [6,7,10] }`.
+
+##### 3b. Propagation cardinality verification (mandatory — rev 2)
+
+D1 must verify **branch counts**, not only branch existence, replay stability, and suppression provenance.
+
+| Field | Definition |
+|-------|------------|
+| `expected_branch_count` | Matrix + mutation contract: count of **distinct** expected `downstream_target` branches (incl. documented delegate rows) |
+| `actual_branch_count` | Observed distinct branches in `downstream_rows[]` + documented delegate attachments |
+| `suppressed_branch_count` | Branches with governed duplicate/idempotent suppression (`duplicate_suppression_reason` set) |
+| `blocked_branch_count` | Branches blocked by activation gate (`enqueue_attempted=false`, `activation_reason` set) |
+| `unexpected_branch_count` | `actual - expected - suppressed - blocked` (must be **0** on pass) |
+
+**Verification must prove:**
+
+| Requirement | Failure signal |
+|-------------|----------------|
+| No hidden duplicate branches | Same `(downstream_target, propagation_stage)` appears >1 without documented reason |
+| No replay-created branch amplification | R2/R3 `actual_branch_count` ≠ R1 settled (unless documented collapse — §4b) |
+| No missing expected propagation targets | `expected_branch_count` > attributable actual+suppressed+blocked |
+| No undeclared extra fanout branches | `unexpected_branch_count` > 0 |
+
+**Report:** `propagation_cardinality_summary[]` in `d1_verification_report_{slug}.json` — per run: `{ "run", "mutation", "expected_branch_count", "actual_branch_count", "suppressed_branch_count", "blocked_branch_count", "unexpected_branch_count", "cardinality_pass": bool }`.
+
+**Artifact:** `d1_branch_cardinality_{slug}.json` — full per-run cardinality tables + target-level diff.
+
+**Failure:** **D1-RC-11** = propagation cardinality drift.
+
+##### 3c. Propagation behaviour classes (mandatory — rev 3)
+
+D1 must **classify** each observed propagation branch by governed behaviour type. This is **governance classification only** — **not** permission to redesign propagation logic, routing, or enqueue contracts.
+
+**Governed behaviour classes (indicative — extend only via tracker amendment):**
+
+| Class | Operational meaning | Expected replay on D1-M1 (stable correlation) |
+|-------|---------------------|-----------------------------------------------|
+| `idempotent` | Duplicate-safe; no new downstream work when inputs unchanged | R2/R3: same suppression or no-op outcome as R1 |
+| `replay-collapsible` | Redundant branch creation suppressed on replay; lineage retained (§4b) | R2/R3: branch collapsed with `suppressed_replay_branches[]` entry |
+| `replay-regenerative` | Debounced regen path may re-fire observation without new enqueue branch | R2/R3: delegate/regen row observable; cardinality bounded (§4c) |
+| `always-propagating` | New correlation or semantic mutation always creates new governed branch | R1 only on stable replay; **D1-M2** may trigger |
+| `quiet-suppressed` | Matrix **Quiet** path — gap sync without full fanout enqueue | Explicit quiet reason; no undeclared enqueue |
+| `activation-blocked` | RST backbone gate blocks enqueue | `enqueue_attempted=false`; `activation_reason` set |
+| `delegated-regenerative` | `regen_delegate` / risk regen delegate from recalc fanout | Delegate attached to parent `correlation_id`; growth bounded (§4c, §9b) |
+
+**Per-branch verification (in** `d1_branch_behaviour_classes_{slug}.json` **):**
+
+| Field | Requirement |
+|-------|-------------|
+| `propagation_behaviour_class` | One governed class from table above |
+| `expected_replay_behaviour` | Declared expectation for R2/R3 (e.g. `collapse_stable`, `suppress_duplicate`, `delegate_observable`) |
+| `observed_replay_behaviour` | Measured outcome on R2/R3 — must match `expected_replay_behaviour` |
+| `behaviour_explainable` | Non-empty operational note when class is non-obvious |
+
+**Verification must prove:** each branch behaves per its class; replay expectations are explicit and deterministic; branch behaviour is explainable operationally.
+
+**Failure:** **D1-RC-16** = propagation behaviour class mismatch (`observed_replay_behaviour` ≠ `expected_replay_behaviour` or unclassified branch).
+
+##### 4. Replay amplification protection (mandatory)
+
+**Goal:** Stable replay must not multiply propagation branches or re-fire unattributed downstream work.
+
+| Run | Mutation | Expected fanout behaviour |
+|-----|----------|---------------------------|
+| **R1** | D1-M1 ×1 | Full governed fanout chain recorded; queue enqueue attempted or suppressed with reason |
+| **R2** | D1-M1 ×1 | **No new fanout branches** vs R1 settled state; duplicate suppression rows consistent; `branch_count_delta=0` |
+| **R3** | D1-M1 ×1 | Same as R2 |
+| **M2 once** | D1-M2 ×1 | **New** correlation → **new** enqueue fanout branch permitted (+1 documented branch vs stable baseline) |
+
+**Compare:** `d1_propagation_replay_{slug}.json` — per run: `fanout_fingerprint`, `branch_count`, `downstream_rows_hash`, `suppression_fingerprint`, `regen_delegate_fingerprint`.
+
+**Explicit non-goals:** Do not conflate `regeneration_requeued` (risk regen debounce) with fanout branch amplification — record both; classify amplification only when **unexplained new downstream_rows** appear on R2/R3.
+
+##### 4b. Replay collapse semantics (mandatory — rev 2)
+
+**Replay collapse** = governed reduction of **redundant fanout branch creation** on stable replay (R2/R3) while preserving causal visibility. These are **governance verification rules** — **not** queue suppression rewrites, topology changes, or `enqueue_compliance_recalc` contract changes.
+
+| Rule | Requirement |
+|------|-------------|
+| **Redundant branch suppression permitted** | Stable replay may suppress re-creation of branches already settled in R1 |
+| **Lineage visibility preserved** | Collapse must **not** hide legitimate ancestry — `suppressed_replay_branches[]` lists collapsed branches with reasons |
+| **Delegated/regenerated propagation observable** | `regeneration_requeued` / risk regen delegate rows remain visible even when enqueue suppressed |
+| **Deterministic collapse** | R2 and R3 produce **identical** `replay_collapse_state` (§10c suppression fingerprint aligned) |
+
+**Capture:** `replay_collapse_state`, `suppressed_replay_branches[]`, `retained_lineage_visibility` in `d1_propagation_replay_{slug}.json` and `d1_verification_report_{slug}.json`.
+
+**Failure:** **D1-RC-13** = replay collapse inconsistency.
+
+##### 4c. Bounded propagation growth verification (mandatory — rev 3)
+
+D1 must verify propagation growth remains **operationally finite** across replay and legitimate-mutation cycles. **Observational/governance only** — **not** topology redesign, fanout architecture rewrite, or replay-engine changes.
+
+| Requirement | Pass criterion |
+|-------------|----------------|
+| **Stable replay unbounded accumulation** | R1→R2→R3 cumulative `actual_branch_count` and distinct `downstream_target` keys do not grow without bound |
+| **Delegated chains bounded** | `delegated_growth_delta` = 0 on R2/R3 vs R1 settled for `regen_delegate` / `delegated-regenerative` classes (§3c) |
+| **Replay + legitimate regeneration finite** | D1-M2 may add **one** documented branch bump; no runaway chain after M2 |
+| **Growth converges** | `branch_growth_curve[]` plateaus within verification window — `bounded_growth_pass=true` |
+
+**Especially verify:** `regen_delegate` rows; delegated propagation chains; `replay-regenerative` branches (§3c).
+
+| Field | Definition |
+|-------|------------|
+| `branch_growth_curve[]` | Per run: `{ "run", "cumulative_branch_count", "cumulative_delegate_count" }` |
+| `branch_growth_delta` | R3 cumulative − R1 settled cumulative (must be **0** on stable replay pass) |
+| `delegated_growth_delta` | Change in delegate row count R2/R3 vs R1 (must be **0** unless documented `replay-regenerative` observation-only) |
+| `bounded_growth_pass` | **true** iff no saturation pattern detected |
+
+**Artifact:** `d1_bounded_growth_{slug}.json`.
+
+**Failure:** **D1-RC-17** = propagation saturation / unbounded branch growth.
+
+##### 5. Cross-stream lineage integrity (mandatory)
+
+Fanout traces must remain **causally attributable** across streams:
+
+```
+governed mutation (HTTP)
+  → transition_fanout (correlation_id, transition_id)
+    → compliance_recalc_queue row (same correlation_id)
+      → property_compliance_score_history / score_change_log sample (when F2-A populated)
+        → audit_logs sample (matrix-required types)
+```
+
+| Rule | Requirement |
+|------|-------------|
+| **Attribution** | `d1_lineage_trace_{slug}.json` links fanout `correlation_id` to queue entity key and ≥1 downstream persistence sample |
+| **No orphan fanout** | Fanout rows with `enqueue_attempted=true` must have matching queue row **or** documented suppression reason on same trace |
+| **No divergent trees** | R2/R3 lineage fingerprint equals R1 settled fingerprint — no forked `transition_id` ancestry for same correlation |
+| **C2 handoff** | Lineage must not contradict C2 `downstream_lineage_summary[]` on same pilot replay window |
+
+**Failure:** **D1-RC-2** (orphan), **D1-RC-3** (divergence).
+
+##### 5b. Partial propagation convergence detection (mandatory — rev 2)
+
+D1 must detect **partially completed propagation trees** — distinct from orphan fanout (§5), blocked propagation (§3/§10), and silent suppression (§10).
+
+| Pattern | Example | Detection |
+|---------|---------|-----------|
+| **Upstream fanout complete, downstream surface incomplete** | Gaps updated; priority stream missing expected actions | `propagation_completion_matrix[]` row `gaps=complete`, `priority_stream=incomplete` |
+| **Risk path partial** | Risk regen delegate fired; risk/priority fingerprints not ready within SLA | `risk=complete`, `priority_stream=incomplete` |
+| **Branch-level stall** | Some `downstream_rows` show success; sibling expected branch never appears without suppression reason | `expected_vs_completed_branches` lists missing targets |
+
+**Artifacts:**
+
+| Artifact | Contents |
+|----------|----------|
+| `propagation_completion_matrix[]` | In `d1_verification_report_{slug}.json` — per branch: `{ "branch", "expected": bool, "fanout_observed": bool, "downstream_complete": bool, "within_sla": bool }` |
+| `expected_vs_completed_branches` | Set diff of expected targets vs completed (fanout + C2 surface spot-check where matrix ties fanout to read model) |
+| `partial_convergence_reason` | Non-empty when incomplete — governed string (e.g. `priority_stream_lag`, `gap_sync_without_stream`) |
+| `d1_partial_convergence_{slug}.json` | Full matrix + SLA window + C2 cross-reference snapshot |
+
+**Clarification — not classified as partial convergence:**
+
+| Condition | Correct RC |
+|-----------|------------|
+| Single orphan `enqueue_attempted=true` without queue/suppression | **D1-RC-2** |
+| Activation-blocked with overlay + reason | **D1-RC-4** (not partial — fully blocked) |
+| Skipped path with no reason | **D1-RC-7** |
+
+**Failure:** **D1-RC-12** = partial propagation convergence.
+
+##### 6. Temporal propagation ordering (mandatory)
+
+D1 verifies **propagation event order** is operationally sane — not strict millisecond serialization.
+
+**Expected propagation order (approximate):**
+
+```
+authority sync / evidence authority (when applicable)
+  → gap sync observation (when matrix requires)
+    → fanout enqueue observation (recalc)
+      → risk regen delegate observation (when enqueued/debounced)
+        → worker pickup (C1 — observe timestamp only)
+          → recalc persist (C1/C2 — observe timestamp only)
+```
+
+| Clarification | Rule |
+|---------------|------|
+| **Bounded lag** | Worker/recalc steps may lag fanout observation within C1 §3 / C2 §3 bounds — not D1 failure alone |
+| **Contradiction** | Fanout claims `enqueue_result=true` but no queue row ever appears (beyond SLA) → **D1-RC-5** |
+| **Blocked-before-authority** | `rst_core_backbone_blocked_pre_authority_sync` must precede any claimed enqueue on blocked path |
+| **Replay** | R2/R3 timelines must not introduce **new** ordering violations vs R1 |
+
+**Artifact:** `convergence_order_timeline[]` in `d1_verification_report_{slug}.json` — `{ "t", "fanout_ready", "enqueue_observed", "queue_done", "ordering_violation": null | string }`.
+
+##### 7. Fanout observation boundary (mandatory)
+
+| Allowed during D1 | Forbidden during D1 |
+|-------------------|---------------------|
+| Read fanout traces, activation registry state, queue rows | Mutate `workflow_runtime_activation_registry` policy |
+| Record `propagation_notice` / deferral copy when HTTP returns it (**L-009**) | Change `enqueue_compliance_recalc` contracts or unique indexes |
+| Classify defects into **D1-RC-*** | Alter `authority_mutation_fanout` routing or matrix semantics |
+| Defer remediation to **future D1-remediation sub-unit** (explicit approval) | Ship fanout fixes under D1 verification guise |
+| Observe notification delegate rows | Redesign notification delivery (**F1**) |
+| Reuse C2 control tenant for §8 | Scheduler topology / cron ownership changes |
+
+**Rule:** D1 staging scripts are **read-only** with respect to fanout policy. Any code fix requires separate approved remediation unit — not bundled into initial D1 proof.
+
+##### 8. Cross-tenant isolation (mandatory)
+
+Reuse C2 §7c methodology adapted for **fanout fingerprints**:
+
+| Surface | Control fingerprint |
+|---------|---------------------|
+| `transition_fanout` row count / hash sample for control property | No delta attributable to pilot D1-M1 R1–R3 window |
+| Control queue fanout-related correlations | No new pilot-correlation rows on control `property_id` |
+| Control `message_logs` / notification jobs | **Observe only** — count delta 0 for pilot-driven proof window (F1 not proven) |
+
+**Baseline:** Capture control fanout snapshot at verification **run start** (same fingerprint algorithm as end). **RC-14 lesson:** do not compare legacy preflight fingerprints to revised end-state algorithms.
+
+**Artifact:** `d1_unrelated_surface_integrity_{slug}.json` — `unrelated_mutation_delta`, `unrelated_mutation_count` (must be **0** on pass).
+
+##### 9. Propagation convergence hashing (mandatory)
+
+| Fingerprint key | Source (normalized) |
+|-----------------|---------------------|
+| `fanout_downstream_rows` | Sorted stable tuple of `(downstream_target, propagation_stage, enqueue_attempted, duplicate_suppression_reason)` |
+| `fanout_branch_count` | Count of `downstream_rows[]` with `enqueue_attempted` or delegate trigger |
+| `suppression_state` | Set of suppression reasons + activation blocked flags |
+| `lineage_correlation` | `correlation_id` + `transition_id` + queue entity key |
+| `regen_delegate` | Risk regen delegate row fingerprint (observe-only; C2a non-blocking id churn allowed in **task ids**, not in fanout row keys) |
+
+**Replay pass:** `lineage_fingerprint_r2 == lineage_fingerprint_r3`; `fanout_fingerprint_r2 == fanout_fingerprint_r3`; `branch_count_r2 == branch_count_r3`.
+
+**Artifact:** `d1_convergence_fingerprints_{slug}.json` — `{ "R1": {...}, "R2": {...}, "R3": {...}, "r2_equals_r3": true }`.
+
+##### 9b. Delegated propagation lineage preservation (mandatory — rev 2)
+
+Risk regen and other **delegated** fanout rows (`attach_risk_regen_delegate_row`, `regeneration_requeued`) must remain causally attached to the originating mutation.
+
+| Verification | Pass criterion |
+|--------------|----------------|
+| **Authoritative ancestry** | `delegated_origin_correlation_id` on delegate summary matches parent `transition_fanout.correlation_id` |
+| **No detached trees** | Delegate `downstream_target` rows reference same `transition_id` or explicit parent row index — no orphan delegate without parent trace |
+| **Attributable branches** | `delegated_branch_fingerprint` stable on R2/R3 when §4b collapse applies |
+| **C2 handoff** | Delegate observation does not contradict C2 priority/risk readiness unless `partial_convergence_reason` documented (§5b) |
+
+**Artifact:** `d1_delegated_lineage_{slug}.json` — `delegated_lineage_summary[]`: `{ "downstream_target", "delegated_origin_correlation_id", "delegated_branch_fingerprint", "propagation_stage", "parent_transition_id" }`.
+
+**Failure:** **D1-RC-14** = delegated lineage detachment.
+
+##### 10. Governed exclusions and suppression provenance (mandatory)
+
+Every **suppressed**, **blocked**, or **skipped** propagation path must record:
+
+| Field | Requirement |
+|-------|-------------|
+| `duplicate_suppression_reason` or `activation_reason` | Non-empty governed string |
+| `propagation_stage` | Identifies suppression point |
+| `propagation_notice` (HTTP) | When route returns deferral — client-visible notice per **L-009** where in scope |
+| Lineage | Same `correlation_id` or explicit `transition_id` on parent trace |
+
+**Silent suppression** (row omitted, `enqueue_attempted` ambiguous, or blocked path with empty reason) → **D1-RC-7** — primary failure.
+
+**Artifact:** `d1_suppression_map_{slug}.json` — all suppression/block paths indexed by `propagation_stage` with provenance fields.
+
+##### 10b. Observability-noise stability (mandatory — rev 2)
+
+Stable replay (R2/R3 on D1-M1) must **not** amplify operational noise.
+
+| Delta field | Measures | Pass (R2/R3 vs R1 settled) |
+|-------------|----------|----------------------------|
+| `observability_noise_delta` | Count of distinct `compliance_fanout` log lines / `transition_downstream_row` debug emissions per correlation | **0** unexplained increase |
+| `audit_noise_delta` | New `audit_logs` rows attributable to same `correlation_id` without semantic mutation | **0** |
+| `blocked_overlay_noise_delta` | Repeated `merge_rst_core_backbone_activation_into_fanout` overlay churn without state change | **0** |
+
+**Verification must prove stable replay does NOT:**
+
+- spam propagation logs
+- duplicate activation overlays on unchanged gate state
+- create blocked-state churn (flip-flop `activation_reason` without gate change)
+- generate audit amplification (duplicate lifecycle events for identical replay)
+- produce false-positive operational noise that implies new propagation when cardinality unchanged (§3b)
+
+**Artifact:** `d1_observability_noise_{slug}.json` — per run: `{ "run", "observability_noise_delta", "audit_noise_delta", "blocked_overlay_noise_delta", "noise_pass": bool }`.
+
+**Failure:** **D1-RC-15** = observability amplification / noise churn.
+
+##### 10c. Suppression determinism (mandatory — rev 3)
+
+D1 verifies **deterministic suppression behaviour** across replay — distinct from suppression **provenance** (§10) and observability **noise** (§10b). **Governance of suppression stability** — **not** suppression-system redesign.
+
+| Requirement | Pass criterion |
+|-------------|----------------|
+| **Identical replay → identical suppression** | R2 and R3 produce same `suppression_fingerprint` as each other and match R1 settled suppression state |
+| **Overlay stability** | `blocked_overlay_noise_delta` = 0 (§10b) and suppression reasons unchanged on unchanged gate |
+| **Blocked/suppressed branches replay-stable** | `activation-blocked` and `quiet-suppressed` branches: same `duplicate_suppression_reason` / `activation_reason` on R2/R3 |
+| **No inconsistent suppression states** | `suppression_replay_equal=true`; no flip between suppressed vs attempted-without-reason across R2/R3 |
+
+**Capture in** `d1_suppression_determinism_{slug}.json` **and report:**
+
+| Field | Type |
+|-------|------|
+| `suppression_fingerprint_r1_r2_r3` | `{ "R1": hash, "R2": hash, "R3": hash, "r2_equals_r3": bool }` |
+| `suppression_state_matrix[]` | Per branch: `{ "downstream_target", "R1_reason", "R2_reason", "R3_reason", "stable": bool }` |
+| `suppression_replay_equal` | bool — **true** on pass |
+
+**Failure:** **D1-RC-18** = suppression inconsistency.
+
+##### 11. Failure taxonomy (mandatory)
+
+Classify staging failures into **one primary branch** (secondary tags allowed):
+
+| Branch | ID | Symptom / detection | Primary authority |
+|--------|-----|---------------------|-------------------|
+| Propagation amplification | **D1-RC-1** | R2/R3 add unexplained `downstream_rows` or `branch_count` vs R1 | `authority_mutation_fanout`, `requirement_transition_observability` |
+| Orphan fanout | **D1-RC-2** | `enqueue_attempted=true` with no queue row and no suppression reason | Fanout attach helpers |
+| Lineage divergence | **D1-RC-3** | R2/R3 fanout/lineage fingerprint ≠ R1; forked ancestry | `transition_fanout`, queue correlation index |
+| Activation-gated suppression | **D1-RC-4** | Blocked path missing `activation_reason` / overlay | `workflow_runtime_activation_registry` |
+| Temporal contradiction | **D1-RC-5** | Fanout claims success but downstream never materializes beyond SLA; impossible stage order | Fanout stages vs C1 queue timeline |
+| Cross-tenant bleed | **D1-RC-6** | Control fanout/queue fingerprints change during pilot window | §8 isolation |
+| Silent suppression | **D1-RC-7** | Skipped enqueue/block without governed reason in trace or HTTP notice | **L-009**, fanout rows |
+| Replay instability | **D1-RC-8** | R2≠R3 fanout or suppression fingerprints | Replay methodology §4 |
+| Matrix wiring drift | **D1-RC-9** | Observed fanout contradicts `STREAM_E_MUTATION_FANOUT_MATRIX.md` row for selected mutation | Matrix vs code — **observe**; fix deferred to remediation unit |
+| Downstream churn despite stable fanout | **D1-RC-10** | Fanout stable but C2 surfaces drift — escalate to C2/C1 regression, not D1 fanout fix | C2 artifacts |
+| Propagation cardinality drift | **D1-RC-11** | `unexpected_branch_count` > 0; R2/R3 cardinality ≠ R1 without documented collapse; missing expected targets | §3b, `d1_branch_cardinality_*` |
+| Partial propagation convergence | **D1-RC-12** | `propagation_completion_matrix` shows expected branch fanout-observed but downstream incomplete beyond SLA; `partial_convergence_reason` set | §5b, `d1_partial_convergence_*` |
+| Replay collapse inconsistency | **D1-RC-13** | Non-deterministic `replay_collapse_state`; `retained_lineage_visibility=false`; hidden collapsed branches | §4b |
+| Delegated lineage detachment | **D1-RC-14** | Delegate rows without `delegated_origin_correlation_id`; detached causal tree | §9b, `d1_delegated_lineage_*` |
+| Observability amplification / noise churn | **D1-RC-15** | Non-zero noise deltas on stable replay; log/audit/overlay spam | §10b, `d1_observability_noise_*` |
+
+**C2 cross-reference:** C2-RC-10 (fanout blocked observe-only) findings feed D1 proof requirements but are **not** reclassified as D1 pass/fail unless D1-M5 exercised.
+
+**RC distinction (rev 2):**
+
+| Symptom | Primary RC |
+|---------|------------|
+| Branch count wrong / extra undeclared branch | **D1-RC-11** |
+| Some branches complete, others stall silently | **D1-RC-12** |
+| Collapse hides lineage or varies R2 vs R3 | **D1-RC-13** |
+| Delegate lost parent correlation | **D1-RC-14** |
+| Logs/audits/overlays multiply on replay | **D1-RC-15** |
+| `enqueue_attempted=true`, no queue, no reason | **D1-RC-2** (orphan — not partial) |
+| Blocked with empty reason | **D1-RC-7** (silent — not partial) |
+
+##### 12. Regression tests required (implementation phase — not yet run)
+
+Extend / add (names indicative); all must pass before **VERIFIED**:
+
+| Test area | File (existing or new) | Assertions |
+|-----------|------------------------|------------|
+| Fanout phase 4 | `test_requirement_transition_fanout_phase4.py` | Downstream row attachment, backbone gate blocked path |
+| Fanout phase 5 / document | `test_requirement_transition_document_fanout_phase5.py` | Document transition fanout health |
+| Fanout planning | `test_workflow_requirement_transition_fanout_planning.py` | Normalized fanout context |
+| Fanout logging | `test_compliance_fanout_log.py` | Structured fanout extra fields |
+| Propagation fingerprint contract | **new** `test_d1_propagation_fingerprint_contract.py` | Stable mock replay → equal fanout hash |
+| Replay amplification | **new** `test_d1_replay_no_fanout_amplification.py` | R2=R3 branch count on stable correlation mock |
+| Suppression provenance | **new** `test_d1_suppression_provenance_required.py` | Blocked/duplicate paths always carry reason |
+| Activation observability | **new** `test_d1_activation_gate_fanout_overlay.py` | `merge_rst_core_backbone_activation_into_fanout` fields present when blocked |
+| Cross-tenant isolation | **new** `test_d1_unrelated_fanout_non_mutation.py` | Pilot fanout mock does not mutate control trace |
+| Lineage determinism | **new** `test_d1_fanout_lineage_determinism.py` | correlation_id chains to queue mock |
+| Propagation cardinality | **new** `test_d1_propagation_cardinality_contract.py` | expected/actual/suppressed/blocked/unexpected counts |
+| Partial convergence | **new** `test_d1_partial_propagation_convergence.py` | completion matrix detects incomplete subtrees |
+| Replay collapse | **new** `test_d1_replay_collapse_determinism.py` | R2=R3 collapse state; lineage visibility retained |
+| Delegated lineage | **new** `test_d1_delegated_lineage_preservation.py` | delegate rows carry `delegated_origin_correlation_id` |
+| Observability noise | **new** `test_d1_observability_noise_stable_replay.py` | zero noise deltas on stable replay mock |
+| Stream F correlation | `test_stream_f_correlation_propagation_contract.py` | No regression — fanout→score correlation |
+| L-009 HTTP (observe) | L-009 propagation_notice suites | Optional gate when D1-M3 returns notice |
+| C1 + C2 regression (no regress) | C1 + C2 suites | Still green after any D1 script merge |
+
+**CI:** D1 suite + fanout phase suites + C1/C2 suites green; staging scripts are not a substitute for unit tests.
+
+##### 13. Required artifacts (mandatory)
+
+All under `backend/docs/audit/` with slug `{client_id_8}_{property_id_8}`:
+
+| Artifact | Contents |
+|----------|----------|
+| `d1_fanout_before_{slug}.json` | Pre-mutation fanout/queue correlation sample for pilot + control baseline |
+| `d1_fanout_after_{slug}.json` | Post-R1 settled fanout traces |
+| `d1_propagation_replay_{slug}.json` | R1/R2/R3 (+ optional M2) per-run fanout fingerprints |
+| `d1_propagation_topology_{slug}.json` | Expected vs observed downstream targets per mutation |
+| `d1_lineage_trace_{slug}.json` | Fanout → queue → score history / audit join samples |
+| `d1_suppression_map_{slug}.json` | All suppression/block paths with provenance |
+| `d1_convergence_fingerprints_{slug}.json` | R1/R2/R3 hashes; `r2_equals_r3` |
+| `d1_unrelated_surface_integrity_{slug}.json` | Control tenant delta (§8) |
+| `d1_control_selection_{slug}.json` | Control CID/PID + selection reason |
+| `d1_verification_report_{slug}.json` | `d1_pass`, `checks{}`, `primary_rc_branch`, `propagation_cardinality_summary[]`, `propagation_completion_matrix[]`, `replay_collapse_state`, `branch_growth_curve[]`, `bounded_growth_pass`, `suppression_replay_equal`, behaviour-class summary, timelines, artifact index |
+| `d1_branch_cardinality_{slug}.json` | Per-run expected/actual/suppressed/blocked/unexpected branch counts (§3b) |
+| `d1_partial_convergence_{slug}.json` | `expected_vs_completed_branches`, `partial_convergence_reason` (§5b) |
+| `d1_delegated_lineage_{slug}.json` | `delegated_lineage_summary[]` (§9b) |
+| `d1_observability_noise_{slug}.json` | `observability_noise_delta`, `audit_noise_delta`, `blocked_overlay_noise_delta` (§10b) |
+
+**Proposed scripts (implementation phase — optional):** `scripts/d1_snapshot.py`, `scripts/d1_preflight_capture.py`, `scripts/d1_staging_verification.py` — read-only snapshots + HTTP drivers (mirror C1/C2 pattern).
+
+##### 14. Completion gates
+
+| Gate | Requirement |
+|------|-------------|
+| **Start `IN_PROGRESS`** | D1 DoD rev 2 **approved**; pilot + control identified; C1/C2 artifacts retained |
+| **`IMPLEMENTED_PENDING_VERIFICATION`** | D1 scripts/tests merged (verification only unless separate remediation approved) |
+| **`READY_FOR_STAGING_VERIFICATION`** | All §13 artifacts captured on staging |
+| **`VERIFIED`** | §1–§11 + §3b, §4b, §5b, §9b, §10b pass on staging report |
+| **`DONE`** | §12 tests green; §15 docs updated; remediation deferral list documented |
+
+**D1 cannot move to DONE unless all proven on staging:**
+
+1. Propagation topology matches matrix expectations for selected mutations (§3).
+2. **Replay-safe** — R2/R3 fanout fingerprints and branch counts stable on D1-M1 (§4, §9).
+3. **Lineage-stable** — no orphan or divergent fanout trees (§5).
+4. **Suppression explainable** — no silent suppression (§10).
+5. **Cross-tenant isolated** — unrelated fanout delta **0** (§8).
+6. **Temporally sane** — no persistent propagation ordering contradiction beyond SLA (§6).
+7. **No hidden amplification** — unexplained downstream row growth on replay (§4).
+8. Legitimate new-correlation mutation (D1-M2) still propagates when expected (§4).
+9. Fanout observation remained **non-mutating** for policy/topology (§7).
+10. No notification/scheduler/queue-topology semantics change shipped under D1 guise (§7, §15).
+11. **Propagation cardinality stable** — `unexpected_branch_count=0`; R2/R3 cardinality matches R1 or documented collapse (§3b, §4b).
+12. **No partial propagation convergence** — `propagation_completion_matrix` complete within SLA (§5b).
+13. **Replay collapse deterministic** — `replay_collapse_state` stable R2=R3; `retained_lineage_visibility=true` (§4b).
+14. **Delegated lineage preserved** — no detached delegate trees (§9b).
+15. **Observability stable under replay** — noise deltas **0** on R2/R3 (§10b).
+
+**Unlock on DONE:** **D2** (legacy bridge review) parallel optional; **E1** DoD drafting — **not** F1, not fanout remediation without separate unit.
+
+##### 15. Boundary clarification and governance updates
+
+**D1 is verification and governance first.** Broad fanout remediation, activation-policy changes, or architecture replacement require a **separate approved remediation unit** (e.g. `D1b`) with its own DoD — not bundled into initial D1 proof.
+
+| Document | Update on D1 **DONE** |
+|----------|------------------------|
+| `LAUNCH_AUTHORITY_TRACKER.md` | D1 closure evidence; unlock matrix |
+| `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 | Add **D1** substeps (fanout snapshots, replay, suppression map) |
+| `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` | Stream E row — D1 DONE note |
+| `STREAM_E_MUTATION_FANOUT_MATRIX.md` | Cross-ref only if observe findings — **no matrix rewrite** unless remediation approved |
+| `GOVERNANCE_INDEX.md` | D1 → E1 handoff cross-ref if needed |
+| `runbooks/SCHEDULER_AND_COMPLIANCE_JOBS.md` | Only if lag semantics change in code (**not** expected in D1 verification) |
+
+**Explicit out-of-scope (reaffirmed — rev 2–3 additions remain verification-only):** queue topology redesign; queue suppression redesign; suppression-system redesign; replay-engine redesign; scheduler ownership redesign; `authority_mutation_fanout` architecture replacement; propagation architecture rewrite; event bus redesign; notification overhaul (**F1**); task-system redesign; activation-policy mutation during proof.
+
+**Status:** **DONE** (2026-05-17) — see § **D1 — Closure evidence** below. **No product** route, fanout, queue, scheduler, or notification changes shipped.
+
+##### D1 — Implementation phase note (verification only — 2026-05-16)
+
+| Step | Command |
+|------|---------|
+| Preflight | `python -m scripts.d1_preflight_capture --client-id CID --property-id PID` |
+| Staging | `python -m scripts.d1_staging_verification --artifact-prefix d1b --verification-run d1b_harness_rerun_v3 --client-id CID --property-id PID` |
+| Regression | `pytest tests/test_d1_verification_contract.py tests/test_requirement_transition_fanout_phase4.py` |
+
+**Pilot:** `6fd5ac4c-3fd4-4112-ade7-156977deb49f` / `d35a58ae-3c81-491c-9694-1d021dd3b8ad`. **D1-M1 driver:** `enqueue_compliance_recalc_with_fanout` (governed fanout path). Production client HTTP sync uses direct `enqueue_compliance_recalc` — documented in report; not remediated in D1.
+
+---
+
+### D1b — Verification harness refinement (micro-unit)
+
+| Field | Value |
+|-------|-------|
+| **ID** | D1b |
+| **Parent** | **D1** |
+| **Priority** | P1 |
+| **Trigger** | D1 staging `d1_pass=false` — **D1-RC-15** (overlay baseline false positive) + lineage window contamination from M2 |
+| **Scope** | Verification methodology refinement only — `d1_staging_verification.py` + `d1_snapshot.py` noise/lineage windows |
+| **Unit status** | **DONE** (2026-05-17) |
+| **Verification evidence** | `docs/audit/d1b_verification_report_6fd5ac4c_d35a58ae.json` (`verification_run=d1b_harness_rerun_v3`); full `d1b_*` set; original `d1_*` preserved |
+
+#### D1b — Definition of Done (rev 1 — 2026-05-17; **approved** — **DONE** 2026-05-17)
+
+**Purpose:** Clear **D1-RC-15** and lineage false failures caused by harness methodology — **not** product propagation changes.
+
+| # | Requirement | Pass criterion |
+|---|-------------|----------------|
+| 1 | **Observability noise baseline** | Compare suppression overlay to **prior replay state** (R2 vs R1, R3 vs R2); R1 establishes baseline — **not** `suppression_fingerprint(None)` |
+| 2 | **Lineage windows split** | `lineage_replay_stable` = R2 vs R3 **correlation-attributed propagation** fingerprint (fanout + delegates) **before M2**; M2 uses separate global trace; property-wide history excluded from replay gate |
+| 3 | **Preserve D1 artifacts** | All D1b outputs use `d1b_*` prefix; original `d1_*` unchanged |
+| 4 | **Re-run staging** | `python -m scripts.d1_staging_verification --artifact-prefix d1b --verification-run d1b_harness_rerun` |
+| 5 | **Production path** | Remains **open governance context only** — **no** `routes/properties.py` change |
+
+**Explicitly forbidden:** propagation logic changes; fanout topology; queue semantics; route changes; `_with_fanout` on production HTTP path; notifications/scheduler/E1/F1.
+
+**Closure (2026-05-17):** `d1b_harness_rerun_v3` — `d1_pass=true`; **D1-RC-15** cleared (`noise_pass=true`); `lineage_replay_stable=true` (correlation-attributed propagation fingerprint); M2 observed under separate correlation. Contract tests: 8 passed (`test_d1_verification_contract.py`). D1 parent → **DONE**.
+
+#### D1 — Closure evidence (2026-05-17 — **DONE**)
+
+**Pilot:** `client_id=6fd5ac4c-3fd4-4112-ade7-156977deb49f`, `property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad`, `pleerity_staging`. **Control:** `04ceda9f-dd72-4b70-a6f5-809bef1b7b6a` / `6d939c70-06ab-4dc8-8b36-204958d2cdb3`.
+
+| Outcome | Result |
+|---------|--------|
+| **D1b** | **DONE** — verification harness refinement only (noise baseline + split replay/M2 lineage windows) |
+| **Authoritative staging** | `verification_run=d1b_harness_rerun_v3` → **`d1_pass=true`**; all `checks{}` green |
+| **D1-RC-15** | Cleared as **harness baseline issue** (overlay compared to prior replay state, not null/run-start) |
+| **Lineage replay** | **Stable** after split windows — R2/R3 correlation-attributed propagation fingerprint equal **before M2**; M2 legitimate new-correlation propagation observed separately |
+| **Propagation instability** | **None found** — R2/R3 fanout fingerprints equal; suppression replay equal; collapse deterministic; delegated lineage intact |
+| **Artifact authority** | **`d1b_*` authoritative for closure**; original **`d1_*` preserved** (first run `d1_pass=false`, harness false positives) |
+| **Product changes** | **None** — no route, fanout topology, queue semantics, scheduler, or notification changes |
+
+**Authoritative artifacts (`backend/docs/audit/`):** `d1b_verification_report_6fd5ac4c_d35a58ae.json`, `d1b_propagation_replay_*`, `d1b_propagation_topology_*`, `d1b_branch_cardinality_*`, `d1b_branch_behaviour_classes_*`, `d1b_partial_convergence_*`, `d1b_delegated_lineage_*`, `d1b_suppression_determinism_*`, `d1b_observability_noise_*`, `d1b_bounded_growth_*`, `d1b_lineage_trace_replay_*`, `d1b_lineage_trace_m2_*`, `d1b_unrelated_surface_integrity_*`, `d1b_fanout_after_*`. **Preserved (non-authoritative):** full `d1_*` set including `d1_verification_report_*`.
+
+**Regression:** **8 passed** — `tests/test_d1_verification_contract.py`.
+
+**Governance docs:** This tracker; `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 D1; `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` Stream E / launch-unit row.
+
+**Open governance context (not remediated in D1):** Production `POST /api/properties/{property_id}/requirements/sync` uses **direct** `enqueue_compliance_recalc`; D1 verification driver uses `enqueue_compliance_recalc_with_fanout`. Classified as **matrix drift / observability context only** — expected C1-only queue behaviour on production HTTP. **Route alignment requires a separate approved unit** with its own DoD if pursued.
+
+**DONE gates (2026-05-17):** §14 staging proof complete; §12 contract tests green; §15 governance docs updated; remediation deferral list documented (production sync path only).
+
+**Next approved step:** Draft **E1** Definition of Done only. **Do not** start E1 implementation, **F1**, notifications work, scheduler redesign, or fanout/topology remediation without separate approved unit.
 
 ---
 
@@ -1605,11 +2801,13 @@ Extend / add tests (names indicative):
 | **Scope** | Upload/verify/reject → authority state; no stale extraction overriding human review (**L-004**) |
 | **Canonical authority** | `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`; `audit/AUTHORITY_WRITE_PATH_RECONCILIATION.md`; **L-004**, **L-005** |
 | **Code areas likely affected** | `evidence_review_verify.py`, `document_operational_state.py`, extraction supersession services |
-| **Unit status** | **BLOCKED** (pending D) |
+| **Unit status** | **NOT_STARTED** — E1 DoD drafting **UNLOCKED** (2026-05-17); implementation **blocked** until E1 DoD approved |
 | **Verification evidence** | Verify changes requirement projection; gap sync follows; audit event |
 | **Governance docs after** | **L-004** row; AUTHORITY_WRITE_PATH |
 | **Regression tests** | Evidence review HTTP suites; operational state tests |
 | **Rollback / safety** | Reconciliation job dry_run first |
+
+**Unlock (2026-05-17):** D1 **DONE** → **E1 DoD drafting only**. **Do not** start E1 implementation, evidence-authority code changes, **F1**, notifications, scheduler redesign, or fanout remediation without separate approval.
 
 ---
 
@@ -1674,7 +2872,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
   → C1 → C2 → D1 (+ D2 in parallel) → E1 → F1 → G1/G2 continuous
 ```
 
-**Next approved step:** Draft **C2** Definition of Done only (downstream convergence). **C2 implementation BLOCKED** until C2 DoD approved. **B2** BLOCKED (product); **B3** BLOCKED/deferred.
+**Next approved step:** Draft **E1** Definition of Done only (evidence / document state authority). **Do not** start E1 implementation, **F1**, notifications, scheduler/fanout redesign, or production route alignment (`requirements/sync` → `_with_fanout`) without separate approved unit + DoD. **D2** optional parallel inventory. **B2** BLOCKED (product); **B3** BLOCKED/deferred.
 
 ---
 

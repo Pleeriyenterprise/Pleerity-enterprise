@@ -1,0 +1,348 @@
+{
+  "pilot_after": {
+    "compliance_score": 52,
+    "compliance_score_pending": false,
+    "compliance_last_calculated_at": "2026-05-16T18:53:55.202970+00:00",
+    "risk_level": "Elevated risk",
+    "top_deficits": [
+      {
+        "requirement_code": "GAS_SAFETY",
+        "status": "MISSING",
+        "missing_points": 15.0,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "FIRE_DETECTION",
+        "status": "MISSING",
+        "missing_points": 10.0,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "HMO_FIRE_RISK",
+        "status": "EXPIRING_SOON",
+        "missing_points": 2.79,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "EICR",
+        "status": "NOT_APPLICABLE",
+        "missing_points": 1.05,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "EPC",
+        "status": "NOT_APPLICABLE",
+        "missing_points": 0.7,
+        "risk_level_if_failed": "MEDIUM"
+      }
+    ],
+    "digest_summary": {
+      "urgent_count": 1,
+      "upcoming_count": 4,
+      "in_progress_count": 2,
+      "recently_completed_count": 0,
+      "snoozed_count": 0,
+      "hidden_count": 0,
+      "habit": {
+        "urgent_open_total": 1,
+        "items_due_or_expiring_in_7_days": 0,
+        "tasks_acknowledged_last_7_days": 0
+      }
+    },
+    "task_count": 7,
+    "task_sections_summary": {
+      "urgent_count": 1,
+      "upcoming_count": 4,
+      "in_progress_count": 2,
+      "recently_completed_count": 0,
+      "snoozed_count": 0,
+      "hidden_count": 0,
+      "habit": {
+        "urgent_open_total": 1,
+        "items_due_or_expiring_in_7_days": 0,
+        "tasks_acknowledged_last_7_days": 0
+      }
+    },
+    "task_ids_sample": [
+      "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+      "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+      "requirement:69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+      "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+      "requirement:c5abaeba-348f-4843-b734-1644bdfb791f",
+      "risk_signal:rs_01f79827015b",
+      "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
+    ],
+    "stable_task_business_keys_sample": [
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+      "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+      "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+      "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+      "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+    ],
+    "fingerprint_mode": "normalized_stable_business_keys_c2a",
+    "fingerprint": "62c957fe1ca22589db0af66c177d0b53",
+    "fingerprint_legacy_volatile_ids": "fdfbece28eed5cb31b0ca4226b88bb04"
+  },
+  "runs": {
+    "R1": {
+      "compliance_score": 52,
+      "compliance_score_pending": false,
+      "compliance_last_calculated_at": "2026-05-16T18:53:55.202970+00:00",
+      "risk_level": "Elevated risk",
+      "top_deficits": [
+        {
+          "requirement_code": "GAS_SAFETY",
+          "status": "MISSING",
+          "missing_points": 15.0,
+          "risk_level_if_failed": "HIGH"
+        },
+        {
+          "requirement_code": "FIRE_DETECTION",
+          "status": "MISSING",
+          "missing_points": 10.0,
+          "risk_level_if_failed": "HIGH"
+        },
+        {
+          "requirement_code": "HMO_FIRE_RISK",
+          "status": "EXPIRING_SOON",
+          "missing_points": 2.79,
+          "risk_level_if_failed": "HIGH"
+        },
+        {
+          "requirement_code": "EICR",
+          "status": "NOT_APPLICABLE",
+          "missing_points": 1.05,
+          "risk_level_if_failed": "HIGH"
+        },
+        {
+          "requirement_code": "EPC",
+          "status": "NOT_APPLICABLE",
+          "missing_points": 0.7,
+          "risk_level_if_failed": "MEDIUM"
+        }
+      ],
+      "digest_summary": {
+        "urgent_count": 1,
+        "upcoming_count": 4,
+        "in_progress_count": 2,
+        "recently_completed_count": 0,
+        "snoozed_count": 0,
+        "hidden_count": 0,
+        "habit": {
+          "urgent_open_total": 1,
+          "items_due_or_expiring_in_7_days": 0,
+          "tasks_acknowledged_last_7_days": 0
+        }
+      },
+      "task_count": 7,
+      "task_sections_summary": {
+        "urgent_count": 1,
+        "upcoming_count": 4,
+        "in_progress_count": 2,
+        "recently_completed_count": 0,
+        "snoozed_count": 0,
+        "hidden_count": 0,
+        "habit": {
+          "urgent_open_total": 1,
+          "items_due_or_expiring_in_7_days": 0,
+          "tasks_acknowledged_last_7_days": 0
+        }
+      },
+      "task_ids_sample": [
+        "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+        "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+        "requirement:69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+        "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+        "requirement:c5abaeba-348f-4843-b734-1644bdfb791f",
+        "risk_signal:rs_c33c81012355",
+        "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
+      ],
+      "stable_task_business_keys_sample": [
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+        "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+        "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+        "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+        "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+      ],
+      "fingerprint_mode": "normalized_stable_business_keys_c2a",
+      "fingerprint": "62c957fe1ca22589db0af66c177d0b53",
+      "fingerprint_legacy_volatile_ids": "71490ef7836444d4d9a59aa38fd847cf"
+    },
+    "R2": {
+      "compliance_score": 52,
+      "compliance_score_pending": false,
+      "compliance_last_calculated_at": "2026-05-16T18:53:55.202970+00:00",
+      "risk_level": "Elevated risk",
+      "top_deficits": [
+        {
+          "requirement_code": "GAS_SAFETY",
+          "status": "MISSING",
+          "missing_points": 15.0,
+          "risk_level_if_failed": "HIGH"
+        },
+        {
+          "requirement_code": "FIRE_DETECTION",
+          "status": "MISSING",
+          "missing_points": 10.0,
+          "risk_level_if_failed": "HIGH"
+        },
+        {
+          "requirement_code": "HMO_FIRE_RISK",
+          "status": "EXPIRING_SOON",
+          "missing_points": 2.79,
+          "risk_level_if_failed": "HIGH"
+        },
+        {
+          "requirement_code": "EICR",
+          "status": "NOT_APPLICABLE",
+          "missing_points": 1.05,
+          "risk_level_if_failed": "HIGH"
+        },
+        {
+          "requirement_code": "EPC",
+          "status": "NOT_APPLICABLE",
+          "missing_points": 0.7,
+          "risk_level_if_failed": "MEDIUM"
+        }
+      ],
+      "digest_summary": {
+        "urgent_count": 1,
+        "upcoming_count": 4,
+        "in_progress_count": 2,
+        "recently_completed_count": 0,
+        "snoozed_count": 0,
+        "hidden_count": 0,
+        "habit": {
+          "urgent_open_total": 1,
+          "items_due_or_expiring_in_7_days": 0,
+          "tasks_acknowledged_last_7_days": 0
+        }
+      },
+      "task_count": 7,
+      "task_sections_summary": {
+        "urgent_count": 1,
+        "upcoming_count": 4,
+        "in_progress_count": 2,
+        "recently_completed_count": 0,
+        "snoozed_count": 0,
+        "hidden_count": 0,
+        "habit": {
+          "urgent_open_total": 1,
+          "items_due_or_expiring_in_7_days": 0,
+          "tasks_acknowledged_last_7_days": 0
+        }
+      },
+      "task_ids_sample": [
+        "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+        "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+        "requirement:69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+        "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+        "requirement:c5abaeba-348f-4843-b734-1644bdfb791f",
+        "risk_signal:rs_c33c81012355",
+        "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
+      ],
+      "stable_task_business_keys_sample": [
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+        "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+        "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+        "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+        "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+      ],
+      "fingerprint_mode": "normalized_stable_business_keys_c2a",
+      "fingerprint": "62c957fe1ca22589db0af66c177d0b53",
+      "fingerprint_legacy_volatile_ids": "71490ef7836444d4d9a59aa38fd847cf"
+    },
+    "R3": {
+      "compliance_score": 52,
+      "compliance_score_pending": false,
+      "compliance_last_calculated_at": "2026-05-16T18:53:55.202970+00:00",
+      "risk_level": "Elevated risk",
+      "top_deficits": [
+        {
+          "requirement_code": "GAS_SAFETY",
+          "status": "MISSING",
+          "missing_points": 15.0,
+          "risk_level_if_failed": "HIGH"
+        },
+        {
+          "requirement_code": "FIRE_DETECTION",
+          "status": "MISSING",
+          "missing_points": 10.0,
+          "risk_level_if_failed": "HIGH"
+        },
+        {
+          "requirement_code": "HMO_FIRE_RISK",
+          "status": "EXPIRING_SOON",
+          "missing_points": 2.79,
+          "risk_level_if_failed": "HIGH"
+        },
+        {
+          "requirement_code": "EICR",
+          "status": "NOT_APPLICABLE",
+          "missing_points": 1.05,
+          "risk_level_if_failed": "HIGH"
+        },
+        {
+          "requirement_code": "EPC",
+          "status": "NOT_APPLICABLE",
+          "missing_points": 0.7,
+          "risk_level_if_failed": "MEDIUM"
+        }
+      ],
+      "digest_summary": {
+        "urgent_count": 1,
+        "upcoming_count": 4,
+        "in_progress_count": 2,
+        "recently_completed_count": 0,
+        "snoozed_count": 0,
+        "hidden_count": 0,
+        "habit": {
+          "urgent_open_total": 1,
+          "items_due_or_expiring_in_7_days": 0,
+          "tasks_acknowledged_last_7_days": 0
+        }
+      },
+      "task_count": 7,
+      "task_sections_summary": {
+        "urgent_count": 1,
+        "upcoming_count": 4,
+        "in_progress_count": 2,
+        "recently_completed_count": 0,
+        "snoozed_count": 0,
+        "hidden_count": 0,
+        "habit": {
+          "urgent_open_total": 1,
+          "items_due_or_expiring_in_7_days": 0,
+          "tasks_acknowledged_last_7_days": 0
+        }
+      },
+      "task_ids_sample": [
+        "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+        "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+        "requirement:69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+        "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+        "requirement:c5abaeba-348f-4843-b734-1644bdfb791f",
+        "risk_signal:rs_01f79827015b",
+        "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
+      ],
+      "stable_task_business_keys_sample": [
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+        "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+        "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+        "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+        "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+      ],
+      "fingerprint_mode": "normalized_stable_business_keys_c2a",
+      "fingerprint": "62c957fe1ca22589db0af66c177d0b53",
+      "fingerprint_legacy_volatile_ids": "fdfbece28eed5cb31b0ca4226b88bb04"
+    }
+  }
+}

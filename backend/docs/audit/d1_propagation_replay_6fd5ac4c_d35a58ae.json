@@ -1,0 +1,361 @@
+{
+  "runs": [
+    {
+      "run": "R1",
+      "fanout_row_fingerprint": "1264b822084a3623b7980868ebd05ac5",
+      "suppression_fingerprint": "73aa6502ebf0041c0fc6da7640f31547",
+      "branch_cardinality": {
+        "expected_branch_count": 2,
+        "actual_branch_count": 2,
+        "suppressed_branch_count": 1,
+        "blocked_branch_count": 0,
+        "unexpected_branch_count": 0,
+        "downstream_targets": [
+          "compliance_recalc_queue.enqueue_compliance_recalc",
+          "risk_signal_regen_queue.enqueue_risk_signal_regen"
+        ],
+        "cardinality_pass": true
+      },
+      "replay_collapse": {
+        "replay_collapse_state": "collapsed_stable",
+        "suppressed_replay_branches": [
+          {
+            "run": "R2",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "propagation_stage": "d1_m1:recalc_enqueue",
+            "duplicate_suppression_reason": "duplicate_pending"
+          },
+          {
+            "run": "R3",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "propagation_stage": "d1_m1:recalc_enqueue",
+            "duplicate_suppression_reason": "duplicate_pending"
+          }
+        ],
+        "retained_lineage_visibility": true,
+        "fanout_fingerprint": {
+          "R1": "1264b822084a3623b7980868ebd05ac5",
+          "R2": "1264b822084a3623b7980868ebd05ac5",
+          "R3": "1264b822084a3623b7980868ebd05ac5"
+        },
+        "collapse_deterministic": true
+      }
+    },
+    {
+      "run": "R2",
+      "fanout_row_fingerprint": "1264b822084a3623b7980868ebd05ac5",
+      "suppression_fingerprint": "73aa6502ebf0041c0fc6da7640f31547",
+      "branch_cardinality": {
+        "expected_branch_count": 2,
+        "actual_branch_count": 2,
+        "suppressed_branch_count": 1,
+        "blocked_branch_count": 0,
+        "unexpected_branch_count": 0,
+        "downstream_targets": [
+          "compliance_recalc_queue.enqueue_compliance_recalc",
+          "risk_signal_regen_queue.enqueue_risk_signal_regen"
+        ],
+        "cardinality_pass": true
+      },
+      "replay_collapse": {
+        "replay_collapse_state": "collapsed_stable",
+        "suppressed_replay_branches": [
+          {
+            "run": "R2",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "propagation_stage": "d1_m1:recalc_enqueue",
+            "duplicate_suppression_reason": "duplicate_pending"
+          },
+          {
+            "run": "R3",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "propagation_stage": "d1_m1:recalc_enqueue",
+            "duplicate_suppression_reason": "duplicate_pending"
+          }
+        ],
+        "retained_lineage_visibility": true,
+        "fanout_fingerprint": {
+          "R1": "1264b822084a3623b7980868ebd05ac5",
+          "R2": "1264b822084a3623b7980868ebd05ac5",
+          "R3": "1264b822084a3623b7980868ebd05ac5"
+        },
+        "collapse_deterministic": true
+      }
+    },
+    {
+      "run": "R3",
+      "fanout_row_fingerprint": "1264b822084a3623b7980868ebd05ac5",
+      "suppression_fingerprint": "73aa6502ebf0041c0fc6da7640f31547",
+      "branch_cardinality": {
+        "expected_branch_count": 2,
+        "actual_branch_count": 2,
+        "suppressed_branch_count": 1,
+        "blocked_branch_count": 0,
+        "unexpected_branch_count": 0,
+        "downstream_targets": [
+          "compliance_recalc_queue.enqueue_compliance_recalc",
+          "risk_signal_regen_queue.enqueue_risk_signal_regen"
+        ],
+        "cardinality_pass": true
+      },
+      "replay_collapse": {
+        "replay_collapse_state": "collapsed_stable",
+        "suppressed_replay_branches": [
+          {
+            "run": "R2",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "propagation_stage": "d1_m1:recalc_enqueue",
+            "duplicate_suppression_reason": "duplicate_pending"
+          },
+          {
+            "run": "R3",
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "propagation_stage": "d1_m1:recalc_enqueue",
+            "duplicate_suppression_reason": "duplicate_pending"
+          }
+        ],
+        "retained_lineage_visibility": true,
+        "fanout_fingerprint": {
+          "R1": "1264b822084a3623b7980868ebd05ac5",
+          "R2": "1264b822084a3623b7980868ebd05ac5",
+          "R3": "1264b822084a3623b7980868ebd05ac5"
+        },
+        "collapse_deterministic": true
+      }
+    }
+  ],
+  "m2": {
+    "run": "M2",
+    "branch_cardinality": {
+      "expected_branch_count": 2,
+      "actual_branch_count": 2,
+      "suppressed_branch_count": 0,
+      "blocked_branch_count": 0,
+      "unexpected_branch_count": 0,
+      "downstream_targets": [
+        "compliance_recalc_queue.enqueue_compliance_recalc",
+        "risk_signal_regen_queue.enqueue_risk_signal_regen"
+      ],
+      "cardinality_pass": true
+    },
+    "behaviour_classes": [
+      {
+        "run": "M2",
+        "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+        "propagation_stage": "d1_m2:recalc_enqueue",
+        "propagation_behaviour_class": "always-propagating",
+        "expected_replay_behaviour": "initial_propagation",
+        "observed_replay_behaviour": "initial_propagation",
+        "behaviour_match": true,
+        "behaviour_explainable": true
+      },
+      {
+        "run": "M2",
+        "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+        "propagation_stage": "d1_m2:recalc_enqueue:risk_regen_delegate_ok",
+        "propagation_behaviour_class": "delegated-regenerative",
+        "expected_replay_behaviour": "initial_propagation",
+        "observed_replay_behaviour": "initial_propagation",
+        "behaviour_match": true,
+        "behaviour_explainable": true
+      }
+    ],
+    "suppression_fingerprint": "f9ab02a93aec0e9f581e113e9b43bb7e",
+    "delegated_lineage": [
+      {
+        "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+        "delegated_origin_correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:6b6c53984f37",
+        "delegated_branch_fingerprint": "2ab728056e89a8e39559b6a3142611ac",
+        "propagation_stage": "d1_m2:recalc_enqueue:risk_regen_delegate_ok",
+        "parent_transition_id": "d1-D1_VERIFICATION:ADMIN_REGISTRY_SYNC-d35a58ae-3c81-491c-9694-1d021dd3b8ad-96fa9006",
+        "detached": false
+      }
+    ],
+    "fanout_row_fingerprint": "b35db5e1f872bce17d12a3af2aa74f47",
+    "transition_fanout": {
+      "transition_id": "d1-D1_VERIFICATION:ADMIN_REGISTRY_SYNC-d35a58ae-3c81-491c-9694-1d021dd3b8ad-96fa9006",
+      "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:6b6c53984f37",
+      "transition_origin": "D1_VERIFICATION:ADMIN_REGISTRY_SYNC",
+      "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "previous_state": "PENDING",
+      "resulting_state": "PENDING",
+      "semantic_state": null,
+      "state_reason": null,
+      "duplicate_transition_possible": true,
+      "replay_possible": true,
+      "downstream_trigger_count": 2,
+      "downstream_trigger_targets": [
+        {
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "trigger_mode": "async_queue",
+          "enqueue_attempted": true,
+          "enqueue_succeeded": true,
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "duplicate_suppression_reason": null,
+          "propagation_stage": "d1_m2:recalc_enqueue",
+          "reconciliation_recommended": false,
+          "degraded_possible": false,
+          "downstream_correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:6b6c53984f37",
+          "trigger_origin": "D1_VERIFICATION:ADMIN_REGISTRY_SYNC",
+          "replay_chain_detected": false,
+          "document_replacement_detected": false,
+          "verification_replay_possible": false,
+          "revert_retrigger_possible": false,
+          "stale_document_transition_possible": false,
+          "review_chain_reentry_detected": false,
+          "admin_override_possible": false,
+          "review_reversal_possible": false,
+          "reviewer_retrigger_possible": false,
+          "reassignment_replay_possible": false,
+          "authority_override_replay_possible": false,
+          "automated_transition_possible": false,
+          "generic_touch_sync": false,
+          "reconciliation_sync_possible": false,
+          "backfill_replay_possible": false,
+          "system_reentry_possible": false,
+          "idempotency_boundary": "compliance_recalc_queue unique (property_id, correlation_id)",
+          "enqueue_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "resolved_queue_correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:6b6c53984f37",
+          "replay_duplicate_enqueue_safe": true,
+          "activation_state": "ACTIVATION_LIMITED",
+          "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3"
+        },
+        {
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "trigger_mode": "delegate_from_recalc_enqueue",
+          "enqueue_attempted": true,
+          "enqueue_succeeded": true,
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "duplicate_suppression_reason": null,
+          "propagation_stage": "d1_m2:recalc_enqueue:risk_regen_delegate_ok",
+          "reconciliation_recommended": false,
+          "degraded_possible": false,
+          "downstream_correlation_id": null,
+          "trigger_origin": "D1_VERIFICATION:ADMIN_REGISTRY_SYNC",
+          "replay_chain_detected": false,
+          "document_replacement_detected": false,
+          "verification_replay_possible": false,
+          "revert_retrigger_possible": false,
+          "stale_document_transition_possible": false,
+          "review_chain_reentry_detected": false,
+          "admin_override_possible": false,
+          "review_reversal_possible": false,
+          "reviewer_retrigger_possible": false,
+          "reassignment_replay_possible": false,
+          "authority_override_replay_possible": false,
+          "automated_transition_possible": false,
+          "generic_touch_sync": false,
+          "reconciliation_sync_possible": false,
+          "backfill_replay_possible": false,
+          "system_reentry_possible": false
+        }
+      ],
+      "partial_downstream_failure": false,
+      "retry_possible": false,
+      "transition_outcome": "TRANSITION_NOOP",
+      "downstream_propagation": [
+        {
+          "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+          "trigger_mode": "async_queue",
+          "enqueue_attempted": true,
+          "enqueue_succeeded": true,
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "duplicate_suppression_reason": null,
+          "propagation_stage": "d1_m2:recalc_enqueue",
+          "reconciliation_recommended": false,
+          "degraded_possible": false,
+          "downstream_correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:6b6c53984f37",
+          "trigger_origin": "D1_VERIFICATION:ADMIN_REGISTRY_SYNC",
+          "replay_chain_detected": false,
+          "document_replacement_detected": false,
+          "verification_replay_possible": false,
+          "revert_retrigger_possible": false,
+          "stale_document_transition_possible": false,
+          "review_chain_reentry_detected": false,
+          "admin_override_possible": false,
+          "review_reversal_possible": false,
+          "reviewer_retrigger_possible": false,
+          "reassignment_replay_possible": false,
+          "authority_override_replay_possible": false,
+          "automated_transition_possible": false,
+          "generic_touch_sync": false,
+          "reconciliation_sync_possible": false,
+          "backfill_replay_possible": false,
+          "system_reentry_possible": false,
+          "idempotency_boundary": "compliance_recalc_queue unique (property_id, correlation_id)",
+          "enqueue_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "resolved_queue_correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:6b6c53984f37",
+          "replay_duplicate_enqueue_safe": true,
+          "activation_state": "ACTIVATION_LIMITED",
+          "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+          "activation_scope": "compliance_recalc_enqueue_only",
+          "activation_family": "COMPLIANCE_SCORE_RECALC",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3"
+        },
+        {
+          "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+          "trigger_mode": "delegate_from_recalc_enqueue",
+          "enqueue_attempted": true,
+          "enqueue_succeeded": true,
+          "enqueue_outcome": "ENQUEUE_ACCEPTED",
+          "duplicate_suppression_reason": null,
+          "propagation_stage": "d1_m2:recalc_enqueue:risk_regen_delegate_ok",
+          "reconciliation_recommended": false,
+          "degraded_possible": false,
+          "downstream_correlation_id": null,
+          "trigger_origin": "D1_VERIFICATION:ADMIN_REGISTRY_SYNC",
+          "replay_chain_detected": false,
+          "document_replacement_detected": false,
+          "verification_replay_possible": false,
+          "revert_retrigger_possible": false,
+          "stale_document_transition_possible": false,
+          "review_chain_reentry_detected": false,
+          "admin_override_possible": false,
+          "review_reversal_possible": false,
+          "reviewer_retrigger_possible": false,
+          "reassignment_replay_possible": false,
+          "authority_override_replay_possible": false,
+          "automated_transition_possible": false,
+          "generic_touch_sync": false,
+          "reconciliation_sync_possible": false,
+          "backfill_replay_possible": false,
+          "system_reentry_possible": false
+        }
+      ],
+      "replay_chain_detected": false,
+      "repeated_transition_origin": false,
+      "repeated_correlation_seen": false,
+      "downstream_retrigger_possible": true,
+      "stale_transition_replayed": false,
+      "non_blocking": true,
+      "rst_core_backbone_activation": {
+        "activation_family": "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE",
+        "activation_governance_version": "workflow_runtime_activation_registry_v3",
+        "activation_guard_result": "GUARD_RESULT_PERMITTED",
+        "activation_reason": "rst_core_backbone_registry_allows_authority_gap_recalc_regen_chain",
+        "activation_scope": "requirement_state_transition_core_backbone_only",
+        "activation_state": "ACTIVATION_LIMITED",
+        "child_compliance_recalc_permitted": true,
+        "child_regeneration_recalc_permitted": true,
+        "degraded_propagation_continuity": "DEGRADED_PROPAGATION_CONTINUITY_VISIBLE",
+        "downstream_propagation_state": "DOWNSTREAM_PROPAGATION_PENDING",
+        "permitted": true,
+        "propagation_continuity": "PROPAGATION_CONTINUITY_ACTIVE",
+        "propagation_skipped_visibility": false,
+        "reconciliation_continuity": "RECONCILIATION_CONTINUITY_VISIBLE",
+        "registry_ceiling": "ACTIVATION_LIMITED",
+        "replay_continuity": "REPLAY_CONTINUITY_VISIBLE"
+      }
+    },
+    "mutation": "D1-M2",
+    "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:6b6c53984f37",
+    "queue_status": "DONE"
+  }
+}

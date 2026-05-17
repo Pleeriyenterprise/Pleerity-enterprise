@@ -1,0 +1,64 @@
+{
+  "pilot_after": {
+    "open_risk_signals": 1,
+    "risk_regen_pending": 0,
+    "priority_action_count": 7,
+    "priority_action_keys_sample": [
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+      "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+      "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+      "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+      "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+    ],
+    "fingerprint": "c17d23b874208216e29344b151e08d6a"
+  },
+  "runs": {
+    "R1": {
+      "open_risk_signals": 1,
+      "risk_regen_pending": 0,
+      "priority_action_count": 7,
+      "priority_action_keys_sample": [
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+        "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+        "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+        "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+        "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+      ],
+      "fingerprint": "c17d23b874208216e29344b151e08d6a"
+    },
+    "R2": {
+      "open_risk_signals": 1,
+      "risk_regen_pending": 1,
+      "priority_action_count": 7,
+      "priority_action_keys_sample": [
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+        "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+        "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+        "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+        "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+      ],
+      "fingerprint": "6c44ca979b7ddd12b5ff8e3f9d61d4c8"
+    },
+    "R3": {
+      "open_risk_signals": 1,
+      "risk_regen_pending": 1,
+      "priority_action_count": 7,
+      "priority_action_keys_sample": [
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+        "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+        "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+        "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+        "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+        "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+      ],
+      "fingerprint": "6c44ca979b7ddd12b5ff8e3f9d61d4c8"
+    }
+  }
+}

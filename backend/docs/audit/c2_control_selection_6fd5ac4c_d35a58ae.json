@@ -1,0 +1,7 @@
+{
+  "pilot_client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "pilot_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "control_client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+  "control_property_id": "6d939c70-06ab-4dc8-8b36-204958d2cdb3",
+  "control_selection_reason": "different_client_with_requirements"
+}

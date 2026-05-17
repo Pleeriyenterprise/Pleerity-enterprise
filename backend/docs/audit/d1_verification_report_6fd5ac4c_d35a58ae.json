@@ -1,0 +1,182 @@
+{
+  "captured_at_utc": "2026-05-17T13:29:46.788100+00:00",
+  "verification_run": "d1_staging_rev3",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "control_client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+  "control_property_id": "6d939c70-06ab-4dc8-8b36-204958d2cdb3",
+  "d1_pass": false,
+  "primary_rc_branch": "D1-RC-15",
+  "checks": {
+    "cardinality_pass": true,
+    "partial_convergence_pass": true,
+    "collapse_deterministic": true,
+    "delegated_lineage_pass": true,
+    "noise_pass": false,
+    "behaviour_classes_pass": true,
+    "bounded_growth_pass": true,
+    "suppression_replay_equal": true,
+    "orphan_fanout_pass": true,
+    "lineage_stable": false,
+    "unrelated_mutation_delta_zero": true,
+    "r2_r3_fanout_fingerprint_equal": true
+  },
+  "propagation_cardinality_summary": [
+    {
+      "expected_branch_count": 2,
+      "actual_branch_count": 2,
+      "suppressed_branch_count": 1,
+      "blocked_branch_count": 0,
+      "unexpected_branch_count": 0,
+      "downstream_targets": [
+        "compliance_recalc_queue.enqueue_compliance_recalc",
+        "risk_signal_regen_queue.enqueue_risk_signal_regen"
+      ],
+      "cardinality_pass": true,
+      "run": "R1",
+      "mutation": "D1-M1"
+    },
+    {
+      "expected_branch_count": 2,
+      "actual_branch_count": 2,
+      "suppressed_branch_count": 1,
+      "blocked_branch_count": 0,
+      "unexpected_branch_count": 0,
+      "downstream_targets": [
+        "compliance_recalc_queue.enqueue_compliance_recalc",
+        "risk_signal_regen_queue.enqueue_risk_signal_regen"
+      ],
+      "cardinality_pass": true,
+      "run": "R2",
+      "mutation": "D1-M1"
+    },
+    {
+      "expected_branch_count": 2,
+      "actual_branch_count": 2,
+      "suppressed_branch_count": 1,
+      "blocked_branch_count": 0,
+      "unexpected_branch_count": 0,
+      "downstream_targets": [
+        "compliance_recalc_queue.enqueue_compliance_recalc",
+        "risk_signal_regen_queue.enqueue_risk_signal_regen"
+      ],
+      "cardinality_pass": true,
+      "run": "R3",
+      "mutation": "D1-M1"
+    },
+    {
+      "expected_branch_count": 2,
+      "actual_branch_count": 2,
+      "suppressed_branch_count": 0,
+      "blocked_branch_count": 0,
+      "unexpected_branch_count": 0,
+      "downstream_targets": [
+        "compliance_recalc_queue.enqueue_compliance_recalc",
+        "risk_signal_regen_queue.enqueue_risk_signal_regen"
+      ],
+      "cardinality_pass": true,
+      "run": "M2",
+      "mutation": "D1-M2"
+    }
+  ],
+  "propagation_completion_matrix": [
+    {
+      "branch": "enqueue_compliance_recalc",
+      "expected": true,
+      "fanout_observed": true,
+      "downstream_complete": true,
+      "within_sla": true
+    },
+    {
+      "branch": "enqueue_risk_signal_regen",
+      "expected": true,
+      "fanout_observed": true,
+      "downstream_complete": true,
+      "within_sla": true
+    },
+    {
+      "branch": "enqueue_compliance_recalc",
+      "expected": true,
+      "fanout_observed": true,
+      "downstream_complete": true,
+      "within_sla": true
+    },
+    {
+      "branch": "enqueue_risk_signal_regen",
+      "expected": true,
+      "fanout_observed": true,
+      "downstream_complete": true,
+      "within_sla": true
+    },
+    {
+      "branch": "enqueue_compliance_recalc",
+      "expected": true,
+      "fanout_observed": true,
+      "downstream_complete": true,
+      "within_sla": true
+    },
+    {
+      "branch": "enqueue_risk_signal_regen",
+      "expected": true,
+      "fanout_observed": true,
+      "downstream_complete": true,
+      "within_sla": true
+    }
+  ],
+  "partial_convergence_reason": null,
+  "replay_collapse_state": "collapsed_stable",
+  "suppressed_replay_branches": [
+    {
+      "run": "R2",
+      "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+      "propagation_stage": "d1_m1:recalc_enqueue",
+      "duplicate_suppression_reason": "duplicate_pending"
+    },
+    {
+      "run": "R3",
+      "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+      "propagation_stage": "d1_m1:recalc_enqueue",
+      "duplicate_suppression_reason": "duplicate_pending"
+    }
+  ],
+  "retained_lineage_visibility": true,
+  "branch_growth_curve": [
+    {
+      "run": "R1",
+      "actual_branch_count": 2,
+      "delegate_branch_count": 1
+    },
+    {
+      "run": "R2",
+      "actual_branch_count": 2,
+      "delegate_branch_count": 1
+    },
+    {
+      "run": "R3",
+      "actual_branch_count": 2,
+      "delegate_branch_count": 1
+    }
+  ],
+  "bounded_growth_pass": true,
+  "suppression_replay_equal": true,
+  "governed_mutations": [
+    "D1-M1",
+    "D1-M2"
+  ],
+  "note": "D1-M1 uses enqueue_compliance_recalc_with_fanout (governed fanout path); HTTP client sync uses direct enqueue \u2014 fanout semantics verified here.",
+  "artifacts": {
+    "fanout_before": "docs/audit/d1_fanout_before_6fd5ac4c_d35a58ae.json",
+    "fanout_after": "docs/audit/d1_fanout_after_6fd5ac4c_d35a58ae.json",
+    "propagation_replay": "docs/audit/d1_propagation_replay_6fd5ac4c_d35a58ae.json",
+    "propagation_topology": "docs/audit/d1_propagation_topology_6fd5ac4c_d35a58ae.json",
+    "branch_cardinality": "docs/audit/d1_branch_cardinality_6fd5ac4c_d35a58ae.json",
+    "branch_behaviour_classes": "docs/audit/d1_branch_behaviour_classes_6fd5ac4c_d35a58ae.json",
+    "partial_convergence": "docs/audit/d1_partial_convergence_6fd5ac4c_d35a58ae.json",
+    "delegated_lineage": "docs/audit/d1_delegated_lineage_6fd5ac4c_d35a58ae.json",
+    "suppression_determinism": "docs/audit/d1_suppression_determinism_6fd5ac4c_d35a58ae.json",
+    "observability_noise": "docs/audit/d1_observability_noise_6fd5ac4c_d35a58ae.json",
+    "unrelated_surface_integrity": "docs/audit/d1_unrelated_surface_integrity_6fd5ac4c_d35a58ae.json",
+    "lineage_trace": "docs/audit/d1_lineage_trace_6fd5ac4c_d35a58ae.json",
+    "verification_report": "docs/audit/d1_verification_report_6fd5ac4c_d35a58ae.json"
+  }
+}

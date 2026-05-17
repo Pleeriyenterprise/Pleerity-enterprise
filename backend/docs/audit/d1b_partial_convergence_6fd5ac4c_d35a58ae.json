@@ -1,0 +1,47 @@
+{
+  "propagation_completion_matrix": [
+    {
+      "branch": "enqueue_compliance_recalc",
+      "expected": true,
+      "fanout_observed": true,
+      "downstream_complete": true,
+      "within_sla": true
+    },
+    {
+      "branch": "enqueue_risk_signal_regen",
+      "expected": true,
+      "fanout_observed": true,
+      "downstream_complete": true,
+      "within_sla": true
+    },
+    {
+      "branch": "enqueue_compliance_recalc",
+      "expected": true,
+      "fanout_observed": true,
+      "downstream_complete": true,
+      "within_sla": true
+    },
+    {
+      "branch": "enqueue_risk_signal_regen",
+      "expected": true,
+      "fanout_observed": true,
+      "downstream_complete": true,
+      "within_sla": true
+    },
+    {
+      "branch": "enqueue_compliance_recalc",
+      "expected": true,
+      "fanout_observed": true,
+      "downstream_complete": true,
+      "within_sla": true
+    },
+    {
+      "branch": "enqueue_risk_signal_regen",
+      "expected": true,
+      "fanout_observed": true,
+      "downstream_complete": true,
+      "within_sla": true
+    }
+  ],
+  "partial_convergence_reason": null
+}

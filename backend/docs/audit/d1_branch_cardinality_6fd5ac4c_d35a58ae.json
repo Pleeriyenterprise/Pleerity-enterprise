@@ -1,0 +1,58 @@
+[
+  {
+    "expected_branch_count": 2,
+    "actual_branch_count": 2,
+    "suppressed_branch_count": 1,
+    "blocked_branch_count": 0,
+    "unexpected_branch_count": 0,
+    "downstream_targets": [
+      "compliance_recalc_queue.enqueue_compliance_recalc",
+      "risk_signal_regen_queue.enqueue_risk_signal_regen"
+    ],
+    "cardinality_pass": true,
+    "run": "R1",
+    "mutation": "D1-M1"
+  },
+  {
+    "expected_branch_count": 2,
+    "actual_branch_count": 2,
+    "suppressed_branch_count": 1,
+    "blocked_branch_count": 0,
+    "unexpected_branch_count": 0,
+    "downstream_targets": [
+      "compliance_recalc_queue.enqueue_compliance_recalc",
+      "risk_signal_regen_queue.enqueue_risk_signal_regen"
+    ],
+    "cardinality_pass": true,
+    "run": "R2",
+    "mutation": "D1-M1"
+  },
+  {
+    "expected_branch_count": 2,
+    "actual_branch_count": 2,
+    "suppressed_branch_count": 1,
+    "blocked_branch_count": 0,
+    "unexpected_branch_count": 0,
+    "downstream_targets": [
+      "compliance_recalc_queue.enqueue_compliance_recalc",
+      "risk_signal_regen_queue.enqueue_risk_signal_regen"
+    ],
+    "cardinality_pass": true,
+    "run": "R3",
+    "mutation": "D1-M1"
+  },
+  {
+    "expected_branch_count": 2,
+    "actual_branch_count": 2,
+    "suppressed_branch_count": 0,
+    "blocked_branch_count": 0,
+    "unexpected_branch_count": 0,
+    "downstream_targets": [
+      "compliance_recalc_queue.enqueue_compliance_recalc",
+      "risk_signal_regen_queue.enqueue_risk_signal_regen"
+    ],
+    "cardinality_pass": true,
+    "run": "M2",
+    "mutation": "D1-M2"
+  }
+]

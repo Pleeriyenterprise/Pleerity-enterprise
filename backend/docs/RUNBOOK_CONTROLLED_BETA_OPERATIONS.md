@@ -394,7 +394,7 @@ Record result in tracker **A1 classification record** table.
 
 **Provenance:** automated `NOT_REQUIRED` uses `registry_metadata.automated_not_required`; operator-curated rows (override, audit reason ≥10 chars) are preserved. Do not weaken `requirement_client_runtime_surface` filters.
 
-**Wales HMO pilot acceptance (2026-05-16):** After B1, **8** client-visible planner-aligned families is accepted operational truth for tenant `6fd5ac4c…`. `emergency_lighting` / `fire_extinguisher` are **not** defects — intentionally non-visible (no overlay). **C1** queue proof **DONE** on this tenant (2026-05-16); see §12.7 C1 below.
+**Wales HMO pilot acceptance (2026-05-16):** After B1, **8** client-visible planner-aligned families is accepted operational truth for tenant `6fd5ac4c…`. `emergency_lighting` / `fire_extinguisher` are **not** defects — intentionally non-visible (no overlay). **C1** queue proof **DONE**, **C2** downstream convergence **DONE**, and **D1** propagation fanout proof **DONE** on this tenant (2026-05-17); see §12.7 C1, C2, and D1 below.
 
 #### B2 — Published registry overlay (if overlay-missing only)
 
@@ -430,6 +430,56 @@ Record result in tracker **A1 classification record** table.
 **Forbidden:** Raw Mongo enqueue; manual queue `DONE`/`DEAD`; fleet batch enqueue; direct `$set` on `requirements.status`; treating `message_logs` as obligation or queue health proof.
 
 **Pilot reference (2026-05-16):** `6fd5ac4c-3fd4-4112-ade7-156977deb49f` / `d35a58ae-3c81-491c-9694-1d021dd3b8ad` — artifacts under `backend/docs/audit/c1_*`. Tracker status: **DONE**.
+
+#### C2 — Downstream convergence after recalc (only after C1 **DONE**; launch unit **C2**)
+
+**Authority:** `LAUNCH_AUTHORITY_TRACKER.md` § **C2** (rev 4 DoD) + § **C2a**; `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md`. **Not** fanout repair, activation policy redesign, notification proof, queue/recalc changes, or unified_tasks architecture work.
+
+**Prerequisites:** C1 **DONE** for tenant; B1 visibility accepted; staging `MONGO_URL` + `DB_NAME`; pilot `CID` + `PID`; control unrelated `(CID', PID')` recorded in `c2_control_selection_*.json`.
+
+| # | Step | Command / action | Pass criteria |
+|---|------|------------------|---------------|
+| C2-0 | **Preflight** | `python -m scripts.c2_preflight_capture --client-id CID --property-id PID` | `c2_convergence_before_*`, `c2_unrelated_surface_integrity_*` (note: §7c baseline at verification **run start** uses normalized fingerprints — see C2 closure) |
+| C2-1 | **R1 — first C2-M1** | Client `POST /api/properties/PID/requirements/sync` (same as C1-M1) | Queue **DONE**; gaps/risk/priority/tasks/KPI converge within §3 lag bounds; append `convergence_order_timeline[]` |
+| C2-2 | **Surface snapshots** | Captured by staging script | `c2_gaps_*`, `c2_risk_priority_*`, `c2_dashboard_tasks_*`, `c2_exclusions_*`, `c2_stale_decay_*`, `c2_consistency_hashes_*`, `c2_lineage_trace_*` |
+| C2-3 | **R2/R3 — stable replay** | Repeat C2-M1 ×2 | `enqueued=false`; **normalized** `tasks_today` fingerprint R2=R3; full cross-surface R2=R3; lineage fingerprint R2=R3 |
+| C2-4 | **§7c unrelated integrity** | Control tenant fingerprints before/after pilot window | `unrelated_mutation_delta` **0** on gaps, risk_priority, dashboard_tasks (normalized keys), property, gap_count, `score_last_calculated_at` |
+| C2-5 | **Full verification** | `python -m scripts.c2_staging_verification --client-id CID --property-id PID` | `c2_verification_report_*` with `c2_pass=true`; `temporal_ordering_violations_empty` (settled recalc ≠ resolved compliance) |
+| C2-6 | **Regression (§9)** | `pytest tests/test_c2_verification_contract.py` (+ C1 suite) | All pass before **VERIFIED** / **DONE** |
+
+**Fingerprint mode (mandatory since C2a):** `normalized_stable_business_keys_c2a` — hash stable business keys from `fetch_client_priority_actions`, **not** volatile `risk_signal:rs_*` task ids. Legacy volatile-id fingerprint retained as `fingerprint_legacy_volatile_ids` for diagnostics only.
+
+**Temporal ordering (C2-RC-13):** Do **not** treat `compliance_score_pending=false` alone as “all clear” while gaps remain OPEN. Fire only when downstream **explicitly** asserts resolved/healthy with OPEN gaps still present.
+
+**Watchlist (non-blocking):** `risk_signal:rs_*` task **ids** may rotate when `regeneration_requeued=true` on materialise — C2a proved priority stream and business-key fingerprints remain stable; no product `_stable_source_id` fix shipped.
+
+**Forbidden:** Using notification/`message_logs` as convergence proof; fanout/activation fixes under C2; raw Mongo gap/task edits; treating preflight legacy fingerprints as §7c end-state baseline.
+
+**Pilot reference (2026-05-16):** `6fd5ac4c-3fd4-4112-ade7-156977deb49f` / `d35a58ae-3c81-491c-9694-1d021dd3b8ad` — artifacts: `c2_verification_report_6fd5ac4c_d35a58ae.json`, `c2a_task_drift_analysis_6fd5ac4c_d35a58ae.json`, `c2_consistency_hashes_6fd5ac4c_d35a58ae.json`, `c2_replay_6fd5ac4c_d35a58ae.json`, `c2_unrelated_surface_integrity_6fd5ac4c_d35a58ae.json`. Tracker status: **DONE**.
+
+#### D1 — Workflow propagation fanout (only after C2 **DONE**; launch unit **D1** + harness **D1b**)
+
+**Authority:** `LAUNCH_AUTHORITY_TRACKER.md` § **D1** (rev 3 DoD) + § **D1b**; `STREAM_E_MUTATION_FANOUT_MATRIX.md` (observe-only). **Not** fanout topology repair, activation policy redesign, queue semantics changes, scheduler redesign, notification proof, or production route changes.
+
+**Prerequisites:** C1 + C2 **DONE** for tenant; staging `MONGO_URL` + `DB_NAME`; pilot `CID` + `PID`; control unrelated pair in `d1_control_selection_*` (may reuse C2 control).
+
+| # | Step | Command / action | Pass criteria |
+|---|------|------------------|---------------|
+| D1-0 | **Preflight** | `python -m scripts.d1_preflight_capture --client-id CID --property-id PID` | `d1_fanout_before_*`, `d1_control_selection_*` (optional; D1b rerun may reuse) |
+| D1-1 | **R1 — first fanout (D1-M1)** | Staging script: `enqueue_compliance_recalc_with_fanout` + synthetic `transition_fanout` | Cardinality **2** branches; recalc duplicate suppression on replay path observable |
+| D1-2 | **R2/R3 — stable replay** | Repeat D1-M1 ×2 | `fanout_row_fingerprint` R2=R3; `suppression_replay_equal`; `replay_collapse_state` stable; `noise_pass` on R2/R3 (overlay vs **prior replay state**) |
+| D1-3 | **Lineage replay window** | Captured pre-M2 in script | `lineage_replay_stable=true` — correlation-attributed propagation fingerprint R2=R3 (**not** property-wide score-history poll) |
+| D1-4 | **M2 — new correlation** | Admin registry sync once (script `_d1_m2`) | New `ADMIN_MANUAL_JOB:REGISTRY_SYNC:…` correlation; separate `d1b_lineage_trace_m2_*` |
+| D1-5 | **Full verification** | `python -m scripts.d1_staging_verification --artifact-prefix d1b --verification-run d1b_harness_rerun_v3 --client-id CID --property-id PID` | `d1b_verification_report_*` with **`d1_pass=true`** |
+| D1-6 | **Regression (§12)** | `pytest tests/test_d1_verification_contract.py` | All pass before **DONE** |
+
+**Driver vs production (open governance):** D1 staging uses **`enqueue_compliance_recalc_with_fanout`**. Production client **`POST /api/properties/{property_id}/requirements/sync`** still uses **direct** `enqueue_compliance_recalc` — documented in report; **not** remediated in D1. Aligning the HTTP route requires a **separate approved unit** with its own DoD.
+
+**Artifact authority:** **`d1b_*` authoritative** for D1 closure (`verification_run=d1b_harness_rerun_v3` on pilot). Original **`d1_*`** preserved (first run harness false positives incl. **D1-RC-15**).
+
+**Forbidden:** Mutating `authority_mutation_fanout` routing; converting production sync to `_with_fanout` under D1; notification/scheduler changes; treating `message_logs` as propagation proof.
+
+**Pilot reference (2026-05-17):** `6fd5ac4c-3fd4-4112-ade7-156977deb49f` / `d35a58ae-3c81-491c-9694-1d021dd3b8ad` — authoritative: `d1b_verification_report_6fd5ac4c_d35a58ae.json`, `d1b_propagation_replay_6fd5ac4c_d35a58ae.json`. Tracker status: **DONE**.
 
 ---
 

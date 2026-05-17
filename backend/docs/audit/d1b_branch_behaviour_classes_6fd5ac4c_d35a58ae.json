@@ -1,0 +1,82 @@
+[
+  {
+    "run": "R1",
+    "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+    "propagation_stage": "d1_m1:recalc_enqueue",
+    "propagation_behaviour_class": "replay-collapsible",
+    "expected_replay_behaviour": "initial_propagation",
+    "observed_replay_behaviour": "initial_propagation",
+    "behaviour_match": true,
+    "behaviour_explainable": true
+  },
+  {
+    "run": "R1",
+    "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+    "propagation_stage": "d1_m1:recalc_enqueue:risk_regen_delegate_ok",
+    "propagation_behaviour_class": "delegated-regenerative",
+    "expected_replay_behaviour": "initial_propagation",
+    "observed_replay_behaviour": "initial_propagation",
+    "behaviour_match": true,
+    "behaviour_explainable": true
+  },
+  {
+    "run": "R2",
+    "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+    "propagation_stage": "d1_m1:recalc_enqueue",
+    "propagation_behaviour_class": "replay-collapsible",
+    "expected_replay_behaviour": "collapse_stable",
+    "observed_replay_behaviour": "collapse_stable",
+    "behaviour_match": true,
+    "behaviour_explainable": true
+  },
+  {
+    "run": "R2",
+    "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+    "propagation_stage": "d1_m1:recalc_enqueue:risk_regen_delegate_ok",
+    "propagation_behaviour_class": "delegated-regenerative",
+    "expected_replay_behaviour": "delegate_observable",
+    "observed_replay_behaviour": "delegate_observable",
+    "behaviour_match": true,
+    "behaviour_explainable": true
+  },
+  {
+    "run": "R3",
+    "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+    "propagation_stage": "d1_m1:recalc_enqueue",
+    "propagation_behaviour_class": "replay-collapsible",
+    "expected_replay_behaviour": "collapse_stable",
+    "observed_replay_behaviour": "collapse_stable",
+    "behaviour_match": true,
+    "behaviour_explainable": true
+  },
+  {
+    "run": "R3",
+    "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+    "propagation_stage": "d1_m1:recalc_enqueue:risk_regen_delegate_ok",
+    "propagation_behaviour_class": "delegated-regenerative",
+    "expected_replay_behaviour": "delegate_observable",
+    "observed_replay_behaviour": "delegate_observable",
+    "behaviour_match": true,
+    "behaviour_explainable": true
+  },
+  {
+    "run": "M2",
+    "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+    "propagation_stage": "d1_m2:recalc_enqueue",
+    "propagation_behaviour_class": "always-propagating",
+    "expected_replay_behaviour": "initial_propagation",
+    "observed_replay_behaviour": "initial_propagation",
+    "behaviour_match": true,
+    "behaviour_explainable": true
+  },
+  {
+    "run": "M2",
+    "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+    "propagation_stage": "d1_m2:recalc_enqueue:risk_regen_delegate_ok",
+    "propagation_behaviour_class": "delegated-regenerative",
+    "expected_replay_behaviour": "initial_propagation",
+    "observed_replay_behaviour": "initial_propagation",
+    "behaviour_match": true,
+    "behaviour_explainable": true
+  }
+]

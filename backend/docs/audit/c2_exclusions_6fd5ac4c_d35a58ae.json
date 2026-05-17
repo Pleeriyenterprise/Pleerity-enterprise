@@ -1,0 +1,208 @@
+{
+  "matrix": [
+    {
+      "requirement_type": "right_to_rent",
+      "included": false,
+      "exclusion_reason": "not_required_row",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    },
+    {
+      "requirement_type": "eicr",
+      "included": true,
+      "exclusion_reason": null,
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "present"
+    },
+    {
+      "requirement_type": "fire_risk_assessment",
+      "included": false,
+      "exclusion_reason": "not_required_row",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    },
+    {
+      "requirement_type": "fire_alarm",
+      "included": true,
+      "exclusion_reason": null,
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "present"
+    },
+    {
+      "requirement_type": "fire_detection",
+      "included": false,
+      "exclusion_reason": "not_required_row",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    },
+    {
+      "requirement_type": "legionella",
+      "included": true,
+      "exclusion_reason": null,
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "present"
+    },
+    {
+      "requirement_type": "co_alarms",
+      "included": false,
+      "exclusion_reason": "not_required_row",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    },
+    {
+      "requirement_type": "how_to_rent",
+      "included": false,
+      "exclusion_reason": "not_required_row",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    },
+    {
+      "requirement_type": "tenancy_agreement",
+      "included": false,
+      "exclusion_reason": "not_required_row",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    },
+    {
+      "requirement_type": "portable_appliance_test",
+      "included": false,
+      "exclusion_reason": "not_in_planner_membership",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    },
+    {
+      "requirement_type": "smoke_alarms",
+      "included": false,
+      "exclusion_reason": "not_required_row",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    },
+    {
+      "requirement_type": "deposit_pi",
+      "included": false,
+      "exclusion_reason": "not_required_row",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    },
+    {
+      "requirement_type": "hmo_license",
+      "included": true,
+      "exclusion_reason": null,
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "present"
+    },
+    {
+      "requirement_type": "gas_safety",
+      "included": true,
+      "exclusion_reason": null,
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "present"
+    },
+    {
+      "requirement_type": "epc",
+      "included": true,
+      "exclusion_reason": null,
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "present"
+    },
+    {
+      "requirement_type": "fire_extinguisher",
+      "included": false,
+      "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    },
+    {
+      "requirement_type": "occupation_contract",
+      "included": true,
+      "exclusion_reason": null,
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "present"
+    },
+    {
+      "requirement_type": "hmo_fire_risk_evidence",
+      "included": true,
+      "exclusion_reason": null,
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "present"
+    },
+    {
+      "requirement_type": "landlord_registration_ni",
+      "included": false,
+      "exclusion_reason": "not_required_row",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    },
+    {
+      "requirement_type": "emergency_lighting",
+      "included": false,
+      "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    },
+    {
+      "requirement_type": "hmo_fire_risk",
+      "included": false,
+      "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy",
+      "gaps": "n/a",
+      "priority_stream": "n/a",
+      "tasks": "n/a",
+      "kpi": "excluded",
+      "governed_exclusion": true
+    }
+  ],
+  "silent_missing_exclusion_count": 0,
+  "pass": true
+}

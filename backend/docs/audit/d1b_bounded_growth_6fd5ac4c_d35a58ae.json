@@ -1,0 +1,22 @@
+{
+  "branch_growth_curve": [
+    {
+      "run": "R1",
+      "actual_branch_count": 2,
+      "delegate_branch_count": 1
+    },
+    {
+      "run": "R2",
+      "actual_branch_count": 2,
+      "delegate_branch_count": 1
+    },
+    {
+      "run": "R3",
+      "actual_branch_count": 2,
+      "delegate_branch_count": 1
+    }
+  ],
+  "branch_growth_delta": 0,
+  "delegated_growth_delta": 0,
+  "bounded_growth_pass": true
+}

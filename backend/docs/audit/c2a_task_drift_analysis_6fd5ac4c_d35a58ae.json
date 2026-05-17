@@ -1,0 +1,120 @@
+{
+  "captured_at_utc": "2026-05-16T22:00:00+00:00",
+  "parent_unit": "C2",
+  "sub_unit": "C2a",
+  "pilot_client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "pilot_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "source_artifacts": [
+    "docs/audit/c2_replay_6fd5ac4c_d35a58ae.json",
+    "docs/audit/c2_dashboard_tasks_6fd5ac4c_d35a58ae.json",
+    "docs/audit/c2_consistency_hashes_6fd5ac4c_d35a58ae.json",
+    "docs/audit/c2_risk_priority_6fd5ac4c_d35a58ae.json",
+    "docs/audit/c2_verification_report_6fd5ac4c_d35a58ae.json"
+  ],
+  "primary_classification": "regenerated_ids",
+  "secondary_classification": "verification_fingerprint_normalization",
+  "bucket_evaluation": {
+    "true_semantic_task_churn": false,
+    "ordering_instability": false,
+    "volatile_fields": false,
+    "regenerated_ids": true,
+    "grouping_instability": false,
+    "verification_fingerprint_normalization": true
+  },
+  "per_run_task_ids": {
+    "R1": [
+      "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+      "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+      "requirement:69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+      "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+      "requirement:c5abaeba-348f-4843-b734-1644bdfb791f",
+      "risk_signal:rs_0f56a8454586",
+      "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
+    ],
+    "R2": [
+      "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+      "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+      "requirement:69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+      "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+      "requirement:c5abaeba-348f-4843-b734-1644bdfb791f",
+      "risk_signal:rs_77fd6f275f29",
+      "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
+    ],
+    "R3": [
+      "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+      "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+      "requirement:69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+      "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+      "requirement:c5abaeba-348f-4843-b734-1644bdfb791f",
+      "risk_signal:rs_a5210ba0f31d",
+      "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
+    ]
+  },
+  "drift_detail": {
+    "changed_slots": [
+      {
+        "semantic_role": "risk_signal_task",
+        "stable_across_runs": false,
+        "r1": "risk_signal:rs_0f56a8454586",
+        "r2": "risk_signal:rs_77fd6f275f29",
+        "r3": "risk_signal:rs_a5210ba0f31d"
+      }
+    ],
+    "unchanged_count": 6,
+    "total_task_count": 7
+  },
+  "section_counts_stable": {
+    "R1": {"urgent": 1, "upcoming": 4, "in_progress": 2, "total": 7},
+    "R2": {"urgent": 1, "upcoming": 4, "in_progress": 2, "total": 7},
+    "R3": {"urgent": 1, "upcoming": 4, "in_progress": 2, "total": 7}
+  },
+  "consistency_hashes_tasks_today": {
+    "R1": "2cb116ea65347a6f42fcf6c81456d5b4",
+    "R2": "f956864d7b8f6d0bb7e4055c36417e23",
+    "R3": "76d80149e32bcf065f58c667d452a7b7",
+    "r2_equals_r3": false
+  },
+  "priority_stream_stable": {
+    "risk_action_key": "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+    "fingerprint_r1_r2_r3": "stable per c2_risk_priority (action keys identical)"
+  },
+  "code_path_trace": {
+    "c2_m1_enqueue": {
+      "enqueued": false,
+      "duplicate_suppression_reason": "duplicate_pending",
+      "regeneration_requeued": true,
+      "note": "Materialise path still debounces risk regen on each replay"
+    },
+    "unified_tasks": {
+      "module": "unified_tasks_service._action_to_task",
+      "task_id_formula": "{source_type}:{source_id}",
+      "risk_source_id": "related_risk_signal_id from priority action",
+      "volatile_field": "signal_id / rs_* suffix changes when risk row regenerated"
+    },
+    "client_priority_stream": {
+      "module": "client_priority_stream.fetch_client_priority_actions",
+      "fingerprint_uses": "action_type|property|requirement|title — not signal_id",
+      "stable": true
+    }
+  },
+  "c2_rc13_reclassification": {
+    "original_detector": "kpi_clear_while_gaps_open",
+    "verdict": "false_positive_for_temporal_contradiction",
+    "reason": "compliance_score_pending=false with open_gaps=5 and score=52 is settled recalc, not resolved compliance or dashboard all-clear"
+  },
+  "recommendation": "verification_normalization_only",
+  "recommendation_detail": "For C2 §7b, hash tasks_today using priority-stream-stable keys (source_type, action_type, related_requirement_id, title) or section summary counts — exclude volatile risk_signal:rs_* display id. Re-run C2 staging after script-only change.",
+  "optional_product_followup": {
+    "required": false,
+    "scope_if_approved": "targeted_task_determinism_fix",
+    "module": "unified_tasks_service._stable_source_id",
+    "change": "Use stable risk signal business key (e.g. signal_key / property+type) instead of regenerated Mongo signal_id — risk_signal path only",
+    "approval": "separate from C2a DONE"
+  },
+  "not_recommended": [
+    "unified_tasks_service redesign",
+    "notification changes",
+    "D1 fanout work",
+    "queue/recalc logic changes"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "suppression_fingerprint_r1_r2_r3": {
+    "R1": "73aa6502ebf0041c0fc6da7640f31547",
+    "R2": "73aa6502ebf0041c0fc6da7640f31547",
+    "R3": "73aa6502ebf0041c0fc6da7640f31547"
+  },
+  "suppression_state_matrix": [
+    {
+      "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+      "R1_reason": "duplicate_pending",
+      "R2_reason": "duplicate_pending",
+      "R3_reason": "duplicate_pending",
+      "stable": true
+    },
+    {
+      "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+      "R1_reason": null,
+      "R2_reason": null,
+      "R3_reason": null,
+      "stable": true
+    }
+  ],
+  "suppression_replay_equal": true
+}

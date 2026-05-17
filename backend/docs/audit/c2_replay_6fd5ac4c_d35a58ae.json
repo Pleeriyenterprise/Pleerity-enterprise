@@ -1,0 +1,968 @@
+{
+  "captured_at_utc": "2026-05-16T22:21:29.224357+00:00",
+  "stable_correlation": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "runs": [
+    {
+      "run": "R1",
+      "mutation": "C2-M1",
+      "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "enqueue": {
+        "enqueued": false,
+        "duplicate_suppression_reason": "duplicate_pending",
+        "regeneration_requeued": true
+      },
+      "queue_status": "DONE",
+      "convergence_snapshot": {
+        "captured_at_utc": "2026-05-16T22:22:29.100574+00:00",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "property_score": {
+          "compliance_score": 52,
+          "compliance_score_pending": false,
+          "compliance_last_calculated_at": "2026-05-16T18:53:55.202970+00:00",
+          "risk_level": "Elevated risk",
+          "fingerprint": "adb115c83be3a553"
+        },
+        "requirements_explain": {
+          "raw_count": 21,
+          "included_count": 8,
+          "exclusion_reasons": {
+            "not_required_row": 9,
+            "not_in_planner_membership": 1,
+            "excluded_by_alias_dedupe_or_runtime_policy": 3
+          },
+          "included_types": [
+            "eicr",
+            "epc",
+            "fire_alarm",
+            "gas_safety",
+            "hmo_fire_risk_evidence",
+            "hmo_license",
+            "legionella",
+            "occupation_contract"
+          ],
+          "rows_sample": [
+            {
+              "requirement_type": "right_to_rent",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "eicr",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "fire_risk_assessment",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "fire_alarm",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "fire_detection",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "legionella",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "co_alarms",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "how_to_rent",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "tenancy_agreement",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "portable_appliance_test",
+              "included": false,
+              "exclusion_reason": "not_in_planner_membership"
+            },
+            {
+              "requirement_type": "smoke_alarms",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "deposit_pi",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "hmo_license",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "gas_safety",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "epc",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "fire_extinguisher",
+              "included": false,
+              "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy"
+            },
+            {
+              "requirement_type": "occupation_contract",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "hmo_fire_risk_evidence",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "landlord_registration_ni",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "emergency_lighting",
+              "included": false,
+              "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy"
+            },
+            {
+              "requirement_type": "hmo_fire_risk",
+              "included": false,
+              "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy"
+            }
+          ]
+        },
+        "client_visible_count": 8,
+        "parity_included_vs_client": true,
+        "gaps": {
+          "by_status": {
+            "OPEN": 5,
+            "RESOLVED": 1
+          },
+          "open_count": 5,
+          "open_sample": [
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:MISSING_EVIDENCE",
+              "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+              "updated_at": "2026-05-05T19:37:48.930667+00:00"
+            },
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:69fc66fe-e196-44d4-a20e-3fe68d316f7f:MISSING_EVIDENCE",
+              "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+              "updated_at": "2026-05-05T19:37:40.693720+00:00"
+            },
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23:MISSING_EVIDENCE",
+              "requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+              "updated_at": "2026-05-05T19:37:47.020647+00:00"
+            },
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:c5abaeba-348f-4843-b734-1644bdfb791f:MISSING_EVIDENCE",
+              "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+              "updated_at": "2026-05-05T19:37:39.164206+00:00"
+            },
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6:MISSING_EVIDENCE",
+              "requirement_id": "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6",
+              "updated_at": "2026-05-05T19:37:46.251326+00:00"
+            }
+          ],
+          "fingerprint": "e09c239cbf37eb49f8b0494b8f1d9cc4"
+        },
+        "risk_priority": {
+          "open_risk_signals": 1,
+          "risk_regen_pending": 0,
+          "priority_action_count": 7,
+          "priority_action_keys_sample": [
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+            "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+            "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+            "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+            "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+          ],
+          "fingerprint": "c17d23b874208216e29344b151e08d6a"
+        },
+        "dashboard_tasks": {
+          "compliance_score": 52,
+          "compliance_score_pending": false,
+          "compliance_last_calculated_at": "2026-05-16T18:53:55.202970+00:00",
+          "risk_level": "Elevated risk",
+          "top_deficits": [
+            {
+              "requirement_code": "GAS_SAFETY",
+              "status": "MISSING",
+              "missing_points": 15.0,
+              "risk_level_if_failed": "HIGH"
+            },
+            {
+              "requirement_code": "FIRE_DETECTION",
+              "status": "MISSING",
+              "missing_points": 10.0,
+              "risk_level_if_failed": "HIGH"
+            },
+            {
+              "requirement_code": "HMO_FIRE_RISK",
+              "status": "EXPIRING_SOON",
+              "missing_points": 2.79,
+              "risk_level_if_failed": "HIGH"
+            },
+            {
+              "requirement_code": "EICR",
+              "status": "NOT_APPLICABLE",
+              "missing_points": 1.05,
+              "risk_level_if_failed": "HIGH"
+            },
+            {
+              "requirement_code": "EPC",
+              "status": "NOT_APPLICABLE",
+              "missing_points": 0.7,
+              "risk_level_if_failed": "MEDIUM"
+            }
+          ],
+          "digest_summary": {
+            "urgent_count": 1,
+            "upcoming_count": 4,
+            "in_progress_count": 2,
+            "recently_completed_count": 0,
+            "snoozed_count": 0,
+            "hidden_count": 0,
+            "habit": {
+              "urgent_open_total": 1,
+              "items_due_or_expiring_in_7_days": 0,
+              "tasks_acknowledged_last_7_days": 0
+            }
+          },
+          "task_count": 7,
+          "task_sections_summary": {
+            "urgent_count": 1,
+            "upcoming_count": 4,
+            "in_progress_count": 2,
+            "recently_completed_count": 0,
+            "snoozed_count": 0,
+            "hidden_count": 0,
+            "habit": {
+              "urgent_open_total": 1,
+              "items_due_or_expiring_in_7_days": 0,
+              "tasks_acknowledged_last_7_days": 0
+            }
+          },
+          "task_ids_sample": [
+            "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+            "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+            "requirement:69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+            "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+            "requirement:c5abaeba-348f-4843-b734-1644bdfb791f",
+            "risk_signal:rs_c33c81012355",
+            "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
+          ],
+          "stable_task_business_keys_sample": [
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+            "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+            "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+            "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+            "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+          ],
+          "fingerprint_mode": "normalized_stable_business_keys_c2a",
+          "fingerprint": "62c957fe1ca22589db0af66c177d0b53",
+          "fingerprint_legacy_volatile_ids": "71490ef7836444d4d9a59aa38fd847cf"
+        },
+        "consistency_hashes": {
+          "requirements_applicability": "f7b182b1a40badc328e084cad2867dce",
+          "gaps": "e09c239cbf37eb49f8b0494b8f1d9cc4",
+          "risk_signals": "7814f6072e20b3f9ba49f15bfa9d6ea9",
+          "priority_stream": "c17d23b874208216e29344b151e08d6a",
+          "tasks_today": "62c957fe1ca22589db0af66c177d0b53",
+          "kpi_dashboard": "fcc0130fbb9d19efd0d30b89297697b0"
+        }
+      },
+      "consistency_hashes": {
+        "requirements_applicability": "f7b182b1a40badc328e084cad2867dce",
+        "gaps": "e09c239cbf37eb49f8b0494b8f1d9cc4",
+        "risk_signals": "7814f6072e20b3f9ba49f15bfa9d6ea9",
+        "priority_stream": "c17d23b874208216e29344b151e08d6a",
+        "tasks_today": "62c957fe1ca22589db0af66c177d0b53",
+        "kpi_dashboard": "fcc0130fbb9d19efd0d30b89297697b0"
+      },
+      "lineage_fingerprint": "6a83aff8a3c4e06d91f4976fd7af655e",
+      "stale_decay": {
+        "pending_badge": false,
+        "open_gaps": 5,
+        "open_risk": 1,
+        "task_count": 7,
+        "orphan_priority_risk": 0,
+        "closed_gap_active_task": 0,
+        "open_gap_keys": [
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:c5abaeba-348f-4843-b734-1644bdfb791f:MISSING_EVIDENCE",
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:MISSING_EVIDENCE",
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6:MISSING_EVIDENCE",
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:69fc66fe-e196-44d4-a20e-3fe68d316f7f:MISSING_EVIDENCE",
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23:MISSING_EVIDENCE"
+        ]
+      }
+    },
+    {
+      "run": "R2",
+      "mutation": "C2-M1",
+      "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "enqueue": {
+        "enqueued": false,
+        "duplicate_suppression_reason": "duplicate_pending",
+        "regeneration_requeued": true
+      },
+      "queue_status": "DONE",
+      "convergence_snapshot": {
+        "captured_at_utc": "2026-05-16T22:24:29.182012+00:00",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "property_score": {
+          "compliance_score": 52,
+          "compliance_score_pending": false,
+          "compliance_last_calculated_at": "2026-05-16T18:53:55.202970+00:00",
+          "risk_level": "Elevated risk",
+          "fingerprint": "adb115c83be3a553"
+        },
+        "requirements_explain": {
+          "raw_count": 21,
+          "included_count": 8,
+          "exclusion_reasons": {
+            "not_required_row": 9,
+            "not_in_planner_membership": 1,
+            "excluded_by_alias_dedupe_or_runtime_policy": 3
+          },
+          "included_types": [
+            "eicr",
+            "epc",
+            "fire_alarm",
+            "gas_safety",
+            "hmo_fire_risk_evidence",
+            "hmo_license",
+            "legionella",
+            "occupation_contract"
+          ],
+          "rows_sample": [
+            {
+              "requirement_type": "right_to_rent",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "eicr",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "fire_risk_assessment",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "fire_alarm",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "fire_detection",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "legionella",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "co_alarms",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "how_to_rent",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "tenancy_agreement",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "portable_appliance_test",
+              "included": false,
+              "exclusion_reason": "not_in_planner_membership"
+            },
+            {
+              "requirement_type": "smoke_alarms",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "deposit_pi",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "hmo_license",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "gas_safety",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "epc",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "fire_extinguisher",
+              "included": false,
+              "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy"
+            },
+            {
+              "requirement_type": "occupation_contract",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "hmo_fire_risk_evidence",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "landlord_registration_ni",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "emergency_lighting",
+              "included": false,
+              "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy"
+            },
+            {
+              "requirement_type": "hmo_fire_risk",
+              "included": false,
+              "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy"
+            }
+          ]
+        },
+        "client_visible_count": 8,
+        "parity_included_vs_client": true,
+        "gaps": {
+          "by_status": {
+            "OPEN": 5,
+            "RESOLVED": 1
+          },
+          "open_count": 5,
+          "open_sample": [
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:MISSING_EVIDENCE",
+              "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+              "updated_at": "2026-05-05T19:37:48.930667+00:00"
+            },
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:69fc66fe-e196-44d4-a20e-3fe68d316f7f:MISSING_EVIDENCE",
+              "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+              "updated_at": "2026-05-05T19:37:40.693720+00:00"
+            },
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23:MISSING_EVIDENCE",
+              "requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+              "updated_at": "2026-05-05T19:37:47.020647+00:00"
+            },
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:c5abaeba-348f-4843-b734-1644bdfb791f:MISSING_EVIDENCE",
+              "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+              "updated_at": "2026-05-05T19:37:39.164206+00:00"
+            },
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6:MISSING_EVIDENCE",
+              "requirement_id": "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6",
+              "updated_at": "2026-05-05T19:37:46.251326+00:00"
+            }
+          ],
+          "fingerprint": "e09c239cbf37eb49f8b0494b8f1d9cc4"
+        },
+        "risk_priority": {
+          "open_risk_signals": 1,
+          "risk_regen_pending": 1,
+          "priority_action_count": 7,
+          "priority_action_keys_sample": [
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+            "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+            "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+            "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+            "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+          ],
+          "fingerprint": "6c44ca979b7ddd12b5ff8e3f9d61d4c8"
+        },
+        "dashboard_tasks": {
+          "compliance_score": 52,
+          "compliance_score_pending": false,
+          "compliance_last_calculated_at": "2026-05-16T18:53:55.202970+00:00",
+          "risk_level": "Elevated risk",
+          "top_deficits": [
+            {
+              "requirement_code": "GAS_SAFETY",
+              "status": "MISSING",
+              "missing_points": 15.0,
+              "risk_level_if_failed": "HIGH"
+            },
+            {
+              "requirement_code": "FIRE_DETECTION",
+              "status": "MISSING",
+              "missing_points": 10.0,
+              "risk_level_if_failed": "HIGH"
+            },
+            {
+              "requirement_code": "HMO_FIRE_RISK",
+              "status": "EXPIRING_SOON",
+              "missing_points": 2.79,
+              "risk_level_if_failed": "HIGH"
+            },
+            {
+              "requirement_code": "EICR",
+              "status": "NOT_APPLICABLE",
+              "missing_points": 1.05,
+              "risk_level_if_failed": "HIGH"
+            },
+            {
+              "requirement_code": "EPC",
+              "status": "NOT_APPLICABLE",
+              "missing_points": 0.7,
+              "risk_level_if_failed": "MEDIUM"
+            }
+          ],
+          "digest_summary": {
+            "urgent_count": 1,
+            "upcoming_count": 4,
+            "in_progress_count": 2,
+            "recently_completed_count": 0,
+            "snoozed_count": 0,
+            "hidden_count": 0,
+            "habit": {
+              "urgent_open_total": 1,
+              "items_due_or_expiring_in_7_days": 0,
+              "tasks_acknowledged_last_7_days": 0
+            }
+          },
+          "task_count": 7,
+          "task_sections_summary": {
+            "urgent_count": 1,
+            "upcoming_count": 4,
+            "in_progress_count": 2,
+            "recently_completed_count": 0,
+            "snoozed_count": 0,
+            "hidden_count": 0,
+            "habit": {
+              "urgent_open_total": 1,
+              "items_due_or_expiring_in_7_days": 0,
+              "tasks_acknowledged_last_7_days": 0
+            }
+          },
+          "task_ids_sample": [
+            "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+            "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+            "requirement:69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+            "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+            "requirement:c5abaeba-348f-4843-b734-1644bdfb791f",
+            "risk_signal:rs_c33c81012355",
+            "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
+          ],
+          "stable_task_business_keys_sample": [
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+            "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+            "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+            "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+            "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+          ],
+          "fingerprint_mode": "normalized_stable_business_keys_c2a",
+          "fingerprint": "62c957fe1ca22589db0af66c177d0b53",
+          "fingerprint_legacy_volatile_ids": "71490ef7836444d4d9a59aa38fd847cf"
+        },
+        "consistency_hashes": {
+          "requirements_applicability": "f7b182b1a40badc328e084cad2867dce",
+          "gaps": "e09c239cbf37eb49f8b0494b8f1d9cc4",
+          "risk_signals": "771e3ea4db7790cae143b36c640ab3cf",
+          "priority_stream": "6c44ca979b7ddd12b5ff8e3f9d61d4c8",
+          "tasks_today": "62c957fe1ca22589db0af66c177d0b53",
+          "kpi_dashboard": "fcc0130fbb9d19efd0d30b89297697b0"
+        }
+      },
+      "consistency_hashes": {
+        "requirements_applicability": "f7b182b1a40badc328e084cad2867dce",
+        "gaps": "e09c239cbf37eb49f8b0494b8f1d9cc4",
+        "risk_signals": "7814f6072e20b3f9ba49f15bfa9d6ea9",
+        "priority_stream": "c17d23b874208216e29344b151e08d6a",
+        "tasks_today": "62c957fe1ca22589db0af66c177d0b53",
+        "kpi_dashboard": "fcc0130fbb9d19efd0d30b89297697b0"
+      },
+      "lineage_fingerprint": "6a83aff8a3c4e06d91f4976fd7af655e",
+      "stale_decay": {
+        "pending_badge": false,
+        "open_gaps": 5,
+        "open_risk": 1,
+        "task_count": 7,
+        "orphan_priority_risk": 0,
+        "closed_gap_active_task": 0,
+        "open_gap_keys": [
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:c5abaeba-348f-4843-b734-1644bdfb791f:MISSING_EVIDENCE",
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:MISSING_EVIDENCE",
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6:MISSING_EVIDENCE",
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:69fc66fe-e196-44d4-a20e-3fe68d316f7f:MISSING_EVIDENCE",
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23:MISSING_EVIDENCE"
+        ]
+      }
+    },
+    {
+      "run": "R3",
+      "mutation": "C2-M1",
+      "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "enqueue": {
+        "enqueued": false,
+        "duplicate_suppression_reason": "duplicate_pending",
+        "regeneration_requeued": true
+      },
+      "queue_status": "DONE",
+      "convergence_snapshot": {
+        "captured_at_utc": "2026-05-16T22:27:34.836338+00:00",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "property_score": {
+          "compliance_score": 52,
+          "compliance_score_pending": false,
+          "compliance_last_calculated_at": "2026-05-16T18:53:55.202970+00:00",
+          "risk_level": "Elevated risk",
+          "fingerprint": "adb115c83be3a553"
+        },
+        "requirements_explain": {
+          "raw_count": 21,
+          "included_count": 8,
+          "exclusion_reasons": {
+            "not_required_row": 9,
+            "not_in_planner_membership": 1,
+            "excluded_by_alias_dedupe_or_runtime_policy": 3
+          },
+          "included_types": [
+            "eicr",
+            "epc",
+            "fire_alarm",
+            "gas_safety",
+            "hmo_fire_risk_evidence",
+            "hmo_license",
+            "legionella",
+            "occupation_contract"
+          ],
+          "rows_sample": [
+            {
+              "requirement_type": "right_to_rent",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "eicr",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "fire_risk_assessment",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "fire_alarm",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "fire_detection",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "legionella",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "co_alarms",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "how_to_rent",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "tenancy_agreement",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "portable_appliance_test",
+              "included": false,
+              "exclusion_reason": "not_in_planner_membership"
+            },
+            {
+              "requirement_type": "smoke_alarms",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "deposit_pi",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "hmo_license",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "gas_safety",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "epc",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "fire_extinguisher",
+              "included": false,
+              "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy"
+            },
+            {
+              "requirement_type": "occupation_contract",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "hmo_fire_risk_evidence",
+              "included": true,
+              "exclusion_reason": null
+            },
+            {
+              "requirement_type": "landlord_registration_ni",
+              "included": false,
+              "exclusion_reason": "not_required_row"
+            },
+            {
+              "requirement_type": "emergency_lighting",
+              "included": false,
+              "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy"
+            },
+            {
+              "requirement_type": "hmo_fire_risk",
+              "included": false,
+              "exclusion_reason": "excluded_by_alias_dedupe_or_runtime_policy"
+            }
+          ]
+        },
+        "client_visible_count": 8,
+        "parity_included_vs_client": true,
+        "gaps": {
+          "by_status": {
+            "OPEN": 5,
+            "RESOLVED": 1
+          },
+          "open_count": 5,
+          "open_sample": [
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:MISSING_EVIDENCE",
+              "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+              "updated_at": "2026-05-05T19:37:48.930667+00:00"
+            },
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:69fc66fe-e196-44d4-a20e-3fe68d316f7f:MISSING_EVIDENCE",
+              "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+              "updated_at": "2026-05-05T19:37:40.693720+00:00"
+            },
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23:MISSING_EVIDENCE",
+              "requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+              "updated_at": "2026-05-05T19:37:47.020647+00:00"
+            },
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:c5abaeba-348f-4843-b734-1644bdfb791f:MISSING_EVIDENCE",
+              "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+              "updated_at": "2026-05-05T19:37:39.164206+00:00"
+            },
+            {
+              "gap_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6:MISSING_EVIDENCE",
+              "requirement_id": "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6",
+              "updated_at": "2026-05-05T19:37:46.251326+00:00"
+            }
+          ],
+          "fingerprint": "e09c239cbf37eb49f8b0494b8f1d9cc4"
+        },
+        "risk_priority": {
+          "open_risk_signals": 1,
+          "risk_regen_pending": 1,
+          "priority_action_count": 7,
+          "priority_action_keys_sample": [
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+            "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+            "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+            "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+            "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+          ],
+          "fingerprint": "6c44ca979b7ddd12b5ff8e3f9d61d4c8"
+        },
+        "dashboard_tasks": {
+          "compliance_score": 52,
+          "compliance_score_pending": false,
+          "compliance_last_calculated_at": "2026-05-16T18:53:55.202970+00:00",
+          "risk_level": "Elevated risk",
+          "top_deficits": [
+            {
+              "requirement_code": "GAS_SAFETY",
+              "status": "MISSING",
+              "missing_points": 15.0,
+              "risk_level_if_failed": "HIGH"
+            },
+            {
+              "requirement_code": "FIRE_DETECTION",
+              "status": "MISSING",
+              "missing_points": 10.0,
+              "risk_level_if_failed": "HIGH"
+            },
+            {
+              "requirement_code": "HMO_FIRE_RISK",
+              "status": "EXPIRING_SOON",
+              "missing_points": 2.79,
+              "risk_level_if_failed": "HIGH"
+            },
+            {
+              "requirement_code": "EICR",
+              "status": "NOT_APPLICABLE",
+              "missing_points": 1.05,
+              "risk_level_if_failed": "HIGH"
+            },
+            {
+              "requirement_code": "EPC",
+              "status": "NOT_APPLICABLE",
+              "missing_points": 0.7,
+              "risk_level_if_failed": "MEDIUM"
+            }
+          ],
+          "digest_summary": {
+            "urgent_count": 1,
+            "upcoming_count": 4,
+            "in_progress_count": 2,
+            "recently_completed_count": 0,
+            "snoozed_count": 0,
+            "hidden_count": 0,
+            "habit": {
+              "urgent_open_total": 1,
+              "items_due_or_expiring_in_7_days": 0,
+              "tasks_acknowledged_last_7_days": 0
+            }
+          },
+          "task_count": 7,
+          "task_sections_summary": {
+            "urgent_count": 1,
+            "upcoming_count": 4,
+            "in_progress_count": 2,
+            "recently_completed_count": 0,
+            "snoozed_count": 0,
+            "hidden_count": 0,
+            "habit": {
+              "urgent_open_total": 1,
+              "items_due_or_expiring_in_7_days": 0,
+              "tasks_acknowledged_last_7_days": 0
+            }
+          },
+          "task_ids_sample": [
+            "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+            "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+            "requirement:69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+            "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+            "requirement:c5abaeba-348f-4843-b734-1644bdfb791f",
+            "risk_signal:rs_01f79827015b",
+            "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
+          ],
+          "stable_task_business_keys_sample": [
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+            "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|c5abaeba-348f-4843-b734-1644bdfb791f|Evidence missing: Gas Safety",
+            "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+            "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+            "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+            "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+          ],
+          "fingerprint_mode": "normalized_stable_business_keys_c2a",
+          "fingerprint": "62c957fe1ca22589db0af66c177d0b53",
+          "fingerprint_legacy_volatile_ids": "fdfbece28eed5cb31b0ca4226b88bb04"
+        },
+        "consistency_hashes": {
+          "requirements_applicability": "f7b182b1a40badc328e084cad2867dce",
+          "gaps": "e09c239cbf37eb49f8b0494b8f1d9cc4",
+          "risk_signals": "7814f6072e20b3f9ba49f15bfa9d6ea9",
+          "priority_stream": "c17d23b874208216e29344b151e08d6a",
+          "tasks_today": "62c957fe1ca22589db0af66c177d0b53",
+          "kpi_dashboard": "fcc0130fbb9d19efd0d30b89297697b0"
+        }
+      },
+      "consistency_hashes": {
+        "requirements_applicability": "f7b182b1a40badc328e084cad2867dce",
+        "gaps": "e09c239cbf37eb49f8b0494b8f1d9cc4",
+        "risk_signals": "7814f6072e20b3f9ba49f15bfa9d6ea9",
+        "priority_stream": "c17d23b874208216e29344b151e08d6a",
+        "tasks_today": "62c957fe1ca22589db0af66c177d0b53",
+        "kpi_dashboard": "fcc0130fbb9d19efd0d30b89297697b0"
+      },
+      "lineage_fingerprint": "6a83aff8a3c4e06d91f4976fd7af655e",
+      "stale_decay": {
+        "pending_badge": false,
+        "open_gaps": 5,
+        "open_risk": 1,
+        "task_count": 7,
+        "orphan_priority_risk": 0,
+        "closed_gap_active_task": 0,
+        "open_gap_keys": [
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:c5abaeba-348f-4843-b734-1644bdfb791f:MISSING_EVIDENCE",
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:MISSING_EVIDENCE",
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6:MISSING_EVIDENCE",
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:69fc66fe-e196-44d4-a20e-3fe68d316f7f:MISSING_EVIDENCE",
+          "6fd5ac4c-3fd4-4112-ade7-156977deb49f:d35a58ae-3c81-491c-9694-1d021dd3b8ad:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23:MISSING_EVIDENCE"
+        ]
+      }
+    }
+  ],
+  "lineage_fingerprint_r1": "6a83aff8a3c4e06d91f4976fd7af655e",
+  "lineage_fingerprint_r2": "6a83aff8a3c4e06d91f4976fd7af655e",
+  "lineage_fingerprint_r3": "6a83aff8a3c4e06d91f4976fd7af655e",
+  "replay_lineage_drift": [],
+  "r2_r3_lineage_equal": true
+}
