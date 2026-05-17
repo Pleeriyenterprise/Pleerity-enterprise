@@ -1,0 +1,22 @@
+{
+  "notification_lineage_depth": 2,
+  "lineage_growth_curve": [
+    {
+      "run": "R1",
+      "message_log_count": 49,
+      "lineage_sample_depth": 2
+    },
+    {
+      "run": "R2",
+      "message_log_count": 49,
+      "lineage_sample_depth": 2
+    },
+    {
+      "run": "R3",
+      "message_log_count": 49,
+      "lineage_sample_depth": 2
+    }
+  ],
+  "lineage_growth_pass": true,
+  "lineage_collapse_state": "collapsed_stable"
+}

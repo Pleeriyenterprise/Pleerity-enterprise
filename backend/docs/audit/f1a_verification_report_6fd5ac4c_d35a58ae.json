@@ -1,0 +1,162 @@
+{
+  "captured_at_utc": "2026-05-17T17:01:41.011903+00:00",
+  "verification_run": "f1a_harness_refinement_rerun_v1",
+  "unit": "F1",
+  "micro_unit": "F1a",
+  "unit_status": "IN_PROGRESS",
+  "parent_unit_status": "IN_PROGRESS",
+  "harness_phase": "harness_refinement_rerun",
+  "f1_pass": null,
+  "f1a_pass": null,
+  "classification_deferred": true,
+  "primary_rc_branch": null,
+  "f1a_rc15_cleared": true,
+  "critical_stop_triggered": false,
+  "failure_classification": "governed_replay_proof_candidate",
+  "checks": {
+    "classification_deferred": true,
+    "fixture_gate_pass": true,
+    "fixture_classification": "notification-replay-capable",
+    "delivery_authority_precedence_pass": true,
+    "acknowledgement_replay_equal": true,
+    "acknowledgement_certainty_escalation_on_replay": false,
+    "population_operational_ambiguity_present": true,
+    "replay_visible_impact_stable": true,
+    "lineage_growth_pass": true,
+    "notification_replay_stable_semantic": true,
+    "notification_replay_stable_raw_observability_only": true,
+    "vacuous_semantic_comparison_prevented": false,
+    "dedupe_deterministic": true,
+    "suppression_replay_equal": true,
+    "lineage_attributable": true,
+    "false_delivery_implication_on_replay_probe": false,
+    "false_delivery_implication_population_note": "population_SENT_rows_excluded_from_replay_rc",
+    "temporal_sane": true,
+    "unrelated_delta_zero": true,
+    "cross_tenant_bleed": false,
+    "audit_noise_pass": true,
+    "explainability_reconstruction_pass": true,
+    "replay_collapse_consistent": true
+  },
+  "fixture_classification": "notification-replay-capable",
+  "replay_notification": {
+    "raw_fingerprint": {
+      "R2": "3d8d55a73ad5024845a0c3225d182569",
+      "R3": "3d8d55a73ad5024845a0c3225d182569",
+      "replay_stable": true
+    },
+    "semantic_fingerprint": {
+      "R2": "af8be64b7430ebdc3d0f2901f6d03e96",
+      "R3": "af8be64b7430ebdc3d0f2901f6d03e96",
+      "replay_stable": true
+    },
+    "notification_replay_stable_raw": true,
+    "notification_replay_stable_semantic": true,
+    "timestamp_only_drift": false,
+    "replay_branch_hint": "replay-collapsible",
+    "vacuous_semantic_comparison_prevented": false,
+    "vacuous_raw_comparison_prevented": false,
+    "field_alignment": "m1_probe_outcomes_merged_into_r2_r3"
+  },
+  "acknowledgement_replay_pair": {
+    "replay_pair_question": "did_R2_R3_replay_alter_acknowledgement_certainty",
+    "idempotency_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f_COMPLIANCE_EXPIRY_REMINDER_2026-05-16_agent_at_yopmail.com_d38c424a52e4cf06",
+    "acknowledgement_replay_equal": true,
+    "acknowledgement_certainty_escalation_on_replay": false,
+    "acknowledgement_fingerprint_r2": "1efef78a2a1a294942644a8cc85dbf65",
+    "acknowledgement_fingerprint_r3": "1efef78a2a1a294942644a8cc85dbf65",
+    "confidence_rank_r2": 1,
+    "confidence_rank_r3": 1,
+    "R2_resolution": {
+      "message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "operational_ambiguity_only": true,
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    "R3_resolution": {
+      "message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "operational_ambiguity_only": true,
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    "vacuous_replay_pair": false,
+    "historical_ambiguity_excluded_from_replay_rc": true
+  },
+  "governed_mutations_wired": [
+    "F1-M1",
+    "F1-M8-observe"
+  ],
+  "governed_mutations_deferred": [
+    "F1-M2",
+    "F1-M3",
+    "F1-M4",
+    "F1-M5",
+    "F1-M6",
+    "F1-M7"
+  ],
+  "methodology_corrections": [
+    "acknowledgement_replay_pair_scoped_to_m1_idempotency_row",
+    "replay_notification_comparison_field_alignment_from_m1_outcomes",
+    "vacuous_null_semantic_comparison_prevented",
+    "population_ambiguity_excluded_from_f1_rc15",
+    "false_delivery_rc_scoped_to_replay_probe_row"
+  ],
+  "prior_f1_run": {
+    "preserved": true,
+    "report": "f1_verification_report_6fd5ac4c_d35a58ae.json",
+    "primary_rc_branch": "F1-RC-15",
+    "reclassified_as": "harness_methodology_ack_population_comparison"
+  },
+  "normalization_strategy": {
+    "observational_omit_keys": [
+      "created_at",
+      "updated_at",
+      "sent_at",
+      "delivered_at",
+      "provider_accepted_at",
+      "observed_at",
+      "acknowledged_at",
+      "next_run_at",
+      "last_attempt_at"
+    ],
+    "never_normalize": [
+      "delivery_authority",
+      "visible_user_impact",
+      "lineage",
+      "acknowledgement_certainty",
+      "suppression_state",
+      "replay_amplification"
+    ]
+  },
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "control_client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+  "control_property_id": "6d939c70-06ab-4dc8-8b36-204958d2cdb3",
+  "artifacts": {
+    "notification_replay": "docs/audit/f1a_notification_replay_6fd5ac4c_d35a58ae.json",
+    "dedupe_determinism": "docs/audit/f1a_dedupe_determinism_6fd5ac4c_d35a58ae.json",
+    "acknowledgement_semantics": "docs/audit/f1a_acknowledgement_semantics_6fd5ac4c_d35a58ae.json",
+    "acknowledgement_population_ambiguity": "docs/audit/f1a_acknowledgement_population_ambiguity_6fd5ac4c_d35a58ae.json",
+    "delivery_truth_matrix": "docs/audit/f1a_delivery_truth_matrix_6fd5ac4c_d35a58ae.json",
+    "delivery_truth_replay_probe": "docs/audit/f1a_delivery_truth_replay_probe_6fd5ac4c_d35a58ae.json",
+    "delivery_authority": "docs/audit/f1a_delivery_authority_6fd5ac4c_d35a58ae.json",
+    "visible_impact": "docs/audit/f1a_visible_impact_6fd5ac4c_d35a58ae.json",
+    "lineage_boundedness": "docs/audit/f1a_lineage_boundedness_6fd5ac4c_d35a58ae.json",
+    "suppression_replay": "docs/audit/f1a_suppression_replay_6fd5ac4c_d35a58ae.json",
+    "unrelated_surface_integrity": "docs/audit/f1a_unrelated_surface_integrity_6fd5ac4c_d35a58ae.json",
+    "audit_stability": "docs/audit/f1a_audit_stability_6fd5ac4c_d35a58ae.json",
+    "verification_report": "docs/audit/f1a_verification_report_6fd5ac4c_d35a58ae.json"
+  }
+}

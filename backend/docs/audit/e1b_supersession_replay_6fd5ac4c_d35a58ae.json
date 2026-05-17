@@ -1,0 +1,31 @@
+{
+  "supersession_replay_equal": true,
+  "supersession_state_fingerprint": {
+    "R1": "6abc7d9bf77a4b0b8d644b8d312e56cb",
+    "R2": "6abc7d9bf77a4b0b8d644b8d312e56cb",
+    "R3": "6abc7d9bf77a4b0b8d644b8d312e56cb"
+  },
+  "supersession_transition_matrix": [
+    {
+      "run": "R1",
+      "from_state": "6abc7d9bf77a4b0b8d644b8d312e56cb",
+      "to_state": "6abc7d9bf77a4b0b8d644b8d312e56cb",
+      "trigger": "E1-M1",
+      "governed": true
+    },
+    {
+      "run": "R2",
+      "from_state": "6abc7d9bf77a4b0b8d644b8d312e56cb",
+      "to_state": "6abc7d9bf77a4b0b8d644b8d312e56cb",
+      "trigger": "E1-M1",
+      "governed": true
+    },
+    {
+      "run": "R3",
+      "from_state": "6abc7d9bf77a4b0b8d644b8d312e56cb",
+      "to_state": "6abc7d9bf77a4b0b8d644b8d312e56cb",
+      "trigger": "E1-M1",
+      "governed": true
+    }
+  ]
+}

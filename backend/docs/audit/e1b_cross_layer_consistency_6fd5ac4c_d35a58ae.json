@@ -1,0 +1,18 @@
+{
+  "cross_layer_matrix": [
+    {
+      "layer": "document",
+      "entity_key": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+      "fingerprint": "6abc7d9bf77a4b0b8d644b8d312e56cb",
+      "consistent": true,
+      "notes": ""
+    },
+    {
+      "layer": "requirement_authority",
+      "entity_key": "c5abaeba-348f-4843-b734-1644bdfb791f",
+      "fingerprint": "ca222c443b54b8fc4df63c59dc04f26c",
+      "consistent": true,
+      "notes": ""
+    }
+  ]
+}

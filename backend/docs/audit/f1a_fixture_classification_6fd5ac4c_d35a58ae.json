@@ -1,0 +1,82 @@
+{
+  "captured_at_utc": "2026-05-17T17:00:45.994864+00:00",
+  "micro_unit": "F1a",
+  "parent_unit": "F1",
+  "parent_unit_status": "IN_PROGRESS",
+  "harness_phase": "harness_refinement_only",
+  "classification_deferred": true,
+  "pilot_client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "pilot_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "control_client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+  "control_property_id": "6d939c70-06ab-4dc8-8b36-204958d2cdb3",
+  "control_selection_reason": "explicit_cli_default",
+  "fixture_classification": "notification-replay-capable",
+  "proof_eligible": true,
+  "fail_fast_reasons": [],
+  "vacuous_proof_prevented": false,
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "message_log_count": 49,
+  "idempotency_key_count": 48,
+  "m1_probe_sample": {
+    "message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+    "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+    "status": "DELIVERED",
+    "metadata": {
+      "event_type": "REMINDER",
+      "client_name": "Nancy Brandon",
+      "expiring_count": "8",
+      "overdue_count": "0",
+      "portal_link": "https://pleerityenterprise.co.uk/requirements?status=DUE_SOON",
+      "company_name": "Oxford Heritage Lettings",
+      "certificate_reminders": "[{'type': 'Landlord registration (Scotland)', 'detail_type': 'Landlord registration (Scotland)', 'semantic_line': 'Evidence required before expiry', 'workflow_semantics_bucket': 'DOCUMENT_UPLOAD', 'property_address': 'Altrincham Townhouse, Manchester M2', 'due_date': '09 June 2026', 'days_overdue': None, 'days_remaining': 24}, {'type': 'Landlord registration (Northern Ireland)', 'detail_type': 'Landlord registration (Northern Ireland)', 'semantic_line': 'Evidence required before expiry', 'workflow_semantics_bucket': 'DOCUMENT_UPLOAD', 'property_address': 'Leamington Spa Victorian, Bristol BS', 'due_date': '09 June 2026', 'days_overdue': None, 'days_remaining': 24}, {'type': 'HMO licence', 'detail_type': 'HMO licence', 'semantic_line': 'Evidence required before expiry', 'workflow_semantics_bucket': 'DOCUMENT_UPLOAD', 'property_address': 'Leamington Spa Victorian, Bristol BS', 'due_date': '09 June 2026', 'days_overdue': None, 'days_remaining': 24}, {'type': 'HMO licence', 'detail_type': 'HMO licence', 'semantic_line': 'Evidence required before expiry', 'workflow_semantics_bucket': 'DOCUMENT_UPLOAD', 'property_address': 'Oxford Summertown, Oxford OX', 'due_date': '09 June 2026', 'days_overdue': None, 'days_remaining': 24}, {'type': 'Landlord registration (Northern Ireland)', 'detail_type': 'Landlord registration (Northern Ireland)', 'semantic_line': 'Evidence required before expiry', 'workflow_semantics_bucket': 'DOCUMENT_UPLOAD', 'property_address': 'Oxford Summertown, Oxford OX', 'due_date': '09 June 2026', 'days_overdue': None, 'days_remaining': 24}, {'type': 'HMO licence', 'detail_type': 'HMO licence', 'semantic_line': 'Evidence required before expiry', 'workflow_semantics_bucket': 'DOCUMENT_UPLOAD', 'property_address': 'Glasgow Shawlands, Glasgow G4', 'due_date': '09 June 2026', 'days_overdue': None, 'days_remaining': 24}, {'type': 'Landlord registration (Northern Ireland)', 'detail_type': 'Landlord registration (Northern Ireland)', 'semantic_line': 'Evidence required before expiry', 'workflow_semantics_bucket': 'DOCUMENT_UPLOAD', 'property_address': 'Liverpool Georgian Quarter, Liverpool L4', 'due_date': '09 June 2026', 'days_overdue': None, 'days_remaining': 24}, {'type': 'Written occupation contract (Wales)', 'detail_type': 'Written occupation contract (Wales)', 'semantic_line': 'Evidence required before expiry', 'workflow_semantics_bucket': 'DOCUMENT_UPLOAD', 'property_address': 'Kensington Garden Flat, London W8', 'due_date': '04 June 2026', 'days_overdue': None, 'days_remaining': 19}]",
+      "declaration_reminders": "[]",
+      "assessment_reminders": "[]",
+      "condition_reminders": "[]",
+      "other_reminders": "[]",
+      "certificate_reminders_json": "[{\"type\": \"Landlord registration (Scotland)\", \"detail_type\": \"Landlord registration (Scotland)\", \"semantic_line\": \"Evidence required before expiry\", \"workflow_semantics_bucket\": \"DOCUMENT_UPLOAD\", \"property_address\": \"Altrincham Townhouse, Manchester M2\", \"due_date\": \"09 June 2026\", \"days_overdue\": null, \"days_remaining\": 24}, {\"type\": \"Landlord registration (Northern Ireland)\", \"detail_type\": \"Landlord registration (Northern Ireland)\", \"semantic_line\": \"Evidence required before expiry\", \"workflow_semantics_bucket\": \"DOCUMENT_UPLOAD\", \"property_address\": \"Leamington Spa Victorian, Bristol BS\", \"due_date\": \"09 June 2026\", \"days_overdue\": null, \"days_remaining\": 24}, {\"type\": \"HMO licence\", \"detail_type\": \"HMO licence\", \"semantic_line\": \"Evidence required before expiry\", \"workflow_semantics_bucket\": \"DOCUMENT_UPLOAD\", \"property_address\": \"Leamington Spa Victorian, Bristol BS\", \"due_date\": \"09 June 2026\", \"days_overdue\": null, \"days_remaining\": 24}, {\"type\": \"HMO licence\", \"detail_type\": \"HMO licence\", \"semantic_line\": \"Evidence required before expiry\", \"workflow_semantics_bucket\": \"DOCUMENT_UPLOAD\", \"property_address\": \"Oxford Summertown, Oxford OX\", \"due_date\": \"09 June 2026\", \"days_overdue\": null, \"days_remaining\": 24}, {\"type\": \"Landlord registration (Northern Ireland)\", \"detail_type\": \"Landlord registration (Northern Ireland)\", \"semantic_line\": \"Evidence required before expiry\", \"workflow_semantics_bucket\": \"DOCUMENT_UPLOAD\", \"property_address\": \"Oxford Summertown, Oxford OX\", \"due_date\": \"09 June 2026\", \"days_overdue\": null, \"days_remaining\": 24}, {\"type\": \"HMO licence\", \"detail_type\": \"HMO licence\", \"semantic_line\": \"Evidence required before expiry\", \"workflow_semantics_bucket\": \"DOCUMENT_UPLOAD\", \"property_address\": \"Glasgow Shawlands, Glasgow G4\", \"due_date\": \"09 June 2026\", \"days_overdue\": null, \"days_remaining\": 24}, {\"type\": \"Landlord registration (Northern Ireland)\", \"detail_type\": \"Landlord registration (Northern Ireland)\", \"semantic_line\": \"Evidence required before expiry\", \"workflow_semantics_bucket\": \"DOCUMENT_UPLOAD\", \"property_address\": \"Liverpool Georgian Quarter, Liverpool L4\", \"due_date\": \"09 June 2026\", \"days_overdue\": null, \"days_remaining\": 24}, {\"type\": \"Written occupation contract (Wales)\", \"detail_type\": \"Written occupation contract (Wales)\", \"semantic_line\": \"Evidence required before expiry\", \"workflow_semantics_bucket\": \"DOCUMENT_UPLOAD\", \"property_address\": \"Kensington Garden Flat, London W8\", \"due_date\": \"04 June 2026\", \"days_overdue\": null, \"days_remaining\": 19}]",
+      "declaration_reminders_json": "[]",
+      "assessment_reminders_json": "[]",
+      "condition_reminders_json": "[]",
+      "other_reminders_json": "[]",
+      "recipient": "agent@yopmail.com",
+      "reminder_refs": "[{\"property_id\": \"cd7c9bbc-f100-42e9-b5b1-69384898c75f\", \"requirement_type\": \"scotland_landlord_registration\", \"due_date\": \"2026-06-09\", \"requirement_id\": \"ad878819-8de2-4a32-85f2-9ee21f09817c\"}, {\"property_id\": \"0a6f0874-19b4-4344-b2af-f423585a5b94\", \"requirement_type\": \"landlord_registration_ni\", \"due_date\": \"2026-06-09\", \"requirement_id\": \"91ad1f2d-e267-44df-b7f9-6e9a2230f4b5\"}, {\"property_id\": \"0a6f0874-19b4-4344-b2af-f423585a5b94\", \"requirement_type\": \"hmo_license\", \"due_date\": \"2026-06-09\", \"requirement_id\": \"b2f4cc3b-5a10-4274-b6fb-83f0f4681385\"}, {\"property_id\": \"51d71a27-94c3-4ff6-be9b-febd7d5ae796\", \"requirement_type\": \"hmo_license\", \"due_date\": \"2026-06-09\", \"requirement_id\": \"0b317b5b-a760-4f76-baf0-9cbee75f983e\"}, {\"property_id\": \"51d71a27-94c3-4ff6-be9b-febd7d5ae796\", \"requirement_type\": \"landlord_registration_ni\", \"due_date\": \"2026-06-09\", \"requirement_id\": \"40ddb2cc-4c36-474f-981d-296e0248ab31\"}, {\"property_id\": \"0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68\", \"requirement_type\": \"hmo_license\", \"due_date\": \"2026-06-09\", \"requirement_id\": \"ef6abb19-75a0-4382-a846-ff4c51dcddfa\"}, {\"property_id\": \"08dd5b1f-d963-4827-aa8a-a3daddd144cf\", \"requirement_type\": \"landlord_registration_ni\", \"due_date\": \"2026-06-09\", \"requirement_id\": \"81cef5bd-cccf-421c-8758-ae916898b0bb\"}, {\"property_id\": \"d35a58ae-3c81-491c-9694-1d021dd3b8ad\", \"requirement_type\": \"occupation_contract\", \"due_date\": \"2026-06-04\", \"requirement_id\": \"488269bb-1be7-47e7-a030-98accf6dffc4\"}]",
+      "requirement_name": "Landlord registration (Scotland)",
+      "requirement_code": "scotland_landlord_registration",
+      "property_address": "Altrincham Townhouse, Manchester M2",
+      "due_date": "09 June 2026",
+      "days_remaining": "24",
+      "days_overdue": "None",
+      "subject": "Renewal reminder: Landlord registration (Scotland) due soon",
+      "email_category": "compliance_notifications"
+    },
+    "idempotency_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f_COMPLIANCE_EXPIRY_REMINDER_2026-05-16_agent_at_yopmail.com_d38c424a52e4cf06"
+  },
+  "template_probe_available": true,
+  "activation_blocked": {
+    "notification_dispatch_globally_activated": false,
+    "expected_f1_m8_class": "activation-blocked",
+    "activation_blocked_observed": true,
+    "governance_source": "NOTIFICATION_GOVERNANCE_INVENTORY.json"
+  },
+  "governance_inventory_policy": {
+    "canonical_send_api": "services.notification_orchestrator.notification_orchestrator.send",
+    "bypass_governance_test": "tests/test_notification_bypass_governance.py",
+    "notification_dispatch_workflow_family_globally_activated": false,
+    "message_logs_intended_writer": "notification_orchestrator_internal_paths",
+    "semantic_family_and_cta_rules": "backend/docs/audit/NOTIFICATION_OWNERSHIP_READINESS.md#governed-notification-semantic-families--authoritative-in-repo",
+    "operational_email_deep_links": "backend/docs/audit/NOTIFICATION_OWNERSHIP_READINESS.md#operational-email-deep-links--cta-destinations-code-owned",
+    "email_cta_semantics_cross_ref": "docs/governance/PRESENTATION_LANGUAGE_GOVERNANCE.md#email--notification-cta-semantics-operational-vs-lifecycle",
+    "pilot_rendered_truth_verification": "backend/docs/audit/NOTIFICATION_OWNERSHIP_READINESS.md#pilot--rendered-truth-verification-environment-sign-off"
+  },
+  "prior_f1_run": {
+    "preserved": true,
+    "verification_report": "f1_verification_report_6fd5ac4c_d35a58ae.json",
+    "primary_rc_branch": "F1-RC-15",
+    "reclassified_as": "harness_methodology_ack_replay_comparison"
+  },
+  "control_message_logs_fingerprint": {
+    "message_log_count": 37,
+    "fingerprint": "bdea58a1b2f9d4a337cc68736e096af1"
+  }
+}

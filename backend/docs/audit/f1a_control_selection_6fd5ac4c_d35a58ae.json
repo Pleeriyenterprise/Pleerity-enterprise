@@ -1,0 +1,24 @@
+{
+  "captured_at_utc": "2026-05-17T17:00:45.994864+00:00",
+  "micro_unit": "F1a",
+  "parent_unit": "F1",
+  "pilot_client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "pilot_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "control_client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+  "control_property_id": "6d939c70-06ab-4dc8-8b36-204958d2cdb3",
+  "selection_reason": "explicit_cli_default",
+  "fixture_classification": "notification-replay-capable",
+  "proof_eligible": true,
+  "control_fingerprints": {
+    "gaps": "189552df56ced503748cfd1d3c8c5cb0",
+    "risk_priority": "f0bc03a5537b7c4c63b68f7b412601c6",
+    "dashboard_tasks": "6e0a81cc926ff0ff3b7ad9347ff194ce",
+    "property": "c26963ee9f3809f2",
+    "gap_count": 6,
+    "score_last_calculated_at": "2026-05-17T03:24:38.456310+00:00"
+  },
+  "control_message_logs": {
+    "message_log_count": 37,
+    "fingerprint": "bdea58a1b2f9d4a337cc68736e096af1"
+  }
+}

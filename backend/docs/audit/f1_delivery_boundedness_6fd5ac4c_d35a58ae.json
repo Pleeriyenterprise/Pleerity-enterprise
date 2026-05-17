@@ -1,0 +1,8 @@
+{
+  "message_logs_growth_on_replay": {
+    "R1": 49,
+    "R2": 49,
+    "R3": 49
+  },
+  "classification_deferred": true
+}

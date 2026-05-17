@@ -1,0 +1,20 @@
+{
+  "notification_behaviour_classes": [
+    {
+      "run": "R2",
+      "class": "idempotent",
+      "outcome": "duplicate_ignored"
+    },
+    {
+      "run": "R3",
+      "class": "idempotent",
+      "outcome": "duplicate_ignored"
+    }
+  ],
+  "activation_blocked": {
+    "notification_dispatch_globally_activated": false,
+    "expected_f1_m8_class": "activation-blocked",
+    "activation_blocked_observed": true,
+    "governance_source": "NOTIFICATION_GOVERNANCE_INVENTORY.json"
+  }
+}

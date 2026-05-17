@@ -481,6 +481,60 @@ Record result in tracker **A1 classification record** table.
 
 **Pilot reference (2026-05-17):** `6fd5ac4c-3fd4-4112-ade7-156977deb49f` / `d35a58ae-3c81-491c-9694-1d021dd3b8ad` — authoritative: `d1b_verification_report_6fd5ac4c_d35a58ae.json`, `d1b_propagation_replay_6fd5ac4c_d35a58ae.json`. Tracker status: **DONE**.
 
+#### E1 — Evidence / document state authority (only after D1 **DONE**; launch unit **E1**)
+
+**Authority:** `LAUNCH_AUTHORITY_TRACKER.md` § **E1** (rev 3 DoD). **Not** authority-engine redesign, reconciliation redesign, extraction redesign, workflow/queue/fanout/scheduler/notification changes, or production route alignment.
+
+**Prerequisites:** D1 + D1b **DONE**; C1 + C2 **DONE**; staging `MONGO_URL` + `DB_NAME=pleerity_staging`; pilot `CID` + `PID`; control pair in `e1_control_selection_*` (may reuse D1/C2 control `04ceda9f…` / `6d939c70…`).
+
+| # | Step | Command / action | Pass criteria |
+|---|------|------------------|---------------|
+| E1-0 | **Fixture seed (E1b)** | `python -m scripts.e1b_staging_fixture_seed --client-id CID --property-id PID` | `e1b_fixture_seed_*`; classification **authority-capable** |
+| E1-0a | **Preflight (E1a gate)** | `python -m scripts.e1a_preflight_capture --client-id CID --property-id PID` | `e1a_fixture_classification_*` — fail-fast if authority-incapable |
+| E1-1 | **R1/R2/R3 — authority replay (E1-M1)** | `python -m scripts.e1b_staging_verification --verification-run e1b_staging_proof_v1` | Semantic replay stable R2=R3; `e1b_pass=true` |
+| E1-2 | **Reconciliation observe (E1-M7)** | Captured inside E1b script | `dry_run=True` only |
+| E1-3 | **Contract regression** | `pytest tests/test_e1_verification_contract.py tests/test_e1a_verification_contract.py` | Green |
+| E1-4 | **Baseline suites (§14)** | Per tracker E1 DoD §14 | Required before **DONE** (not yet closed) |
+| E1-5 | **Report** | `e1b_verification_report_{slug}.json` | **Authoritative for VERIFIED**; `e1_*`/`e1a_*` preserved for history |
+
+**Governed mutations (harness v1):** **E1-M1** (replay), **E1-M7 observe** (dry_run). **E1-M2–M6, M8–M9** deferred to expanded harness if DoD requires additional mutation paths.
+
+**RC discipline:** On `e1_pass=false`, **preserve all artifacts**, record `primary_rc_branch` (**E1-RC-1**–**E1-RC-24**), **stop** — no remediation without separate approved unit.
+
+**Forbidden:** Raw Mongo authority edits; reconciliation **apply** under initial proof unless explicitly approved; OCR/extraction model changes; fanout/queue/scheduler/notification changes; bundling fixes into verification PRs.
+
+**Pilot reference (2026-05-17):** `6fd5ac4c-3fd4-4112-ade7-156977deb49f` / `d35a58ae-3c81-491c-9694-1d021dd3b8ad` — authoritative: `e1b_verification_report_6fd5ac4c_d35a58ae.json` (`e1b_pass=true`). Preserved history: `e1_*` (E1-RC-2, authority-incapable), `e1a_*` (E1a-RC-FIXTURE). Tracker status: **VERIFIED** (parent **not DONE**).
+
+#### F1 — Notification governance replay (only after E1 **VERIFIED**; launch unit **F1** + harness **F1a**)
+
+**Authority:** `LAUNCH_AUTHORITY_TRACKER.md` § **F1** (rev 2 DoD) + § **F1a**; `audit/NOTIFICATION_GOVERNANCE_INVENTORY.json`; **L-008**. **Not** orchestrator/provider/queue/scheduler/template redesign, retry redesign, acknowledgement-system redesign, or global `NOTIFICATION_DISPATCH` activation.
+
+**Prerequisites:** E1 **VERIFIED**; D1 + C1 + C2 **DONE**; staging `MONGO_URL` + `DB_NAME=pleerity_staging`; pilot `CID` + `PID`; control pair in `f1a_control_selection_*` (default `04ceda9f…` / `6d939c70…`).
+
+| # | Step | Command / action | Pass criteria |
+|---|------|------------------|---------------|
+| F1-0 | **Preflight** | `python -m scripts.f1a_preflight_capture --client-id CID --property-id PID` | `f1a_fixture_classification_*` — **notification-replay-capable** |
+| F1-1 | **R1/R2/R3 — F1-M1 replay** | `python -m scripts.f1a_staging_verification --verification-run f1a_harness_refinement_rerun_v1` | R2/R3 `duplicate_ignored`; semantic replay stable; no log growth |
+| F1-2 | **Ack replay-pair (F1a)** | Captured in `f1a_acknowledgement_semantics_*` | `acknowledgement_replay_equal=true` on M1 row — **not** population diversity |
+| F1-3 | **F1-M8 observe** | `NOTIFICATION_DISPATCH` off in inventory | Activation-blocked observe only |
+| F1-4 | **Contract regression** | `pytest tests/test_f1_verification_contract.py tests/test_f1a_verification_contract.py` | Green |
+| F1-5 | **Baseline suites (§8)** | Per tracker F1 DoD §8 | Required before **DONE** (not yet closed) |
+| F1-6 | **Report** | `f1a_verification_report_{slug}.json` | **Authoritative for VERIFIED**; `f1_*` preserved for history |
+
+**Governed mutations (proof scope):** **F1-M1** (stable idempotency replay probe); **F1-M8** observe. **F1-M2–M7** deferred.
+
+**RC / critical-stop discipline:** On replay defect signals (amplification, cross-tenant bleed, ack certainty **escalation on replay**, delivery-authority contradiction): **preserve artifacts**, record `primary_rc_branch`, **stop** — **no** remediation without separate approved unit.
+
+**First-run history:** Original `f1_*` (`f1_first_governed_staging_run_v1`) critical-stopped **F1-RC-15** — **reclassified** as harness methodology (population ack compare), **not** product instability. **Do not delete** `f1_verification_report_*`.
+
+**Replay normalization (observational only):** Timestamp fields + run labels may be stripped for **semantic replay compare** only. **Never** normalize delivery authority, visible user impact, acknowledgement certainty on replay pair, suppression state, lineage, or amplification signals.
+
+**Watchlist (non-blocking for VERIFIED):** Historical `inferred_acknowledgement` in population; provider/inbox certainty out of scope; **F1-M2–M7** unproven.
+
+**Forbidden:** Raw Mongo `message_logs` injection; orchestrator redesign under F1 guise; treating provider **SENT** as user delivery guarantee.
+
+**Pilot reference (2026-05-17):** `6fd5ac4c-3fd4-4112-ade7-156977deb49f` / `d35a58ae-3c81-491c-9694-1d021dd3b8ad` — authoritative: `f1a_verification_report_6fd5ac4c_d35a58ae.json` (`f1a_rc15_cleared=true`, exit 0). Preserved: `f1_*` (**F1-RC-15** harness). Tracker status: **VERIFIED** (parent **not DONE**).
+
 ---
 
 ## 13. Instrumentation & analytics (pilot observation)

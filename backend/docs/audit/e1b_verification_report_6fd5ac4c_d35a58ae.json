@@ -1,0 +1,93 @@
+{
+  "captured_at_utc": "2026-05-17T15:49:50.697130+00:00",
+  "verification_run": "e1b_staging_proof_v1",
+  "unit": "E1",
+  "micro_unit": "E1b",
+  "parent_unit_status": "IN_PROGRESS",
+  "e1b_pass": true,
+  "e1_authority_proof_ready": true,
+  "primary_rc_branch": null,
+  "failure_classification": null,
+  "checks": {
+    "fixture_gate_pass": true,
+    "fixture_classification": "authority-capable",
+    "precedence_pass": true,
+    "authority_cardinality_pass": true,
+    "lineage_replay_stable_semantic": true,
+    "lineage_replay_stable_raw_observability_only": false,
+    "supersession_replay_equal": true,
+    "supersession_consistent": true,
+    "collapse_deterministic": true,
+    "collapse_growth_pass": true,
+    "reconciliation_replay_equal": true,
+    "reconciliation_convergent": true,
+    "human_review_preservation_pass": true,
+    "lineage_growth_pass": true,
+    "lineage_attributable": true,
+    "explainability_reconstruction_pass": true,
+    "cross_layer_pass": true,
+    "temporal_sane": true,
+    "amplification_pass": true,
+    "audit_noise_pass": true,
+    "bounded_growth_pass": true,
+    "suppression_explainable": true,
+    "unrelated_delta_zero": true
+  },
+  "fixture_classification": "authority-capable",
+  "replay_authority": {
+    "raw_fingerprint": {
+      "R2": "37a6ab98bbe87a83f9aebea6edc33585",
+      "R3": "63a08b7f25e705a7131e0b136cd74c55",
+      "replay_stable": false
+    },
+    "semantic_fingerprint": {
+      "R2": "ca222c443b54b8fc4df63c59dc04f26c",
+      "R3": "ca222c443b54b8fc4df63c59dc04f26c",
+      "replay_stable": true
+    },
+    "lineage_replay_stable_raw": false,
+    "lineage_replay_stable_semantic": true,
+    "timestamp_only_drift": true
+  },
+  "normalization_strategy": {
+    "semantic_omit_keys": [
+      "evidence_last_updated_at",
+      "evidence_last_verified_at"
+    ],
+    "supersession_empty_replay": "equality_without_truthiness_gate",
+    "fixture_requirement": "authority-capable_before_replay"
+  },
+  "prior_artifacts_preserved": {
+    "e1": "e1_verification_report_6fd5ac4c_d35a58ae.json",
+    "e1a": "e1a_verification_report_6fd5ac4c_d35a58ae.json"
+  },
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+  "document_id": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+  "control_client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+  "control_property_id": "6d939c70-06ab-4dc8-8b36-204958d2cdb3",
+  "governed_mutations": [
+    "E1-M1",
+    "E1-M7-observe"
+  ],
+  "artifacts": {
+    "fixture_classification": "docs/audit/e1b_fixture_classification_6fd5ac4c_d35a58ae.json",
+    "authority_snapshot": "docs/audit/e1b_authority_snapshot_6fd5ac4c_d35a58ae.json",
+    "replay": "docs/audit/e1b_replay_6fd5ac4c_d35a58ae.json",
+    "authority_precedence": "docs/audit/e1b_authority_precedence_6fd5ac4c_d35a58ae.json",
+    "authority_cardinality": "docs/audit/e1b_authority_cardinality_6fd5ac4c_d35a58ae.json",
+    "supersession_replay": "docs/audit/e1b_supersession_replay_6fd5ac4c_d35a58ae.json",
+    "authority_collapse": "docs/audit/e1b_authority_collapse_6fd5ac4c_d35a58ae.json",
+    "collapse_boundedness": "docs/audit/e1b_collapse_boundedness_6fd5ac4c_d35a58ae.json",
+    "reconciliation_suppression": "docs/audit/e1b_reconciliation_suppression_6fd5ac4c_d35a58ae.json",
+    "human_review_preservation": "docs/audit/e1b_human_review_preservation_6fd5ac4c_d35a58ae.json",
+    "lineage_boundedness": "docs/audit/e1b_lineage_boundedness_6fd5ac4c_d35a58ae.json",
+    "authority_explainability": "docs/audit/e1b_authority_explainability_6fd5ac4c_d35a58ae.json",
+    "lineage_trace": "docs/audit/e1b_lineage_trace_6fd5ac4c_d35a58ae.json",
+    "cross_layer_consistency": "docs/audit/e1b_cross_layer_consistency_6fd5ac4c_d35a58ae.json",
+    "audit_stability": "docs/audit/e1b_audit_stability_6fd5ac4c_d35a58ae.json",
+    "unrelated_surface_integrity": "docs/audit/e1b_unrelated_surface_integrity_6fd5ac4c_d35a58ae.json",
+    "verification_report": "docs/audit/e1b_verification_report_6fd5ac4c_d35a58ae.json"
+  }
+}

@@ -6,7 +6,7 @@
 
 **Allowed status values only:** `READY` | `PARTIAL` | `BLOCKED` | `DEFERRED_FOR_POST_LAUNCH` | `ACCEPTED_LAUNCH_RISK`
 
-**Last tracker update:** 2026-05-17 (D1 **DONE** via D1b authoritative staging; E1 DoD drafting **unlocked**)
+**Last tracker update:** 2026-05-17 (E1 **VERIFIED**; **F1** **VERIFIED** — **F1a DONE**; parent F1 **not DONE**; no remediation)
 
 **TIER_0 routing:** [GOVERNANCE_INDEX.md](../GOVERNANCE_INDEX.md) — canonical navigation spine; this tracker remains launch gate status only (no duplicate recovery authority).
 
@@ -941,7 +941,8 @@ If implementation discovery shows the unit is too large:
 | **C2a** | **DONE** | Root cause: `regenerated_ids` + `verification_fingerprint_normalization`; no product fix |
 | **D1** | **DONE** (2026-05-17) | Authoritative `d1b_harness_rerun_v3` — `d1_pass=true`; § D1 closure below |
 | **D1b** | **DONE** (2026-05-17) | Harness refinement; `d1b_*` authoritative; original `d1_*` preserved |
-| **E1** | **NOT_STARTED** (DoD drafting **unlocked** 2026-05-17) | Implementation **blocked** until E1 DoD approved — **not** F1 |
+| **E1** | **VERIFIED** (2026-05-17; **E1a**/**E1b DONE**) | Authoritative: `e1b_verification_report_*` `e1b_pass=true`; § E1 closure below — **not DONE** (review discipline) |
+| **F1** | **VERIFIED** (2026-05-17; **F1a DONE**) | Authoritative: `f1a_verification_report_*` (`f1a_rc15_cleared=true`); `f1_*` preserved (**F1-RC-15** reclassified harness); § F1 closure — **not DONE** |
 | **C3+** | **BLOCKED** | No formal unit |
 
 ---
@@ -2801,13 +2802,701 @@ All under `backend/docs/audit/` with slug `{client_id_8}_{property_id_8}`:
 | **Scope** | Upload/verify/reject → authority state; no stale extraction overriding human review (**L-004**) |
 | **Canonical authority** | `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`; `audit/AUTHORITY_WRITE_PATH_RECONCILIATION.md`; **L-004**, **L-005** |
 | **Code areas likely affected** | `evidence_review_verify.py`, `document_operational_state.py`, extraction supersession services |
-| **Unit status** | **NOT_STARTED** — E1 DoD drafting **UNLOCKED** (2026-05-17); implementation **blocked** until E1 DoD approved |
-| **Verification evidence** | Verify changes requirement projection; gap sync follows; audit event |
-| **Governance docs after** | **L-004** row; AUTHORITY_WRITE_PATH |
-| **Regression tests** | Evidence review HTTP suites; operational state tests |
-| **Rollback / safety** | Reconciliation job dry_run first |
+| **Unit status** | **VERIFIED** (2026-05-17) — DoD **rev 3 approved**; **E1a**/**E1b DONE**; authoritative proof `e1b_*`; parent **intentionally not DONE** (deepest truth-authority layer — governance review pause) |
+| **Verification evidence** | § **E1 — Closure evidence (VERIFIED)** below; authoritative `e1b_verification_report_6fd5ac4c_d35a58ae.json`; preserved `e1_*`, `e1a_*` |
+| **Governance docs after** | This tracker; **L-004** row; `audit/AUTHORITY_WRITE_PATH_RECONCILIATION.md`; `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`; `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 E1; `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` |
+| **Regression tests** | Evidence review / operational-state / authority-sync suites — see E1 §14 |
+| **Rollback / safety** | Reconciliation jobs **dry_run** first; no raw Mongo authority edits; no bypass of `sync_requirement_evidence_authority` |
 
-**Unlock (2026-05-17):** D1 **DONE** → **E1 DoD drafting only**. **Do not** start E1 implementation, evidence-authority code changes, **F1**, notifications, scheduler redesign, or fanout remediation without separate approval.
+**Unlock (2026-05-17):** D1 **DONE** → E1 DoD **approved** → **IN_PROGRESS** (verification/governance only). **Do not** ship evidence-authority remediation, **F1**, notifications, scheduler redesign, queue/fanout remediation, or document-workflow redesign under E1 without separate approval.
+
+---
+
+#### E1 — Definition of Done (rev 3 — 2026-05-17; **approved**)
+
+**Rev 2 additions (2026-05-17):** authority precedence hierarchy (§3a); replay-idempotent supersession semantics (§4b); authority collapse semantics (§4c); evidence-lineage boundedness (§11b); operational explainability verification (§6b); **E1-RC-16**–**E1-RC-20**; tightened DONE gates (§16).
+
+**Rev 3 additions (2026-05-17):** authority-state cardinality (§3b); replay-stable reconciliation suppression (§3c); human-review immutability (§4d); authority-collapse boundedness (§4e); **E1-RC-21**–**E1-RC-24**; further DONE gate tightening (§16).
+
+**Purpose:** Prove **deterministic evidence and document state authority** behaviour using **existing** governed semantics — principally `requirement_evidence_authority.sync_requirement_evidence_authority` via `authority_mutation_fanout.authority_sync_with_transition_observability`, `document_operational_state`, `evidence_review_state` / Evidence Review V2 lifecycle, extraction supersession and reconciliation, and client runtime projection (`requirement_client_runtime_surface`, `client_requirement_lifecycle`) — aligned to `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md`, `audit/AUTHORITY_WRITE_PATH_RECONCILIATION.md`, and applicable `STREAM_E_MUTATION_FANOUT_MATRIX.md` rows. E1 verifies that governed evidence mutations produce **expected, attributable, replay-stable authority outcomes** — including **authority-state cardinality integrity**, **deterministic authority precedence resolution**, **replay-stable reconciliation suppression**, **human-review immutability**, **cross-layer consistency**, **replay-idempotent supersession**, **authority collapse determinism and boundedness**, **reconciliation convergence**, **bounded evidence lineage**, **operational explainability**, **lineage integrity**, **bounded authority history growth**, **temporally sane ordering**, and **cross-tenant isolation** — without silent suppression, authority amplification, parallel active authority branches, or contradictory evidence states.
+
+**Upstream precondition (accepted):** A1 **DONE**, B1 **DONE**, C1 **DONE**, C2 **DONE**, C2a **DONE**, D1 **DONE**, D1b **DONE** on pilot tenant. Materialisation visibility, queue/recalc replay safety, downstream convergence, and propagation fanout determinism are **already proven**; E1 **consumes** those passes and does **not** re-prove full C1/C2/D1 suites except where evidence authority must chain to queue `correlation_id`, fanout `transition_id`, or downstream convergence samples.
+
+**Pilot tenant (staging verification only):** `client_id=6fd5ac4c-3fd4-4112-ade7-156977deb49f`, `property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad`, `pleerity_staging`. **Control unrelated** entity pair documented in `e1_control_selection_{slug}.json` (may reuse D1/C2 control `04ceda9f…` / `6d939c70…`). Product logic must remain **tenant-agnostic** (no hardcoded IDs in services/tests).
+
+**One-line boundary:** E1 proves **governed evidence/document authority is cardinality-correct (single active winner), precedence-deterministic, transition-correct, replay-stable (incl. supersession, reconciliation suppression, collapse + collapse-bounded), human-review-immutable, lineage-attributable and lineage-bounded, supersession-explainable, reconciliation-convergent, operationally reconstructable, cross-layer consistent, temporally sane, bounded, audit-stable, and cross-tenant isolated** — verification only within existing authority semantics.
+
+##### 1. Scope and authoritative boundary (mandatory)
+
+**E1 verifies (in scope):**
+
+| Layer | What E1 proves |
+|-------|----------------|
+| **Evidence authority writer** | `sync_requirement_evidence_authority` outcomes: requirement evidence projection, gap sync side-effects where invoked, transition trace fields, `reconciliation_recommended` flags |
+| **Authority entrypoints** | `authority_sync_with_transition_observability` on document verify (v1/v2), evidence review lifecycle, match resolution, extraction supersession paths that call authority sync |
+| **Document operational state** | `document_operational_state` derived states vs persisted review/extraction fields — accepted / rejected / superseded / pending / reconciliation-needed semantics |
+| **Evidence review state** | `effective_evidence_review_state` / V2 review events — verify, reject, reopen, supersede, external verify, mark-expired |
+| **Supersession** | Extraction confirmation superseded by human review; `extraction_confirmation_superseded` / `superseded_by_admin_decision` alignment |
+| **Reconciliation** | `evidence_extraction_reconciliation` — historical verified alignment, idempotent skip when aligned, dry_run scan semantics |
+| **Client authority projection** | `project_requirement_row_client_runtime`, `client_lifecycle_state` / `evidence_authority` coherence after governed mutations |
+| **Replay authority** | Stable re-invocation of same governed authority mutation does not contradict prior settled state |
+| **Lineage** | Evidence mutations attributable via `correlation_id`, `transition_id`, document id, requirement id, audit event types |
+| **Downstream handoff** | Authority mutation → gap sync / recalc enqueue **observable** where matrix expects (consume D1 fanout proof; do not redesign) |
+| **Cross-tenant isolation** | Pilot evidence activity does not mutate control-tenant authority fingerprints |
+| **Suppression provenance** | Blocked or deferred authority paths record governed reason — silent suppression is **E1 failure** |
+| **Authority precedence** | Conflicting evidence signals resolve per governed precedence — lower authority cannot silently override higher (§3a) |
+| **Supersession replay** | Stable replay does not re-supersede or oscillate review outcomes (§4b) |
+| **Authority collapse** | Redundant authority writes collapse deterministically on replay with lineage retained (§4c) |
+| **Evidence lineage boundedness** | Supersession / override / reconciliation ancestry remains finite on replay (§11b) |
+| **Operational explainability** | Satisfied/rejected/superseded/reopened/externally-verified states reconstructable from governed history (§6b) |
+| **Authority-state cardinality** | At most one active winning authority state per governed entity window; no parallel winners (§3b) |
+| **Reconciliation suppression replay** | Identical replay → identical reconciliation suppression outcomes (§3c) |
+| **Human-review immutability** | Human authoritative decisions preserved across replay/reconciliation/collapse (§4d) |
+| **Collapse boundedness** | Collapse history and collapsed-lineage depth bounded on replay (§4e) |
+
+**Authoritative evidence state owners (must not be duplicated in E1 proof):**
+
+| Authority | Module / contract | Role |
+|-----------|-------------------|------|
+| Requirement evidence sync | `services/requirement_evidence_authority.py` — `sync_requirement_evidence_authority` | **Single writer** for evidence-driven requirement authority projection |
+| Transition observability | `services/requirement_transition_observability.py` + `authority_mutation_fanout.py` | Wraps authority sync; attaches fanout / activation overlays |
+| Document operational projection | `services/document_operational_state.py` | Derived presentation state — must align with review/extraction truth |
+| Client runtime projection | `services/requirement_client_runtime_surface.py`, `services/client_requirement_lifecycle.py` | Client-visible status / lifecycle — must align with authority after sync |
+| Client status doctrine | `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md` | KPI vs operational-task divergence rules |
+| Write-path reconciliation | `audit/AUTHORITY_WRITE_PATH_RECONCILIATION.md` | Canonical paths; optimistic verify promotion visibility (**L-004**) |
+
+**Ownership boundaries (explicit — E1 does not verify):**
+
+| Owner | Remains responsible for | E1 relationship |
+|-------|-------------------------|-----------------|
+| **D1 (D-layer)** | Propagation fanout topology, branch cardinality, suppression determinism on `transition_fanout` | E1 **consumes** D1 pass; may sample fanout rows after evidence mutations — does **not** re-prove full D1 replay matrix |
+| **C1 (C-layer)** | `compliance_recalc_queue` enqueue/worker/reclaim/duplicate suppression | E1 may assert recalc **enqueued or suppressed with reason** after verify — does not re-open C1 unless authority path proves queue contract regression |
+| **C2 (C-layer)** | Downstream gaps/risk/tasks/score convergence after recalc | E1 may spot-check post-authority convergence lag — does not re-run full C2 hash suite unless E1-RC implicates downstream churn |
+| **F1** | Notifications, `message_logs`, template governance (**L-008**) | **Out of scope** — no notification proof |
+| **Scheduler / jobs** | `job_runner`, reconciliation cron ownership, reclaim | **Observe only** — E1 does not redesign cadence |
+| **AI extraction assistance** | OCR/extraction models, prompt tuning, enrichment pipelines | **Out of scope** — E1 verifies **governed outcomes** when extraction present (confirm/reject/supersede), not model quality |
+| **Document storage** | Blob store, virus scan, upload transport | **Out of scope** — upload success assumed; authority semantics only |
+| **Task / Today systems** | `unified_tasks_service`, volatile task ids (C2a watchlist) | **Out of scope** — may observe task deltas as secondary signal only |
+| **Fanout / queue topology** | Routing, activation registry policy | **Out of scope** — observe traces only |
+
+**E1 is NOT:** OCR redesign; extraction AI redesign; notification overhaul; workflow UI redesign; queue redesign; scheduler redesign; fanout redesign; storage redesign; broad authority architecture replacement; optimistic-promotion removal (unless separate **L-004** remediation unit); matrix rewrite.
+
+##### 2. Governed evidence mutation sources (verification only)
+
+Mutations must use **production HTTP/admin/service paths** that invoke `sync_requirement_evidence_authority` (directly or via `authority_sync_with_transition_observability`). **No raw Mongo** authority field injection. **No synthetic** evidence rows or fabricated review events in staging proof.
+
+| ID | Endpoint / flow | Matrix row(s) (indicative) | Authority under test | Correlation / idempotency contract |
+|----|-----------------|------------------------------|----------------------|-----------------------------------|
+| **E1-M1 (primary replay)** | Governed **re-authority sync** on fixed `(requirement_id, document_id)` — e.g. repeat safe admin authority-sync backfill endpoint or duplicate `sync_requirement_evidence_authority` invocation via documented production wrapper | 6–9 | Same settled evidence state; no duplicate review outcomes | **Stable:** per-route correlation (e.g. `AUTHORITY_SYNC:{requirement_id}` or transition-provided id) |
+| **E1-M2 (legitimate new evidence)** | Client document upload to requirement (`POST` client compliance evidence / documents upload) | 6–7 | New document row; initial operational state; first authority sync on verify path | **New:** `document_id` |
+| **E1-M3 (verify — governed promotion)** | `POST` document verify (v1) or Evidence Review V2 verify (`execute_verify_document_v2`) on pilot-linked document | 6–7 | Authority sync + fanout; optional optimistic promotion marker (**L-004** observe) | `DOCUMENT_VERIFIED:…` / review correlation |
+| **E1-M4 (reject / supersede review)** | Evidence Review V2 reject, mark-expired, supersede | 6–7 | Rejected/superseded operational state; authority must not show accepted | Per-handler correlation |
+| **E1-M5 (extraction confirmation)** | Apply extraction accept/reject; supersession patch | 6–7 | `extraction_confirmation_superseded`; human review wins | Per document / extraction batch |
+| **E1-M6 (evidence match resolution)** | Admin evidence match approve / reject / relink-merge | 6–9 | Match flags; `MATCH_RESOLVED_VERIFICATION_PENDING` vs verify distinction | Per match operation audit |
+| **E1-M7 (reconciliation — controlled)** | `evidence_extraction_reconciliation` dry_run scan + **single** apply on pilot document (if fixture exists) | 6–9 | Historical alignment; idempotent skip when aligned | `RECONCILIATION:…` job correlation |
+| **E1-M8 (external verify)** | Evidence Review V2 external verify (if pilot fixture) | 6–7 | `EXTERNALLY_VERIFIED` operational semantics | Per external verify event |
+| **E1-M9 (blocked backbone observe)** | Same as E1-M3 with `rst_core_backbone_activation.permitted=false` capture **or** read-only blocked trace from audit | — | Authority sync skipped/deferred with explicit activation reason | N/A |
+
+| Forbidden as proof | Reason |
+|--------------------|--------|
+| Raw Mongo `$set` on `requirements.evidence_*`, `documents.review_*`, or authority projection fields | Bypasses single writer |
+| Direct `sync_requirement_evidence_authority` from ad-hoc scripts **not** mirroring production entrypoints | Not operator-reproducible |
+| Fleet-wide reconciliation apply without pilot scoping | Amplification / blast radius |
+| `requirements/sync` alone as evidence proof | Materialisation — B/C layer |
+| Notification send as evidence authority proof | **F1** |
+| Re-upload same bytes as “replay” without governed idempotency contract | Ambiguous — use **E1-M1** |
+
+**Replay rule:** Use **E1-M1** only for R2/R3 authority fingerprint comparison on stable correlation. Use **E1-M2** / **E1-M3** once per window for legitimate new-evidence / first-verify proof. Do **not** use **E1-M2** upload for R2/R3 replay-idempotency.
+
+##### 3. Evidence state authority verification (mandatory)
+
+For each governed mutation (R1 and optional M3–M9), capture **authority snapshot** before/after:
+
+| Check | Pass criterion |
+|-------|----------------|
+| **Authoritative transitions** | `sync_requirement_evidence_authority` outcome / transition trace matches matrix expectation (gap sync attempted or quiet with reason) |
+| **Accepted / rejected / reopened** | Review state machine consistent: rejected docs not projected accepted; reopened returns to governed pending/verify path |
+| **Supersession** | When human review supersedes extraction, operational state and persisted flags agree (`EVIDENCE_SUPERSEDED`, confirmation superseded) |
+| **Reconciliation** | Re-run on aligned doc is no-op; misaligned doc converges in bounded passes |
+| **Replay-safe authority** | R2/R3 on **E1-M1**: requirement authority fingerprint + document operational fingerprint **stable** |
+| **No contradictory evidence states** | Same document cannot be simultaneously accepted-on-file and rejected without transition between runs |
+
+**Artifact:** `e1_authority_snapshot_{slug}.json` — per run: document operational state, effective review state, requirement authority fields, gap sync summary, transition trace excerpt.
+
+##### 3a. Authority precedence hierarchy (mandatory — rev 2)
+
+When multiple evidence authority signals coexist on the same `(requirement_id, document_id)` window, E1 must verify **governed precedence resolution** — governance verification only; **no** authority-engine redesign.
+
+**Governed precedence order (highest wins — indicative; document in report if code order differs but outcome matches):**
+
+```
+human review decision (verify / reject / supersede / reopen)
+  → external verification (Evidence Review V2 external verify / EXTERNALLY_VERIFIED)
+    → governed reconciliation outcome (historical alignment apply)
+      → extraction assistance state (confirmation pending / accepted / rejected)
+        → inferred / document heuristics (legacy status, operational inference only)
+```
+
+| Requirement | Pass criterion |
+|-------------|----------------|
+| **Deterministic resolution** | Same input evidence state → same winning authority source on replay |
+| **Explainable precedence** | Every conflict records `winning_authority_source` and `overridden_authority_sources[]` |
+| **No silent override** | Lower-precedence signal cannot override higher-precedence settled decision without governed transition |
+| **Reconciliation subordination** | Reconciliation cannot resurrect rejected human review without governed reopen path |
+| **Extraction subordination** | Extraction confirmation cannot override settled human reject without supersession/reopen semantics |
+
+**Report fields (per conflict sample):** `authority_precedence_resolution[]` — `{ "entity_key", "conflicting_sources": [...], "winning_authority_source", "overridden_authority_sources": [...], "resolution_reason", "precedence_pass": bool }`.
+
+**Artifact:** `e1_authority_precedence_{slug}.json`.
+
+**Failure:** **E1-RC-16** = authority precedence violation.
+
+##### 3b. Authority-state cardinality verification (mandatory — rev 3)
+
+E1 must verify **active authority-state cardinality** — governance verification only; **no** authority-writer redesign. Distinct from general history growth (§11) and lineage depth (§11b).
+
+| Field | Definition |
+|-------|------------|
+| `expected_active_authority_count` | **1** winning active authority state per governed `(requirement_id, document_id)` window after settlement |
+| `actual_active_authority_count` | Count of concurrently “winning” terminal/active states observed |
+| `unexpected_parallel_authority_count` | Parallel winners, duplicate active terminals, or conflicting active branches |
+| `authority_cardinality_pass` | `unexpected_parallel_authority_count == 0` |
+
+**Verification must prove replay/reconciliation cannot create:**
+
+| Failure mode | Pass = absent on R2/R3 |
+|--------------|------------------------|
+| Duplicate active authority states | ≤1 active winner |
+| Multiple simultaneous winning states | Single `winning_authority_source` |
+| Parallel supersession winners | One supersession chain head |
+| Duplicate externally-verified terminal states | ≤1 EXTERNALLY_VERIFIED terminal |
+| Conflicting active authority branches | No forked active branches without governed transition |
+
+**Artifact:** `e1_authority_cardinality_{slug}.json` — per-run counts + `authority_cardinality_pass`.
+
+**Failure:** **E1-RC-21** = authority cardinality drift.
+
+##### 3c. Replay-stable reconciliation suppression semantics (mandatory — rev 3)
+
+E1 verifies reconciliation **convergence** (§3) **and** replay-stable **suppression** behaviour on dry_run/apply — governance semantics only; **not** reconciliation-engine redesign.
+
+| Field | Definition |
+|-------|------------|
+| `reconciliation_suppression_fingerprint_r1_r2_r3` | Fingerprints of suppression/skip outcome per R1/R2/R3 |
+| `reconciliation_replay_equal` | R2=R3 suppression fingerprints on stable replay |
+| `reconciliation_suppression_matrix[]` | `{ "run", "dry_run_outcome", "apply_outcome", "suppression_reason", "reopen_suppress_state" }` |
+
+| Requirement | Pass criterion |
+|-------------|----------------|
+| **Identical replay → identical suppression** | R2/R3 produce same skip/apply/suppress decision on aligned doc |
+| **dry_run/apply parity** | dry_run prediction matches apply outcome (no oscillation) |
+| **No reopen/suppress oscillation** | Replay does not flip reconciliation reopen vs suppress |
+| **Explainable suppression** | Every suppressed/skipped apply has `suppression_reason` |
+
+**Artifact:** `e1_reconciliation_suppression_{slug}.json` (cross-ref `e1_reconciliation_summary_*`).
+
+**Failure:** **E1-RC-22** = reconciliation suppression inconsistency.
+
+##### 4. Evidence replay determinism (mandatory)
+
+| Requirement | Pass criterion | Failure |
+|-------------|----------------|---------|
+| **Stable replay** | R2/R3 **E1-M1**: `authority_fingerprint_r2 == authority_fingerprint_r3` | **E1-RC-2** |
+| **No duplicate authority mutations** | R2/R3 do not create duplicate review events, duplicate gap lifecycle writes, or duplicate authority history entries for same stable correlation | **E1-RC-9** |
+| **Reconciliation replay** | Second reconciliation apply on aligned pilot doc: `skipped` / no field churn | **E1-RC-5** |
+| **Legitimate new mutation** | **E1-M2** or first **E1-M3** on new doc: new review/audit lineage; downstream propagation observable per D1 matrix | — |
+| **Optimistic promotion visibility** | If v1/v2 verify performs pre-authority promotion, fanout/audit carries `pre_authority_optimistic_requirement_promotion` — final state matches post-sync authority (**L-004**) | **E1-RC-1** if final contradicts sync |
+
+**Artifact:** `e1_replay_{slug}.json` — per-run fingerprints, `replay_authority_drift[]` (empty on pass).
+
+##### 4b. Replay-idempotent supersession semantics (mandatory — rev 2)
+
+E1 must verify **supersession consistency** (§3) **and** replay-safe supersession **idempotency** — governance semantics only; **not** reconciliation redesign.
+
+| Requirement | Pass criterion |
+|-------------|----------------|
+| **No repeated supersede** | R2/R3 on **E1-M1** do not re-apply supersession patches or re-write `extraction_confirmation_superseded` |
+| **No reopen/close oscillation** | Stable replay cannot flip rejected ↔ accepted ↔ superseded without governed transition between runs |
+| **Reconciliation supersession stable** | Repeat reconciliation on aligned doc does not oscillate supersession outcome |
+| **Deterministic supersession chain** | `supersession_state_fingerprint` equal R2=R3 on stable replay |
+| **Replay equality** | `supersession_replay_equal=true` when fingerprints match |
+
+**Report fields:** `supersession_replay_equal`, `supersession_state_fingerprint` (per run), `supersession_transition_matrix[]` — `{ "run", "from_state", "to_state", "trigger", "governed": bool }`.
+
+**Artifact:** `e1_supersession_replay_{slug}.json` (includes `e1_supersession_map_{slug}` cross-ref).
+
+**Failure:** **E1-RC-17** = supersession replay oscillation.
+
+##### 4c. Authority collapse semantics (mandatory — rev 2)
+
+Analogous to C1/D1 replay-collapse: stable replay may **collapse** redundant authority writes while retaining lineage visibility — verification only; **not** writer redesign.
+
+| Field | Definition |
+|-------|------------|
+| `authority_collapse_state` | `collapsed_stable` \| `expanded` \| `inconsistent` |
+| `collapsed_authority_mutations[]` | Redundant writes suppressed on R2/R3 with governed reason (e.g. idempotent sync skip, duplicate review outcome suppressed) |
+| `retained_authority_visibility` | Collapsed paths remain visible in transition trace / audit — not hidden |
+
+| Requirement | Pass criterion |
+|-------------|----------------|
+| **Collapse on replay** | R2/R3 may suppress redundant authority writes when already settled |
+| **Deterministic collapse** | `authority_collapse_state` identical R2=R3 |
+| **Lineage retained** | `retained_authority_visibility=true`; collapsed mutations listed with reason |
+| **Explainable collapse** | Each collapsed entry has `collapse_reason` (not silent) |
+
+**Artifact:** `e1_authority_collapse_{slug}.json`.
+
+**Failure:** **E1-RC-18** = authority collapse inconsistency.
+
+##### 4d. Human-review immutability protection (mandatory — rev 3)
+
+E1 must explicitly verify **preservation of human authoritative decisions** across replay, reconciliation, and collapse — verification only; **not** review-workflow redesign. Extends **E1-RC-15** (extraction override) with replay/reconciliation/collapse erosion checks.
+
+| Field | Definition |
+|-------|------------|
+| `human_review_preservation_pass` | All pilot human-review settlements preserved on R2/R3 |
+| `review_override_attempts[]` | Any attempt to downgrade/erase human outcome — must be empty on pass |
+| `preserved_human_authority_count` | Count of settled human decisions still authoritative after replay window |
+
+| Requirement | Pass criterion |
+|-------------|----------------|
+| **Replay cannot erase human outcomes** | R2/R3 do not clear/revert human verify/reject/supersede without governed reopen |
+| **Reconciliation cannot downgrade** | Reconciliation apply does not weaken human terminal state |
+| **Extraction cannot override preserved review** | Reprocessing does not resurrect extraction over settled human reject |
+| **Collapse cannot mutate human lineage** | Collapsed writes do not remove human review events from reconstructable history |
+
+**Artifact:** `e1_human_review_preservation_{slug}.json`.
+
+**Failure:** **E1-RC-23** = human review erosion.
+
+##### 4e. Authority-collapse boundedness (mandatory — rev 3)
+
+Extends §4c collapse **semantics** with replay **boundedness** — governance only; **no** collapse-engine redesign.
+
+| Field | Definition |
+|-------|------------|
+| `collapse_history_growth` | Δ collapsed-entry count R2 vs R3 (must be **0**) |
+| `collapse_growth_pass` | `collapse_history_growth == 0` and depth within cap |
+| `collapsed_lineage_depth` | Depth of collapsed-authority ancestry chain |
+
+| Requirement | Pass criterion |
+|-------------|----------------|
+| **Bounded collapse history** | `collapsed_authority_mutations[]` does not grow on R2/R3 |
+| **No inflated collapsed ancestry** | `collapsed_lineage_depth` stable on replay |
+| **Collapse lineage replay-stable** | Collapse fingerprint R2=R3 |
+| **Metadata growth converges** | Collapse metadata churn Δ **0** on stable replay (or documented watchlist) |
+
+**Artifact:** `e1_collapse_boundedness_{slug}.json` (cross-ref `e1_authority_collapse_*`).
+
+**Failure:** **E1-RC-24** = authority collapse growth instability.
+
+##### 5. Cross-layer authority consistency (mandatory)
+
+After settled authority mutation (post-recalc lag bounds per C2 where recalc enqueued), verify operational consistency across:
+
+| Layer | Sample | Pass criterion |
+|-------|--------|----------------|
+| **Document** | `document_operational_state` + persisted review fields | Coherent single story |
+| **Evidence review** | V2 review events / `effective_evidence_review_state` | Matches operational state |
+| **Requirement authority** | `evidence_authority`, semantic fields post-sync | Matches document satisfaction rules |
+| **Client-visible** | `project_requirement_row_client_runtime` / `client_lifecycle_state` on pilot requirement | No KPI-authoritative surface contradicts authority (**COMPLIANCE_CLIENT_STATUS_AUTHORITY.md**) |
+| **Downstream compliance** | Open gaps / risk signals sample (if triggered) | No gap contradicts accepted evidence without documented exclusion |
+
+**Artifact:** `e1_cross_layer_consistency_{slug}.json` — `cross_layer_matrix[]`: `{ "layer", "entity_key", "fingerprint", "consistent": bool, "notes" }`.
+
+**Failure:** **E1-RC-12** = cross-layer authority inconsistency.
+
+##### 6. Evidence lineage integrity (mandatory)
+
+| Requirement | Pass criterion |
+|-------------|----------------|
+| **Causal attribution** | Each authority mutation links `requirement_id`, `document_id` (if applicable), `correlation_id`, `transition_id` where produced |
+| **Downstream preservation** | Gap sync / recalc samples retain originating correlation where matrix requires |
+| **No detached trees** | No orphan `sync_requirement_evidence_authority` outcomes without document/requirement join |
+| **No forked ancestry** | R2/R3 stable replay does not fork parallel authority chains for same stable correlation |
+| **D1/C2 handoff** | Lineage must not contradict D1 `delegated_lineage_summary[]` or C2 `downstream_lineage_summary[]` on same pilot window |
+
+**Artifacts:** `e1_lineage_trace_{slug}.json`; `e1_delegated_authority_lineage_{slug}.json` (if regen/recalc delegate observed).
+
+**Failures:** **E1-RC-4** (detachment), **E1-RC-13** (orphan mutation).
+
+##### 6b. Operational explainability verification (mandatory — rev 2)
+
+E1 must prove operators can **reconstruct** why a requirement is **satisfied**, **rejected**, **superseded**, **reopened**, or **externally verified** from governed evidence state and history — verification of explainability only; **not** UI redesign.
+
+**Reconstruction sources (all that apply must chain):**
+
+| Source | Minimum sample |
+|--------|----------------|
+| Evidence lineage | `correlation_id`, document id, requirement id |
+| Review actions | V2 review events / effective review state transitions |
+| Supersession chain | `supersession_transition_matrix[]` / map |
+| Reconciliation history | dry_run + apply summary |
+| Propagation lineage | Fanout / queue correlation handoff (D1 sample) |
+
+**Report fields:** `authority_explainability_summary[]` — `{ "requirement_id", "document_id", "operational_outcome", "reconstructable": bool, "sources_used": [...], "gaps": [] }`; `explainability_reconstruction_pass` (all pilot samples reconstructable).
+
+**Artifact:** `e1_authority_explainability_{slug}.json`.
+
+**Failure:** **E1-RC-20** = operational authority opacity (outcome not reconstructable from governed history).
+
+##### 7. Temporal evidence ordering (mandatory)
+
+Capture `evidence_order_timeline[]` ticks after each governed step:
+
+| Expected order (indicative) | Violation |
+|-----------------------------|-----------|
+| Upload → review pending → verify/reject → authority sync → (optional) gap sync → (optional) recalc enqueue → downstream convergence within C2 lag | Downstream asserts **verified/compliant** before review completes |
+| Reconciliation apply only after verify settlement when historical misalignment detected | Reconciliation writes before document review state settled |
+| Supersession after extraction confirmation pending | Extraction confirmation re-surfaces after human reject without governed reopen |
+
+**Bounded lag (reuse C2 defaults unless E1 amends):** authority projection immediate; gap/risk within C2 §3; recalc queue terminal within C1 poll bounds.
+
+**Failure:** **E1-RC-8** = temporal contradiction.
+
+**Artifact:** `e1_temporal_ordering_{slug}.json`.
+
+##### 8. Replay amplification / duplication protection (mandatory)
+
+| Check | Pass criterion |
+|-------|----------------|
+| **No duplicate authority writes** | R2/R3: requirement authority field delta **0** on stable replay |
+| **No replay amplification** | Review event count, authority history count, gap lifecycle writes do not grow on R2/R3 |
+| **No duplicate review outcomes** | Same verify cannot append second ACCEPTED event without governed reopen |
+| **No reconciliation churn** | Repeated dry_run/apply on aligned doc: metadata `updated_at` churn only if documented (B1-style watchlist) |
+
+**Failure:** **E1-RC-9** (amplification), **E1-RC-5** (reconciliation churn).
+
+##### 9. Governed suppression / exclusion semantics (mandatory)
+
+| Path | Must record |
+|------|-------------|
+| RST core backbone blocked | `activation_reason`, `enqueue_attempted=false` on fanout row |
+| Verify blocked by evidence mismatch (409) | Structured error + no silent authority sync |
+| Match resolution defer recalc | `propagation_notice` / fanout when backbone defers |
+| Quiet gap sync (if invoked) | Matrix-documented quiet — not silent skip |
+
+**Failure:** **E1-RC-7** (silent suppression), **E1-RC-14** (blocked without reason).
+
+##### 10. Cross-tenant isolation (mandatory)
+
+| Check | Pass criterion |
+|-------|----------------|
+| **Control tenant** | `e1_unrelated_surface_integrity_{slug}.json` — authority fingerprints on control `(CID', PID')` before/after pilot window: delta **0** |
+| **No evidence bleed** | Pilot document ids do not appear on control requirements |
+| **No review contamination** | Control document review states unchanged |
+
+**Failure:** **E1-RC-6**.
+
+##### 11. Authority cardinality and boundedness (mandatory)
+
+| Metric | Pass criterion |
+|--------|----------------|
+| **Review events per document** | Bounded; R2/R3 replay does not add events |
+| **Authority history growth** | `authority_history_curve[]` flat on R2/R3 |
+| **Reconciliation passes** | Converges ≤ configured cap (pilot: document-scoped) |
+| **Gap writes per replay** | No unexplained multiplication on **E1-M1** |
+
+**Artifact:** `e1_authority_growth_{slug}.json`.
+
+**Failure:** **E1-RC-11** (general authority growth — distinct from lineage-specific §11b).
+
+##### 11b. Evidence lineage boundedness (mandatory — rev 2)
+
+E1 must verify **evidence-lineage-specific** boundedness — observational/governance only; distinct from general cardinality (§11).
+
+| Metric | Pass criterion |
+|--------|----------------|
+| `lineage_depth_growth` | Δ **0** on R2/R3 stable replay |
+| `supersession_chain_growth` | Chain length stable; no new supersession links on replay |
+| `override_chain_growth` | Override/precedence chain does not lengthen on replay |
+| `reconciliation_ancestry_growth` | Reconciliation ancestry depth bounded; idempotent on aligned doc |
+| `extraction_review_lineage_growth` | Extraction ↔ review lineage finite and stable on replay |
+| `lineage_growth_pass` | All growth metrics pass |
+
+**Artifact:** `e1_lineage_boundedness_{slug}.json` — curves + `lineage_growth_pass`.
+
+**Failure:** **E1-RC-19** = unbounded evidence lineage growth.
+
+##### 12. Observability and audit stability (mandatory)
+
+| Check | Pass criterion |
+|-------|----------------|
+| **Audit noise** | R2/R3 stable replay: `audit_authority_event_delta == 0` for same correlation class |
+| **Fanout log noise** | No new `compliance_fanout_extra` storms on replay (count delta 0) |
+| **Overlay churn** | Suppression/activation overlays stable on replay (compare prior replay state — D1b pattern) |
+| **Explainability** | Every non-zero delta has `governed_reason` |
+
+**Artifact:** `e1_audit_stability_{slug}.json`.
+
+**Failure:** **E1-RC-10**.
+
+##### 13. Failure taxonomy (E1-RC branches)
+
+| RC | Branch | When raised | Primary evidence |
+|----|--------|-------------|------------------|
+| **E1-RC-1** | Authority divergence | Final requirement/document authority contradicts governed transition outcome | `e1_authority_snapshot_*`, transition trace |
+| **E1-RC-2** | Replay instability | `authority_fingerprint_r2 != authority_fingerprint_r3` on **E1-M1** | `e1_replay_*` |
+| **E1-RC-3** | Supersession inconsistency | Extraction vs human review flags disagree with operational state | `e1_supersession_map_*` |
+| **E1-RC-4** | Lineage detachment | Missing correlation / forked ancestry / broken document-requirement join | `e1_lineage_trace_*` |
+| **E1-RC-5** | Reconciliation churn | Repeat apply mutates aligned doc or fails to converge | `e1_reconciliation_summary_*` |
+| **E1-RC-6** | Cross-tenant bleed | Control tenant authority delta ≠ 0 | `e1_unrelated_surface_integrity_*` |
+| **E1-RC-7** | Silent suppression | Blocked/deferred path without governed reason | fanout / API error body |
+| **E1-RC-8** | Temporal contradiction | `evidence_order_timeline[]` violation | `e1_temporal_ordering_*` |
+| **E1-RC-9** | Authority amplification | R2/R3 growth in events, history, or writes | `e1_authority_growth_*` |
+| **E1-RC-10** | Audit-noise amplification | R2/R3 audit/fanout noise delta ≠ 0 | `e1_audit_stability_*` |
+| **E1-RC-11** | Boundedness failure | Unbounded history / reconciliation / gap growth on replay | `e1_authority_growth_*` |
+| **E1-RC-12** | Cross-layer inconsistency | Document vs requirement vs client projection disagree | `e1_cross_layer_consistency_*` |
+| **E1-RC-13** | Orphan authority mutation | Authority sync without attributable entity keys | lineage trace |
+| **E1-RC-14** | Blocked path without reason | Activation/match/verify block missing reason code | fanout row / HTTP |
+| **E1-RC-15** | Extraction overrides human review | Stale extraction confirmation surfaces after reject without governed reopen | supersession map + operational state |
+| **E1-RC-16** | Authority precedence violation | Lower-precedence signal overrides higher without governed transition | `e1_authority_precedence_*` |
+| **E1-RC-17** | Supersession replay oscillation | `supersession_replay_equal=false` or reopen/close flip on R2/R3 | `e1_supersession_replay_*` |
+| **E1-RC-18** | Authority collapse inconsistency | Non-deterministic `authority_collapse_state` or `retained_authority_visibility=false` | `e1_authority_collapse_*` |
+| **E1-RC-19** | Unbounded evidence lineage growth | `lineage_growth_pass=false` on replay | `e1_lineage_boundedness_*` |
+| **E1-RC-20** | Operational authority opacity | `explainability_reconstruction_pass=false` | `e1_authority_explainability_*` |
+| **E1-RC-21** | Authority cardinality drift | `authority_cardinality_pass=false`; parallel active winners | `e1_authority_cardinality_*` |
+| **E1-RC-22** | Reconciliation suppression inconsistency | `reconciliation_replay_equal=false` or dry_run/apply oscillation | `e1_reconciliation_suppression_*` |
+| **E1-RC-23** | Human review erosion | `human_review_preservation_pass=false` | `e1_human_review_preservation_*` |
+| **E1-RC-24** | Authority collapse growth instability | `collapse_growth_pass=false` | `e1_collapse_boundedness_*` |
+
+**Primary RC selection order (staging report):** E1-RC-1 → E1-RC-21 → E1-RC-16 → E1-RC-23 → E1-RC-2 → E1-RC-17 → E1-RC-18 → E1-RC-24 → E1-RC-22 → E1-RC-12 → E1-RC-3 → E1-RC-19 → E1-RC-20 → E1-RC-4 → E1-RC-5 → E1-RC-7 → E1-RC-9 → E1-RC-10 → E1-RC-11 → E1-RC-6 → E1-RC-8 → others.
+
+##### 14. Regression suites (mandatory — no product implementation in DoD draft)
+
+**Existing suites (must pass before E1 DONE — baseline):**
+
+| Suite | Role |
+|-------|------|
+| `tests/test_document_operational_state.py` | Operational state derivation |
+| `tests/test_evidence_review_v2_phase1.py` | V2 verify/reject/validation |
+| `tests/test_evidence_match_operations_http.py` | Match resolve, verify blocks, propagation notice |
+| `tests/test_evidence_extraction_reconciliation.py` | Reconciliation idempotency |
+| `tests/test_evidence_extraction_supersession.py` | Supersession patches |
+| `tests/test_evidence_review_lifecycle_propagation_notice.py` | Lifecycle + notice |
+| `tests/test_l005_evidence_review_v2_guard_contract.py` | V2 guard CI |
+| `tests/test_requirement_transition_observability_phase3.py` | Transition traces |
+| `tests/test_requirement_transition_fanout_phase4.py` | Fanout shape (handoff to D1) |
+| `tests/test_client_compliance_evidence_safety.py` | Upload safety |
+| `tests/test_patch_requirement_audit_http.py` | Audit ordering (matrix row 10) |
+
+**Proposed E1 verification-only suites (implement in E1 verification phase — not in this draft):**
+
+| Proposed file | Role |
+|---------------|------|
+| `tests/test_e1_verification_contract.py` | Mocked fingerprint / replay / supersession contract (mirror `test_d1_verification_contract.py`) |
+| `tests/test_e1_authority_replay_determinism.py` | Stable replay → equal authority fingerprint |
+| `tests/test_e1_cross_layer_consistency.py` | Document ↔ requirement ↔ client projection matrix |
+| `tests/test_e1_supersession_lineage.py` | Human review supersedes extraction deterministically |
+| `tests/test_e1_reconciliation_convergence.py` | Aligned skip / misaligned converge |
+| `tests/test_e1_authority_precedence_resolution.py` | Precedence hierarchy / conflict resolution (proposed) |
+| `tests/test_e1_supersession_replay_determinism.py` | `supersession_replay_equal` on stable replay (proposed) |
+| `tests/test_e1_authority_collapse_determinism.py` | Collapse state R2=R3; visibility retained (proposed) |
+| `tests/test_e1_lineage_boundedness.py` | Lineage growth metrics on replay (proposed) |
+| `tests/test_e1_operational_explainability.py` | Reconstruction from governed history (proposed) |
+| `tests/test_e1_authority_cardinality.py` | Single active winner; no parallel authority branches (proposed) |
+| `tests/test_e1_reconciliation_suppression_replay.py` | `reconciliation_replay_equal` on stable replay (proposed) |
+| `tests/test_e1_human_review_preservation.py` | Human outcomes preserved across replay (proposed) |
+| `tests/test_e1_collapse_boundedness.py` | Collapse history growth bounded on replay (proposed) |
+
+**Staging driver (IN_PROGRESS — verification only):** `scripts/e1_preflight_capture.py`, `scripts/e1_staging_verification.py`, `scripts/e1_snapshot.py` (read-only analysis). Governed mutations wired: **E1-M1** (`authority_sync_with_transition_observability`, stable `AUTHORITY_SYNC:{requirement_id}`), **E1-M7 observe** (`reconcile_document_extraction_supersession`, `dry_run=True` only). **E1-M2–M6, M8–M9** not wired in harness v1.
+
+##### 15. Required artifacts (mandatory)
+
+All under `backend/docs/audit/` with slug `6fd5ac4c_d35a58ae` (pilot) unless otherwise noted:
+
+| Artifact | Contents |
+|----------|----------|
+| `e1_control_selection_{slug}.json` | Pilot + control entity ids |
+| `e1_authority_before_{slug}.json` | Preflight authority baseline |
+| `e1_authority_snapshot_{slug}.json` | Per-run authority + operational state |
+| `e1_replay_{slug}.json` | R1/R2/R3 fingerprints, `replay_authority_drift[]` |
+| `e1_supersession_map_{slug}.json` | Extraction vs review supersession decisions |
+| `e1_authority_precedence_{slug}.json` | `authority_precedence_resolution[]`, winning/overridden sources (§3a) |
+| `e1_authority_cardinality_{slug}.json` | Active authority counts, `authority_cardinality_pass` (§3b) |
+| `e1_reconciliation_suppression_{slug}.json` | Suppression fingerprints, `reconciliation_replay_equal` (§3c) |
+| `e1_supersession_replay_{slug}.json` | `supersession_replay_equal`, fingerprints, `supersession_transition_matrix[]` (§4b) |
+| `e1_authority_collapse_{slug}.json` | `authority_collapse_state`, `collapsed_authority_mutations[]` (§4c) |
+| `e1_collapse_boundedness_{slug}.json` | `collapse_growth_pass`, `collapsed_lineage_depth` (§4e) |
+| `e1_human_review_preservation_{slug}.json` | `human_review_preservation_pass`, `review_override_attempts[]` (§4d) |
+| `e1_reconciliation_summary_{slug}.json` | dry_run + apply outcomes |
+| `e1_lineage_trace_{slug}.json` | correlation / transition / audit joins |
+| `e1_lineage_boundedness_{slug}.json` | Lineage growth curves, `lineage_growth_pass` (§11b) |
+| `e1_authority_explainability_{slug}.json` | `authority_explainability_summary[]`, reconstruction pass (§6b) |
+| `e1_cross_layer_consistency_{slug}.json` | Layer consistency matrix |
+| `e1_temporal_ordering_{slug}.json` | `evidence_order_timeline[]`, violations |
+| `e1_authority_growth_{slug}.json` | Boundedness curves |
+| `e1_audit_stability_{slug}.json` | Audit/fanout noise deltas |
+| `e1_unrelated_surface_integrity_{slug}.json` | Control tenant before/after |
+| `e1_verification_report_{slug}.json` | `e1_pass`, `checks{}`, `primary_rc_branch`, artifact index |
+
+##### 16. Completion gates
+
+| Gate | Requirement |
+|------|-------------|
+| **Start `IN_PROGRESS`** | E1 DoD **approved**; pilot + control identified; D1/C2 artifacts retained |
+| **`IMPLEMENTED_PENDING_VERIFICATION`** | E1 scripts/tests merged (**verification only** unless separate remediation approved) |
+| **`READY_FOR_STAGING_VERIFICATION`** | All §15 artifacts captured on staging |
+| **`VERIFIED`** | §1–§13 + §3a–§3c, §4b–§4e, §6b, §11b pass on staging report |
+| **`DONE`** | §14 tests green; §17 docs updated; deferral list documented |
+
+**E1 cannot move to DONE unless all proven on staging:**
+
+1. Evidence authority transitions are **deterministic** on governed paths (§3).
+2. **Replay-safe** — R2/R3 authority fingerprints stable on **E1-M1** (§4).
+3. **Lineage-stable** — no orphan or detached authority trees (§6).
+4. **Supersession explainable** — human review wins over extraction with visible flags (§3, §9).
+5. **Reconciliation convergent** — aligned skip; misaligned bounded converge (§3, §8).
+6. **Cross-layer consistent** — document, review, requirement, client surfaces align (§5).
+7. **Temporally sane** — `evidence_order_timeline[]` without contradiction (§7).
+8. **Cross-tenant isolated** — unrelated authority delta **0** (§10).
+9. **Bounded** — no authority amplification on replay (§8, §11).
+10. **Audit-stable** — no replay audit/fanout noise (§12).
+11. **Suppression explainable** — no silent blocked paths (§9).
+12. Legitimate new evidence (**E1-M2** / first **E1-M3**) still propagates when expected (§4).
+13. **Authority precedence deterministic** — conflicts resolve per §3a; no silent lower-over-higher override (**E1-RC-16**).
+14. **Supersession replay-safe** — `supersession_replay_equal` on R2/R3; no oscillation (**E1-RC-17**).
+15. **Authority collapse deterministic** — `authority_collapse_state` stable; `retained_authority_visibility=true` (**E1-RC-18**).
+16. **Evidence lineage bounded** — `lineage_growth_pass=true` on replay (**E1-RC-19**).
+17. **Operational explainability reconstructable** — `explainability_reconstruction_pass=true` (**E1-RC-20**).
+18. **Authority cardinality stable** — `authority_cardinality_pass=true`; no conflicting active authority branches (**E1-RC-21**).
+19. **Reconciliation suppression replay-stable** — `reconciliation_replay_equal=true` (**E1-RC-22**).
+20. **Human authoritative decisions preserved** — `human_review_preservation_pass=true` (**E1-RC-23**).
+21. **Collapse growth bounded** — `collapse_growth_pass=true` (**E1-RC-24**).
+22. No notification/scheduler/queue-topology/OCR/storage/event-topology redesign shipped under E1 guise (§1, §17).
+
+**Unlock on VERIFIED (2026-05-17):** **F1** DoD drafting — **not** F1 implementation. Parent E1 **not DONE** until explicit closure. **D2** remains optional parallel.
+
+##### 17. Boundary clarification and governance updates
+
+**E1 is verification and governance first.** Broad evidence-authority remediation, optimistic-promotion removal, workflow redesign, or extraction pipeline changes require a **separate approved remediation unit** (e.g. `E1b`, `L-004` closure) with its own DoD — not bundled into initial E1 proof.
+
+| Document | Update on E1 **DONE** |
+|----------|------------------------|
+| `LAUNCH_AUTHORITY_TRACKER.md` | E1 closure evidence; unlock **F1** DoD drafting |
+| `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 | Add **E1** substeps (authority snapshots, replay, reconciliation) |
+| `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` | Stream E / B evidence-authority row |
+| `audit/AUTHORITY_WRITE_PATH_RECONCILIATION.md` | Cross-ref staging findings — **no rewrite** unless remediation approved |
+| `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md` | Cross-ref only if surface matrix gaps found |
+| `STREAM_E_MUTATION_FANOUT_MATRIX.md` | Observe-only row notes — **no matrix rewrite** unless approved |
+| **L-004** tracker row | Move toward **REDUCED** / closure only with explicit product decision |
+
+**Explicit out-of-scope (reaffirmed — rev 2–3):** OCR/extraction model work; notification overhaul (**F1**); scheduler redesign; queue topology redesign; fanout routing changes (**D1** consumed); `unified_tasks` architecture; storage layer; admin UI redesign; **authority-engine redesign**; **reconciliation-engine redesign**; **review-workflow redesign**; **collapse-engine redesign**; **extraction pipeline redesign**; **workflow redesign**; **event-topology redesign**; production route alignment (`requirements/sync` → `_with_fanout`) — remains **D1 open governance** unless separate unit.
+
+**Rev 2–3 clarifications (verification only):** §3a–§3c, §4b–§4e, §6b, and §11b are **governance observability** requirements — they do **not** authorize changing `sync_requirement_evidence_authority`, reconciliation algorithms, review state machines, or collapse writers in the E1 unit.
+
+**Status:** **VERIFIED** (2026-05-17) — see § **E1 — Closure evidence (VERIFIED)** below. **Not DONE** in this pass (intentional governance pause). **E1a**/**E1b** micro-units **DONE**.
+
+---
+
+### E1a — Verification harness refinement (micro-unit)
+
+| Field | Value |
+|-------|-------|
+| **ID** | E1a |
+| **Parent** | **E1** |
+| **Scope** | Fixture gating, semantic replay fingerprint normalization, vacuous-proof prevention, empty-supersession replay semantics, explainability fixture qualification |
+| **Unit status** | **DONE** (2026-05-17) |
+| **Verification evidence** | `e1a_verification_report_6fd5ac4c_d35a58ae.json` (`E1a-RC-FIXTURE` — pilot authority-incapable); `e1a_fixture_classification_*`; original `e1_*` preserved |
+
+**Closure:** Pilot had 0 documents / 0 evidence-linked requirements. First `e1_*` run (`E1-RC-2`) reclassified as **fixture/harness insufficiency primary** — not evidence-authority product defect. Harness fail-fast + `e1a_*` authoritative rerun artifacts.
+
+---
+
+### E1b — Authority-capable staging fixture + governed replay proof (micro-unit)
+
+| Field | Value |
+|-------|-------|
+| **ID** | E1b |
+| **Parent** | **E1** |
+| **Scope** | Governed staging fixture seed (`e1b_staging_fixture_seed.py`); E1-M1 + E1-M7 dry_run observe only; semantic replay proof |
+| **Unit status** | **DONE** (2026-05-17) |
+| **Verification evidence** | `e1b_fixture_seed_*`, `e1b_verification_report_6fd5ac4c_d35a58ae.json` (`e1b_pass=true`, `e1_authority_proof_ready=true`) |
+
+**Fixture:** `gas_safety` requirement `c5abaeba-348f-4843-b734-1644bdfb791f` + document `07115f75-3f0b-4dae-aa9c-5bcd22c671db` (marker `E1b_authority_capable_v1`). Classification **authority-capable** before replay.
+
+---
+
+#### E1 — Closure evidence (VERIFIED — 2026-05-17)
+
+**Pilot:** `client_id=6fd5ac4c-3fd4-4112-ade7-156977deb49f`, `property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad`, `pleerity_staging`. **Control:** `04ceda9f-dd72-4b70-a6f5-809bef1b7b6a` / `6d939c70-06ab-4dc8-8b36-204958d2cdb3`.
+
+##### 1. E1 proof outcome
+
+Governed evidence authority semantics are **proven stable** on an **authority-capable** fixture (`e1b_pass=true`, `primary_rc_branch=null`).
+
+| Proven on E1b fixture | Result |
+|------------------------|--------|
+| Authority replay determinism (semantic) | **PASS** — `lineage_replay_stable_semantic=true` (R2=R3) |
+| Supersession replay stability | **PASS** |
+| Reconciliation replay stability (dry_run observe) | **PASS** |
+| Authority cardinality integrity | **PASS** |
+| Human-review preservation | **PASS** |
+| Lineage boundedness | **PASS** |
+| Operational explainability | **PASS** |
+| Cross-layer consistency | **PASS** |
+| Cross-tenant isolation | **PASS** — `unrelated_delta_zero` |
+
+**Governed mutations in proof:** **E1-M1** (`authority_sync_with_transition_observability`); **E1-M7** observe (`reconcile_document_extraction_supersession`, `dry_run=True` only). **No** M2–M9 expansion.
+
+##### 2. Fixture governance history (preserved — do not erase)
+
+| Phase | Artifact authority | Outcome |
+|-------|-------------------|---------|
+| **Original E1** | `e1_*` preserved | `e1_pass=false`, **E1-RC-2** — pilot **authority-incapable** (0 documents, 0 `evidence_doc_id`) |
+| **E1a** | `e1a_*` authoritative rerun | **E1a-RC-FIXTURE** — harness hardening, vacuous-proof prevention; fail-fast |
+| **E1b** | `e1b_*` authoritative proof | `e1b_pass=true` — governed seed + semantic replay on **authority-capable** fixture |
+
+Earlier RC classifications remain in preserved artifacts for audit.
+
+##### 3. Replay normalization boundary (operational documentation)
+
+| Normalized (verification only) | Not normalized |
+|--------------------------------|----------------|
+| `evidence_last_updated_at`, `evidence_last_verified_at` stripped from **semantic replay fingerprint** compare | Semantic authority state |
+| Reconciliation suppression fingerprint excludes per-run `run`/`dry_run` labels | Precedence resolution |
+| Empty supersession fingerprint: equality without truthiness gate | Lineage depth / supersession state |
+| | Human-review state |
+
+**Raw** authority fingerprint may still drift on timestamp churn (`lineage_replay_stable_raw_observability_only=false` on E1b) — recorded as **observability only**, not a verification failure.
+
+##### 4. No remediation conclusion
+
+| Item | Conclusion |
+|------|------------|
+| Evidence-authority product defect | **Not confirmed** |
+| Authority-writer redesign | **Not required** (this pass) |
+| Reconciliation redesign | **Not required** (this pass) |
+| Extraction redesign | **Not required** (this pass) |
+| Workflow redesign | **Not required** (this pass) |
+
+##### 5. Remaining watchlist
+
+- **Raw observability timestamp drift** may still occur on `sync_requirement_evidence_authority` replay (E1b: `timestamp_only_drift=true` on raw fingerprint).
+- Normalization applies **only** to semantic replay proof gates — not to product writers.
+- **No** product suppression/writer optimization performed under E1/E1a/E1b.
+- E1b fixture is a **governed staging seed** (`E1b_authority_capable_v1`) — not a claim that all pilot properties have native evidence uploads.
+- **DONE** gates (§14 full baseline suites, §17 doc sweep) intentionally deferred until explicit **DONE** approval.
+
+##### 6. Governance posture — VERIFIED vs DONE
+
+**E1 VERIFIED** means: evidence authority integrity is **proven under governed replay conditions** on an authority-capable fixture; parent unit **paused before DONE** for review discipline (deepest truth-authority layer in programme).
+
+**E1 is not DONE** in this pass.
+
+##### 7. Authoritative artifacts
+
+| Set | Role |
+|-----|------|
+| **`e1b_*`** | **Authoritative for E1 VERIFIED** — `e1b_verification_report_6fd5ac4c_d35a58ae.json`, `e1b_replay_*`, full matrix |
+| **`e1a_*`** | Harness refinement record |
+| **`e1_*`** | First-run history (`E1-RC-2`, authority-incapable pilot) |
+
+**Regression (harness):** `tests/test_e1_verification_contract.py`, `tests/test_e1a_verification_contract.py` — green.
+
+**Unlock on VERIFIED:** **F1** Definition of Done **drafting only** — **not** F1 implementation.
+
+**Next approved step (historical — superseded):** F1 staging → **VERIFIED** achieved 2026-05-17 via **F1a** authoritative rerun.
 
 ---
 
@@ -2821,11 +3510,602 @@ All under `backend/docs/audit/` with slug `{client_id_8}_{property_id_8}`:
 | **Scope** | Eligibility; `NOTIFICATION_DISPATCH` global flag; orchestrator vs obligation health separation |
 | **Canonical authority** | `audit/NOTIFICATION_GOVERNANCE_INVENTORY.json`; **L-008** |
 | **Code areas likely affected** | `notification_orchestrator.py`, `jobs.py` — **not** materialisation |
-| **Unit status** | **BLOCKED** (pending E) |
-| **Verification evidence** | `message_logs`; blocked sends have governed reason; **no** notification as obligation-creation proof |
-| **Governance docs after** | JSON inventory if policy changes |
-| **Regression tests** | L-008 contract tests |
-| **Rollback / safety** | Do not globally activate NOTIFICATION_DISPATCH without program sign-off |
+| **Unit status** | **VERIFIED** (2026-05-17) — DoD **rev 2**; governed replay proof on **F1-M1** path; **not DONE** (review discipline + §8 baseline suites deferred) |
+| **Verification evidence** | **Authoritative:** `f1a_verification_report_6fd5ac4c_d35a58ae.json` (`f1a_harness_refinement_rerun_v1`, no critical stop, `failure_classification=governed_replay_proof_candidate`). **Preserved:** `f1_*` (first run, **F1-RC-15**). Harness: `f1a_snapshot.py`, `f1a_preflight_capture.py`, `f1a_staging_verification.py`; `test_f1_*` / `test_f1a_*` contract tests |
+| **Governance docs after** | This tracker; `audit/NOTIFICATION_GOVERNANCE_INVENTORY.json`; `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 F1; **L-008** cross-ref |
+| **Regression tests** | L-008 + notification orchestrator suites — see F1 §8 |
+| **Rollback / safety** | Do not globally activate `NOTIFICATION_DISPATCH` without program sign-off; no provider/template/queue changes under F1 guise |
+
+**Unlock (2026-05-17):** E1 **VERIFIED** → F1 **VERIFIED** (governed **F1-M1** replay proof). **Do not** notification remediation, scheduler/queue/fanout redesign, template routing changes, or **DONE** without separate approval. **G1/G2** may proceed per programme sequence — **not** bundled remediation.
+
+---
+
+#### F1 — Definition of Done (rev 2 — 2026-05-17; **approved** — **VERIFIED** 2026-05-17)
+
+**Rev 2 additions (2026-05-17):** delivery authority precedence semantics (§4a); acknowledgement ambiguity handling (§4b); replay-visible user impact boundedness (§3k); notification lineage boundedness (§3l); **F1-RC-14**–**F1-RC-17**; tightened DONE gates (§9).
+
+**Purpose:** Prove **truthful operational communication under replay and propagation conditions** using **existing** notification governance semantics — principally `services.notification_orchestrator`, `message_logs`, template/idempotency contracts (**L-008**, **L-008d/e**), preference enforcement, and governed send entrypoints aligned to `audit/NOTIFICATION_GOVERNANCE_INVENTORY.json` and `STREAM_E_MUTATION_FANOUT_MATRIX.md` (observe-only delegate rows). F1 verifies that governed notification paths produce **expected, attributable, replay-stable delivery observability** — including **truthful delivery-state semantics**, **delivery-authority precedence**, **acknowledgement ambiguity governance**, **dedupe determinism**, **lineage continuity and boundedness**, **replay-visible user impact boundedness**, **suppression replay stability**, **bounded retry/replay growth**, and **operational explainability** — without cross-tenant bleed, false “delivered” implication, authority precedence violations, or notification saturation.
+
+**F1 governs truthfulness and determinism — not delivery success guarantees.** Provider acceptance, SMTP/API handoff, and end-user inbox receipt remain **observed** layers; no surface may claim **delivered** from enqueue or provider acceptance alone.
+
+**Upstream precondition (accepted):** A1 **DONE**, B1 **DONE**, C1 **DONE**, C2 **DONE**, C2a **DONE**, D1 **DONE**, E1 **VERIFIED** on pilot tenant. Queue/recalc, propagation fanout, and evidence authority are **consumed**; F1 does **not** re-prove full C1/C2/D1/E1 suites except where notification lineage must chain to `correlation_id`, fanout delegate rows, or authority transitions.
+
+**Pilot tenant (staging verification only):** `client_id=6fd5ac4c-3fd4-4112-ade7-156977deb49f`, `property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad`, `pleerity_staging`. **Control unrelated** tenant/property documented in `f1_control_selection_{slug}.json`. Product logic must remain **tenant-agnostic** (no hardcoded IDs in services/tests).
+
+**One-line boundary:** F1 proves **governed notification observability is delivery-truthful, delivery-authority-correct, acknowledgement-ambiguity-explainable, dedupe-deterministic, replay-stable (incl. suppression and visible user impact), lineage-attributable and lineage-bounded, suppression-explainable, temporally sane, cross-tenant isolated, and operationally reconstructable** — verification only within existing notification semantics.
+
+##### 1. Scope and authoritative boundary (mandatory)
+
+**Layer separation (explicit):**
+
+| Layer | Owner semantics | F1 proves |
+|-------|-----------------|-----------|
+| **Notification generation** | Orchestrator/template selection, semantic family, idempotency key construction | Generation produces **governed** intent records; no orphan intent without lineage |
+| **Notification enqueue** | Internal queue/batch scheduling before provider handoff | Enqueue ≠ delivered; state labelled **queued** / **intended_to_send** only |
+| **Provider delivery** | SMTP/API/provider adapters (`notification_orchestrator` internal) | **attempted** / **provider_accepted** distinct from **delivered** / **observed** |
+| **Operational observability** | `message_logs`, audit samples, orchestrator outcomes | Truthful states; replay does not amplify noise |
+| **User-visible communication state** | Client/admin surfaces, digests, alerts copy | No false delivery implication; blocked/suppressed visible with reason |
+
+**F1 verifies (in scope):**
+
+| Theme | What F1 proves |
+|-------|----------------|
+| **Notification truthfulness** | Recorded delivery states match governed semantics — no false “sent/delivered” from enqueue alone |
+| **Replay-safe delivery semantics** | R2/R3 on stable correlation: notification intent fingerprint stable; no duplicate live sends |
+| **Dedupe determinism** | Idempotency keys (`L-008d` reminders/alerts) — identical inputs → identical dedupe outcome |
+| **Lineage / correlation propagation** | `correlation_id` / `transition_id` / `client_id` / `property_id` joinable across fanout → orchestrator → `message_logs` |
+| **Operational explainability** | Operator can reconstruct why notified, suppressed, blocked, or deduped from governed history |
+| **Delivery boundedness** | Retry/replay cycles do not grow unbounded notification rows or attempts |
+| **Cross-tenant isolation** | Pilot notification activity does not mutate control-tenant `message_logs` fingerprints |
+| **Suppression explainability** | Every suppressed/blocked path has governed reason — silent suppression is **F1 failure** |
+| **Notification replay behaviour** | Branches classified: replay-collapsible, replay-regenerative, idempotent, etc. (§5) |
+| **Delivery observability integrity** | `message_logs` + orchestrator outcomes internally consistent |
+| **Delivery authority precedence** | No lower-trust source overrides higher-trust delivery truth (§4a) |
+| **Acknowledgement ambiguity** | Ambiguous ack states explainable; no silent certainty upgrade on replay (§4b) |
+| **Replay-visible user impact** | User-visible notification churn bounded on replay (§3k) |
+| **Notification lineage boundedness** | Lineage depth/growth finite; collapse deterministic (§3l) |
+
+**Ownership boundaries (explicit — F1 does not verify):**
+
+| Owner | Remains responsible for | F1 relationship |
+|-------|-------------------------|-----------------|
+| **C1** | Recalc queue/worker | F1 may observe post-recalc notification triggers — does not re-prove queue |
+| **D1** | Propagation fanout | F1 may sample notification delegate rows — does not re-prove fanout matrix |
+| **E1** | Evidence authority | F1 may chain lineage — does not re-prove authority replay |
+| **Scheduler / jobs** | `job_runner`, digest cron, retry reclaim | **Observe only** — no cadence redesign |
+| **Provider SLA** | External email/SMS delivery success | **Out of scope** — observability truth only |
+
+**F1 is NOT:** notification architecture rewrite; provider redesign; scheduler redesign; queue topology redesign; fanout redesign; event-bus redesign; workflow redesign; authority redesign; task-system redesign; template-system rewrite; global `NOTIFICATION_DISPATCH` activation without program sign-off.
+
+##### 2. Governed mutation sources (verification only — do not widen yet)
+
+Mutations must use **production orchestrator / documented HTTP paths**. **No raw Mongo** `message_logs` injection. **No synthetic** delivery fixtures in staging proof unless governed seed unit approved separately.
+
+| ID | Source (examples) | F1 proves | Correlation contract |
+|----|-------------------|-----------|----------------------|
+| **F1-M1 (primary replay)** | Governed notification intent after **stable** upstream event — e.g. duplicate-safe compliance alert fingerprint path (**L-008d**) or orchestrator replay probe on fixed template + tenant scope | R2/R3 dedupe/suppression fingerprint stable | **Stable:** per governed idempotency key / `correlation_id` |
+| **F1-M2** | Authority transition observable path (post-E1) — notification delegate row after `authority_sync` / verify | Lineage joins authority `correlation_id` | `AUTHORITY_SYNC:{requirement_id}` or route correlation |
+| **F1-M3** | Propagation event — fanout notification delegate after D1-class mutation | Delegate row → orchestrator sample | `REQUIREMENTS_SYNC:{property_id}` or transition correlation |
+| **F1-M4** | Notification retry path — governed retry/requeue observe | Retry bounded; no amplification on replay | Per retry job correlation |
+| **F1-M5** | Digest generation (monthly/operational digest job) | Batch-scoped; bounded recipient cardinality | Per digest batch id |
+| **F1-M6** | Escalation alert (SLA/risk monitor cluster) | Suppression + idempotency on replay | Per monitor fingerprint |
+| **F1-M7** | Suppression overlay — preference off, duplicate_ignored, activation-blocked | Explicit suppression reason | N/A |
+| **F1-M8** | Activation-blocked path — `NOTIFICATION_DISPATCH` off / workflow gate | **blocked** state with reason — not silent skip | N/A |
+
+| Forbidden as proof | Reason |
+|--------------------|--------|
+| Raw Mongo insert into `message_logs` | Bypasses orchestrator |
+| Direct deprecated `EmailService` send | **L-008** bypass risk |
+| Fleet batch / marketing sends | Out of pilot scope |
+| C1-M2 for replay-idempotency notification proof | New correlation by design |
+| Claiming inbox delivery without observed layer | False delivery implication |
+
+**Replay rule:** Use **F1-M1** only for R2/R3 notification fingerprint comparison on stable idempotency key. Use **F1-M5** / **F1-M6** once per window for legitimate batch/regenerative proof.
+
+##### 3. Mandatory verification themes
+
+###### 3a. Replay-safe notification semantics (mandatory)
+
+| Check | Pass criterion |
+|-------|----------------|
+| **Stable replay** | R2/R3 **F1-M1**: notification intent fingerprint == prior settled state |
+| **No duplicate live sends** | R2/R3 do not create additional `message_logs` rows with `status` implying send for same idempotency scope |
+| **Suppression stable** | `duplicate_ignored` / `suppressed` outcomes identical on R2/R3 |
+
+**Artifact:** `f1_notification_replay_{slug}.json` — per-run fingerprints, `replay_notification_drift[]` (empty on pass).
+
+**Failure:** **F1-RC-1** = notification replay drift; **F1-RC-2** = replay amplification.
+
+###### 3b. Duplicate suppression determinism (mandatory)
+
+| Field | Definition |
+|-------|------------|
+| `expected_dedupe_outcome` | `sent` \| `duplicate_ignored` \| `suppressed` \| `blocked` per governed contract |
+| `actual_dedupe_outcome` | Observed orchestrator + `message_logs` outcome |
+| `dedupe_deterministic` | R2/R3 outcomes equal on stable key |
+
+**Failure:** **F1-RC-3** = duplicate delivery drift.
+
+###### 3c. Lineage / correlation continuity (mandatory)
+
+| Check | Pass criterion |
+|-------|----------------|
+| **Joinable lineage** | Sample rows chain: upstream event → orchestrator call → `message_logs` with same `client_id` / `correlation_id` where applicable |
+| **No detached notifications** | No `message_logs` without attributable upstream trigger class |
+| **Delegate continuity** | Fanout notification delegate rows (if present) reference same correlation as parent transition |
+
+**Artifacts:** `f1_lineage_trace_{slug}.json`; `f1_correlation_matrix_{slug}.json`. **Lineage growth boundedness:** §3l.
+
+**Failure:** **F1-RC-4** = lineage detachment.
+
+###### 3d. Truthful delivery states (mandatory)
+
+See §4 delivery truth model. **Failure:** **F1-RC-5** = false delivery implication.
+
+###### 3e. Notification boundedness (mandatory)
+
+| Metric | Pass |
+|--------|------|
+| `message_logs_growth_on_replay` | 0 semantic growth R2/R3 on F1-M1 |
+| `retry_attempt_growth` | 0 unbounded growth on replay window |
+| `recipient_cardinality` | Within documented batch bounds for digests |
+
+**Artifact:** `f1_delivery_boundedness_{slug}.json`.
+
+**Failures:** **F1-RC-6** = notification saturation; **F1-RC-12** = unbounded retry growth.
+
+###### 3f. Suppression replay stability (mandatory)
+
+| Field | Definition |
+|-------|------------|
+| `suppression_fingerprint_r1_r2_r3` | Fingerprint of suppression/blocked outcomes per run |
+| `suppression_replay_equal` | R2 == R3 on stable replay |
+
+**Artifact:** `f1_suppression_replay_{slug}.json`.
+
+**Failure:** **F1-RC-7** = suppression inconsistency.
+
+###### 3g. Operational explainability (mandatory)
+
+| Check | Pass criterion |
+|-------|----------------|
+| **Reconstructable** | From `message_logs` + orchestrator metadata: why sent, suppressed, blocked, or deduped |
+| **No opacity** | `explainability_reconstruction_pass=true` |
+
+**Artifact:** `f1_notification_explainability_{slug}.json`.
+
+**Failure:** **F1-RC-13** = delivery-state opacity.
+
+###### 3h. Temporal ordering sanity (mandatory)
+
+`notification_order_timeline[]` — no `attempted` before `queued`, no `delivered` before `attempted` without documented async lag class.
+
+**Artifact:** `f1_temporal_ordering_{slug}.json`.
+
+**Failure:** **F1-RC-8** = temporal contradiction.
+
+###### 3i. Unrelated tenant isolation (mandatory)
+
+Control tenant `message_logs` / notification fingerprint delta **0** on pilot replay window.
+
+**Artifact:** `f1_unrelated_surface_integrity_{slug}.json`.
+
+**Failure:** **F1-RC-9** = cross-tenant bleed.
+
+###### 3j. Audit-noise boundedness (mandatory)
+
+Audit/orchestrator log deltas on R2/R3 replay **0** for notification-scoped events (aligned to D1/E1 observability discipline).
+
+**Artifact:** `f1_audit_stability_{slug}.json`.
+
+**Failure:** **F1-RC-10** = observability noise amplification.
+
+###### 3k. Replay-visible user impact boundedness (mandatory — rev 2)
+
+F1 must verify **user-visible** communication impact boundedness — not only internal queue depth or `message_logs` row counts.
+
+| Field | Definition |
+|-------|------------|
+| `visible_notification_delta` | Count/fingerprint delta of user-visible notification surfaces (client inbox indicators, digest rows shown, alert banners) on replay window |
+| `visible_replay_growth_curve[]` | Per-run (R1/R2/R3) visible impact metrics |
+| `user_visible_notification_fingerprint` | Semantic fingerprint of what the user would see |
+| `replay_visible_impact_pass` | R2/R3 produce **no** unbounded visible churn; duplicate suppressions user-stable |
+
+**Verification must prove:**
+
+| Requirement | Failure signal |
+|-------------|----------------|
+| Replay does not create unbounded **visible** communication churn | Visible delta grows R2→R3 without legitimate regenerative class |
+| Duplicate suppressions remain **user-stable** | User sees repeat of suppressed item as new alert |
+| Replay-regenerative paths operationally bounded | Legitimate new sends within documented cardinality |
+| Replay cannot create notification storms visible to end users | Spike in visible fingerprint without upstream regenerative correlation |
+
+**Artifact:** `f1_visible_impact_{slug}.json`.
+
+**Failure:** **F1-RC-16** = replay-visible notification amplification.
+
+**Clarification:** Verification/governance only — **not** retry-system or provider redesign.
+
+###### 3l. Notification lineage boundedness (mandatory — rev 2)
+
+F1 verifies lineage **continuity** (§3c) **and** lineage **growth boundedness** — governance observability only.
+
+| Field | Definition |
+|-------|------------|
+| `notification_lineage_depth` | Max attributable ancestry depth per notification window |
+| `lineage_growth_curve[]` | Depth/count deltas across R1/R2/R3 and chain types |
+| `lineage_growth_pass` | Growth == 0 on stable replay (R2/R3 vs settled R1) unless documented regenerative class |
+| `lineage_collapse_state` | `collapsed_stable` \| `expanded` \| `inconsistent` on replay collapse |
+
+**Bounded chain types (must prove finite growth on replay):**
+
+| Chain type | Bounded on R2/R3 replay |
+|------------|-------------------------|
+| Retry lineage chains | Yes — no unbounded retry ancestry |
+| Delegated notification chains | Yes — fanout delegate depth reconstructable |
+| Replay-regenerative chains | Yes — only on new correlation |
+| Escalation chains | Yes — escalation depth capped in window |
+| Digest lineage | Yes — batch-scoped |
+| Suppression lineage overlays | Yes — suppression reason stack bounded |
+
+**Verification must prove:** lineage growth operationally finite; replay cannot create unbounded notification ancestry; delegated chains reconstructable; lineage collapse deterministic (aligned to D1/E1 collapse discipline).
+
+**Artifact:** `f1_lineage_boundedness_{slug}.json`.
+
+**Failure:** **F1-RC-17** = unbounded notification lineage growth.
+
+##### 4. Delivery truth model (mandatory)
+
+**Governed delivery states (taxonomy — verification only):**
+
+| State | Meaning | May imply user received? |
+|-------|---------|---------------------------|
+| `intended_to_send` | Orchestrator accepted intent | **No** |
+| `queued` | Accepted for internal queue/batch | **No** |
+| `attempted` | Provider handoff tried | **No** |
+| `provider_accepted` | Provider API accepted | **No** (unless programme defines observed sync) |
+| `delivered` | Governed **observed** delivery signal only | **Yes** (only with observed layer) |
+| `observed` | Tracking/webhook confirmed | **Yes** (within observed semantics) |
+| `acknowledged` | User/system ack recorded | Contextual |
+| `suppressed` | Governed skip (preference, policy) | N/A — must show reason |
+| `blocked` | Activation/policy block | N/A — must show reason |
+| `replay-collapsed` | Replay produced no new send (idempotent) | N/A |
+
+**Hard rule:** No UI, digest, admin surface, or `message_logs` consumer may map `queued` or `provider_accepted` → user-visible **“Delivered”** without `observed` or programme-approved equivalent.
+
+**Artifact:** `f1_delivery_truth_matrix_{slug}.json` — per sample: `{ "surface", "recorded_state", "implied_user_state", "truthful": bool }`.
+
+##### 4a. Delivery authority semantics (mandatory — rev 2)
+
+The delivery truth model (§4) separates states; **§4a** governs **who or what may assert** communication truth. **Governance classification only** — **not** provider-semantics redesign.
+
+**Delivery authority sources (precedence hierarchy — highest trust wins):**
+
+| Rank | Authority source | May assert |
+|------|------------------|------------|
+| 1 (highest) | **User-visible authority** | User-facing “received/read/acknowledged” only when programme rules allow |
+| 2 | **Observed authority** | Webhook/tracking/observed delivery signals |
+| 3 | **Platform authority** | `message_logs` / orchestrator governed platform record |
+| 4 | **Provider authority** | SMTP/API acceptance, provider callbacks |
+| 5 (lowest) | **Operational observability authority** | Internal logs, debug, operator dashboards |
+| — | **Inferred/derived authority** | **Never** upgrades certainty above source; must cite parent authority |
+
+**Verification must prove:**
+
+| Requirement | Pass |
+|-------------|------|
+| No lower-trust authority overrides higher-trust delivery truth | **Yes** |
+| Inferred states cannot silently upgrade delivery certainty | **Yes** |
+| Replay does not alter authority precedence | R2/R3 `delivery_truth_resolution[]` stable |
+| User-visible delivery claims remain authority-correct | No UI upgrade from enqueue/provider alone |
+
+**Required report fields (per sample/window):**
+
+| Field | Definition |
+|-------|------------|
+| `delivery_authority_source` | Winning authority source for the asserted delivery claim |
+| `delivery_authority_precedence[]` | Ordered list of coexisting authority signals |
+| `overridden_delivery_authorities[]` | Lower-trust sources explicitly overridden |
+| `delivery_truth_resolution[]` | Per-surface: `{ "surface", "winning_source", "overridden", "precedence_pass" }` |
+
+**Artifact:** `f1_delivery_authority_{slug}.json`.
+
+**Failure:** **F1-RC-14** = delivery authority precedence violation.
+
+##### 4b. Acknowledgement ambiguity handling (mandatory — rev 2)
+
+`acknowledged` in §4 is **not** sufficient without governed ambiguity semantics. **Governance verification only** — **not** acknowledgement-system redesign.
+
+**Ambiguous acknowledgement classes (must be classifiable):**
+
+| Class | Operational meaning |
+|-------|---------------------|
+| `observed_not_acknowledged` | Delivery observed; no ack signal |
+| `acknowledged_without_confirmed_human` | System ack without confirmed human interaction |
+| `partial_acknowledgement` | Incomplete ack scope |
+| `inferred_acknowledgement` | Derived ack — lowest certainty |
+| `delayed_acknowledgement` | Ack after lag window |
+| `stale_acknowledgement` | Ack no longer valid for current state |
+
+**Verification must prove:**
+
+| Requirement | Pass |
+|-------------|------|
+| Ambiguous acknowledgement states operationally explainable | `acknowledgement_state_resolution[]` populated |
+| Replay does not silently upgrade acknowledgement certainty | `acknowledgement_replay_equal` on R2/R3 |
+| Acknowledgement ambiguity bounded and reconstructable | `acknowledgement_confidence` stable on replay |
+
+**Required report fields:**
+
+| Field | Definition |
+|-------|------------|
+| `acknowledgement_state_resolution[]` | Per notification: class, sources, resolution reason |
+| `acknowledgement_confidence` | `high` \| `medium` \| `low` \| `ambiguous` |
+| `acknowledgement_replay_equal` | R2/R3 acknowledgement fingerprint equal on stable replay |
+| `acknowledgement_ambiguity_reason` | Governed reason when not `high` confidence |
+
+**Artifact:** `f1_acknowledgement_semantics_{slug}.json`.
+
+**Failure:** **F1-RC-15** = acknowledgement certainty drift.
+
+##### 5. Replay semantics — notification branch classes (mandatory)
+
+Each observed notification branch on replay must be classified:
+
+| Class | Definition | R2/R3 expectation |
+|-------|------------|-------------------|
+| `replay-collapsible` | Duplicate upstream replay → no new send | Stable fingerprint |
+| `replay-regenerative` | Legitimate new upstream correlation → new send allowed | New row with new correlation |
+| `idempotent` | Explicit duplicate_ignored | Stable outcome |
+| `suppression-stable` | Suppressed/blocked with same reason | Same suppression fingerprint |
+| `activation-blocked` | `NOTIFICATION_DISPATCH` / workflow gate | Stable blocked reason |
+| `delegated-regenerative` | Fanout delegate triggers new notification path | Documented once per new correlation |
+
+**Artifact:** `f1_notification_branch_behaviour_{slug}.json` — `notification_behaviour_classes[]`.
+
+**Failure:** **F1-RC-11** = replay collapse inconsistency.
+
+##### 6. Failure taxonomy (F1-RC-*)
+
+| RC | Name | Trigger |
+|----|------|---------|
+| **F1-RC-1** | Notification replay drift | R2≠R3 intent fingerprint on stable key |
+| **F1-RC-2** | Replay amplification | Extra sends/attempts on replay |
+| **F1-RC-3** | Duplicate delivery drift | Dedupe outcome non-deterministic |
+| **F1-RC-4** | Lineage detachment | Orphan or unjoinable `message_logs` |
+| **F1-RC-5** | False delivery implication | Surface implies delivered from enqueue/accept only |
+| **F1-RC-6** | Notification saturation | Unbounded rows/attempts in window |
+| **F1-RC-7** | Suppression inconsistency | R2/R3 suppression fingerprint differs |
+| **F1-RC-8** | Temporal contradiction | Ordering violations in timeline |
+| **F1-RC-9** | Cross-tenant bleed | Control tenant delta ≠ 0 |
+| **F1-RC-10** | Observability noise amplification | Audit/log churn on replay |
+| **F1-RC-11** | Replay collapse inconsistency | Collapse class unstable R2/R3 |
+| **F1-RC-12** | Unbounded retry growth | Retry counters grow on replay |
+| **F1-RC-13** | Delivery-state opacity | Outcome not reconstructable |
+| **F1-RC-14** | Delivery authority precedence violation | Lower-trust source wins or inferred upgrade |
+| **F1-RC-15** | Acknowledgement certainty drift | Ack certainty changes on R2/R3 without governed transition |
+| **F1-RC-16** | Replay-visible notification amplification | Unbounded user-visible churn on replay |
+| **F1-RC-17** | Unbounded notification lineage growth | Lineage depth/count grows without regenerative class |
+
+`detect_primary_rc` order documented in verification harness (lowest index wins for reporting). Suggested priority after fixture gate: **F1-RC-14** → **F1-RC-15** → **F1-RC-16** → **F1-RC-17** → **F1-RC-1** … (full order in harness spec on implementation).
+
+**Rev 2 RC quick reference:** **F1-RC-14** delivery authority; **F1-RC-15** acknowledgement; **F1-RC-16** visible impact; **F1-RC-17** lineage growth.
+
+##### 7. Required artifacts (mandatory)
+
+All under `backend/docs/audit/` with slug `6fd5ac4c_d35a58ae` (pilot) unless noted:
+
+| Artifact | Contents |
+|----------|----------|
+| `f1_control_selection_{slug}.json` | Pilot + control ids |
+| `f1_notification_before_{slug}.json` | Preflight `message_logs` counts / fingerprints |
+| `f1_notification_replay_{slug}.json` | R1/R2/R3 replay fingerprints |
+| `f1_dedupe_determinism_{slug}.json` | Idempotency key outcomes |
+| `f1_lineage_trace_{slug}.json` | correlation / transition joins |
+| `f1_correlation_matrix_{slug}.json` | Cross-layer correlation consistency |
+| `f1_delivery_truth_matrix_{slug}.json` | Truth model per surface |
+| `f1_delivery_authority_{slug}.json` | Authority precedence + `delivery_truth_resolution[]` (§4a) |
+| `f1_acknowledgement_semantics_{slug}.json` | Ack ambiguity + `acknowledgement_replay_equal` (§4b) |
+| `f1_visible_impact_{slug}.json` | User-visible replay impact (§3k) |
+| `f1_lineage_boundedness_{slug}.json` | Lineage depth/growth/collapse (§3l) |
+| `f1_delivery_boundedness_{slug}.json` | Internal growth curves |
+| `f1_suppression_replay_{slug}.json` | Suppression fingerprints |
+| `f1_notification_branch_behaviour_{slug}.json` | Behaviour classes |
+| `f1_notification_explainability_{slug}.json` | Reconstruction pass |
+| `f1_temporal_ordering_{slug}.json` | Timelines |
+| `f1_audit_stability_{slug}.json` | Noise deltas |
+| `f1_unrelated_surface_integrity_{slug}.json` | Control tenant before/after |
+| `f1_verification_report_{slug}.json` | `f1_pass`, `checks{}`, `primary_rc_branch`, artifact index |
+
+**Staging driver:** `f1_*` first run (`f1_first_governed_staging_run_v1`) + **F1a** authoritative rerun (`f1a_harness_refinement_rerun_v1`). Scripts: `f1_snapshot.py`, `f1_preflight_capture.py`, `f1_staging_verification.py`, `f1a_snapshot.py`, `f1a_preflight_capture.py`, `f1a_staging_verification.py`. **F1-M1** + **F1-M8** observe only.
+
+#### F1a — Harness refinement (micro-unit)
+
+| Field | Value |
+|-------|-------|
+| **ID** | F1a |
+| **Parent** | **F1** |
+| **Scope** | Replay-pair acknowledgement semantics; replay fingerprint field alignment; vacuous replay prevention; population ambiguity excluded from **F1-RC-15** critical stop |
+| **Unit status** | **DONE** (2026-05-17) |
+| **Verification evidence** | `f1a_verification_report_6fd5ac4c_d35a58ae.json` (`f1a_rc15_cleared=true`, exit 0); `f1a_acknowledgement_semantics_*` (replay-pair); original `f1_*` preserved |
+
+**Closure:** First `f1_*` run stopped on **F1-RC-15** (population acknowledgement compare — **harness methodology**, not notification replay instability). F1a corrected: replay-pair question = *did R2/R3 alter acknowledgement certainty on M1 idempotency row?*; M1 probe fingerprints aligned into `replay_notification_comparison_f1a`; vacuous `null==null` semantic pass prevented.
+
+---
+
+#### F1 — Closure evidence (VERIFIED — 2026-05-17)
+
+**Pilot:** `client_id=6fd5ac4c-3fd4-4112-ade7-156977deb49f`, `property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad`, `pleerity_staging`. **Control:** `04ceda9f-dd72-4b70-a6f5-809bef1b7b6a` / `6d939c70-06ab-4dc8-8b36-204958d2cdb3`.
+
+##### 1. F1 proof outcome (governed **F1-M1** replay path)
+
+Notification governance replay semantics are **materially proven stable** on a **notification-replay-capable** pilot fixture (`f1a` rerun: no critical stop, `failure_classification=governed_replay_proof_candidate`).
+
+| Proven on F1a authoritative rerun | Result |
+|-----------------------------------|--------|
+| No replay-visible amplification | **PASS** — `message_log_count` 49 constant R1–R3 |
+| Deterministic duplicate suppression (**F1-M1**) | **PASS** — R2/R3 `duplicate_ignored`; `dedupe_deterministic=true` |
+| Visible notification fingerprints stable | **PASS** — `replay_visible_impact_stable=true` |
+| Suppression replay stable | **PASS** — `suppression_replay_equal=true` |
+| Lineage bounded | **PASS** — `lineage_growth_pass=true`; depth 2 stable |
+| Cross-tenant isolation | **PASS** — `unrelated_delta_zero=true`; control `message_logs` unchanged |
+| Acknowledgement replay semantics (replay-pair) | **PASS** — `acknowledgement_replay_equal=true`; **no** certainty escalation on replay |
+| Semantic notification replay | **PASS** — R2/R3 semantic + raw fingerprints aligned (`af8be64b…` / `3d8d55a7…`) |
+| Delivery-authority precedence (sample) | **PASS** — `delivery_authority_precedence_pass=true` |
+| Delivery truth on replay probe row | **PASS** — `false_delivery_implication_on_replay_probe=false` |
+
+**Governed mutations in proof:** **F1-M1** (idempotency replay probe on stable key); **F1-M8** observe (`NOTIFICATION_DISPATCH` off per inventory). **F1-M2–M7** **not** proven in this unit.
+
+##### 2. Classification history (preserved — do not erase)
+
+| Phase | Artifact set | Outcome | Programme interpretation |
+|-------|----------------|---------|---------------------------|
+| **Original F1** | `f1_*` preserved | Critical stop **F1-RC-15**; `acknowledgement_replay_equal=false` on **population** compare | **Harness methodology issue** — not proven notification-governance instability |
+| **F1a** | `f1a_*` authoritative | `f1a_rc15_cleared=true`; replay-pair ack stable; exit 0 | **Governed replay proof candidate** → **VERIFIED** basis |
+
+Original **F1-RC-15** classification and artifacts remain for audit. **Do not rewrite** `f1_verification_report_*`.
+
+##### 3. Replay methodology corrections (F1a — authoritative for VERIFIED)
+
+| Correction | Detail |
+|------------|--------|
+| **Replay-pair vs population** | Acknowledgement RC applies to **R2/R3 on M1 idempotency row** only; historical `inferred_acknowledgement` population does **not** trigger **F1-RC-15** |
+| **Fingerprint alignment** | `replay_notification_comparison_f1a` merges M1 probe `notification_intent_fingerprint_*_after` into R2/R3 |
+| **Vacuous pass prevention** | `null==null` semantic stability rejected; `vacuous_semantic_comparison_prevented` explicit |
+| **Critical-stop discipline** | On true replay defect signals: preserve artifacts, classify RC, stop — **no** remediation under F1/F1a |
+
+##### 4. VERIFIED interpretation
+
+**F1 VERIFIED means:**
+
+- Governed **F1-M1** replay proof **succeeded** on staging pilot.
+- Replay semantics behaved **deterministically** (idempotent collapse, no amplification, visible impact stable).
+- **No** true notification replay instability established on the proven path.
+- **No** replay-visible communication storm observed.
+- **No** semantic delivery-authority escalation on replay probe.
+
+**F1 VERIFIED does NOT mean:**
+
+- All historical notification ambiguity is resolved.
+- Provider certainty is perfect or inbox delivery is guaranteed.
+- Acknowledgement ambiguity no longer exists in `message_logs` history.
+- Notification architecture is complete.
+- **F1-M2–M7** mutation paths are proven.
+- Global `NOTIFICATION_DISPATCH` activation is approved.
+
+##### 5. No remediation conclusion
+
+| Item | Conclusion |
+|------|------------|
+| Notification product defect (replay path) | **Not confirmed** |
+| `notification_orchestrator` redesign | **Not indicated** |
+| Provider redesign | **Not indicated** |
+| Retry redesign | **Not indicated** |
+| Queue / scheduler redesign | **Not indicated** |
+| Template remediation | **Not indicated** |
+| `message_logs` semantic rewrite | **Not authorized** |
+
+##### 6. Remaining watchlist (explicit)
+
+- **Operational population ambiguity** exists (`population_operational_ambiguity_present=true` on F1a rerun) — `inferred_acknowledgement` / `ambiguous` on historical **DELIVERED** rows without observed/ack signals; **not** a replay failure.
+- **Raw timestamp drift** may still be observable on non-replay windows; **only semantic replay** gates were normalized (observational keys + run labels).
+- Proof scope is **F1-M1 + F1-M8 observe** only — digest (**M5**), escalation (**M6**), authority-transition notify (**M2**), fanout delegate (**M3**), retry observe (**M4**), suppression overlay proof (**M7**) remain **unproven**.
+- **`NOTIFICATION_DISPATCH`** remains globally **off** per `NOTIFICATION_GOVERNANCE_INVENTORY.json`.
+- §8 **DONE** baseline suites (`test_notification_*` full matrix) not yet closed for **DONE**.
+- Do **not** reinterpret provider **SENT** / platform **DELIVERED** as guaranteed user receipt.
+
+##### 7. Governance posture — VERIFIED vs DONE
+
+**F1 VERIFIED** = governed notification replay truthfulness **proven on F1-M1** under existing orchestrator semantics. Parent unit **paused before DONE** (same discipline as E1).
+
+**F1 is not DONE** in this pass.
+
+**Authoritative artifacts:**
+
+| Set | Role |
+|-----|------|
+| **`f1a_*`** | **Authoritative for F1 VERIFIED** — `f1a_verification_report_6fd5ac4c_d35a58ae.json`, `f1a_notification_replay_*`, `f1a_acknowledgement_semantics_*` |
+| **`f1_*`** | First-run history (**F1-RC-15**, harness methodology) |
+
+**Regression (harness):** `tests/test_f1_verification_contract.py`, `tests/test_f1a_verification_contract.py` — green.
+
+**Unlock on VERIFIED:** **G1/G2** continuous improvement per programme sequence; **F1 DONE** only after explicit approval + §8 baseline suites + §10 doc sweep. **Do not** start notification remediation or widen **F1-M2–M7** without separate approved unit.
+
+##### 8. Regression suites
+
+**Existing suites (must pass before F1 DONE — baseline):**
+
+| Suite | Role |
+|-------|------|
+| `tests/test_notification_bypass_governance.py` | **L-008** — no bypass sends |
+| `tests/test_notification_orchestrator.py` | Orchestrator core |
+| `tests/test_notification_compliance_alert_idempotency.py` | **L-008d** alert dedupe |
+| `tests/test_notification_reminder_idempotency.py` | Reminder batch idempotency |
+| `tests/test_notification_preferences_enforcement.py` | Preference suppression |
+| `tests/test_enterprise_notification.py` | Enterprise paths |
+| `tests/test_notification_template_seed_definitions.py` | **L-008e** template registry |
+| `tests/test_work_order_contractor_routing_notifications.py` | WO routing observe |
+
+**Proposed F1 verification-only suites (implement in F1 verification phase — not in this draft):**
+
+| Proposed file | Role |
+|---------------|------|
+| `tests/test_f1_verification_contract.py` | **Implemented** — mocked replay/dedupe/truth-model contract |
+| `tests/test_f1a_verification_contract.py` | **Implemented** — replay-pair ack + vacuous prevention |
+| `tests/test_f1_notification_replay_determinism.py` | Stable replay → equal intent fingerprint |
+| `tests/test_f1_delivery_truth_semantics.py` | No false delivered implication |
+| `tests/test_f1_suppression_replay.py` | Suppression fingerprint R2=R3 |
+| `tests/test_f1_lineage_continuity.py` | Correlation join matrix |
+
+##### 9. Completion gates
+
+| Gate | Requirement |
+|------|-------------|
+| **Start `IN_PROGRESS`** | F1 DoD **approved**; pilot + control identified; E1 **VERIFIED** |
+| **`IMPLEMENTED_PENDING_VERIFICATION`** | F1 scripts/tests merged (**verification only**) |
+| **`READY_FOR_STAGING_VERIFICATION`** | All §7 artifacts captured on staging |
+| **`VERIFIED`** | §1–§6 + §3 themes + §4a–§4b pass on staging report |
+| **`DONE`** | §8 tests green; §10 docs updated; deferral list documented |
+
+**F1 cannot move to DONE unless all proven on staging:**
+
+1. **Deterministic replay** on F1-M1 stable keys.
+2. **Truthful delivery semantics** — no false delivery implication (**F1-RC-5**).
+3. **Delivery authority precedence deterministic** — no lower-trust override (**F1-RC-14**).
+4. **Acknowledgement ambiguity replay-stable** — no silent certainty upgrade (**F1-RC-15**).
+5. **Visible replay impact bounded** — no user-visible notification storms (**F1-RC-16**).
+6. **Notification lineage bounded** — finite ancestry; collapse deterministic (**F1-RC-17**).
+7. **Bounded retry/replay growth** (**F1-RC-6**, **F1-RC-12**).
+8. **Suppression stability** on replay (**F1-RC-7**).
+9. **Lineage continuity** (**F1-RC-4**).
+10. **Cross-tenant isolation** (**F1-RC-9**).
+11. **Operational explainability** (**F1-RC-13**).
+12. **Bounded observability noise** (**F1-RC-10**).
+13. **No replay-visible notification storms** (visible + internal boundedness).
+14. No notification/queue/scheduler/template/provider/acknowledgement redesign shipped under F1 guise (§10).
+
+##### 10. Boundary reaffirmation (explicit NOT — rev 2)
+
+**F1 is verification and governance first.** Notification architecture remediation, provider migration, acknowledgement-system redesign, retry-system redesign, scheduler cadence changes, queue topology changes, fanout routing changes, workflow redesign, authority redesign, task-system redesign, event-bus redesign, template-system rewrite, or global `NOTIFICATION_DISPATCH` activation require **separate approved units** with their own DoD — not bundled into initial F1 proof.
+
+| Explicitly out of scope (reaffirmed rev 2) | |
+|--------------------------------------------|--|
+| Notification architecture rewrite | |
+| Provider redesign / provider semantics redesign | |
+| Acknowledgement system redesign | |
+| Retry system redesign | |
+| Scheduler redesign | |
+| Queue redesign | |
+| Event-bus redesign | |
+| Template-system redesign | |
+| Fanout topology redesign | |
+| Workflow redesign | |
+| Authority / evidence systems (E-layer) | |
+| Task systems (C2) | |
+
+**Rev 2 clarifications (verification only):** §4a delivery authority, §4b acknowledgement ambiguity, §3k visible impact, and §3l lineage boundedness are **governance observability** requirements — they do **not** authorize changing provider callbacks, ack pipelines, retry writers, or orchestrator routing in the F1 unit.
+
+**Status:** **VERIFIED** (2026-05-17) — see § **F1 — Closure evidence** above. **F1a DONE**. Parent **not DONE**. Staging reports retain `f1_pass: null` / `classification_deferred: true` by design; programme **VERIFIED** is tracker-authoritative.
 
 ---
 
@@ -2872,7 +4152,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
   → C1 → C2 → D1 (+ D2 in parallel) → E1 → F1 → G1/G2 continuous
 ```
 
-**Next approved step:** Draft **E1** Definition of Done only (evidence / document state authority). **Do not** start E1 implementation, **F1**, notifications, scheduler/fanout redesign, or production route alignment (`requirements/sync` → `_with_fanout`) without separate approved unit + DoD. **D2** optional parallel inventory. **B2** BLOCKED (product); **B3** BLOCKED/deferred.
+**Next approved step:** **F1 DONE** (explicit approval + §8 baseline suites) or **G1/G2** per sequence — **not** notification remediation under F1 guise. **Do not** widen **F1-M2–M7** without separate unit. **D2** optional parallel. **B2** BLOCKED (product); **B3** BLOCKED/deferred.
 
 ---
 

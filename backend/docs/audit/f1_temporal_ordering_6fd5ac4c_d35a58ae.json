@@ -1,0 +1,181 @@
+{
+  "notification_order_timeline": [
+    {
+      "message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+      "governed_state": "delivered",
+      "created_at": "2026-05-16 09:01:07.429000",
+      "sent_at": "2026-05-16 09:01:08.354000",
+      "delivered_at": "2026-05-16T09:01:09Z"
+    },
+    {
+      "message_id": "54524dd4-5ace-4082-bdaa-60cd9352ac7c",
+      "governed_state": "delivered",
+      "created_at": "2026-05-16 09:01:04.550000",
+      "sent_at": "2026-05-16 09:01:05.494000",
+      "delivered_at": "2026-05-16T09:01:06Z"
+    },
+    {
+      "message_id": "608dc152-6553-4e04-a3ab-412d3bbe7f8e",
+      "governed_state": "delivered",
+      "created_at": "2026-05-14 09:01:12.659000",
+      "sent_at": "2026-05-14 09:01:13.667000",
+      "delivered_at": "2026-05-14T09:01:15Z"
+    },
+    {
+      "message_id": "d4963bf6-8c41-4cf1-bad8-d284851e0946",
+      "governed_state": "delivered",
+      "created_at": "2026-05-14 09:01:09.153000",
+      "sent_at": "2026-05-14 09:01:10.604000",
+      "delivered_at": "2026-05-14T09:01:11Z"
+    },
+    {
+      "message_id": "5e691390-dc81-4562-945c-69387fa20c83",
+      "governed_state": "delivered",
+      "created_at": "2026-05-12 09:01:08.142000",
+      "sent_at": "2026-05-12 09:01:09.101000",
+      "delivered_at": "2026-05-12T09:01:10Z"
+    },
+    {
+      "message_id": "799f2777-b55d-40c7-bc1f-ca2ffdeafc8b",
+      "governed_state": "delivered",
+      "created_at": "2026-05-12 09:01:05.262000",
+      "sent_at": "2026-05-12 09:01:06.211000",
+      "delivered_at": "2026-05-12T09:01:07Z"
+    },
+    {
+      "message_id": "c832ca23-a191-4360-9dd1-c33b130c695e",
+      "governed_state": "delivered",
+      "created_at": "2026-05-10 09:01:07.088000",
+      "sent_at": "2026-05-10 09:01:08.374000",
+      "delivered_at": "2026-05-10T09:01:09Z"
+    },
+    {
+      "message_id": "3624ed7b-c742-447f-a7c1-8202e1b6bcd7",
+      "governed_state": "delivered",
+      "created_at": "2026-05-10 09:01:04.175000",
+      "sent_at": "2026-05-10 09:01:05.134000",
+      "delivered_at": "2026-05-10T09:01:06Z"
+    },
+    {
+      "message_id": "3b4ed4a4-792c-4493-aa3b-1fd2577973f9",
+      "governed_state": "delivered",
+      "created_at": "2026-05-06 09:00:59.244000",
+      "sent_at": "2026-05-06 09:01:00.470000",
+      "delivered_at": "2026-05-06T09:01:04Z"
+    },
+    {
+      "message_id": "6c71c649-0a0c-40ac-b0cb-43f9df030923",
+      "governed_state": "delivered",
+      "created_at": "2026-05-06 09:00:57.206000",
+      "sent_at": "2026-05-06 09:00:58.157000",
+      "delivered_at": "2026-05-06T09:00:59Z"
+    },
+    {
+      "message_id": "d8891f72-258c-4166-b615-ac175d4b3dfa",
+      "governed_state": "delivered",
+      "created_at": "2026-05-01 10:12:28.713000",
+      "sent_at": "2026-05-01 10:12:29.990000",
+      "delivered_at": "2026-05-01T10:12:32Z"
+    },
+    {
+      "message_id": "b6cf4afd-7c35-45c5-a1b6-7f1e1eddeb8c",
+      "governed_state": "delivered",
+      "created_at": "2026-04-30 09:15:13.184000",
+      "sent_at": "2026-04-30 09:15:13.656000",
+      "delivered_at": "2026-04-30T09:15:15Z"
+    },
+    {
+      "message_id": "b7de0e5f-1602-4f42-8644-28320955f449",
+      "governed_state": "delivered",
+      "created_at": "2026-04-26 09:02:20.527000",
+      "sent_at": "2026-04-26 09:02:21.479000",
+      "delivered_at": "2026-04-28T12:14:51Z"
+    },
+    {
+      "message_id": "59ced866-212c-4981-bfd2-07711dd8c98f",
+      "governed_state": "delivered",
+      "created_at": "2026-04-26 09:02:17.374000",
+      "sent_at": "2026-04-26 09:02:18.320000",
+      "delivered_at": "2026-04-28T12:14:52Z"
+    },
+    {
+      "message_id": "b28a5e43-bda4-447f-b257-4edfc13f23c6",
+      "governed_state": "delivered",
+      "created_at": "2026-04-25 19:17:41.563000",
+      "sent_at": "2026-04-25 19:17:42.221000",
+      "delivered_at": "2026-04-28T12:15:01Z"
+    },
+    {
+      "message_id": "51c8df9c-2053-448c-834a-2104b96aefa1",
+      "governed_state": "delivered",
+      "created_at": "2026-04-25 04:45:03.230000",
+      "sent_at": "2026-04-25 04:45:03.833000",
+      "delivered_at": "2026-04-28T12:15:10Z"
+    },
+    {
+      "message_id": "4b00de2c-2e89-4226-bdb1-044a8672d035",
+      "governed_state": "delivered",
+      "created_at": "2026-04-25 04:30:05.812000",
+      "sent_at": "2026-04-25 04:30:06.303000",
+      "delivered_at": "2026-04-28T12:14:52Z"
+    },
+    {
+      "message_id": "e66f7adb-f287-4b8e-a44a-acb6f73b4282",
+      "governed_state": "delivered",
+      "created_at": "2026-04-23 09:03:55.160000",
+      "sent_at": "2026-04-23 09:03:56.115000",
+      "delivered_at": "2026-04-28T12:15:10Z"
+    },
+    {
+      "message_id": "578b337b-7701-47d4-9685-05d6b04ee3a1",
+      "governed_state": "delivered",
+      "created_at": "2026-04-23 09:03:50.582000",
+      "sent_at": "2026-04-23 09:03:51.545000",
+      "delivered_at": "2026-04-28T12:15:07Z"
+    },
+    {
+      "message_id": "ac9ef84a-c1e8-420b-8f02-19f52c335032",
+      "governed_state": "provider_accepted",
+      "created_at": "2026-04-21 09:03:50.463000",
+      "sent_at": "2026-04-21 09:03:51.403000",
+      "delivered_at": null
+    },
+    {
+      "message_id": "e18344b0-9ee3-408b-9459-7d3a7727c56b",
+      "governed_state": "provider_accepted",
+      "created_at": "2026-04-21 09:03:46.097000",
+      "sent_at": "2026-04-21 09:03:47.036000",
+      "delivered_at": null
+    },
+    {
+      "message_id": "537b7d96-33f2-414b-874e-c8b1ffc659ef",
+      "governed_state": "delivered",
+      "created_at": "2026-04-19 09:03:45.598000",
+      "sent_at": "2026-04-19 09:03:46.549000",
+      "delivered_at": "2026-04-19T09:03:47Z"
+    },
+    {
+      "message_id": "ab713bc8-80b1-4e2a-9518-44e681e91920",
+      "governed_state": "delivered",
+      "created_at": "2026-04-19 09:03:41.526000",
+      "sent_at": "2026-04-19 09:03:42.463000",
+      "delivered_at": "2026-04-19T09:03:43Z"
+    },
+    {
+      "message_id": "9920e6af-253b-4bc8-944a-d1f6b8b4571d",
+      "governed_state": "delivered",
+      "created_at": "2026-04-17 09:03:43.538000",
+      "sent_at": "2026-04-17 09:03:44.482000",
+      "delivered_at": "2026-04-17T09:03:45Z"
+    },
+    {
+      "message_id": "49411c87-74b1-48ce-86c6-94b9e634d882",
+      "governed_state": "delivered",
+      "created_at": "2026-04-17 09:03:39.420000",
+      "sent_at": "2026-04-17 09:03:40.376000",
+      "delivered_at": "2026-04-17T09:03:41Z"
+    }
+  ],
+  "temporal_contradictions": [],
+  "temporal_sane": true
+}

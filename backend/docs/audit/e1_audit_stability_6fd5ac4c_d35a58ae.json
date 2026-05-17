@@ -1,0 +1,32 @@
+[
+  {
+    "audit_authority_event_delta": 0,
+    "noise_pass": true,
+    "before": {
+      "audit_authority_events": 0
+    },
+    "after": {
+      "audit_authority_events": 0
+    }
+  },
+  {
+    "audit_authority_event_delta": 0,
+    "noise_pass": true,
+    "before": {
+      "audit_authority_events": 0
+    },
+    "after": {
+      "audit_authority_events": 0
+    }
+  },
+  {
+    "audit_authority_event_delta": 0,
+    "noise_pass": true,
+    "before": {
+      "audit_authority_events": 0
+    },
+    "after": {
+      "audit_authority_events": 0
+    }
+  }
+]

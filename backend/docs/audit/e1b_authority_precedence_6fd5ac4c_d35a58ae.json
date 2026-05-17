@@ -1,0 +1,20 @@
+{
+  "authority_precedence_resolution": [
+    {
+      "entity_key": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+      "conflicting_sources": [
+        "human_review",
+        "extraction_assistance",
+        "document_heuristic"
+      ],
+      "winning_authority_source": "human_review",
+      "overridden_authority_sources": [
+        "extraction_assistance",
+        "document_heuristic"
+      ],
+      "resolution_reason": "effective_review=ACCEPTED_UNVERIFIED",
+      "precedence_pass": true
+    }
+  ],
+  "precedence_pass": true
+}

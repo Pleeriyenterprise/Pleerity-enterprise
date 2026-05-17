@@ -1,0 +1,28 @@
+{
+  "suppression_fingerprint": "c86691bc8c9269059f15894e4a7eca00",
+  "suppression_replay_equal": true,
+  "m1_outcomes": [
+    {
+      "run": "R2",
+      "outcome": "duplicate_ignored",
+      "block_reason": null,
+      "message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+      "idempotency_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f_COMPLIANCE_EXPIRY_REMINDER_2026-05-16_agent_at_yopmail.com_d38c424a52e4cf06",
+      "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+      "notification_branch_class": "idempotent",
+      "notification_intent_fingerprint_semantic_after": "af8be64b7430ebdc3d0f2901f6d03e96",
+      "notification_intent_fingerprint_raw_after": "3d8d55a73ad5024845a0c3225d182569"
+    },
+    {
+      "run": "R3",
+      "outcome": "duplicate_ignored",
+      "block_reason": null,
+      "message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+      "idempotency_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f_COMPLIANCE_EXPIRY_REMINDER_2026-05-16_agent_at_yopmail.com_d38c424a52e4cf06",
+      "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+      "notification_branch_class": "idempotent",
+      "notification_intent_fingerprint_semantic_after": "af8be64b7430ebdc3d0f2901f6d03e96",
+      "notification_intent_fingerprint_raw_after": "3d8d55a73ad5024845a0c3225d182569"
+    }
+  ]
+}

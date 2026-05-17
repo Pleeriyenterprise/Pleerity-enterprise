@@ -1,0 +1,11 @@
+{
+  "cross_layer_matrix": [
+    {
+      "layer": "requirement_authority",
+      "entity_key": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+      "fingerprint": "b93838886af76141587fa84d9932d198",
+      "consistent": true,
+      "notes": ""
+    }
+  ]
+}

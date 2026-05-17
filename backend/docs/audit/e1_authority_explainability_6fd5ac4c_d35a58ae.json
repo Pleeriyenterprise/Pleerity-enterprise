@@ -1,0 +1,18 @@
+{
+  "authority_explainability_summary": [
+    {
+      "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+      "document_id": "",
+      "operational_outcome": "unknown",
+      "reconstructable": false,
+      "sources_used": [
+        "requirement_evidence_authority",
+        "lineage_correlation"
+      ],
+      "gaps": [
+        "insufficient_governed_history"
+      ]
+    }
+  ],
+  "explainability_reconstruction_pass": false
+}

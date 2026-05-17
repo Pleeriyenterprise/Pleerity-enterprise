@@ -1,0 +1,53 @@
+{
+  "runs": [
+    {
+      "message_log_count": 49,
+      "lineage_sample_depth": 2,
+      "visible_message_log_count": 49,
+      "user_visible_notification_fingerprint": "499d420f693d33f8b5b2ce789390aaed",
+      "sample_message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+      "sample_semantic_fingerprint": "af8be64b7430ebdc3d0f2901f6d03e96",
+      "sample_raw_fingerprint": "3d8d55a73ad5024845a0c3225d182569",
+      "run": "R1"
+    },
+    {
+      "message_log_count": 49,
+      "lineage_sample_depth": 2,
+      "visible_message_log_count": 49,
+      "user_visible_notification_fingerprint": "499d420f693d33f8b5b2ce789390aaed",
+      "sample_message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+      "sample_semantic_fingerprint": "af8be64b7430ebdc3d0f2901f6d03e96",
+      "sample_raw_fingerprint": "3d8d55a73ad5024845a0c3225d182569",
+      "run": "R2",
+      "m1_outcome": "duplicate_ignored"
+    },
+    {
+      "message_log_count": 49,
+      "lineage_sample_depth": 2,
+      "visible_message_log_count": 49,
+      "user_visible_notification_fingerprint": "499d420f693d33f8b5b2ce789390aaed",
+      "sample_message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+      "sample_semantic_fingerprint": "af8be64b7430ebdc3d0f2901f6d03e96",
+      "sample_raw_fingerprint": "3d8d55a73ad5024845a0c3225d182569",
+      "run": "R3",
+      "m1_outcome": "duplicate_ignored"
+    }
+  ],
+  "replay_notification_drift": [],
+  "replay_notification_comparison": {
+    "raw_fingerprint": {
+      "R2": null,
+      "R3": null,
+      "replay_stable": false
+    },
+    "semantic_fingerprint": {
+      "R2": null,
+      "R3": null,
+      "replay_stable": true
+    },
+    "notification_replay_stable_raw": false,
+    "notification_replay_stable_semantic": true,
+    "timestamp_only_drift": true,
+    "replay_branch_hint": "replay-collapsible"
+  }
+}

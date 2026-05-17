@@ -1,0 +1,17 @@
+{
+  "authority_collapse_state": "collapsed_stable",
+  "collapsed_authority_mutations": [
+    {
+      "run": "R2",
+      "collapse_reason": "idempotent_authority_sync",
+      "mutation": "E1-M1"
+    },
+    {
+      "run": "R3",
+      "collapse_reason": "idempotent_authority_sync",
+      "mutation": "E1-M1"
+    }
+  ],
+  "retained_authority_visibility": true,
+  "collapse_deterministic": true
+}

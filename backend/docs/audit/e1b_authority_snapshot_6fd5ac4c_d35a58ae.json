@@ -1,0 +1,212 @@
+[
+  {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+    "document_id": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+    "document_operational": {
+      "document_operational_state": "EVIDENCE_ACCEPTED_ON_FILE",
+      "document_operational_label": "Accepted on file (not externally verified)",
+      "document_operational_reason_codes": [
+        "EVIDENCE_ACCEPTED_ON_FILE",
+        "EXTRACTION_CONFIRMATION_SUPERSEDED"
+      ]
+    },
+    "effective_evidence_review_state": "ACCEPTED_UNVERIFIED",
+    "evidence_authority": {
+      "version": 1,
+      "state": "VERIFIED_CURRENT",
+      "state_reason": "verified_current",
+      "effective_expiry_date": "2027-05-17T00:00:00+00:00",
+      "effective_expiry_is_null": false,
+      "effective_issue_date": "2026-04-17T00:00:00+00:00",
+      "effective_verified_document_id": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+      "expiry_source": "VERIFIED_DOCUMENT",
+      "evidence_last_verified_at": "2026-05-17T15:44:05.286680+00:00",
+      "evidence_last_updated_at": "2026-05-17T15:50:09.131365+00:00",
+      "mismatch_flag": false,
+      "mismatch_reason": null,
+      "evidence_confidence": null,
+      "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "evidence_scope_type": "PROPERTY",
+      "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "predicted_document_type": null,
+      "match_outcome": "MATCH_CONFIRMED",
+      "match_confidence": 0.99,
+      "mismatch_reason_code": null,
+      "evidence_match_blocks_satisfaction": false,
+      "primary_evidence_mode": "DOCUMENT_UPLOAD",
+      "evidence_confidence_level": "HIGH",
+      "non_document_verification_status": null,
+      "primary_evidence_record_id": null,
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    "authority_fingerprint": "0f68e4fbc39c7fff5b34d66e6392fdcf",
+    "supersession_fingerprint": "6abc7d9bf77a4b0b8d644b8d312e56cb",
+    "authority_precedence_resolution": [
+      {
+        "entity_key": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+        "conflicting_sources": [
+          "human_review",
+          "extraction_assistance",
+          "document_heuristic"
+        ],
+        "winning_authority_source": "human_review",
+        "overridden_authority_sources": [
+          "extraction_assistance",
+          "document_heuristic"
+        ],
+        "resolution_reason": "effective_review=ACCEPTED_UNVERIFIED",
+        "precedence_pass": true
+      }
+    ],
+    "precedence_pass": true,
+    "expected_active_authority_count": 1,
+    "actual_active_authority_count": 1,
+    "unexpected_parallel_authority_count": 0,
+    "winning_authority_source": "human_review",
+    "parallel_authority_sources": [],
+    "authority_cardinality_pass": true,
+    "run": "R1"
+  },
+  {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+    "document_id": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+    "document_operational": {
+      "document_operational_state": "EVIDENCE_ACCEPTED_ON_FILE",
+      "document_operational_label": "Accepted on file (not externally verified)",
+      "document_operational_reason_codes": [
+        "EVIDENCE_ACCEPTED_ON_FILE",
+        "EXTRACTION_CONFIRMATION_SUPERSEDED"
+      ]
+    },
+    "effective_evidence_review_state": "ACCEPTED_UNVERIFIED",
+    "evidence_authority": {
+      "version": 1,
+      "state": "VERIFIED_CURRENT",
+      "state_reason": "verified_current",
+      "effective_expiry_date": "2027-05-17T00:00:00+00:00",
+      "effective_expiry_is_null": false,
+      "effective_issue_date": "2026-04-17T00:00:00+00:00",
+      "effective_verified_document_id": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+      "expiry_source": "VERIFIED_DOCUMENT",
+      "evidence_last_verified_at": "2026-05-17T15:44:05.286680+00:00",
+      "evidence_last_updated_at": "2026-05-17T15:50:12.561572+00:00",
+      "mismatch_flag": false,
+      "mismatch_reason": null,
+      "evidence_confidence": null,
+      "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "evidence_scope_type": "PROPERTY",
+      "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "predicted_document_type": null,
+      "match_outcome": "MATCH_CONFIRMED",
+      "match_confidence": 0.99,
+      "mismatch_reason_code": null,
+      "evidence_match_blocks_satisfaction": false,
+      "primary_evidence_mode": "DOCUMENT_UPLOAD",
+      "evidence_confidence_level": "HIGH",
+      "non_document_verification_status": null,
+      "primary_evidence_record_id": null,
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    "authority_fingerprint": "37a6ab98bbe87a83f9aebea6edc33585",
+    "supersession_fingerprint": "6abc7d9bf77a4b0b8d644b8d312e56cb",
+    "authority_precedence_resolution": [
+      {
+        "entity_key": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+        "conflicting_sources": [
+          "human_review",
+          "extraction_assistance",
+          "document_heuristic"
+        ],
+        "winning_authority_source": "human_review",
+        "overridden_authority_sources": [
+          "extraction_assistance",
+          "document_heuristic"
+        ],
+        "resolution_reason": "effective_review=ACCEPTED_UNVERIFIED",
+        "precedence_pass": true
+      }
+    ],
+    "precedence_pass": true,
+    "expected_active_authority_count": 1,
+    "actual_active_authority_count": 1,
+    "unexpected_parallel_authority_count": 0,
+    "winning_authority_source": "human_review",
+    "parallel_authority_sources": [],
+    "authority_cardinality_pass": true,
+    "run": "R2"
+  },
+  {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+    "document_id": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+    "document_operational": {
+      "document_operational_state": "EVIDENCE_ACCEPTED_ON_FILE",
+      "document_operational_label": "Accepted on file (not externally verified)",
+      "document_operational_reason_codes": [
+        "EVIDENCE_ACCEPTED_ON_FILE",
+        "EXTRACTION_CONFIRMATION_SUPERSEDED"
+      ]
+    },
+    "effective_evidence_review_state": "ACCEPTED_UNVERIFIED",
+    "evidence_authority": {
+      "version": 1,
+      "state": "VERIFIED_CURRENT",
+      "state_reason": "verified_current",
+      "effective_expiry_date": "2027-05-17T00:00:00+00:00",
+      "effective_expiry_is_null": false,
+      "effective_issue_date": "2026-04-17T00:00:00+00:00",
+      "effective_verified_document_id": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+      "expiry_source": "VERIFIED_DOCUMENT",
+      "evidence_last_verified_at": "2026-05-17T15:44:05.286680+00:00",
+      "evidence_last_updated_at": "2026-05-17T15:50:14.025417+00:00",
+      "mismatch_flag": false,
+      "mismatch_reason": null,
+      "evidence_confidence": null,
+      "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "evidence_scope_type": "PROPERTY",
+      "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "predicted_document_type": null,
+      "match_outcome": "MATCH_CONFIRMED",
+      "match_confidence": 0.99,
+      "mismatch_reason_code": null,
+      "evidence_match_blocks_satisfaction": false,
+      "primary_evidence_mode": "DOCUMENT_UPLOAD",
+      "evidence_confidence_level": "HIGH",
+      "non_document_verification_status": null,
+      "primary_evidence_record_id": null,
+      "semantic_state": "VERIFIED_CURRENT"
+    },
+    "authority_fingerprint": "63a08b7f25e705a7131e0b136cd74c55",
+    "supersession_fingerprint": "6abc7d9bf77a4b0b8d644b8d312e56cb",
+    "authority_precedence_resolution": [
+      {
+        "entity_key": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+        "conflicting_sources": [
+          "human_review",
+          "extraction_assistance",
+          "document_heuristic"
+        ],
+        "winning_authority_source": "human_review",
+        "overridden_authority_sources": [
+          "extraction_assistance",
+          "document_heuristic"
+        ],
+        "resolution_reason": "effective_review=ACCEPTED_UNVERIFIED",
+        "precedence_pass": true
+      }
+    ],
+    "precedence_pass": true,
+    "expected_active_authority_count": 1,
+    "actual_active_authority_count": 1,
+    "unexpected_parallel_authority_count": 0,
+    "winning_authority_source": "human_review",
+    "parallel_authority_sources": [],
+    "authority_cardinality_pass": true,
+    "run": "R3"
+  }
+]

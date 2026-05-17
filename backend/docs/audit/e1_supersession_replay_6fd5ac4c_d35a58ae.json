@@ -1,0 +1,31 @@
+{
+  "supersession_replay_equal": false,
+  "supersession_state_fingerprint": {
+    "R1": "",
+    "R2": "",
+    "R3": ""
+  },
+  "supersession_transition_matrix": [
+    {
+      "run": "R1",
+      "from_state": "",
+      "to_state": "",
+      "trigger": "E1-M1",
+      "governed": true
+    },
+    {
+      "run": "R2",
+      "from_state": "",
+      "to_state": "",
+      "trigger": "E1-M1",
+      "governed": true
+    },
+    {
+      "run": "R3",
+      "from_state": "",
+      "to_state": "",
+      "trigger": "E1-M1",
+      "governed": true
+    }
+  ]
+}

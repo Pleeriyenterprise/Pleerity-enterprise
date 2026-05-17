@@ -1,0 +1,124 @@
+{
+  "population_scope": "historical_message_logs_sample",
+  "excluded_from_replay_rc": true,
+  "acknowledgement_class_counts": {
+    "inferred_acknowledgement": 38,
+    "observed_not_acknowledged": 2
+  },
+  "acknowledgement_confidence_counts": {
+    "ambiguous": 40
+  },
+  "operational_ambiguity_present": true,
+  "acknowledgement_state_resolution_sample": [
+    {
+      "message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "54524dd4-5ace-4082-bdaa-60cd9352ac7c",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "608dc152-6553-4e04-a3ab-412d3bbe7f8e",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "d4963bf6-8c41-4cf1-bad8-d284851e0946",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "5e691390-dc81-4562-945c-69387fa20c83",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "799f2777-b55d-40c7-bc1f-ca2ffdeafc8b",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "c832ca23-a191-4360-9dd1-c33b130c695e",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "3624ed7b-c742-447f-a7c1-8202e1b6bcd7",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "3b4ed4a4-792c-4493-aa3b-1fd2577973f9",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "6c71c649-0a0c-40ac-b0cb-43f9df030923",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    }
+  ]
+}

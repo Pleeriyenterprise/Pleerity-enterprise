@@ -1,0 +1,10 @@
+{
+  "notification_audit_event_delta": 0,
+  "noise_pass": true,
+  "before": {
+    "notification_audit_events": 0
+  },
+  "after": {
+    "notification_audit_events": 0
+  }
+}

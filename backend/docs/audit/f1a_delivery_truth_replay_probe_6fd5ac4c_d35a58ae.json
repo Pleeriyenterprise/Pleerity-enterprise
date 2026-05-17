@@ -1,0 +1,9 @@
+{
+  "scoped": "m1_replay_probe",
+  "message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+  "recorded_state": "DELIVERED",
+  "governed_state": "delivered",
+  "implied_user_state": "may_have_received",
+  "truthful": true,
+  "false_delivery_implication_on_probe": false
+}

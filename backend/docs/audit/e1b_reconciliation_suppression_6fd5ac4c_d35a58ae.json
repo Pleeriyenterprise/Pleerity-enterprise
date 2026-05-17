@@ -1,0 +1,27 @@
+{
+  "reconciliation_suppression_matrix": [
+    {
+      "run": "R1",
+      "dry_run": true,
+      "document_id": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+      "status": "skipped",
+      "reason": "already_aligned"
+    },
+    {
+      "run": "R2",
+      "dry_run": true,
+      "document_id": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+      "status": "skipped",
+      "reason": "already_aligned"
+    },
+    {
+      "run": "R3",
+      "dry_run": true,
+      "document_id": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+      "status": "skipped",
+      "reason": "already_aligned"
+    }
+  ],
+  "reconciliation_replay_equal": true,
+  "reconciliation_suppression_fingerprint_r1_r2_r3": "ac4a4df40cbe662b713d5bc1976ebb0f"
+}

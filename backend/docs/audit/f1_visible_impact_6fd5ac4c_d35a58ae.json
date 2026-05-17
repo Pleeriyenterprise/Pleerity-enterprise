@@ -1,0 +1,22 @@
+{
+  "user_visible_notification_fingerprint": "499d420f693d33f8b5b2ce789390aaed",
+  "visible_notification_delta": 49,
+  "visible_replay_growth_curve": [
+    {
+      "run": "R1",
+      "visible_count": 49,
+      "user_visible_notification_fingerprint": "499d420f693d33f8b5b2ce789390aaed"
+    },
+    {
+      "run": "R2",
+      "visible_count": 49,
+      "user_visible_notification_fingerprint": "499d420f693d33f8b5b2ce789390aaed"
+    },
+    {
+      "run": "R3",
+      "visible_count": 49,
+      "user_visible_notification_fingerprint": "499d420f693d33f8b5b2ce789390aaed"
+    }
+  ],
+  "replay_visible_impact_stable": true
+}

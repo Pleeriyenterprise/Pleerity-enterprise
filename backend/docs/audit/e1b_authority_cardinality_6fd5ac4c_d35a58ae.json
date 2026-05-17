@@ -1,0 +1,9 @@
+{
+  "expected_active_authority_count": 1,
+  "actual_active_authority_count": 1,
+  "unexpected_parallel_authority_count": 0,
+  "winning_authority_source": "human_review",
+  "parallel_authority_sources": [],
+  "authority_cardinality_pass": true,
+  "vacuous": false
+}

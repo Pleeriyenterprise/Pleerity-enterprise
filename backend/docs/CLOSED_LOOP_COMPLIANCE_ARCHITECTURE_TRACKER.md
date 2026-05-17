@@ -4,7 +4,7 @@
 
 **Companion:** `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` (audit / gap framing; normative doctrine **§18**). **Controlled beta (support/admin operations):** `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md`. **Product governance (value, trust, retention, workflow continuity — not a tracker):** `PROPERTY_COMPLIANCE_OS_GAP_AND_RETENTION_AUDIT.md`. **Product value / retention gap tracker (not architecture):** `PRODUCT_VALUE_GAP_TRACKER.md`.
 
-**Last updated:** 2026-05-17 (Launch unit **D1 DONE** — propagation fanout verification; E1 DoD drafting unlocked).
+**Last updated:** 2026-05-17 (Launch **E1 VERIFIED**; **F1 VERIFIED** + **F1a DONE** — governed F1-M1 replay proof; parent F1 not DONE).
 
 **Launch-gated obligation recovery:** Finishable units **A1–G2** live in `docs/launch/LAUNCH_AUTHORITY_TRACKER.md` § Recovery implementation plan. **No duplicate tracker.** This section maps streams only.
 
@@ -89,8 +89,8 @@ Execute in this order unless a stream’s **blocked-by** requires a pause (docum
 | **D1** | E, F | `authority_mutation_fanout`, `requirement_transition_observability`, `workflow_runtime_activation_registry`; `STREAM_E_MUTATION_FANOUT_MATRIX.md` | **DONE** 2026-05-17 — D1b harness `d1b_harness_rerun_v3` `d1_pass=true`; D1-RC-15 harness baseline cleared; replay lineage stable (split R2/R3 vs M2); no true propagation instability; `d1b_*` authoritative / `d1_*` preserved; **no** product route/fanout/queue/scheduler/notification changes (`LAUNCH_AUTHORITY_TRACKER.md` § D1 closure) |
 | **D1b** | E, F | D1 verification harness (`d1_staging_verification.py`, `d1_snapshot.py`) | **DONE** 2026-05-17 — methodology refinement only (parent D1) |
 | **D2** | E, F | Legacy bridge inventory | After D1 or parallel when approved |
-| **E1** | B, E, F | evidence authority + AUTHORITY_WRITE_PATH | **DoD drafting unlocked** 2026-05-17 — implementation blocked until E1 DoD approved |
-| **F1** | — (notifications) | `NOTIFICATION_GOVERNANCE_INVENTORY.json` | E pass |
+| **E1** | B, E, F | `requirement_evidence_authority`, `document_operational_state`, `evidence_review_verify`, `AUTHORITY_WRITE_PATH_RECONCILIATION.md`, `COMPLIANCE_CLIENT_STATUS_AUTHORITY.md` | **VERIFIED** 2026-05-17 — `e1b_pass=true`; **E1a**/**E1b DONE**; parent **not DONE** (governance review pause) |
+| **F1** | — (notifications) | `NOTIFICATION_GOVERNANCE_INVENTORY.json`, `notification_orchestrator`, `message_logs` | **VERIFIED** 2026-05-17 — `f1a_*` authoritative (`f1a_rc15_cleared=true`); **F1a DONE**; `f1_*` preserved (**F1-RC-15** harness); parent **not DONE**; **F1-M1** proven only (`LAUNCH_AUTHORITY_TRACKER.md` § F1 closure) |
 | **G1, G2** | F, controlled beta | `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` | Continuous |
 
 **PR naming when recovery touches a stream:** `Stream <X> — <launch unit> — <short description>` (e.g. `Stream E — D1 — provisioning fanout trace`).
@@ -505,3 +505,7 @@ Each numbered phase is an intended **separate PR**; title format `Stream F — <
 | 2026-04-30 | **Stream B — Professional compliance summary PDF snapshot honesty:** `services/professional_reports.py` (`generate_compliance_summary_pdf`); tests `test_professional_reports_authority_labels.py`; `STREAM_B_SCORING_AUTHORITY_MATRIX.md` §7; tracker Stream B completed work + **Last updated**. |
 | 2026-04-30 | **Controlled beta operations runbook:** `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` (support/admin recovery, escalation, monitoring, beta entry checklist); tracker **Companion**, **Named authorities** row, **Last updated**. |
 | 2026-05-17 | **Launch D1 DONE (+ D1b harness):** propagation fanout verification on pilot `6fd5ac4c…`/`d35a58ae…`; authoritative `d1b_harness_rerun_v3` `d1_pass=true`; D1-RC-15 harness baseline cleared; replay lineage stable; no product propagation changes; production HTTP sync path observation documented; E1 DoD drafting unlocked — `LAUNCH_AUTHORITY_TRACKER.md` § D1 closure; RUNBOOK §12.7 D1. |
+| 2026-05-17 | **Launch E1 VERIFIED (+ E1a/E1b):** evidence authority semantic replay proof on authority-capable seeded fixture (`e1b_pass=true`); original `e1_*` E1-RC-2 preserved as fixture-insufficiency history; no product authority remediation; parent **not DONE**; **F1** DoD drafting unlocked — `LAUNCH_AUTHORITY_TRACKER.md` § E1 closure; RUNBOOK §12.7 E1. |
+| 2026-05-17 | **Launch F1 DoD rev 1 draft:** notification/delivery governance verification spec — truthful operational communication under replay; **F1-RC-1**–**13**; `f1_*` artifacts — `LAUNCH_AUTHORITY_TRACKER.md` § F1; **not** implementation. |
+| 2026-05-17 | **Launch F1 DoD rev 2 draft:** + delivery authority precedence (§4a), acknowledgement ambiguity (§4b), replay-visible impact (§3k), lineage boundedness (§3l); **F1-RC-14**–**17**; tightened DONE gates. |
+| 2026-05-17 | **Launch F1 VERIFIED (+ F1a DONE):** governed **F1-M1** replay proof on pilot (`f1a_harness_refinement_rerun_v1`); original `f1_*` **F1-RC-15** preserved + reclassified harness methodology; replay-pair ack semantics; no notification remediation; parent **not DONE** — `LAUNCH_AUTHORITY_TRACKER.md` § F1 closure; RUNBOOK §12.7 F1. |

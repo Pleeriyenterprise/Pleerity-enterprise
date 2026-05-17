@@ -1,0 +1,446 @@
+{
+  "acknowledgement_state_resolution": [
+    {
+      "message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "54524dd4-5ace-4082-bdaa-60cd9352ac7c",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "608dc152-6553-4e04-a3ab-412d3bbe7f8e",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "d4963bf6-8c41-4cf1-bad8-d284851e0946",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "5e691390-dc81-4562-945c-69387fa20c83",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "799f2777-b55d-40c7-bc1f-ca2ffdeafc8b",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "c832ca23-a191-4360-9dd1-c33b130c695e",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "3624ed7b-c742-447f-a7c1-8202e1b6bcd7",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "3b4ed4a4-792c-4493-aa3b-1fd2577973f9",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "6c71c649-0a0c-40ac-b0cb-43f9df030923",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "d8891f72-258c-4166-b615-ac175d4b3dfa",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "b6cf4afd-7c35-45c5-a1b6-7f1e1eddeb8c",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "b7de0e5f-1602-4f42-8644-28320955f449",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "59ced866-212c-4981-bfd2-07711dd8c98f",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "b28a5e43-bda4-447f-b257-4edfc13f23c6",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "51c8df9c-2053-448c-834a-2104b96aefa1",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "4b00de2c-2e89-4226-bdb1-044a8672d035",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "e66f7adb-f287-4b8e-a44a-acb6f73b4282",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "578b337b-7701-47d4-9685-05d6b04ee3a1",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "ac9ef84a-c1e8-420b-8f02-19f52c335032",
+      "acknowledgement_class": "observed_not_acknowledged",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "",
+      "sources": {
+        "status": "SENT",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "e18344b0-9ee3-408b-9459-7d3a7727c56b",
+      "acknowledgement_class": "observed_not_acknowledged",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "",
+      "sources": {
+        "status": "SENT",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "537b7d96-33f2-414b-874e-c8b1ffc659ef",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "ab713bc8-80b1-4e2a-9518-44e681e91920",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "9920e6af-253b-4bc8-944a-d1f6b8b4571d",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "49411c87-74b1-48ce-86c6-94b9e634d882",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "aff1ad9f-6c5f-4476-9ee3-5b2bbe1e048c",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "37c65282-f7ad-4998-8c87-183ba0f564dd",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "48558cc2-fe31-4910-8ba3-6ef3a951ce36",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "9274d58f-4879-4e96-89d3-d24d4318aa2b",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "d69e49ce-5c9d-417a-8598-e24a3d6a3f10",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "4c213fc4-cbf0-4cb2-a99b-97cbc2d8b176",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "07dc0abf-6fd0-4cb9-889c-a80a813d261c",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "a86d1ec1-d075-4fa1-ae1f-57d7300d8f3b",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "15205fe9-0283-4479-a0d2-15de13597597",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "e3031013-cabb-4d44-b73f-8d465c3036d3",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "d643430a-051e-4890-af86-b07f9123335d",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "3fa8108d-ba3d-49d5-8b93-feabae92c9bd",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "5311dbdf-f3a7-4d6a-ac4b-f86fdf0a4bcc",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "0e5defe4-d63f-45ea-ab6d-410792de084f",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    {
+      "message_id": "7750ff88-222a-4315-8ccd-e2abe5660cfe",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    }
+  ],
+  "acknowledgement_replay_equal": false,
+  "acknowledgement_fingerprint": "975b8cf928a9f605a68b4b6b1f645cc0"
+}

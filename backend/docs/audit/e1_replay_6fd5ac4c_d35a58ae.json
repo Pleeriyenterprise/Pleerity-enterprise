@@ -1,0 +1,330 @@
+{
+  "runs": [
+    {
+      "run": "R1",
+      "mutation": "E1-M1",
+      "correlation_id": "AUTHORITY_SYNC:087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+      "transition_fanout": {
+        "transition_id": "tr:087b2fe9-40e0-4d5c-bfc0-e25b0526516c:84fd6a3ca40d4cfd",
+        "correlation_id": "AUTHORITY_SYNC:087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+        "transition_origin": "E1_VERIFICATION:AUTHORITY_SYNC",
+        "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "previous_state": "NOT_REQUIRED",
+        "resulting_state": "NOT_REQUIRED",
+        "semantic_state": null,
+        "state_reason": null,
+        "duplicate_transition_possible": true,
+        "replay_possible": true,
+        "downstream_trigger_count": 1,
+        "downstream_trigger_targets": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "trigger_mode": "sync",
+            "enqueue_attempted": true,
+            "enqueue_succeeded": true,
+            "propagation_degraded_possible": false,
+            "reconciliation_recommended": false
+          }
+        ],
+        "partial_downstream_failure": false,
+        "retry_possible": false,
+        "transition_outcome": "TRANSITION_NOOP",
+        "downstream_propagation": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "trigger_mode": "sync",
+            "enqueue_attempted": true,
+            "enqueue_succeeded": true,
+            "propagation_degraded_possible": false,
+            "reconciliation_recommended": false
+          }
+        ],
+        "replay_chain_detected": false,
+        "repeated_transition_origin": false,
+        "repeated_correlation_seen": false,
+        "downstream_retrigger_possible": false,
+        "stale_transition_replayed": false,
+        "non_blocking": true
+      },
+      "authority_write_suppressed": false,
+      "authority_write_suppress_reason": null,
+      "authority_collapse_state": "expanded",
+      "authority_fingerprint_before": "3d34c737eca78b777cd9eb23cccc1a90",
+      "authority_fingerprint_after": "72ef2cbea5728d96553388e365bad7ec",
+      "document": null,
+      "authority_snapshot": {
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+        "document_id": "",
+        "document_operational": {},
+        "effective_evidence_review_state": "UPLOADED",
+        "evidence_authority": {
+          "version": 1,
+          "state": "NOT_REQUIRED",
+          "state_reason": "applicability_not_required",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-05-17T15:16:17.423854+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "semantic_state": "NOT_REQUIRED"
+        },
+        "authority_fingerprint": "72ef2cbea5728d96553388e365bad7ec",
+        "supersession_fingerprint": "",
+        "authority_precedence_resolution": [],
+        "precedence_pass": true,
+        "expected_active_authority_count": 1,
+        "actual_active_authority_count": 0,
+        "unexpected_parallel_authority_count": 0,
+        "authority_cardinality_pass": true
+      },
+      "supersession_fingerprint_before": "",
+      "supersession_fingerprint_after": "",
+      "lineage_depth": 1,
+      "supersession_chain_depth": 0,
+      "override_chain_depth": 0,
+      "collapsed_lineage_depth": 0,
+      "collapsed_authority_mutations": [],
+      "audit_noise": {
+        "audit_authority_event_delta": 0,
+        "noise_pass": true,
+        "before": {
+          "audit_authority_events": 0
+        },
+        "after": {
+          "audit_authority_events": 0
+        }
+      }
+    },
+    {
+      "run": "R2",
+      "mutation": "E1-M1",
+      "correlation_id": "AUTHORITY_SYNC:087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+      "transition_fanout": {
+        "transition_id": "tr:087b2fe9-40e0-4d5c-bfc0-e25b0526516c:a1cdf5db14c942bd",
+        "correlation_id": "AUTHORITY_SYNC:087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+        "transition_origin": "E1_VERIFICATION:AUTHORITY_SYNC",
+        "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "previous_state": "NOT_REQUIRED",
+        "resulting_state": "NOT_REQUIRED",
+        "semantic_state": null,
+        "state_reason": null,
+        "duplicate_transition_possible": true,
+        "replay_possible": true,
+        "downstream_trigger_count": 1,
+        "downstream_trigger_targets": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "trigger_mode": "sync",
+            "enqueue_attempted": true,
+            "enqueue_succeeded": true,
+            "propagation_degraded_possible": false,
+            "reconciliation_recommended": false
+          }
+        ],
+        "partial_downstream_failure": false,
+        "retry_possible": false,
+        "transition_outcome": "TRANSITION_NOOP",
+        "downstream_propagation": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "trigger_mode": "sync",
+            "enqueue_attempted": true,
+            "enqueue_succeeded": true,
+            "propagation_degraded_possible": false,
+            "reconciliation_recommended": false
+          }
+        ],
+        "replay_chain_detected": false,
+        "repeated_transition_origin": false,
+        "repeated_correlation_seen": false,
+        "downstream_retrigger_possible": false,
+        "stale_transition_replayed": false,
+        "non_blocking": true
+      },
+      "authority_write_suppressed": false,
+      "authority_write_suppress_reason": null,
+      "authority_collapse_state": "expanded",
+      "authority_fingerprint_before": "72ef2cbea5728d96553388e365bad7ec",
+      "authority_fingerprint_after": "e854e74cac126a5099af25a645933666",
+      "document": null,
+      "authority_snapshot": {
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+        "document_id": "",
+        "document_operational": {},
+        "effective_evidence_review_state": "UPLOADED",
+        "evidence_authority": {
+          "version": 1,
+          "state": "NOT_REQUIRED",
+          "state_reason": "applicability_not_required",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-05-17T15:16:20.402993+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "semantic_state": "NOT_REQUIRED"
+        },
+        "authority_fingerprint": "e854e74cac126a5099af25a645933666",
+        "supersession_fingerprint": "",
+        "authority_precedence_resolution": [],
+        "precedence_pass": true,
+        "expected_active_authority_count": 1,
+        "actual_active_authority_count": 0,
+        "unexpected_parallel_authority_count": 0,
+        "authority_cardinality_pass": true
+      },
+      "supersession_fingerprint_before": "",
+      "supersession_fingerprint_after": "",
+      "lineage_depth": 1,
+      "supersession_chain_depth": 0,
+      "override_chain_depth": 0,
+      "collapsed_lineage_depth": 0,
+      "collapsed_authority_mutations": [],
+      "audit_noise": {
+        "audit_authority_event_delta": 0,
+        "noise_pass": true,
+        "before": {
+          "audit_authority_events": 0
+        },
+        "after": {
+          "audit_authority_events": 0
+        }
+      }
+    },
+    {
+      "run": "R3",
+      "mutation": "E1-M1",
+      "correlation_id": "AUTHORITY_SYNC:087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+      "transition_fanout": {
+        "transition_id": "tr:087b2fe9-40e0-4d5c-bfc0-e25b0526516c:d2b1fef989d04135",
+        "correlation_id": "AUTHORITY_SYNC:087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+        "transition_origin": "E1_VERIFICATION:AUTHORITY_SYNC",
+        "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "previous_state": "NOT_REQUIRED",
+        "resulting_state": "NOT_REQUIRED",
+        "semantic_state": null,
+        "state_reason": null,
+        "duplicate_transition_possible": true,
+        "replay_possible": true,
+        "downstream_trigger_count": 1,
+        "downstream_trigger_targets": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "trigger_mode": "sync",
+            "enqueue_attempted": true,
+            "enqueue_succeeded": true,
+            "propagation_degraded_possible": false,
+            "reconciliation_recommended": false
+          }
+        ],
+        "partial_downstream_failure": false,
+        "retry_possible": false,
+        "transition_outcome": "TRANSITION_NOOP",
+        "downstream_propagation": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "trigger_mode": "sync",
+            "enqueue_attempted": true,
+            "enqueue_succeeded": true,
+            "propagation_degraded_possible": false,
+            "reconciliation_recommended": false
+          }
+        ],
+        "replay_chain_detected": false,
+        "repeated_transition_origin": false,
+        "repeated_correlation_seen": false,
+        "downstream_retrigger_possible": false,
+        "stale_transition_replayed": false,
+        "non_blocking": true
+      },
+      "authority_write_suppressed": false,
+      "authority_write_suppress_reason": null,
+      "authority_collapse_state": "expanded",
+      "authority_fingerprint_before": "e854e74cac126a5099af25a645933666",
+      "authority_fingerprint_after": "b93838886af76141587fa84d9932d198",
+      "document": null,
+      "authority_snapshot": {
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+        "document_id": "",
+        "document_operational": {},
+        "effective_evidence_review_state": "UPLOADED",
+        "evidence_authority": {
+          "version": 1,
+          "state": "NOT_REQUIRED",
+          "state_reason": "applicability_not_required",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-05-17T15:16:21.495064+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "semantic_state": "NOT_REQUIRED"
+        },
+        "authority_fingerprint": "b93838886af76141587fa84d9932d198",
+        "supersession_fingerprint": "",
+        "authority_precedence_resolution": [],
+        "precedence_pass": true,
+        "expected_active_authority_count": 1,
+        "actual_active_authority_count": 0,
+        "unexpected_parallel_authority_count": 0,
+        "authority_cardinality_pass": true
+      },
+      "supersession_fingerprint_before": "",
+      "supersession_fingerprint_after": "",
+      "lineage_depth": 1,
+      "supersession_chain_depth": 0,
+      "override_chain_depth": 0,
+      "collapsed_lineage_depth": 0,
+      "collapsed_authority_mutations": [],
+      "audit_noise": {
+        "audit_authority_event_delta": 0,
+        "noise_pass": true,
+        "before": {
+          "audit_authority_events": 0
+        },
+        "after": {
+          "audit_authority_events": 0
+        }
+      }
+    }
+  ],
+  "replay_authority_drift": [
+    {
+      "detail": "R2!=R3"
+    }
+  ]
+}

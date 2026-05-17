@@ -1,0 +1,26 @@
+{
+  "captured_at_utc": "2026-05-17T15:33:50.961617+00:00",
+  "verification_run": "e1a_harness_rerun_v1",
+  "micro_unit": "E1a",
+  "prior_e1_artifacts_preserved": true,
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "requirement_id": "087b2fe9-40e0-4d5c-bfc0-e25b0526516c",
+  "document_id": "",
+  "fixture_classification": "authority-incapable",
+  "proof_eligible": false,
+  "fail_fast_reasons": [
+    "missing_evidence_doc_id",
+    "missing_governed_document"
+  ],
+  "gates": {
+    "has_evidence_doc_id": false,
+    "has_governed_document": false,
+    "has_evidence_authority": true,
+    "has_review_or_supersession_lineage": false,
+    "property_document_count": 0,
+    "property_requirements_with_evidence_doc": 0
+  },
+  "vacuous_proof_prevented": true,
+  "staging_fixture_candidates": []
+}

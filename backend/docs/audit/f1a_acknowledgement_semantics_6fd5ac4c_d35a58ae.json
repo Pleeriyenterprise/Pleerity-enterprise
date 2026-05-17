@@ -1,0 +1,39 @@
+{
+  "replay_pair": {
+    "replay_pair_question": "did_R2_R3_replay_alter_acknowledgement_certainty",
+    "idempotency_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f_COMPLIANCE_EXPIRY_REMINDER_2026-05-16_agent_at_yopmail.com_d38c424a52e4cf06",
+    "acknowledgement_replay_equal": true,
+    "acknowledgement_certainty_escalation_on_replay": false,
+    "acknowledgement_fingerprint_r2": "1efef78a2a1a294942644a8cc85dbf65",
+    "acknowledgement_fingerprint_r3": "1efef78a2a1a294942644a8cc85dbf65",
+    "confidence_rank_r2": 1,
+    "confidence_rank_r3": 1,
+    "R2_resolution": {
+      "message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "operational_ambiguity_only": true,
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    "R3_resolution": {
+      "message_id": "d077f4f1-d66c-4846-8c6e-899b66bcfa82",
+      "acknowledgement_class": "inferred_acknowledgement",
+      "acknowledgement_confidence": "ambiguous",
+      "acknowledgement_ambiguity_reason": "status_delivered_without_ack_signal",
+      "operational_ambiguity_only": true,
+      "sources": {
+        "status": "DELIVERED",
+        "observed": false,
+        "ack_at": false
+      }
+    },
+    "vacuous_replay_pair": false,
+    "historical_ambiguity_excluded_from_replay_rc": true
+  },
+  "excluded_from_rc15_when_population_only": true
+}

@@ -1,0 +1,65 @@
+{
+  "captured_at_utc": "2026-05-17T15:16:01.343881+00:00",
+  "verification_run": "e1_staging_rev3_harness",
+  "unit": "E1",
+  "unit_status": "IN_PROGRESS",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "control_client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+  "control_property_id": "6d939c70-06ab-4dc8-8b36-204958d2cdb3",
+  "governed_mutations": [
+    "E1-M1",
+    "E1-M7-observe"
+  ],
+  "e1_pass": false,
+  "primary_rc_branch": "E1-RC-2",
+  "checks": {
+    "precedence_pass": true,
+    "authority_cardinality_pass": true,
+    "lineage_replay_stable": false,
+    "supersession_replay_equal": false,
+    "supersession_consistent": false,
+    "collapse_deterministic": true,
+    "collapse_growth_pass": true,
+    "reconciliation_replay_equal": true,
+    "reconciliation_convergent": true,
+    "human_review_preservation_pass": true,
+    "lineage_growth_pass": true,
+    "lineage_attributable": true,
+    "explainability_reconstruction_pass": false,
+    "cross_layer_pass": true,
+    "temporal_sane": true,
+    "amplification_pass": true,
+    "audit_noise_pass": true,
+    "bounded_growth_pass": true,
+    "suppression_explainable": true,
+    "unrelated_delta_zero": true
+  },
+  "lineage_replay": {
+    "R2_fingerprint": "e854e74cac126a5099af25a645933666",
+    "R3_fingerprint": "b93838886af76141587fa84d9932d198",
+    "replay_stable": false
+  },
+  "reconciliation_suppression": {
+    "reconciliation_suppression_fingerprint_r1_r2_r3": "e034bfa55fb0dca8620a7324ddbf59c7",
+    "reconciliation_replay_equal": true
+  },
+  "artifacts": {
+    "authority_snapshot": "docs/audit/e1_authority_snapshot_6fd5ac4c_d35a58ae.json",
+    "replay": "docs/audit/e1_replay_6fd5ac4c_d35a58ae.json",
+    "authority_precedence": "docs/audit/e1_authority_precedence_6fd5ac4c_d35a58ae.json",
+    "authority_cardinality": "docs/audit/e1_authority_cardinality_6fd5ac4c_d35a58ae.json",
+    "supersession_replay": "docs/audit/e1_supersession_replay_6fd5ac4c_d35a58ae.json",
+    "authority_collapse": "docs/audit/e1_authority_collapse_6fd5ac4c_d35a58ae.json",
+    "collapse_boundedness": "docs/audit/e1_collapse_boundedness_6fd5ac4c_d35a58ae.json",
+    "reconciliation_suppression": "docs/audit/e1_reconciliation_suppression_6fd5ac4c_d35a58ae.json",
+    "human_review_preservation": "docs/audit/e1_human_review_preservation_6fd5ac4c_d35a58ae.json",
+    "lineage_boundedness": "docs/audit/e1_lineage_boundedness_6fd5ac4c_d35a58ae.json",
+    "authority_explainability": "docs/audit/e1_authority_explainability_6fd5ac4c_d35a58ae.json",
+    "lineage_trace": "docs/audit/e1_lineage_trace_6fd5ac4c_d35a58ae.json",
+    "cross_layer_consistency": "docs/audit/e1_cross_layer_consistency_6fd5ac4c_d35a58ae.json",
+    "audit_stability": "docs/audit/e1_audit_stability_6fd5ac4c_d35a58ae.json",
+    "unrelated_surface_integrity": "docs/audit/e1_unrelated_surface_integrity_6fd5ac4c_d35a58ae.json",
+    "verification_report": "docs/audit/e1_verification_report_6fd5ac4c_d35a58ae.json"
+  }
+}

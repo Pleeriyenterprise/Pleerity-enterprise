@@ -1,0 +1,26 @@
+{
+  "captured_at_utc": "2026-05-17T15:49:50.697130+00:00",
+  "verification_run": "e1b_staging_proof_v1",
+  "micro_unit": "E1b",
+  "seed_artifact": "e1b_fixture_seed_6fd5ac4c_d35a58ae.json",
+  "prior_artifacts_preserved": [
+    "e1_*",
+    "e1a_*"
+  ],
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+  "document_id": "07115f75-3f0b-4dae-aa9c-5bcd22c671db",
+  "fixture_classification": "authority-capable",
+  "proof_eligible": true,
+  "fail_fast_reasons": [],
+  "gates": {
+    "has_evidence_doc_id": true,
+    "has_governed_document": true,
+    "has_evidence_authority": true,
+    "has_review_or_supersession_lineage": true,
+    "property_document_count": 1,
+    "property_requirements_with_evidence_doc": 1
+  },
+  "vacuous_proof_prevented": false
+}
