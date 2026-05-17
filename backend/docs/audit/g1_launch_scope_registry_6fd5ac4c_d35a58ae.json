@@ -1,0 +1,59 @@
+{
+  "accepted_scope_limitations": [
+    "F1-M2\u2013M7 mutation paths not proven in F1 unit",
+    "Full notification-path provider ack not in F1 scope"
+  ],
+  "baseline_manifest_ref": "launch_baseline_manifest_6fd5ac4c_d35a58ae_v1.json",
+  "captured_at_utc": "2026-05-17T20:12:34.092493+00:00",
+  "deferred_risk_inventory": [
+    {
+      "id": "F1-M2-M7",
+      "rationale": "Separate governed verification units required",
+      "status": "DEFERRED"
+    }
+  ],
+  "g1_staging_skeleton": true,
+  "implementation_scope": "T1_ONLY",
+  "normalization_boundary_visibility": {
+    "normalization_boundary_delta": [],
+    "normalization_drift_detected": false
+  },
+  "pilot_slug": "6fd5ac4c_d35a58ae",
+  "proof_context_snapshot": [
+    {
+      "proof_context": "F1-M1 idempotency replay; F1-M8 observe-only",
+      "status": "DONE",
+      "tracker_section": "\u00a7 F1 DONE closure",
+      "unit": "F1"
+    },
+    {
+      "proof_context": "Harness refinement rerun; classification deferred",
+      "status": "IN_PROGRESS",
+      "tracker_section": "\u00a7 F1a",
+      "unit": "F1a"
+    }
+  ],
+  "proof_interpretation_constraints": [
+    "T3 g1_* outputs are observational only",
+    "Manifest is index-only; never normative product truth"
+  ],
+  "scope_registry_diff_pass": true,
+  "silently_removed": [],
+  "watchlist_inventory": [
+    {
+      "blocking": false,
+      "id": "F1-M2-M7-unproven",
+      "source": "LAUNCH_AUTHORITY_TRACKER \u00a7 F1 DONE watchlist"
+    },
+    {
+      "blocking": false,
+      "id": "B1-updated_at-churn",
+      "source": "programme watchlist"
+    },
+    {
+      "blocking": false,
+      "id": "C2a-volatile-task-ids",
+      "source": "programme watchlist"
+    }
+  ]
+}

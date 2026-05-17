@@ -6,7 +6,7 @@
 
 **Allowed status values only:** `READY` | `PARTIAL` | `BLOCKED` | `DEFERRED_FOR_POST_LAUNCH` | `ACCEPTED_LAUNCH_RISK`
 
-**Last tracker update:** 2026-05-17 (E1 **VERIFIED**; **F1** **VERIFIED** — **F1a DONE**; parent F1 **not DONE**; no remediation)
+**Last tracker update:** 2026-05-17 (F1 **DONE**; **G1** **IN_PROGRESS** — Tranche **T1** harness only; surveillance execution pending)
 
 **TIER_0 routing:** [GOVERNANCE_INDEX.md](../GOVERNANCE_INDEX.md) — canonical navigation spine; this tracker remains launch gate status only (no duplicate recovery authority).
 
@@ -942,7 +942,9 @@ If implementation discovery shows the unit is too large:
 | **D1** | **DONE** (2026-05-17) | Authoritative `d1b_harness_rerun_v3` — `d1_pass=true`; § D1 closure below |
 | **D1b** | **DONE** (2026-05-17) | Harness refinement; `d1b_*` authoritative; original `d1_*` preserved |
 | **E1** | **VERIFIED** (2026-05-17; **E1a**/**E1b DONE**) | Authoritative: `e1b_verification_report_*` `e1b_pass=true`; § E1 closure below — **not DONE** (review discipline) |
-| **F1** | **VERIFIED** (2026-05-17; **F1a DONE**) | Authoritative: `f1a_verification_report_*` (`f1a_rc15_cleared=true`); `f1_*` preserved (**F1-RC-15** reclassified harness); § F1 closure — **not DONE** |
+| **F1** | **DONE** (2026-05-17; **F1a DONE**) | Authoritative: `f1a_*`; `f1_*` preserved (**F1-RC-15** harness history); § F1 DONE closure — **F1-M1** replay proof scope complete |
+| **G1** | **IN_PROGRESS** (Tranche **T1** harness only) | LGS recovery **signed off** 2026-05-17; read-only surveillance harness scaffolding; **no** staging surveillance execution yet |
+| **G2** | **NOT_STARTED** | Parallel observability hardening — unchanged |
 | **C3+** | **BLOCKED** | No formal unit |
 
 ---
@@ -3510,17 +3512,17 @@ Earlier RC classifications remain in preserved artifacts for audit.
 | **Scope** | Eligibility; `NOTIFICATION_DISPATCH` global flag; orchestrator vs obligation health separation |
 | **Canonical authority** | `audit/NOTIFICATION_GOVERNANCE_INVENTORY.json`; **L-008** |
 | **Code areas likely affected** | `notification_orchestrator.py`, `jobs.py` — **not** materialisation |
-| **Unit status** | **VERIFIED** (2026-05-17) — DoD **rev 2**; governed replay proof on **F1-M1** path; **not DONE** (review discipline + §8 baseline suites deferred) |
+| **Unit status** | **DONE** (2026-05-17) — DoD **rev 2**; governed **F1-M1** replay proof complete; **F1a DONE**; historical `f1_*` + **F1-RC-15** preserved |
 | **Verification evidence** | **Authoritative:** `f1a_verification_report_6fd5ac4c_d35a58ae.json` (`f1a_harness_refinement_rerun_v1`, no critical stop, `failure_classification=governed_replay_proof_candidate`). **Preserved:** `f1_*` (first run, **F1-RC-15**). Harness: `f1a_snapshot.py`, `f1a_preflight_capture.py`, `f1a_staging_verification.py`; `test_f1_*` / `test_f1a_*` contract tests |
 | **Governance docs after** | This tracker; `audit/NOTIFICATION_GOVERNANCE_INVENTORY.json`; `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 F1; **L-008** cross-ref |
 | **Regression tests** | L-008 + notification orchestrator suites — see F1 §8 |
 | **Rollback / safety** | Do not globally activate `NOTIFICATION_DISPATCH` without program sign-off; no provider/template/queue changes under F1 guise |
 
-**Unlock (2026-05-17):** E1 **VERIFIED** → F1 **VERIFIED** (governed **F1-M1** replay proof). **Do not** notification remediation, scheduler/queue/fanout redesign, template routing changes, or **DONE** without separate approval. **G1/G2** may proceed per programme sequence — **not** bundled remediation.
+**Unlock (2026-05-17):** F1 **DONE** — F-layer replay-governance proof complete for approved **F1-M1** scope. **G1/G2** continuous improvement unlocked. Future notification work requires **new governed verification units** or **explicitly approved remediation units** — **do not** silently extend F1 scope.
 
 ---
 
-#### F1 — Definition of Done (rev 2 — 2026-05-17; **approved** — **VERIFIED** 2026-05-17)
+#### F1 — Definition of Done (rev 2 — 2026-05-17; **approved** — **DONE** 2026-05-17)
 
 **Rev 2 additions (2026-05-17):** delivery authority precedence semantics (§4a); acknowledgement ambiguity handling (§4b); replay-visible user impact boundedness (§3k); notification lineage boundedness (§3l); **F1-RC-14**–**F1-RC-17**; tightened DONE gates (§9).
 
@@ -4016,20 +4018,100 @@ Original **F1-RC-15** classification and artifacts remain for audit. **Do not re
 
 ##### 7. Governance posture — VERIFIED vs DONE
 
-**F1 VERIFIED** = governed notification replay truthfulness **proven on F1-M1** under existing orchestrator semantics. Parent unit **paused before DONE** (same discipline as E1).
+**F1 VERIFIED** (2026-05-17) = governed notification replay truthfulness **proven on F1-M1** under existing orchestrator semantics.
 
-**F1 is not DONE** in this pass.
+**F1 DONE** (2026-05-17) = F-layer replay-governance proof **operationally complete** for the approved scope. Programme closure; **not** notification architecture finality.
 
 **Authoritative artifacts:**
 
 | Set | Role |
 |-----|------|
-| **`f1a_*`** | **Authoritative for F1 VERIFIED** — `f1a_verification_report_6fd5ac4c_d35a58ae.json`, `f1a_notification_replay_*`, `f1a_acknowledgement_semantics_*` |
-| **`f1_*`** | First-run history (**F1-RC-15**, harness methodology) |
+| **`f1a_*`** | **Authoritative for F1 VERIFIED/DONE proof** — `f1a_verification_report_6fd5ac4c_d35a58ae.json`, `f1a_notification_replay_*`, `f1a_acknowledgement_semantics_*` |
+| **`f1_*`** | **Permanent history** — first run, **F1-RC-15** (harness methodology — **do not delete or rewrite**) |
 
 **Regression (harness):** `tests/test_f1_verification_contract.py`, `tests/test_f1a_verification_contract.py` — green.
 
-**Unlock on VERIFIED:** **G1/G2** continuous improvement per programme sequence; **F1 DONE** only after explicit approval + §8 baseline suites + §10 doc sweep. **Do not** start notification remediation or widen **F1-M2–M7** without separate approved unit.
+**Unlock on DONE:** **G1/G2** per programme sequence. **No** silent F1 scope extension. New paths (**F1-M2–M7**, provider ack, dispatch activation) require **separate units**.
+
+---
+
+#### F1 — Closure evidence (DONE — 2026-05-17)
+
+**Pilot:** `client_id=6fd5ac4c-3fd4-4112-ade7-156977deb49f`, `property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad`. **Control:** `04ceda9f-dd72-4b70-a6f5-809bef1b7b6a` / `6d939c70-06ab-4dc8-8b36-204958d2cdb3`.
+
+##### 1. F-layer proof posture (operationally complete)
+
+For the governed **F1-M1** replay-notification proof scope, F1 is **DONE**:
+
+| Proven capability | Evidence |
+|-------------------|----------|
+| Replay-visible communication boundedness | `message_log_count` stable R1–R3; `replay_visible_impact_stable=true` |
+| Deterministic duplicate suppression | R2/R3 `duplicate_ignored`; `dedupe_deterministic=true` |
+| Replay-collapsible notification semantics | `replay_branch_hint=replay-collapsible` |
+| Stable visible notification fingerprints | `499d420f…` constant across runs |
+| Stable suppression replay | `suppression_replay_equal=true` |
+| Bounded notification lineage | `lineage_growth_pass=true` |
+| Replay-pair acknowledgement stability | `f1a_rc15_cleared=true`; no escalation on replay |
+| Delivery-authority operational coherence | `delivery_authority_precedence_pass=true` (sample) |
+| Cross-tenant isolation | `unrelated_delta_zero=true` |
+| No replay-visible notification storms | No amplification on **F1-M1** window |
+
+##### 2. Preserved RC chronology (permanent — no retroactive rewrite)
+
+| Phase | Artifacts | RC / outcome | Final interpretation |
+|-------|-----------|--------------|----------------------|
+| **F1 first run** | `f1_*` | **F1-RC-15** critical stop | **Harness methodology** — population ack compare; **not** notification instability |
+| **F1a refinement** | `f1a_*` | No critical stop; `f1a_rc15_cleared=true` | Replay-pair ack + fingerprint alignment |
+| **F1 programme** | Tracker + runbook | **VERIFIED** → **DONE** | Governed **F1-M1** replay proof accepted |
+
+**Methodology-evolution trail (preserved):** observational-only normalization (timestamps, run labels); **never** normalize delivery authority, visible impact, ack certainty on replay pair, suppression, lineage, amplification.
+
+##### 3. DONE scope limits (mandatory)
+
+**F1 DONE does NOT mean:**
+
+- Provider delivery, human-read, or inbox guarantees
+- Full notification-path coverage or **F1-M2–M7** proof
+- `NOTIFICATION_DISPATCH` global activation
+- Perfect historical acknowledgement certainty
+- Complete notification architecture finality
+
+##### 4. Explicit non-conclusions (recorded)
+
+| Item | Conclusion |
+|------|------------|
+| Notification defect on governed replay path | **Not confirmed** |
+| Provider / retry / scheduler / queue redesign | **Not indicated** |
+| `notification_orchestrator` redesign | **Not indicated** |
+| Template remediation | **Not indicated** |
+| `message_logs` semantic rewrite | **Not authorized** |
+
+##### 5. Remaining watchlist (visible — not hidden debt)
+
+- **Historical `inferred_acknowledgement`** population ambiguity (`f1a_acknowledgement_population_ambiguity_*`)
+- **Raw timestamp drift** on observational fingerprints (non-blocking; semantic replay gates only)
+- **F1-M2–M7** mutation paths **unproven** (authority notify, fanout delegate, retry, digest, escalation, suppression overlay)
+- **Provider vs user acknowledgement** distinction remains governed — platform **DELIVERED** ≠ inbox receipt
+- **`NOTIFICATION_DISPATCH`** globally **off** (inventory policy)
+- §8 **L-008** CI: harness + core notification suites owned by programme CI; one pre-existing `test_notification_preferences_enforcement` SMS case may fail outside F1 scope — **no fix authorized under F1**
+
+##### 6. Programme posture after DONE
+
+F-layer **replay-governance proof is complete** for the approved scope. Future notification work must split into:
+
+- **New governed verification units** (e.g. F1-M2–M7 expansion), or
+- **Explicitly approved remediation units**
+
+**Do not** silently extend F1. **Do not** start F2, provider redesign, or notification architecture rewrite under F1 guise.
+
+##### 7. Authoritative references
+
+| Document | Update |
+|----------|--------|
+| `LAUNCH_AUTHORITY_TRACKER.md` | This § F1 DONE closure |
+| `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` | F1 row **DONE** |
+| `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` | §12.7 F1 — DONE posture |
+| `audit/NOTIFICATION_GOVERNANCE_INVENTORY.json` | Canonical send authority (unchanged) |
 
 ##### 8. Regression suites
 
@@ -4105,25 +4187,478 @@ Original **F1-RC-15** classification and artifacts remain for audit. **Do not re
 
 **Rev 2 clarifications (verification only):** §4a delivery authority, §4b acknowledgement ambiguity, §3k visible impact, and §3l lineage boundedness are **governance observability** requirements — they do **not** authorize changing provider callbacks, ack pipelines, retry writers, or orchestrator routing in the F1 unit.
 
-**Status:** **VERIFIED** (2026-05-17) — see § **F1 — Closure evidence** above. **F1a DONE**. Parent **not DONE**. Staging reports retain `f1_pass: null` / `classification_deferred: true` by design; programme **VERIFIED** is tracker-authoritative.
+**Status:** **DONE** (2026-05-17) — see § **F1 — Closure evidence (VERIFIED)** and § **F1 — Closure evidence (DONE)**. **F1a DONE**. Staging JSON retains `f1_pass: null` / `classification_deferred: true` in preserved artifacts; programme **DONE** is tracker-authoritative.
 
 ---
 
-### G1 — Support / admin operational recovery
+### G1 — Launch Governance Surveillance (LGS) (continuous)
 
 | Field | Value |
 |-------|-------|
 | **ID** | G1 |
-| **Priority** | P1 |
-| **Trigger** | After A–F; continuous improvement |
-| **Scope** | Admin explain tools; support playbook; safe sync/retry; classify A/B/C from UI/runbook |
-| **Canonical authority** | `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md`; `SUPPORT_REMEDIATION_CORRELATION_VIEW_V1.md` |
-| **Code areas likely affected** | Admin SPA provisioning panel, explain endpoint discoverability |
-| **Unit status** | **NOT_STARTED** |
-| **Verification evidence** | Support drill: classify failure without Mongo; closure in tracker |
-| **Governance docs after** | RUNBOOK §12.6–§12.7 |
-| **Regression tests** | N/A |
-| **Rollback / safety** | Correlation view remains non-authoritative |
+| **Role** | **Launch Governance Surveillance (LGS)** — observational oversight of launch truth; **not** a constitutional operating system |
+| **Priority** | P1 (programme) |
+| **Trigger** | **Only after A–F proof domains complete** — B1 **DONE**, C1/C2/C2a **DONE**, D1 **DONE**, E1 **VERIFIED**, F1 **DONE** |
+| **Scope** | Read-only surveillance of **product truth**, **launch scope honesty**, **anti-self-validation**, and **launch-surface explainability** — **not** re-proof of B–F; **not** normative governance authority |
+| **Canonical authority** | This tracker; `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md`; `GOVERNANCE_INDEX.md`; `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md`; **Tier-0** `audit/*_{slug}.json` from B–F units |
+| **Code areas likely affected** | **Verification/governance scripts only** when approved — read-only surveillance; **not** production writers |
+| **Unit status** | **IN_PROGRESS** (2026-05-17) — **Tranche T1 harness only**; surveillance execution **not** authorised |
+| **Implementation scope** | T1 read-only harness scaffolding only — see § **G1 — Programme sign-off** and §11 |
+| **Verification evidence** | On **VERIFIED** (future): six mandatory `g1_*` artefacts; `g1_launch_readiness_*` sole pass/fail index |
+| **Governance docs after** | This tracker; `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md`; `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md` §12.7 G1 |
+| **Regression tests** | `tests/test_g1_verification_contract.py` — **T1 subset only** until separate T2/T3 approval |
+| **Rollback / safety** | Surveillance-only; no auto-repair; no proof rewrite; no silent RC reclassification; **G1 cannot redefine B–F DONE/VERIFIED** |
+
+**Unlock (2026-05-17):** F1 **DONE** → G1 recovery DoD → **programme sign-off** (2026-05-17) → **IN_PROGRESS** (T1 harness only).
+
+**Relationship to prior G1 label (“support recovery”):** `RUNBOOK`, admin explain, and support views remain **operational inputs (Tier-2)**. G1 **does not** replace them and **does not** become sovereign over programme semantics.
+
+**Dual sovereignty (mandatory):** Unit closure (B–F) decides **what was proven in staging**. G1 decides whether **launch narrative still matches Tier-0 + closure**. Programme launch authority decides **whether to ship** (outside G1). G1 **non-VERIFIED** does **not** retroactively un-DONE a unit; it flags **launch governance risk** and blocks **G1 DONE** only.
+
+---
+
+#### G1 — Programme sign-off (formal — 2026-05-17)
+
+**Pre-signoff outcome:** Hardened recovery DoD passed pre-signoff review. Rev 5 constitutional re-entry vectors (manifest prestige, degraded pass leakage, array mass bypass, retired-artefact influence, tracker-only loops, tag elevation, narrative gates, critical-path masking) were **addressed in documentation**.
+
+**Approval:** LGS recovery is **approved for controlled harness implementation readiness** — **not** for surveillance execution, remediation, proof rewriting, or governance mutation.
+
+| Signoff field | Value |
+|---------------|-------|
+| `signoff_timestamp` | **2026-05-17** |
+| `signoff_scope` | Hardened **Launch Governance Surveillance (LGS)** recovery DoD — `LAUNCH_AUTHORITY_TRACKER.md` § G1 |
+| `approved_tranche` | **T1** |
+| `governance_posture` | **ANTI_EXPANSION** |
+| `implementation_authority` | **READ_ONLY_SURVEILLANCE_ONLY** |
+
+**Explicitly authorised by this signoff:**
+
+| Authorised | Not authorised |
+|------------|----------------|
+| Tranche **T1** harness work only | Tranche T2/T3 (separate approval required) |
+| Read-only surveillance **harness scaffolding** | Staging surveillance **execution** |
+| `launch_baseline_manifest_{slug}_v1` capture at T1 start | `READY_FOR_STAGING_SURVEILLANCE` / **VERIFIED** / **DONE** |
+| Contract tests for **T1 RC subset** only | Full RC matrix implementation |
+| Manifest integrity, degraded enforcement, critical authoritative checks | Remediation, proof rewrite, governance mutation |
+
+**State transition:** **NOT_STARTED** → **IN_PROGRESS** (constrained). **No** promotion to **`IMPLEMENTED_PENDING_VERIFICATION`** without separate programme approval after T1 harness merge review.
+
+**Surveillance execution:** **Still pending** — no pilot staging surveillance run authorised by this signoff.
+
+---
+
+#### G1 — Definition of Done (recovery — simplified + pre-signoff hardening; 2026-05-17)
+
+**Supersedes:** G1 DoD **rev 1–5 draft** constitutional meta-layer (23 RCs, 21+ artefact families, 28 gates). Rev 1–4 operational intent is **preserved** where not listed in §12 deprecation.
+
+**Recovery principle:** Smallest **falsifiable** governance surface that protects launch truth **without** self-preserving constitutional infrastructure.
+
+**Four constitutional pillars (only)** — namespace **`Pillar P1`–`Pillar P4`** (not `G1-P#`):
+
+| Constitutional pillar | G1 proves |
+|-----------------------|-----------|
+| **Pillar P1 — Product truth preservation** | B–F authoritative staging evidence still supports unit closure claims |
+| **Pillar P2 — Anti-silent reinterpretation** | Proof scope, normalization, deferred risks, and watchlists were not silently rewritten |
+| **Pillar P3 — Anti-self-validation** | Launch claims ground in Tier-0/Tier-1 with **no** normative G1-on-G1 or tracker-only product loops |
+| **Pillar P4 — Launch decision explainability** | Tracker, CLOSED_LOOP, and RUNBOOK do not assert what Tier-0 refutes |
+
+**Governance namespace map (mandatory — no symbolic overlap):**
+
+| Symbol | Meaning |
+|--------|---------|
+| **Pillar P1–P4** | Constitutional intent pillars (this table) |
+| **G1-P1–G1-P10** | Primary surveillance failure codes (§8) |
+| **G1-RC-21–G1-RC-27** | Reissued LGS hardening failure codes (§8b); **not** rev 5 draft semantics |
+| **TAG_*** | Advisory tags only (§8); never primary |
+
+**One-line boundary:** G1 proves **launch truth remains Tier-0-grounded, scope-honest, non-self-validating, and launch-explainable** — observational surveillance only.
+
+##### 1. What G1 is and is not (mandatory)
+
+**G1 is:**
+
+| Capability | Mechanism |
+|------------|-----------|
+| Launch governance surveillance | Read-only comparison vs frozen **launch baseline manifest** |
+| Product-truth drift detection | Fingerprints vs authoritative `*b_*` / `d1b_*` / `e1b_*` / `f1a_*` |
+| Anti-silent reinterpretation | Scope registry + proof-context constraints |
+| Anti-self-validation | Tier breakers (§4) |
+| Launch-surface coherence | Governance-surface join (§6 artefact 4) |
+| Bounded surveillance mass | P10 caps (§9) |
+
+**G1 is NOT:**
+
+| Excluded | Reason |
+|----------|--------|
+| Constitutional operating system | No normative legitimacy engine |
+| Semantic authority / reinterpretation engine | No approval of normalization or scope changes |
+| Governance sovereign over B–F | Cannot un-DONE units |
+| Narrative-completeness gate | No blocking on prose density |
+| Remediation / auto-healing / proof rewrite | Separate units |
+| Re-proof of C1/D1/E1/F1 full staging | Upstream units own first proof |
+
+##### 2. Upstream consumed proof domains (mandatory)
+
+G1 **consumes** B–F **Tier-0** artefacts — does **not** re-prove:
+
+| Domain | Authoritative Tier-0 families (examples) | Surveillance question |
+|--------|------------------------------------------|------------------------|
+| **B** | `b1_*` | Visibility claims still aligned? |
+| **C** | `c1_*`, `c2_*`, `c2a_*` | Replay-confidence decayed? |
+| **D** | `d1b_*` authoritative; `d1_*` historical | Fanout lineage credible? |
+| **E** | `e1b_*` authoritative; `e1_*` historical | Authority replay semantics stable? |
+| **F** | `f1a_*` authoritative; `f1_*` historical | Notification replay-confidence stable? |
+
+**Launch baseline manifest (mandatory at `IN_PROGRESS`):** `launch_baseline_manifest_{slug}_v{N}.json`
+
+| Manifest rule | Requirement |
+|---------------|-------------|
+| **Tier classification** | `manifest_tier_classification="T1_INDEX_ONLY"` — **Tier-1 index metadata only**; **never** normative product truth |
+| **Grounding** | `manifest_grounding_requirements[]` — every row must cite Tier-0 `path`, `sha256`, `authoritative_label`; **no** independent governance assertions |
+| **Capture** | Derived **exclusively** from Tier-0 hashes/paths captured at **`IN_PROGRESS`**; manifest convenience must **never** become constitutional authority |
+| **Surveillance use** | Compare current Tier-0 state to manifest vN — **not** to prior `g1_*` (B4) |
+
+**Failure branch:** **G1-RC-21** = manifest authority escalation (manifest treated as product ground, missing Tier-0 derivation, or normative assertions in manifest body).
+
+**Per-unit closure (operational, not constitutional DONE):** `acceptance_rationale_ref` (tracker § + artefact IDs) — presence check only; missing → `TAG_LEGITIMACY_INCOMPLETE` (advisory).
+
+##### 3. Core governance themes (essential only)
+
+| # | Theme | Pillar |
+|---|-------|--------|
+| 3a | Tier-0 artifact integrity | Pillar P1 |
+| 3b | Product replay-confidence | Pillar P1 |
+| 3c | Normalization / scope stability | Pillar P1, Pillar P2 |
+| 3d | Proof-context / scope registry | Pillar P2 |
+| 3e | Deferred-risk + watchlist visibility | Pillar P2 |
+| 3f | Cross-layer operational consistency | Pillar P1 |
+| 3g | Launch-surface truthfulness | Pillar P4 |
+| 3h | Anti-self-validation (tier breakers) | Pillar P3 |
+| 3i | Surveillance mass boundedness | G1-P10 |
+
+**Advisory only (secondary tags — never sole VERIFIED block):** succession gaps, semantic drift, concentration, replay-narrative gaps, partial knowledge, visible contradictions, legitimacy prose incomplete. See §8 secondary tags.
+
+##### 4. Tier model and anti-recursion breakers (mandatory)
+
+| Tier | Sources | May ground **product launch truth**? |
+|------|---------|-------------------------------------|
+| **T0** | B–F `audit/*_{slug}.json`; authoritative rerun reports; read-only staging fingerprints | **Yes** |
+| **T1** | Unit closure sections (this tracker); CLOSED_LOOP rows; `launch_baseline_manifest_*` (**index only**) | **Yes, only if T0-linked per §4a** |
+| **T2** | RUNBOOK, GOVERNANCE_INDEX operational narrative | **No** (operations only) |
+| **T3** | `g1_*` surveillance outputs | **Never normative** |
+
+**Hard breakers (validation must fail → P7 or P1 as applicable):**
+
+| Breaker | Rule |
+|---------|------|
+| **B1 — No G1-on-G1 normative grounding** | T3 paths must not justify P1–P6 product conclusions |
+| **B2 — No tracker-only product truth** | T1-only loops without T0 edge → P7 |
+| **B3 — No T3→T3 legitimacy** | Surveillance snapshots cannot anchor further surveillance |
+| **B4 — No prestige baseline** | Baseline is `launch_baseline_manifest_vN`, not prior `g1a_*` |
+| **B5 — Superseded is non-authoritative** | `historical_only=true` / `non_authoritative=true` artefacts excluded from grounding |
+
+###### 4a. Tier-0 linkage predicate (mandatory)
+
+Tracker prose alone is **never** constitutional product truth. Every launch/product claim in `tracker_claims[]` must resolve via `tier0_link_resolution[]`:
+
+| Required resolution field | Purpose |
+|---------------------------|---------|
+| `tier0_artifact_path` | Audit JSON path |
+| `tier0_artifact_sha256` | Hash at manifest capture |
+| `replay_lineage_ref` | Authoritative rerun label (e.g. `f1a_*`, `d1b_*`) where applicable |
+| `normalization_boundary_ref` | Omit-key / scope boundary ID where applicable |
+
+**Outputs (in `g1_governance_surface_*` / `g1_self_validation_check_*`):** `tier0_link_resolution[]`, `unresolved_tracker_claims[]` (must be **empty** on pass), `tracker_truth_binding_pass`.
+
+**Failure branch:** **G1-RC-24** = tracker self-validation loop (T1-only product claim or unresolved tracker claim).
+
+##### 5. Surveillance modes (mandatory)
+
+| Mode | `degraded_mode` | VERIFIED allowed? | G1 DONE allowed? |
+|------|-----------------|-------------------|------------------|
+| **SURVEILLANCE_FULL** | `false` | Yes, if G1-P1–P9 + hardening RCs clear; `g1_pass=true` permitted | Yes, if §10 conditions pass |
+| **SURVEILLANCE_DEGRADED** | `true` | **No** — `g1_pass` **must be false** | **No** |
+| **SURVEILLANCE_BLOCKED** | n/a (hard fail) | **No** — `g1_pass` **must be false** | **No** |
+
+**Pass prohibition (mandatory):** If `degraded_mode=true` **OR** `surveillance_mode≠SURVEILLANCE_FULL` → `g1_pass=false`; **VERIFIED prohibited**; **DONE prohibited**. Degraded reconstruction may emit observational artefacts but **never** implies constitutional adequacy.
+
+**Degraded triggers (any applies):**
+
+| Trigger | Mode |
+|---------|------|
+| Tier-0 availability below manifest `min_tier0_coverage` (default **≥95%** paths present and hash-valid) | DEGRADED |
+| **Critical authoritative omission** (below) | DEGRADED or BLOCKED |
+
+**Critical-path rule (mandatory — not statistical):** Missing **any** authoritative rerun artefact in `critical_authoritative_artifact_inventory[]` forces **SURVEILLANCE_DEGRADED** or **SURVEILLANCE_BLOCKED** regardless of coverage percentage.
+
+| Unit | Critical authoritative families (pilot) |
+|------|----------------------------------------|
+| **D** | `d1b_*` verification report + authoritative rerun set listed in manifest |
+| **E** | `e1b_*` verification report |
+| **F** | `f1a_*` verification report |
+
+**Outputs:** `critical_authoritative_artifact_inventory[]`, `missing_critical_authoritative_artifacts[]` in `g1_upstream_integrity_*`. **Failure branch:** **G1-RC-27** = critical-proof omission masking (critical artefact missing but surveillance treated as FULL).
+
+**Degraded observational only:** May emit `partial_reconstruction_summary` in `g1_launch_readiness_*`. Tag: `TAG_PARTIAL_KNOWLEDGE`. **Must not** claim product truth or constitutional legitimacy.
+
+##### 6. Governed surveillance sources (when implemented)
+
+| ID | Source | Observes |
+|----|--------|----------|
+| **G1-S1** | Tier-0 manifest + audit filesystem | P1, P2 (tamper, hash) |
+| **G1-S2** | Read-only pilot fingerprints | P1 (replay-confidence) |
+| **G1-S3** | Tracker + CLOSED_LOOP + RUNBOOK | P4, P8 |
+| **G1-S4** | Scope/deferred/watchlist registry | P2, P5 |
+| **G1-S5** | Tier graph builder | P3, P7 |
+
+**No production mutations** in G1 scope.
+
+##### 7. Mandatory artefacts (6 + optional handoff)
+
+All under `backend/docs/audit/`. Pilot slug default: `6fd5ac4c_d35a58ae`.
+
+**Constitutional mass cap:** **6 mandatory** artefacts per run; accounting mode **`constitutional_mass_accounting_mode="FIELD_PLUS_ELEMENT"`** — **each array element counts** toward mass; **≤120** total field+element units; per-field `max_allowed_array_elements[]` enforced; arrays may **not** become hidden governance registries. Excess → **G1-P10** or **G1-RC-22**. Optional handoff does not count toward cap.
+
+| Artefact | Schema (mandatory fields) | Pillar |
+|----------|---------------------------|--------|
+| `g1_upstream_integrity_{slug}.json` | `manifest_version`, `tier0_manifest_ref`, `manifest_tier_classification`, `manifest_grounding_requirements[]`, `tier0_entries[]` (max elements = manifest row count), `critical_authoritative_artifact_inventory[]`, `missing_critical_authoritative_artifacts[]`, `tamper_detected`, `missing_tier0[]`, `retroactive_rewrite_detected` | Pillar P1 |
+| `g1_product_surveillance_{slug}.json` | `unit_fingerprints[]`, `normalization_omit_keys[]`, `cross_layer_contradictions[]`, `normalization_drift_detected`, `predicate_binding_refs[]` | Pillar P1/P2; G1-P3/P6 |
+| `g1_launch_scope_registry_{slug}.json` | `proof_context_snapshot[]`, `accepted_scope_limitations[]`, `deferred_risk_inventory[]`, `watchlist_inventory[]`, `silently_removed[]` (empty on pass), `proof_interpretation_constraints[]` | Pillar P2 |
+| `g1_governance_surface_{slug}.json` | `tracker_claims[]`, `tier0_link_resolution[]`, `unresolved_tracker_claims[]`, `tracker_truth_binding_pass`, `artifact_claims[]`, `surface_mismatches[]`, `launch_surface_falsehood_detected` | Pillar P4 |
+| `g1_self_validation_check_{slug}.json` | `tier_edges[]`, `normative_loops[]` (empty on pass), `tracker_only_product_claims[]`, `self_validating_loop_detected`, `tier_breakers_triggered[]`, `retired_artifact_read_policy[]`, `retired_artifact_usage_violations[]` (empty on pass) | Pillar P3 |
+| `g1_launch_readiness_{slug}.json` | `surveillance_mode`, `degraded_mode`, `g1_pass` (**must be false** if `degraded_mode=true` or `surveillance_mode≠SURVEILLANCE_FULL`), `primary_rc` (one **G1-P***, **G1-RC-21–27**, or null), `secondary_tags[]`, `advisory_tag_elevation_attempts[]`, `tag_governance_boundary_pass`, `tier0_grounding[]` (T0 paths only; **no T3**), `predicate_binding_inventory[]`, `non_falsifiable_language_inventory[]` (empty on pass), `advisory_only_governance_language[]`, `constitutional_mass` (`artefact_count`, `field_count`, `element_count`, `constitutional_mass_element_budget`, `max_allowed_array_elements[]`), `challenge_refs[]`, `artifact_index[]` (T3 observational only) | Index |
+
+**Optional (event-triggered only):** `g1_handoff_record_{slug}.json` — `stewardship_transition`, `from_steward`, `to_steward`, `handoff_at`, `inherited_scope_refs[]`. Emits tag `TAG_SUCCESSION_GAP` if required handoff missing; **never** primary RC alone.
+
+**Prefix rule:** First run `g1_*`; reruns `g1a_*`, `g1b_*`. **Never** overwrite upstream B–F artefacts. **T3 is observational:** `g1_*` never listed in `tier0_grounding[]` for product claims.
+
+**Staging drivers (after approval):** `scripts/g1_snapshot.py`, `scripts/g1_preflight_capture.py`, `scripts/g1_staging_surveillance.py` (read-only).
+
+##### 8. Primary RC model (G1-P1–P10) + secondary tags
+
+**Single-primary enforcement:** Each surveillance run sets exactly **one** `primary_rc` ∈ {`G1-P1`…`G1-P10`, `G1-RC-21`…`G1-RC-27`} or `null` if pass. `secondary_tags[]` may list multiple advisories.
+
+**Core primary RCs (launch-blocking on FULL VERIFIED):**
+
+| RC | Name | Falsifiable trigger (contract-bound) | Absorbs (rev 1–5 draft) |
+|----|------|-----------------------------------|-------------------------|
+| **G1-P1** | Historical tampering | Tier-0 missing, hash mismatch, RC/artefact rewrite | G1-RC-2 |
+| **G1-P2** | Silent scope / normalization expansion | Omit-keys or proof scope widened without `approving_unit_ref` | G1-RC-4 |
+| **G1-P3** | Product replay-confidence erosion | `semantic_drift=true` per `test_g1_verification_contract` predicate | G1-RC-3 |
+| **G1-P4** | Silent proof reinterpretation | Constraint violation per registry diff predicate | G1-RC-11 |
+| **G1-P5** | Deferred / watchlist erasure | `silently_removed[]` non-empty | G1-RC-10, G1-RC-12 |
+| **G1-P6** | Cross-layer operational contradiction | `cross_layer_contradictions[]` non-empty without `documented_cause_ref` | G1-RC-5 |
+| **G1-P7** | Self-validating governance loop | `normative_loops[]` non-empty or `self_validating_loop_detected=true` | rev5-RC-23 (void) |
+| **G1-P8** | Launch surface falsehood | `launch_surface_falsehood_detected=true` | G1-RC-1, G1-RC-9 |
+| **G1-P9** | Hidden remediation coupling | `remediation_coupling_detected=true` per change-log predicate | G1-RC-8 |
+| **G1-P10** | Governance surveillance saturation | Artefact >6 or mass budget exceeded (aggregate) | G1-RC-14 |
+
+##### 8b. LGS hardening RCs (G1-RC-21–27 reissued)
+
+**Number reissue:** **G1-RC-21–27** are **reissued for LGS hardening** (2026-05-17). Rev 5 **draft** meanings of these IDs are **void**. Historical references use prefix **rev5-** in tag tables only.
+
+| RC | Name | Falsifiable trigger |
+|----|------|---------------------|
+| **G1-RC-21** | Manifest authority escalation | `manifest_tier_classification≠T1_INDEX_ONLY` or manifest row lacks Tier-0 hash/path derivation |
+| **G1-RC-22** | Constitutional mass bypass | `constitutional_mass_accounting_mode` violated or array element exceeds `max_allowed_array_elements[]` |
+| **G1-RC-23** | Retired-constitutional reintroduction | Any `retired_artifact_usage_violations[]` non-empty (retired §12 artefact used for pass/fail) |
+| **G1-RC-24** | Tracker self-validation loop | `tracker_truth_binding_pass=false` or `unresolved_tracker_claims[]` non-empty |
+| **G1-RC-25** | Advisory-tag constitutional escalation | `tag_governance_boundary_pass=false` or `advisory_tag_elevation_attempts[]` non-empty |
+| **G1-RC-26** | Non-falsifiable governance predicate | `non_falsifiable_language_inventory[]` non-empty (narrative gate without harness binding) |
+| **G1-RC-27** | Critical-proof omission masking | `missing_critical_authoritative_artifacts[]` non-empty while `surveillance_mode=SURVEILLANCE_FULL` |
+
+**Secondary tags (advisory — never alone block VERIFIED/DONE):**
+
+| Tag | Notes |
+|-----|-------|
+| `TAG_LEGITIMACY_INCOMPLETE` | Missing `acceptance_rationale_ref` at closure |
+| `TAG_SEMANTIC_DRIFT` | Vocabulary shift; review |
+| `TAG_SUCCESSION_GAP` | Handoff not documented |
+| `TAG_CONCENTRATION` | Operator concentration |
+| `TAG_REPLAY_NARRATIVE_GAP` | Narrative gap; not product-false |
+| `TAG_PARTIAL_KNOWLEDGE` | Degraded mode |
+| `TAG_CONTRADICTION_VISIBLE` | Known supersession visible |
+| `TAG_AUTHORITY_INCONSISTENT` | Sign-off index gap |
+
+**Tag anti-elevation (mandatory):** `TAG_*` entries are **advisory only**. Tags **must never** independently block VERIFIED or DONE. Policy elevation of any tag to a launch gate requires a **separate approved launch unit** (not G1 amendment), explicit governance amendment record, and new RC lineage — recorded in `advisory_tag_elevation_attempts[]`; violation → **G1-RC-25**.
+
+**Predicate binding (mandatory):** All constitutional conditions in §10 must bind to harness predicates in §14 or `predicate_binding_inventory[]`. Narrative terms without binding → `advisory_only_governance_language[]` only; if used as gate → **G1-RC-26**. Narrative legitimacy cannot substitute for falsifiable legitimacy.
+
+**Precedence (mandatory — `detect_primary_rc`):**
+
+1. **G1-RC-27** → **G1-RC-21** → **G1-P1** → **G1-RC-24** → **G1-P7** → **G1-RC-23** → **G1-P2** → **G1-RC-22** → **G1-P3** → **G1-P4** → **G1-P5** → **G1-P6** → **G1-P8** → **G1-RC-26** → **G1-RC-25** → **G1-P9** → **G1-P10**
+2. **G1-P1 / G1-P2 / G1-P3** defeat all secondary tags for VERIFIED.
+3. **G1-P7 / G1-RC-24** defeat legitimacy-completeness interpretations.
+4. Secondary tags **cannot** block VERIFIED or DONE.
+
+**RC collision resolution:** Suppressed candidates in `g1_launch_readiness_*.secondary_rc_candidates[]` (observational).
+
+##### 9. Falsifiability — launch challenge path (mandatory)
+
+**Purpose:** Cheap, bounded dispute without invalidating entire governance history.
+
+| Field | Rule |
+|-------|------|
+| `launch_challenge_record` | Tracker appendix entry: `challenge_id`, `tier0_refs[]`, `disputed_claim`, `requested_checks[]` ⊆ {G1-P1,G1-P2,G1-P3,G1-P4,G1-P8,G1-P7} |
+| Scope | **Bounded** — max 3 Tier-0 refs per challenge |
+| Effect | Triggers **targeted re-surveillance** of listed checks only; no recursive artefact expansion |
+| Outcome | Updates `g1_launch_readiness_*.challenge_refs[]`; may elevate primary RC; **does not** delete history |
+
+##### 10. Completion gates and DONE conditions (≤12)
+
+| Gate | Requirement |
+|------|-------------|
+| **Start `IN_PROGRESS`** | Recovery DoD **signed off** (2026-05-17); T1 harness scope only; `launch_baseline_manifest_{slug}_v1` capture **in progress** |
+| **`IMPLEMENTED_PENDING_VERIFICATION`** | Read-only scripts + `test_g1_verification_contract.py` merged |
+| **`READY_FOR_STAGING_SURVEILLANCE`** | Six mandatory artefacts emitted; `g1_pass=false` if DEGRADED/BLOCKED |
+| **`VERIFIED`** | `surveillance_mode=SURVEILLANCE_FULL`; `g1_pass=true`; no G1-P1–P9; no G1-RC-21–27; `degraded_mode=false` |
+| **`DONE`** | §10 constitutional conditions 1–12 only (see programme-process note below) |
+
+**Programme-process maintenance (outside constitutional DONE):** Tracker hygiene, RUNBOOK §12.7 updates, and watchlist registry currency are **operational housekeeping** — **not** constitutional legitimacy and **not** G1 DONE conditions. Operational maintenance ≠ constitutional adequacy.
+
+**G1 cannot reach DONE unless (12 constitutional conditions — each maps to §14 predicate):**
+
+1. Tier-0 manifest integrity-checked — **G1-P1** / **G1-RC-21** clear.
+2. No silent normalization/scope expansion — **G1-P2** clear.
+3. No product semantic drift — **G1-P3** predicate clear.
+4. Proof-context registry constraints satisfied — **G1-P4** predicate clear.
+5. No deferred/watchlist erasure — **G1-P5** clear.
+6. No cross-layer contradiction without `documented_cause_ref` — **G1-P6** predicate clear.
+7. No self-validating governance loop — **G1-P7** / **G1-RC-24** clear.
+8. Launch surfaces match Tier-0 — **G1-P8** clear.
+9. No hidden remediation coupling — **G1-P9** predicate clear (or advisory-only if change-log unavailable per §14).
+10. Surveillance mass within caps — **G1-P10** / **G1-RC-22** clear.
+11. `surveillance_mode=SURVEILLANCE_FULL` and `g1_pass=true`.
+12. No remediation or proof rewrite under G1 guise.
+
+**VERIFIED prohibition:** Any **G1-P1–P9**; any **G1-RC-21–27**; `degraded_mode=true`; `g1_pass=false`; `surveillance_mode≠SURVEILLANCE_FULL`; secondary tags alone.
+
+##### 11. Phased surveillance tranches (mandatory for first implementation)
+
+| Tranche | Status | Primary RCs | Artefacts |
+|---------|--------|-------------|-----------|
+| **T1** | **APPROVED** (signoff 2026-05-17) | **G1-P1**, **G1-P2**, **G1-P5**, **G1-RC-21**, **G1-RC-27** | `g1_upstream_integrity_*`, `g1_launch_scope_registry_*`, `g1_launch_readiness_*` |
+| **T2** | **Blocked** — separate approval | + G1-P3, G1-P6, G1-P8; G1-RC-24 | + `g1_product_surveillance_*`, `g1_governance_surface_*` |
+| **T3** | **Blocked** — separate approval | + G1-P7, G1-P9, G1-P10; G1-RC-22, G1-RC-23, G1-RC-25, G1-RC-26 | + `g1_self_validation_check_*`; full cap enforcement |
+
+**DONE requires T3 complete** — **not** implied by T1 signoff.
+
+###### 11a. Tranche T1 scope (approved — harness only)
+
+**T1 implements only:**
+
+| Work package | Covers |
+|--------------|--------|
+| Harness scaffolding | `scripts/g1_snapshot.py`, `g1_preflight_capture.py`, `g1_staging_surveillance.py` skeleton — **read-only** |
+| Manifest integrity | Tier-0 manifest capture; **G1-RC-21** / **G1-P1** predicates |
+| Degraded-state enforcement | `g1_pass=false` when degraded; mode gates in contract tests |
+| Critical authoritative verification | `d1b_*`, `e1b_*`, `f1a_*` presence — **G1-RC-27** |
+| Registry / erasure checks | Deferred + watchlist registry diff — **G1-P5** |
+| Scope / normalization delta (manifest-bound) | **G1-P2** |
+
+**T1 explicitly does NOT implement:**
+
+| Excluded from T1 |
+|------------------|
+| Full RC matrix (G1-P3–P10 except as listed above) |
+| Semantic reinterpretation drift surveillance |
+| Institutional survivability simulation |
+| Governance succession modelling |
+| Anti-fragility expansion |
+| Replay archaeology / full replayability narrative |
+| Historical contradiction simulation |
+| Staging surveillance **execution** (harness run against live pilot) |
+| Promotion beyond **`IMPLEMENTED_PENDING_VERIFICATION`** |
+
+##### 12. Deprecated rev 5 structures (retirement — mandatory)
+
+The following are **retired** as normative launch-blocking structures. Historical files in `audit/` remain **queryable** with metadata:
+
+| Deprecated artefact / RC | Retirement flags | `superseded_by` |
+|--------------------------|------------------|-----------------|
+| `g1_governance_legitimacy_*` | `archived=true`, `non_authoritative=true`, `historical_only=true` | `g1_launch_scope_registry_*` + closure `acceptance_rationale_ref` |
+| `g1_bounded_reinterpretation_*` | same | `g1_product_surveillance_*` (P2) |
+| `g1_anti_authoritarian_drift_*` | same | `g1_self_validation_check_*` (P7) |
+| `g1_governance_replayability_*` | same | `g1_upstream_integrity_*` + manifest |
+| `g1_institutional_memory_antifragility_*` | same | tag `TAG_CONCENTRATION` |
+| `g1_historical_contradictions_*` | same | `g1_launch_scope_registry_*` |
+| `g1_governance_succession_*` | same | `g1_handoff_record_*` (optional) |
+| `g1_partial_knowledge_survivability_*` | same | `g1_launch_readiness_*.degraded_mode` |
+| `g1_interpretation_drift_*` | same | tag `TAG_SEMANTIC_DRIFT` |
+| `g1_governance_authority_*` (full chains) | same | T1 sign-off index in manifest |
+| **G1-RC-1 … G1-RC-20** (rev 5 draft IDs) | `historical_only=true` | **G1-P1 … G1-P10** per §8 |
+| **G1-RC-21 … G1-RC-27** (rev 5 draft semantics) | `historical_only=true` (draft meaning void) | **Reissued** LGS hardening meanings per §8b |
+
+**Retired artefacts MUST NOT:** participate in launch grounding, satisfy RC checks, satisfy VERIFIED, satisfy DONE, appear in `tier0_grounding[]`, serve as normalization derivation inputs, replay comparison baselines, or legitimacy justification.
+
+**Retired-artifact read prohibition (mandatory — harness):**
+
+| Policy | Rule |
+|--------|------|
+| `retired_artifact_read_policy[]` | `PASS_FAIL_INPUT=FORBIDDEN`; `VERIFIED_INPUT=FORBIDDEN`; `BASELINE_INPUT=FORBIDDEN`; `HISTORY_QUERY=ALLOWED` |
+| Violations | Any read of §12 artefact families for pass/fail → `retired_artifact_usage_violations[]` → **G1-RC-23** |
+
+Compression of retired JSON is **not** simplification if it still influences surveillance outcomes.
+
+##### 13. Boundary reaffirmation (explicit NOT)
+
+| Out of scope |
+|--------------|
+| Political / org / permissions redesign |
+| Governance freezing (safe-harbour clarifications with `approving_unit_ref` remain allowed) |
+| Decentralization mandates |
+| Auto-remediation, proof rewriting, architecture mutation |
+| Re-proof of B–F full staging suites |
+| Normative authority from `g1_*` (Tier T3) |
+| Tag elevation to launch gates without separate unit | G1-RC-25 |
+
+##### 14. Validation logic (normative — harness contract)
+
+The verification harness **must** implement, without placeholder branches:
+
+| Check | RC | Inputs |
+|-------|-----|--------|
+| Tier-0 manifest match | G1-P1 | `g1_upstream_integrity_*` |
+| Manifest T1 index only | G1-RC-21 | manifest fields |
+| Omit-key / scope delta | G1-P2 | `g1_product_surveillance_*`, manifest |
+| Semantic fingerprint compare | G1-P3 | `g1_product_surveillance_*` |
+| Context constraint violation | G1-P4 | `g1_launch_scope_registry_*` |
+| Registry diff | G1-P5 | `g1_launch_scope_registry_*` |
+| Cross-layer contradiction | G1-P6 | `g1_product_surveillance_*` |
+| Tier graph / normative loops | G1-P7 | `g1_self_validation_check_*` |
+| Tracker T0 binding | G1-RC-24 | `g1_governance_surface_*` |
+| Surface claim vs Tier-0 | G1-P8 | `g1_governance_surface_*` |
+| Remediation coupling | G1-P9 | change log + G1-P3 |
+| Mass counter (field+element) | G1-P10 / G1-RC-22 | `g1_launch_readiness_*.constitutional_mass` |
+| Retired artefact read guard | G1-RC-23 | `retired_artifact_usage_violations[]` |
+| Tag elevation guard | G1-RC-25 | `tag_governance_boundary_pass` |
+| Predicate binding audit | G1-RC-26 | `non_falsifiable_language_inventory[]` |
+| Critical authoritative presence | G1-RC-27 | `missing_critical_authoritative_artifacts[]` |
+| Single `primary_rc` | all | `g1_launch_readiness_*` |
+| Pass prohibition if degraded | §5 | `g1_pass`, `surveillance_mode`, `degraded_mode` |
+| T3 exclusion from `tier0_grounding` | B1 | `g1_launch_readiness_*` |
+
+##### 15. Anti-expansion constitutional posture (mandatory)
+
+**Recovery success criteria (why simplification succeeded):**
+
+| Reduced | Mechanism |
+|---------|-----------|
+| Authority | G1-P1–P10 + reissued RC-21–27 only; no rev 5 constitutional trilogy |
+| Recursion | T0–T3 tiers; B1–B5 breakers; manifest not `g1a_*` baseline |
+| Interpretive surfaces | Six artefacts; field+element cap; predicate binding |
+| Hidden legitimacy vectors | Manifest T1-only; retired read ban; tag anti-elevation |
+| Constitutional mass | P10 / RC-22; ≤6 artefacts; ≤120 field+element units |
+
+**Future G1 evolution requires:** demonstrated necessity; bounded mass impact; explicit falsifiability; independent signoff lineage; anti-recursion review.
+
+**Programme warning (mandatory):** *Governance sophistication alone is not evidence of governance quality.*
+
+**G1 still does NOT authorize (reaffirmed at signoff):** remediation orchestration; governance restructuring; automatic replay reinterpretation; proof rewriting; topology / queue / scheduler / fanout redesign; policy elevation of advisory tags; self-authorizing governance growth; normative authority from `g1_*` (T3).
+
+**Status:** Recovery DoD **signed off** (2026-05-17). **IN_PROGRESS** — Tranche **T1** harness only. **Surveillance execution pending.** **No** T2/T3 authority implied.
+
+**Next step:** Implement T1 harness scaffolding + `test_g1_verification_contract.py` **T1 subset** → separate approval for **`IMPLEMENTED_PENDING_VERIFICATION`** → later T2/T3 approval → staging surveillance execution.
 
 ---
 
@@ -4149,10 +4684,10 @@ Original **F1-RC-15** classification and artifacts remain for audit. **Do not re
 
 ```
 A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
-  → C1 → C2 → D1 (+ D2 in parallel) → E1 → F1 → G1/G2 continuous
+  → C1 → C2 → D1 (+ D2 in parallel) → E1 → F1 **DONE** → G1/G2 continuous
 ```
 
-**Next approved step:** **F1 DONE** (explicit approval + §8 baseline suites) or **G1/G2** per sequence — **not** notification remediation under F1 guise. **Do not** widen **F1-M2–M7** without separate unit. **D2** optional parallel. **B2** BLOCKED (product); **B3** BLOCKED/deferred.
+**Next approved step:** G1 T1 harness implementation (read-only scaffolding). **Do not** run staging surveillance or expand to T2/T3 without separate approval. **D2** optional parallel. **B2** BLOCKED (product); **B3** BLOCKED/deferred.
 
 ---
 

@@ -518,8 +518,8 @@ Record result in tracker **A1 classification record** table.
 | F1-2 | **Ack replay-pair (F1a)** | Captured in `f1a_acknowledgement_semantics_*` | `acknowledgement_replay_equal=true` on M1 row — **not** population diversity |
 | F1-3 | **F1-M8 observe** | `NOTIFICATION_DISPATCH` off in inventory | Activation-blocked observe only |
 | F1-4 | **Contract regression** | `pytest tests/test_f1_verification_contract.py tests/test_f1a_verification_contract.py` | Green |
-| F1-5 | **Baseline suites (§8)** | Per tracker F1 DoD §8 | Required before **DONE** (not yet closed) |
-| F1-6 | **Report** | `f1a_verification_report_{slug}.json` | **Authoritative for VERIFIED**; `f1_*` preserved for history |
+| F1-5 | **Baseline suites (§8)** | `pytest tests/test_f1*_verification_contract.py` + L-008 notification suites (programme CI) | Harness contract green; full L-008 matrix programme-owned |
+| F1-6 | **Report** | `f1a_verification_report_{slug}.json` | **Authoritative for F1 DONE**; `f1_*` preserved permanently |
 
 **Governed mutations (proof scope):** **F1-M1** (stable idempotency replay probe); **F1-M8** observe. **F1-M2–M7** deferred.
 
@@ -529,11 +529,27 @@ Record result in tracker **A1 classification record** table.
 
 **Replay normalization (observational only):** Timestamp fields + run labels may be stripped for **semantic replay compare** only. **Never** normalize delivery authority, visible user impact, acknowledgement certainty on replay pair, suppression state, lineage, or amplification signals.
 
-**Watchlist (non-blocking for VERIFIED):** Historical `inferred_acknowledgement` in population; provider/inbox certainty out of scope; **F1-M2–M7** unproven.
+**Watchlist (visible after DONE — not hidden debt):** Historical `inferred_acknowledgement` in population; raw timestamp observational drift; provider/inbox certainty out of scope; **F1-M2–M7** unproven; `NOTIFICATION_DISPATCH` off.
 
-**Forbidden:** Raw Mongo `message_logs` injection; orchestrator redesign under F1 guise; treating provider **SENT** as user delivery guarantee.
+**DONE interpretation:** F-layer replay-governance proof **complete** for approved **F1-M1** scope. **Not** architecture finality. Future work = **separate verification or remediation units** only.
 
-**Pilot reference (2026-05-17):** `6fd5ac4c-3fd4-4112-ade7-156977deb49f` / `d35a58ae-3c81-491c-9694-1d021dd3b8ad` — authoritative: `f1a_verification_report_6fd5ac4c_d35a58ae.json` (`f1a_rc15_cleared=true`, exit 0). Preserved: `f1_*` (**F1-RC-15** harness). Tracker status: **VERIFIED** (parent **not DONE**).
+**Forbidden:** Raw Mongo `message_logs` injection; orchestrator/provider/queue/scheduler/template redesign under F1 guise; treating provider **SENT** or platform **DELIVERED** as guaranteed user receipt; silent F1 scope extension.
+
+**Pilot reference (2026-05-17):** `6fd5ac4c-3fd4-4112-ade7-156977deb49f` / `d35a58ae-3c81-491c-9694-1d021dd3b8ad` — authoritative: `f1a_verification_report_6fd5ac4c_d35a58ae.json` (`f1a_rc15_cleared=true`, exit 0). Preserved: `f1_*` (**F1-RC-15** harness — **do not delete**). Tracker status: **DONE** (**F1a DONE**).
+
+#### G1 — Launch governance surveillance (LGS) — Tranche T1 placeholder
+
+**Authority:** `LAUNCH_AUTHORITY_TRACKER.md` § **G1** (recovery LGS — **signed off** 2026-05-17). **Not** constitutional operating system; **not** remediation.
+
+| Posture | Rule |
+|---------|------|
+| **Status** | **IN_PROGRESS** — Tranche **T1** harness **pending** (no staging surveillance execution yet) |
+| **Surveillance** | **Read-only** when implemented — no product mutation |
+| **Degraded mode** | `g1_pass` **must be false** if `degraded_mode=true` or not `SURVEILLANCE_FULL` |
+| **Authoritative reruns** | Preserve `d1b_*`, `e1b_*`, `f1a_*` as Tier-0; historical `d1_*` / `e1_*` / `f1_*` **not** deleted |
+| **T1 scope** | Manifest integrity, registry erasure checks, critical authoritative presence — **G1-P1**, **G1-P2**, **G1-P5**, **G1-RC-21**, **G1-RC-27** only |
+
+**Operational procedures:** **Not yet defined** — await T1 harness merge and separate staging surveillance approval.
 
 ---
 
