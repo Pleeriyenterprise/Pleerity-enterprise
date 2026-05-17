@@ -4,7 +4,7 @@
 
 **Companion:** `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` (audit / gap framing; normative doctrine **§18**). **Controlled beta (support/admin operations):** `RUNBOOK_CONTROLLED_BETA_OPERATIONS.md`. **Product governance (value, trust, retention, workflow continuity — not a tracker):** `PROPERTY_COMPLIANCE_OS_GAP_AND_RETENTION_AUDIT.md`. **Product value / retention gap tracker (not architecture):** `PRODUCT_VALUE_GAP_TRACKER.md`.
 
-**Last updated:** 2026-05-17 (Launch **F1 DONE**; **G1 IN_PROGRESS** — Tranche T1 harness only; formal sign-off 2026-05-17; surveillance execution pending).
+**Last updated:** 2026-05-17 (Launch **F1 DONE**; **G1 IN_PROGRESS** — T1 harness + IMPLEMENTED_PENDING_VERIFICATION review-preparation package; **no** status promotion; surveillance execution pending).
 
 **Launch-gated obligation recovery:** Finishable units **A1–G2** live in `docs/launch/LAUNCH_AUTHORITY_TRACKER.md` § Recovery implementation plan. **No duplicate tracker.** This section maps streams only.
 
@@ -519,3 +519,4 @@ Each numbered phase is an intended **separate PR**; title format `Stream F — <
 | 2026-05-17 | **Launch G1 DoD recovery (simplified LGS):** constitutional mass reduction — **G1-P1**–**P10**; 6 artefacts; tier model T0–T3; anti-recursion breakers; degraded surveillance mode; rev 5 constitutional artefacts/RCs **retired** (`historical_only`); ≤12 DONE gates — `LAUNCH_AUTHORITY_TRACKER.md` § G1. |
 | 2026-05-17 | **Launch G1 DoD pre-signoff hardening:** DONE gate consistency; degraded `g1_pass` prohibition; manifest T1-only + **G1-RC-21**; field+element mass + **G1-RC-22**; retired read ban + **G1-RC-23**; tracker binding + **G1-RC-24**; tag anti-elevation + **G1-RC-25**; predicate binding + **G1-RC-26**; critical-path degraded + **G1-RC-27**; Pillar vs G1-P namespace — ready for sign-off. |
 | 2026-05-17 | **Launch G1 formal sign-off:** LGS recovery approved; **NOT_STARTED → IN_PROGRESS** (Tranche **T1** harness only); `ANTI_EXPANSION`; surveillance execution pending; T2/T3 blocked — `LAUNCH_AUTHORITY_TRACKER.md` § G1 sign-off; RUNBOOK §12.7 G1 stub. |
+| 2026-05-16 | **TRUST-01 (client evidence inspectability):** read-only CER panel in requirement details; truthful guided upload vs submit semantics; existing list route only — no authority/fanout change — `LAUNCH_AUTHORITY_TRACKER.md` TRUST-01; RUNBOOK §4.8. |

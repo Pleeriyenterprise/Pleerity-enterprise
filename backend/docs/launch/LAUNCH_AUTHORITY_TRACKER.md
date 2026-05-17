@@ -4691,4 +4691,14 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ---
 
+### TRUST-01 — operational coherence remediation (2026-05-16)
+
+**Scope:** Product-path read/write coherence only — persisted guided compliance evidence records (CER) are human-inspectable in **Requirement details**; supporting-file upload success is separated from authoritative `POST /compliance-evidence` completion; no authority, fanout, lifecycle, or governance expansion.
+
+**Surfaces:** `GET /client/properties/{pid}/requirements/{rid}/compliance-evidence` (existing); `RequirementSubmissionInspectPanel` in `RequirementIntelligenceModal`; truthful guided-submit summary from returned `evidence_record`.
+
+**Out of scope:** E1/F1/G1 reopening; new governance RCs; replay/lineage archaeology.
+
+---
+
 *Maintainers: **L-00x** rows use **§ Finishable unit contract**; **A1–G2** rows use **§ Recovery unit implementation contract** (end-to-end, status lifecycle, ten DONE gates). After each pass: update statuses (never skip `IMPLEMENTED_PENDING_VERIFICATION` → `VERIFIED` → `DONE`), paste closure evidence, unlock next unit. Do not declare wider launch without updating this file and the ten-gate table.*

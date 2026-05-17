@@ -4,6 +4,8 @@
  * row-level property/requirement context and consistent navigation for guided flows.
  */
 import { resolveRequirementAction } from './requirementTakeActionResolver';
+import { isViewExistingSubmissionCta } from './complianceEvidenceSubmissionView';
+import { applyLifecycleAwareCtaPresentation } from './requirementLifecyclePresentation';
 
 export const GUIDED_CTA_UNAVAILABLE_TITLE =
   'This obligation is configured for guided resolution but required property or requirement context is missing. Use supporting links or contact support if this persists.';
@@ -44,14 +46,24 @@ export function resolveRequirementActionWithRowContext(requirement, pageProperty
  *   pagePropertyId?: string|null,
  *   navigate: (to: string | object) => void,
  *   openGuidedEvidence?: (p: Record<string, unknown>) => void,
+ *   openRequirementIntel?: (req: Record<string, unknown>, opts?: { scrollToSubmission?: boolean }) => void,
  *   onSubmitted?: () => void,
  *   guidedInitialOverride?: string|null,
  * }} ctx
  * @returns {{ handled: boolean, ta: ReturnType<typeof resolveRequirementAction> }}
  */
 export function executeRequirementPrimaryCta(ctx) {
-  const { requirement, pagePropertyId = null, navigate, openGuidedEvidence, onSubmitted, guidedInitialOverride } = ctx || {};
-  const ta = resolveRequirementActionWithRowContext(requirement, pagePropertyId);
+  const {
+    requirement,
+    pagePropertyId = null,
+    navigate,
+    openGuidedEvidence,
+    openRequirementIntel,
+    onSubmitted,
+    guidedInitialOverride,
+  } = ctx || {};
+  const rawTa = resolveRequirementActionWithRowContext(requirement, pagePropertyId);
+  const ta = applyLifecycleAwareCtaPresentation(requirement, rawTa);
   const rowPid = requirement?.property_id != null ? String(requirement.property_id).trim() : '';
   const rid = requirement?.requirement_id || requirement?.id;
   const effectivePid = (pagePropertyId && String(pagePropertyId).trim()) || rowPid;
@@ -60,6 +72,10 @@ export function executeRequirementPrimaryCta(ctx) {
     return { handled: true, ta, blocked: true };
   }
   if (ta.primary_action_handler === 'guided_evidence') {
+    if (isViewExistingSubmissionCta(ta) && openRequirementIntel && requirement) {
+      openRequirementIntel(requirement, { scrollToSubmission: true });
+      return { handled: true, ta };
+    }
     const mode = guidedInitialOverride || ta.guided_initial_evidence_mode || undefined;
     if (openGuidedEvidence && effectivePid && rid) {
       openGuidedEvidence({

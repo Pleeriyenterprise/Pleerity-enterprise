@@ -257,6 +257,10 @@ export function PropertyDocumentsMissingRequirementList({
                     pagePropertyId: propertyId,
                     navigate,
                     openGuidedEvidence: openGuidedEvidenceModal,
+                    openRequirementIntel: (row) => {
+                      setRequirementIntelRow(row);
+                      setRequirementIntelFocusSubmission(true);
+                    },
                     onSubmitted,
                   });
                   if (!handled && docsHref) navigate(docsHref);
@@ -325,6 +329,7 @@ export default function PropertyDetailPage() {
   const [notApplicableSubmitting, setNotApplicableSubmitting] = useState(false);
   /** Compliance matrix / cards: full requirement intelligence (GET /requirements/:id). */
   const [requirementIntelRow, setRequirementIntelRow] = useState(null);
+  const [requirementIntelFocusSubmission, setRequirementIntelFocusSubmission] = useState(false);
   // Tab-specific data
   const [workOrders, setWorkOrders] = useState([]);
   const [workOrdersLoading, setWorkOrdersLoading] = useState(false);
@@ -484,6 +489,10 @@ export default function PropertyDetailPage() {
       pagePropertyId: propertyId,
       navigate,
       openGuidedEvidence,
+      openRequirementIntel: (r) => {
+        setRequirementIntelRow(r);
+        setRequirementIntelFocusSubmission(true);
+      },
       onSubmitted: fetchData,
       guidedInitialOverride: initialEvidenceMode || null,
     });
@@ -1124,6 +1133,10 @@ export default function PropertyDetailPage() {
         pagePropertyId: propertyId,
         navigate,
         openGuidedEvidence,
+        openRequirementIntel: (row) => {
+          setRequirementIntelRow(row);
+          setRequirementIntelFocusSubmission(true);
+        },
         onSubmitted: fetchData,
       });
       if (!handled && docsHref) navigate(docsHref);
@@ -4188,8 +4201,12 @@ export default function PropertyDetailPage() {
         open={!!requirementIntelRow && !!rowReqId(requirementIntelRow)}
         requirementId={requirementIntelRow ? String(rowReqId(requirementIntelRow)) : null}
         seedRequirement={requirementIntelRow}
+        initialFocusSubmission={requirementIntelFocusSubmission}
         propertyLabel={property?.nickname || property?.address_line_1 || null}
-        onClose={() => setRequirementIntelRow(null)}
+        onClose={() => {
+          setRequirementIntelRow(null);
+          setRequirementIntelFocusSubmission(false);
+        }}
         onNavigate={(path) => {
           setRequirementIntelRow(null);
           navigate(path);

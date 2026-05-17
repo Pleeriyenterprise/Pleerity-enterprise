@@ -55,8 +55,34 @@ describe('executeRequirementPrimaryCta', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it('opens requirement intel when primary is View submission', () => {
+    const openRequirementIntel = jest.fn();
+    const requirement = {
+      property_id: 'p1',
+      requirement_id: 'r1',
+      client_lifecycle_state: 'PENDING_REVIEW',
+      take_action: {
+        primary: {
+          label: 'Record declaration',
+          kind: 'guided_evidence_resolution',
+          handler: 'guided_evidence',
+          route: '',
+        },
+      },
+    };
+    const { handled, ta } = executeRequirementPrimaryCta({
+      requirement,
+      pagePropertyId: null,
+      navigate: jest.fn(),
+      openGuidedEvidence: jest.fn(),
+      openRequirementIntel,
+    });
+    expect(handled).toBe(true);
+    expect(ta.primary_action_label).toBe('View submission');
+    expect(openRequirementIntel).toHaveBeenCalledWith(requirement, { scrollToSubmission: true });
+  });
+
   it('navigates resolve deep-link when guided but not on property page', () => {
-    const openGuidedEvidence = jest.fn();
     const navigate = jest.fn();
     const requirement = {
       property_id: 'p1',
@@ -74,7 +100,6 @@ describe('executeRequirementPrimaryCta', () => {
       requirement,
       pagePropertyId: null,
       navigate,
-      openGuidedEvidence,
     });
     expect(handled).toBe(true);
     expect(navigate).toHaveBeenCalledWith(

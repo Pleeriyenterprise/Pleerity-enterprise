@@ -1,6 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, ExternalLink } from 'lucide-react';
 import { clientAPI } from '../../api/client';
+import RequirementSubmissionInspectPanel from './RequirementSubmissionInspectPanel';
+import {
+  isViewExistingSubmissionCta,
+  pickLatestComplianceEvidenceRecord,
+} from '../../utils/complianceEvidenceSubmissionView';
 import { Button } from '../ui/button';
 import { requirementLabel } from '../../domain/presentDomain';
 import { mergeRequirementSupportingLinks, resolveRequirementAction } from '../../utils/requirementTakeActionResolver';
@@ -59,6 +64,7 @@ function tenantSafeTriggerExplanation(merged) {
  *   onEditDates?: (merged: Record<string, unknown>) => void,
  *   onMarkNotApplicable?: (merged: Record<string, unknown>) => void,
  *   addressForMailto?: string | null,
+ *   initialFocusSubmission?: boolean,
  * }} props
  */
 export default function RequirementIntelligenceModal({
@@ -73,11 +79,15 @@ export default function RequirementIntelligenceModal({
   onEditDates,
   onMarkNotApplicable,
   addressForMailto = null,
+  initialFocusSubmission = false,
 }) {
   const { openGuidedEvidence } = useGuidedEvidenceModal();
+  const submissionPanelRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [payload, setPayload] = useState(null);
+  const [cerLoading, setCerLoading] = useState(false);
+  const [hasSubmission, setHasSubmission] = useState(false);
 
   const load = useCallback(() => {
     if (!open || !requirementId) return undefined;
@@ -107,6 +117,57 @@ export default function RequirementIntelligenceModal({
   useEffect(() => {
     return load();
   }, [load]);
+
+  const pid = useMemo(() => {
+    const fromPayload = payload?.requirement?.property_id;
+    const fromSeed = seedRequirement?.property_id;
+    return String(fromPayload || fromSeed || '').trim();
+  }, [payload, seedRequirement]);
+
+  const rid = useMemo(() => {
+    const fromPayload = payload?.requirement?.requirement_id;
+    const fromSeed = seedRequirement?.requirement_id;
+    return String(requirementId || fromPayload || fromSeed || '').trim();
+  }, [payload, seedRequirement, requirementId]);
+
+  const loadSubmissionPresence = useCallback(() => {
+    if (!open || !pid || !rid) {
+      setHasSubmission(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setCerLoading(true);
+    clientAPI
+      .listComplianceEvidence(pid, rid)
+      .then((res) => {
+        if (cancelled) return;
+        const latest = pickLatestComplianceEvidenceRecord(res?.data?.evidence_records);
+        setHasSubmission(Boolean(latest));
+      })
+      .catch(() => {
+        if (!cancelled) setHasSubmission(false);
+      })
+      .finally(() => {
+        if (!cancelled) setCerLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, pid, rid]);
+
+  useEffect(() => loadSubmissionPresence(), [loadSubmissionPresence]);
+
+  const scrollToSubmissionPanel = useCallback(() => {
+    const el = submissionPanelRef.current;
+    if (!el || typeof el.scrollIntoView !== 'function') return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  useEffect(() => {
+    if (!open || !initialFocusSubmission || !hasSubmission || cerLoading) return undefined;
+    const t = window.setTimeout(() => scrollToSubmissionPanel(), 120);
+    return () => window.clearTimeout(t);
+  }, [open, initialFocusSubmission, hasSubmission, cerLoading, scrollToSubmissionPanel]);
 
   const merged = useMemo(
     () => mergeRequirementIntelPayload(seedRequirement, payload?.requirement),
@@ -157,11 +218,12 @@ export default function RequirementIntelligenceModal({
   }, [merged]);
 
 
-  const pid = merged?.property_id ? String(merged.property_id) : '';
-  const rid = merged?.requirement_id ? String(merged.requirement_id) : '';
-
   const primaryHandler = () => {
     if (!resolved) return;
+    if (isViewExistingSubmissionCta(resolved) && hasSubmission) {
+      scrollToSubmissionPanel();
+      return;
+    }
     if (resolved.primary_action_handler === 'external' && resolved.primary_route) {
       window.open(resolved.primary_route, '_blank', 'noopener,noreferrer');
       return;
@@ -172,7 +234,10 @@ export default function RequirementIntelligenceModal({
         propertyId: pid,
         requirement: merged || { requirement_id: rid },
         initialEvidenceMode: resolved.guided_initial_evidence_mode || undefined,
-        onSubmitted: onEvidenceSubmitted,
+        onSubmitted: () => {
+          loadSubmissionPresence();
+          onEvidenceSubmitted?.();
+        },
       });
       return;
     }
@@ -347,6 +412,14 @@ export default function RequirementIntelligenceModal({
                 ) : null}
               </section>
 
+              {pid && rid && hasSubmission ? (
+                <RequirementSubmissionInspectPanel
+                  ref={submissionPanelRef}
+                  propertyId={pid}
+                  requirementId={rid}
+                />
+              ) : null}
+
               {activeJobSummary.navigateJobId ? (
                 <section
                   className="rounded-lg border border-amber-200 bg-amber-50/40 p-3"
@@ -416,6 +489,16 @@ export default function RequirementIntelligenceModal({
                 </Button>
               </div>
               <div className="flex flex-wrap gap-x-3 gap-y-2 text-xs text-gray-600 justify-end" data-testid="requirement-intel-secondary-actions">
+                {hasSubmission ? (
+                  <button
+                    type="button"
+                    className="text-electric-teal hover:underline font-medium"
+                    onClick={scrollToSubmissionPanel}
+                    data-testid="requirement-intel-view-submission"
+                  >
+                    View submission
+                  </button>
+                ) : null}
                 {showUploadSecondary ? (
                   <button
                     type="button"

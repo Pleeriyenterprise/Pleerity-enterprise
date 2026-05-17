@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import RequirementIntelligenceModal from './RequirementIntelligenceModal';
 import { GuidedEvidenceModalProvider } from '../../context/GuidedEvidenceModalContext';
 import { clientAPI } from '../../api/client';
@@ -10,12 +10,84 @@ import { clientAPI } from '../../api/client';
 jest.mock('../../api/client', () => ({
   clientAPI: {
     getRequirementWorkflow: jest.fn(),
+    listComplianceEvidence: jest.fn(),
+    getDocuments: jest.fn(),
   },
 }));
+
+jest.mock('./RequirementSubmissionInspectPanel', () => {
+  const React = require('react');
+  return {
+    __esModule: true,
+    default: React.forwardRef(function MockPanel(props, ref) {
+      return (
+        <section ref={ref} data-testid="requirement-submission-inspect-panel">
+          <h3>Your submission</h3>
+          <p data-testid="submission-inspect-content">Persisted declaration text</p>
+        </section>
+      );
+    }),
+  };
+});
 
 describe('RequirementIntelligenceModal', () => {
   const noop = () => {};
   const wrap = (ui) => <GuidedEvidenceModalProvider>{ui}</GuidedEvidenceModalProvider>;
+
+  beforeEach(() => {
+    clientAPI.listComplianceEvidence.mockResolvedValue({ data: { evidence_records: [] } });
+    clientAPI.getDocuments.mockResolvedValue({ data: { documents: [] } });
+  });
+
+  it('shows Your submission and View submission when CER exists', async () => {
+    clientAPI.listComplianceEvidence.mockResolvedValue({
+      data: {
+        evidence_records: [{ evidence_record_id: 'cer_1', evidence_mode: 'STRUCTURED_DECLARATION' }],
+      },
+    });
+    clientAPI.getRequirementWorkflow.mockResolvedValue({
+      data: {
+        requirement: {
+          requirement_id: 'req-sub',
+          property_id: 'prop-sub',
+          display_label: 'Smoke alarms',
+          workflow_status: 'PENDING_REVIEW',
+          compliance_state: 'PENDING',
+          take_action: {
+            primary: {
+              label: 'View submission',
+              route: null,
+              handler: 'guided_evidence',
+            },
+            supporting_external_links: [],
+          },
+        },
+        active_compliance_job: null,
+      },
+    });
+
+    const scrollIntoView = jest.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+
+    render(
+      wrap(
+        <RequirementIntelligenceModal
+          open
+          requirementId="req-sub"
+          seedRequirement={null}
+          onClose={noop}
+          onNavigate={noop}
+        />,
+      ),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('requirement-submission-inspect-panel')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Your submission')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('requirement-intel-view-submission'));
+    expect(scrollIntoView).toHaveBeenCalled();
+  });
 
   it('renders published why_it_matters, published links, canonical primary CTA, and human workflow labels', async () => {
     clientAPI.getRequirementWorkflow.mockResolvedValue({

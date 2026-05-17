@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from './ui/label';
 import { toast } from '../utils/portalNotifications';
 import { dispatchComplianceOutcome, toastComplianceActionOutcome } from '../utils/complianceActionOutcome';
+import { summarizeSubmittedEvidenceRecord } from '../utils/complianceEvidenceSubmissionView';
 import { validateDepositStructuredDeclarationFields } from '../utils/depositStructuredDeclarationValidation';
 import { normalizeRequirementCode } from '../domain/presentDomain';
 import { validateLeadTestingStructuredDeclarationFields } from '../utils/leadTestingStructuredValidation';
@@ -60,6 +61,7 @@ export default function ComplianceEvidenceResolveModal({
   const [supportingUploading, setSupportingUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [structuredValidationError, setStructuredValidationError] = useState('');
+  const [submitSummaryRecord, setSubmitSummaryRecord] = useState(null);
 
   const resetLocal = useCallback(() => {
     setInfo(null);
@@ -81,6 +83,7 @@ export default function ComplianceEvidenceResolveModal({
     setSupportingFiles([]);
     setSupportingUploads([]);
     setStructuredValidationError('');
+    setSubmitSummaryRecord(null);
   }, []);
 
   useEffect(() => {
@@ -206,11 +209,8 @@ export default function ComplianceEvidenceResolveModal({
       setSupportingUploads((prev) => [...prev, ...uploaded]);
       setSupportingFiles([]);
       if (uploaded.length > 0) {
-        const pending = uploaded.some((u) => u.requirement_workflow_pending);
         toast.success(
-          pending
-            ? `Uploaded ${uploaded.length} supporting file${uploaded.length === 1 ? '' : 's'}. Complete the form below to record this requirement.`
-            : `Uploaded ${uploaded.length} supporting file${uploaded.length === 1 ? '' : 's'}.`,
+          `Supporting file${uploaded.length === 1 ? '' : 's'} uploaded. Complete and submit the form below to record this requirement.`,
         );
       }
     } catch (e) {
@@ -307,10 +307,15 @@ export default function ComplianceEvidenceResolveModal({
     try {
       const res = await clientAPI.postComplianceEvidence(propertyId, rid, body);
       const data = res?.data || {};
+      const evidenceRecord =
+        data.evidence_record && typeof data.evidence_record === 'object' ? data.evidence_record : null;
       const complete = toastComplianceActionOutcome(data, {
         defaultSuccess: 'Requirement recorded and compliance status is updating.',
       });
-      if (complete) {
+      if (complete && evidenceRecord) {
+        dispatchComplianceOutcome(propertyId, { requirement_id: rid });
+        setSubmitSummaryRecord(evidenceRecord);
+      } else if (complete) {
         dispatchComplianceOutcome(propertyId, { requirement_id: rid });
         onOpenChange(false);
         onSubmitted?.();
@@ -384,13 +389,29 @@ export default function ComplianceEvidenceResolveModal({
             {structuredValidationError}
           </p>
         ) : null}
-        {loading ? (
+        {submitSummaryRecord ? (
+          <div
+            className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 space-y-3"
+            data-testid="compliance-evidence-submit-summary"
+          >
+            <p className="text-sm font-semibold text-midnight-blue">Submission recorded</p>
+            <p className="text-xs text-gray-600">
+              This is what we saved. Your requirement status will update after review where applicable.
+            </p>
+            <ul className="text-sm text-gray-800 space-y-1 list-disc list-inside" data-testid="submit-summary-lines">
+              {summarizeSubmittedEvidenceRecord(submitSummaryRecord).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {!submitSummaryRecord && loading ? (
           <p className="text-sm text-gray-600">Loading allowed methods…</p>
-        ) : modes.length === 0 ? (
+        ) : !submitSummaryRecord && modes.length === 0 ? (
           <p className="text-sm text-gray-600">
             This requirement only accepts a document upload. Use “Upload document” instead.
           </p>
-        ) : (
+        ) : !submitSummaryRecord ? (
           <div className="space-y-4">
             <div className="flex flex-col gap-3">
               {modes.map((m) => {
@@ -506,19 +527,35 @@ export default function ComplianceEvidenceResolveModal({
               ) : null}
             </div>
           </div>
-        )}
+        ) : null}
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            className="bg-electric-teal text-white"
-            disabled={saving || !selectedMode || modes.length === 0}
-            onClick={submit}
-          >
-            {saving ? 'Saving…' : 'Submit evidence'}
-          </Button>
+          {submitSummaryRecord ? (
+            <Button
+              type="button"
+              className="bg-electric-teal text-white"
+              data-testid="compliance-evidence-submit-summary-done"
+              onClick={() => {
+                onOpenChange(false);
+                onSubmitted?.();
+              }}
+            >
+              Done
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="bg-electric-teal text-white"
+                disabled={saving || !selectedMode || modes.length === 0}
+                onClick={submit}
+              >
+                {saving ? 'Saving…' : 'Submit evidence'}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

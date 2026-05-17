@@ -527,6 +527,10 @@ export const clientAPI = {
       `/client/properties/${encodeURIComponent(propertyId)}/requirements/${encodeURIComponent(requirementId)}/compliance-evidence`,
       body,
     ),
+  listComplianceEvidence: (propertyId, requirementId) =>
+    apiClient.get(
+      `/client/properties/${encodeURIComponent(propertyId)}/requirements/${encodeURIComponent(requirementId)}/compliance-evidence`,
+    ),
   getRequirementExplanation: (propertyId, params) => apiClient.get(`/client/properties/${propertyId}/requirements/explanation`, { params: params || {} }),
   /** Mark a catalog requirement as not applicable for this property (creates/updates requirement row). */
   markRequirementNotApplicable: (propertyId, body) =>

@@ -142,6 +142,13 @@ During beta, operators use **Admin → Automation** together with **Control Cent
 2. Inspect **`compliance_fanout_extra`** logs for `op` / `stage` / partial failures.  
 3. Some outcome paths **omit** authority refresh until a later mutation (**Stream E** cross-cutting §2) — document **eventual convergence**; if user blocked: use **document / requirement** paths that include `sync_requirement_evidence_authority` per matrix, or escalate for product-prioritised matrix extension.
 
+### 4.8 Guided evidence — “submission disappeared” (TRUST-01)
+
+1. Confirm the user completed **Submit evidence** (authoritative `POST /compliance-evidence`), not only **Upload supporting files** (document upload is informational until submit).  
+2. In the client UI, open **Requirement details** → **Your submission** (or primary **View submission** when lifecycle is pending review). Payload is read from persisted CER via `GET …/compliance-evidence`, not lifecycle labels alone.  
+3. If submit succeeded but panel is empty: verify CER exists for `requirement_id` (non-archived) in `compliance_evidence_records`; do **not** patch requirement status for display.  
+4. Escalate **S2** only when CER is missing after a confirmed successful POST (data integrity), not when the user stopped after supporting upload.
+
 ---
 
 ## 5. Escalation severity model (S1–S4)

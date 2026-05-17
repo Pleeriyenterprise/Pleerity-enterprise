@@ -195,8 +195,11 @@ const RequirementsPage = () => {
     setEditModal({ requirement: req, property: getPropertyById(req.property_id) });
   };
 
-  const openViewRequirementModal = (req) => {
-    setViewRequirementModal({ requirement: req });
+  const openViewRequirementModal = (req, opts = {}) => {
+    setViewRequirementModal({
+      requirement: req,
+      scrollToSubmission: Boolean(opts.scrollToSubmission),
+    });
   };
 
   const submitNotApplicable = async () => {
@@ -532,6 +535,7 @@ const RequirementsPage = () => {
                   pagePropertyId: null,
                   navigate,
                   openGuidedEvidence,
+                  openRequirementIntel: (row) => openViewRequirementModal(row, { scrollToSubmission: true }),
                   onSubmitted: fetchData,
                 });
                 if (!handled && !ta.primary_route) {
@@ -991,6 +995,7 @@ const RequirementsPage = () => {
           open={!!viewRequirementModal}
           requirementId={viewRequirementModal?.requirement?.requirement_id || null}
           seedRequirement={viewRequirementModal?.requirement || null}
+          initialFocusSubmission={Boolean(viewRequirementModal?.scrollToSubmission)}
           onEvidenceSubmitted={fetchData}
           propertyLabel={
             viewRequirementModal?.requirement?.property_id
