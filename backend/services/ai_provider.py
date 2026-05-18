@@ -1,26 +1,31 @@
 """
 AI provider for compliance document field extraction only.
 Input: extracted text (no raw binary). Output: strict JSON schema only.
-No legal advice; no compliance verdicts. If uncertain, return nulls and lower confidence.
-Config: utils.ai_config (AI_ENABLED, OPENAI_API_KEY, AI_MODEL, etc.). No env vars required when AI_ENABLED=false.
+
+Uses document_extraction_llm_gateway: OpenAI primary, Gemini fallback.
+Config: utils.ai_config (AI_ENABLED, OPENAI_API_KEY, etc.).
 """
+import asyncio
 import json
-import os
-import re
 import logging
+import re
 from typing import Any, Dict, Optional
 
 from utils import ai_config
 
+from services.document_extraction_llm_gateway import (
+    complete_document_extraction_llm,
+    is_any_document_extraction_llm_configured,
+    validate_extraction_json,
+)
+from services.extraction_error_presentation import user_facing_extraction_message
+
 logger = logging.getLogger(__name__)
 
-# Extraction-specific (optional override); main gate is ai_config.AI_ENABLED
-AI_EXTRACTION_PROMPT_VERSION = os.getenv("AI_EXTRACTION_PROMPT_VERSION", "v1")
+AI_EXTRACTION_PROMPT_VERSION = __import__("os").getenv("AI_EXTRACTION_PROMPT_VERSION", "v1")
 
-# Allowed doc_type values (task enum)
 DOC_TYPES = {"GAS_SAFETY", "EICR", "EPC", "HMO_LICENCE", "TENANCY", "INSURANCE", "UNKNOWN"}
 
-# Required JSON output schema (task)
 EXTRACTION_SCHEMA = """
 {
   "doc_type": "GAS_SAFETY | EICR | EPC | HMO_LICENCE | TENANCY | INSURANCE | UNKNOWN",
@@ -60,35 +65,108 @@ RULES (mandatory):
 """
 
 
-def _call_openai(text: str, file_name: str, hints: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Call OpenAI API for extraction. Returns parsed JSON or raises."""
-    try:
-        from openai import OpenAI
-    except ImportError:
-        raise RuntimeError("openai package not installed")
-    api_key = ai_config.get_openai_api_key()
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY not set")
-    client = OpenAI(api_key=api_key)
+def _base_failure(
+    error_code: str,
+    *,
+    raw_message: Optional[str] = None,
+    raw_response_json: Optional[str] = None,
+    llm_meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    return {
+        "success": False,
+        "error_code": error_code,
+        "error_message": user_facing_extraction_message(error_code, raw_message),
+        "extracted": None,
+        "raw_response_json": raw_response_json,
+        "model": (llm_meta or {}).get("model_used") or ai_config.AI_MODEL,
+        "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
+        "tokens_in": (llm_meta or {}).get("tokens_in"),
+        "tokens_out": (llm_meta or {}).get("tokens_out"),
+        "provider_used": (llm_meta or {}).get("provider_used"),
+        "fallback_used": (llm_meta or {}).get("fallback_used"),
+        "llm_error_class": (llm_meta or {}).get("llm_error_class"),
+        "llm_latency_ms": (llm_meta or {}).get("llm_latency_ms"),
+        "extraction_attempted_at": (llm_meta or {}).get("extraction_attempted_at"),
+    }
+
+
+def _llm_meta_from_result(result) -> Dict[str, Any]:
+    return {
+        "provider_used": result.provider_used,
+        "model_used": result.model_used,
+        "fallback_used": result.fallback_used,
+        "llm_error_class": result.llm_error_class,
+        "llm_latency_ms": result.llm_latency_ms,
+        "extraction_attempted_at": result.extraction_attempted_at,
+        "tokens_in": result.tokens_in,
+        "tokens_out": result.tokens_out,
+    }
+
+
+async def extract_compliance_fields_async(
+    text: str,
+    file_name: str,
+    hints: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Extract compliance fields from document text (async, OpenAI primary / Gemini fallback).
+    """
+    if not ai_config.AI_ENABLED:
+        return _base_failure("AI_NOT_CONFIGURED")
+
+    if not is_any_document_extraction_llm_configured():
+        return _base_failure("AI_NOT_CONFIGURED")
+
+    if not text or not text.strip():
+        return _base_failure("NO_TEXT")
+
     hint_str = ""
     if hints:
         hint_str = f" Hints: {json.dumps(hints)}."
     user_content = f"Document filename: {file_name}.{hint_str}\n\nExtract fields from this document text:\n\n{text}"
-    response = client.chat.completions.create(
-        model=ai_config.AI_MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_content[:30000]},
-        ],
+
+    llm_result = await complete_document_extraction_llm(
+        SYSTEM_PROMPT,
+        user_content[:30000],
+        validate_output=validate_extraction_json,
         temperature=ai_config.AI_TEMPERATURE,
         max_tokens=ai_config.AI_MAX_OUTPUT_TOKENS,
     )
-    raw_text = (response.choices[0].message.content or "").strip()
-    # Strip markdown code block if present
-    if raw_text.startswith("```"):
-        raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-        raw_text = re.sub(r"\s*```$", "", raw_text)
-    return json.loads(raw_text), raw_text, getattr(response, "usage", None)
+
+    if llm_result is None:
+        return _base_failure("AI_EXTRACTION_UNAVAILABLE")
+
+    llm_meta = _llm_meta_from_result(llm_result)
+    raw_text = llm_result.text
+
+    try:
+        parsed = json.loads(raw_text)
+    except json.JSONDecodeError as e:
+        logger.warning("AI extraction JSON decode error: %s", e)
+        return _base_failure(
+            "PARSE_ERROR",
+            raw_message=str(e),
+            raw_response_json=raw_text,
+            llm_meta=llm_meta,
+        )
+
+    extracted = _normalize_extraction(parsed)
+    return {
+        "success": True,
+        "error_code": None,
+        "error_message": None,
+        "extracted": extracted,
+        "raw_response_json": raw_text,
+        "model": llm_result.model_used,
+        "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
+        "tokens_in": llm_result.tokens_in,
+        "tokens_out": llm_result.tokens_out,
+        "provider_used": llm_result.provider_used,
+        "fallback_used": llm_result.fallback_used,
+        "llm_error_class": llm_result.llm_error_class,
+        "llm_latency_ms": llm_result.llm_latency_ms,
+        "extraction_attempted_at": llm_result.extraction_attempted_at,
+    }
 
 
 def extract_compliance_fields(
@@ -96,90 +174,21 @@ def extract_compliance_fields(
     file_name: str,
     hints: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """
-    Extract compliance fields from document text only. No legal advice; output is suggested only.
-    Returns dict with: extracted payload (normalized), raw_response_json, model, prompt_version,
-    tokens_in, tokens_out (if available). On failure raises or returns error payload.
-    """
-    if not ai_config.is_configured():
-        return {
-            "success": False,
-            "error_code": "AI_NOT_CONFIGURED",
-            "error_message": "AI is disabled (AI_ENABLED=false) or OPENAI_API_KEY not set.",
-            "extracted": None,
-            "raw_response_json": None,
-            "model": ai_config.AI_MODEL,
-            "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
-            "tokens_in": None,
-            "tokens_out": None,
-        }
-    if not text or not text.strip():
-        return {
-            "success": False,
-            "error_code": "NO_TEXT",
-            "error_message": "No text provided for extraction.",
-            "extracted": None,
-            "raw_response_json": None,
-            "model": ai_config.AI_MODEL,
-            "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
-            "tokens_in": None,
-            "tokens_out": None,
-        }
-    if ai_config.AI_PROVIDER != "openai":
-        return {
-            "success": False,
-            "error_code": "AI_NOT_CONFIGURED",
-            "error_message": f"AI_PROVIDER={ai_config.AI_PROVIDER} not supported; use openai.",
-            "extracted": None,
-            "raw_response_json": None,
-            "model": ai_config.AI_MODEL,
-            "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
-            "tokens_in": None,
-            "tokens_out": None,
-        }
+    """Sync wrapper for background threads and legacy callers."""
     try:
-        parsed, raw_text, usage = _call_openai(text, file_name, hints)
-    except json.JSONDecodeError as e:
-        logger.warning("AI extraction JSON decode error: %s", e)
-        return {
-            "success": False,
-            "error_code": "PARSE_ERROR",
-            "error_message": str(e),
-            "extracted": None,
-            "raw_response_json": raw_text if "raw_text" in dir() else None,
-            "model": ai_config.AI_MODEL,
-            "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
-            "tokens_in": None,
-            "tokens_out": None,
-        }
-    except Exception as e:
-        logger.exception("AI extraction call failed: %s", e)
-        return {
-            "success": False,
-            "error_code": "AI_ERROR",
-            "error_message": str(e),
-            "extracted": None,
-            "raw_response_json": None,
-            "model": ai_config.AI_MODEL,
-            "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
-            "tokens_in": None,
-            "tokens_out": None,
-        }
-    # Normalize and validate
-    extracted = _normalize_extraction(parsed)
-    tokens_in = usage.input_tokens if usage else None
-    tokens_out = usage.output_tokens if usage else None
-    return {
-        "success": True,
-        "error_code": None,
-        "error_message": None,
-        "extracted": extracted,
-        "raw_response_json": raw_text,
-        "model": ai_config.AI_MODEL,
-        "prompt_version": AI_EXTRACTION_PROMPT_VERSION,
-        "tokens_in": tokens_in,
-        "tokens_out": tokens_out,
-    }
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop and loop.is_running():
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(
+                asyncio.run,
+                extract_compliance_fields_async(text, file_name, hints),
+            )
+            return future.result()
+    return asyncio.run(extract_compliance_fields_async(text, file_name, hints))
 
 
 def _normalize_extraction(parsed: Dict[str, Any]) -> Dict[str, Any]:
@@ -197,7 +206,6 @@ def _normalize_extraction(parsed: Dict[str, Any]) -> Dict[str, Any]:
                 confidence[k] = 0.0
     if "overall" not in confidence:
         confidence["overall"] = 0.5
-    # Normalize dates to YYYY-MM-DD or null
     for key in ("issue_date", "expiry_date"):
         v = parsed.get(key)
         if v is None or v == "":

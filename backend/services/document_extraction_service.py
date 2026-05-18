@@ -15,7 +15,8 @@ from database import database
 from models import AuditAction
 from utils.audit import create_audit_log
 
-from services.ai_provider import extract_compliance_fields
+from services.ai_provider import extract_compliance_fields_async
+from services.extraction_error_presentation import user_facing_extraction_message
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +242,10 @@ async def run_extraction_job(extraction_id: str) -> None:
     now = datetime.now(timezone.utc)
     if not result.get("success"):
         error_code = result.get("error_code") or "AI_ERROR"
-        error_message = result.get("error_message") or "Extraction failed"
+        error_message = user_facing_extraction_message(
+            error_code,
+            result.get("error_message"),
+        )
         await _set_failed(
             db,
             extraction_id,
@@ -253,6 +257,11 @@ async def run_extraction_job(extraction_id: str) -> None:
                 "raw_response_json": result.get("raw_response_json"),
                 "model": result.get("model"),
                 "prompt_version": result.get("prompt_version"),
+                "provider_used": result.get("provider_used"),
+                "fallback_used": result.get("fallback_used"),
+                "llm_error_class": result.get("llm_error_class"),
+                "llm_latency_ms": result.get("llm_latency_ms"),
+                "extraction_attempted_at": result.get("extraction_attempted_at"),
             },
         )
         return
@@ -359,6 +368,10 @@ async def run_extraction_job(extraction_id: str) -> None:
                 "audit.tokens_in": tokens_in,
                 "audit.tokens_out": tokens_out,
                 "audit.raw_response_json": raw_json,
+                "audit.provider_used": result.get("provider_used"),
+                "audit.fallback_used": result.get("fallback_used"),
+                "audit.llm_latency_ms": result.get("llm_latency_ms"),
+                "audit.extraction_attempted_at": result.get("extraction_attempted_at"),
                 "audit.updated_at": now,
             }
         },

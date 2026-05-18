@@ -653,7 +653,7 @@ async def _run_analysis_after_upload(
                     "ai_extraction": {
                         "extracted_at": datetime.now(timezone.utc).isoformat(),
                         "status": "failed",
-                        "error": (result.get("error") or "Analysis failed")[:500],
+                        "error": (result.get("error") or "Extraction failed — review manually.")[:500],
                         "error_code": error_code,
                     }
                 }},

@@ -4,9 +4,8 @@ IMPORTANT: This service is ASSISTIVE ONLY. Extracted data must be reviewed by us
 before being applied. AI CANNOT mark a requirement as compliant - the deterministic
 compliance engine remains the final authority.
 
-Uses AI when available: if AI_ENABLED=true and OPENAI_API_KEY set (see utils.ai_config),
-extraction runs via OpenAI (text from file). Otherwise uses LLM_API_KEY (Gemini) with
-file upload. If neither is configured, returns success=False with a clear error message.
+Uses document_extraction_llm_gateway via ai_provider: OpenAI primary, Gemini fallback on
+extracted text (PDF/OCR). Does not call Gemini file-upload directly.
 """
 from database import database
 from models import AuditAction
@@ -212,227 +211,126 @@ class DocumentAnalysisService:
         if not doc_type_hint:
             doc_type_hint = self._detect_document_type_hint(os.path.basename(file_path))
 
-        # Prefer ai_config (OpenAI) when enabled and configured
-        try:
-            from utils import ai_config
-            from services.document_extraction_service import _extract_text_from_file
-            from services.ai_provider import extract_compliance_fields
-        except ImportError:
-            ai_config = None
-            _extract_text_from_file = None
-            extract_compliance_fields = None
+        from services.document_extraction_service import _extract_text_with_ocr_fallback
+        from services.ai_provider import extract_compliance_fields_async
+        from services.extraction_error_presentation import user_facing_extraction_message
 
-        if ai_config and getattr(ai_config, "is_configured", lambda: False)() and _extract_text_from_file and extract_compliance_fields:
-            try:
-                text = _extract_text_from_file(file_path, mime_type)
-                if text and text.strip():
-                    result = extract_compliance_fields(text, os.path.basename(file_path), None)
-                    if result.get("success") and result.get("extracted"):
-                        mapped = self._map_ai_provider_to_analysis(result["extracted"])
-                        extracted_data = self._normalize_extraction_data(mapped)
-                        extraction_quality = self._assess_extraction_quality(extracted_data)
-                        await db.documents.update_one(
-                            {"document_id": document_id},
-                            {"$set": {
-                                "ai_extraction": {
-                                    "extracted_at": datetime.now(timezone.utc).isoformat(),
-                                    "data": extracted_data,
-                                    "status": "completed",
-                                    "doc_type_hint": doc_type_hint,
-                                    "extraction_quality": extraction_quality,
-                                    "requires_review": True,
-                                    "review_status": "AWAITING_USER_CONFIRM",
-                                }
-                            }}
-                        )
-                        try:
-                            from services.evidence_document_match_engine import (
-                                persist_document_evidence_match_after_extraction,
-                            )
-
-                            await persist_document_evidence_match_after_extraction(db, document_id)
-                        except Exception as pm_err:
-                            logger.warning("Evidence match persist after OpenAI analysis failed: %s", pm_err)
-                        await create_audit_log(
-                            action=AuditAction.DOCUMENT_AI_ANALYZED,
-                            actor_id=actor_id,
-                            client_id=client_id,
-                            resource_type="document",
-                            resource_id=document_id,
-                            metadata={
-                                "document_type": extracted_data.get("document_type"),
-                                "doc_type_hint": doc_type_hint,
-                                "overall_confidence": extracted_data.get("confidence_scores", {}).get("overall"),
-                                "extraction_quality": extraction_quality,
-                                "has_expiry_date": extracted_data.get("expiry_date") is not None,
-                                "has_engineer_details": extracted_data.get("engineer_details", {}).get("name") is not None,
-                                "requires_review": True,
-                                "provider": "openai",
-                            }
-                        )
-                        logger.info("Document analyzed successfully via OpenAI: %s (quality: %s)", document_id, extraction_quality)
-                        return {
-                            "success": True,
-                            "extracted_data": extracted_data,
-                            "extraction_quality": extraction_quality,
-                            "requires_review": True,
-                            "error": None,
-                        }
-                # No text or extraction failed; fall through to Gemini if available
-                logger.debug("OpenAI extraction path produced no result; trying Gemini if configured")
-            except Exception as e:
-                logger.warning("OpenAI extraction path failed: %s; falling back to Gemini if configured", e)
-
-        # Gemini path (LLM_API_KEY)
-        try:
-            from utils.llm_chat import chat_with_file, _get_api_key
-        except ImportError:
-            return {
-                "success": False,
-                "error": "AI extraction unavailable. Set AI_ENABLED=true and OPENAI_API_KEY in .env, or set LLM_API_KEY for Gemini.",
-                "error_code": "AI_NOT_CONFIGURED",
-                "extracted_data": None,
-                "requires_review": True,
-            }
-        if not _get_api_key():
-            return {
-                "success": False,
-                "error": "AI extraction unavailable. Set AI_ENABLED=true and OPENAI_API_KEY in .env, or set LLM_API_KEY for Gemini.",
-                "error_code": "AI_NOT_CONFIGURED",
-                "extracted_data": None,
-                "requires_review": True,
-            }
-        try:
-            analysis_prompt = self._get_analysis_prompt(doc_type_hint)
-            user_text = "Analyze this compliance document and extract all relevant metadata. Focus on the priority fields: expiry date, issue date, certificate number, and engineer/assessor details. Return only the JSON object."
-            response = await chat_with_file(
-                system_prompt=analysis_prompt,
-                user_text=user_text,
-                file_path=file_path,
-                mime_type=mime_type,
-                model="gemini-2.5-flash",
-            )
-            try:
-                response_text = response.strip()
-                if response_text.startswith("```json"):
-                    response_text = response_text[7:]
-                if response_text.startswith("```"):
-                    response_text = response_text[3:]
-                if response_text.endswith("```"):
-                    response_text = response_text[:-3]
-                response_text = response_text.strip()
-                
-                extracted_data = json.loads(response_text)
-                
-                # Normalize legacy format to enhanced format if needed
-                extracted_data = self._normalize_extraction_data(extracted_data)
-                
-                # Calculate overall confidence based on critical field extraction
-                extraction_quality = self._assess_extraction_quality(extracted_data)
-                
-                # Store extraction result in document record
-                await db.documents.update_one(
-                    {"document_id": document_id},
-                    {"$set": {
-                        "ai_extraction": {
-                            "extracted_at": datetime.now(timezone.utc).isoformat(),
-                            "data": extracted_data,
-                            "status": "completed",
-                            "doc_type_hint": doc_type_hint,
-                            "extraction_quality": extraction_quality,
-                            "requires_review": True,  # ALWAYS requires review
-                            "review_status": "AWAITING_USER_CONFIRM",
-                        }
-                    }}
-                )
-                try:
-                    from services.evidence_document_match_engine import (
-                        persist_document_evidence_match_after_extraction,
-                    )
-
-                    await persist_document_evidence_match_after_extraction(db, document_id)
-                except Exception as pm_err:
-                    logger.warning("Evidence match persist after Gemini analysis failed: %s", pm_err)
-
-                # Audit log
-                await create_audit_log(
-                    action=AuditAction.DOCUMENT_AI_ANALYZED,
-                    actor_id=actor_id,
-                    client_id=client_id,
-                    resource_type="document",
-                    resource_id=document_id,
-                    metadata={
-                        "document_type": extracted_data.get("document_type"),
-                        "doc_type_hint": doc_type_hint,
-                        "overall_confidence": extracted_data.get("confidence_scores", {}).get("overall"),
-                        "extraction_quality": extraction_quality,
-                        "has_expiry_date": extracted_data.get("expiry_date") is not None,
-                        "has_engineer_details": extracted_data.get("engineer_details", {}).get("name") is not None,
-                        "requires_review": True
-                    }
-                )
-                
-                logger.info(f"Document analyzed successfully: {document_id} (quality: {extraction_quality})")
-                
-                return {
-                    "success": True,
-                    "extracted_data": extracted_data,
-                    "extraction_quality": extraction_quality,
-                    "requires_review": True,
-                    "error": None
-                }
-                
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse AI response as JSON: {e}")
-                logger.error(f"Response was: {response[:500]}")
-                
-                # Store failed extraction
-                await db.documents.update_one(
-                    {"document_id": document_id},
-                    {"$set": {
+        text, _extraction_source = _extract_text_with_ocr_fallback(file_path, mime_type)
+        if not text or not text.strip():
+            error_code = "NO_TEXT"
+            safe_msg = user_facing_extraction_message(error_code)
+            await db.documents.update_one(
+                {"document_id": document_id},
+                {
+                    "$set": {
                         "ai_extraction": {
                             "extracted_at": datetime.now(timezone.utc).isoformat(),
                             "status": "failed",
-                            "error": "Failed to parse AI response",
-                            "error_code": "PARSE_ERROR",
-                            "raw_response": response[:1000]
+                            "error": safe_msg,
+                            "error_code": error_code,
                         }
-                    }}
-                )
-                
-                return {
-                    "success": False,
-                    "error": "Failed to parse AI response",
-                    "error_code": "PARSE_ERROR",
-                    "extracted_data": None,
-                    "requires_review": True
-                }
-        
-        except Exception as e:
-            logger.error(f"Document analysis error: {e}")
-            error_code = "AI_ERROR"
-            error_msg = str(e)
-            
-            # Store error in document record
-            await db.documents.update_one(
-                {"document_id": document_id},
-                {"$set": {
-                    "ai_extraction": {
-                        "extracted_at": datetime.now(timezone.utc).isoformat(),
-                        "status": "failed",
-                        "error": error_msg[:500],
-                        "error_code": error_code
                     }
-                }}
+                },
             )
-            
             return {
                 "success": False,
-                "error": error_msg,
+                "error": safe_msg,
                 "error_code": error_code,
                 "extracted_data": None,
-                "requires_review": True
+                "requires_review": True,
             }
+
+        result = await extract_compliance_fields_async(text, os.path.basename(file_path), None)
+        if not result.get("success") or not result.get("extracted"):
+            error_code = result.get("error_code") or "AI_EXTRACTION_UNAVAILABLE"
+            safe_msg = user_facing_extraction_message(error_code, result.get("error_message"))
+            await db.documents.update_one(
+                {"document_id": document_id},
+                {
+                    "$set": {
+                        "ai_extraction": {
+                            "extracted_at": datetime.now(timezone.utc).isoformat(),
+                            "status": "failed",
+                            "error": safe_msg,
+                            "error_code": error_code,
+                            "provider_used": result.get("provider_used"),
+                            "fallback_used": result.get("fallback_used"),
+                            "llm_error_class": result.get("llm_error_class"),
+                        }
+                    }
+                },
+            )
+            return {
+                "success": False,
+                "error": safe_msg,
+                "error_code": error_code,
+                "extracted_data": None,
+                "requires_review": True,
+            }
+
+        mapped = self._map_ai_provider_to_analysis(result["extracted"])
+        extracted_data = self._normalize_extraction_data(mapped)
+        extraction_quality = self._assess_extraction_quality(extracted_data)
+        provider_used = result.get("provider_used") or "openai"
+        await db.documents.update_one(
+            {"document_id": document_id},
+            {
+                "$set": {
+                    "ai_extraction": {
+                        "extracted_at": datetime.now(timezone.utc).isoformat(),
+                        "data": extracted_data,
+                        "status": "completed",
+                        "doc_type_hint": doc_type_hint,
+                        "extraction_quality": extraction_quality,
+                        "requires_review": True,
+                        "review_status": "AWAITING_USER_CONFIRM",
+                        "provider_used": provider_used,
+                        "fallback_used": result.get("fallback_used"),
+                        "model": result.get("model"),
+                        "llm_latency_ms": result.get("llm_latency_ms"),
+                    }
+                }
+            },
+        )
+        try:
+            from services.evidence_document_match_engine import (
+                persist_document_evidence_match_after_extraction,
+            )
+
+            await persist_document_evidence_match_after_extraction(db, document_id)
+        except Exception as pm_err:
+            logger.warning("Evidence match persist after analysis failed: %s", pm_err)
+        await create_audit_log(
+            action=AuditAction.DOCUMENT_AI_ANALYZED,
+            actor_id=actor_id,
+            client_id=client_id,
+            resource_type="document",
+            resource_id=document_id,
+            metadata={
+                "document_type": extracted_data.get("document_type"),
+                "doc_type_hint": doc_type_hint,
+                "overall_confidence": extracted_data.get("confidence_scores", {}).get("overall"),
+                "extraction_quality": extraction_quality,
+                "has_expiry_date": extracted_data.get("expiry_date") is not None,
+                "has_engineer_details": extracted_data.get("engineer_details", {}).get("name") is not None,
+                "requires_review": True,
+                "provider": provider_used,
+                "fallback_used": result.get("fallback_used"),
+            },
+        )
+        logger.info(
+            "Document analyzed successfully: %s (quality: %s, provider: %s)",
+            document_id,
+            extraction_quality,
+            provider_used,
+        )
+        return {
+            "success": True,
+            "extracted_data": extracted_data,
+            "extraction_quality": extraction_quality,
+            "requires_review": True,
+            "error": None,
+        }
     
     def _map_ai_provider_to_analysis(self, extracted: Dict[str, Any]) -> Dict[str, Any]:
         """Map ai_provider normalized output (doc_type, confidence, etc.) to document_analysis format."""
