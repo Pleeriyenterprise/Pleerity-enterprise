@@ -2107,6 +2107,25 @@ async def trigger_stripe_subscription_reconcile_job(request: Request, body: Supp
         )
 
 
+@router.get("/subscription-operational-events")
+async def list_subscription_operational_events(
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    client_id: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
+):
+    """Recent subscription operational events (humanised labels; not raw Stripe payloads)."""
+    await admin_route_guard(request)
+    from services.subscription_operational_events import list_recent_operational_events
+
+    events = await list_recent_operational_events(
+        limit=limit,
+        client_id=client_id.strip() if client_id else None,
+        severity=severity.strip().lower() if severity else None,
+    )
+    return {"events": events, "count": len(events)}
+
+
 @router.get("/jobs/status")
 async def get_job_status(request: Request):
     """

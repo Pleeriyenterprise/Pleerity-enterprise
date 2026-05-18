@@ -181,6 +181,20 @@ async def run_pending_verification_digest():
         raise
 
 
+async def run_subscription_ops_digest():
+    try:
+        from services.subscription_ops_digest import send_subscription_ops_digest
+
+        result = await send_subscription_ops_digest()
+        if isinstance(result, dict):
+            logger.info("Subscription ops digest job completed: %s", result.get("message", result))
+            return result
+        return {"message": "Subscription ops digest completed", "count": 0}
+    except Exception as e:
+        logger.error("Subscription ops digest job failed: %s", e)
+        raise
+
+
 async def run_monthly_digests(
     client_id=None,
     triggered_by_admin_id=None,
@@ -1555,6 +1569,7 @@ JOB_RUNNERS = {
     "subscription_lifecycle": run_subscription_lifecycle,
     "stripe_subscription_reconcile": run_stripe_subscription_reconcile_job,
     "pending_verification_digest": run_pending_verification_digest,
+    "subscription_ops_digest": run_subscription_ops_digest,
     "monthly_digest": run_monthly_digests,
     "compliance_check_morning": run_compliance_status_check,
     "compliance_check_evening": run_compliance_status_check,

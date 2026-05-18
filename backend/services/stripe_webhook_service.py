@@ -1658,6 +1658,21 @@ class StripeWebhookService:
                 "is_downgrade": is_downgrade,
             }
         )
+        try:
+            from services.subscription_operational_bridge import on_subscription_change
+
+            await on_subscription_change(
+                client_id=client_id,
+                event=event,
+                old_plan=old_plan,
+                new_plan=new_plan_code.value,
+                old_status=old_status,
+                new_status=subscription_status,
+                is_upgrade=is_upgrade,
+                is_downgrade=is_downgrade,
+            )
+        except Exception as ops_exc:
+            logger.warning("subscription operational bridge subscription.change: %s", ops_exc)
         
         return {
             "handled": True,
@@ -1832,6 +1847,16 @@ class StripeWebhookService:
             "HANDLER_END event.type=customer.subscription.deleted client_id=%s db_updated=subscription_status=CANCELED entitlement_status=DISABLED",
             client_id,
         )
+        try:
+            from services.subscription_operational_bridge import on_subscription_deleted
+
+            await on_subscription_deleted(
+                client_id=client_id,
+                event=event,
+                stripe_subscription_id=stripe_subscription_id,
+            )
+        except Exception as ops_exc:
+            logger.warning("subscription operational bridge subscription.deleted: %s", ops_exc)
         return {
             "handled": True,
             "client_id": client_id,
@@ -1973,9 +1998,11 @@ class StripeWebhookService:
         except Exception as inv_err:
             logger.warning("invoice paid: persist line breakdown failed: %s", inv_err)
 
+        lifecycle_sync_failed = False
         try:
             await sync_subscription_lifecycle(client_id, bump_version=False)
         except Exception as lc_err:
+            lifecycle_sync_failed = True
             await mark_billing_reconciliation_needed(
                 client_id=client_id,
                 reason="invoice_paid_lifecycle_sync_failed",
@@ -2298,6 +2325,26 @@ class StripeWebhookService:
                 stripe_charge_id=charge_id,
                 stripe_payment_intent_id=stripe_pi,
             )
+        billing_ops_row = await db.client_billing.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "billing_reconciliation_needed": 1},
+        )
+        if (billing_ops_row or {}).get("billing_reconciliation_needed"):
+            lifecycle_sync_failed = True
+        try:
+            from services.subscription_operational_bridge import on_invoice_paid
+
+            await on_invoice_paid(
+                client_id=client_id,
+                invoice=merged_invoice if merged_invoice else invoice,
+                event=event,
+                old_status=old_status,
+                new_status=new_status,
+                recovered=recovered,
+                lifecycle_sync_failed=lifecycle_sync_failed,
+            )
+        except Exception as ops_exc:
+            logger.warning("subscription operational bridge invoice.paid: %s", ops_exc)
         return {
             "handled": True,
             "client_id": client_id,
@@ -2513,6 +2560,17 @@ class StripeWebhookService:
                 status="failed",
                 stripe_invoice_id=invoice.get("id"),
             )
+        try:
+            from services.subscription_operational_bridge import on_payment_failed
+
+            await on_payment_failed(
+                client_id=client_id,
+                invoice=invoice,
+                event=event,
+                lifecycle_sync_failed=payment_failed_lifecycle_sync_failed,
+            )
+        except Exception as ops_exc:
+            logger.warning("subscription operational bridge payment_failed: %s", ops_exc)
         return {
             "handled": True,
             "client_id": client_id,

@@ -737,6 +737,30 @@ class Database:
                 await self.db.subscription_payment_ledger.create_index("source_event_id", sparse=True)
             except Exception:
                 pass
+            # Subscription operational events (renewal ops visibility; deduplicated)
+            if hasattr(self.db, "subscription_operational_events"):
+                try:
+                    await self.db.subscription_operational_events.create_index(
+                        "dedupe_key", unique=True, sparse=True
+                    )
+                except Exception:
+                    pass
+                try:
+                    await self.db.subscription_operational_events.create_index(
+                        [("occurred_at", -1)]
+                    )
+                except Exception:
+                    pass
+                try:
+                    await self.db.subscription_operational_events.create_index(
+                        [("client_id", 1), ("occurred_at", -1)]
+                    )
+                except Exception:
+                    pass
+                try:
+                    await self.db.subscription_operational_events.create_index("digest_date", sparse=True)
+                except Exception:
+                    pass
             # MRR snapshots for NRR (Executive Overview)
             if hasattr(self.db, "mrr_snapshots"):
                 try:

@@ -97,6 +97,8 @@ const AdminBillingPage = () => {
   
   // Statistics
   const [statistics, setStatistics] = useState(null);
+  const [subscriptionOpsEvents, setSubscriptionOpsEvents] = useState([]);
+  const [subscriptionOpsLoading, setSubscriptionOpsLoading] = useState(false);
 
   const [lifecycleJobRunning, setLifecycleJobRunning] = useState(false);
   const [lastLifecycleJobResult, setLastLifecycleJobResult] = useState(null);
@@ -131,7 +133,20 @@ const AdminBillingPage = () => {
   // Fetch statistics on mount
   useEffect(() => {
     fetchStatistics();
+    fetchSubscriptionOpsEvents();
   }, []);
+
+  const fetchSubscriptionOpsEvents = async () => {
+    setSubscriptionOpsLoading(true);
+    try {
+      const response = await api.get('/admin/billing/subscription-operational-events', { params: { limit: 20 } });
+      setSubscriptionOpsEvents(response.data?.events || []);
+    } catch {
+      setSubscriptionOpsEvents([]);
+    } finally {
+      setSubscriptionOpsLoading(false);
+    }
+  };
 
   // Fetch client details when selected
   useEffect(() => {
@@ -673,6 +688,47 @@ const AdminBillingPage = () => {
                 </CardContent>
               </Card>
             )}
+
+            <Card data-testid="subscription-ops-events-panel">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-electric-teal" />
+                  Subscription operations
+                </CardTitle>
+                <CardDescription>Recent renewals, failures, and billing lifecycle events (not raw Stripe payloads).</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 max-h-80 overflow-y-auto">
+                {subscriptionOpsLoading ? (
+                  <p className="text-sm text-gray-500 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+                  </p>
+                ) : subscriptionOpsEvents.length === 0 ? (
+                  <p className="text-sm text-gray-500">No recent operational events.</p>
+                ) : (
+                  subscriptionOpsEvents.map((ev, idx) => (
+                    <button
+                      key={`${ev.client_id}-${ev.occurred_at}-${idx}`}
+                      type="button"
+                      onClick={() => ev.client_id && setSelectedClientId(ev.client_id)}
+                      className="w-full text-left p-2 rounded border border-gray-200 hover:bg-gray-50 transition-colors"
+                    >
+                      <p className="text-sm font-medium text-gray-900">{ev.operational_event_label}</p>
+                      <p className="text-xs text-gray-600">
+                        {ev.customer_name || ev.client_id}
+                        {ev.recovered_after_failure ? ' · Recovered' : ''}
+                        {ev.provisioning_status === 'pending_reconciliation' || ev.provisioning_status === 'pending'
+                          ? ' · Provisioning pending'
+                          : ''}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatAdminDate(ev.occurred_at) || '—'}
+                        {ev.operational_severity ? ` · ${ev.operational_severity}` : ''}
+                      </p>
+                    </button>
+                  ))
+                )}
+              </CardContent>
+            </Card>
 
             {statistics?.clients_in_grace?.length > 0 && (
               <Card data-testid="grace-period-panel">

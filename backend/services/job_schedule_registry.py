@@ -46,6 +46,7 @@ CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
     JobScheduleEntry("pilot_lifecycle_reconcile", False, 90, "Hourly", True),
     JobScheduleEntry("daily_reminders", True, 26 * 60, "Daily", True),
     JobScheduleEntry("pending_verification_digest", True, 26 * 60, "Daily", True),
+    JobScheduleEntry("subscription_ops_digest", False, 26 * 60, "Daily", True),
     JobScheduleEntry("monthly_digest", True, 36 * 60, "Monthly", True),
     JobScheduleEntry("compliance_check_morning", True, 26 * 60, "Twice daily", True),
     JobScheduleEntry("compliance_check_evening", True, 26 * 60, "Twice daily", True),

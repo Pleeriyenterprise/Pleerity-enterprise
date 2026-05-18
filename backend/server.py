@@ -579,6 +579,20 @@ async def lifespan(app: FastAPI):
             args=["pending_verification_digest"],
             kwargs={"run_type": "schedule"},
         )
+
+        # Subscription operations digest — prior UTC day summary for admins
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=9, minute=45, timezone=SCHEDULER_TIMEZONE),
+            id="subscription_ops_digest",
+            name="Subscription Operations Digest",
+            replace_existing=True,
+            args=["subscription_ops_digest"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
         
         # Monthly digest: daily 10:00 UTC — each client receives on their digest_day_of_month (default 1)
         scheduler.add_job(
