@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from middleware import admin_route_guard
+from middleware import admin_route_guard, require_owner
 from middleware.step_up_auth import require_recent_step_up
 from models.pilot_lifecycle import (
     PilotCancelBody,
@@ -48,6 +48,27 @@ def _http_from_value_error(e: ValueError) -> HTTPException:
     return HTTPException(status_code=status_code, detail=msg)
 
 
+@router.get("/ops-dashboard")
+async def ops_dashboard(
+    pilot_status: Optional[str] = Query(None, alias="status"),
+    limit: int = Query(200, ge=1, le=500),
+    skip: int = Query(0, ge=0),
+    _user: dict = Depends(admin_route_guard),
+) -> Dict[str, Any]:
+    """Operational pilot lifecycle summary for founding-pilot rollout."""
+    return await pls.list_pilot_ops_dashboard(status=pilot_status, limit=limit, skip=skip)
+
+
+@router.post("/accounts/{client_id}/sync-stripe-payment-method")
+async def sync_stripe_payment_method(
+    client_id: str,
+    _user: dict = Depends(admin_route_guard),
+) -> Dict[str, Any]:
+    """Refresh whether Stripe has a default payment method on file (conversion readiness)."""
+    result = await pls.sync_stripe_payment_method_status(client_id)
+    return {"ok": True, "client_id": client_id, **result}
+
+
 @router.get("/accounts")
 async def list_accounts(
     pilot_status: Optional[str] = Query(None, alias="status"),
@@ -65,6 +86,66 @@ async def get_account(client_id: str, _user: dict = Depends(admin_route_guard)) 
         return await pls.get_pilot_state(client_id)
     except ValueError as e:
         raise _http_from_value_error(e)
+
+
+@router.get("/accounts/{client_id}/operational-profile")
+async def get_operational_profile(
+    client_id: str,
+    _user: dict = Depends(admin_route_guard),
+) -> Dict[str, Any]:
+    """Pilot timeline, lifecycle domains, health, conversion risk, and open anomalies."""
+    try:
+        return await pls.get_pilot_operational_profile(client_id)
+    except ValueError as e:
+        raise _http_from_value_error(e)
+
+
+@router.post("/accounts/{client_id}/reconcile")
+async def reconcile_account(
+    client_id: str,
+    _user: dict = Depends(admin_route_guard),
+) -> Dict[str, Any]:
+    """Reconcile lifecycle domains, health scoring, and anomaly detection for one account."""
+    try:
+        result = await pls.reconcile_pilot_operational_state(client_id)
+        return {"ok": True, "client_id": client_id, **result}
+    except ValueError as e:
+        raise _http_from_value_error(e)
+
+
+@router.get("/anomalies")
+async def list_anomalies(
+    client_id: Optional[str] = Query(None),
+    limit: int = Query(200, ge=1, le=500),
+    _user: dict = Depends(admin_route_guard),
+) -> Dict[str, Any]:
+    from services.pilot_operational_anomalies import list_open_anomalies
+
+    rows = await list_open_anomalies(client_id=client_id, limit=limit)
+    return {"anomalies": rows, "count": len(rows)}
+
+
+@router.post("/anomalies/{anomaly_id}/resolve")
+async def resolve_anomaly_route(
+    request: Request,
+    anomaly_id: str,
+    body: Dict[str, Any],
+    user: dict = Depends(admin_route_guard),
+) -> Dict[str, Any]:
+    await require_recent_step_up(request, user)
+    from services.pilot_operational_anomalies import resolve_anomaly
+
+    notes = str(body.get("resolution_notes") or "").strip()
+    if len(notes) < 3:
+        raise HTTPException(status_code=400, detail="resolution_notes required")
+    ok = await resolve_anomaly(
+        anomaly_id,
+        resolution_notes=notes,
+        resolved_by=user.get("portal_user_id"),
+    )
+    if not ok:
+        raise HTTPException(status_code=404, detail="Anomaly not found or already resolved")
+    return {"ok": True, "anomaly_id": anomaly_id}
 
 
 @router.get("/accounts/{client_id}/history")
@@ -195,7 +276,7 @@ async def comp_account(
     request: Request,
     client_id: str,
     body: PilotCompBody,
-    user: dict = Depends(admin_route_guard),
+    user: dict = Depends(require_owner),
 ) -> Dict[str, Any]:
     await require_recent_step_up(request, user)
     try:
@@ -205,6 +286,7 @@ async def comp_account(
             actor_email=user.get("email"),
             reason=body.reason,
             notes=body.notes,
+            review_expires_at=body.review_expires_at,
         )
         return {"ok": True, "client_id": client_id, "pilot": doc}
     except ValueError as e:

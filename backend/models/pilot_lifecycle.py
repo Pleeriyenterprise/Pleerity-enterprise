@@ -78,8 +78,12 @@ class PilotConvertBody(BaseModel):
 
 
 class PilotCompBody(BaseModel):
-    reason: str = Field(..., min_length=3, max_length=2000)
+    reason: str = Field(..., min_length=10, max_length=2000)
     notes: Optional[str] = Field(default=None, max_length=4000)
+    review_expires_at: Optional[datetime] = Field(
+        default=None,
+        description="Optional governance review date for comped access.",
+    )
 
 
 class PilotNotesBody(BaseModel):

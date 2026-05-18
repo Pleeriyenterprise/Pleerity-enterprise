@@ -14,6 +14,22 @@ PREVIEW_ACCEPTANCE_TIMESTAMP_PLACEHOLDER = (
 
 _CANONICAL_SUPPORT_EMAIL = "info@pleerityenterprise.co.uk"
 
+
+def _onboarding_fee_line_for_snapshot(snap: Dict[str, Any], onboarding_minor: int) -> str:
+    from services.pilot_commercial_truth import build_onboarding_fee_line, commercial_context_from_client
+
+    if snap.get("pilot_commercial_summary") or snap.get("onboarding_fee_waived"):
+        ctx = {
+            "is_pilot": True,
+            "onboarding_fee_waived": snap.get("onboarding_fee_waived"),
+            "onboarding_fee_policy": snap.get("onboarding_fee_policy"),
+            "onboarding_fee_minor": snap.get("onboarding_fee_minor", onboarding_minor),
+        }
+        return build_onboarding_fee_line(ctx, onboarding_minor=onboarding_minor)
+    return (
+        f"One-time onboarding fee: £{onboarding_minor / 100:.2f}" if onboarding_minor > 0 else "One-time onboarding fee: None"
+    )
+
 # Forbidden demo / placeholder tokens (case-insensitive where noted).
 _FORBIDDEN_EMAIL_LOWER = "client@example.com"
 _FORBIDDEN_SUPPORT_LOWER = "support@pleerity.com"
@@ -90,9 +106,8 @@ def build_agreement_render_context(
         "billing_interval": str(snap.get("billing_interval") or "month").strip() or "month",
         "monthly_fee": f"£{monthly_minor / 100:.2f}",
         "currency": str(snap.get("currency") or "GBP").strip() or "GBP",
-        "onboarding_fee_line": (
-            f"One-time onboarding fee: £{onboarding_minor / 100:.2f}" if onboarding_minor > 0 else "One-time onboarding fee: None"
-        ),
+        "onboarding_fee_line": _onboarding_fee_line_for_snapshot(snap, onboarding_minor),
+        "pilot_offer_line": str(snap.get("pilot_commercial_summary") or "").strip(),
         "accepted_signatory_name": holder,
         "acceptance_timestamp": ts_display,
         "acceptance_electronic_record_line": acceptance_electronic_record_line,

@@ -20,6 +20,8 @@ def build_commercial_snapshot_from_intake_form(
     data: IntakeFormData,
     template_id: str,
     template_version_id: str,
+    *,
+    pilot_invite_doc: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Same commercial fields as ``build_commercial_snapshot`` but from wizard payload before/during intake.
@@ -44,6 +46,24 @@ def build_commercial_snapshot_from_intake_form(
     monthly_minor = int(round(monthly_gbp * 100))
     onboarding_minor = int(round(onboarding_gbp * 100))
 
+    snap = {
+        "client_full_name": "",
+        "client_company_name": "",
+        "client_address": "",
+        "client_address_raw": "",
+        "client_postcode": "",
+        "client_email": "",
+        "client_phone": None,
+        "selected_plan_code": plan_code.value,
+        "plan_label": plan_label,
+        "billing_amount_minor": monthly_minor,
+        "billing_interval": "month",
+        "onboarding_fee_minor": onboarding_minor,
+        "currency": "GBP",
+        "agreement_template_id": template_id,
+        "agreement_template_version_id": template_version_id,
+    }
+
     props = list(getattr(data, "properties", None) or [])
     client_address = ""
     client_address_raw = ""
@@ -58,23 +78,23 @@ def build_commercial_snapshot_from_intake_form(
     full_name = (str(getattr(data, "full_name", "") or "")).strip()
     company = (str(getattr(data, "company_name", "") or "")).strip() if getattr(data, "company_name", None) else ""
 
-    return {
-        "client_full_name": full_name,
-        "client_company_name": company,
-        "client_address": client_address,
-        "client_address_raw": client_address_raw,
-        "client_postcode": client_postcode,
-        "client_email": contact_email,
-        "client_phone": (str(getattr(data, "phone", "") or "").strip() or None),
-        "selected_plan_code": plan_code.value,
-        "plan_label": plan_label,
-        "billing_amount_minor": monthly_minor,
-        "billing_interval": "month",
-        "onboarding_fee_minor": onboarding_minor,
-        "currency": "GBP",
-        "agreement_template_id": template_id,
-        "agreement_template_version_id": template_version_id,
-    }
+    snap.update(
+        {
+            "client_full_name": full_name,
+            "client_company_name": company,
+            "client_address": client_address,
+            "client_address_raw": client_address_raw,
+            "client_postcode": client_postcode,
+            "client_email": contact_email,
+            "client_phone": (str(getattr(data, "phone", "") or "").strip() or None),
+        }
+    )
+    if pilot_invite_doc:
+        from services.pilot_commercial_truth import apply_pilot_to_commercial_snapshot, commercial_context_from_invite
+
+        ctx = commercial_context_from_invite(pilot_invite_doc, plan_code=plan_code.value)
+        snap = apply_pilot_to_commercial_snapshot(snap, ctx)
+    return snap
 
 
 def _format_address_from_property(prop: Dict[str, Any]) -> str:
@@ -118,6 +138,7 @@ async def build_commercial_snapshot(
     client_id: str,
     template_id: str,
     template_version_id: str,
+    pilot_invite_doc: Optional[Dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Authoritative snapshot of what the user is committing to pay for at this moment.
@@ -142,8 +163,11 @@ async def build_commercial_snapshot(
     plan_def = plan_registry.get_plan(plan_code)
     plan_label = str(plan_def.get("name") or plan_code.value)
 
-    billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0, "onboarding_fee_paid": 1}) or {}
-    onboarding_already_paid = bool(billing.get("onboarding_fee_paid"))
+    billing = await db.client_billing.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "onboarding_fee_paid": 1, "onboarding_fee_waived": 1},
+    ) or {}
+    onboarding_already_paid = bool(billing.get("onboarding_fee_paid") or billing.get("onboarding_fee_waived"))
 
     monthly_gbp = float(plan_def.get("monthly_price") or 0)
     onboarding_gbp = float(plan_def.get("onboarding_fee") or 0)
@@ -167,7 +191,7 @@ async def build_commercial_snapshot(
     full_name = (client.get("full_name") or "").strip()
     company = (client.get("company_name") or "").strip()
 
-    return {
+    snap = {
         "client_full_name": full_name,
         "client_company_name": company,
         "client_address": client_address,
@@ -184,6 +208,18 @@ async def build_commercial_snapshot(
         "agreement_template_id": template_id,
         "agreement_template_version_id": template_version_id,
     }
+    if pilot_invite_doc:
+        from services.pilot_commercial_truth import apply_pilot_to_commercial_snapshot, commercial_context_from_invite
+
+        ctx = commercial_context_from_invite(pilot_invite_doc, plan_code=plan_code.value)
+        snap = apply_pilot_to_commercial_snapshot(snap, ctx)
+    elif client.get("pilot_program_type") or client.get("pilot_status"):
+        from services.pilot_commercial_truth import apply_pilot_to_commercial_snapshot, commercial_context_from_client
+
+        ctx = commercial_context_from_client(client, plan_code=plan_code.value)
+        if ctx:
+            snap = apply_pilot_to_commercial_snapshot(snap, ctx)
+    return snap
 
 
 def commercial_snapshots_match(

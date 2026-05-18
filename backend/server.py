@@ -573,6 +573,20 @@ async def lifespan(app: FastAPI):
             coalesce=True,
             max_instances=1,
         )
+
+        # Pilot lifecycle expiry reconciliation — hourly
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute=25, timezone=SCHEDULER_TIMEZONE),
+            id="pilot_lifecycle_reconcile",
+            name="Pilot lifecycle expiry reconciliation",
+            replace_existing=True,
+            args=["pilot_lifecycle_reconcile"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
         
         # Pending verification digest daily at 9:30 AM UTC (counts only, no PII)
         scheduler.add_job(

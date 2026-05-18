@@ -57,13 +57,29 @@ The invite record stores `discount_type`, `discount_percent`, `discount_duration
 
 ## App configuration — invite codes
 
-Admin API (owner/admin RBAC):
+### Admin UI
+
+Navigate to **Products & Billing → Founding Pilot Invites** (`/admin/pilot-invites`).
+
+- Create invites with Stripe coupon validation before save
+- Copy invite URL / message (commercial wording from `pilot_commercial_truth`)
+- View usage, linked accounts, and deactivate invites
+- Distribution URL pattern: `/intake?invite=CODE&plan=PLAN_1_SOLO`
+
+### Admin API (owner/admin RBAC)
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/admin/pilot-invites` | List codes, uses, status |
+| GET | `/api/admin/pilot-invites/operational-config` | Safe Stripe/env checklist (no secrets) |
+| GET | `/api/admin/pilot-invites` | List codes (filters: status, policy, duration, plan) |
+| GET | `/api/admin/pilot-invites/suggest-code` | Generate invite code suggestion |
+| POST | `/api/admin/pilot-invites/validate-stripe` | Validate coupon vs invite fields (no persist) |
 | POST | `/api/admin/pilot-invites` | Create code |
+| GET | `/api/admin/pilot-invites/{code}` | Invite detail |
+| PATCH | `/api/admin/pilot-invites/{code}` | Update max uses, notes, expiry, Stripe IDs |
 | PATCH | `/api/admin/pilot-invites/{code}/disable` | Disable code |
+| GET | `/api/admin/pilot-invites/{code}/usage` | Redemptions + accounts |
+| GET | `/api/admin/pilot-invites/{code}/distribution` | Share URL + message template |
 | GET | `/api/admin/pilot-invites/accounts` | Pilot clients + lifecycle fields |
 
 Example create body (2-month founding pilot):
@@ -115,6 +131,38 @@ Nested `pilot` object mirrors key fields for support tooling.
 - `invoice.paid` / `invoice.payment_succeeded` fire for £0 invoices (`amount_paid=0`); provisioning and entitlements use **subscription status**, not invoice amount.
 - `payment_intent` may be absent on £0 invoices; existing handlers must not require PI for subscription renewals.
 - After discount ends, Stripe generates invoices at list price; failed payment uses existing dunning / `invoice.payment_failed` paths.
+
+## Commercial truth consistency
+
+All customer-facing commercial surfaces should reflect the same pilot terms via `services/pilot_commercial_truth.py`:
+
+| Surface | Behaviour |
+|---------|-----------|
+| Agreement preview / acceptance snapshot | `onboarding_fee_minor=0` when waived; `pilot_commercial_summary` in snapshot |
+| Intake `/plans` + payment summary | Pilot-adjusted setup fee and total when invite validated |
+| Stripe checkout metadata | `onboarding_fee_policy`, `onboarding_fee_waived` |
+| Payment confirmation email | `pilot_offer_line` + pilot-aware `amount_display` |
+| Admin ops dashboard | `GET /api/admin/pilot-lifecycle/ops-dashboard` |
+
+If a user applies a pilot invite **after** agreement acceptance, they must re-accept (checkout validates commercial snapshot with invite at payment time).
+
+## Stripe coupon validation (admin create/update)
+
+`POST /api/admin/pilot-invites` validates the configured Stripe coupon/promotion via API:
+
+- Coupon exists and is valid
+- `percent_off` matches invite `discount_percent`
+- `duration` / `duration_in_months` match invite record
+
+Misconfigured invites are rejected before operational use.
+
+## Pilot lifecycle reconciliation worker
+
+Scheduled job `pilot_lifecycle_reconcile` (hourly, UTC minute 25):
+
+- Scans `pilot_status` in `active` / `extended`
+- Calls `sync_expired_if_due` (idempotent audit per client/date)
+- Does **not** mutate Stripe subscriptions
 
 ## Operational guidance
 

@@ -276,6 +276,7 @@ async def validate_acceptance_for_checkout(
     *,
     client_id: str,
     acceptance_id: str,
+    pilot_invite_doc: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
     """
     Returns (acceptance_doc, error_code) where error_code is machine string for HTTP mapping.
@@ -359,6 +360,7 @@ async def validate_acceptance_for_checkout(
         client_id=client_id,
         template_id=str(acc.get("template_id") or ""),
         template_version_id=str(acc.get("template_version_id") or ""),
+        pilot_invite_doc=pilot_invite_doc,
     )
     if not current:
         return None, "CLIENT_NOT_FOUND"

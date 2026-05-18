@@ -25,6 +25,10 @@ from models.pilot_invite import (
     PilotInviteStatus,
     PilotInviteValidateResponse,
 )
+
+_DEFERRED_EXPERIMENTAL_MSG = (
+    "onboarding_fee_policy=deferred is experimental and requires owner approval"
+)
 from services.pilot_onboarding_fee import onboarding_policy_from_invite
 from services.plan_registry import PlanCode, plan_registry, _get_stripe_mode
 
@@ -134,6 +138,10 @@ def _build_validate_response(doc: Dict[str, Any], plan_code: str) -> PilotInvite
             if onb_waived
             else None
         )
+    from services.pilot_commercial_truth import commercial_context_from_invite, validate_response_commercial_fields
+
+    ctx = commercial_context_from_invite(doc, plan_code=plan_code)
+    commercial = validate_response_commercial_fields(ctx)
     return PilotInviteValidateResponse(
         valid=True,
         message=message,
@@ -148,6 +156,10 @@ def _build_validate_response(doc: Dict[str, Any], plan_code: str) -> PilotInvite
         detail=detail,
         onboarding_fee_policy=onb_policy.value,
         onboarding_fee_waived=onb_waived,
+        setup_fee_effective=commercial.get("setup_fee_effective"),
+        monthly_price_after_pilot=commercial.get("monthly_price_after_pilot"),
+        first_payment_estimate=commercial.get("first_payment_estimate"),
+        commercial_summary=commercial.get("commercial_summary"),
     )
 
 
@@ -236,9 +248,20 @@ async def validate_invite_for_checkout(
     if for_checkout:
         _require_stripe_discount_configured(doc)
         _validate_discount_stripe_alignment(doc)
+        _reject_public_deferred_onboarding(doc)
 
     resp = _build_validate_response(doc, plan_code)
     return doc, resp
+
+
+def _reject_public_deferred_onboarding(doc: Dict[str, Any]) -> None:
+    """Deferred onboarding is experimental — not available at public checkout."""
+    policy = onboarding_policy_from_invite(doc)
+    if policy == PilotOnboardingFeePolicy.DEFERRED:
+        raise PilotInvitePublicError(
+            "PILOT_ONBOARDING_DEFERRED_NOT_AVAILABLE",
+            "This invite configuration is not available for checkout. Contact support.",
+        )
 
 
 def _validate_discount_stripe_alignment(doc: Dict[str, Any]) -> None:
@@ -523,20 +546,279 @@ async def create_invite_code(body: PilotInviteCodeCreate) -> Dict[str, Any]:
         "updated_at": now,
         "created_by": body.created_by,
     }
+    from services.pilot_stripe_coupon_validation import (
+        PilotStripeCouponValidationError,
+        validate_pilot_stripe_discount_config,
+    )
+
+    if body.onboarding_fee_policy == PilotOnboardingFeePolicy.DEFERRED:
+        raise ValueError(_DEFERRED_EXPERIMENTAL_MSG)
+
+    try:
+        await validate_pilot_stripe_discount_config(
+            stripe_coupon_id=doc.get("stripe_coupon_id"),
+            stripe_promotion_code_id=doc.get("stripe_promotion_code_id"),
+            discount_mode=doc.get("discount_mode") or "coupon",
+            invite_fields=doc,
+        )
+    except PilotStripeCouponValidationError as e:
+        detail = "; ".join(e.details) if e.details else str(e)
+        raise ValueError(detail) from e
+
     await db[COL_CODES].insert_one(doc)
     doc.pop("_id", None)
     return doc
 
 
-async def list_invite_codes(*, limit: int = 200) -> List[Dict[str, Any]]:
+def suggest_invite_code(*, prefix: str = "FOUNDING", variant: str = "") -> str:
+    """Deterministic-style invite code suggestion (caller must check uniqueness)."""
+    base = re.sub(r"[^A-Z0-9-]", "", (prefix or "FOUNDING").strip().upper()) or "FOUNDING"
+    var = re.sub(r"[^A-Z0-9-]", "", (variant or "").strip().upper())
+    year = str(_utc_now().year)
+    if var:
+        return f"{base}-{var}-{year}"[:64]
+    import secrets
+
+    token = secrets.token_hex(2).upper()
+    return f"{base}-{year}-{token}"[:64]
+
+
+def _enrich_invite_row(doc: Dict[str, Any]) -> Dict[str, Any]:
+    doc = dict(doc)
+    doc["effective_status"] = _effective_status(doc)
+    doc["remaining_uses"] = max(0, int(doc.get("max_uses") or 0) - int(doc.get("used_count") or 0))
+    return doc
+
+
+async def list_invite_codes(
+    *,
+    limit: int = 200,
+    status_filter: Optional[str] = None,
+    onboarding_policy: Optional[str] = None,
+    duration_months: Optional[int] = None,
+    plan_code: Optional[str] = None,
+    exhausted_only: bool = False,
+) -> List[Dict[str, Any]]:
     db = database.get_db()
-    cursor = db[COL_CODES].find({}, {"_id": 0}).sort("created_at", -1).limit(limit)
+    mongo_q: Dict[str, Any] = {}
+    if onboarding_policy:
+        mongo_q["onboarding_fee_policy"] = onboarding_policy.strip().lower()
+    if duration_months is not None:
+        mongo_q["discount_duration_in_months"] = int(duration_months)
+    if plan_code:
+        mongo_q["applies_to_plan_codes"] = plan_code.strip().upper()
+
+    cursor = db[COL_CODES].find(mongo_q, {"_id": 0}).sort("created_at", -1).limit(limit * 3)
     rows = []
     async for doc in cursor:
-        doc["effective_status"] = _effective_status(doc)
-        doc["remaining_uses"] = max(0, int(doc.get("max_uses") or 0) - int(doc.get("used_count") or 0))
-        rows.append(doc)
+        row = _enrich_invite_row(doc)
+        if exhausted_only and row["remaining_uses"] > 0:
+            continue
+        if status_filter:
+            sf = status_filter.strip().lower()
+            if sf == "exhausted":
+                if row["remaining_uses"] > 0:
+                    continue
+            elif sf == "waived_onboarding":
+                if str(row.get("onboarding_fee_policy") or "") != PilotOnboardingFeePolicy.WAIVED.value:
+                    continue
+            elif row["effective_status"] != sf:
+                continue
+        rows.append(row)
+        if len(rows) >= limit:
+            break
     return rows
+
+
+async def get_invite_code(code: str) -> Optional[Dict[str, Any]]:
+    db = database.get_db()
+    normalized = normalize_invite_code(code)
+    doc = await db[COL_CODES].find_one({"code": normalized}, {"_id": 0})
+    if not doc:
+        return None
+    return _enrich_invite_row(doc)
+
+
+async def get_invite_usage(code: str, *, limit: int = 100) -> Dict[str, Any]:
+    db = database.get_db()
+    normalized = normalize_invite_code(code)
+    invite = await get_invite_code(normalized)
+    if not invite:
+        return {}
+    redemptions = []
+    cursor = (
+        db[COL_REDEMPTIONS].find({"code": normalized}, {"_id": 0})
+        .sort("created_at", -1)
+        .limit(limit)
+    )
+    async for r in cursor:
+        redemptions.append(r)
+    accounts = []
+    acursor = (
+        db.clients.find(
+            {"pilot_invite_code": normalized},
+            {
+                "_id": 0,
+                "client_id": 1,
+                "email": 1,
+                "contact_email": 1,
+                "full_name": 1,
+                "pilot_status": 1,
+                "pilot_governance_status": 1,
+                "pilot_started_at": 1,
+                "pilot_converted_to_paid_at": 1,
+                "billing_plan": 1,
+                "created_at": 1,
+            },
+        )
+        .sort("pilot_started_at", -1)
+        .limit(limit)
+    )
+    async for c in acursor:
+        accounts.append(c)
+    return {"redemptions": redemptions, "accounts": accounts}
+
+
+def build_invite_commercial_summary(invite_doc: Dict[str, Any], *, plan_code: str) -> Dict[str, Any]:
+    from services.pilot_commercial_truth import (
+        build_pilot_offer_summary,
+        commercial_context_from_invite,
+        validate_response_commercial_fields,
+    )
+
+    ctx = commercial_context_from_invite(invite_doc, plan_code=plan_code)
+    fields = validate_response_commercial_fields(ctx)
+    return {
+        "plan_code": plan_code,
+        "commercial_summary": build_pilot_offer_summary(ctx),
+        "commercial_fields": fields,
+        "discount_months": ctx.get("pilot_discount_months"),
+        "onboarding_fee_policy": ctx.get("onboarding_fee_policy"),
+        "onboarding_fee_waived": ctx.get("onboarding_fee_waived"),
+    }
+
+
+def build_invite_distribution(
+    invite_doc: Dict[str, Any],
+    *,
+    base_url: str,
+    plan_code: str,
+) -> Dict[str, Any]:
+    """Shareable invite URL and message from commercial truth (no hardcoded months)."""
+    code = str(invite_doc.get("code") or "")
+    base = (base_url or "").rstrip("/")
+    commercial = build_invite_commercial_summary(invite_doc, plan_code=plan_code)
+    params = f"invite={code}&plan={plan_code}"
+    invite_url = f"{base}/intake?{params}"
+    summary = commercial.get("commercial_summary") or ""
+    message_template = (
+        f"You're invited to join Compliance Vault Pro with our Founding Pilot programme.\n\n"
+        f"{summary}\n\n"
+        f"Use invite code: {code}\n"
+        f"Start here: {invite_url}\n\n"
+        f"Complete secure checkout to activate your account."
+    )
+    return {
+        "invite_code": code,
+        "invite_url": invite_url,
+        "plan_code": plan_code,
+        "commercial_summary": summary,
+        "message_template": message_template,
+        "copy_block": f"{summary}\n\nCode: {code}\n{invite_url}",
+    }
+
+
+async def preview_stripe_coupon_validation(invite_fields: Dict[str, Any]) -> Dict[str, Any]:
+    from services.pilot_stripe_coupon_validation import (
+        PilotStripeCouponValidationError,
+        validate_pilot_stripe_discount_config,
+    )
+
+    try:
+        await validate_pilot_stripe_discount_config(
+            stripe_coupon_id=invite_fields.get("stripe_coupon_id"),
+            stripe_promotion_code_id=invite_fields.get("stripe_promotion_code_id"),
+            discount_mode=invite_fields.get("discount_mode") or "coupon",
+            invite_fields=invite_fields,
+        )
+    except PilotStripeCouponValidationError as e:
+        return {
+            "valid": False,
+            "message": str(e),
+            "details": list(e.details or []),
+        }
+
+    import stripe
+
+    coupon_id = (invite_fields.get("stripe_coupon_id") or "").strip()
+    promo_id = (invite_fields.get("stripe_promotion_code_id") or "").strip()
+    mode = str(invite_fields.get("discount_mode") or "coupon").lower()
+    coupon: Dict[str, Any] = {}
+    try:
+        if mode == PilotInviteDiscountMode.PROMOTION_CODE.value and promo_id:
+            promo = stripe.PromotionCode.retrieve(promo_id, expand=["coupon"])
+            coupon = promo.get("coupon") or {}
+            if isinstance(coupon, str):
+                coupon = stripe.Coupon.retrieve(coupon)
+        elif coupon_id:
+            coupon = stripe.Coupon.retrieve(coupon_id)
+        if hasattr(coupon, "to_dict"):
+            coupon = coupon.to_dict()
+    except Exception as ex:
+        return {"valid": False, "message": str(ex), "details": []}
+
+    cfg = discount_config_from_doc(invite_fields)
+    return {
+        "valid": True,
+        "message": "Stripe coupon matches invite configuration.",
+        "coupon": {
+            "id": coupon.get("id"),
+            "valid": coupon.get("valid", True),
+            "percent_off": coupon.get("percent_off"),
+            "duration": coupon.get("duration"),
+            "duration_in_months": coupon.get("duration_in_months"),
+        },
+        "invite_expects": {
+            "discount_percent": cfg["discount_percent"],
+            "discount_duration": cfg["discount_duration"],
+            "discount_duration_in_months": cfg["discount_duration_in_months"],
+        },
+    }
+
+
+def get_pilot_invite_operational_config() -> Dict[str, Any]:
+    import os
+
+    from services.plan_registry import _get_stripe_mode
+
+    mode = _get_stripe_mode()
+    sk = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
+    wh_explicit = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()
+    wh_test = (os.getenv("STRIPE_WEBHOOK_SECRET_TEST") or "").strip()
+    wh_live = (os.getenv("STRIPE_WEBHOOK_SECRET_LIVE") or "").strip()
+    wh_ok = bool(wh_explicit or (wh_live if mode == "live" else wh_test))
+    return {
+        "stripe_mode": mode,
+        "requirements": [
+            {"key": "STRIPE_SECRET_KEY", "label": "Stripe secret API key", "configured": bool(sk)},
+            {"key": "STRIPE_WEBHOOK_SECRET", "label": "Stripe webhook signing secret", "configured": wh_ok},
+            {
+                "key": "REACT_APP_STRIPE_PUBLISHABLE_KEY",
+                "label": "Stripe publishable key (frontend)",
+                "configured": bool((os.getenv("REACT_APP_STRIPE_PUBLISHABLE_KEY") or "").strip()),
+                "scope": "frontend",
+            },
+        ],
+        "webhook_paths": ["/api/webhook/stripe", "/api/webhooks/stripe"],
+        "intake_invite_query_param": "invite",
+        "intake_plan_query_param": "plan",
+        "coupon_guidance": {
+            "repeating_pilot": "Create percent_off coupon with duration=repeating and duration_in_months matching invite pilot duration.",
+            "payment_method": "Repeating pilots use payment_method_collection=always at checkout.",
+            "onboarding_fee": "Waived onboarding omits setup line item from checkout when policy=waived.",
+        },
+        "deferred_onboarding_public": False,
+    }
 
 
 async def update_invite_code(code: str, body: PilotInviteCodeUpdate) -> Optional[Dict[str, Any]]:
@@ -585,7 +867,39 @@ async def update_invite_code(code: str, body: PilotInviteCodeUpdate) -> Optional
     if not res:
         return None
     res.pop("_id", None)
-    res["effective_status"] = _effective_status(res)
+    res = _enrich_invite_row(res)
+
+    stripe_fields_changed = any(
+        x is not None
+        for x in (
+            body.stripe_coupon_id,
+            body.stripe_promotion_code_id,
+            body.discount_mode,
+            body.discount_percent,
+            body.discount_duration,
+            body.discount_duration_in_months,
+        )
+    )
+    if stripe_fields_changed and (res.get("stripe_coupon_id") or res.get("stripe_promotion_code_id")):
+        from services.pilot_stripe_coupon_validation import (
+            PilotStripeCouponValidationError,
+            validate_pilot_stripe_discount_config,
+        )
+
+        try:
+            await validate_pilot_stripe_discount_config(
+                stripe_coupon_id=res.get("stripe_coupon_id"),
+                stripe_promotion_code_id=res.get("stripe_promotion_code_id"),
+                discount_mode=res.get("discount_mode") or "coupon",
+                invite_fields=res,
+            )
+        except PilotStripeCouponValidationError as e:
+            detail = "; ".join(e.details) if e.details else str(e)
+            raise ValueError(detail) from e
+
+    if body.onboarding_fee_policy == PilotOnboardingFeePolicy.DEFERRED:
+        raise ValueError(_DEFERRED_EXPERIMENTAL_MSG)
+
     return res
 
 

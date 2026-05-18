@@ -453,7 +453,7 @@ export const intakeAPI = {
   },
   validatePilotInvite: (body) => apiClient.post('/intake/pilot-invite/validate', body),
   getOnboardingStatus: (clientId) => apiClient.get(`/intake/onboarding-status/${clientId}`),
-  getPlans: () => apiClient.get('/intake/plans'),
+  getPlans: (params = {}) => apiClient.get('/intake/plans', { params }),
   searchCouncils: (q, nation = null, page = 1, limit = 20) => 
     apiClient.get('/intake/councils', { params: { q, nation, page, limit } }),
   autocompletePostcode: (q) => apiClient.get('/intake/postcode-autocomplete', { params: { q } }),
@@ -1094,6 +1094,51 @@ export const adminAPI = {
     apiClient.post(`/admin/notifications/${encodeURIComponent(notificationId)}/dismiss`),
   recordInAppNotificationCta: (notificationId, body = { action_key: 'primary' }) =>
     apiClient.post(`/admin/notifications/${encodeURIComponent(notificationId)}/cta`, body),
+  // Founding pilot invites (owner/admin)
+  getPilotInviteOperationalConfig: () => apiClient.get('/admin/pilot-invites/operational-config'),
+  listPilotInvites: (params = {}) => apiClient.get('/admin/pilot-invites', { params }),
+  suggestPilotInviteCode: (params = {}) => apiClient.get('/admin/pilot-invites/suggest-code', { params }),
+  validatePilotInviteStripe: (body) => apiClient.post('/admin/pilot-invites/validate-stripe', body),
+  createPilotInvite: (body) => apiClient.post('/admin/pilot-invites', body),
+  getPilotInvite: (code) => apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}`),
+  updatePilotInvite: (code, body) => apiClient.patch(`/admin/pilot-invites/${encodeURIComponent(code)}`, body),
+  disablePilotInvite: (code) => apiClient.patch(`/admin/pilot-invites/${encodeURIComponent(code)}/disable`),
+  getPilotInviteUsage: (code, params = {}) =>
+    apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}/usage`, { params }),
+  getPilotInviteDistribution: (code, params = {}) =>
+    apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}/distribution`, { params }),
+  listPilotLifecycleAccounts: (params = {}) => apiClient.get('/admin/pilot-lifecycle/accounts', { params }),
+  getPilotLifecycleOpsDashboard: (params = {}) => apiClient.get('/admin/pilot-lifecycle/ops-dashboard', { params }),
+  getPilotLifecycleAccount: (clientId) => apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}`),
+  getPilotLifecycleOperationalProfile: (clientId) =>
+    apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/operational-profile`),
+  getPilotLifecycleHistory: (clientId, params = {}) =>
+    apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/history`, { params }),
+  reconcilePilotLifecycleAccount: (clientId) =>
+    apiClient.post(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/reconcile`),
+  syncPilotStripePaymentMethod: (clientId) =>
+    apiClient.post(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/sync-stripe-payment-method`),
+  listPilotLifecycleAnomalies: (params = {}) => apiClient.get('/admin/pilot-lifecycle/anomalies', { params }),
+  resolvePilotLifecycleAnomaly: (anomalyId, body) =>
+    apiClient.post(`/admin/pilot-lifecycle/anomalies/${encodeURIComponent(anomalyId)}/resolve`, body),
+  extendPilotAccount: (clientId, body) =>
+    apiClient.post(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/extend`, body),
+  setPilotExpiry: (clientId, body) =>
+    apiClient.post(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/set-expiry`, body),
+  cancelPilotAccount: (clientId, body) =>
+    apiClient.post(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/cancel`, body),
+  convertPilotAccount: (clientId, body) =>
+    apiClient.post(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/convert-to-paid`, body),
+  compPilotAccount: (clientId, body) =>
+    apiClient.post(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/comp`, body),
+  pausePilotAccount: (clientId, body) =>
+    apiClient.post(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/pause`, body),
+  resumePilotAccount: (clientId, body) =>
+    apiClient.post(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/resume`, body),
+  setPilotOnboardingFeePolicy: (clientId, body) =>
+    apiClient.post(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/onboarding-fee-policy`, body),
+  patchPilotNotes: (clientId, body) =>
+    apiClient.patch(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/notes`, body),
 };
 
 // Contractor portal API (use with contractor token from contractor login/set-password)

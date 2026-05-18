@@ -91,7 +91,7 @@ DEFAULT_BLOCKS: list[dict[str, Any]] = [
         "enabled": True,
         "content": (
             "The Client has selected the {{plan_name}} plan billed on a monthly basis at "
-            "{{monthly_fee}} {{currency}}. {{onboarding_fee_line}}. "
+            "{{monthly_fee}} {{currency}}. {{onboarding_fee_line}}. {{pilot_offer_line}} "
             "Recurring subscription charges may continue automatically unless cancelled in accordance with billing terms."
         ),
     },
@@ -273,6 +273,10 @@ async def ensure_default_agreement_assets() -> None:
     template_id = str(uuid.uuid4())
     version_id = str(uuid.uuid4())
     now = _utc()
+
+    from services.agreement_template_governance import assert_agreement_template_publishable
+
+    assert_agreement_template_publishable(DEFAULT_BLOCKS)
 
     version_doc: Dict[str, Any] = {
         "version_id": version_id,

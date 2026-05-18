@@ -204,6 +204,7 @@ const IntakePage = () => {
 
   // Form data state (initial plan from URL ?plan=)
   const planParam = searchParams.get('plan');
+  const inviteParam = searchParams.get('invite') || searchParams.get('invite_code');
   const leadIdParam = searchParams.get('lead_id');
   const leadTokenParam = searchParams.get('lead_token');
   const sourceParam = searchParams.get('from');
@@ -408,18 +409,61 @@ const IntakePage = () => {
     return () => clearTimeout(tid);
   }, [prefillFromRiskCheck, step, runEmailAvailabilityCheck]);
 
-  // Load plans on mount
+  const validatePilotInviteForPlan = useCallback(
+    async (code, planCode, email) => {
+      const trimmed = (code || '').trim();
+      if (!trimmed) {
+        setPilotInviteValidation(null);
+        return;
+      }
+      setPilotInviteValidating(true);
+      try {
+        const res = await intakeAPI.validatePilotInvite({
+          code: trimmed,
+          plan_code: planCode || formData.billing_plan,
+          email: email || formData.email || undefined,
+        });
+        setPilotInviteValidation(res.data || { valid: false, message: 'Invalid response' });
+      } catch (err) {
+        const detail = err?.response?.data?.detail;
+        const message =
+          typeof detail === 'string'
+            ? detail
+            : detail?.message || err?.response?.data?.message || 'This invite code could not be applied.';
+        setPilotInviteValidation({ valid: false, message });
+      } finally {
+        setPilotInviteValidating(false);
+      }
+    },
+    [formData.billing_plan, formData.email],
+  );
+
+  // Pre-fill invite from distribution URL (?invite=CODE)
+  useEffect(() => {
+    const raw = (inviteParam || '').trim();
+    if (!raw) return;
+    setPilotInviteCode(raw.toUpperCase().replace(/\s+/g, ''));
+    void validatePilotInviteForPlan(raw, initialPlan, '');
+  }, [inviteParam, initialPlan, validatePilotInviteForPlan]);
+
+  // Load plans on mount (and when invite/plan context changes)
   useEffect(() => {
     const loadPlans = async () => {
       try {
-        const response = await intakeAPI.getPlans();
+        const params = {};
+        if ((pilotInviteCode || inviteParam || '').trim()) {
+          params.invite = (pilotInviteCode || inviteParam || '').trim();
+        }
+        if (formData.billing_plan) params.plan = formData.billing_plan;
+        if (formData.email) params.email = formData.email;
+        const response = await intakeAPI.getPlans(params);
         setPlans(response.data.plans);
       } catch (err) {
         console.error('Failed to load plans:', err);
       }
     };
     loadPlans();
-  }, []);
+  }, [pilotInviteCode, inviteParam, formData.billing_plan, formData.email]);
 
   useEffect(() => {
     if (step !== 5) {
@@ -1188,6 +1232,11 @@ const IntakePage = () => {
             agreementRenderValidation={agreementRenderValidation}
             serviceAgreementAccepted={serviceAgreementAccepted}
             onServiceAgreementAcceptedChange={setServiceAgreementAccepted}
+            pilotInviteCode={pilotInviteCode}
+            onPilotInviteCodeChange={setPilotInviteCode}
+            pilotInviteValidation={pilotInviteValidation}
+            pilotInviteValidating={pilotInviteValidating}
+            onValidatePilotInvite={validatePilotInviteForPlan}
           />
         )}
       </main>
@@ -2522,6 +2571,14 @@ const Step5Review = ({
   onValidatePilotInvite,
 }) => {
   const selectedPlan = plans.find(p => p.plan_id === formData.billing_plan);
+  const pilotPricingActive =
+    pilotInviteValidation?.valid && pilotInviteValidation?.plan_code === formData.billing_plan;
+  const effectiveSetupFee = pilotPricingActive
+    ? (pilotInviteValidation.onboarding_fee_waived ? 0 : (pilotInviteValidation.setup_fee_effective ?? selectedPlan?.setup_fee ?? 0))
+    : (selectedPlan?.setup_fee ?? 0);
+  const totalDueToday = pilotPricingActive
+    ? (pilotInviteValidation.first_payment_estimate ?? effectiveSetupFee + (selectedPlan?.monthly_price ?? 0))
+    : ((selectedPlan?.monthly_price ?? 0) + (selectedPlan?.setup_fee ?? 0));
   const [stagedFiles, setStagedFiles] = useState([]);
   const [showAgreementViewer, setShowAgreementViewer] = useState(false);
   const [requirementsPreview, setRequirementsPreview] = useState([]);
@@ -2990,12 +3047,21 @@ const Step5Review = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">One-time setup fee</span>
-                <span className="font-medium">£{selectedPlan.setup_fee.toFixed(2)}</span>
+                <span className="font-medium">
+                  {pilotPricingActive && pilotInviteValidation.onboarding_fee_waived
+                    ? 'Waived'
+                    : `£${effectiveSetupFee.toFixed(2)}`}
+                </span>
               </div>
+              {pilotPricingActive && pilotInviteValidation.commercial_summary && (
+                <p className="text-xs text-emerald-800 leading-relaxed border-t border-slate-100 pt-2">
+                  {pilotInviteValidation.commercial_summary}
+                </p>
+              )}
               <div className="flex justify-between pt-2 border-t text-base">
                 <span className="font-semibold text-midnight-blue">Total due today</span>
                 <span className="font-bold text-electric-teal">
-                  £{(selectedPlan.monthly_price + selectedPlan.setup_fee).toFixed(2)}
+                  £{totalDueToday.toFixed(2)}
                 </span>
               </div>
             </div>

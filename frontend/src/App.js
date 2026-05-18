@@ -147,6 +147,11 @@ import ClientWorkQueuePage from './pages/ClientWorkQueuePage';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminAssistantPage from './pages/AdminAssistantPage';
 import AdminBillingPage from './pages/AdminBillingPage';
+import AdminPilotInvitesPage from './pages/admin/AdminPilotInvitesPage';
+import AdminPilotInviteDetailPage from './pages/admin/AdminPilotInviteDetailPage';
+import AdminPilotOperationsPage from './pages/admin/AdminPilotOperationsPage';
+import AdminPilotAccountDetailPage from './pages/admin/AdminPilotAccountDetailPage';
+import AdminPilotAnomaliesPage from './pages/admin/AdminPilotAnomaliesPage';
 import AdminPendingPaymentsPage from './pages/AdminPendingPaymentsPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminServiceCataloguePage from './pages/AdminServiceCataloguePage';
@@ -521,6 +526,46 @@ function App() {
                   <AdminBillingPage />
                 </ProtectedRoute>
               } 
+            />
+            <Route
+              path="/admin/pilot-invites"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPilotInvitesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/pilot-invites/:code"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPilotInviteDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/pilot-operations"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPilotOperationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/pilot-operations/anomalies"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPilotAnomaliesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/pilot-operations/accounts/:clientId"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPilotAccountDetailPage />
+                </ProtectedRoute>
+              }
             />
             <Route 
               path="/admin/orders" 

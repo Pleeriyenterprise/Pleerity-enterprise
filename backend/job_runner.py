@@ -1517,6 +1517,13 @@ async def run_subscription_lifecycle():
     return await run_renewal_reminders()
 
 
+async def run_pilot_lifecycle_reconcile():
+    """Expire pilot governance periods that are past effective end date (idempotent)."""
+    from services.pilot_lifecycle_reconciliation_worker import reconcile_pilot_lifecycle_batch
+
+    return await reconcile_pilot_lifecycle_batch()
+
+
 async def run_stripe_subscription_reconcile_job():
     """Batch re-sync subscription rows from Stripe (webhook safety net)."""
     from services.jobs import run_stripe_subscription_reconcile
@@ -1589,4 +1596,5 @@ JOB_RUNNERS = {
     "contractor_performance_recalc": run_contractor_performance_recalc,
     "scheduled_admin_communications": run_scheduled_admin_communications,
     "work_order_schedule_reminders": run_work_order_schedule_reminders,
+    "pilot_lifecycle_reconcile": run_pilot_lifecycle_reconcile,
 }

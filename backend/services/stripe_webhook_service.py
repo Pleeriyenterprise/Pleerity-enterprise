@@ -741,19 +741,17 @@ class StripeWebhookService:
         entitlements_version = (billing_after or {}).get("entitlements_version", 1)
 
         # Update client record with billing info and entitlements_version
-        await db.clients.update_one(
-            {"client_id": client_id},
-            {
-                "$set": {
-                    "subscription_status": (subscription_status or "unknown").upper(),
-                    "billing_plan": plan_code.value,
-                    "stripe_customer_id": stripe_customer_id,
-                    "stripe_subscription_id": stripe_subscription_id,
-                    "entitlement_status": entitlement_status.value,
-                    "entitlements_version": entitlements_version,
-                }
-            },
-        )
+        client_set: Dict[str, Any] = {
+            "subscription_status": (subscription_status or "unknown").upper(),
+            "billing_plan": plan_code.value,
+            "stripe_customer_id": stripe_customer_id,
+            "stripe_subscription_id": stripe_subscription_id,
+            "entitlement_status": entitlement_status.value,
+            "entitlements_version": entitlements_version,
+        }
+        if onb_client_fields:
+            client_set.update(onb_client_fields)
+        await db.clients.update_one({"client_id": client_id}, {"$set": client_set})
 
         try:
             await sync_subscription_lifecycle(client_id, bump_version=False)
@@ -786,6 +784,14 @@ class StripeWebhookService:
                         stripe_subscription_id=stripe_subscription_id,
                         stripe_event_id=event.get("id") if event else None,
                     )
+                    try:
+                        from services.pilot_lifecycle_service import sync_stripe_payment_method_status
+
+                        await sync_stripe_payment_method_status(
+                            client_id, stripe_customer_id=stripe_customer_id
+                        )
+                    except Exception as pm_ex:
+                        logger.warning("Pilot PM sync after checkout failed client_id=%s: %s", client_id, pm_ex)
                     await register_pending_redemption(
                         checkout_session_id=checkout_session_id or "",
                         client_id=client_id,
@@ -1012,14 +1018,27 @@ class StripeWebhookService:
             client_email_for_pdf = (
                 (client_for_email or {}).get("email") or (client_for_email or {}).get("contact_email") or ""
             ).strip()
-            plan_pricing_line = f"£{plan_def.get('monthly_price', 0):.2f}/month + £{plan_def.get('onboarding_fee', 0):.2f} setup"
+            from services.pilot_commercial_truth import (
+                build_payment_confirmation_pricing_line,
+                build_pilot_offer_summary,
+                commercial_context_from_client,
+            )
+
+            client_full = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+            pilot_ctx = commercial_context_from_client(client_full or {}, plan_code=plan_code.value)
             amount_total_cents = session.get("amount_total")
             currency = (session.get("currency") or "gbp").strip().upper()
-            if amount_total_cents is not None:
+            amt_display = build_payment_confirmation_pricing_line(
+                pilot_ctx, amount_total_cents=amount_total_cents
+            )
+            if amount_total_cents is not None and not pilot_ctx:
                 sym = "£" if currency == "GBP" else ""
                 amt_display = f"{sym}{amount_total_cents / 100:.2f}" + ("" if sym else f" {currency}")
-            else:
-                amt_display = plan_pricing_line
+            elif not pilot_ctx:
+                amt_display = (
+                    f"£{plan_def.get('monthly_price', 0):.2f}/month + "
+                    f"£{plan_def.get('onboarding_fee', 0):.2f} setup"
+                )
             payment_dt = datetime.now(timezone.utc)
             payment_date_display = payment_dt.strftime("%d %B %Y %H:%M UTC")
             sess_id = checkout_session_id or (session.get("id") or "")
@@ -1042,6 +1061,7 @@ class StripeWebhookService:
                 "client_name": client_name or "Valued Customer",
                 "plan_name": plan_def.get("name", plan_code.value),
                 "amount_display": amt_display,
+                "pilot_offer_line": build_pilot_offer_summary(pilot_ctx) if pilot_ctx else "",
                 "payment_date_display": payment_date_display,
                 "reference_display": reference_display,
                 "support_email": support_email,

@@ -12,6 +12,18 @@ subscription.deleted        →  record_stripe_cancelled_before_paid (if applica
 Feature access              →  entitlement_access (+ Stripe canonical state)
 ```
 
+## Separated lifecycle domains (operational maturity)
+
+`pilot_status` remains the admin mutation field. Reconciliation derives and persists:
+
+| Field | Authority |
+|-------|-----------|
+| `pilot_governance_status` | Platform governance |
+| `pilot_billing_status` | Stripe subscription / billing lifecycle |
+| `pilot_entitlement_status` | Entitlement engine (`canonical_entitlement_state`) |
+
+See [PILOT_OPERATIONAL_MATURITY.md](./PILOT_OPERATIONAL_MATURITY.md) for health scoring, anomalies, template governance, and ops playbooks.
+
 ## Lifecycle states (`pilot_status`)
 
 | Status | Meaning |
@@ -34,9 +46,14 @@ Base: `/api/admin/pilot-lifecycle` (requires `admin_route_guard`; mutations requ
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/ops-dashboard?status=` | Ops summary + health + open anomalies |
 | GET | `/accounts?status=` | List pilot accounts |
 | GET | `/accounts/{client_id}` | Current state + effective expiry |
+| GET | `/accounts/{client_id}/operational-profile` | Timeline, domains, health, anomalies |
 | GET | `/accounts/{client_id}/history` | Audit trail |
+| POST | `/accounts/{client_id}/reconcile` | Reconcile domains + health + anomalies |
+| GET | `/anomalies` | Open operational anomalies |
+| POST | `/anomalies/{anomaly_id}/resolve` | Resolve anomaly with notes |
 | POST | `/accounts/{client_id}/create` | Admin override pilot on existing client |
 | POST | `/accounts/{client_id}/extend` | Extend by days/weeks/months/until |
 | POST | `/accounts/{client_id}/set-expiry` | Set absolute expiry |
@@ -73,6 +90,36 @@ Policies: `waived`, `deferred`, `charge_now`, `discount`. Optional `deferred_unt
 - To end Stripe discount early: admin **convert to paid** + normal billing, or **cancel** with `cancel_stripe_subscription: true`.
 
 ## Comp accounts
+
+- `pilot_status=comped` with audit reason (minimum 10 characters).
+- **Owner role only** (`POST .../comp` uses `require_owner` + step-up).
+- Persists `pilot_comped_by`, `pilot_comped_by_email`, optional `pilot_comp_review_expires_at`.
+- Comped accounts bypass Stripe subscription checks in `entitlement_access` — use only for strategic exceptions.
+
+## Conversion observability
+
+Client fields (set by Stripe webhooks / lifecycle):
+
+| Field | Meaning |
+|-------|---------|
+| `pilot_converted_to_paid_at` / `pilot_transitioned_to_paid_at` | First paid conversion |
+| `pilot_first_paid_invoice_id` / `pilot_first_paid_invoice_at` | First non-zero invoice |
+| `pilot_first_paid_invoice_paid` | Boolean |
+| `pilot_cancelled_before_paid_conversion` | Cancelled before paid |
+| `pilot_conversion_failure` | e.g. `cancelled_before_paid` |
+| `pilot_stripe_payment_method_collected` | PM on file (sync via admin or post-checkout webhook) |
+
+## Ops dashboard
+
+`GET /api/admin/pilot-lifecycle/ops-dashboard` — pilot status, expiry, onboarding policy, conversion flags, PM collected, invite code, days remaining.
+
+`POST /api/admin/pilot-lifecycle/accounts/{id}/sync-stripe-payment-method` — refresh PM status from Stripe.
+
+## Deferred onboarding policy
+
+`onboarding_fee_policy=deferred` is **experimental**: blocked on invite create/update and public checkout. Not automated for post-pilot charging.
+
+## Comp accounts (legacy note)
 
 - `pilot_status=comped` with audit reason.
 - `evaluate_subscription_feature_access` allows access when comped (even if Stripe subscription is weak/absent).

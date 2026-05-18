@@ -27,6 +27,7 @@ async def build_intake_agreement_preview(
     intake_session_id: str,
     client_id: Optional[str],
     intake: Optional[IntakeFormData],
+    pilot_invite_doc: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[list]]:
     """
     Returns (payload_dict, error_code, validation_errors).
@@ -57,13 +58,20 @@ async def build_intake_agreement_preview(
             return None, "CLIENT_NOT_FOUND", None
         if str(client.get("intake_session_id") or "").strip() != sid:
             return None, "INTAKE_SESSION_INVALID", None
-        snap = await build_commercial_snapshot(client_id=cid, template_id=template_id, template_version_id=version_id)
+        snap = await build_commercial_snapshot(
+            client_id=cid,
+            template_id=template_id,
+            template_version_id=version_id,
+            pilot_invite_doc=pilot_invite_doc,
+        )
     else:
         if intake is None:
             return None, "INTAKE_BODY_REQUIRED", None
         if str(intake.intake_session_id or "").strip() != sid:
             return None, "INTAKE_SESSION_INVALID", None
-        snap = build_commercial_snapshot_from_intake_form(intake, template_id, version_id)
+        snap = build_commercial_snapshot_from_intake_form(
+            intake, template_id, version_id, pilot_invite_doc=pilot_invite_doc
+        )
 
     if not snap:
         return None, "CLIENT_NOT_FOUND", None

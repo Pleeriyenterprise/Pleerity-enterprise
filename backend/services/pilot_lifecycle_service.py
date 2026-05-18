@@ -87,6 +87,26 @@ def _snapshot_pilot_fields(doc: Dict[str, Any]) -> Dict[str, Any]:
         "pilot_override_reason",
         "pilot_expected_first_paid_invoice_at",
         "pilot_governance_revoke_access",
+        "pilot_comped_by",
+        "pilot_comped_by_email",
+        "pilot_comp_review_expires_at",
+        "pilot_transitioned_to_paid_at",
+        "pilot_first_paid_invoice_id",
+        "pilot_first_paid_invoice_at",
+        "pilot_first_paid_invoice_paid",
+        "pilot_conversion_observed_at",
+        "pilot_cancelled_before_conversion",
+        "pilot_conversion_failure",
+        "pilot_stripe_payment_method_collected",
+        "pilot_stripe_default_payment_method_id",
+        "pilot_governance_status",
+        "pilot_billing_status",
+        "pilot_entitlement_status",
+        "pilot_health_score",
+        "pilot_health_band",
+        "pilot_health_flags",
+        "pilot_conversion_risk",
+        "pilot_extension_count",
         "onboarding_fee_policy",
         "onboarding_fee_waived",
         "onboarding_fee_waived_at",
@@ -176,6 +196,14 @@ async def _persist_transition(
     client_patch = _build_client_patch(patch)
     await db.clients.update_one({"client_id": client_id}, {"$set": client_patch})
     after_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+
+    if after_doc and (after_doc.get("pilot_status") or after_doc.get("pilot_program_type")):
+        try:
+            from services.pilot_operational_sync import sync_pilot_operational_state
+
+            await sync_pilot_operational_state(client_id, client=after_doc, emit_notifications=False)
+        except Exception as sync_ex:
+            logger.warning("Pilot operational sync after transition failed client_id=%s: %s", client_id, sync_ex)
 
     audit_doc = build_pilot_lifecycle_audit_document(
         client_id=client_id,
@@ -315,19 +343,6 @@ async def create_from_invite_checkout(
         stripe_event_id=stripe_event_id,
         idempotency_key=f"pilot_created:{checkout_session_id}" if checkout_session_id else None,
     )
-    if onb_policy == PilotOnboardingFeePolicy.WAIVED:
-        db = database.get_db()
-        await db.client_billing.update_one(
-            {"client_id": client_id},
-            {
-                "$set": {
-                    "onboarding_fee_paid": True,
-                    **{k: v for k, v in onb_fields.items() if k.startswith("onboarding_fee")},
-                }
-            },
-            upsert=True,
-        )
-    return result
 
 
 async def admin_set_onboarding_fee_policy(
@@ -475,6 +490,7 @@ async def extend_pilot(
     state["pilot_extended_until"] = new_until
     state["pilot_manually_overridden"] = True
     state["pilot_override_reason"] = reason
+    state["pilot_extension_count"] = int(client.get("pilot_extension_count") or 0) + 1
 
     return await _persist_transition(
         client_id=client_id,
@@ -598,6 +614,7 @@ async def comp_account(
     actor_email: Optional[str],
     reason: str,
     notes: Optional[str] = None,
+    review_expires_at: Optional[datetime] = None,
 ) -> Dict[str, Any]:
     client = await _load_client(client_id)
     now = _utc_now()
@@ -610,6 +627,9 @@ async def comp_account(
     state["pilot_override_reason"] = reason
     state["pilot_notes"] = notes or state.get("pilot_notes")
     state["pilot_governance_revoke_access"] = False
+    state["pilot_comped_by"] = str(actor_id)
+    state["pilot_comped_by_email"] = actor_email
+    state["pilot_comp_review_expires_at"] = review_expires_at
 
     return await _persist_transition(
         client_id=client_id,
@@ -731,6 +751,17 @@ async def record_stripe_paid_transition(
         stripe_event_id=stripe_event_id,
         idempotency_key=f"pilot_paid:{invoice.get('id')}" if invoice.get("id") else None,
     )
+    try:
+        from services.pilot_operational_notifications import emit_pilot_operational_event
+
+        await emit_pilot_operational_event(
+            event_type="pilot_converted",
+            client_id=client_id,
+            context={"invoice_id": invoice.get("id")},
+            idempotency_key=f"pilot_converted:{client_id}",
+        )
+    except Exception:
+        pass
     return True
 
 
@@ -778,10 +809,13 @@ async def get_pilot_state(client_id: str) -> Dict[str, Any]:
     if not client.get("pilot_status") and not client.get("pilot_program_type"):
         raise ValueError("NOT_PILOT")
     eff = _effective_expiry(client)
+    billing = await database.get_db().client_billing.find_one({"client_id": client_id}, {"_id": 0})
+    ops = build_pilot_ops_summary(client, billing)
     pilot_snap = _snapshot_pilot_fields(client)
     return {
         "client_id": client_id,
         "pilot": pilot_snap,
+        "ops": ops,
         "onboarding_fee": {
             k: pilot_snap.get(k)
             for k in (
@@ -870,3 +904,151 @@ async def get_lifecycle_history(
         .limit(limit)
     )
     return [doc async for doc in cursor]
+
+
+def _days_remaining(client: Dict[str, Any]) -> Optional[int]:
+    eff = _effective_expiry(client)
+    if not eff:
+        return None
+    delta = eff - _utc_now()
+    return max(0, delta.days)
+
+
+def build_pilot_ops_summary(
+    client: Dict[str, Any],
+    billing: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Operational visibility snapshot for admin ops dashboard."""
+    billing = billing or {}
+    from services.pilot_conversion_risk import compute_conversion_risk_flags
+    from services.pilot_lifecycle_domains import build_lifecycle_domains_snapshot
+
+    domains = build_lifecycle_domains_snapshot(client, billing)
+    risk = client.get("pilot_conversion_risk") or compute_conversion_risk_flags(client, billing=billing)
+    eff = _effective_expiry(client)
+    return {
+        "lifecycle_domains": domains,
+        "pilot_status": client.get("pilot_status"),
+        "pilot_governance_status": client.get("pilot_governance_status") or domains.get("pilot_governance_status"),
+        "pilot_billing_status": client.get("pilot_billing_status") or domains.get("pilot_billing_status"),
+        "pilot_entitlement_status": client.get("pilot_entitlement_status") or domains.get("pilot_entitlement_status"),
+        "days_remaining": risk.get("days_remaining") if risk.get("days_remaining") is not None else _days_remaining(client),
+        "effective_expires_at": eff.isoformat() if eff else None,
+        "onboarding_completed": risk.get("onboarding_completed"),
+        "payment_method_collected": bool(client.get("pilot_stripe_payment_method_collected")),
+        "first_paid_invoice_paid": bool(client.get("pilot_first_paid_invoice_paid")),
+        "conversion_readiness": {
+            "likely_conversion": risk.get("likely_conversion"),
+            "likely_churn": risk.get("likely_churn"),
+            "approaching_paid_transition": risk.get("approaching_paid_transition"),
+            "missing_payment_method": risk.get("missing_payment_method"),
+        },
+        "pilot_health_score": client.get("pilot_health_score"),
+        "pilot_health_band": client.get("pilot_health_band"),
+        "pilot_health_flags": client.get("pilot_health_flags") or [],
+        "comp_review_expires_at": _iso(client.get("pilot_comp_review_expires_at")),
+        "cancellation_risk": bool(
+            client.get("pilot_cancelled_before_paid_conversion")
+            or risk.get("likely_churn")
+            or risk.get("pilot_expired_without_conversion")
+        ),
+        "pilot_manually_overridden": bool(client.get("pilot_manually_overridden")),
+        "stripe_subscription_status": billing.get("subscription_status") or client.get("subscription_status"),
+    }
+
+
+async def list_pilot_ops_dashboard(
+    *,
+    status: Optional[str] = None,
+    limit: int = 200,
+    skip: int = 0,
+) -> Dict[str, Any]:
+    db = database.get_db()
+    accounts = await list_pilot_accounts(status=status, limit=limit, skip=skip)
+    enriched = []
+    for acc in accounts:
+        cid = acc.get("client_id")
+        billing = await db.client_billing.find_one({"client_id": cid}, {"_id": 0}) if cid else None
+        ops = build_pilot_ops_summary(acc, billing)
+        open_anomalies = []
+        if cid:
+            try:
+                from services.pilot_operational_anomalies import list_open_anomalies
+
+                open_anomalies = await list_open_anomalies(client_id=cid, limit=20)
+            except Exception:
+                pass
+        enriched.append({**acc, "ops": ops, "open_anomalies": open_anomalies})
+    return {"accounts": enriched, "count": len(enriched), "skip": skip, "limit": limit}
+
+
+async def sync_stripe_payment_method_status(
+    client_id: str,
+    *,
+    stripe_customer_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    from services.stripe_service import stripe_service
+
+    summary = await stripe_service.get_payment_method_summary(client_id)
+    collected = bool(summary and summary.get("has_default_payment_method"))
+    pm_id = (summary or {}).get("default_payment_method_id")
+    patch = {
+        "pilot_stripe_payment_method_collected": collected,
+        "pilot_stripe_default_payment_method_id": pm_id,
+    }
+    db = database.get_db()
+    await db.clients.update_one({"client_id": client_id}, {"$set": patch})
+    client = await _load_client(client_id)
+    from services.pilot_operational_sync import sync_pilot_operational_state
+
+    await sync_pilot_operational_state(client_id, client={**client, **patch})
+    return {"payment_method_collected": collected, "default_payment_method_id": pm_id}
+
+
+async def get_pilot_operational_profile(client_id: str) -> Dict[str, Any]:
+    """Full operational profile: state, timeline, health, anomalies, domains."""
+    state = await get_pilot_state(client_id)
+    history = await get_lifecycle_history(client_id, limit=100)
+    from services.pilot_operational_anomalies import list_open_anomalies
+
+    anomalies = await list_open_anomalies(client_id=client_id, limit=50)
+    return {
+        **state,
+        "timeline": history,
+        "open_anomalies": anomalies,
+    }
+
+
+async def reconcile_pilot_operational_state(client_id: str) -> Dict[str, Any]:
+    """Reconcile domains, detect anomalies, refresh health/risk for one client."""
+    expired = await sync_expired_if_due(client_id)
+    from services.pilot_operational_sync import sync_pilot_operational_state
+
+    sync_result = await sync_pilot_operational_state(client_id)
+    inconsistencies = sync_result.get("domains", {})
+    from services.pilot_lifecycle_domains import detect_domain_inconsistencies
+
+    client = await _load_client(client_id)
+    billing = await database.get_db().client_billing.find_one({"client_id": client_id}, {"_id": 0})
+    issues = detect_domain_inconsistencies(client, billing)
+    if issues:
+        logger.warning(
+            "Pilot operational inconsistencies client_id=%s count=%s",
+            client_id,
+            len(issues),
+        )
+        await insert_pilot_lifecycle_audit(
+            build_pilot_lifecycle_audit_document(
+                client_id=client_id,
+                action_type="operational_reconcile_warning",
+                actor={"type": "system", "id": "pilot_reconcile"},
+                previous_values={},
+                new_values={"inconsistencies": issues},
+                reason="Domain inconsistency detected during reconciliation",
+            )
+        )
+    return {
+        "expired_transition": expired,
+        "operational_sync": sync_result,
+        "inconsistencies": issues,
+    }

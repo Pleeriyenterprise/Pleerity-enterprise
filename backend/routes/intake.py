@@ -332,10 +332,33 @@ async def get_plans(request: Request):
     """
     request_id = str(uuid.uuid4())
     all_plans = plan_registry.get_all_plans(_request_id=request_id)
-    
+
+    invite_code = (request.query_params.get("invite_code") or request.query_params.get("invite") or "").strip()
+    plan_code = (request.query_params.get("plan_code") or request.query_params.get("plan") or "").strip()
+    email = (request.query_params.get("email") or "").strip() or None
+
+    pilot_ctx = None
+    if invite_code and plan_code:
+        try:
+            from services.pilot_invite_service import validate_invite_for_checkout
+
+            invite_doc, _ = await validate_invite_for_checkout(
+                code=invite_code,
+                plan_code=plan_code,
+                email=email,
+                for_checkout=False,
+            )
+            from services.pilot_commercial_truth import commercial_context_from_invite
+
+            pilot_ctx = commercial_context_from_invite(invite_doc, plan_code=plan_code)
+        except Exception:
+            pilot_ctx = None
+
+    from services.pilot_commercial_truth import intake_plan_pricing_overlay
+
     plans = []
     for plan in all_plans:
-        plans.append({
+        row = {
             "plan_id": plan["code"],
             "name": plan["name"],
             "display_name": plan.get("display_name", plan["name"]),
@@ -350,8 +373,11 @@ async def get_plans(request: Request):
             "color": plan.get("color"),
             "badge": plan.get("badge"),
             "is_popular": plan.get("is_popular", False),
-        })
-    
+        }
+        if pilot_ctx and plan["code"] == pilot_ctx.get("plan_code"):
+            row = intake_plan_pricing_overlay(row, pilot_ctx)
+        plans.append(row)
+
     return {"plans": plans}
 
 
@@ -709,6 +735,7 @@ class IntakeAgreementPreviewBody(BaseModel):
     intake_session_id: str = Field(..., min_length=8)
     client_id: Optional[str] = None
     intake: Optional[IntakeFormData] = None
+    invite_code: Optional[str] = Field(default=None, max_length=64)
 
     @model_validator(mode="after")
     def require_intake_or_client(self) -> "IntakeAgreementPreviewBody":
@@ -801,10 +828,26 @@ async def intake_agreement_preview(request: Request, body: IntakeAgreementPrevie
         )
 
     cid = (body.client_id or "").strip() or None
+    pilot_invite_doc = None
+    invite_raw = (body.invite_code or "").strip()
+    plan_for_invite = None
+    if body.intake and getattr(body.intake, "billing_plan", None):
+        plan_for_invite = body.intake.billing_plan.value if hasattr(body.intake.billing_plan, "value") else str(body.intake.billing_plan)
+    if invite_raw and plan_for_invite:
+        try:
+            pilot_invite_doc, _ = await validate_invite_for_checkout(
+                code=invite_raw,
+                plan_code=plan_for_invite,
+                email=str(getattr(body.intake, "email", "") or "") if body.intake else None,
+                for_checkout=False,
+            )
+        except PilotInvitePublicError:
+            pilot_invite_doc = None
     payload, err, v_errs = await build_intake_agreement_preview(
         intake_session_id=body.intake_session_id,
         client_id=cid,
         intake=body.intake,
+        pilot_invite_doc=pilot_invite_doc,
     )
     if err == "AGREEMENT_NOT_CONFIGURED":
         raise HTTPException(
@@ -1422,6 +1465,7 @@ _PILOT_INVITE_HTTP_STATUS = {
     "PILOT_INVITE_PLAN_NOT_ELIGIBLE": status.HTTP_400_BAD_REQUEST,
     "PILOT_INVITE_EMAIL_NOT_ELIGIBLE": status.HTTP_400_BAD_REQUEST,
     "PILOT_INVITE_MISCONFIGURED": status.HTTP_503_SERVICE_UNAVAILABLE,
+    "PILOT_ONBOARDING_DEFERRED_NOT_AVAILABLE": status.HTTP_400_BAD_REQUEST,
 }
 
 
@@ -1497,9 +1541,32 @@ async def create_checkout(request: Request, client_id: str, checkout_body: Intak
         customer_email = client.get("contact_email") or client.get("email")
         lead_id = (client.get("marketing") or {}).get("lead_id") if client.get("marketing") else None
 
+        pilot_invite_doc = None
+        invite_raw = (checkout_body.invite_code or "").strip()
+        if invite_raw:
+            try:
+                pilot_invite_doc, _pilot_resp = await validate_invite_for_checkout(
+                    code=invite_raw,
+                    plan_code=plan_code,
+                    email=customer_email,
+                    for_checkout=True,
+                )
+            except PilotInvitePublicError as e:
+                logger.warning(
+                    "Pilot invite rejected client_id=%s request_id=%s error_code=%s",
+                    client_id,
+                    request_id,
+                    e.error_code,
+                )
+                raise HTTPException(
+                    status_code=_PILOT_INVITE_HTTP_STATUS.get(e.error_code, status.HTTP_400_BAD_REQUEST),
+                    detail=_checkout_error_detail(e.error_code, e.message, request_id),
+                )
+
         acc_doc, acc_err = await validate_acceptance_for_checkout(
             client_id=client_id,
             acceptance_id=checkout_body.acceptance_id.strip(),
+            pilot_invite_doc=pilot_invite_doc,
         )
         if acc_err:
             status_map = {

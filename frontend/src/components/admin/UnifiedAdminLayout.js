@@ -117,6 +117,8 @@ const navSections = [
       { href: '/admin/intake-schema', label: 'Intake Schema', icon: PenTool },
       { href: '/admin/billing', label: 'Pricing & Billing', icon: CreditCard, tabTarget: 'overview' },
       { href: '/admin/billing', label: 'Pending Payments', icon: Clock, tabTarget: 'pending-payments' },
+      { href: '/admin/pilot-invites', label: 'Founding Pilot Invites', icon: Sparkles, ownerOrAdminOnly: true },
+      { href: '/admin/pilot-operations', label: 'Founding Pilot Operations', icon: Activity, ownerOrAdminOnly: true },
     ],
   },
   {

@@ -118,6 +118,10 @@ class PilotInviteValidateResponse(BaseModel):
     detail: Optional[str] = None
     onboarding_fee_policy: Optional[str] = None
     onboarding_fee_waived: bool = False
+    setup_fee_effective: Optional[float] = None
+    monthly_price_after_pilot: Optional[float] = None
+    first_payment_estimate: Optional[float] = None
+    commercial_summary: Optional[str] = None
 
 
 class PilotInvitePublicError(Exception):

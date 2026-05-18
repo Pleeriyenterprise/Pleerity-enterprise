@@ -463,6 +463,16 @@ class Database:
                 await self.db.pilot_lifecycle_audit.create_index([("client_id", 1), ("created_at", -1)])
                 await self.db.pilot_lifecycle_audit.create_index("idempotency_key", unique=True, sparse=True)
                 await self.db.pilot_lifecycle_audit.create_index([("action_type", 1), ("created_at", -1)])
+                await self.db.pilot_operational_anomalies.create_index("anomaly_id", unique=True)
+                await self.db.pilot_operational_anomalies.create_index(
+                    [("client_id", 1), ("resolved_at", 1), ("detected_at", -1)]
+                )
+                await self.db.pilot_operational_anomalies.create_index("idempotency_key", unique=True, sparse=True)
+                await self.db.pilot_operational_notification_log.create_index(
+                    [("client_id", 1), ("created_at", -1)]
+                )
+                await self.db.clients.create_index("pilot_governance_status", sparse=True)
+                await self.db.clients.create_index("pilot_health_band", sparse=True)
             except Exception:
                 pass
             # Contractors (Ops: client-scoped or system-wide)

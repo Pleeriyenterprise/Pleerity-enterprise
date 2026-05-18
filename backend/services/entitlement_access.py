@@ -77,8 +77,13 @@ def evaluate_subscription_feature_access(
         pilot_denial = evaluate_pilot_governance_access(client)
         if pilot_denial:
             return pilot_denial
-    except Exception:
-        pass
+    except Exception as pilot_gov_err:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Pilot governance check failed (continuing with Stripe entitlement): %s",
+            pilot_gov_err,
+        )
 
     if canon == "CANCELLED" or lc == "cancelled":
         return "This subscription is cancelled. Open Billing if you need to resubscribe.", {

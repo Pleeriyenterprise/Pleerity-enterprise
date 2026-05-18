@@ -43,6 +43,7 @@ class JobScheduleEntry:
 CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
     JobScheduleEntry("subscription_lifecycle", True, 26 * 60, "Daily", True),
     JobScheduleEntry("stripe_subscription_reconcile", False, 8 * 60, "Every 6 hours", True),
+    JobScheduleEntry("pilot_lifecycle_reconcile", False, 90, "Hourly", True),
     JobScheduleEntry("daily_reminders", True, 26 * 60, "Daily", True),
     JobScheduleEntry("pending_verification_digest", True, 26 * 60, "Daily", True),
     JobScheduleEntry("monthly_digest", True, 36 * 60, "Monthly", True),

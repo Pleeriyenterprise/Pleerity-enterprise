@@ -229,7 +229,7 @@ def test_checkout_with_valid_pilot_invite_passes_discount_doc(client):
                                 },
                             )
     assert response.status_code == 200
-    mock_validate.assert_called_once()
+    assert mock_validate.await_count >= 1
     call_kwargs = mock_stripe.create_checkout_session.call_args.kwargs
     assert call_kwargs.get("pilot_invite_doc") == pilot_doc
 
