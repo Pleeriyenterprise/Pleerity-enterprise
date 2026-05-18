@@ -787,38 +787,24 @@ async def preview_stripe_coupon_validation(invite_fields: Dict[str, Any]) -> Dic
 
 
 def get_pilot_invite_operational_config() -> Dict[str, Any]:
-    import os
+    from services.stripe_mode_authority import build_stripe_operational_config
 
-    from services.plan_registry import _get_stripe_mode
-
-    mode = _get_stripe_mode()
-    sk = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
-    wh_explicit = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()
-    wh_test = (os.getenv("STRIPE_WEBHOOK_SECRET_TEST") or "").strip()
-    wh_live = (os.getenv("STRIPE_WEBHOOK_SECRET_LIVE") or "").strip()
-    wh_ok = bool(wh_explicit or (wh_live if mode == "live" else wh_test))
-    return {
-        "stripe_mode": mode,
-        "requirements": [
-            {"key": "STRIPE_SECRET_KEY", "label": "Stripe secret API key", "configured": bool(sk)},
-            {"key": "STRIPE_WEBHOOK_SECRET", "label": "Stripe webhook signing secret", "configured": wh_ok},
-            {
-                "key": "REACT_APP_STRIPE_PUBLISHABLE_KEY",
-                "label": "Stripe publishable key (frontend)",
-                "configured": bool((os.getenv("REACT_APP_STRIPE_PUBLISHABLE_KEY") or "").strip()),
-                "scope": "frontend",
+    cfg = build_stripe_operational_config()
+    cfg.update(
+        {
+            "intake_invite_query_param": "invite",
+            "intake_plan_query_param": "plan",
+            "coupon_guidance": {
+                "repeating_pilot": "Create percent_off coupon with duration=repeating and duration_in_months matching invite pilot duration.",
+                "payment_method": "Repeating pilots use payment_method_collection=always at checkout.",
+                "onboarding_fee": "Waived onboarding omits setup line item from checkout when policy=waived.",
+                "mode_live_testing": "In live mode, use 100% pilot coupons for safe end-to-end testing — never test-mode coupons.",
+                "mode_test": "Use STRIPE_MODE=test in staging/dev with test Dashboard objects only.",
             },
-        ],
-        "webhook_paths": ["/api/webhook/stripe", "/api/webhooks/stripe"],
-        "intake_invite_query_param": "invite",
-        "intake_plan_query_param": "plan",
-        "coupon_guidance": {
-            "repeating_pilot": "Create percent_off coupon with duration=repeating and duration_in_months matching invite pilot duration.",
-            "payment_method": "Repeating pilots use payment_method_collection=always at checkout.",
-            "onboarding_fee": "Waived onboarding omits setup line item from checkout when policy=waived.",
-        },
-        "deferred_onboarding_public": False,
-    }
+            "deferred_onboarding_public": False,
+        }
+    )
+    return cfg
 
 
 async def update_invite_code(code: str, body: PilotInviteCodeUpdate) -> Optional[Dict[str, Any]]:

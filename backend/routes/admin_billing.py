@@ -83,7 +83,12 @@ def _stripe_timeline_summary(event_type: Optional[str]) -> str:
     )
 
 # Initialize Stripe
-stripe.api_key = os.getenv("STRIPE_API_KEY", "")
+try:
+    from services.stripe_mode_authority import configure_stripe_sdk
+
+    configure_stripe_sdk()
+except Exception:
+    stripe.api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
 
 
 # =============================================================================

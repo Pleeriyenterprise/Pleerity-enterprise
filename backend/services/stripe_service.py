@@ -39,6 +39,11 @@ from services.plan_registry import (
     plan_registry, PlanCode, EntitlementStatus,
     get_stripe_price_mappings, _get_stripe_mode, StripeModeMismatchError,
 )
+from services.stripe_mode_authority import (
+    StripeModeConfigurationError,
+    configure_stripe_sdk,
+    get_stripe_mode,
+)
 from utils.audit import create_audit_log
 from models import AuditAction
 from services.subscription_lifecycle_service import sync_subscription_lifecycle
@@ -46,8 +51,12 @@ from services.billing_reconciliation_service import mark_billing_reconciliation_
 
 logger = logging.getLogger(__name__)
 
-# Initialize Stripe (no placeholder default; missing key fails at checkout with clear error)
-stripe.api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
+# Initialize Stripe from STRIPE_MODE authority (no cross-mode fallback)
+try:
+    configure_stripe_sdk()
+except StripeModeConfigurationError as _stripe_cfg_err:
+    logger.warning("Stripe SDK not configured at import: %s", _stripe_cfg_err)
+    stripe.api_key = ""
 
 
 def _billing_timestamp_iso(val: Any) -> Optional[str]:
@@ -94,13 +103,16 @@ class StripeService:
         Returns:
             Dict with checkout_url and session_id
         """
+        try:
+            configure_stripe_sdk()
+        except StripeModeConfigurationError as e:
+            raise ValueError(str(e)) from e
         if not (stripe.api_key or "").strip():
-            raise ValueError("STRIPE_SECRET_KEY or STRIPE_API_KEY is not set. Configure env and restart.")
+            raise ValueError("Stripe secret key is not configured for the active STRIPE_MODE.")
 
         db = database.get_db()
 
-        # Stripe mode safety: determine mode from key, fetch prices for that mode only
-        mode = _get_stripe_mode()
+        mode = get_stripe_mode()
         try:
             config = get_stripe_price_mappings(mode)
         except StripeModeMismatchError as e:

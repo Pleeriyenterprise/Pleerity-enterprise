@@ -70,7 +70,7 @@ Navigate to **Products & Billing → Founding Pilot Invites** (`/admin/pilot-inv
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/admin/pilot-invites/operational-config` | Safe Stripe/env checklist (no secrets) |
+| GET | `/api/admin/pilot-invites/operational-config` | Safe Stripe/env checklist (no secrets); see `STRIPE_MODE_GOVERNANCE.md` |
 | GET | `/api/admin/pilot-invites` | List codes (filters: status, policy, duration, plan) |
 | GET | `/api/admin/pilot-invites/suggest-code` | Generate invite code suggestion |
 | POST | `/api/admin/pilot-invites/validate-stripe` | Validate coupon vs invite fields (no persist) |

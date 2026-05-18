@@ -115,21 +115,22 @@ def _extract_successful_invoice_payment_fields(
     return out
 
 
-# Initialize Stripe (prefer STRIPE_SECRET_KEY; fallback STRIPE_API_KEY)
-_stripe_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
-stripe.api_key = _stripe_key
+from services.stripe_mode_authority import (
+    StripeObjectModeMismatchError,
+    assert_stripe_object_mode,
+    configure_stripe_sdk,
+    get_stripe_mode,
+    resolve_webhook_secret,
+)
 
-# Webhook secret: support test vs live. If STRIPE_WEBHOOK_SECRET is set, use it; else choose by key prefix.
+try:
+    configure_stripe_sdk()
+except Exception as _wh_stripe_init:
+    logger.warning("Stripe webhook service: SDK not configured at import: %s", _wh_stripe_init)
+
+
 def _get_webhook_secret() -> str:
-    explicit = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()
-    if explicit:
-        return explicit
-    key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
-    if key.startswith("sk_live_"):
-        return (os.getenv("STRIPE_WEBHOOK_SECRET_LIVE") or "").strip()
-    if key.startswith("sk_test_"):
-        return (os.getenv("STRIPE_WEBHOOK_SECRET_TEST") or "").strip()
-    return ""
+    return resolve_webhook_secret()
 
 
 def _is_production_runtime() -> bool:
@@ -170,13 +171,20 @@ class StripeWebhookService:
         Returns:
             (success, message, details)
         """
-        # Step 1: Verify signature (use test/live secret by key or explicit STRIPE_WEBHOOK_SECRET)
+        # Step 1: Verify signature (mode-specific secret from STRIPE_MODE authority)
         webhook_secret = _get_webhook_secret()
         try:
             if webhook_secret:
                 event = stripe.Webhook.construct_event(
                     payload, signature, webhook_secret
                 )
+                try:
+                    mode = get_stripe_mode()
+                    ev_dict = event.to_dict() if hasattr(event, "to_dict") else dict(event)
+                    assert_stripe_object_mode(ev_dict, expected_mode=mode, object_type="webhook event")
+                except StripeObjectModeMismatchError as mode_err:
+                    logger.error("Stripe webhook livemode mismatch: %s", mode_err)
+                    return False, "Webhook mode mismatch", {"error": str(mode_err)}
             else:
                 # Production must fail closed when webhook verification is not configured.
                 if _is_production_runtime():

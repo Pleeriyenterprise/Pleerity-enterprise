@@ -198,13 +198,42 @@ export default function AdminPilotInvitesPage() {
       {opsConfig && (
         <Card data-testid="pilot-invite-ops-config">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="text-base flex items-center gap-2 flex-wrap">
               <Info className="h-4 w-4" />
-              Stripe &amp; environment ({opsConfig.stripe_mode} mode)
+              Stripe &amp; environment
+              <span
+                className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                  opsConfig.stripe_mode === 'live'
+                    ? 'bg-red-100 text-red-900'
+                    : opsConfig.stripe_mode === 'test'
+                      ? 'bg-slate-200 text-slate-800'
+                      : 'bg-amber-100 text-amber-900'
+                }`}
+                data-testid="stripe-mode-badge"
+              >
+                {opsConfig.mode_badge || `${opsConfig.stripe_mode} mode`}
+              </span>
+              {!opsConfig.mode_authoritative && (
+                <span className="text-xs text-amber-700">STRIPE_MODE not set (inferred)</span>
+              )}
             </CardTitle>
             <CardDescription>Required configuration — secrets are never shown here.</CardDescription>
           </CardHeader>
           <CardContent className="text-sm space-y-2">
+            {(opsConfig.errors || []).length > 0 && (
+              <ul className="text-xs text-red-700 space-y-1" data-testid="stripe-config-errors">
+                {opsConfig.errors.map((msg) => (
+                  <li key={msg}>{msg}</li>
+                ))}
+              </ul>
+            )}
+            {(opsConfig.warnings || []).length > 0 && (
+              <ul className="text-xs text-amber-800 space-y-1" data-testid="stripe-config-warnings">
+                {opsConfig.warnings.map((msg) => (
+                  <li key={msg}>{msg}</li>
+                ))}
+              </ul>
+            )}
             <ul className="grid sm:grid-cols-2 gap-2">
               {(opsConfig.requirements || []).map((r) => (
                 <li key={r.key} className="flex items-center gap-2">
@@ -217,6 +246,12 @@ export default function AdminPilotInvitesPage() {
                 </li>
               ))}
             </ul>
+            {opsConfig.frontend_alignment && (
+              <p className="text-xs text-gray-600">
+                Frontend alignment: {opsConfig.frontend_alignment.status} (
+                {opsConfig.frontend_alignment.expected_env_var})
+              </p>
+            )}
             <p className="text-xs text-gray-500">
               Webhooks: {(opsConfig.webhook_paths || []).join(', ')} · Intake: ?{opsConfig.intake_invite_query_param}
               =CODE&amp;plan=PLAN

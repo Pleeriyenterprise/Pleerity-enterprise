@@ -116,16 +116,15 @@ LIMITED_RECOVERY_FEATURES = frozenset(
 # STRIPE PRICE ID MAPPINGS - Loaded from environment (never hardcoded)
 # ============================================================================
 # Two sets: STRIPE_TEST_PRICE_* (test mode) and STRIPE_LIVE_PRICE_* (live mode).
-# Mode determined by STRIPE_SECRET_KEY prefix: sk_test_ => test, sk_live_ => live.
+# Mode determined by STRIPE_MODE (canonical) via stripe_mode_authority.
 _STRIPE_PRICE_CACHE: Dict[str, Dict[str, Any]] = {}  # key: "test" | "live"
 
 
 def _get_stripe_mode() -> str:
-    """Return 'test' or 'live' from STRIPE_SECRET_KEY or STRIPE_API_KEY prefix."""
-    key = (os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY") or "").strip()
-    if not key:
-        return "test"  # default for missing key
-    return "test" if key.startswith("sk_test_") else "live"
+    """Return authoritative Stripe mode ('test' or 'live')."""
+    from services.stripe_mode_authority import get_stripe_mode
+
+    return get_stripe_mode()
 
 
 def _load_stripe_prices_for_mode(mode: str) -> Dict[str, Any]:

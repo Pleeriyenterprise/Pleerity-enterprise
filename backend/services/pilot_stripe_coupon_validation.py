@@ -10,6 +10,12 @@ import stripe
 
 from models.pilot_invite import PilotInviteDiscountDuration, PilotInviteDiscountMode
 from services.pilot_invite_service import discount_config_from_doc
+from services.stripe_mode_authority import (
+    assert_stripe_object_mode,
+    configure_stripe_sdk,
+    enhance_stripe_not_found_error,
+    get_stripe_mode,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +69,7 @@ async def validate_pilot_stripe_discount_config(
             promo = stripe.PromotionCode.retrieve(promo_id, expand=["coupon"])
         except stripe.error.StripeError as e:
             raise PilotStripeCouponValidationError(
-                f"Stripe promotion code could not be loaded: {e.user_message or str(e)}"
+                enhance_stripe_not_found_error(e, mode=mode, object_type="promotion code")
             ) from e
         if not promo.get("active", True):
             raise PilotStripeCouponValidationError("Stripe promotion code is not active.")
@@ -91,6 +97,11 @@ async def validate_pilot_stripe_discount_config(
 
     if not coupon.get("valid", True):
         raise PilotStripeCouponValidationError("Stripe coupon is not valid (expired or disabled).")
+
+    try:
+        assert_stripe_object_mode(coupon, expected_mode=mode, object_type="coupon")
+    except Exception as e:
+        raise PilotStripeCouponValidationError(str(e)) from e
 
     errors: List[str] = []
     percent_off = coupon.get("percent_off")

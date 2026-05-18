@@ -273,30 +273,11 @@ async def lifespan(app: FastAPI):
                 "Set one of these environment variables for production."
             )
         
-        # Stripe config: log mode (test/live) from key prefix and which price IDs are in use (no secret keys)
+        # Stripe mode authority: STRIPE_MODE + mode-specific keys (no cross-mode fallback)
         try:
-            stripe_key = (os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY") or "").strip()
-            if not stripe_key:
-                logger.error("STRIPE_API_KEY / STRIPE_SECRET_KEY is not set. Intake checkout and billing will fail.")
-                stripe_mode = "unknown"
-            else:
-                stripe_mode = "test" if stripe_key.startswith("sk_test_") else "live"
-                logger.info("STRIPE_MODE = %s (from Stripe key prefix)", stripe_mode)
-                if stripe_mode == "test" and "CVP_PROD" in os.environ.get("ENV", "").upper():
-                    logger.warning("STRIPE_API_KEY looks like test key but ENV suggests production. Verify key.")
-            from services.plan_registry import plan_registry, PlanCode, get_stripe_price_mappings, StripeModeMismatchError
-            try:
-                config = get_stripe_price_mappings()
-                for plan in PlanCode:
-                    prices = config["mappings"].get(plan.value, {})
-                    sub_id = prices.get("subscription_price_id")
-                    onb_id = prices.get("onboarding_price_id")
-                    logger.info(
-                        "Stripe price IDs plan=%s subscription_price_id=%s onboarding_price_id=%s",
-                        plan.value, sub_id or "(missing)", onb_id or "(none)"
-                    )
-            except StripeModeMismatchError as e:
-                logger.error("Stripe mode mismatch: %s. Set STRIPE_TEST_PRICE_* or STRIPE_LIVE_PRICE_* env vars for current key mode.", e)
+            from services.stripe_mode_authority import log_startup_stripe_health
+
+            log_startup_stripe_health()
         except Exception as e:
             logger.warning("Stripe config check failed: %s", e)
         
