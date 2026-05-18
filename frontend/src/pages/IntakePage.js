@@ -198,6 +198,9 @@ const IntakePage = () => {
   const [agreementLoading, setAgreementLoading] = useState(false);
   const [agreementFetchError, setAgreementFetchError] = useState('');
   const [serviceAgreementAccepted, setServiceAgreementAccepted] = useState(false);
+  const [pilotInviteCode, setPilotInviteCode] = useState('');
+  const [pilotInviteValidation, setPilotInviteValidation] = useState(null);
+  const [pilotInviteValidating, setPilotInviteValidating] = useState(false);
 
   // Form data state (initial plan from URL ?plan=)
   const planParam = searchParams.get('plan');
@@ -860,7 +863,12 @@ const IntakePage = () => {
           clientId,
         );
       }
-      const checkoutResponse = await intakeAPI.createCheckout(clientId, { acceptance_id });
+      const checkoutBody = { acceptance_id };
+      const trimmedPilotCode = (pilotInviteCode || '').trim();
+      if (trimmedPilotCode) {
+        checkoutBody.invite_code = trimmedPilotCode;
+      }
+      const checkoutResponse = await intakeAPI.createCheckout(clientId, checkoutBody);
       const checkoutUrl = checkoutResponse?.data?.checkout_url;
       if (checkoutUrl) {
         if (isDev) console.debug('[CVP] Intake checkout 200 redirect →', checkoutUrl?.slice(0, 50) + '...');
@@ -868,9 +876,11 @@ const IntakePage = () => {
           customer_reference ||
           (typeof window !== 'undefined' ? window.localStorage.getItem('customer_reference') : null);
         toast.success(
-          crn
-            ? `Opening secure payment. Your customer reference: ${crn}`
-            : 'Opening secure payment…',
+          pilotInviteValidation?.valid
+            ? (pilotInviteValidation.headline || pilotInviteValidation.message || 'Founding pilot invite applied.')
+            : crn
+              ? `Opening secure payment. Your customer reference: ${crn}`
+              : 'Opening secure payment…',
         );
         window.location.href = checkoutUrl;
         return;
@@ -933,6 +943,15 @@ const IntakePage = () => {
         );
       } else if (status === 429 || code === 'RATE_LIMIT_EXCEEDED') {
         setError(message || 'Too many requests. Please wait a few minutes and try again.');
+      } else if (
+        code === 'PILOT_INVITE_INVALID' ||
+        code === 'PILOT_INVITE_EXPIRED' ||
+        code === 'PILOT_INVITE_EXHAUSTED' ||
+        code === 'PILOT_INVITE_PLAN_NOT_ELIGIBLE' ||
+        code === 'PILOT_INVITE_EMAIL_NOT_ELIGIBLE' ||
+        code === 'PILOT_INVITE_MISCONFIGURED'
+      ) {
+        setError(message || 'This invite code could not be applied. Please check the code or contact support.');
       } else if (status === 402 || code === 'CHECKOUT_FAILED' || code === 'CHECKOUT_URL_MISSING') {
         setError(requestId
           ? `Payment setup failed. Reference: ${requestId}`
@@ -2496,6 +2515,11 @@ const Step5Review = ({
   agreementRenderValidation,
   serviceAgreementAccepted,
   onServiceAgreementAcceptedChange,
+  pilotInviteCode,
+  onPilotInviteCodeChange,
+  pilotInviteValidation,
+  pilotInviteValidating,
+  onValidatePilotInvite,
 }) => {
   const selectedPlan = plans.find(p => p.plan_id === formData.billing_plan);
   const [stagedFiles, setStagedFiles] = useState([]);
@@ -2891,6 +2915,65 @@ const Step5Review = ({
                 </div>
               )}
             </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Founding pilot invite (optional) */}
+      <Card>
+        <div className="px-6 py-3 bg-gray-50 border-b">
+          <h3 className="font-semibold text-midnight-blue">Founding pilot invite</h3>
+          <p className="text-xs text-gray-500 mt-1">Optional. Authorised codes apply your pilot discount at secure checkout.</p>
+        </div>
+        <CardContent className="pt-4 space-y-3">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700" htmlFor="pilot-invite-code">
+              Pilot invite code
+            </label>
+            <Input
+              id="pilot-invite-code"
+              value={pilotInviteCode || ''}
+              onChange={(e) => {
+                onPilotInviteCodeChange(e.target.value);
+                if (!e.target.value.trim()) {
+                  onValidatePilotInvite('');
+                }
+              }}
+              onBlur={() => onValidatePilotInvite(pilotInviteCode)}
+              placeholder="Enter code if you have one"
+              data-testid="pilot-invite-code-input"
+              autoComplete="off"
+            />
+          </div>
+          {pilotInviteValidating && (
+            <p className="text-xs text-gray-600 flex items-center gap-1.5" data-testid="pilot-invite-validating">
+              <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden />
+              Checking invite code…
+            </p>
+          )}
+          {!pilotInviteValidating && pilotInviteValidation?.valid && (
+            <div
+              className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-3 space-y-1.5"
+              data-testid="pilot-invite-valid"
+            >
+              <p className="text-sm font-semibold text-emerald-900 flex items-start gap-1.5">
+                <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden />
+                <span>{pilotInviteValidation.headline || 'Founding Pilot Access Applied'}</span>
+              </p>
+              <p className="text-xs text-emerald-800 leading-relaxed pl-5">
+                {pilotInviteValidation.detail
+                  || pilotInviteValidation.message
+                  || (pilotInviteValidation.onboarding_fee_waived
+                    ? 'Your first 2 months are free, and your onboarding fee is waived. After the pilot, your selected subscription continues at the standard monthly rate unless cancelled before renewal.'
+                    : 'Your founding pilot access will be processed through secure checkout.')}
+              </p>
+            </div>
+          )}
+          {!pilotInviteValidating && pilotInviteValidation && !pilotInviteValidation.valid && (
+            <p className="text-xs text-red-700 flex items-start gap-1.5" data-testid="pilot-invite-invalid">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden />
+              <span>{pilotInviteValidation.message}</span>
+            </p>
           )}
         </CardContent>
       </Card>

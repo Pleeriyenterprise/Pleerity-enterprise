@@ -453,6 +453,18 @@ class Database:
             # Provisioning status per property/module (compliance, maintenance)
             await self.db.provisioning_status.create_index([("client_id", 1), ("property_id", 1), ("module_name", 1)], unique=True)
             await self.db.provisioning_status.create_index([("client_id", 1), ("module_name", 1)])
+            # Founding pilot invite codes and idempotent redemptions
+            try:
+                await self.db.pilot_invite_codes.create_index("code", unique=True)
+                await self.db.pilot_invite_codes.create_index("invite_code_id", unique=True)
+                await self.db.pilot_invite_redemptions.create_index("checkout_session_id", unique=True)
+                await self.db.clients.create_index("pilot_invite_code", sparse=True)
+                await self.db.clients.create_index("pilot_status", sparse=True)
+                await self.db.pilot_lifecycle_audit.create_index([("client_id", 1), ("created_at", -1)])
+                await self.db.pilot_lifecycle_audit.create_index("idempotency_key", unique=True, sparse=True)
+                await self.db.pilot_lifecycle_audit.create_index([("action_type", 1), ("created_at", -1)])
+            except Exception:
+                pass
             # Contractors (Ops: client-scoped or system-wide)
             await self.db.contractors.create_index("contractor_id", unique=True)
             await self.db.contractors.create_index("client_id")

@@ -69,6 +69,17 @@ def evaluate_subscription_feature_access(
             subscription_status_upper=subscription_status,
         )
 
+    try:
+        from services.pilot_lifecycle_service import evaluate_pilot_governance_access, is_pilot_comped_entitled
+
+        if is_pilot_comped_entitled(client):
+            return None
+        pilot_denial = evaluate_pilot_governance_access(client)
+        if pilot_denial:
+            return pilot_denial
+    except Exception:
+        pass
+
     if canon == "CANCELLED" or lc == "cancelled":
         return "This subscription is cancelled. Open Billing if you need to resubscribe.", {
             "error_code": "SUBSCRIPTION_CANCELLED",

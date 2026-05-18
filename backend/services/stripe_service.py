@@ -76,6 +76,7 @@ class StripeService:
         acceptance_id: Optional[str] = None,
         agreement_template_id: Optional[str] = None,
         agreement_template_version_id: Optional[str] = None,
+        pilot_invite_doc: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Create Stripe checkout session for new subscription.
@@ -138,76 +139,111 @@ class StripeService:
             },
         ]
         
-        # Add onboarding (setup) fee only if not already paid (idempotent: no double charge)
+        # Onboarding (setup) fee — skipped when already paid or pilot policy waives/deferrs
         billing = await db.client_billing.find_one(
             {"client_id": client_id},
-            {"_id": 0, "onboarding_fee_paid": 1}
+            {"_id": 0, "onboarding_fee_paid": 1, "onboarding_fee_waived": 1},
         )
-        already_paid = billing and billing.get("onboarding_fee_paid") is True
-        if onboarding_price_id and not already_paid:
-            line_items.append({
-                "price": onboarding_price_id,
-                "quantity": 1,
-            })
+        already_paid = billing and (
+            billing.get("onboarding_fee_paid") is True or billing.get("onboarding_fee_waived") is True
+        )
+        from services.pilot_onboarding_fee import resolve_checkout_onboarding
+
+        include_onboarding, _onb_policy, onboarding_meta = resolve_checkout_onboarding(
+            pilot_invite_doc=pilot_invite_doc,
+            plan_code=plan.value,
+            already_paid=already_paid,
+            onboarding_price_id=onboarding_price_id,
+        )
+        if include_onboarding and onboarding_price_id:
+            line_items.append({"price": onboarding_price_id, "quantity": 1})
         
         # Success and cancel URLs (base already stripped trailing slash)
         success_url = f"{base}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}"
         cancel_url = f"{base}/checkout/cancel"
         
+        # Founding pilot: live Stripe checkout with configured 100% coupon/promotion (never bypass Stripe).
+        pilot_metadata: Dict[str, str] = {}
+        pilot_discounts = None
+        if pilot_invite_doc:
+            from services.pilot_invite_service import (
+                build_checkout_pilot_metadata,
+                payment_method_collection_for_pilot,
+                stripe_session_discounts,
+            )
+
+            pilot_metadata = build_checkout_pilot_metadata(pilot_invite_doc, plan_code=plan.value)
+            pilot_metadata.update(onboarding_meta)
+            pilot_discounts = stripe_session_discounts(pilot_invite_doc)
+            if not pilot_discounts:
+                raise ValueError("Pilot invite discount is not configured. Contact support.")
+
         # Create checkout session
         try:
+            session_metadata = {
+                "client_id": client_id,  # MANDATORY for webhook
+                "plan_code": plan.value,
+                "service": "COMPLIANCE_VAULT_PRO",
+                **({"customer_reference": customer_reference} if customer_reference else {}),
+                **({"lead_id": (lead_id or "").strip()[:128]} if (lead_id and (lead_id or "").strip()) else {}),
+                **({"acceptance_id": (acceptance_id or "").strip()[:128]} if (acceptance_id or "").strip() else {}),
+                **(
+                    {"agreement_template_id": (agreement_template_id or "").strip()[:128]}
+                    if (agreement_template_id or "").strip()
+                    else {}
+                ),
+                **(
+                    {
+                        "agreement_template_version_id": (agreement_template_version_id or "").strip()[:128],
+                    }
+                    if (agreement_template_version_id or "").strip()
+                    else {}
+                ),
+                **pilot_metadata,
+            }
+            if not pilot_invite_doc:
+                session_metadata.update(onboarding_meta)
+            subscription_metadata = {
+                "client_id": client_id,
+                "plan_code": plan.value,
+                **({"customer_reference": customer_reference} if customer_reference else {}),
+                **({"lead_id": (lead_id or "").strip()[:128]} if (lead_id and (lead_id or "").strip()) else {}),
+                **({"acceptance_id": (acceptance_id or "").strip()[:128]} if (acceptance_id or "").strip() else {}),
+                **(
+                    {"agreement_template_id": (agreement_template_id or "").strip()[:128]}
+                    if (agreement_template_id or "").strip()
+                    else {}
+                ),
+                **(
+                    {
+                        "agreement_template_version_id": (agreement_template_version_id or "").strip()[:128],
+                    }
+                    if (agreement_template_version_id or "").strip()
+                    else {}
+                ),
+                **pilot_metadata,
+            }
+            if not pilot_invite_doc:
+                subscription_metadata.update(onboarding_meta)
             session_params = {
                 "mode": "subscription",
                 "line_items": line_items,
                 "success_url": success_url,
                 "cancel_url": cancel_url,
-                "metadata": {
-                    "client_id": client_id,  # MANDATORY for webhook
-                    "plan_code": plan.value,
-                    "service": "COMPLIANCE_VAULT_PRO",
-                    **({"customer_reference": customer_reference} if customer_reference else {}),
-                    **({"lead_id": (lead_id or "").strip()[:128]} if (lead_id and (lead_id or "").strip()) else {}),
-                    **({"acceptance_id": (acceptance_id or "").strip()[:128]} if (acceptance_id or "").strip() else {}),
-                    **(
-                        {"agreement_template_id": (agreement_template_id or "").strip()[:128]}
-                        if (agreement_template_id or "").strip()
-                        else {}
-                    ),
-                    **(
-                        {
-                            "agreement_template_version_id": (agreement_template_version_id or "").strip()[:128],
-                        }
-                        if (agreement_template_version_id or "").strip()
-                        else {}
-                    ),
-                },
-                "subscription_data": {
-                    "metadata": {
-                        "client_id": client_id,
-                        "plan_code": plan.value,
-                        **({"customer_reference": customer_reference} if customer_reference else {}),
-                        **({"lead_id": (lead_id or "").strip()[:128]} if (lead_id and (lead_id or "").strip()) else {}),
-                        **({"acceptance_id": (acceptance_id or "").strip()[:128]} if (acceptance_id or "").strip() else {}),
-                        **(
-                            {"agreement_template_id": (agreement_template_id or "").strip()[:128]}
-                            if (agreement_template_id or "").strip()
-                            else {}
-                        ),
-                        **(
-                            {
-                                "agreement_template_version_id": (agreement_template_version_id or "").strip()[:128],
-                            }
-                            if (agreement_template_version_id or "").strip()
-                            else {}
-                        ),
-                    },
-                },
+                "metadata": session_metadata,
+                "subscription_data": {"metadata": subscription_metadata},
                 "expand": ["line_items"],  # Expand for webhook processing
             }
-            
+            if pilot_discounts:
+                # Pilot: Stripe coupon/promotion from invite record; PM `always` when repeating (see pilot_invite_service).
+                session_params["discounts"] = pilot_discounts
+                session_params["payment_method_collection"] = payment_method_collection_for_pilot(
+                    pilot_invite_doc
+                )
+
             if customer_email:
                 session_params["customer_email"] = customer_email
-            
+
             session = stripe.checkout.Session.create(**session_params)
             
             # Record checkout attempt
@@ -221,7 +257,17 @@ class StripeService:
                 "amount_total": session.amount_total,
                 "currency": session.currency,
             }
-            
+            if pilot_invite_doc:
+                from services.pilot_invite_service import discount_config_from_doc
+
+                cfg = discount_config_from_doc(pilot_invite_doc)
+                checkout_record["pilot_invite_code"] = pilot_invite_doc.get("code")
+                checkout_record["pilot_invite_code_id"] = pilot_invite_doc.get("invite_code_id")
+                checkout_record["program_type"] = pilot_invite_doc.get("program_type") or "FOUNDING_PILOT"
+                checkout_record["pilot_discount_duration"] = cfg["discount_duration"]
+                checkout_record["pilot_discount_months"] = cfg.get("discount_duration_in_months")
+            checkout_record.update(onboarding_meta)
+
             await db.checkout_sessions.insert_one(checkout_record)
             
             logger.info(f"Checkout session created for client {client_id}: {session.id}")

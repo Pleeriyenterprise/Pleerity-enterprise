@@ -297,6 +297,20 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
         }
     )
 
+    checkout_session_id = job.get("checkout_session_id")
+    if checkout_session_id:
+        try:
+            from services.pilot_invite_service import complete_redemption_after_provisioning
+
+            await complete_redemption_after_provisioning(checkout_session_id=str(checkout_session_id))
+        except Exception as pilot_redemption_err:
+            logger.warning(
+                "Pilot invite redemption completion failed job_id=%s session=%s: %s",
+                job_id,
+                checkout_session_id,
+                pilot_redemption_err,
+            )
+
     try:
         from services.analytics_service import log_event
         await log_event("provisioning_completed", {"client_id": client_id, "metadata": {"job_id": job_id}})

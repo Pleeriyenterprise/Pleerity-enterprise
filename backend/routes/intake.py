@@ -3,7 +3,8 @@
 Endpoints:
 - POST /api/intake/submit - Submit completed intake wizard
 - POST /api/intake/agreement-preview - Checkout-grade agreement HTML (same pipeline as acceptance; Step 5)
-- POST /api/intake/checkout - Create Stripe checkout session (JSON body: { "acceptance_id": "<uuid>" } required)
+- POST /api/intake/pilot-invite/validate - Validate founding pilot invite code (optional pre-checkout)
+- POST /api/intake/checkout - Create Stripe checkout session (JSON: acceptance_id required; invite_code optional)
 - GET /api/intake/onboarding-status/{client_id} - Get onboarding progress
 - GET /api/intake/councils - Search UK councils
 - POST /api/intake/upload-document - Upload document during intake (non-blocking)
@@ -31,6 +32,8 @@ from services.stripe_service import stripe_service
 from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingError, StripeModeMismatchError
 from services.compliance_rules_registry import canonicalize_uk_portfolio_label
 from models.agreements import IntakeCheckoutBody
+from models.pilot_invite import PilotInvitePublicError, PilotInviteValidateBody, PilotInviteValidateResponse
+from services.pilot_invite_service import validate_invite_for_checkout
 from services.agreement_acceptance_service import mark_acceptance_checkout_started, validate_acceptance_for_checkout
 from services.crn_service import get_next_crn
 from utils.audit import create_audit_log
@@ -1412,6 +1415,40 @@ def _checkout_error_detail(error_code: str, message: str, request_id: str) -> di
     return {"error_code": error_code, "message": message, "request_id": request_id}
 
 
+_PILOT_INVITE_HTTP_STATUS = {
+    "PILOT_INVITE_INVALID": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_EXPIRED": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_EXHAUSTED": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_PLAN_NOT_ELIGIBLE": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_EMAIL_NOT_ELIGIBLE": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_MISCONFIGURED": status.HTTP_503_SERVICE_UNAVAILABLE,
+}
+
+
+@router.post("/pilot-invite/validate", response_model=PilotInviteValidateResponse)
+async def validate_pilot_invite(body: PilotInviteValidateBody):
+    """
+    Validate a founding pilot invite code before checkout (no Stripe IDs exposed).
+    Returns valid=false with a safe message when invalid; does not reveal internal config.
+    """
+    try:
+        _, resp = await validate_invite_for_checkout(
+            code=body.code,
+            plan_code=body.plan_code,
+            email=body.email,
+            for_checkout=False,
+        )
+        return resp
+    except PilotInvitePublicError as e:
+        return PilotInviteValidateResponse(
+            valid=False,
+            message=e.message,
+            program_type=None,
+            plan_code=body.plan_code,
+            discount_applied=False,
+        )
+
+
 @router.post("/checkout")
 async def create_checkout(request: Request, client_id: str, checkout_body: IntakeCheckoutBody = Body(...)):
     """Create Stripe checkout session for intake payment.
@@ -1487,6 +1524,29 @@ async def create_checkout(request: Request, client_id: str, checkout_body: Intak
 
         template_id = str(acc_doc.get("template_id") or "")
         template_version_id = str(acc_doc.get("template_version_id") or "")
+
+        pilot_invite_doc = None
+        invite_raw = (checkout_body.invite_code or "").strip()
+        if invite_raw:
+            try:
+                pilot_invite_doc, _pilot_resp = await validate_invite_for_checkout(
+                    code=invite_raw,
+                    plan_code=plan_code,
+                    email=customer_email,
+                    for_checkout=True,
+                )
+            except PilotInvitePublicError as e:
+                logger.warning(
+                    "Pilot invite rejected client_id=%s request_id=%s error_code=%s",
+                    client_id,
+                    request_id,
+                    e.error_code,
+                )
+                raise HTTPException(
+                    status_code=_PILOT_INVITE_HTTP_STATUS.get(e.error_code, status.HTTP_400_BAD_REQUEST),
+                    detail=_checkout_error_detail(e.error_code, e.message, request_id),
+                )
+
         session = await stripe_service.create_checkout_session(
             client_id=client_id,
             plan_code=plan_code,
@@ -1497,6 +1557,7 @@ async def create_checkout(request: Request, client_id: str, checkout_body: Intak
             acceptance_id=checkout_body.acceptance_id.strip(),
             agreement_template_id=template_id,
             agreement_template_version_id=template_version_id,
+            pilot_invite_doc=pilot_invite_doc,
         )
         url = session.get("checkout_url")
         session_id = session.get("session_id")

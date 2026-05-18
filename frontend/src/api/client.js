@@ -440,11 +440,18 @@ export const intakeAPI = {
         }),
       );
     }
-    return apiClient.post('/intake/checkout', { acceptance_id }, {
+    const payload = { acceptance_id };
+    const invite_code =
+      body && typeof body.invite_code === 'string' ? body.invite_code.trim() : '';
+    if (invite_code) {
+      payload.invite_code = invite_code;
+    }
+    return apiClient.post('/intake/checkout', payload, {
       params: { client_id: cid },
       headers: { origin },
     });
   },
+  validatePilotInvite: (body) => apiClient.post('/intake/pilot-invite/validate', body),
   getOnboardingStatus: (clientId) => apiClient.get(`/intake/onboarding-status/${clientId}`),
   getPlans: () => apiClient.get('/intake/plans'),
   searchCouncils: (q, nation = null, page = 1, limit = 20) => 

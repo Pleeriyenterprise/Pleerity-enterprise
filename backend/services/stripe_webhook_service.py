@@ -609,24 +609,57 @@ class StripeWebhookService:
             session, plan_code, billing_period_note=None
         )
 
-        # Check onboarding (setup) fee from session line_items; persist amount and invoice for billing history
-        onboarding_fee_paid = False
-        setup_fee_amount_cents = None
-        setup_fee_invoice_id = None
+        # Onboarding (setup) fee — waived pilots must not infer paid from missing line_items
+        from services.pilot_onboarding_fee import (
+            onboarding_fields_for_waived_client,
+            onboarding_policy_from_client,
+            resolve_webhook_onboarding_fee,
+        )
+
         expected_onboarding_price = plan_registry.get_stripe_price_ids(plan_code).get("onboarding_price_id")
-        
-        if session.get("line_items"):
-            for item in session.get("line_items", {}).get("data", []):
-                item_price_id = item.get("price", {}).get("id")
-                if item_price_id == expected_onboarding_price:
-                    onboarding_fee_paid = True
-                    setup_fee_amount_cents = item.get("amount", 0)
-                    break
-            if onboarding_fee_paid and session.get("invoice"):
-                setup_fee_invoice_id = session["invoice"] if isinstance(session["invoice"], str) else (session["invoice"] or {}).get("id")
-        else:
-            onboarding_fee_paid = True
-            logger.warning("line_items not expanded in session - assuming onboarding paid")
+        client_before = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+        session_md_for_onb = session.get("metadata") or metadata or {}
+        onboarding_fee_paid, setup_fee_amount_cents, setup_fee_invoice_id = resolve_webhook_onboarding_fee(
+            session_metadata=session_md_for_onb,
+            client=client_before,
+            session_line_items=session.get("line_items"),
+            expected_onboarding_price_id=expected_onboarding_price,
+        )
+        if onboarding_fee_paid and session.get("invoice") and setup_fee_amount_cents:
+            setup_fee_invoice_id = (
+                session["invoice"]
+                if isinstance(session["invoice"], str)
+                else (session["invoice"] or {}).get("id")
+            )
+        from models.pilot_invite import PilotOnboardingFeePolicy
+        from services.pilot_onboarding_fee import onboarding_policy_from_invite
+
+        onb_policy = onboarding_policy_from_client(client_before)
+        if not onb_policy and session_md_for_onb.get("onboarding_fee_policy"):
+            onb_policy = onboarding_policy_from_invite(
+                {
+                    "onboarding_fee_policy": session_md_for_onb.get("onboarding_fee_policy"),
+                    "waive_onboarding_fee": str(session_md_for_onb.get("onboarding_fee_waived") or "").lower()
+                    in ("true", "1", "yes"),
+                    "program_type": session_md_for_onb.get("program_type"),
+                }
+            )
+        elif not onb_policy and str(session_md_for_onb.get("program_type") or "").upper() == "FOUNDING_PILOT":
+            onb_policy = onboarding_policy_from_invite(
+                {
+                    "program_type": "FOUNDING_PILOT",
+                    "waive_onboarding_fee": str(session_md_for_onb.get("onboarding_fee_waived") or "").lower()
+                    in ("true", "1", "yes"),
+                    "onboarding_fee_policy": session_md_for_onb.get("onboarding_fee_policy"),
+                }
+            )
+        onb_client_fields: Dict[str, Any] = {}
+        if onb_policy in (PilotOnboardingFeePolicy.WAIVED, PilotOnboardingFeePolicy.DEFERRED):
+            onb_client_fields = onboarding_fields_for_waived_client(
+                policy=onb_policy,
+                plan_code=plan_code.value,
+                reason=session_md_for_onb.get("onboarding_fee_waiver_reason"),
+            )
         
         # Map subscription status to entitlement
         subscription_status = subscription.get("status", "incomplete")
@@ -668,6 +701,10 @@ class StripeWebhookService:
             billing_record["setup_fee_amount_cents"] = setup_fee_amount_cents
         if setup_fee_invoice_id:
             billing_record["setup_fee_invoice_id"] = setup_fee_invoice_id
+        if onb_client_fields:
+            billing_record.update(
+                {k: v for k, v in onb_client_fields.items() if k.startswith("onboarding_fee")}
+            )
         if checkout_breakdown_db:
             billing_record["last_checkout_billing_breakdown"] = checkout_breakdown_db
         sub_amt = sum(x["amount"] for x in checkout_breakdown_db if x.get("type") == "subscription")
@@ -722,6 +759,54 @@ class StripeWebhookService:
             await sync_subscription_lifecycle(client_id, bump_version=False)
         except Exception as lc_err:
             logger.warning("sync_subscription_lifecycle after checkout failed: %s", lc_err)
+
+        # Founding pilot: tag client and register pending redemption (usage counted after provisioning).
+        session_md = session.get("metadata") or {}
+        invite_code_meta = (session_md.get("invite_code") or "").strip()
+        program_type_meta = (session_md.get("program_type") or "").strip()
+        if invite_code_meta or program_type_meta == "FOUNDING_PILOT":
+            try:
+                from services.pilot_invite_service import (
+                    COL_CODES,
+                    apply_pilot_tags_to_client,
+                    normalize_invite_code,
+                    register_pending_redemption,
+                )
+
+                normalized_invite = normalize_invite_code(invite_code_meta) if invite_code_meta else ""
+                invite_doc = None
+                if normalized_invite:
+                    invite_doc = await db[COL_CODES].find_one({"code": normalized_invite}, {"_id": 0})
+                if invite_doc:
+                    await apply_pilot_tags_to_client(
+                        client_id=client_id,
+                        invite_doc=invite_doc,
+                        plan_code=plan_code.value,
+                        checkout_session_id=checkout_session_id,
+                        stripe_subscription_id=stripe_subscription_id,
+                        stripe_event_id=event.get("id") if event else None,
+                    )
+                    await register_pending_redemption(
+                        checkout_session_id=checkout_session_id or "",
+                        client_id=client_id,
+                        invite_doc=invite_doc,
+                        stripe_event_id=event.get("id") if event else None,
+                        stripe_subscription_id=stripe_subscription_id,
+                    )
+                else:
+                    logger.error(
+                        "Pilot checkout metadata present but invite not found client_id=%s invite_code=%s session=%s",
+                        client_id,
+                        invite_code_meta,
+                        checkout_session_id,
+                    )
+            except Exception as pilot_ex:
+                logger.exception(
+                    "Pilot invite webhook tagging failed client_id=%s session=%s: %s",
+                    client_id,
+                    checkout_session_id,
+                    pilot_ex,
+                )
 
         # CRN: generate on payment confirmation only (idempotent; once set, never changed)
         client_crn = None
@@ -1642,6 +1727,20 @@ class StripeWebhookService:
                 context={"error": str(lc_err)[:500]},
             )
             logger.warning("sync_subscription_lifecycle after subscription deleted failed: %s", lc_err)
+
+        try:
+            from services.pilot_invite_service import maybe_record_pilot_cancelled_before_paid
+
+            await maybe_record_pilot_cancelled_before_paid(
+                client_id=client_id,
+                stripe_event_id=event.get("id") if event else None,
+            )
+        except Exception as pilot_cancel_ex:
+            logger.warning(
+                "Pilot cancelled-before-paid recording failed client_id=%s: %s",
+                client_id,
+                pilot_cancel_ex,
+            )
         
         # Reconcile: revoke all paid-feature state (scheduled reports, SMS, tenant portal, white-label)
         try:
@@ -1855,6 +1954,17 @@ class StripeWebhookService:
                 context={"error": str(lc_err)[:500], "invoice_id": invoice.get("id")},
             )
             logger.warning("sync_subscription_lifecycle after invoice.paid failed: %s", lc_err)
+
+        try:
+            from services.pilot_invite_service import maybe_record_pilot_paid_transition
+
+            await maybe_record_pilot_paid_transition(
+                client_id=client_id,
+                invoice=invoice,
+                stripe_event_id=event.get("id") if event else None,
+            )
+        except Exception as pilot_paid_ex:
+            logger.warning("Pilot paid transition recording failed client_id=%s: %s", client_id, pilot_paid_ex)
 
         merged_invoice: Dict[str, Any] = dict(invoice)
         if inv_d:

@@ -83,3 +83,4 @@ class AgreementAcceptanceCreateBody(BaseModel):
 
 class IntakeCheckoutBody(BaseModel):
     acceptance_id: str = Field(..., min_length=1)
+    invite_code: Optional[str] = Field(default=None, max_length=64)
