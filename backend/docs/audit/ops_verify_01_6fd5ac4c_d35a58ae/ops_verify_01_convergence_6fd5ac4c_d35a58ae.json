@@ -1,0 +1,357 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "phase": "convergence",
+  "captured_at_utc": "2026-05-18T15:49:26.960980+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+  "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:cer_979c123533804653a9e20b2f6008b7f6",
+  "property_score": {
+    "compliance_score": 67,
+    "compliance_score_pending": false,
+    "compliance_last_calculated_at": "2026-05-18T15:45:14.528472+00:00",
+    "risk_level": "Elevated risk",
+    "fingerprint": "2719bf36e84b02fc"
+  },
+  "queue": {
+    "counts_by_status": {
+      "DONE": 129,
+      "TOTAL": 129
+    },
+    "pending_or_running": 0,
+    "recent_rows": [
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:cer_979c123533804653a9e20b2f6008b7f6",
+        "status": "DONE",
+        "created_at": "2026-05-18T15:45:09.386332+00:00",
+        "updated_at": "2026-05-18T15:45:25.055586+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:cer_09d5547516ba422f95b497737e3746f5",
+        "status": "DONE",
+        "created_at": "2026-05-18T15:43:07.135981+00:00",
+        "updated_at": "2026-05-18T15:43:24.602014+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:cer_799b0c6abff04bb6a8d51ec63ec904a0",
+        "status": "DONE",
+        "created_at": "2026-05-18T14:23:00.964618+00:00",
+        "updated_at": "2026-05-18T14:23:23.135716+00:00"
+      },
+      {
+        "correlation_id": "REMINDER_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-18",
+        "status": "DONE",
+        "created_at": "2026-05-18T09:01:01.552340+00:00",
+        "updated_at": "2026-05-18T09:01:34.159818+00:00"
+      },
+      {
+        "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-18",
+        "status": "DONE",
+        "created_at": "2026-05-18T03:20:26.481872+00:00",
+        "updated_at": "2026-05-18T03:31:31.666577+00:00"
+      },
+      {
+        "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-18",
+        "status": "DONE",
+        "created_at": "2026-05-18T00:10:05.139054+00:00",
+        "updated_at": "2026-05-18T00:11:51.232506+00:00"
+      },
+      {
+        "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:a497a20c136b",
+        "status": "DONE",
+        "created_at": "2026-05-17T13:52:45.025931+00:00",
+        "updated_at": "2026-05-17T13:53:11.692332+00:00"
+      },
+      {
+        "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:fde2a0b8a85c",
+        "status": "DONE",
+        "created_at": "2026-05-17T13:49:05.585127+00:00",
+        "updated_at": "2026-05-17T13:49:38.241254+00:00"
+      },
+      {
+        "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:c97a63603614",
+        "status": "DONE",
+        "created_at": "2026-05-17T13:43:19.976355+00:00",
+        "updated_at": "2026-05-17T13:43:53.991552+00:00"
+      },
+      {
+        "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:6b6c53984f37",
+        "status": "DONE",
+        "created_at": "2026-05-17T13:30:15.485553+00:00",
+        "updated_at": "2026-05-17T13:30:38.248173+00:00"
+      },
+      {
+        "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-17",
+        "status": "DONE",
+        "created_at": "2026-05-17T03:20:23.476708+00:00",
+        "updated_at": "2026-05-17T03:28:44.218166+00:00"
+      },
+      {
+        "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-17",
+        "status": "DONE",
+        "created_at": "2026-05-17T00:10:27.615408+00:00",
+        "updated_at": "2026-05-17T00:18:53.686051+00:00"
+      },
+      {
+        "correlation_id": "ADMIN_MANUAL_JOB:REGISTRY_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2818c7817f6f",
+        "status": "DONE",
+        "created_at": "2026-05-16T18:53:39.485330+00:00",
+        "updated_at": "2026-05-16T18:54:15.216485+00:00"
+      },
+      {
+        "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "status": "DONE",
+        "created_at": "2026-05-16T18:53:04.607312+00:00",
+        "updated_at": "2026-05-16T18:53:29.344209+00:00"
+      },
+      {
+        "correlation_id": "REMINDER_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-16",
+        "status": "DONE",
+        "created_at": "2026-05-16T09:01:01.082074+00:00",
+        "updated_at": "2026-05-16T09:01:35.244906+00:00"
+      },
+      {
+        "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-16",
+        "status": "DONE",
+        "created_at": "2026-05-16T03:20:22.951005+00:00",
+        "updated_at": "2026-05-16T03:28:49.167408+00:00"
+      },
+      {
+        "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-16",
+        "status": "DONE",
+        "created_at": "2026-05-16T00:10:22.674389+00:00",
+        "updated_at": "2026-05-16T00:17:15.765333+00:00"
+      },
+      {
+        "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-15",
+        "status": "DONE",
+        "created_at": "2026-05-15T03:20:20.588276+00:00",
+        "updated_at": "2026-05-15T03:27:05.315826+00:00"
+      },
+      {
+        "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-15",
+        "status": "DONE",
+        "created_at": "2026-05-15T00:10:05.159351+00:00",
+        "updated_at": "2026-05-15T00:11:30.837941+00:00"
+      },
+      {
+        "correlation_id": "REMINDER_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-14",
+        "status": "DONE",
+        "created_at": "2026-05-14T09:01:06.930479+00:00",
+        "updated_at": "2026-05-14T09:02:51.471110+00:00"
+      },
+      {
+        "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-14",
+        "status": "DONE",
+        "created_at": "2026-05-14T03:20:20.290138+00:00",
+        "updated_at": "2026-05-14T03:27:07.416788+00:00"
+      },
+      {
+        "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-14",
+        "status": "DONE",
+        "created_at": "2026-05-14T00:10:20.933152+00:00",
+        "updated_at": "2026-05-14T00:16:16.944642+00:00"
+      },
+      {
+        "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-13",
+        "status": "DONE",
+        "created_at": "2026-05-13T03:20:20.441407+00:00",
+        "updated_at": "2026-05-13T03:27:09.288507+00:00"
+      },
+      {
+        "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-13",
+        "status": "DONE",
+        "created_at": "2026-05-13T00:10:17.116704+00:00",
+        "updated_at": "2026-05-13T00:15:33.729719+00:00"
+      },
+      {
+        "correlation_id": "REMINDER_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-12",
+        "status": "DONE",
+        "created_at": "2026-05-12T09:01:01.793127+00:00",
+        "updated_at": "2026-05-12T09:01:35.866874+00:00"
+      }
+    ],
+    "fingerprint": "f3f70d1574827f5b"
+  },
+  "queue_row_for_correlation": {
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "trigger_reason": "DOC_STATUS_CHANGED",
+    "actor_type": "CLIENT",
+    "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+    "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:cer_979c123533804653a9e20b2f6008b7f6",
+    "status": "DONE",
+    "attempts": 0,
+    "retry_count": 0,
+    "retry_exhausted": false,
+    "next_run_at": "2026-05-18T15:45:09.386332+00:00",
+    "last_error": null,
+    "created_at": "2026-05-18T15:45:09.386332+00:00",
+    "updated_at": "2026-05-18T15:45:25.055586+00:00",
+    "recalc_execution_signals": {
+      "degraded_execution": false,
+      "partial_recovery": false,
+      "retry_pending": false,
+      "reconciliation_recommended": false
+    }
+  },
+  "dashboard_tasks": {
+    "compliance_score": 67,
+    "compliance_score_pending": false,
+    "compliance_last_calculated_at": "2026-05-18T15:45:14.528472+00:00",
+    "risk_level": "Elevated risk",
+    "top_deficits": [
+      {
+        "requirement_code": "FIRE_DETECTION",
+        "status": "MISSING",
+        "missing_points": 10.0,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "HMO_FIRE_RISK",
+        "status": "EXPIRING_SOON",
+        "missing_points": 2.79,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "EICR",
+        "status": "NOT_APPLICABLE",
+        "missing_points": 1.05,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "EPC",
+        "status": "NOT_APPLICABLE",
+        "missing_points": 0.7,
+        "risk_level_if_failed": "MEDIUM"
+      },
+      {
+        "requirement_code": "LEGIONELLA",
+        "status": "NOT_APPLICABLE",
+        "missing_points": 0.7,
+        "risk_level_if_failed": "MEDIUM"
+      }
+    ],
+    "digest_summary": {
+      "urgent_count": 1,
+      "upcoming_count": 3,
+      "in_progress_count": 2,
+      "recently_completed_count": 0,
+      "snoozed_count": 0,
+      "hidden_count": 0,
+      "habit": {
+        "urgent_open_total": 1,
+        "items_due_or_expiring_in_7_days": 0,
+        "tasks_acknowledged_last_7_days": 0
+      }
+    },
+    "task_count": 6,
+    "task_sections_summary": {
+      "urgent_count": 1,
+      "upcoming_count": 3,
+      "in_progress_count": 2,
+      "recently_completed_count": 0,
+      "snoozed_count": 0,
+      "hidden_count": 0,
+      "habit": {
+        "urgent_open_total": 1,
+        "items_due_or_expiring_in_7_days": 0,
+        "tasks_acknowledged_last_7_days": 0
+      }
+    },
+    "task_ids_sample": [
+      "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+      "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+      "requirement:69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+      "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+      "risk_signal:rs_da038c5995fd",
+      "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
+    ],
+    "stable_task_business_keys_sample": [
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+      "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+      "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+      "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+      "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+    ],
+    "fingerprint_mode": "normalized_stable_business_keys_c2a",
+    "fingerprint": "69a1076429932f4dccb331f20a20ecd7",
+    "fingerprint_legacy_volatile_ids": "45043682bd6e2d98905e99cabe3147d3"
+  },
+  "requirement": {
+    "found": true,
+    "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+    "requirement_type": "occupation_contract",
+    "status": "PENDING",
+    "lifecycle_state": null,
+    "evidence_status": null,
+    "client_surface_visible": true,
+    "updated_at": "2026-05-17T13:52:43.278554+00:00",
+    "authority": {
+      "evidence_authority": {
+        "version": 1,
+        "state": "MISSING",
+        "state_reason": "no_evidence_document",
+        "effective_expiry_date": null,
+        "effective_expiry_is_null": true,
+        "effective_issue_date": null,
+        "effective_verified_document_id": null,
+        "expiry_source": "NONE",
+        "mismatch_flag": false,
+        "mismatch_reason": null,
+        "evidence_confidence": null,
+        "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "evidence_scope_type": "PROPERTY",
+        "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "predicted_document_type": null,
+        "match_outcome": null,
+        "match_confidence": null,
+        "mismatch_reason_code": null,
+        "evidence_match_blocks_satisfaction": false,
+        "primary_evidence_mode": "STRUCTURED_DECLARATION",
+        "evidence_confidence_level": "MEDIUM",
+        "non_document_verification_status": "PENDING_REVIEW",
+        "primary_evidence_record_id": "cer_979c123533804653a9e20b2f6008b7f6",
+        "pending_non_document_evidence_count": 3,
+        "semantic_state": "MISSING"
+      },
+      "fingerprint": "ea93de1f16f848ed851907d356918b81"
+    },
+    "row_fingerprint": "a30cc24da8f6ac9596a2e1c1fcb84583"
+  },
+  "cer_rows": [
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-18T15:45:08.523686+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-18T15:43:06.318572+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-18T14:22:59.976582+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    }
+  ],
+  "stale_state_window": {
+    "score_pending_stuck": false,
+    "score_timestamp_advanced": true,
+    "queue_terminal_for_correlation": true
+  },
+  "score_converged_observable": true,
+  "async_convergence_partial_signals": {
+    "pending_flag": false,
+    "queue_pending_or_running": false,
+    "no_terminal_queue_row": false
+  },
+  "baseline_score_fingerprint": "cd4946077c66e3d2",
+  "post_submit_score_fingerprint": "2719bf36e84b02fc",
+  "convergence_score_fingerprint": "2719bf36e84b02fc"
+}

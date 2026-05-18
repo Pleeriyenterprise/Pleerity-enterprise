@@ -1,0 +1,34 @@
+{
+  "steps": [
+    {
+      "step": "frontend_backend_url",
+      "ok": true,
+      "detail": "http://127.0.0.1:8000"
+    },
+    {
+      "step": "row_visible",
+      "ok": false,
+      "detail": "count=0"
+    },
+    {
+      "step": "A-5_modal",
+      "ok": false,
+      "detail": ""
+    },
+    {
+      "step": "A-5_panel",
+      "ok": false,
+      "detail": ""
+    },
+    {
+      "step": "A-5_content",
+      "ok": false,
+      "detail": ""
+    },
+    {
+      "step": "A-9_refresh_panel",
+      "ok": false,
+      "detail": ""
+    }
+  ]
+}

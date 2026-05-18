@@ -1,0 +1,93 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "slug": "template",
+  "bundle_completeness": {
+    "bundle_dir": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_template",
+    "files_present": {
+      "manifest": true,
+      "baseline": false,
+      "post_submit": false,
+      "convergence": false,
+      "classifications": false,
+      "ui_notes": true
+    },
+    "missing_for_operational": [
+      "baseline",
+      "post_submit",
+      "convergence"
+    ],
+    "browser_walkthrough_completed": false,
+    "replay_or_fixture_driver": false,
+    "proof_mode": "unproven",
+    "ui_notes_substantive": true,
+    "operational_evidence_ready": false
+  },
+  "classifications": [
+    {
+      "journey": "A_guided_structured_evidence_submit",
+      "classification": "IMPLEMENTED_NOT_VERIFIED",
+      "failed_checkpoints": [
+        "A-1",
+        "A-2",
+        "A-3",
+        "A-4",
+        "A-5",
+        "A-6",
+        "A-7",
+        "A-8",
+        "A-9"
+      ],
+      "reasons": [
+        "bundle_incomplete_or_browser_not_attested"
+      ]
+    },
+    {
+      "journey": "B_primary_document_upload",
+      "classification": "IMPLEMENTED_NOT_VERIFIED",
+      "failed_checkpoints": [
+        "B-1",
+        "B-2",
+        "B-3",
+        "B-4",
+        "B-5",
+        "B-6",
+        "B-7"
+      ],
+      "reasons": [
+        "bundle_incomplete_or_browser_not_attested"
+      ]
+    },
+    {
+      "journey": "C_supporting_upload_only",
+      "classification": "IMPLEMENTED_NOT_VERIFIED",
+      "failed_checkpoints": [
+        "C-1",
+        "C-2",
+        "C-3",
+        "C-4"
+      ],
+      "reasons": [
+        "browser_walkthrough_not_attested"
+      ]
+    },
+    {
+      "journey": "D_verification_review_optional",
+      "classification": "IMPLEMENTED_NOT_VERIFIED",
+      "failed_checkpoints": [],
+      "reasons": [
+        "journey_not_executed_optional"
+      ]
+    }
+  ],
+  "rules": {
+    "never_infer_from_replay": true,
+    "never_infer_from_route_existence": true,
+    "never_infer_from_enqueue_alone": true,
+    "never_infer_from_optimistic_ui": true,
+    "verified_operationally_requires": [
+      "operational_evidence_ready",
+      "all_mandatory_checkpoints_pass",
+      "journey_specific_ui_attestations"
+    ]
+  }
+}

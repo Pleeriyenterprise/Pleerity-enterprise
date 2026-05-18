@@ -10,7 +10,7 @@
 import { getEvidenceStatus, workflowAwareMissingEvidenceLabel } from './evidenceStatus';
 import { resolveRequirementActionWithRowContext } from './requirementCtaParity';
 import { requirementUsesServerTakeActionPrimary } from './requirementTakeActionResolver';
-import { resolveClientRequirementLifecycle } from './clientRequirementLifecycle';
+import { resolveClientRequirementLifecycleForPresentation } from './clientPersistedSubmissionPresentation';
 import { applyLifecycleAwareCtaPresentation } from './requirementLifecyclePresentation';
 import {
   isConditionStandardWorkflowHint,
@@ -60,7 +60,7 @@ export function missingEvidenceLabelFromPriorityTaskMeta(meta) {
  *   is_condition_standard: boolean,
  *   server_take_action_primary: boolean,
  *   cta: ReturnType<typeof resolveRequirementActionWithRowContext>,
- *   lifecycle: ReturnType<typeof resolveClientRequirementLifecycle>,
+ *   lifecycle: ReturnType<typeof resolveClientRequirementLifecycleForPresentation>,
  *   missing_evidence_label: string,
  *   evidenceStatusForStatus: (status: string) => ReturnType<typeof getEvidenceStatus>,
  * }}
@@ -82,7 +82,7 @@ export function projectResolvedRequirementSemantics(requirement, options = {}) {
     is_condition_standard: isConditionStandardWorkflowHint(wfRaw, row),
     server_take_action_primary: requirementUsesServerTakeActionPrimary(row),
     cta,
-    lifecycle: resolveClientRequirementLifecycle(row),
+    lifecycle: resolveClientRequirementLifecycleForPresentation(row),
     missing_evidence_label: workflowAwareMissingEvidenceLabel(row),
     evidenceStatusForStatus: (status) => getEvidenceStatus(status, row),
   };

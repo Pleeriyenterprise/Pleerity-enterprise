@@ -1125,6 +1125,7 @@ _CORS_REQUIRED_ORIGINS = [
     "https://www.pleerityenterprise.co.uk",
     "https://pleerity-enterprise.vercel.app",
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 _cors_env = (os.environ.get("CORS_ORIGINS") or "").strip()
 if _cors_env and _cors_env != "*":

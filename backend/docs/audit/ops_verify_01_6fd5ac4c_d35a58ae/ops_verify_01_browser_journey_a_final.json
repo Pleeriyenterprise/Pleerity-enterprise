@@ -1,0 +1,308 @@
+{
+  "started_at_utc": "2026-05-18T15:44:37.725124+00:00",
+  "frontend_url": "http://127.0.0.1:3000",
+  "api_url": "http://127.0.0.1:8000",
+  "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "submit_mode": "existing_cer_resubmit_via_property_deeplink",
+  "prior_cer_id": "cer_799b0c6abff04bb6a8d51ec63ec904a0",
+  "steps": [
+    {
+      "step": "requirement_visible",
+      "ok": true,
+      "detail": "count=1",
+      "at": "2026-05-18T15:45:01.799985+00:00"
+    },
+    {
+      "step": "guided_modal_opened",
+      "ok": true,
+      "detail": "property_deeplink",
+      "at": "2026-05-18T15:45:07.263364+00:00"
+    },
+    {
+      "step": "A-1_submit_summary",
+      "ok": true,
+      "detail": "Submission recorded\n\nThis is what we saved. Your requirement status will update after review where applicable.\n\nEvidence method: STRUCTURED DECLARATION\nVerification: PENDING REVIEW\nSubmitted at: 2026-",
+      "at": "2026-05-18T15:45:10.177366+00:00"
+    },
+    {
+      "step": "A-5_panel",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-18T15:45:33.810384+00:00"
+    },
+    {
+      "step": "A-5_content",
+      "ok": true,
+      "detail": "Evidence method\nSTRUCTURED DECLARATION\nVerification\nPENDING REVIEW\nSubmitted at\n2026-05-18T15:45:08.",
+      "at": "2026-05-18T15:45:35.676484+00:00"
+    },
+    {
+      "step": "A-5_view_submission_scroll",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-18T15:45:36.743597+00:00"
+    },
+    {
+      "step": "A-9_refresh",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-18T15:45:59.795629+00:00"
+    }
+  ],
+  "checkpoints": {
+    "A-8": true,
+    "A-1": true,
+    "A-5": true,
+    "A-9": true
+  },
+  "submit_summary_text": "Submission recorded\n\nThis is what we saved. Your requirement status will update after review where applicable.\n\nEvidence method: STRUCTURED DECLARATION\nVerification: PENDING REVIEW\nSubmitted at: 2026-05-18T15:45:08.523686+00:00\nDeclaration: OPS-VERIFY-01 Journey A final browser walkthrough \u2014 Wales occupation contract re-submit at 2026-05-18T15:45:07.655989+00:00\nContract Type: {\"answer\":null,\"notes\":null,\"observation\":null}\nOccupation Contract Issued: Yes\nIssue Date: 2026-02-01",
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae\\ops_verify_01_journey_a_final_ui.png",
+  "finished_at_utc": "2026-05-18T15:46:00.114899+00:00",
+  "submit_response": {
+    "http_status": 200,
+    "body": {
+      "ok": true,
+      "workflow_complete": true,
+      "authority_synced": true,
+      "recalc_enqueued": true,
+      "message": "Requirement recorded and compliance status is updating.",
+      "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "requirement": {
+        "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_type": "occupation_contract",
+        "requirement_code": "occupation_contract",
+        "jurisdiction": "Wales",
+        "description": "Written occupation contract (Wales)",
+        "frequency_days": 365,
+        "due_date": "2026-06-04T19:37:36.082901+00:00",
+        "status": "PENDING",
+        "applicability": "UNKNOWN",
+        "confirmed_expiry_date": null,
+        "extracted_expiry_date": null,
+        "expiry_source": "NONE",
+        "extraction_confidence": null,
+        "not_required_reason": null,
+        "issue_date": null,
+        "certificate_number": null,
+        "date_source": "SYSTEM_ESTIMATED",
+        "evidence_state": "MISSING",
+        "confidence_state": "ESTIMATED",
+        "compliance_requirement_class": "DOCUMENT",
+        "action_type": "DOCUMENT",
+        "is_tracked": true,
+        "client_surface_visible": true,
+        "requirement_generation_source": "catalog_registry",
+        "requires_document": true,
+        "requires_job": false,
+        "registry_metadata": {
+          "catalog_keys": [],
+          "action_links_published": [
+            {
+              "key": "wales_renting_homes_guidance",
+              "label": "Occupation contract guidance (Wales)",
+              "kind": "official",
+              "url": "https://www.gov.wales/renting-homes",
+              "external": true
+            }
+          ],
+          "why_it_matters_short_published": "Renting Homes (Wales) expects written occupation contracts with prescribed terms for regulated lets.",
+          "primary_action_mode": "upload_document",
+          "why_it_matters_by_jurisdiction_published": {}
+        },
+        "created_at": "2026-05-05T19:37:37.316491+00:00",
+        "updated_at": "2026-05-17T13:52:43.278554+00:00",
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-05-18T15:45:08.928039+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "predicted_document_type": null,
+          "match_outcome": null,
+          "match_confidence": null,
+          "mismatch_reason_code": null,
+          "evidence_match_blocks_satisfaction": false,
+          "primary_evidence_mode": "STRUCTURED_DECLARATION",
+          "evidence_confidence_level": "MEDIUM",
+          "non_document_verification_status": "PENDING_REVIEW",
+          "primary_evidence_record_id": "cer_979c123533804653a9e20b2f6008b7f6",
+          "pending_non_document_evidence_count": 3,
+          "semantic_state": "MISSING"
+        },
+        "evidence_authority_synced_at": "2026-05-18T15:45:08.928039+00:00",
+        "requirement_code_normalized": "occupation_contract",
+        "is_mandatory": true,
+        "policy_criticality": "MEDIUM",
+        "evidence_state_normalized": "MISSING",
+        "policy_classification_version": "v1",
+        "applicability_provenance": {
+          "pipeline_applicability_state": "UNKNOWN",
+          "pipeline_updated_at": "2026-05-17T13:52:44.103000",
+          "effective_applicability_state": "UNKNOWN",
+          "effective_updated_at": "2026-05-17T13:52:44.103000",
+          "applicability_resolution_source": "PIPELINE",
+          "operator_override": {
+            "active": false,
+            "applicability_state": null
+          }
+        },
+        "pipeline_applicability_state": "UNKNOWN",
+        "effective_applicability_state": "UNKNOWN",
+        "applicability_resolution_source": "PIPELINE",
+        "operator_override_active": false,
+        "applicability_state": "UNKNOWN",
+        "semantic_state": "MISSING",
+        "canonical_requirement_code": "occupation_contract",
+        "display_label": "Occupation contract (Wales)",
+        "status_label": "Awaiting verification",
+        "date_label": "Estimated renewal date: 4 Jun 2026",
+        "date_explanation_helper": "Estimated from standard compliance cycles and your property setup. Upload your certificate to confirm this date.",
+        "evidence_badge_label": "Not uploaded",
+        "why_it_matters_short": "Renting Homes (Wales) expects written occupation contracts with prescribed terms for regulated lets.",
+        "why_it_matters_long": null,
+        "show_estimated_date_copy": true,
+        "requirement_category": "legal_obligation",
+        "engine_requirement_category": "legal_obligation",
+        "client_visibility": "informational",
+        "engine_client_visibility": "informational",
+        "requirement_class": "DOCUMENT",
+        "fulfillment_mode": "obligation",
+        "engine_fulfillment_mode": "obligation",
+        "creates_compliance_job": false,
+        "engine_creates_compliance_job": false,
+        "requires_document_evidence": false,
+        "engine_requires_document_evidence": false,
+        "include_in_priority_stream": false,
+        "engine_include_in_priority_stream": false,
+        "calendar_overdue_in_inbox": false,
+        "engine_calendar_overdue_in_inbox": false,
+        "engine_informational": true,
+        "take_action": {
+          "primary": {
+            "label": "Record Wales occupation contract",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4"
+          },
+          "secondary": {
+            "label": "Upload occupation contract",
+            "route": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=488269bb-1be7-47e7-a030-98accf6dffc4",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "action_links": [],
+        "workflow_class": "GUIDED_DECLARATION",
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ],
+        "client_evidence_disclosure": "This records Wales occupation contract evidence for review on the platform. It does not represent legal verification or replace legal advice.",
+        "evidence_completeness": null,
+        "requirement_display": {
+          "canonical_name": "Occupation Contract (Wales)",
+          "short_name": "Occupation Contract",
+          "description": "",
+          "category_label": "Tenancy",
+          "primary_cta_label": "Record Wales occupation contract",
+          "secondary_cta_label": "Upload occupation contract"
+        },
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "client_lifecycle_label": "Action required",
+        "client_lifecycle_reason_codes": [
+          "EA:MISSING"
+        ]
+      },
+      "evidence_record": {
+        "evidence_record_id": "cer_979c123533804653a9e20b2f6008b7f6",
+        "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "created_at": "2026-05-18T15:45:08.523686+00:00",
+        "created_by_user_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+        "verification_status": "PENDING_REVIEW",
+        "verified_by_user_id": null,
+        "verified_at": null,
+        "evidence_confidence_level": "MEDIUM",
+        "evidence_payload": {
+          "declaration_statement": "OPS-VERIFY-01 Journey A final browser walkthrough \u2014 Wales occupation contract re-submit at 2026-05-18T15:45:07.655989+00:00",
+          "structured_fields": {
+            "contract_type": {
+              "answer": null,
+              "notes": null,
+              "observation": null
+            },
+            "occupation_contract_issued": {
+              "answer": true,
+              "notes": null,
+              "observation": null
+            },
+            "issue_date": {
+              "answer": "2026-02-01",
+              "notes": null,
+              "observation": null
+            },
+            "contract_holder_name": {
+              "answer": "OPS-VERIFY-01 Final Browser",
+              "notes": null,
+              "observation": null
+            },
+            "service_method": {
+              "answer": "email",
+              "notes": null,
+              "observation": null
+            },
+            "proof_reference": {
+              "answer": null,
+              "notes": null,
+              "observation": null
+            },
+            "declaration_confirmed": {
+              "answer": true,
+              "notes": null,
+              "observation": null
+            }
+          }
+        },
+        "linked_document_ids": [],
+        "audit_metadata": {
+          "created_via": "client_compliance_evidence_api"
+        },
+        "included_in_active_compliance": true,
+        "archived": false,
+        "archived_reason": null
+      }
+    },
+    "evidence_record_id": "cer_979c123533804653a9e20b2f6008b7f6",
+    "workflow_complete": true
+  },
+  "new_cer_id": "cer_979c123533804653a9e20b2f6008b7f6"
+}

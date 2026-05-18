@@ -3,7 +3,7 @@
  * Uses {@link resolveClientRequirementLifecycle} only — does not change backend authority.
  */
 
-import { resolveClientRequirementLifecycle } from './clientRequirementLifecycle';
+import { resolveClientRequirementLifecycleForPresentation } from './clientPersistedSubmissionPresentation';
 
 /**
  * @param {string} label
@@ -25,7 +25,7 @@ export function primaryLabelSuggestsInitialObligation(label) {
  */
 export function applyLifecycleAwareCtaPresentation(requirement, cta) {
   if (!cta || typeof cta !== 'object') return cta || {};
-  const { state } = resolveClientRequirementLifecycle(requirement);
+  const { state } = resolveClientRequirementLifecycleForPresentation(requirement);
   if (state === 'ACTION_REQUIRED' || state === 'NOT_APPLICABLE') {
     return cta;
   }
@@ -60,7 +60,7 @@ export function applyLifecycleAwareCtaPresentation(requirement, cta) {
  * @param {Record<string, unknown>|null|undefined} row
  */
 export function getRequirementLifecycleRowSurfaceClass(row) {
-  const { state } = resolveClientRequirementLifecycle(row);
+  const { state } = resolveClientRequirementLifecycleForPresentation(row);
   switch (state) {
     case 'ACTION_REQUIRED':
       return 'border-l-4 border-l-red-600 bg-white';
@@ -82,7 +82,7 @@ export function getRequirementLifecycleRowSurfaceClass(row) {
  * @param {Record<string, unknown>|null|undefined} row
  */
 export function getRequirementLifecycleCardShellClass(row) {
-  const { state } = resolveClientRequirementLifecycle(row);
+  const { state } = resolveClientRequirementLifecycleForPresentation(row);
   const base = 'rounded-xl border min-w-0 shadow-sm';
   switch (state) {
     case 'ACTION_REQUIRED':
@@ -106,7 +106,7 @@ export function getRequirementLifecycleCardShellClass(row) {
  * @returns {{ text: string, className: string } | null}
  */
 export function getLifecycleTierBadge(row) {
-  const { state } = resolveClientRequirementLifecycle(row);
+  const { state } = resolveClientRequirementLifecycleForPresentation(row);
   if (state === 'PENDING_REVIEW') {
     return {
       text: 'Awaiting review',
@@ -134,7 +134,7 @@ export function getLifecycleTierBadge(row) {
  * @returns {'red'|'amber'|'emerald'|'green'|'slate'|'gray'}
  */
 export function getRequirementLifecycleIconTone(row) {
-  const { state } = resolveClientRequirementLifecycle(row);
+  const { state } = resolveClientRequirementLifecycleForPresentation(row);
   if (state === 'ACTION_REQUIRED') return 'red';
   if (state === 'PENDING_REVIEW') return 'amber';
   if (state === 'SATISFIED_UNVERIFIED') return 'emerald';

@@ -6,6 +6,7 @@ import {
   isViewExistingSubmissionCta,
   pickLatestComplianceEvidenceRecord,
 } from '../../utils/complianceEvidenceSubmissionView';
+import { requirementHasPersistedClientSubmission } from '../../utils/clientPersistedSubmissionPresentation';
 import { Button } from '../ui/button';
 import { requirementLabel } from '../../domain/presentDomain';
 import { mergeRequirementSupportingLinks, resolveRequirementAction } from '../../utils/requirementTakeActionResolver';
@@ -135,6 +136,10 @@ export default function RequirementIntelligenceModal({
       setHasSubmission(false);
       return undefined;
     }
+    const seedRow = seedRequirement || payload?.requirement;
+    if (requirementHasPersistedClientSubmission(seedRow)) {
+      setHasSubmission(true);
+    }
     let cancelled = false;
     setCerLoading(true);
     clientAPI
@@ -153,7 +158,7 @@ export default function RequirementIntelligenceModal({
     return () => {
       cancelled = true;
     };
-  }, [open, pid, rid]);
+  }, [open, pid, rid, seedRequirement, payload?.requirement]);
 
   useEffect(() => loadSubmissionPresence(), [loadSubmissionPresence]);
 

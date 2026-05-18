@@ -36,6 +36,7 @@ dist
 
 *token.json*
 *credentials.json*
+.ops_verify_temp_pw.txt
 
 # Logs and debug files
 npm-debug.log*

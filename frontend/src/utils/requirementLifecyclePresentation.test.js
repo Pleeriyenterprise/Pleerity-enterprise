@@ -40,6 +40,18 @@ describe('requirementLifecyclePresentation', () => {
       expect(out.primary_action_label).toBe('Record gas safety certificate');
     });
 
+    it('maps ACTION_REQUIRED + persisted CER to View submission for guided_evidence', () => {
+      const row = rowWithLifecycle('ACTION_REQUIRED', {
+        evidence_authority: { state: 'MISSING', primary_evidence_record_id: 'cer_1' },
+      });
+      const out = applyLifecycleAwareCtaPresentation(row, {
+        ...baseCta,
+        primary_action_handler: 'guided_evidence',
+        primary_action_label: 'Record Wales occupation contract',
+      });
+      expect(out.primary_action_label).toBe('View submission');
+    });
+
     it('maps PENDING_REVIEW + guided_evidence to View submission', () => {
       const row = rowWithLifecycle('PENDING_REVIEW');
       const out = applyLifecycleAwareCtaPresentation(row, {

@@ -4693,11 +4693,37 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### TRUST-01 — operational coherence remediation (2026-05-16)
 
+**Status:** **IMPLEMENTED** — frontend remediation verified through OPS-VERIFY-01 Journey A browser re-submit path (2026-05-18).
+
 **Scope:** Product-path read/write coherence only — persisted guided compliance evidence records (CER) are human-inspectable in **Requirement details**; supporting-file upload success is separated from authoritative `POST /compliance-evidence` completion; no authority, fanout, lifecycle, or governance expansion.
 
-**Surfaces:** `GET /client/properties/{pid}/requirements/{rid}/compliance-evidence` (existing); `RequirementSubmissionInspectPanel` in `RequirementIntelligenceModal`; truthful guided-submit summary from returned `evidence_record`.
+**Surfaces:** `GET /client/properties/{pid}/requirements/{rid}/compliance-evidence` (existing); `RequirementSubmissionInspectPanel` in `RequirementIntelligenceModal`; truthful guided-submit summary from returned `evidence_record`; presentation-layer lifecycle truthfulness when CER exists (`clientPersistedSubmissionPresentation`); requirements load-failure visibility; dev CORS parity for `127.0.0.1:3000`.
 
 **Out of scope:** E1/F1/G1 reopening; new governance RCs; replay/lineage archaeology.
+
+---
+
+### OPS-VERIFY-01 — client evidence journey operational closure (IN_PROGRESS / PARTIAL)
+
+**Scope:** Staging walkthrough + DB + async convergence for real client journeys (guided submit, primary upload, supporting-only). **Not** D1/E1/C1/C2/F1 replacement.
+
+**Rule:** Infrastructure replay proof ≠ operational closure proof.
+
+**Unit status:** **IN_PROGRESS / PARTIAL** — required journeys not all complete; unit is **not** DONE.
+
+| Journey | Status |
+|---------|--------|
+| **A** guided structured evidence submit | **VERIFIED_OPERATIONALLY** — pilot `occupation_contract` (`488269bb-…`) existing-CER **re-submit** via browser (`proof_mode: operational_browser`); bundle `docs/audit/ops_verify_01_6fd5ac4c_d35a58ae/`. |
+| **A** clean first-submit | **Unverified / watchlist** — no greenfield guided requirement on pilot property; first-time modal submit not attested. |
+| **B** primary document upload | **NOT_STARTED** |
+| **C** supporting-upload-only | **NOT_STARTED** |
+| **D** verify/review (optional) | **NOT_STARTED** |
+
+**Harness:** Read-only capture/classify scripts `backend/scripts/ops_verify_01_{capture,manifest,classify,snapshot}.py`; evidence bundles under `docs/audit/ops_verify_01_{slug}/`.
+
+**Done when:** Evidence bundles under `audit/ops_verify_01_*` and classifications A–C `VERIFIED_OPERATIONALLY` (or signed waiver) — **not met**.
+
+**Out of scope:** Governance expansion, architecture redesign, new RC systems.
 
 ---
 

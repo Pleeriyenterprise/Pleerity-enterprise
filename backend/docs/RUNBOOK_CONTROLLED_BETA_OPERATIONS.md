@@ -144,10 +144,24 @@ During beta, operators use **Admin → Automation** together with **Control Cent
 
 ### 4.8 Guided evidence — “submission disappeared” (TRUST-01)
 
+**TRUST-01 frontend remediation:** implemented and verified through OPS-VERIFY-01 Journey A browser re-submit path (2026-05-18). Local dev: allow both `http://localhost:3000` and `http://127.0.0.1:3000` CORS origins when using split host API URL.
+
 1. Confirm the user completed **Submit evidence** (authoritative `POST /compliance-evidence`), not only **Upload supporting files** (document upload is informational until submit).  
 2. In the client UI, open **Requirement details** → **Your submission** (or primary **View submission** when lifecycle is pending review). Payload is read from persisted CER via `GET …/compliance-evidence`, not lifecycle labels alone.  
 3. If submit succeeded but panel is empty: verify CER exists for `requirement_id` (non-archived) in `compliance_evidence_records`; do **not** patch requirement status for display.  
 4. Escalate **S2** only when CER is missing after a confirmed successful POST (data integrity), not when the user stopped after supporting upload.
+
+### 4.9 Client evidence journeys — operational verification (OPS-VERIFY-01)
+
+**Unit status:** **IN_PROGRESS / PARTIAL** — Journey A `VERIFIED_OPERATIONALLY` (existing-CER re-submit); clean first-submit unverified; B/C not started.
+
+When users report “submitted but nothing shows” or “upload didn’t count”:
+
+1. Distinguish **supporting upload** vs **POST compliance-evidence** (RUNBOOK §4.8).
+2. Run OPS-VERIFY-01 checklist: CER exists → authority blob → queue DONE → UI inspect (Requirement details → Your submission).
+3. Capture read-only bundles via `python -m scripts.ops_verify_01_capture` (baseline → post-submit → convergence) and classify via `python -m scripts.ops_verify_01_classify`.
+4. Do not treat D1/C2 pass as proof the client journey worked — check OPS-VERIFY-01 artefacts.
+5. **Journey A (pilot):** bundle `docs/audit/ops_verify_01_6fd5ac4c_d35a58ae/` — browser guided submit attested; re-submit used property `?open=resolve` deep-link when row CTA is “View submission”.
 
 ---
 

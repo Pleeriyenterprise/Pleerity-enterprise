@@ -1,0 +1,52 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "unit_name": "Client Evidence Journey Operational Closure Verification",
+  "run_id": "ops_verify_01_6fd5ac4c_d35a58ae_20260518T070546Z",
+  "slug": "6fd5ac4c_d35a58ae",
+  "captured_at_utc": "2026-05-18T15:49:26.960980+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "requirement_ids": [
+    "488269bb-1be7-47e7-a030-98accf6dffc4"
+  ],
+  "journeys_executed": [
+    "A_guided_structured_evidence_submit"
+  ],
+  "verifier": "cursor-ops-verify-01",
+  "proof_mode": "operational_browser",
+  "replay_or_fixture_driver": false,
+  "browser_walkthrough_completed": true,
+  "staging_url": "http://127.0.0.1:3000",
+  "async_sla_minutes": 15,
+  "ui_attestations": {
+    "A_guided_structured_evidence_submit": {
+      "submission_visible": true,
+      "refresh_persisted": true,
+      "modal_submit_observed": true,
+      "user_visible_gap": false
+    }
+  },
+  "checkpoint_results": {
+    "A_guided_structured_evidence_submit": {
+      "A-1": true,
+      "A-2": true,
+      "A-3": true,
+      "A-4": true,
+      "A-5": true,
+      "A-6": true,
+      "A-7": true,
+      "A-8": true,
+      "A-9": true
+    }
+  },
+  "notes": "Infrastructure replay proof \u2260 operational closure proof. Journey A: backend path verified; browser TRUST-01 surfaces not verified in this session.",
+  "implementation_scope": "operational_verification_capture_and_classify_only",
+  "read_only": true,
+  "api_url": "http://127.0.0.1:8000",
+  "submit_via": "browser_guided_modal",
+  "submit_correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:cer_979c123533804653a9e20b2f6008b7f6",
+  "cer_id": "cer_979c123533804653a9e20b2f6008b7f6",
+  "execution_notes": "Final Journey A browser walkthrough. Existing CER re-submit via property ?open=resolve deep-link. New CER cer_979c123533804653a9e20b2f6008b7f6",
+  "submit_mode": "existing_cer_resubmit_via_property_deeplink",
+  "prior_cer_id": "cer_799b0c6abff04bb6a8d51ec63ec904a0"
+}

@@ -9,7 +9,7 @@ import { CheckCircle, Clock, AlertTriangle, XCircle, FileText, HelpCircle } from
 import { documentVerificationAwaitingSubline } from '../domain/presentDomain';
 import { isConditionStandardWorkflowHint, isMultiEvidenceStyleWorkflow } from './workflowSemantics';
 import { mergeGovernanceUxPilotChip } from './governanceUxPilotAdapter';
-import { resolveClientRequirementLifecycle } from './clientRequirementLifecycle';
+import { resolveClientRequirementLifecycleForPresentation } from './clientPersistedSubmissionPresentation';
 
 function awaitingVerificationSubline() {
   const s = documentVerificationAwaitingSubline();
@@ -146,7 +146,7 @@ export function getEvidenceStatus(status, row) {
   if (row && typeof row === 'object') {
     const rawLc = String(row.client_lifecycle_state || '').trim().toUpperCase();
     if (rawLc) {
-      const resolved = resolveClientRequirementLifecycle(row);
+      const resolved = resolveClientRequirementLifecycleForPresentation(row);
       const out = lifecycleDerivedChip(resolved, row);
       return mergeGovernanceUxPilotChip(out, row);
     }

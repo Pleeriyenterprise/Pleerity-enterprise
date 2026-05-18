@@ -57,6 +57,7 @@ import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
 import { NotApplicableGovernedNotice } from '../utils/notApplicableGovernedCopy';
 import { useComplianceOutcomeRefresh } from '../utils/useComplianceOutcomeRefresh';
+import { resolveSubmissionAwareEvidenceBadgeLabel } from '../utils/clientPersistedSubmissionPresentation';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -97,6 +98,8 @@ const RequirementsPage = () => {
   const [viewRequirementModal, setViewRequirementModal] = useState(null);
   const [planJobGate, setPlanJobGate] = useState(null);
   const [reopenSavingId, setReopenSavingId] = useState(null);
+  const [requirementsLoadError, setRequirementsLoadError] = useState(null);
+  const [requirementsLoaded, setRequirementsLoaded] = useState(false);
 
   // Get filter from URL params
   const statusFilter = searchParams.get('status') || 'all';
@@ -123,6 +126,7 @@ const RequirementsPage = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    setRequirementsLoadError(null);
     try {
       const [dashboardRes, requirementsRes, documentsRes] = await Promise.all([
         clientAPI.getDashboard().then((r) => r.data),
@@ -133,6 +137,7 @@ const RequirementsPage = () => {
       setProperties(dashboardRes?.properties || []);
       setRequirements(requirementsRes?.requirements || []);
       setRequirementsPresentation(requirementsRes?.presentation || null);
+      setRequirementsLoaded(true);
       const docs = documentsRes?.documents || [];
       const countBy = {};
       docs.forEach((d) => {
@@ -141,6 +146,27 @@ const RequirementsPage = () => {
       });
       setDocumentCountByRequirementId(countBy);
     } catch (error) {
+      const status = error?.response?.status;
+      const detail = error?.response?.data?.detail;
+      const message =
+        (typeof detail === 'string' ? detail : detail?.message) ||
+        error?.message ||
+        'Could not load requirements from the server.';
+      setRequirementsLoadError({
+        status: status ?? null,
+        message,
+      });
+      if (typeof window !== 'undefined' && window.__CVP_LAST_API_ERROR) {
+        const last = window.__CVP_LAST_API_ERROR;
+        setRequirementsLoadError((prev) =>
+          prev
+            ? {
+                ...prev,
+                debugAt: last.at,
+              }
+            : prev,
+        );
+      }
       toast.error('Failed to load requirements');
     } finally {
       setLoading(false);
@@ -471,11 +497,14 @@ const RequirementsPage = () => {
                     {req.evidence_completeness.summary_label}
                   </span>
                 ) : null}
-                {req.evidence_badge_label && (
+                {(() => {
+                  const badge = resolveSubmissionAwareEvidenceBadgeLabel(req.evidence_badge_label, req);
+                  return badge ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200" data-testid={`evidence-badge-${req.requirement_id}`}>
-                    Document: {req.evidence_badge_label}
+                    Document: {badge}
                   </span>
-                )}
+                  ) : null;
+                })()}
                 {docCount > 0 && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200" data-testid={`doc-count-${req.requirement_id}`}>
                     <FileText className="w-3.5 h-3.5" />
@@ -832,15 +861,42 @@ const RequirementsPage = () => {
           </div>
         </div>
 
+        {requirementsLoadError && !requirementsLoaded ? (
+          <Alert className="mb-6 border-red-200 bg-red-50" data-testid="requirements-load-error">
+            <AlertCircle className="h-4 w-4 text-red-700" />
+            <AlertDescription className="text-red-900">
+              <span className="font-medium">Could not load requirements.</span>
+              <span className="ml-1">{requirementsLoadError.message}</span>
+              {requirementsLoadError.status ? (
+                <span className="block text-xs text-red-800/90 mt-1">HTTP {requirementsLoadError.status}</span>
+              ) : null}
+              <span className="block text-xs text-red-800/90 mt-2">
+                This is not an empty portfolio — check your connection, sign-in, and that the app can reach the API
+                (local dev: use localhost or 127.0.0.1 consistently with CORS).
+              </span>
+              <Button variant="outline" size="sm" className="mt-3" onClick={fetchData} data-testid="requirements-retry-load">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         {/* Requirements: accordion by property or grouped by requirement */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {filteredRequirements.length === 0 ? (
+            requirementsLoadError ? (
+              <div className="p-12 text-center text-sm text-gray-600" data-testid="requirements-load-error-inline">
+                Requirements could not be loaded. Use Retry above or refresh the page.
+              </div>
+            ) : (
             <EmptyState
               icon={FileCheck}
               title="No tracked items found"
               description={searchTerm ? 'Try adjusting your search criteria' : WORKSPACE_REQUIREMENTS_EMPTY_DESCRIPTION}
               className="p-12"
             />
+            )
           ) : groupBy === 'property' ? (
             <Accordion type="multiple" className="w-full">
               {(() => {
