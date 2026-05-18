@@ -236,6 +236,28 @@ def object_livemode_to_mode(livemode: Optional[bool]) -> Optional[str]:
     return "live" if livemode else "test"
 
 
+def normalize_stripe_mode(mode: Optional[str], *, source: str = "platform") -> str:
+    """
+    Validate and return canonical Stripe mode ('live' | 'test').
+
+    Use source in error messages when mode is supplied by a caller (not env).
+    """
+    if mode is None or not str(mode).strip():
+        return get_stripe_mode()
+    normalized = str(mode).strip().lower()
+    if normalized not in VALID_MODES:
+        logger.error(
+            "Invalid Stripe mode %r from %s (expected live or test)",
+            mode,
+            source,
+        )
+        raise StripeModeConfigurationError(
+            f"Invalid Stripe mode {normalized!r} from {source}; expected 'live' or 'test'.",
+            code="STRIPE_MODE_INVALID",
+        )
+    return normalized
+
+
 def assert_stripe_object_mode(
     obj: Dict[str, Any],
     *,
@@ -243,16 +265,16 @@ def assert_stripe_object_mode(
     object_type: str = "object",
 ) -> None:
     """Reject Stripe objects from the opposite mode (coupon, price, event, etc.)."""
-    expected_mode = expected_mode or get_stripe_mode()
+    platform_mode = normalize_stripe_mode(expected_mode, source="platform STRIPE_MODE")
     livemode = obj.get("livemode")
     if livemode is None:
         return
     actual = object_livemode_to_mode(bool(livemode))
-    if actual and actual != expected_mode:
+    if actual and actual != platform_mode:
         raise StripeObjectModeMismatchError(
-            f"Stripe {object_type} is {actual} mode but platform STRIPE_MODE is {expected_mode}.",
+            f"Stripe {object_type} is {actual} mode but platform STRIPE_MODE is {platform_mode}.",
             object_type=object_type,
-            expected_mode=expected_mode,
+            expected_mode=platform_mode,
             actual_livemode=bool(livemode),
         )
 

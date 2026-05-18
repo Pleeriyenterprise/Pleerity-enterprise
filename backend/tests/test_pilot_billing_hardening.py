@@ -93,7 +93,13 @@ async def test_stripe_coupon_validation_rejects_percent_mismatch():
         "duration": "repeating",
         "duration_in_months": 2,
     }
-    with patch("services.pilot_stripe_coupon_validation.stripe.Coupon.retrieve", return_value=coupon):
+    with patch(
+        "services.pilot_stripe_coupon_validation.configure_stripe_sdk", return_value="sk_test_x"
+    ), patch(
+        "services.pilot_stripe_coupon_validation.get_stripe_mode", return_value="test"
+    ), patch(
+        "services.pilot_stripe_coupon_validation.stripe.Coupon.retrieve", return_value=coupon
+    ):
         from services.pilot_stripe_coupon_validation import validate_pilot_stripe_discount_config
 
         with pytest.raises(PilotStripeCouponValidationError, match="match"):

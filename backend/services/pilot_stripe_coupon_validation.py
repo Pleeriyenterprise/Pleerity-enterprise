@@ -51,16 +51,19 @@ async def validate_pilot_stripe_discount_config(
 
     Raises PilotStripeCouponValidationError with operator-safe messages.
     """
+    configure_stripe_sdk()
+    platform_stripe_mode = get_stripe_mode()
+
     cfg = discount_config_from_doc(invite_fields)
     expected_percent = cfg["discount_percent"]
     expected_duration = cfg["discount_duration"]
     expected_months = cfg["discount_duration_in_months"]
-    mode = str(discount_mode or "").lower()
+    discount_mode_key = str(discount_mode or "").lower()
 
     coupon_id = (stripe_coupon_id or "").strip()
     promo_id = (stripe_promotion_code_id or "").strip()
 
-    if mode == PilotInviteDiscountMode.PROMOTION_CODE.value:
+    if discount_mode_key == PilotInviteDiscountMode.PROMOTION_CODE.value:
         if not promo_id:
             raise PilotStripeCouponValidationError(
                 "Promotion code mode requires stripe_promotion_code_id."
@@ -99,7 +102,9 @@ async def validate_pilot_stripe_discount_config(
         raise PilotStripeCouponValidationError("Stripe coupon is not valid (expired or disabled).")
 
     try:
-        assert_stripe_object_mode(coupon, expected_mode=mode, object_type="coupon")
+        assert_stripe_object_mode(
+            coupon, expected_mode=platform_stripe_mode, object_type="coupon"
+        )
     except Exception as e:
         raise PilotStripeCouponValidationError(str(e)) from e
 
