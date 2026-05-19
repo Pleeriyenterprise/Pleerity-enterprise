@@ -205,6 +205,8 @@ const IntakePage = () => {
   const [agreementCurrent, setAgreementCurrent] = useState(null);
   const [agreementLoading, setAgreementLoading] = useState(false);
   const [agreementFetchError, setAgreementFetchError] = useState('');
+  const [agreementFetchDiagnostic, setAgreementFetchDiagnostic] = useState(null);
+  const [agreementRetryNonce, setAgreementRetryNonce] = useState(0);
   const [serviceAgreementAccepted, setServiceAgreementAccepted] = useState(false);
   const [pilotInviteCode, setPilotInviteCode] = useState('');
   const [pilotInviteValidation, setPilotInviteValidation] = useState(null);
@@ -510,6 +512,7 @@ const IntakePage = () => {
     let timer = null;
     setAgreementLoading(true);
     setAgreementFetchError('');
+    setAgreementFetchDiagnostic(null);
 
     const load = async () => {
       try {
@@ -518,11 +521,20 @@ const IntakePage = () => {
           setAgreementCurrent(res.data || null);
           setServiceAgreementAccepted(false);
           setAgreementFetchError('');
+          setAgreementFetchDiagnostic(null);
         }
       } catch (err) {
         if (!cancelled) {
           setAgreementCurrent(null);
           const d = err.response?.data?.detail;
+          const requestId =
+            typeof d === 'object' && d && d.request_id
+              ? d.request_id
+              : err.response?.data?.request_id || null;
+          const errorCode =
+            typeof d === 'object' && d && d.error_code
+              ? d.error_code
+              : err.response?.data?.error_code || null;
           const issues =
             typeof d === 'object' && d && Array.isArray(d.validation_issues) && d.validation_issues.length
               ? ` ${d.validation_issues.join('; ')}`
@@ -542,6 +554,8 @@ const IntakePage = () => {
             ? `Please check the full postcode. It appears incomplete. Go back to property details and enter a complete UK postcode (e.g. KY10 1AA).${issues}`
             : baseMsg;
           setAgreementFetchError(msg);
+          setAgreementFetchDiagnostic(requestId || errorCode ? { request_id: requestId, error_code: errorCode } : null);
+          setServiceAgreementAccepted(false);
         }
       } finally {
         if (!cancelled) setAgreementLoading(false);
@@ -553,7 +567,7 @@ const IntakePage = () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [step, agreementPreviewRequestBody]);
+  }, [step, agreementPreviewRequestBody, agreementRetryNonce]);
 
   // Step validation
   const validateStep = (stepNum) => {
@@ -874,6 +888,8 @@ const IntakePage = () => {
       const authoritativePreview = await intakeAPI.previewAgreement({
         intake_session_id: intakeSessionId,
         client_id: clientId,
+        invite_code: (pilotInviteCode || '').trim() || undefined,
+        invite_entry_channel: pilotInviteEntryChannelFromSources(pilotInviteCode, inviteParam),
       });
       const pv = authoritativePreview.data;
       if (!pv?.render_hash_sha256) {
@@ -907,6 +923,11 @@ const IntakePage = () => {
         rendered_agreement_hash: pv.render_hash_sha256,
         rendered_agreement_snapshot: renderedForAcceptance,
       };
+      const acceptancePilotCode = (pilotInviteCode || '').trim();
+      if (acceptancePilotCode) {
+        acceptanceBody.invite_code = acceptancePilotCode;
+        acceptanceBody.invite_entry_channel = pilotInviteEntryChannelFromSources(pilotInviteCode, inviteParam);
+      }
       const accRes = await publicAgreementsAPI.postAcceptance(acceptanceBody);
       const acceptance_id = accRes.data?.acceptance_id;
       if (!acceptance_id) {
@@ -1245,6 +1266,8 @@ const IntakePage = () => {
             agreementCurrent={agreementCurrent}
             agreementLoading={agreementLoading}
             agreementError={agreementFetchError}
+            agreementDiagnostic={agreementFetchDiagnostic}
+            onRetryAgreementPreview={() => setAgreementRetryNonce((n) => n + 1)}
             renderedAgreement={renderedAgreement}
             agreementRenderValidation={agreementRenderValidation}
             serviceAgreementAccepted={serviceAgreementAccepted}
@@ -2577,6 +2600,8 @@ const Step5Review = ({
   agreementCurrent,
   agreementLoading,
   agreementError,
+  agreementDiagnostic,
+  onRetryAgreementPreview,
   renderedAgreement,
   agreementRenderValidation,
   serviceAgreementAccepted,
@@ -2602,6 +2627,12 @@ const Step5Review = ({
   const [requirementsPreviewLoading, setRequirementsPreviewLoading] = useState(false);
   const [requirementsPreviewError, setRequirementsPreviewError] = useState('');
   const maxProps = PLAN_LIMITS[formData.billing_plan] || 2;
+  const agreementBlocksPayment =
+    agreementLoading ||
+    Boolean(agreementError) ||
+    !agreementCurrent ||
+    !agreementRenderValidation?.valid ||
+    !serviceAgreementAccepted;
 
   useEffect(() => {
     if (formData.document_submission_method !== 'UPLOAD' || !intakeSessionId) {
@@ -2891,9 +2922,24 @@ const Step5Review = ({
         <CardContent className="pt-4 sm:pt-6 space-y-5">
           {agreementLoading && <p className="text-sm text-slate-600">Loading agreement…</p>}
           {agreementError && !agreementLoading && (
-            <p className="text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 leading-relaxed" data-testid="intake-agreement-load-error">
-              {agreementError}
-            </p>
+            <div className="text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 leading-relaxed space-y-2" data-testid="intake-agreement-load-error">
+              <p>{agreementError}</p>
+              {agreementDiagnostic?.request_id && (
+                <p className="text-xs text-slate-600">Reference: {agreementDiagnostic.request_id}</p>
+              )}
+              {!agreementDiagnostic?.request_id && agreementDiagnostic?.error_code && (
+                <p className="text-xs text-slate-600">Code: {agreementDiagnostic.error_code}</p>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onRetryAgreementPreview}
+                data-testid="intake-agreement-retry"
+              >
+                Retry agreement preview
+              </Button>
+            </div>
           )}
           {!agreementLoading && !agreementCurrent && !agreementError && (
             <p className="text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 leading-relaxed" data-testid="intake-agreement-empty">
@@ -3113,7 +3159,7 @@ const Step5Review = ({
         </Button>
         <Button 
           onClick={onSubmit} 
-          disabled={loading}
+          disabled={loading || agreementBlocksPayment}
           className="flex-1 min-h-11"
           data-testid="submit-payment"
         >

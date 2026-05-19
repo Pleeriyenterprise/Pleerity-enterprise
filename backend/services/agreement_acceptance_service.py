@@ -43,6 +43,7 @@ async def create_acceptance(
     assisted_upload_consent_timestamp: Optional[str] = None,
     client_rendered_agreement_hash: Optional[str] = None,
     client_rendered_agreement_snapshot: Optional[Dict[str, Any]] = None,
+    pilot_invite_doc: Optional[Dict[str, Any]] = None,
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
@@ -70,6 +71,7 @@ async def create_acceptance(
         client_id=client_id,
         template_id=template_id,
         template_version_id=version_id,
+        pilot_invite_doc=pilot_invite_doc,
     )
     if not snap:
         return None, "CLIENT_NOT_FOUND"

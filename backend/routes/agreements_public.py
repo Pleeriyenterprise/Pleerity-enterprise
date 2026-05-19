@@ -66,6 +66,35 @@ async def post_agreement_acceptance(request: Request, body: AgreementAcceptanceC
             detail={"error_code": "RATE_LIMIT_EXCEEDED", "message": rl_msg or "Too many requests. Try again shortly."},
         )
     ua = request.headers.get("user-agent")
+    pilot_invite_doc = None
+    invite_raw = (body.invite_code or "").strip()
+    if invite_raw:
+        from database import database
+        from models.pilot_invite import PilotInvitePublicError
+        from services.pilot_invite_service import validate_invite_for_checkout
+
+        db = database.get_db()
+        client = await db.clients.find_one(
+            {"client_id": body.client_id},
+            {"_id": 0, "billing_plan": 1, "contact_email": 1, "email": 1},
+        )
+        if not client:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"error_code": "CLIENT_NOT_FOUND"})
+        try:
+            pilot_invite_doc, _ = await validate_invite_for_checkout(
+                code=invite_raw,
+                plan_code=str(client.get("billing_plan") or "PLAN_1_SOLO"),
+                email=client.get("contact_email") or client.get("email"),
+                for_checkout=False,
+                entry_channel=body.invite_entry_channel,
+                log_audit=False,
+                record_attempts=False,
+            )
+        except PilotInvitePublicError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error_code": e.error_code, "message": e.message},
+            )
     doc, err = await create_acceptance(
         client_id=body.client_id,
         intake_session_id=body.intake_session_id,
@@ -78,6 +107,7 @@ async def post_agreement_acceptance(request: Request, body: AgreementAcceptanceC
         assisted_upload_consent_timestamp=body.assisted_upload_consent_timestamp,
         client_rendered_agreement_hash=body.rendered_agreement_hash,
         client_rendered_agreement_snapshot=body.rendered_agreement_snapshot,
+        pilot_invite_doc=pilot_invite_doc,
         ip_address=ip or None,
         user_agent=ua,
     )

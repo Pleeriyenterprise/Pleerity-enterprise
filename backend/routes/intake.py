@@ -831,6 +831,7 @@ async def intake_agreement_preview(request: Request, body: IntakeAgreementPrevie
     """
     from services.agreement_preview_service import build_intake_agreement_preview
 
+    request_id = str(uuid.uuid4())
     ip = get_client_ip(request)
     allowed, rl_msg = await rate_limiter.check_rate_limit(
         f"intake_agreement_preview:{ip or 'unknown'}",
@@ -848,14 +849,24 @@ async def intake_agreement_preview(request: Request, body: IntakeAgreementPrevie
     pilot_invite_doc = None
     invite_raw = (body.invite_code or "").strip()
     plan_for_invite = None
+    email_for_invite = None
     if body.intake and getattr(body.intake, "billing_plan", None):
         plan_for_invite = body.intake.billing_plan.value if hasattr(body.intake.billing_plan, "value") else str(body.intake.billing_plan)
+        email_for_invite = str(getattr(body.intake, "email", "") or "") if body.intake else None
+    elif cid and invite_raw:
+        client = await database.get_db().clients.find_one(
+            {"client_id": cid},
+            {"_id": 0, "billing_plan": 1, "contact_email": 1, "email": 1},
+        )
+        if client:
+            plan_for_invite = str(client.get("billing_plan") or "PLAN_1_SOLO")
+            email_for_invite = client.get("contact_email") or client.get("email")
     if invite_raw and plan_for_invite:
         try:
             pilot_invite_doc, _ = await validate_invite_for_checkout(
                 code=invite_raw,
                 plan_code=plan_for_invite,
-                email=str(getattr(body.intake, "email", "") or "") if body.intake else None,
+                email=email_for_invite,
                 for_checkout=False,
                 entry_channel=body.invite_entry_channel,
                 log_audit=False,
@@ -863,31 +874,49 @@ async def intake_agreement_preview(request: Request, body: IntakeAgreementPrevie
             )
         except PilotInvitePublicError:
             pilot_invite_doc = None
-    payload, err, v_errs = await build_intake_agreement_preview(
-        intake_session_id=body.intake_session_id,
-        client_id=cid,
-        intake=body.intake,
-        pilot_invite_doc=pilot_invite_doc,
-    )
+    try:
+        payload, err, v_errs = await build_intake_agreement_preview(
+            intake_session_id=body.intake_session_id,
+            client_id=cid,
+            intake=body.intake,
+            pilot_invite_doc=pilot_invite_doc,
+        )
+    except Exception as exc:
+        logger.exception(
+            "Agreement preview failed request_id=%s client_id=%s invite_present=%s: %s",
+            request_id,
+            cid,
+            bool(invite_raw),
+            exc,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error_code": "AGREEMENT_PREVIEW_FAILED",
+                "message": "Could not load the service agreement preview. Please retry or contact support.",
+                "request_id": request_id,
+            },
+        )
     if err == "AGREEMENT_NOT_CONFIGURED":
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={"error_code": err, "message": "No published agreement is available yet."},
+            detail={"error_code": err, "message": "No published agreement is available yet.", "request_id": request_id},
         )
     if err == "CLIENT_NOT_FOUND":
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"error_code": err})
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"error_code": err, "request_id": request_id})
     if err == "INTAKE_SESSION_INVALID":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
                 "error_code": err,
                 "message": "Agreement preview does not match this registration session.",
+                "request_id": request_id,
             },
         )
     if err == "INTAKE_BODY_REQUIRED":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error_code": err, "message": "intake payload is required when client_id is omitted."},
+            detail={"error_code": err, "message": "intake payload is required when client_id is omitted.", "request_id": request_id},
         )
     if err == "AGREEMENT_RENDER_INVALID":
         raise HTTPException(
@@ -896,10 +925,11 @@ async def intake_agreement_preview(request: Request, body: IntakeAgreementPrevie
                 "error_code": err,
                 "message": "Agreement could not be rendered with the information provided.",
                 "validation_issues": v_errs or [],
+                "request_id": request_id,
             },
         )
     if err:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"error_code": err})
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"error_code": err, "request_id": request_id})
     return payload
 
 

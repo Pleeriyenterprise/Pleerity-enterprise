@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # Mongo collection names (single source of truth)
 COL_AGREEMENT_TEMPLATES = "agreement_templates"
@@ -79,8 +79,31 @@ class AgreementAcceptanceCreateBody(BaseModel):
     assisted_upload_consent_timestamp: Optional[str] = None
     rendered_agreement_hash: Optional[str] = None
     rendered_agreement_snapshot: Optional[Dict[str, Any]] = None
+    invite_code: Optional[str] = Field(default=None, max_length=64)
+    invite_entry_channel: str = Field(
+        default="manual",
+        max_length=16,
+        description="manual | link - keeps agreement commercial truth aligned with pilot checkout.",
+    )
+
+    @field_validator("invite_entry_channel")
+    @classmethod
+    def _invite_entry_ch(cls, v: Any) -> str:
+        e = str(v or "manual").strip().lower()
+        return e if e in ("manual", "link") else "manual"
 
 
 class IntakeCheckoutBody(BaseModel):
     acceptance_id: str = Field(..., min_length=1)
     invite_code: Optional[str] = Field(default=None, max_length=64)
+    invite_entry_channel: str = Field(
+        default="manual",
+        max_length=16,
+        description="manual | link — must match how the user obtained the code (link skips is_publicly_enterable).",
+    )
+
+    @field_validator("invite_entry_channel")
+    @classmethod
+    def _invite_entry_ch(cls, v: Any) -> str:
+        e = str(v or "manual").strip().lower()
+        return e if e in ("manual", "link") else "manual"

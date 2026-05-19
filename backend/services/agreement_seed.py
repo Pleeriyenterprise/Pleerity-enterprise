@@ -218,12 +218,18 @@ async def ensure_default_agreement_assets() -> None:
         )
         needs_upgrade = (
             "compliance_limitation" not in current_keys
+            or "{{onboarding_fee_line}}" not in current_blob
+            or "{{pilot_offer_line}}" not in current_blob
+            or "{{monthly_fee}}" not in current_blob
             or "where applicable" in current_blob
             or "applicable onboarding or setup fees" in current_blob
             or "billed on a {{billing_interval}} basis" in current_blob
             or electronic_acceptance_stale
         )
         if needs_upgrade:
+            from services.agreement_template_governance import assert_agreement_template_publishable
+
+            assert_agreement_template_publishable(DEFAULT_BLOCKS)
             new_version_id = str(uuid.uuid4())
             now = _utc()
             next_num = int((current_ver or {}).get("version_number") or 1) + 1

@@ -709,13 +709,69 @@ describe('IntakePage Step 5 – Proceed to Payment (checkout)', () => {
     );
     await advanceToStep5();
     const payButton = screen.getByRole('button', { name: /Proceed to Payment/i }) || screen.getByTestId('submit-payment');
+    expect(payButton).toBeDisabled();
     fireEvent.click(payButton);
-    await waitFor(() => {
-      expect(screen.getByTestId('intake-error-alert')).toBeInTheDocument();
-      expect(screen.getByText(/could not be safely rendered/i)).toBeInTheDocument();
-    });
     expect(publicAgreementsAPI.postAcceptance).not.toHaveBeenCalled();
     expect(intakeAPI.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it('shows safe agreement preview error with retry and keeps payment disabled', async () => {
+    intakeAPI.previewAgreement.mockRejectedValueOnce({
+      response: {
+        status: 500,
+        data: {
+          detail: {
+            error_code: 'AGREEMENT_PREVIEW_FAILED',
+            message: 'Could not load the service agreement preview. Please retry or contact support.',
+            request_id: 'req-agreement-123',
+          },
+        },
+      },
+    });
+    intakeAPI.previewAgreement.mockResolvedValueOnce({
+      data: {
+        title: 'Recovered service agreement',
+        subtitle: '',
+        template_code: 'property_compliance_management_agreement',
+        template_id: 't1',
+        template_version_id: 'v1',
+        version_number: 1,
+        published_at: null,
+        effective_from: null,
+        acceptance_text_required: 'I have read and agree to the service agreement above.',
+        render_hash_sha256: 'cd'.repeat(32),
+        document_structure: {
+          title: 'Recovered service agreement',
+          subtitle: '',
+          sections: [
+            {
+              key: 'sec1',
+              heading: 'Terms',
+              nodes: [{ type: 'paragraph', text: 'Recovered binding agreement text.' }],
+            },
+          ],
+        },
+        content_blocks: [],
+      },
+    });
+    render(
+      <MemoryRouter>
+        <IntakePage />
+      </MemoryRouter>
+    );
+    await advanceToStep4();
+    fireEvent.click(screen.getByTestId('doc-method-email'));
+    fireEvent.click(screen.getByTestId('email-consent-checkbox'));
+    fireEvent.click(screen.getByTestId('gdpr-consent-checkbox'));
+    fireEvent.click(screen.getByTestId('service-consent-checkbox'));
+    fireEvent.click(screen.getByTestId('step4-next') || screen.getByRole('button', { name: /Review & Pay/i }));
+
+    await waitFor(() => expect(screen.getByTestId('intake-agreement-load-error')).toBeInTheDocument());
+    expect(screen.getByText(/req-agreement-123/i)).toBeInTheDocument();
+    expect(screen.getByTestId('submit-payment')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('intake-agreement-retry'));
+    await waitFor(() => expect(screen.getByTestId('intake-service-agreement-checkbox')).toBeInTheDocument());
   });
 
   it('passes agreement audit fields with acceptance payload', async () => {

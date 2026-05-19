@@ -17,18 +17,20 @@ The invite record stores `discount_type`, `discount_percent`, `discount_duration
 ## Flow
 
 1. User enters optional invite code on intake Step 5 (`POST /api/intake/pilot-invite/validate`).
-2. `POST /api/intake/checkout` accepts optional `invite_code` with `acceptance_id`.
-3. `stripe_service.create_checkout_session` creates a normal subscription Checkout Session with:
+2. Step 5 agreement preview (`POST /api/intake/agreement-preview`) must render with the same pilot commercial truth before payment can proceed.
+3. Agreement acceptance (`POST /api/public/agreements/acceptance`) carries the invite context so the accepted agreement snapshot matches checkout.
+4. `POST /api/intake/checkout` accepts optional `invite_code` with `acceptance_id`.
+5. `stripe_service.create_checkout_session` creates a normal subscription Checkout Session with:
    - `discounts: [{ coupon: ... }]` or `[{ promotion_code: ... }]`
    - `payment_method_collection: always` when `discount_duration=repeating` (card on file for post-pilot billing)
    - `payment_method_collection: if_required` for forever/once 100% off when checkout total is £0
    - Metadata: `program_type`, `invite_code`, `pilot_discount_months`, `pilot_duration_months`, `expected_transition_to_paid`, `selected_plan_code`, `onboarding_fee_policy`, `onboarding_fee_waived`, etc.
    - **No onboarding line item** when `onboarding_fee_policy=waived` or `deferred`
-4. `checkout.session.completed` webhook tags the client, registers a **pending** redemption.
-5. After provisioning completes (`provisioning_runner` → `PROVISIONING_COMPLETED`), `used_count` increments **once** (idempotent on `checkout_session_id`).
-6. During pilot: `invoice.paid` with `amount_paid=0` still runs normal handlers (entitlements follow subscription status).
-7. First **non-zero** `invoice.paid` sets `pilot_transitioned_to_paid_at` (no reprovisioning).
-8. `customer.subscription.deleted` before paid conversion sets `pilot_cancelled_before_paid_conversion`.
+6. `checkout.session.completed` webhook tags the client, registers a **pending** redemption.
+7. After provisioning completes (`provisioning_runner` → `PROVISIONING_COMPLETED`), `used_count` increments **once** (idempotent on `checkout_session_id`).
+8. During pilot: `invoice.paid` with `amount_paid=0` still runs normal handlers (entitlements follow subscription status).
+9. First **non-zero** `invoice.paid` sets `pilot_transitioned_to_paid_at` (no reprovisioning).
+10. `customer.subscription.deleted` before paid conversion sets `pilot_cancelled_before_paid_conversion`.
 
 ## Stripe Dashboard setup — 100% off for 2 months (live)
 
@@ -64,7 +66,7 @@ Navigate to **Products & Billing → Founding Pilot Invites** (`/admin/pilot-inv
 - Create invites with Stripe coupon validation before save
 - Copy invite URL / message (commercial wording from `pilot_commercial_truth`)
 - View usage, linked accounts, and deactivate invites
-- Distribution URL pattern: `/intake?invite=CODE&plan=PLAN_1_SOLO`
+- Distribution URL pattern: `/intake/start?invite=CODE&plan=PLAN_1_SOLO`
 
 ### Admin API (owner/admin RBAC)
 
@@ -145,6 +147,24 @@ All customer-facing commercial surfaces should reflect the same pilot terms via 
 | Admin ops dashboard | `GET /api/admin/pilot-lifecycle/ops-dashboard` |
 
 If a user applies a pilot invite **after** agreement acceptance, they must re-accept (checkout validates commercial snapshot with invite at payment time).
+
+## Agreement preview dependencies
+
+Step 5 is a payment gate. `Proceed to Payment` remains disabled until the agreement preview loads, renders without unresolved placeholders, and the user accepts it.
+
+Agreement rendering depends on:
+
+- `agreement_seed.py` publishing an active template with `{{monthly_fee}}`, `{{onboarding_fee_line}}`, and `{{pilot_offer_line}}`.
+- `agreement_commercial_snapshot.py` carrying `billing_amount_minor`, `recurring_monthly_minor`, `first_checkout_total_minor`, onboarding fee status, pilot discount percent/months, and `pilot_commercial_summary`.
+- `pilot_commercial_truth.py` owning onboarding fee and pilot summary wording. The onboarding fee helper contract is `build_onboarding_fee_line(ctx, onboarding_minor=0)`.
+- `routes/intake.py` returning structured preview errors with `error_code` and `request_id`; raw exceptions must stay in backend logs only.
+
+For the default founding pilot (`100%` off for `2` months, onboarding waived, `PLAN_1_SOLO`), the agreement must show:
+
+- `One-time onboarding fee: Waived (Founding Pilot)`
+- `Your first 2 months are free.`
+- `After the pilot, your subscription continues at £19.00/month unless cancelled before renewal.`
+- recurring subscription wording from the plan-and-fees block
 
 ## Stripe coupon validation (admin create/update)
 

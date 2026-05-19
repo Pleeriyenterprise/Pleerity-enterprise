@@ -31,6 +31,19 @@ def _snap(**over):
     return base
 
 
+def _agreement_text(payload):
+    doc = (payload or {}).get("document_structure") or {}
+    chunks = [doc.get("title") or "", doc.get("subtitle") or ""]
+    for section in doc.get("sections") or []:
+        chunks.append(section.get("heading") or "")
+        for node in section.get("nodes") or []:
+            if node.get("type") == "bullet_list":
+                chunks.extend(str(i) for i in node.get("items") or [])
+            else:
+                chunks.append(str(node.get("text") or ""))
+    return " ".join(chunks)
+
+
 def test_validate_rejects_demo_client_name():
     ctx = build_agreement_render_context(
         commercial_snapshot=_snap(client_full_name="Client"),
@@ -199,6 +212,19 @@ def test_commercial_wording_context_hardened():
     assert "One-time onboarding fee" in ctx["onboarding_fee_line"]
 
 
+def test_pilot_onboarding_fee_line_accepts_compatibility_keyword():
+    from services.pilot_commercial_truth import build_onboarding_fee_line
+
+    assert (
+        build_onboarding_fee_line(
+            {"is_pilot": True, "onboarding_fee_waived": True, "onboarding_fee_policy": "waived"},
+            onboarding_minor=4900,
+        )
+        == "One-time onboarding fee: Waived (Founding Pilot)"
+    )
+    assert build_onboarding_fee_line(None, onboarding_minor=4900) == "One-time onboarding fee: £49.00"
+
+
 def test_public_current_has_no_checkout_document_structure():
     tpl = {"template_id": "t1", "code": "property_compliance_management_agreement", "name": "Agreement"}
     ver = {
@@ -221,6 +247,46 @@ def test_public_current_has_no_checkout_document_structure():
     assert body.get("version_number") == 3
     assert "Client" not in str(body)
     assert "client@example.com" not in str(body).lower()
+
+
+def test_intake_agreement_preview_unexpected_failure_returns_safe_reference():
+    body = {
+        "intake_session_id": "session-safe-failure",
+        "intake": {
+            "full_name": "Valid User",
+            "email": "valid@example.co.uk",
+            "client_type": "INDIVIDUAL",
+            "preferred_contact": "EMAIL",
+            "billing_plan": "PLAN_1_SOLO",
+            "properties": [
+                {
+                    "postcode": "KY10 2AA",
+                    "address_line_1": "1 High Street",
+                    "city": "Anstruther",
+                    "property_type": "house",
+                    "jurisdiction": "Scotland",
+                }
+            ],
+            "document_submission_method": "UPLOAD",
+            "consent_data_processing": True,
+            "consent_service_boundary": True,
+            "intake_session_id": "session-safe-failure",
+        },
+    }
+    with patch("routes.intake.rate_limiter.check_rate_limit", new_callable=AsyncMock, return_value=(True, None)):
+        with patch(
+            "services.agreement_preview_service.build_intake_agreement_preview",
+            new_callable=AsyncMock,
+            side_effect=TypeError("internal signature mismatch"),
+        ):
+            client = TestClient(app)
+            r = client.post("/api/intake/agreement-preview", json=body)
+
+    assert r.status_code == 500
+    detail = r.json().get("detail") or {}
+    assert detail.get("error_code") == "AGREEMENT_PREVIEW_FAILED"
+    assert detail.get("request_id")
+    assert "internal signature mismatch" not in str(detail)
 
 
 @pytest.mark.asyncio
@@ -378,6 +444,133 @@ async def test_build_intake_agreement_preview_accepts_full_ky10_postcode_from_in
     assert err is None
     assert v_errs is None
     assert payload is not None
+
+
+@pytest.mark.asyncio
+async def test_build_intake_agreement_preview_renders_founding_pilot_commercial_truth():
+    from models.core import BillingPlan, ClientType, IntakeFormData, IntakePropertyData, PreferredContact
+    from services import agreement_preview_service as mod
+    from services.agreement_seed import DEFAULT_BLOCKS
+
+    tpl = {"template_id": "tpl-pilot", "code": "property_compliance_management_agreement", "name": "Property Compliance Management Agreement"}
+    ver = {
+        "version_id": "ver-pilot",
+        "version_number": 2,
+        "title": "Property Compliance Management Agreement",
+        "subtitle": "(Compliance Vault Pro Service)",
+        "content_blocks": DEFAULT_BLOCKS,
+        "published_at": "2026-05-01T00:00:00Z",
+        "effective_from": "2026-05-01T00:00:00Z",
+        "status": "published",
+    }
+    intake = IntakeFormData(
+        full_name="Valid User",
+        email="valid@example.co.uk",
+        client_type=ClientType.INDIVIDUAL,
+        preferred_contact=PreferredContact.EMAIL,
+        billing_plan=BillingPlan.PLAN_1_SOLO,
+        properties=[
+            IntakePropertyData(
+                postcode="KY10 2AA",
+                address_line_1="1 High Street",
+                city="Anstruther",
+                property_type="house",
+                jurisdiction="Scotland",
+            )
+        ],
+        document_submission_method="UPLOAD",
+        consent_data_processing=True,
+        consent_service_boundary=True,
+        intake_session_id="session-aaaa-bbbb",
+    )
+    pilot_doc = {
+        "code": "FOUNDING-2026-BDE6",
+        "program_type": "FOUNDING_PILOT",
+        "status": "active",
+        "discount_percent": 100,
+        "discount_duration": "repeating",
+        "discount_duration_in_months": 2,
+        "waive_onboarding_fee": True,
+        "onboarding_fee_policy": "waived",
+    }
+    with patch("services.agreement_preview_service.get_current_published_bundle", new_callable=AsyncMock, return_value=(tpl, ver)):
+        with patch(
+            "services.agreement_preview_service.get_system_document_settings",
+            new_callable=AsyncMock,
+            return_value={"provider_email": "info@pleerityenterprise.co.uk"},
+        ):
+            payload, err, v_errs = await mod.build_intake_agreement_preview(
+                intake_session_id="session-aaaa-bbbb",
+                client_id=None,
+                intake=intake,
+                pilot_invite_doc=pilot_doc,
+            )
+
+    assert err is None
+    assert v_errs is None
+    text = _agreement_text(payload)
+    assert "One-time onboarding fee: Waived (Founding Pilot)" in text
+    assert "Your first 2 months are free." in text
+    assert "£19.00/month unless cancelled before renewal" in text
+    assert "Solo Landlord" in text
+    assert "Recurring subscription charges may continue automatically" in text
+
+
+@pytest.mark.asyncio
+async def test_build_intake_agreement_preview_normal_paid_flow_still_renders_fees():
+    from models.core import BillingPlan, ClientType, IntakeFormData, IntakePropertyData, PreferredContact
+    from services import agreement_preview_service as mod
+    from services.agreement_seed import DEFAULT_BLOCKS
+
+    tpl = {"template_id": "tpl-paid", "code": "property_compliance_management_agreement", "name": "Property Compliance Management Agreement"}
+    ver = {
+        "version_id": "ver-paid",
+        "version_number": 2,
+        "title": "Property Compliance Management Agreement",
+        "subtitle": "(Compliance Vault Pro Service)",
+        "content_blocks": DEFAULT_BLOCKS,
+        "published_at": "2026-05-01T00:00:00Z",
+        "effective_from": "2026-05-01T00:00:00Z",
+        "status": "published",
+    }
+    intake = IntakeFormData(
+        full_name="Paid User",
+        email="paid@example.co.uk",
+        client_type=ClientType.INDIVIDUAL,
+        preferred_contact=PreferredContact.EMAIL,
+        billing_plan=BillingPlan.PLAN_1_SOLO,
+        properties=[
+            IntakePropertyData(
+                postcode="KY10 2AA",
+                address_line_1="1 High Street",
+                city="Anstruther",
+                property_type="house",
+                jurisdiction="Scotland",
+            )
+        ],
+        document_submission_method="UPLOAD",
+        consent_data_processing=True,
+        consent_service_boundary=True,
+        intake_session_id="session-paid-bbbb",
+    )
+    with patch("services.agreement_preview_service.get_current_published_bundle", new_callable=AsyncMock, return_value=(tpl, ver)):
+        with patch(
+            "services.agreement_preview_service.get_system_document_settings",
+            new_callable=AsyncMock,
+            return_value={"provider_email": "info@pleerityenterprise.co.uk"},
+        ):
+            payload, err, v_errs = await mod.build_intake_agreement_preview(
+                intake_session_id="session-paid-bbbb",
+                client_id=None,
+                intake=intake,
+            )
+
+    assert err is None
+    assert v_errs is None
+    text = _agreement_text(payload)
+    assert "One-time onboarding fee: £49.00" in text
+    assert "£19.00 GBP" in text
+    assert "Recurring subscription charges may continue automatically" in text
 
 
 def test_commercial_snapshot_from_intake_preserves_full_postcode_for_render_context():

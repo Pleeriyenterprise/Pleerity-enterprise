@@ -51,6 +51,10 @@ def test_commercial_snapshot_waived_onboarding_for_pilot_invite():
     ctx = commercial_context_from_invite(_invite_doc(), plan_code="PLAN_1_SOLO")
     snap = apply_pilot_to_commercial_snapshot(snap_base, ctx)
     assert snap["onboarding_fee_minor"] == 0
+    assert snap["first_checkout_total_minor"] == 0
+    assert snap["recurring_monthly_minor"] == 1900
+    assert snap["pilot_discount_percent"] == 100
+    assert snap["pilot_discount_months"] == 2
     assert snap.get("onboarding_fee_waived") is True
     assert "waived" in (snap.get("pilot_commercial_summary") or "").lower()
 

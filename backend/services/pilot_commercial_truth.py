@@ -82,8 +82,12 @@ def apply_pilot_to_commercial_snapshot(
     """Adjust authoritative commercial snapshot fields for pilot terms."""
     out = dict(snapshot)
     out["onboarding_fee_minor"] = int(ctx.get("onboarding_fee_minor") or 0)
+    out["first_checkout_total_minor"] = int(ctx.get("first_checkout_total_minor") or 0)
+    out["recurring_monthly_minor"] = int(ctx.get("monthly_price_minor") or snapshot.get("billing_amount_minor") or 0)
     out["pilot_program_type"] = ctx.get("program_type")
+    out["pilot_discount_percent"] = ctx.get("pilot_discount_percent")
     out["pilot_discount_months"] = ctx.get("pilot_discount_months")
+    out["pilot_discount_duration"] = ctx.get("pilot_discount_duration")
     out["onboarding_fee_policy"] = ctx.get("onboarding_fee_policy")
     out["onboarding_fee_waived"] = bool(ctx.get("onboarding_fee_waived"))
     out["pilot_commercial_summary"] = build_pilot_offer_summary(ctx)
@@ -114,17 +118,15 @@ def build_pilot_offer_summary(ctx: Dict[str, Any]) -> str:
     return " ".join(lines)
 
 
-def build_onboarding_fee_line(ctx: Optional[Dict[str, Any]]) -> str:
+def build_onboarding_fee_line(ctx: Optional[Dict[str, Any]], *, onboarding_minor: int = 0) -> str:
     if not ctx or not ctx.get("is_pilot"):
-        minor = int((ctx or {}).get("onboarding_fee_minor") or 0)
+        minor = int((ctx or {}).get("onboarding_fee_minor") or onboarding_minor or 0)
         return f"One-time onboarding fee: £{minor / 100:.2f}" if minor > 0 else "One-time onboarding fee: None"
     if ctx.get("onboarding_fee_waived"):
         return "One-time onboarding fee: Waived (Founding Pilot)"
     if ctx.get("onboarding_fee_policy") == PilotOnboardingFeePolicy.DEFERRED.value:
         return "One-time onboarding fee: Deferred"
-        minor = int(ctx.get("onboarding_fee_minor") or 0)
-        return f"One-time onboarding fee: £{minor / 100:.2f}" if minor > 0 else "One-time onboarding fee: None"
-    minor = int(onboarding_minor or 0)
+    minor = int(ctx.get("onboarding_fee_minor") or onboarding_minor or 0)
     return f"One-time onboarding fee: £{minor / 100:.2f}" if minor > 0 else "One-time onboarding fee: None"
 
 

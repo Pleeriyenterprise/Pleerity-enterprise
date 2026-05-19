@@ -117,7 +117,7 @@ apiClient.interceptors.response.use(
     const url = response.config?.url ?? response.config?.baseURL ?? '?';
     logApiRequest(url, response.status);
     const fullUrl = (response.config?.baseURL || '') + (response.config?.url || '');
-    if (fullUrl.includes('/intake/submit') || fullUrl.includes('/intake/checkout')) {
+    if (fullUrl.includes('/intake/submit') || fullUrl.includes('/intake/checkout') || fullUrl.includes('/intake/agreement-preview')) {
       logIntakeDebug(response.config?.method?.toUpperCase() || 'GET', fullUrl, response.status, response.data);
     }
     return response;
@@ -130,7 +130,7 @@ apiClient.interceptors.response.use(
     const message = (typeof detail === 'string' ? detail : detail?.message) ?? error.message ?? 'Network error';
     logApiRequest(url, status, message);
     const fullUrl = (error.config?.baseURL || '') + (error.config?.url || '');
-    if (fullUrl.includes('/intake/submit') || fullUrl.includes('/intake/checkout')) {
+    if (fullUrl.includes('/intake/submit') || fullUrl.includes('/intake/checkout') || fullUrl.includes('/intake/agreement-preview')) {
       logIntakeDebug(error.config?.method?.toUpperCase() || 'GET', fullUrl, status, data);
     }
     setLastApiError(status, typeof message === 'string' ? message : JSON.stringify(detail ?? message));
