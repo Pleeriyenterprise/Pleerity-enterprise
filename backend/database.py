@@ -467,6 +467,8 @@ class Database:
                 await self.db.pilot_invite_redemptions.create_index(
                     [("invite_code_id", 1), ("stripe_payment_method_id", 1)], sparse=True
                 )
+                await self.db.pilot_invite_send_attempts.create_index([("invite_code", 1), ("sent_at", -1)])
+                await self.db.pilot_invite_send_attempts.create_index([("recipient_email", 1), ("sent_at", -1)])
                 await self.db.pilot_redeemed_campaign_snapshots.create_index("snapshot_id", unique=True)
                 await self.db.pilot_redeemed_campaign_snapshots.create_index([("client_id", 1), ("redeemed_at", -1)])
                 await self.db.pilot_redeemed_campaign_snapshots.create_index([("analytics_family", 1), ("redeemed_at", -1)])

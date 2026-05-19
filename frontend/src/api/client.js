@@ -1120,6 +1120,8 @@ export const adminAPI = {
     apiClient.post(`/admin/pilot-invites/${encodeURIComponent(code)}/regenerate`),
   getPilotInviteDistribution: (code, params = {}) =>
     apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}/distribution`, { params }),
+  sendPilotInvite: (code, body) =>
+    apiClient.post(`/admin/pilot-invites/${encodeURIComponent(code)}/send`, body),
   listPilotLifecycleAccounts: (params = {}) => apiClient.get('/admin/pilot-lifecycle/accounts', { params }),
   getPilotLifecycleOpsDashboard: (params = {}) => apiClient.get('/admin/pilot-lifecycle/ops-dashboard', { params }),
   getPilotLifecycleAccount: (clientId) => apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}`),

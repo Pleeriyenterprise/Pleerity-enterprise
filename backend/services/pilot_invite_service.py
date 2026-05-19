@@ -8,11 +8,13 @@ the platform tags lifecycle state and records paid conversion on non-zero invoic
 from __future__ import annotations
 
 import calendar
+import html
 import logging
 import re
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urlencode
 
 from database import database
 from models.pilot_invite import (
@@ -47,6 +49,7 @@ logger = logging.getLogger(__name__)
 COL_CODES = "pilot_invite_codes"
 COL_REDEMPTIONS = "pilot_invite_redemptions"
 COL_CAMPAIGN_SNAPSHOTS = "pilot_redeemed_campaign_snapshots"
+COL_SEND_ATTEMPTS = "pilot_invite_send_attempts"
 
 _PUBLIC_CODE_TYPES = frozenset(
     {
@@ -351,6 +354,37 @@ def _plan_allowed(doc: Dict[str, Any], plan_code: str) -> bool:
     except ValueError:
         resolved = plan_registry._resolve_plan_code(plan_code).value
     return resolved in {str(x).strip() for x in allowed}
+
+
+def _resolved_plan_code(plan_code: str) -> str:
+    raw = str(plan_code or "").strip()
+    legacy = {
+        "PLAN_1": PlanCode.PLAN_1_SOLO.value,
+        "PLAN_2_5": PlanCode.PLAN_2_PORTFOLIO.value,
+        "PLAN_6_15": PlanCode.PLAN_3_PRO.value,
+    }
+    if raw in legacy:
+        return legacy[raw]
+    try:
+        return PlanCode(raw).value
+    except ValueError:
+        raise ValueError("Unsupported plan_code")
+
+
+def assert_invite_distribution_allowed(invite_doc: Dict[str, Any], *, plan_code: str) -> str:
+    """Validate an invite can be shared/sent for the selected plan without consuming usage."""
+    if not invite_doc:
+        raise ValueError("Invite code not found")
+    eff = _effective_status(invite_doc)
+    if eff != PilotInviteStatus.ACTIVE.value:
+        raise ValueError("Invite code is not active")
+    state = _campaign_state_from_doc(invite_doc)
+    if state in (PilotCampaignState.EXPIRED.value, PilotCampaignState.ARCHIVED.value):
+        raise ValueError("Invite campaign is not active")
+    resolved = _resolved_plan_code(plan_code)
+    if not _plan_allowed(invite_doc, resolved):
+        raise ValueError("Invite code is not valid for the selected plan")
+    return resolved
 
 
 def _email_matches(doc: Dict[str, Any], email: Optional[str]) -> bool:
@@ -1227,27 +1261,216 @@ def build_invite_distribution(
     """Shareable invite URL and message from commercial truth (no hardcoded months)."""
     code = str(invite_doc.get("code") or "")
     base = (base_url or "").rstrip("/")
-    commercial = build_invite_commercial_summary(invite_doc, plan_code=plan_code)
-    params = f"invite={code}&plan={plan_code}"
+    resolved_plan = assert_invite_distribution_allowed(invite_doc, plan_code=plan_code)
+    commercial = build_invite_commercial_summary(invite_doc, plan_code=resolved_plan)
+    params = urlencode({"invite": code, "plan": resolved_plan})
     invite_url = f"{base}/intake/start?{params}"
     summary = commercial.get("commercial_summary") or ""
+    expiry = invite_doc.get("expires_at")
+    expiry_line = ""
+    if expiry:
+        expiry_line = f"\nThis invite expires on {expiry.date().isoformat() if isinstance(expiry, datetime) else expiry}."
+    usage_line = ""
+    max_uses = invite_doc.get("max_uses")
+    remaining = invite_doc.get("remaining_uses")
+    if max_uses:
+        usage_line = f"\nUsage is limited; {remaining if remaining is not None else max_uses} redemption(s) remain."
     message_template = (
         f"You're invited to join Compliance Vault Pro with our Founding Pilot programme.\n\n"
         f"{summary}\n\n"
         f"Use invite code: {code}\n"
-        f"Start here: {invite_url}\n\n"
+        f"Start here: {invite_url}{expiry_line}{usage_line}\n\n"
         f"Complete secure checkout to activate your account."
+    )
+    email_style_message = (
+        f"Hello,\n\n"
+        f"You've been invited to start founding pilot access for Compliance Vault Pro.\n\n"
+        f"{summary}\n\n"
+        f"Invite code: {code}\n"
+        f"Start your founding pilot access: {invite_url}{expiry_line}{usage_line}\n\n"
+        f"After the pilot, your selected subscription continues at the standard monthly rate unless cancelled before renewal."
     )
     return {
         "invite_code": code,
         "invite_url": invite_url,
         "canonical_intake_path": "/intake/start",
         "legacy_intake_path": "/intake",
-        "plan_code": plan_code,
+        "plan_code": resolved_plan,
         "commercial_summary": summary,
         "message_template": message_template,
+        "plain_message": message_template,
+        "email_style_message": email_style_message,
         "copy_block": f"{summary}\n\nCode: {code}\n{invite_url}",
     }
+
+
+def render_pilot_invite_email(
+    invite_doc: Dict[str, Any],
+    distribution: Dict[str, Any],
+    *,
+    recipient_name: Optional[str] = None,
+    personal_note: Optional[str] = None,
+) -> Dict[str, str]:
+    """Render founding pilot invite email bodies. Delivery remains in notification_orchestrator."""
+    code = str(distribution.get("invite_code") or invite_doc.get("code") or "")
+    invite_url = str(distribution.get("invite_url") or "")
+    summary = str(distribution.get("commercial_summary") or "")
+    name = (recipient_name or "").strip()
+    greeting = f"Hello {html.escape(name)}," if name else "Hello,"
+    note = (personal_note or "").strip()
+    safe_note = html.escape(note).replace("\n", "<br />") if note else ""
+    expiry = invite_doc.get("expires_at")
+    expiry_text = ""
+    if expiry:
+        expiry_text = f"This invite expires on {expiry.date().isoformat() if isinstance(expiry, datetime) else expiry}."
+    max_uses = invite_doc.get("max_uses")
+    remaining = invite_doc.get("remaining_uses")
+    usage_text = ""
+    if max_uses:
+        usage_text = f"Usage is limited; {remaining if remaining is not None else max_uses} redemption(s) remain."
+    html_body = f"""<!doctype html>
+<html>
+  <body style="font-family: Arial, sans-serif; color: #17233c; line-height: 1.5; margin: 0; padding: 24px; background: #f8fafc;">
+    <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 28px;">
+      <p>{greeting}</p>
+      <p>You have been invited to start founding pilot access for <strong>Compliance Vault Pro</strong>.</p>
+      <p>{html.escape(summary)}</p>
+      {'<p style="border-left: 3px solid #0f766e; padding-left: 12px;">' + safe_note + '</p>' if safe_note else ''}
+      <p><strong>Invite code:</strong> <span style="font-family: monospace;">{html.escape(code)}</span></p>
+      <p style="margin: 28px 0;">
+        <a href="{html.escape(invite_url)}" style="background: #0f766e; color: #ffffff; padding: 12px 18px; border-radius: 8px; text-decoration: none; display: inline-block; font-weight: 700;">
+          Start your founding pilot access
+        </a>
+      </p>
+      <p>If the button does not work, copy and paste this link into your browser:</p>
+      <p><a href="{html.escape(invite_url)}">{html.escape(invite_url)}</a></p>
+      {f'<p>{html.escape(expiry_text)}</p>' if expiry_text else ''}
+      {f'<p>{html.escape(usage_text)}</p>' if usage_text else ''}
+      <p>After the pilot, your selected subscription continues at the standard monthly rate unless cancelled before renewal.</p>
+    </div>
+  </body>
+</html>"""
+    text_lines = [
+        f"Hello {name}," if name else "Hello,",
+        "",
+        "You have been invited to start founding pilot access for Compliance Vault Pro.",
+        "",
+        summary,
+    ]
+    if note:
+        text_lines.extend(["", note])
+    text_lines.extend(
+        [
+            "",
+            f"Invite code: {code}",
+            f"Start your founding pilot access: {invite_url}",
+            "",
+            "If the button does not work, copy and paste the raw link above into your browser.",
+        ]
+    )
+    if expiry_text:
+        text_lines.append(expiry_text)
+    if usage_text:
+        text_lines.append(usage_text)
+    text_lines.append("After the pilot, your selected subscription continues at the standard monthly rate unless cancelled before renewal.")
+    return {
+        "subject": "Your founding pilot invite to Compliance Vault Pro",
+        "html": html_body,
+        "text": "\n".join(text_lines),
+    }
+
+
+async def send_pilot_invite_email(
+    invite_doc: Dict[str, Any],
+    *,
+    base_url: str,
+    recipient_email: str,
+    recipient_name: Optional[str],
+    plan_code: str,
+    personal_note: Optional[str],
+    sent_by: Optional[str],
+) -> Dict[str, Any]:
+    """Send a pilot invite via notification_orchestrator and persist a send audit record."""
+    db = database.get_db()
+    email = (recipient_email or "").strip().lower()
+    if not email or "@" not in email:
+        raise ValueError("recipient_email is required")
+    dist = build_invite_distribution(invite_doc, base_url=base_url, plan_code=plan_code)
+    rendered = render_pilot_invite_email(
+        invite_doc,
+        dist,
+        recipient_name=recipient_name,
+        personal_note=personal_note,
+    )
+    now = _utc_now()
+    attempt_id = str(uuid.uuid4())
+    audit_doc = {
+        "attempt_id": attempt_id,
+        "invite_code_id": invite_doc.get("invite_code_id"),
+        "invite_code": invite_doc.get("code"),
+        "recipient_email": email,
+        "recipient_name": (recipient_name or "").strip() or None,
+        "selected_plan": dist["plan_code"],
+        "sent_by": sent_by,
+        "sent_at": now,
+        "status": "queued",
+        "provider_message_id": None,
+        "failure_reason": None,
+        "invite_url": dist["invite_url"],
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db[COL_SEND_ATTEMPTS].insert_one(dict(audit_doc))
+    try:
+        from services.notification_orchestrator import notification_orchestrator
+
+        result = await notification_orchestrator.send(
+            template_key="PILOT_INVITE_SEND",
+            client_id=None,
+            context={
+                "recipient": email,
+                "subject": rendered["subject"],
+                "message": rendered["html"],
+                "text_message": rendered["text"],
+                "invite_code": invite_doc.get("code"),
+                "invite_url": dist["invite_url"],
+                "plan_code": dist["plan_code"],
+                "commercial_summary": dist.get("commercial_summary"),
+            },
+            idempotency_key=f"pilot_invite_send:{invite_doc.get('code')}:{email}:{dist['plan_code']}",
+            event_type="founding_pilot_invite",
+        )
+        provider_id = (result.details or {}).get("provider_message_id")
+        status_value = "sent" if result.outcome in ("sent", "duplicate_ignored") else "failed"
+        failure_reason = None
+        if result.outcome not in ("sent", "duplicate_ignored"):
+            failure_reason = result.error_message or result.block_reason or result.outcome
+        await db[COL_SEND_ATTEMPTS].update_one(
+            {"attempt_id": attempt_id},
+            {
+                "$set": {
+                    "status": status_value,
+                    "provider_message_id": provider_id,
+                    "notification_message_id": result.message_id,
+                    "failure_reason": failure_reason,
+                    "updated_at": _utc_now(),
+                }
+            },
+        )
+        return {
+            "attempt_id": attempt_id,
+            "status": status_value,
+            "provider_message_id": provider_id,
+            "notification_message_id": result.message_id,
+            "distribution": dist,
+            "email_preview": rendered,
+        }
+    except Exception as exc:
+        await db[COL_SEND_ATTEMPTS].update_one(
+            {"attempt_id": attempt_id},
+            {"$set": {"status": "failed", "failure_reason": str(exc), "updated_at": _utc_now()}},
+        )
+        raise
 
 
 async def preview_stripe_coupon_validation(invite_fields: Dict[str, Any]) -> Dict[str, Any]:

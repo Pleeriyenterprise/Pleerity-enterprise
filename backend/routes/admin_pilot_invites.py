@@ -28,6 +28,7 @@ from services.pilot_invite_service import (
     normalize_invite_code,
     preview_stripe_coupon_validation,
     regenerate_invite_code_if_unused,
+    send_pilot_invite_email,
     suggest_invite_code,
     update_invite_code,
 )
@@ -58,6 +59,20 @@ class PilotInviteGenerateBody(BaseModel):
 
 class PilotInviteDisableBody(BaseModel):
     reason: Optional[str] = Field(default=None, max_length=500)
+
+
+class PilotInviteSendBody(BaseModel):
+    recipient_email: str = Field(..., min_length=3, max_length=320)
+    recipient_name: Optional[str] = Field(default=None, max_length=200)
+    plan_code: str = Field(..., min_length=1, max_length=64)
+    personal_note: Optional[str] = Field(default=None, max_length=2000)
+
+
+def _frontend_origin(request: Request) -> str:
+    origin = (request.headers.get("origin") or "").strip()
+    if origin:
+        return origin.rstrip("/")
+    return str(request.base_url).rstrip("/")
 
 
 @router.get("/operational-config")
@@ -274,11 +289,38 @@ async def get_pilot_invite_distribution(
     doc = await get_invite_code(code)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
-    origin = (request.headers.get("origin") or "").strip()
-    if not origin:
-        origin = str(request.base_url).rstrip("/")
+    origin = _frontend_origin(request)
     from services.pilot_invite_service import build_invite_commercial_summary
 
-    dist = build_invite_distribution(doc, base_url=origin, plan_code=plan_code)
-    commercial = build_invite_commercial_summary(doc, plan_code=plan_code)
+    try:
+        dist = build_invite_distribution(doc, base_url=origin, plan_code=plan_code)
+        commercial = build_invite_commercial_summary(doc, plan_code=dist["plan_code"])
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     return {"distribution": dist, "commercial": commercial}
+
+
+@router.post("/{code}/send")
+async def send_pilot_invite(
+    request: Request,
+    code: str,
+    body: PilotInviteSendBody,
+    _user: dict = Depends(require_owner_or_admin),
+) -> Dict[str, Any]:
+    doc = await get_invite_code(code)
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
+    actor = _user.get("email") or _user.get("portal_user_id")
+    try:
+        result = await send_pilot_invite_email(
+            doc,
+            base_url=_frontend_origin(request),
+            recipient_email=body.recipient_email,
+            recipient_name=body.recipient_name,
+            plan_code=body.plan_code,
+            personal_note=body.personal_note,
+            sent_by=actor,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return {"ok": True, **result}

@@ -6,7 +6,8 @@
 |-------|----------------|
 | `pilot_invite_code_generation.py` | Normalize, reserved prefixes, charset-safe generation, collision retry |
 | `pilot_invite_code_governance.py` | Public entry, campaign status, abuse rules, validation attempt log |
-| `pilot_invite_service.py` | CRUD, campaign validation, checkout validation, Stripe wiring, redeemed snapshots, usage increment after provisioning |
+| `pilot_invite_service.py` | CRUD, campaign validation, checkout validation, Stripe wiring, redeemed snapshots, invite distribution/send rendering, usage increment after provisioning |
+| `notification_orchestrator.py` | Centralized transactional email delivery for direct invite sends |
 | `pilot_lifecycle_service.py` | Account-level lifecycle overrides and reconciliation projection |
 | `pilot_commercial_truth.py` | Offer copy and pricing overlay (billing truth separate from Stripe coupon) |
 
@@ -70,7 +71,7 @@ Internal-test redemptions are excluded from public launch analytics and require 
 
 ## Usage accounting
 
-`used_count` increments only in `complete_redemption_after_provisioning` after successful provisioning (idempotent on `checkout_session_id`). Validation attempts do **not** increment usage.
+`used_count` increments only in `complete_redemption_after_provisioning` after successful provisioning (idempotent on `checkout_session_id`). Validation attempts and direct invite sends do **not** increment usage.
 
 Redeemed campaign snapshots are also written from this completion path, preserving webhook/provisioning authority.
 
@@ -94,6 +95,8 @@ Redeemed campaign snapshots are also written from this completion path, preservi
 | POST | `/api/admin/pilot-invites/{code}/regenerate` | New code if zero usage |
 | GET | `/api/admin/pilot-invites/{code}/metrics` | Operational metrics |
 | GET | `/api/admin/pilot-invites/{code}/validation-attempts` | Failed/success validations |
+| GET | `/api/admin/pilot-invites/{code}/distribution` | Canonical `/intake/start` link plus copy/email message templates |
+| POST | `/api/admin/pilot-invites/{code}/send` | Direct founding pilot invite email via `notification_orchestrator.send()` |
 
 ## Validation-before-persistence
 
@@ -118,6 +121,10 @@ No invite update should persist if any of those validations fail.
 ## Operational workflows
 
 - **Private founding pilot:** distribute invite URL (`/intake/start?invite=CODE&plan=...`); private codes may validate manually if known and restrictions pass
+- **Manual copy/share:** use the admin detail page to copy the canonical invite link, a plain message, an email-style message, or code only. The `/intake` route is legacy; generated links must use `/intake/start`.
+- **Direct send:** use the admin detail page “Send invite” action with recipient email, optional name/note, and selected plan. The backend validates the invite and plan, URL-encodes `invite` and `plan`, renders HTML plus plain-text fallback, and sends through `notification_orchestrator.send()` only using template key `PILOT_INVITE_SEND`.
+- **CTA email behavior:** direct-send emails include the commercial summary from `pilot_commercial_truth.py`, onboarding-waived wording when applicable, invite code, the CTA button text “Start your founding pilot access”, and a raw fallback link.
+- **Send audit:** each direct-send attempt is recorded in `pilot_invite_send_attempts` with invite code, recipient, selected plan, actor, status, provider message ID, and failure reason when present. Send audit records are operational logs only and never reserve or consume usage.
 - **Launch campaign:** generate human-readable code, enable public entry, pause via `campaign_state=paused`
 - **Account extension:** extend the account in pilot operations; do not change campaign duration
 - **Internal test:** use `internal_test`; distribute only controlled links; monitor under `analytics_family=internal_test`

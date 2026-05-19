@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Copy, Loader2, Ban, Save, RefreshCw, Wand2, Files } from 'lucide-react';
+import { ArrowLeft, Copy, Loader2, Ban, Save, RefreshCw, Wand2, Files, Send } from 'lucide-react';
 import { adminAPI } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -47,6 +47,14 @@ export default function AdminPilotInviteDetailPage() {
   const [metrics, setMetrics] = useState(null);
   const [duplicating, setDuplicating] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [showSendInvite, setShowSendInvite] = useState(false);
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [sendForm, setSendForm] = useState({
+    recipient_email: '',
+    recipient_name: '',
+    plan_code: 'PLAN_1_SOLO',
+    personal_note: '',
+  });
 
   const loadDistribution = useCallback(async (planCode) => {
     if (!code) return;
@@ -90,6 +98,10 @@ export default function AdminPilotInviteDetailPage() {
   useEffect(() => {
     if (canManage && code) loadDistribution(distPlan);
   }, [distPlan, canManage, code, loadDistribution]);
+
+  useEffect(() => {
+    setSendForm((f) => ({ ...f, plan_code: distPlan }));
+  }, [distPlan]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -149,6 +161,37 @@ export default function AdminPilotInviteDetailPage() {
       toast.error(e.response?.data?.detail || 'Regenerate failed');
     } finally {
       setRegenerating(false);
+    }
+  };
+
+  const sendPreview = [
+    sendForm.recipient_name ? `Hello ${sendForm.recipient_name},` : 'Hello,',
+    '',
+    distribution?.email_style_message || distribution?.message_template || '',
+    sendForm.personal_note ? `\nPersonal note:\n${sendForm.personal_note}` : '',
+  ].join('\n').trim();
+
+  const handleSendInvite = async () => {
+    const email = sendForm.recipient_email.trim();
+    if (!email) {
+      toast.error('Recipient email is required');
+      return;
+    }
+    setSendingInvite(true);
+    try {
+      await adminAPI.sendPilotInvite(code, {
+        recipient_email: email,
+        recipient_name: sendForm.recipient_name.trim() || null,
+        plan_code: sendForm.plan_code || distPlan,
+        personal_note: sendForm.personal_note.trim() || null,
+      });
+      toast.success('Invite sent');
+      setShowSendInvite(false);
+      setSendForm((f) => ({ ...f, recipient_email: '', recipient_name: '', personal_note: '' }));
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Send failed');
+    } finally {
+      setSendingInvite(false);
     }
   };
 
@@ -320,27 +363,22 @@ export default function AdminPilotInviteDetailPage() {
 
       <Card data-testid="pilot-invite-distribution">
         <CardHeader>
-          <CardTitle className="text-base">Distribution</CardTitle>
-          <CardDescription>Shareable link and message — wording from commercial truth.</CardDescription>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Distribution</CardTitle>
+              <CardDescription>Shareable link and message — wording from commercial truth.</CardDescription>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setShowSendInvite(true)}
+              data-testid="pilot-invite-send-open"
+            >
+              <Send className="h-4 w-4 mr-2" /> Send invite
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <div>
-            <span className="text-gray-500 block text-xs mb-1">Code only</span>
-            <div className="flex gap-2 mb-3">
-              <Input readOnly value={invite?.code || code || ''} className="font-mono text-xs" />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={async () => {
-                  await copyToClipboard(invite?.code || code);
-                  toast.success('Code copied');
-                }}
-                data-testid="pilot-invite-copy-code"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
           <div>
             <span className="text-gray-500 block text-xs mb-1">Invite URL</span>
             <div className="flex gap-2">
@@ -353,32 +391,158 @@ export default function AdminPilotInviteDetailPage() {
                   toast.success('URL copied');
                 }}
               >
-                <Copy className="h-4 w-4" />
+                <Copy className="h-4 w-4 mr-1" /> Copy invite link
               </Button>
             </div>
           </div>
           <div>
-            <span className="text-gray-500 block text-xs mb-1">Message template</span>
+            <span className="text-gray-500 block text-xs mb-1">Plain message</span>
             <textarea
               readOnly
               className="w-full border rounded p-2 text-xs min-h-[120px] font-sans"
-              value={distribution?.message_template || ''}
+              value={distribution?.plain_message || distribution?.message_template || ''}
             />
+          </div>
+          <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              className="mt-2"
               onClick={async () => {
-                await copyToClipboard(distribution?.copy_block || distribution?.message_template);
-                toast.success('Message copied');
+                await copyToClipboard(distribution?.plain_message || distribution?.message_template);
+                toast.success('Plain message copied');
               }}
+              data-testid="pilot-invite-copy-plain"
             >
-              <Copy className="h-3 w-3 mr-1" /> Copy message
+              <Copy className="h-3 w-3 mr-1" /> Copy plain message
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                await copyToClipboard(distribution?.email_style_message || distribution?.message_template);
+                toast.success('Email-style message copied');
+              }}
+              data-testid="pilot-invite-copy-email-style"
+            >
+              <Copy className="h-3 w-3 mr-1" /> Copy email-style message
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await copyToClipboard(invite?.code || code);
+                toast.success('Code copied');
+              }}
+              data-testid="pilot-invite-copy-code"
+            >
+              <Copy className="h-3 w-3 mr-1" /> Copy code only
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      {showSendInvite && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-5 border-b flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Send founding pilot invite</h2>
+                <p className="text-sm text-gray-600">
+                  Sends a clickable CTA email. This does not reserve or consume invite usage.
+                </p>
+              </div>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowSendInvite(false)}>
+                Close
+              </Button>
+            </div>
+            <div className="p-5 grid md:grid-cols-2 gap-5">
+              <div className="space-y-3">
+                <label className="block text-sm">
+                  Recipient email
+                  <Input
+                    className="mt-1"
+                    type="email"
+                    value={sendForm.recipient_email}
+                    onChange={(e) => setSendForm((f) => ({ ...f, recipient_email: e.target.value }))}
+                    placeholder="founder@example.com"
+                  />
+                </label>
+                <label className="block text-sm">
+                  Recipient name optional
+                  <Input
+                    className="mt-1"
+                    value={sendForm.recipient_name}
+                    onChange={(e) => setSendForm((f) => ({ ...f, recipient_name: e.target.value }))}
+                    placeholder="Alex"
+                  />
+                </label>
+                <label className="block text-sm">
+                  Selected plan
+                  <select
+                    className="mt-1 w-full border rounded-md px-2 py-2 text-sm"
+                    value={sendForm.plan_code}
+                    onChange={(e) => {
+                      setSendForm((f) => ({ ...f, plan_code: e.target.value }));
+                      setDistPlan(e.target.value);
+                    }}
+                  >
+                    {PILOT_PLAN_OPTIONS.map((p) => (
+                      <option key={p.value} value={p.value}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  Personal note optional
+                  <textarea
+                    className="mt-1 w-full border rounded p-2 text-sm min-h-[100px]"
+                    value={sendForm.personal_note}
+                    onChange={(e) => setSendForm((f) => ({ ...f, personal_note: e.target.value }))}
+                    placeholder="Short note from the team..."
+                  />
+                </label>
+              </div>
+              <div className="space-y-3">
+                <div className="border rounded-lg p-4 bg-gray-50">
+                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">CTA preview</p>
+                  <p className="text-sm mb-3">{commercial?.commercial_summary || distribution?.commercial_summary || '—'}</p>
+                  <a
+                    className="inline-block rounded bg-teal-700 text-white text-sm font-semibold px-4 py-2 no-underline"
+                    href={distribution?.invite_url || '#'}
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    Start your founding pilot access
+                  </a>
+                  <p className="text-xs text-gray-500 mt-3 break-all">
+                    Fallback raw link: {distribution?.invite_url || '—'}
+                  </p>
+                </div>
+                <label className="block text-sm">
+                  Message preview
+                  <textarea
+                    readOnly
+                    className="mt-1 w-full border rounded p-2 text-xs min-h-[220px] font-sans"
+                    value={sendPreview}
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="p-5 border-t flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setShowSendInvite(false)}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleSendInvite} disabled={sendingInvite}>
+                {sendingInvite ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                Send invite
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
