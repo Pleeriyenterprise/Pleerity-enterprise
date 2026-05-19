@@ -800,12 +800,23 @@ class StripeWebhookService:
                         )
                     except Exception as pm_ex:
                         logger.warning("Pilot PM sync after checkout failed client_id=%s: %s", client_id, pm_ex)
+                    pm_raw = session.get("payment_method")
+                    pm_id = pm_raw if isinstance(pm_raw, str) else (pm_raw or {}).get("id") if isinstance(pm_raw, dict) else None
+                    pm_id = str(pm_id or "").strip() or None
+                    cd = session.get("customer_details") or {}
+                    redemption_email = None
+                    if isinstance(cd, dict):
+                        redemption_email = cd.get("email")
+                    redemption_email = str(redemption_email or session.get("customer_email") or "").strip() or None
                     await register_pending_redemption(
                         checkout_session_id=checkout_session_id or "",
                         client_id=client_id,
                         invite_doc=invite_doc,
                         stripe_event_id=event.get("id") if event else None,
                         stripe_subscription_id=stripe_subscription_id,
+                        redemption_email=redemption_email,
+                        stripe_payment_method_id=pm_id,
+                        plan_code=plan_code.value,
                     )
                 else:
                     logger.error(

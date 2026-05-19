@@ -458,6 +458,20 @@ class Database:
                 await self.db.pilot_invite_codes.create_index("code", unique=True)
                 await self.db.pilot_invite_codes.create_index("invite_code_id", unique=True)
                 await self.db.pilot_invite_redemptions.create_index("checkout_session_id", unique=True)
+                await self.db.pilot_invite_validation_attempts.create_index([("code", 1), ("created_at", -1)])
+                await self.db.pilot_invite_validation_attempts.create_index([("invite_code_id", 1), ("created_at", -1)])
+                await self.db.pilot_invite_validation_attempts.create_index([("outcome", 1), ("created_at", -1)])
+                await self.db.pilot_invite_redemptions.create_index(
+                    [("invite_code_id", 1), ("redemption_email", 1)], sparse=True
+                )
+                await self.db.pilot_invite_redemptions.create_index(
+                    [("invite_code_id", 1), ("stripe_payment_method_id", 1)], sparse=True
+                )
+                await self.db.pilot_redeemed_campaign_snapshots.create_index("snapshot_id", unique=True)
+                await self.db.pilot_redeemed_campaign_snapshots.create_index([("client_id", 1), ("redeemed_at", -1)])
+                await self.db.pilot_redeemed_campaign_snapshots.create_index([("analytics_family", 1), ("redeemed_at", -1)])
+                await self.db.pilot_account_overrides.create_index([("client_id", 1), ("created_at", -1)])
+                await self.db.pilot_account_overrides.create_index([("override_type", 1), ("created_at", -1)])
                 await self.db.clients.create_index("pilot_invite_code", sparse=True)
                 await self.db.clients.create_index("pilot_status", sparse=True)
                 await self.db.pilot_lifecycle_audit.create_index([("client_id", 1), ("created_at", -1)])

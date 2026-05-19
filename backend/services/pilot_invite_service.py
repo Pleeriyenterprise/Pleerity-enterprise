@@ -16,10 +16,14 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
 from models.pilot_invite import (
+    PilotCampaignState,
+    PilotCampaignStatus,
     PilotInviteCodeCreate,
+    PilotInviteCodeType,
     PilotInviteCodeUpdate,
     PilotInviteDiscountDuration,
     PilotInviteDiscountMode,
+    PilotLaunchVisibility,
     PilotInvitePublicError,
     PilotOnboardingFeePolicy,
     PilotInviteStatus,
@@ -30,12 +34,56 @@ _DEFERRED_EXPERIMENTAL_MSG = (
     "onboarding_fee_policy=deferred is experimental and requires owner approval"
 )
 from services.pilot_onboarding_fee import onboarding_policy_from_invite
+from services.pilot_invite_code_governance import (
+    assert_abuse_rules,
+    assert_public_entry_and_campaign,
+    invite_code_type,
+    record_validation_attempt,
+)
 from services.plan_registry import PlanCode, plan_registry, _get_stripe_mode
 
 logger = logging.getLogger(__name__)
 
 COL_CODES = "pilot_invite_codes"
 COL_REDEMPTIONS = "pilot_invite_redemptions"
+COL_CAMPAIGN_SNAPSHOTS = "pilot_redeemed_campaign_snapshots"
+
+_PUBLIC_CODE_TYPES = frozenset(
+    {
+        PilotInviteCodeType.PUBLIC_PROMO.value,
+        PilotInviteCodeType.REFERRAL.value,
+        PilotInviteCodeType.PARTNER.value,
+    }
+)
+
+_CAMPAIGN_MUTATION_FIELDS = frozenset(
+    {
+        "applies_to_plan_codes",
+        "max_uses_per_account",
+        "stripe_coupon_id",
+        "stripe_promotion_code_id",
+        "discount_mode",
+        "discount_type",
+        "discount_percent",
+        "discount_duration",
+        "discount_duration_in_months",
+        "waive_onboarding_fee",
+        "onboarding_fee_policy",
+        "onboarding_fee_discount_percent",
+    }
+)
+
+_PILOT_INVITE_ABUSE_AUDIT_CODES = frozenset(
+    {
+        "PILOT_INVITE_NOT_FIRST_TIME_CUSTOMER",
+        "PILOT_INVITE_EMAIL_DOMAIN_NOT_ALLOWED",
+        "PILOT_INVITE_ALREADY_REDEEMED_EMAIL",
+        "PILOT_INVITE_ALREADY_REDEEMED_CUSTOMER",
+        "PILOT_INVITE_ACCOUNT_LIMIT_EXCEEDED",
+        "PILOT_INVITE_DAILY_LIMIT_EXCEEDED",
+        "PILOT_INVITE_ALREADY_REDEEMED_PAYMENT_METHOD",
+    }
+)
 
 # User-safe messages (no internal Stripe IDs)
 _MSG_INVALID = "This invite code is not valid."
@@ -57,7 +105,9 @@ _PILOT_DETAIL_REPEATING = (
 
 
 def normalize_invite_code(raw: str) -> str:
-    return re.sub(r"\s+", "", (raw or "").strip().upper())
+    from services.pilot_invite_code_generation import normalize_invite_code as _norm
+
+    return _norm(raw=raw, strict=True)
 
 
 def _utc_now() -> datetime:
@@ -81,6 +131,133 @@ def _effective_status(doc: Dict[str, Any], now: Optional[datetime] = None) -> st
             if exp_utc <= now:
                 return PilotInviteStatus.EXPIRED.value
     return PilotInviteStatus.ACTIVE.value if status == PilotInviteStatus.ACTIVE.value else status
+
+
+def _code_type_value(doc: Dict[str, Any]) -> str:
+    raw = str(doc.get("code_type") or PilotInviteCodeType.PRIVATE_INVITE.value).strip().lower()
+    return raw if raw in {e.value for e in PilotInviteCodeType} else PilotInviteCodeType.PRIVATE_INVITE.value
+
+
+def _campaign_state_from_doc(doc: Dict[str, Any]) -> str:
+    state = str(doc.get("campaign_state") or "").strip().lower()
+    if state in {e.value for e in PilotCampaignState}:
+        return state
+    legacy = str(doc.get("campaign_status") or "").strip().lower()
+    if legacy == PilotCampaignStatus.ACTIVE.value:
+        return PilotCampaignState.ACTIVE.value
+    if legacy == PilotCampaignStatus.PAUSED.value:
+        return PilotCampaignState.PAUSED.value
+    if legacy == PilotCampaignStatus.ENDED.value:
+        return PilotCampaignState.EXPIRED.value
+    return PilotCampaignState.DRAFT.value
+
+
+def _campaign_status_from_state(state: str, *, code_type: str) -> str:
+    if code_type == PilotInviteCodeType.PRIVATE_INVITE.value:
+        return PilotCampaignStatus.NOT_APPLICABLE.value
+    if state == PilotCampaignState.ACTIVE.value:
+        return PilotCampaignStatus.ACTIVE.value
+    if state == PilotCampaignState.PAUSED.value:
+        return PilotCampaignStatus.PAUSED.value
+    if state in (PilotCampaignState.EXPIRED.value, PilotCampaignState.ARCHIVED.value):
+        return PilotCampaignStatus.ENDED.value
+    return PilotCampaignStatus.DRAFT.value
+
+
+def _default_launch_visibility(code_type: str, public_entry_enabled: bool) -> str:
+    if code_type == PilotInviteCodeType.INTERNAL_TEST.value:
+        return PilotLaunchVisibility.INTERNAL.value
+    if code_type in _PUBLIC_CODE_TYPES:
+        return PilotLaunchVisibility.PUBLIC.value if public_entry_enabled else PilotLaunchVisibility.RESTRICTED.value
+    return PilotLaunchVisibility.PRIVATE.value
+
+
+def _apply_campaign_governance_defaults(doc: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a normalised campaign config candidate before validation/persistence."""
+    out = dict(doc)
+    ct = _code_type_value(out)
+    out["code_type"] = ct
+    out["campaign_config_version"] = int(out.get("campaign_config_version") or 1)
+    out["campaign_state"] = _campaign_state_from_doc(out)
+    out["campaign_status"] = _campaign_status_from_state(out["campaign_state"], code_type=ct)
+    if not out.get("analytics_family"):
+        out["analytics_family"] = ct
+    if not out.get("launch_visibility"):
+        out["launch_visibility"] = _default_launch_visibility(ct, bool(out.get("public_entry_enabled")))
+
+    if ct == PilotInviteCodeType.INTERNAL_TEST.value:
+        max_uses = int(out.get("max_uses") or 5)
+        if max_uses == 1:
+            max_uses = 5
+        if max_uses > 10:
+            raise ValueError("internal_test campaigns are capped at max_uses=10")
+        out.update(
+            {
+                "max_uses": max_uses,
+                "public_entry_enabled": False,
+                "is_publicly_enterable": False,
+                "launch_visibility": PilotLaunchVisibility.INTERNAL.value,
+                "analytics_family": "internal_test",
+                "internal_live_test": True,
+                "onboarding_fee_policy": PilotOnboardingFeePolicy.WAIVED.value,
+                "waive_onboarding_fee": True,
+            }
+        )
+    elif ct == PilotInviteCodeType.PRIVATE_INVITE.value:
+        out["launch_visibility"] = out.get("launch_visibility") or PilotLaunchVisibility.PRIVATE.value
+        out["public_entry_enabled"] = False
+    return out
+
+
+def _validate_campaign_governance(doc: Dict[str, Any]) -> None:
+    ct = _code_type_value(doc)
+    state = _campaign_state_from_doc(doc)
+    visibility = str(doc.get("launch_visibility") or _default_launch_visibility(ct, bool(doc.get("public_entry_enabled"))))
+    if visibility not in {e.value for e in PilotLaunchVisibility}:
+        raise ValueError("Invalid launch_visibility")
+    if ct == PilotInviteCodeType.INTERNAL_TEST.value:
+        if bool(doc.get("public_entry_enabled")) or bool(doc.get("is_publicly_enterable")):
+            raise ValueError("internal_test campaigns cannot be publicly enterable")
+        if visibility != PilotLaunchVisibility.INTERNAL.value:
+            raise ValueError("internal_test campaigns must use launch_visibility=internal")
+        if str(doc.get("analytics_family") or "") != "internal_test":
+            raise ValueError("internal_test campaigns must use analytics_family=internal_test")
+        if str(doc.get("onboarding_fee_policy") or "") != PilotOnboardingFeePolicy.WAIVED.value:
+            raise ValueError("internal_test campaigns must waive onboarding")
+        if int(doc.get("max_uses") or 0) > 10:
+            raise ValueError("internal_test campaigns are capped at max_uses=10")
+    if ct in _PUBLIC_CODE_TYPES and bool(doc.get("public_entry_enabled")) and state != PilotCampaignState.ACTIVE.value:
+        raise ValueError("public_entry_enabled requires campaign_state=active")
+    if doc.get("max_uses_per_account") is not None and int(doc.get("max_uses_per_account") or 0) < 1:
+        raise ValueError("max_uses_per_account must be >= 1 when set")
+
+
+async def _validate_invite_candidate_for_persistence(doc: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate complete invite/campaign candidate before writing it."""
+    candidate = _apply_campaign_governance_defaults(doc)
+    _validate_campaign_governance(candidate)
+    if candidate.get("onboarding_fee_policy") == PilotOnboardingFeePolicy.DEFERRED.value:
+        raise ValueError(_DEFERRED_EXPERIMENTAL_MSG)
+    cfg = discount_config_from_doc(candidate)
+    if cfg["discount_duration"] == PilotInviteDiscountDuration.REPEATING.value and cfg["discount_duration_in_months"] < 1:
+        raise ValueError("discount_duration_in_months is required for repeating discounts")
+    if candidate.get("stripe_coupon_id") or candidate.get("stripe_promotion_code_id"):
+        from services.pilot_stripe_coupon_validation import (
+            PilotStripeCouponValidationError,
+            validate_pilot_stripe_discount_config,
+        )
+
+        try:
+            await validate_pilot_stripe_discount_config(
+                stripe_coupon_id=candidate.get("stripe_coupon_id"),
+                stripe_promotion_code_id=candidate.get("stripe_promotion_code_id"),
+                discount_mode=candidate.get("discount_mode") or "coupon",
+                invite_fields=candidate,
+            )
+        except PilotStripeCouponValidationError as e:
+            detail = "; ".join(e.details) if e.details else str(e)
+            raise ValueError(detail) from e
+    return candidate
 
 
 def discount_config_from_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
@@ -145,6 +322,8 @@ def _build_validate_response(doc: Dict[str, Any], plan_code: str) -> PilotInvite
     return PilotInviteValidateResponse(
         valid=True,
         message=message,
+        code_type=invite_code_type(doc),
+        campaign_name=(doc.get("campaign_name") or None) or None,
         program_type=str(doc.get("program_type") or "FOUNDING_PILOT"),
         plan_code=plan_code,
         discount_applied=True,
@@ -213,37 +392,148 @@ async def validate_invite_for_checkout(
     plan_code: str,
     email: Optional[str] = None,
     for_checkout: bool = False,
+    entry_channel: str = "manual",
+    client_id: Optional[str] = None,
+    log_audit: bool = True,
+    record_attempts: bool = True,
 ) -> Tuple[Dict[str, Any], PilotInviteValidateResponse]:
     """
     Validate invite code. When for_checkout=True, also requires Stripe discount IDs configured.
 
+    entry_channel: ``manual`` (typed) vs ``link`` (invite URL) — governs public promo manual entry rules.
+
     Returns (invite_doc, response). Raises PilotInvitePublicError on failure.
     """
-    normalized = normalize_invite_code(code)
-    if not normalized:
-        raise PilotInvitePublicError("PILOT_INVITE_INVALID", _MSG_INVALID)
+    from models import AuditAction, UserRole
+    from utils.audit import create_audit_log
 
     db = database.get_db()
+    ec_raw = (entry_channel or "manual").strip().lower()
+    entry_ch = ec_raw if ec_raw in ("manual", "link") else "manual"
+    normalized = normalize_invite_code(code)
+    invite_code_id: Optional[str] = None
+
+    async def _attempt(outcome: str, reason_code: Optional[str]) -> None:
+        if not record_attempts:
+            return
+        await record_validation_attempt(
+            db,
+            code_normalized=normalized or "",
+            invite_code_id=invite_code_id,
+            outcome=outcome,
+            reason_code=reason_code,
+            entry_channel=entry_ch,
+            email=email,
+            client_id=client_id,
+        )
+
+    async def _audit_validation_failed(exc: PilotInvitePublicError) -> None:
+        if not log_audit:
+            return
+        action = (
+            AuditAction.PILOT_INVITE_ABUSE_BLOCKED
+            if exc.error_code in _PILOT_INVITE_ABUSE_AUDIT_CODES
+            else AuditAction.PILOT_INVITE_CODE_VALIDATION_FAILED
+        )
+        meta: Dict[str, Any] = {
+            "error_code": exc.error_code,
+            "entry_channel": entry_ch,
+            "plan_code": plan_code,
+            "invite_code_id": invite_code_id,
+        }
+        if normalized:
+            meta["code_masked"] = (normalized[:4] + "***") if len(normalized) > 4 else "****"
+        try:
+            await create_audit_log(
+                action=action,
+                actor_role=UserRole.SYSTEM,
+                client_id=client_id,
+                resource_type="pilot_invite_code",
+                resource_id=invite_code_id,
+                metadata=meta,
+            )
+        except Exception as audit_ex:
+            logger.warning("pilot invite validation audit failed: %s", audit_ex)
+
+    async def _audit_validation_ok(doc: Dict[str, Any]) -> None:
+        if not log_audit:
+            return
+        try:
+            await create_audit_log(
+                action=AuditAction.PILOT_INVITE_CODE_VALIDATED,
+                actor_role=UserRole.SYSTEM,
+                client_id=client_id,
+                resource_type="pilot_invite_code",
+                resource_id=str(doc.get("invite_code_id") or ""),
+                metadata={
+                    "entry_channel": entry_ch,
+                    "plan_code": plan_code,
+                    "code_type": invite_code_type(doc),
+                },
+            )
+        except Exception as audit_ex:
+            logger.warning("pilot invite validation audit failed: %s", audit_ex)
+
+    if not normalized:
+        await _attempt("failed", "PILOT_INVITE_INVALID")
+        exc = PilotInvitePublicError("PILOT_INVITE_INVALID", _MSG_INVALID)
+        await _audit_validation_failed(exc)
+        raise exc
+
     doc = await db[COL_CODES].find_one({"code": normalized}, {"_id": 0})
     if not doc:
-        raise PilotInvitePublicError("PILOT_INVITE_INVALID", _MSG_INVALID)
+        await _attempt("failed", "PILOT_INVITE_INVALID")
+        exc = PilotInvitePublicError("PILOT_INVITE_INVALID", _MSG_INVALID)
+        await _audit_validation_failed(exc)
+        raise exc
+
+    invite_code_id = str(doc.get("invite_code_id") or "") or None
 
     eff = _effective_status(doc)
     if eff == PilotInviteStatus.DISABLED.value:
-        raise PilotInvitePublicError("PILOT_INVITE_INVALID", _MSG_INVALID)
+        await _attempt("failed", "PILOT_INVITE_INVALID")
+        exc = PilotInvitePublicError("PILOT_INVITE_INVALID", _MSG_INVALID)
+        await _audit_validation_failed(exc)
+        raise exc
     if eff == PilotInviteStatus.EXPIRED.value:
-        raise PilotInvitePublicError("PILOT_INVITE_EXPIRED", _MSG_EXPIRED)
+        await _attempt("failed", "PILOT_INVITE_EXPIRED")
+        exc = PilotInvitePublicError("PILOT_INVITE_EXPIRED", _MSG_EXPIRED)
+        await _audit_validation_failed(exc)
+        raise exc
 
     used = int(doc.get("used_count") or 0)
     max_uses = int(doc.get("max_uses") or 1)
     if used >= max_uses:
-        raise PilotInvitePublicError("PILOT_INVITE_EXHAUSTED", _MSG_EXHAUSTED)
+        await _attempt("failed", "PILOT_INVITE_EXHAUSTED")
+        exc = PilotInvitePublicError("PILOT_INVITE_EXHAUSTED", _MSG_EXHAUSTED)
+        await _audit_validation_failed(exc)
+        raise exc
 
     if not _plan_allowed(doc, plan_code):
-        raise PilotInvitePublicError("PILOT_INVITE_PLAN_NOT_ELIGIBLE", _MSG_PLAN)
+        await _attempt("failed", "PILOT_INVITE_PLAN_NOT_ELIGIBLE")
+        exc = PilotInvitePublicError("PILOT_INVITE_PLAN_NOT_ELIGIBLE", _MSG_PLAN)
+        await _audit_validation_failed(exc)
+        raise exc
 
     if not _email_matches(doc, email):
-        raise PilotInvitePublicError("PILOT_INVITE_EMAIL_NOT_ELIGIBLE", _MSG_EMAIL)
+        await _attempt("failed", "PILOT_INVITE_EMAIL_NOT_ELIGIBLE")
+        exc = PilotInvitePublicError("PILOT_INVITE_EMAIL_NOT_ELIGIBLE", _MSG_EMAIL)
+        await _audit_validation_failed(exc)
+        raise exc
+
+    try:
+        assert_public_entry_and_campaign(doc, entry_channel=entry_ch)
+    except PilotInvitePublicError as e:
+        await _attempt("failed", e.error_code)
+        await _audit_validation_failed(e)
+        raise
+
+    try:
+        await assert_abuse_rules(db, doc, email=email, client_id=client_id)
+    except PilotInvitePublicError as e:
+        await _attempt("failed", e.error_code)
+        await _audit_validation_failed(e)
+        raise
 
     if for_checkout:
         _require_stripe_discount_configured(doc)
@@ -251,6 +541,8 @@ async def validate_invite_for_checkout(
         _reject_public_deferred_onboarding(doc)
 
     resp = _build_validate_response(doc, plan_code)
+    await _attempt("success", None)
+    await _audit_validation_ok(doc)
     return doc, resp
 
 
@@ -301,6 +593,47 @@ def build_checkout_pilot_metadata(doc: Dict[str, Any], *, plan_code: str) -> Dic
     return meta
 
 
+def build_redeemed_campaign_snapshot(
+    invite_doc: Dict[str, Any],
+    *,
+    client_id: Optional[str],
+    checkout_session_id: Optional[str],
+    plan_code: Optional[str],
+    redeemed_at: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """Immutable account-level truth captured from the campaign at redemption time."""
+    cfg = discount_config_from_doc(invite_doc)
+    ct = _code_type_value(invite_doc)
+    when = redeemed_at or _utc_now()
+    snapshot_id = f"{invite_doc.get('invite_code_id') or invite_doc.get('code')}:{checkout_session_id or client_id or when.isoformat()}"
+    return {
+        "snapshot_id": snapshot_id,
+        "client_id": client_id,
+        "checkout_session_id": checkout_session_id,
+        "invite_code_id": invite_doc.get("invite_code_id"),
+        "redeemed_code": invite_doc.get("code"),
+        "code_type": ct,
+        "campaign_name": invite_doc.get("campaign_name"),
+        "campaign_config_version": int(invite_doc.get("campaign_config_version") or 1),
+        "campaign_state_at_redemption": _campaign_state_from_doc(invite_doc),
+        "discount_duration": cfg["discount_duration"],
+        "discount_duration_in_months": cfg["discount_duration_in_months"] or None,
+        "discount_percent": cfg["discount_percent"],
+        "onboarding_fee_policy": str(invite_doc.get("onboarding_fee_policy") or PilotOnboardingFeePolicy.WAIVED.value),
+        "allowed_plan": plan_code,
+        "applies_to_plan_codes": list(invite_doc.get("applies_to_plan_codes") or []),
+        "stripe_coupon_id": invite_doc.get("stripe_coupon_id"),
+        "stripe_promotion_code_id": invite_doc.get("stripe_promotion_code_id"),
+        "analytics_family": invite_doc.get("analytics_family") or ct,
+        "launch_visibility": invite_doc.get("launch_visibility")
+        or _default_launch_visibility(ct, bool(invite_doc.get("public_entry_enabled"))),
+        "internal_live_test": bool(invite_doc.get("internal_live_test") or ct == PilotInviteCodeType.INTERNAL_TEST.value),
+        "redeemed_at": when,
+        "completed_at": when,
+        "created_at": when,
+    }
+
+
 def stripe_session_discounts(doc: Dict[str, Any]) -> List[Dict[str, str]]:
     return _stripe_discounts_for_doc(doc)
 
@@ -345,13 +678,55 @@ async def register_pending_redemption(
     invite_doc: Dict[str, Any],
     stripe_event_id: Optional[str] = None,
     stripe_subscription_id: Optional[str] = None,
+    redemption_email: Optional[str] = None,
+    stripe_payment_method_id: Optional[str] = None,
+    plan_code: Optional[str] = None,
 ) -> None:
     """Create pending redemption (idempotent on checkout_session_id). Usage counted after provisioning."""
     if not checkout_session_id:
         return
     db = database.get_db()
     now = _utc_now()
-    doc = {
+    from services.pilot_invite_code_governance import normalize_email as _norm_em
+
+    iid = invite_doc.get("invite_code_id")
+    fresh = None
+    if iid:
+        fresh = await db[COL_CODES].find_one({"invite_code_id": iid}, {"_id": 0})
+    doc = fresh or invite_doc
+    em = _norm_em(redemption_email) if redemption_email else None
+    pm = (stripe_payment_method_id or "").strip() or None
+    try:
+        await assert_abuse_rules(db, doc, email=em, client_id=client_id, stripe_payment_method_id=pm)
+    except PilotInvitePublicError as e:
+        logger.warning(
+            "Pilot redemption blocked at webhook (abuse/eligibility) client_id=%s session=%s code=%s err=%s",
+            client_id,
+            checkout_session_id,
+            doc.get("code"),
+            e.error_code,
+        )
+        try:
+            from models import AuditAction, UserRole
+            from utils.audit import create_audit_log
+
+            await create_audit_log(
+                action=AuditAction.PILOT_INVITE_ABUSE_BLOCKED,
+                actor_role=UserRole.SYSTEM,
+                client_id=client_id,
+                resource_type="pilot_invite_code",
+                resource_id=str(doc.get("invite_code_id") or ""),
+                metadata={
+                    "error_code": e.error_code,
+                    "checkout_session_id": checkout_session_id,
+                    "stage": "register_pending_redemption",
+                },
+            )
+        except Exception as audit_ex:
+            logger.warning("pilot redemption abuse audit failed: %s", audit_ex)
+        return
+
+    doc_insert: Dict[str, Any] = {
         "redemption_id": str(uuid.uuid4()),
         "invite_code_id": invite_doc.get("invite_code_id"),
         "code": invite_doc.get("code"),
@@ -360,13 +735,19 @@ async def register_pending_redemption(
         "checkout_session_id": checkout_session_id,
         "stripe_event_id": stripe_event_id,
         "stripe_subscription_id": stripe_subscription_id,
+        "plan_code": plan_code,
+        "redemption_email": em or None,
+        "stripe_payment_method_id": pm,
+        "campaign_config_version": int(doc.get("campaign_config_version") or 1),
+        "analytics_family": doc.get("analytics_family") or invite_code_type(doc),
+        "code_type": invite_code_type(doc),
         "status": "pending",
         "created_at": now,
         "updated_at": now,
         "completed_at": None,
     }
     try:
-        await db[COL_REDEMPTIONS].insert_one(doc)
+        await db[COL_REDEMPTIONS].insert_one(doc_insert)
     except Exception as e:
         if "duplicate key" in str(e).lower() or "E11000" in str(e):
             logger.info("Pilot redemption already registered for session %s", checkout_session_id)
@@ -388,9 +769,14 @@ async def apply_pilot_tags_to_client(
 
     cfg = discount_config_from_doc(invite_doc)
     months = cfg.get("discount_duration_in_months") or None
+    lifecycle_invite_doc = {
+        **invite_doc,
+        "selected_plan_code": plan_code,
+        "plan_code": plan_code,
+    }
     await create_from_invite_checkout(
         client_id=client_id,
-        invite_doc=invite_doc,
+        invite_doc=lifecycle_invite_doc,
         checkout_session_id=checkout_session_id,
         stripe_subscription_id=stripe_subscription_id,
         stripe_event_id=stripe_event_id,
@@ -501,6 +887,51 @@ async def complete_redemption_after_provisioning(*, checkout_session_id: str) ->
         updated.get("code"),
         checkout_session_id,
     )
+    try:
+        snapshot = build_redeemed_campaign_snapshot(
+            updated,
+            client_id=redemption.get("client_id"),
+            checkout_session_id=checkout_session_id,
+            plan_code=redemption.get("plan_code"),
+            redeemed_at=now,
+        )
+        await db[COL_CAMPAIGN_SNAPSHOTS].update_one(
+            {"checkout_session_id": checkout_session_id},
+            {"$setOnInsert": snapshot},
+            upsert=True,
+        )
+        await db.clients.update_one(
+            {"client_id": redemption.get("client_id")},
+            {
+                "$set": {
+                    "pilot_redeemed_campaign_snapshot_id": snapshot["snapshot_id"],
+                    "pilot_redeemed_campaign_snapshot": snapshot,
+                    "pilot_campaign_config_version": snapshot["campaign_config_version"],
+                    "pilot_analytics_family": snapshot["analytics_family"],
+                    "pilot_launch_visibility": snapshot["launch_visibility"],
+                    "pilot_code_type": snapshot["code_type"],
+                }
+            },
+        )
+    except Exception as snap_ex:
+        logger.warning("pilot redeemed campaign snapshot failed session=%s: %s", checkout_session_id, snap_ex)
+    try:
+        from models import AuditAction, UserRole
+        from utils.audit import create_audit_log
+
+        await create_audit_log(
+            action=AuditAction.PILOT_INVITE_REDEMPTION_COMPLETED,
+            actor_role=UserRole.SYSTEM,
+            client_id=redemption.get("client_id"),
+            resource_type="pilot_invite_code",
+            resource_id=str(invite_code_id),
+            metadata={
+                "checkout_session_id": checkout_session_id,
+                "code": updated.get("code") or redemption.get("code"),
+            },
+        )
+    except Exception as audit_ex:
+        logger.warning("pilot redemption completed audit failed: %s", audit_ex)
     return True
 
 
@@ -508,13 +939,33 @@ async def complete_redemption_after_provisioning(*, checkout_session_id: str) ->
 
 
 async def create_invite_code(body: PilotInviteCodeCreate) -> Dict[str, Any]:
+    from services.pilot_invite_code_generation import (
+        InviteCodeValidationError,
+        assert_manual_code_allowed,
+        generate_unique_invite_code,
+    )
+
     db = database.get_db()
-    normalized = normalize_invite_code(body.code)
-    if not normalized:
-        raise ValueError("Invite code is required")
-    existing = await db[COL_CODES].find_one({"code": normalized}, {"_id": 1})
-    if existing:
-        raise ValueError("Invite code already exists")
+    ct = body.code_type.value
+    if body.auto_generate or not (body.code or "").strip():
+        try:
+            normalized = await generate_unique_invite_code(
+                db,
+                code_type=ct,
+                prefix=(body.metadata or {}).get("generation_prefix") or "",
+                variant=(body.metadata or {}).get("generation_variant") or "",
+                campaign_name=body.campaign_name or "",
+            )
+        except InviteCodeValidationError as e:
+            raise ValueError(str(e)) from e
+    else:
+        try:
+            normalized = assert_manual_code_allowed(body.code)
+        except InviteCodeValidationError as e:
+            raise ValueError(str(e)) from e
+        existing = await db[COL_CODES].find_one({"code": normalized}, {"_id": 1})
+        if existing:
+            raise ValueError("Invite code already exists")
 
     now = _utc_now()
     duration = body.discount_duration.value
@@ -525,6 +976,27 @@ async def create_invite_code(body: PilotInviteCodeCreate) -> Dict[str, Any]:
         "invite_code_id": str(uuid.uuid4()),
         "code": normalized,
         "status": PilotInviteStatus.ACTIVE.value,
+        "code_type": body.code_type.value,
+        "is_publicly_enterable": bool(body.is_publicly_enterable),
+        "public_entry_enabled": bool(body.public_entry_enabled),
+        "campaign_name": (body.campaign_name or "").strip() or None,
+        "public_description": (body.public_description or "").strip() or None,
+        "campaign_status": body.campaign_status.value,
+        "campaign_state": body.campaign_state.value,
+        "launch_visibility": body.launch_visibility.value,
+        "campaign_config_version": int(body.campaign_config_version or 1),
+        "campaign_locked_at": body.campaign_locked_at,
+        "campaign_launched_at": body.campaign_launched_at,
+        "analytics_family": (body.analytics_family or "").strip().lower() or None,
+        "max_uses_per_account": body.max_uses_per_account,
+        "internal_live_test": bool(body.internal_live_test),
+        "first_time_customer_only": bool(body.first_time_customer_only),
+        "one_redemption_per_email": bool(body.one_redemption_per_email),
+        "one_redemption_per_customer": bool(body.one_redemption_per_customer),
+        "one_redemption_per_payment_method": bool(body.one_redemption_per_payment_method),
+        "allowed_email_domains": list(body.allowed_email_domains or []),
+        "blocked_email_domains": list(body.blocked_email_domains or []),
+        "max_uses_per_day": body.max_uses_per_day,
         "program_type": (body.program_type or "FOUNDING_PILOT").strip(),
         "applies_to_plan_codes": list(body.applies_to_plan_codes or []),
         "max_uses": int(body.max_uses),
@@ -546,47 +1018,76 @@ async def create_invite_code(body: PilotInviteCodeCreate) -> Dict[str, Any]:
         "updated_at": now,
         "created_by": body.created_by,
     }
-    from services.pilot_stripe_coupon_validation import (
-        PilotStripeCouponValidationError,
-        validate_pilot_stripe_discount_config,
-    )
-
-    if body.onboarding_fee_policy == PilotOnboardingFeePolicy.DEFERRED:
-        raise ValueError(_DEFERRED_EXPERIMENTAL_MSG)
-
-    try:
-        await validate_pilot_stripe_discount_config(
-            stripe_coupon_id=doc.get("stripe_coupon_id"),
-            stripe_promotion_code_id=doc.get("stripe_promotion_code_id"),
-            discount_mode=doc.get("discount_mode") or "coupon",
-            invite_fields=doc,
-        )
-    except PilotStripeCouponValidationError as e:
-        detail = "; ".join(e.details) if e.details else str(e)
-        raise ValueError(detail) from e
+    doc = await _validate_invite_candidate_for_persistence(doc)
 
     await db[COL_CODES].insert_one(doc)
     doc.pop("_id", None)
     return doc
 
 
-def suggest_invite_code(*, prefix: str = "FOUNDING", variant: str = "") -> str:
-    """Deterministic-style invite code suggestion (caller must check uniqueness)."""
-    base = re.sub(r"[^A-Z0-9-]", "", (prefix or "FOUNDING").strip().upper()) or "FOUNDING"
-    var = re.sub(r"[^A-Z0-9-]", "", (variant or "").strip().upper())
-    year = str(_utc_now().year)
-    if var:
-        return f"{base}-{var}-{year}"[:64]
-    import secrets
+def suggest_invite_code(
+    *,
+    prefix: str = "FOUNDING",
+    variant: str = "",
+    code_type: str = "private_invite",
+    campaign_name: str = "",
+) -> str:
+    """Non-authoritative preview candidate (prefer generate_unique_invite_code for persistence)."""
+    from services.pilot_invite_code_generation import generate_code_candidate
 
-    token = secrets.token_hex(2).upper()
-    return f"{base}-{year}-{token}"[:64]
+    return generate_code_candidate(
+        code_type=code_type,
+        prefix=prefix,
+        variant=variant,
+        campaign_name=campaign_name,
+    )
+
+
+async def generate_invite_code_authoritative(
+    db,
+    *,
+    code_type: str = "private_invite",
+    prefix: str = "",
+    variant: str = "",
+    campaign_name: str = "",
+) -> Dict[str, Any]:
+    """Allocate a unique code (admin generate action)."""
+    from services.pilot_invite_code_generation import (
+        InviteCodeValidationError,
+        generate_unique_invite_code,
+        generation_profile_for_type,
+    )
+
+    try:
+        code = await generate_unique_invite_code(
+            db,
+            code_type=code_type,
+            prefix=prefix,
+            variant=variant,
+            campaign_name=campaign_name,
+        )
+    except InviteCodeValidationError as e:
+        raise ValueError(str(e)) from e
+    return {
+        "code": code,
+        "normalized": code,
+        "code_type": code_type,
+        "profile": generation_profile_for_type(code_type),
+    }
 
 
 def _enrich_invite_row(doc: Dict[str, Any]) -> Dict[str, Any]:
     doc = dict(doc)
+    ct = _code_type_value(doc)
+    doc["code_type"] = ct
+    doc["campaign_state"] = _campaign_state_from_doc(doc)
+    doc["launch_visibility"] = doc.get("launch_visibility") or _default_launch_visibility(
+        ct, bool(doc.get("public_entry_enabled"))
+    )
+    doc["analytics_family"] = doc.get("analytics_family") or ct
     doc["effective_status"] = _effective_status(doc)
     doc["remaining_uses"] = max(0, int(doc.get("max_uses") or 0) - int(doc.get("used_count") or 0))
+    doc["max_uses_total"] = int(doc.get("max_uses") or 0)
     return doc
 
 
@@ -597,10 +1098,13 @@ async def list_invite_codes(
     onboarding_policy: Optional[str] = None,
     duration_months: Optional[int] = None,
     plan_code: Optional[str] = None,
+    code_type: Optional[str] = None,
     exhausted_only: bool = False,
 ) -> List[Dict[str, Any]]:
     db = database.get_db()
     mongo_q: Dict[str, Any] = {}
+    if code_type:
+        mongo_q["code_type"] = str(code_type).strip().lower()
     if onboarding_policy:
         mongo_q["onboarding_fee_policy"] = onboarding_policy.strip().lower()
     if duration_months is not None:
@@ -679,6 +1183,22 @@ async def get_invite_usage(code: str, *, limit: int = 100) -> Dict[str, Any]:
     return {"redemptions": redemptions, "accounts": accounts}
 
 
+async def list_invite_validation_attempts(code: str, *, limit: int = 500) -> List[Dict[str, Any]]:
+    from services.pilot_invite_code_governance import COL_ATTEMPTS
+
+    db = database.get_db()
+    normalized = normalize_invite_code(code)
+    invite = await get_invite_code(normalized)
+    if not invite:
+        return []
+    iid = invite.get("invite_code_id")
+    filt: Dict[str, Any] = (
+        {"$or": [{"code": normalized}, {"invite_code_id": iid}]} if iid else {"code": normalized}
+    )
+    cur = db[COL_ATTEMPTS].find(filt, {"_id": 0}).sort("created_at", -1).limit(limit)
+    return [row async for row in cur]
+
+
 def build_invite_commercial_summary(invite_doc: Dict[str, Any], *, plan_code: str) -> Dict[str, Any]:
     from services.pilot_commercial_truth import (
         build_pilot_offer_summary,
@@ -709,7 +1229,7 @@ def build_invite_distribution(
     base = (base_url or "").rstrip("/")
     commercial = build_invite_commercial_summary(invite_doc, plan_code=plan_code)
     params = f"invite={code}&plan={plan_code}"
-    invite_url = f"{base}/intake?{params}"
+    invite_url = f"{base}/intake/start?{params}"
     summary = commercial.get("commercial_summary") or ""
     message_template = (
         f"You're invited to join Compliance Vault Pro with our Founding Pilot programme.\n\n"
@@ -721,6 +1241,8 @@ def build_invite_distribution(
     return {
         "invite_code": code,
         "invite_url": invite_url,
+        "canonical_intake_path": "/intake/start",
+        "legacy_intake_path": "/intake",
         "plan_code": plan_code,
         "commercial_summary": summary,
         "message_template": message_template,
@@ -802,9 +1324,189 @@ def get_pilot_invite_operational_config() -> Dict[str, Any]:
                 "mode_test": "Use STRIPE_MODE=test in staging/dev with test Dashboard objects only.",
             },
             "deferred_onboarding_public": False,
+            "code_generation": {
+                "authoritative_endpoint": "/api/admin/pilot-invites/generate",
+                "reserved_prefixes": sorted(
+                    __import__(
+                        "services.pilot_invite_code_generation",
+                        fromlist=["_RESERVED_PREFIXES"],
+                    )._RESERVED_PREFIXES
+                ),
+                "charset": "A-Z (no I,O) and 2-9 (no 0,1)",
+            },
         }
     )
     return cfg
+
+
+async def get_invite_operational_metrics(code: str) -> Dict[str, Any]:
+    """Per-code operational metrics for admin dashboards."""
+    from services.pilot_invite_code_governance import COL_ATTEMPTS
+
+    db = database.get_db()
+    inv = await get_invite_code(code)
+    if not inv:
+        return {}
+    iid = inv.get("invite_code_id")
+    now = _utc_now()
+    max_uses = int(inv.get("max_uses") or 1)
+    used = int(inv.get("used_count") or 0)
+    remaining = max(0, max_uses - used)
+
+    val_success = await db[COL_ATTEMPTS].count_documents(
+        {"invite_code_id": iid, "outcome": "success"}
+    )
+    val_failed = await db[COL_ATTEMPTS].count_documents(
+        {"invite_code_id": iid, "outcome": "failed"}
+    )
+    abuse_attempts = await db[COL_ATTEMPTS].count_documents(
+        {
+            "invite_code_id": iid,
+            "outcome": "failed",
+            "reason_code": {
+                "$in": list(_PILOT_INVITE_ABUSE_AUDIT_CODES),
+            },
+        },
+    )
+    pending_redemptions = await db[COL_REDEMPTIONS].count_documents(
+        {"invite_code_id": iid, "status": "pending"}
+    )
+    completed_redemptions = await db[COL_REDEMPTIONS].count_documents(
+        {"invite_code_id": iid, "status": "completed"}
+    )
+
+    exp = inv.get("expires_at")
+    nearing_expiry = False
+    if exp is not None:
+        if isinstance(exp, str):
+            try:
+                exp = datetime.fromisoformat(exp.replace("Z", "+00:00"))
+            except ValueError:
+                exp = None
+        if isinstance(exp, datetime):
+            exp_utc = exp if exp.tzinfo else exp.replace(tzinfo=timezone.utc)
+            days_left = (exp_utc - now).total_seconds() / 86400
+            nearing_expiry = 0 <= days_left <= 7
+
+    total_validations = val_success + val_failed
+    return {
+        "code": inv.get("code"),
+        "invite_code_id": iid,
+        "code_type": inv.get("code_type") or "private_invite",
+        "analytics_family": inv.get("analytics_family") or inv.get("code_type") or "private_invite",
+        "included_in_public_launch_analytics": (inv.get("analytics_family") or inv.get("code_type")) != "internal_test",
+        "launch_visibility": inv.get("launch_visibility") or "private",
+        "used_count": used,
+        "max_uses": max_uses,
+        "remaining_uses": remaining,
+        "redemption_rate": round(used / max_uses, 4) if max_uses else 0,
+        "validation_success_count": val_success,
+        "validation_failed_count": val_failed,
+        "failed_validation_rate": round(val_failed / total_validations, 4)
+        if total_validations
+        else 0,
+        "abuse_attempt_count": abuse_attempts,
+        "pending_redemptions": pending_redemptions,
+        "completed_redemptions": completed_redemptions,
+        "nearing_exhaustion": remaining <= max(1, int(max_uses * 0.1)) and remaining > 0,
+        "nearing_expiry": nearing_expiry,
+        "effective_status": inv.get("effective_status"),
+    }
+
+
+async def duplicate_invite_campaign(
+    source_code: str,
+    *,
+    created_by: Optional[str] = None,
+    campaign_name_suffix: str = " (copy)",
+) -> Dict[str, Any]:
+    """Clone invite configuration with a newly generated unique code (used_count reset)."""
+    db = database.get_db()
+    src = await get_invite_code(source_code)
+    if not src:
+        raise ValueError("Source invite code not found")
+    ct = str(src.get("code_type") or "private_invite")
+    new_code = await generate_invite_code_authoritative(
+        db,
+        code_type=ct,
+        prefix=str(src.get("code") or "")[:12],
+        campaign_name=(src.get("campaign_name") or "") + campaign_name_suffix,
+    )
+    body = PilotInviteCodeCreate(
+        code=new_code["code"],
+        code_type=PilotInviteCodeType(ct) if ct in {e.value for e in PilotInviteCodeType} else PilotInviteCodeType.PRIVATE_INVITE,
+        program_type=str(src.get("program_type") or "FOUNDING_PILOT"),
+        applies_to_plan_codes=list(src.get("applies_to_plan_codes") or []),
+        max_uses=int(src.get("max_uses") or 1),
+        expires_at=src.get("expires_at"),
+        email_restriction=src.get("email_restriction"),
+        stripe_coupon_id=src.get("stripe_coupon_id"),
+        stripe_promotion_code_id=src.get("stripe_promotion_code_id"),
+        discount_mode=PilotInviteDiscountMode(str(src.get("discount_mode") or "coupon")),
+        discount_percent=int(src.get("discount_percent") or 100),
+        discount_duration=PilotInviteDiscountDuration(str(src.get("discount_duration") or "repeating")),
+        discount_duration_in_months=src.get("discount_duration_in_months"),
+        waive_onboarding_fee=bool(src.get("waive_onboarding_fee")),
+        onboarding_fee_policy=PilotOnboardingFeePolicy(str(src.get("onboarding_fee_policy") or "waived")),
+        is_publicly_enterable=bool(src.get("is_publicly_enterable")),
+        public_entry_enabled=bool(src.get("public_entry_enabled")),
+        campaign_name=((src.get("campaign_name") or "") + campaign_name_suffix).strip() or None,
+        public_description=src.get("public_description"),
+        campaign_status=PilotCampaignStatus(str(src.get("campaign_status") or "draft")),
+        first_time_customer_only=bool(src.get("first_time_customer_only")),
+        one_redemption_per_email=bool(src.get("one_redemption_per_email")),
+        one_redemption_per_customer=bool(src.get("one_redemption_per_customer")),
+        one_redemption_per_payment_method=bool(src.get("one_redemption_per_payment_method")),
+        allowed_email_domains=list(src.get("allowed_email_domains") or []),
+        blocked_email_domains=list(src.get("blocked_email_domains") or []),
+        max_uses_per_day=src.get("max_uses_per_day"),
+        metadata={
+            **(src.get("metadata") or {}),
+            "duplicated_from": src.get("code"),
+        },
+        created_by=created_by,
+    )
+    return await create_invite_code(body)
+
+
+async def regenerate_invite_code_if_unused(code: str) -> Dict[str, Any]:
+    """Assign a new code only when invite has zero redemptions (used_count must be 0)."""
+    db = database.get_db()
+    inv = await get_invite_code(code)
+    if not inv:
+        raise ValueError("Invite code not found")
+    if int(inv.get("used_count") or 0) > 0:
+        raise ValueError("Cannot regenerate a code that has already been redeemed")
+    redemptions = await db[COL_REDEMPTIONS].count_documents(
+        {"invite_code_id": inv.get("invite_code_id"), "status": {"$in": ["pending", "completed"]}}
+    )
+    if redemptions > 0:
+        raise ValueError("Cannot regenerate: redemption records exist")
+
+    new_code_payload = await generate_invite_code_authoritative(
+        db,
+        code_type=str(inv.get("code_type") or "private_invite"),
+        campaign_name=str(inv.get("campaign_name") or ""),
+    )
+    new_code = new_code_payload["code"]
+    old_code = inv["code"]
+    now = _utc_now()
+    await db[COL_CODES].update_one(
+        {"invite_code_id": inv["invite_code_id"]},
+        {
+            "$set": {
+                "code": new_code,
+                "updated_at": now,
+                "metadata": {
+                    **(inv.get("metadata") or {}),
+                    "regenerated_from": old_code,
+                    "regenerated_at": now.isoformat(),
+                },
+            }
+        },
+    )
+    updated = await get_invite_code(new_code)
+    return {"invite_code": updated, "previous_code": old_code}
 
 
 async def update_invite_code(code: str, body: PilotInviteCodeUpdate) -> Optional[Dict[str, Any]]:
@@ -812,9 +1514,70 @@ async def update_invite_code(code: str, body: PilotInviteCodeUpdate) -> Optional
 
     db = database.get_db()
     normalized = normalize_invite_code(code)
-    patch: Dict[str, Any] = {"updated_at": _utc_now()}
+    current = await db[COL_CODES].find_one({"code": normalized}, {"_id": 0})
+    if not current:
+        return None
+    now = _utc_now()
+    patch: Dict[str, Any] = {"updated_at": now}
     if body.status is not None:
         patch["status"] = body.status.value
+    if body.code_type is not None:
+        patch["code_type"] = body.code_type.value
+    if body.is_publicly_enterable is not None:
+        patch["is_publicly_enterable"] = body.is_publicly_enterable
+    if body.public_entry_enabled is not None:
+        patch["public_entry_enabled"] = body.public_entry_enabled
+    if body.campaign_name is not None:
+        patch["campaign_name"] = (body.campaign_name or "").strip() or None
+    if body.public_description is not None:
+        patch["public_description"] = (body.public_description or "").strip() or None
+    if body.campaign_status is not None:
+        patch["campaign_status"] = body.campaign_status.value
+        patch["campaign_state"] = _campaign_state_from_doc({"campaign_status": body.campaign_status.value})
+    if body.campaign_state is not None:
+        patch["campaign_state"] = body.campaign_state.value
+        patch["campaign_status"] = _campaign_status_from_state(
+            body.campaign_state.value,
+            code_type=str(patch.get("code_type") or current.get("code_type") or "private_invite"),
+        )
+    if body.launch_visibility is not None:
+        patch["launch_visibility"] = body.launch_visibility.value
+    if body.campaign_config_version is not None:
+        patch["campaign_config_version"] = body.campaign_config_version
+    if body.campaign_locked_at is not None:
+        patch["campaign_locked_at"] = body.campaign_locked_at
+    if body.campaign_launched_at is not None:
+        patch["campaign_launched_at"] = body.campaign_launched_at
+    if body.analytics_family is not None:
+        patch["analytics_family"] = (body.analytics_family or "").strip().lower() or None
+    if body.max_uses_per_account is not None:
+        patch["max_uses_per_account"] = body.max_uses_per_account
+    if body.internal_live_test is not None:
+        patch["internal_live_test"] = bool(body.internal_live_test)
+    if body.deactivated_by is not None:
+        patch["deactivated_by"] = (body.deactivated_by or "").strip() or None
+    if body.deactivated_reason is not None:
+        patch["deactivated_reason"] = (body.deactivated_reason or "").strip() or None
+    if body.archived is True:
+        patch["archived_at"] = now
+        patch["campaign_status"] = "ended"
+        patch["campaign_state"] = PilotCampaignState.ARCHIVED.value
+    elif body.archived is False:
+        patch["archived_at"] = None
+    if body.first_time_customer_only is not None:
+        patch["first_time_customer_only"] = body.first_time_customer_only
+    if body.one_redemption_per_email is not None:
+        patch["one_redemption_per_email"] = body.one_redemption_per_email
+    if body.one_redemption_per_customer is not None:
+        patch["one_redemption_per_customer"] = body.one_redemption_per_customer
+    if body.one_redemption_per_payment_method is not None:
+        patch["one_redemption_per_payment_method"] = body.one_redemption_per_payment_method
+    if body.allowed_email_domains is not None:
+        patch["allowed_email_domains"] = list(body.allowed_email_domains)
+    if body.blocked_email_domains is not None:
+        patch["blocked_email_domains"] = list(body.blocked_email_domains)
+    if body.max_uses_per_day is not None:
+        patch["max_uses_per_day"] = body.max_uses_per_day
     if body.max_uses is not None:
         patch["max_uses"] = body.max_uses
     if body.expires_at is not None:
@@ -845,48 +1608,36 @@ async def update_invite_code(code: str, body: PilotInviteCodeUpdate) -> Optional
         patch["onboarding_fee_discount_percent"] = body.onboarding_fee_discount_percent
     if body.metadata is not None:
         patch["metadata"] = body.metadata
+
+    candidate = {**current, **patch}
+    changed_campaign_fields = {
+        field
+        for field in _CAMPAIGN_MUTATION_FIELDS
+        if field in patch and patch.get(field) != current.get(field)
+    }
+    if changed_campaign_fields:
+        completed = await db[COL_REDEMPTIONS].count_documents(
+            {"invite_code_id": current.get("invite_code_id"), "status": "completed"}
+        )
+        if completed > 0:
+            previous_version = int(current.get("campaign_config_version") or 1)
+            requested_version = int(candidate.get("campaign_config_version") or previous_version)
+            candidate["campaign_previous_config_version"] = previous_version
+            candidate["campaign_config_version"] = max(requested_version, previous_version + 1)
+            candidate["campaign_versioned_at"] = now
+            candidate["campaign_mutation_applies_to"] = "future_redemptions_only"
+            candidate["campaign_mutated_fields"] = sorted(changed_campaign_fields)
+
+    candidate = await _validate_invite_candidate_for_persistence(candidate)
     res = await db[COL_CODES].find_one_and_update(
         {"code": normalized},
-        {"$set": patch},
+        {"$set": candidate},
         return_document=ReturnDocument.AFTER,
     )
     if not res:
         return None
     res.pop("_id", None)
-    res = _enrich_invite_row(res)
-
-    stripe_fields_changed = any(
-        x is not None
-        for x in (
-            body.stripe_coupon_id,
-            body.stripe_promotion_code_id,
-            body.discount_mode,
-            body.discount_percent,
-            body.discount_duration,
-            body.discount_duration_in_months,
-        )
-    )
-    if stripe_fields_changed and (res.get("stripe_coupon_id") or res.get("stripe_promotion_code_id")):
-        from services.pilot_stripe_coupon_validation import (
-            PilotStripeCouponValidationError,
-            validate_pilot_stripe_discount_config,
-        )
-
-        try:
-            await validate_pilot_stripe_discount_config(
-                stripe_coupon_id=res.get("stripe_coupon_id"),
-                stripe_promotion_code_id=res.get("stripe_promotion_code_id"),
-                discount_mode=res.get("discount_mode") or "coupon",
-                invite_fields=res,
-            )
-        except PilotStripeCouponValidationError as e:
-            detail = "; ".join(e.details) if e.details else str(e)
-            raise ValueError(detail) from e
-
-    if body.onboarding_fee_policy == PilotOnboardingFeePolicy.DEFERRED:
-        raise ValueError(_DEFERRED_EXPERIMENTAL_MSG)
-
-    return res
+    return _enrich_invite_row(res)
 
 
 async def list_pilot_accounts(*, limit: int = 200) -> List[Dict[str, Any]]:

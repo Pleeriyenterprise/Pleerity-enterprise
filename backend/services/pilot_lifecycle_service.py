@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import calendar
 import logging
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -17,6 +18,7 @@ from services.pilot_lifecycle_audit import build_pilot_lifecycle_audit_document,
 from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
+COL_ACCOUNT_OVERRIDES = "pilot_account_overrides"
 
 # Terminal / non-extendable statuses
 _TERMINAL = frozenset(
@@ -86,6 +88,14 @@ def _snapshot_pilot_fields(doc: Dict[str, Any]) -> Dict[str, Any]:
         "pilot_manually_overridden",
         "pilot_override_reason",
         "pilot_expected_first_paid_invoice_at",
+        "pilot_original_expected_first_paid_invoice_at",
+        "pilot_account_override_expected_conversion_at",
+        "pilot_redeemed_campaign_snapshot_id",
+        "pilot_redeemed_campaign_snapshot",
+        "pilot_campaign_config_version",
+        "pilot_analytics_family",
+        "pilot_launch_visibility",
+        "pilot_code_type",
         "pilot_governance_revoke_access",
         "pilot_comped_by",
         "pilot_comped_by_email",
@@ -171,6 +181,55 @@ async def _load_client(client_id: str) -> Dict[str, Any]:
     if not doc:
         raise ValueError("CLIENT_NOT_FOUND")
     return doc
+
+
+async def _record_account_override(
+    *,
+    client_id: str,
+    override_type: str,
+    actor: Dict[str, Any],
+    reason: Optional[str],
+    before: Dict[str, Any],
+    after: Dict[str, Any],
+    metadata: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Persist account-level governance override separate from redeemed campaign truth."""
+    db = database.get_db()
+    now = _utc_now()
+    before_exp = _effective_expiry(before)
+    after_exp = _effective_expiry(after)
+    doc = {
+        "override_id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "override_type": override_type,
+        "actor": actor,
+        "reason": reason,
+        "before_effective_expiry": before_exp,
+        "after_effective_expiry": after_exp,
+        "before_status": before.get("pilot_status"),
+        "after_status": after.get("pilot_status"),
+        "redeemed_campaign_snapshot_id": before.get("pilot_redeemed_campaign_snapshot_id")
+        or after.get("pilot_redeemed_campaign_snapshot_id"),
+        "analytics_family": before.get("pilot_analytics_family") or after.get("pilot_analytics_family"),
+        "campaign_config_version": before.get("pilot_campaign_config_version")
+        or after.get("pilot_campaign_config_version"),
+        "metadata": metadata or {},
+        "created_at": now,
+    }
+    await db[COL_ACCOUNT_OVERRIDES].insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+async def list_account_overrides(client_id: str, *, limit: int = 100) -> List[Dict[str, Any]]:
+    db = database.get_db()
+    cursor = (
+        db[COL_ACCOUNT_OVERRIDES]
+        .find({"client_id": client_id}, {"_id": 0})
+        .sort("created_at", -1)
+        .limit(limit)
+    )
+    return [doc async for doc in cursor]
 
 
 async def _persist_transition(
@@ -306,7 +365,7 @@ async def create_from_invite_checkout(
     duration_months_override: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Create pilot lifecycle after successful Stripe checkout (webhook)."""
-    from services.pilot_invite_service import discount_config_from_doc
+    from services.pilot_invite_service import build_redeemed_campaign_snapshot, discount_config_from_doc
 
     cfg = discount_config_from_doc(invite_doc)
     months = int(duration_months_override or cfg["discount_duration_in_months"] or 0)
@@ -318,6 +377,13 @@ async def create_from_invite_checkout(
     if before.get("pilot_status") and str(before.get("pilot_status")) not in ("", "none"):
         logger.info("Pilot lifecycle already exists for %s — skipping create", client_id)
         return before
+    snapshot = build_redeemed_campaign_snapshot(
+        invite_doc,
+        client_id=client_id,
+        checkout_session_id=checkout_session_id,
+        plan_code=invite_doc.get("selected_plan_code") or invite_doc.get("plan_code"),
+        redeemed_at=now,
+    )
 
     state = {
         "pilot_status": PilotStatus.ACTIVE.value,
@@ -329,6 +395,12 @@ async def create_from_invite_checkout(
         "pilot_discount_percent": cfg["discount_percent"],
         "pilot_discount_source": PilotDiscountSource.INVITE_CODE.value,
         "pilot_expected_first_paid_invoice_at": expected_paid,
+        "pilot_redeemed_campaign_snapshot_id": snapshot["snapshot_id"],
+        "pilot_redeemed_campaign_snapshot": snapshot,
+        "pilot_campaign_config_version": snapshot["campaign_config_version"],
+        "pilot_analytics_family": snapshot["analytics_family"],
+        "pilot_launch_visibility": snapshot["launch_visibility"],
+        "pilot_code_type": snapshot["code_type"],
         "pilot_manually_overridden": False,
         "pilot_governance_revoke_access": False,
     }
@@ -385,15 +457,25 @@ async def admin_set_onboarding_fee_policy(
     patch["pilot_manually_overridden"] = True
     patch["pilot_override_reason"] = reason
 
+    actor = {"type": "admin", "id": actor_id, "email": actor_email}
     after = await _persist_transition(
         client_id=client_id,
         before=before,
         patch=patch,
         action=PilotLifecycleAction.NOTES_UPDATED,
-        actor={"type": "admin", "id": actor_id, "email": actor_email},
+        actor=actor,
         reason=reason,
         notes=waiver_reason,
         idempotency_key=f"pilot_onb_policy:{client_id}:{onb_policy.value}:{reason[:32]}",
+    )
+    await _record_account_override(
+        client_id=client_id,
+        override_type="onboarding_override",
+        actor=actor,
+        reason=reason,
+        before=before,
+        after=after,
+        metadata={"onboarding_fee_policy": onb_policy.value, "mark_charged": mark_charged},
     )
 
     billing_set: Dict[str, Any] = {k: v for k, v in fields.items() if k.startswith("onboarding_fee")}
@@ -491,15 +573,30 @@ async def extend_pilot(
     state["pilot_manually_overridden"] = True
     state["pilot_override_reason"] = reason
     state["pilot_extension_count"] = int(client.get("pilot_extension_count") or 0) + 1
+    if client.get("pilot_expected_first_paid_invoice_at") and not client.get("pilot_original_expected_first_paid_invoice_at"):
+        state["pilot_original_expected_first_paid_invoice_at"] = client.get("pilot_expected_first_paid_invoice_at")
+    state["pilot_account_override_expected_conversion_at"] = new_until
+    state["pilot_expected_first_paid_invoice_at"] = new_until
 
-    return await _persist_transition(
+    actor = {"type": "admin", "id": actor_id, "email": actor_email}
+    after = await _persist_transition(
         client_id=client_id,
         before=client,
         patch=state,
         action=PilotLifecycleAction.EXTENDED,
-        actor={"type": "admin", "id": actor_id, "email": actor_email},
+        actor=actor,
         reason=reason,
     )
+    await _record_account_override(
+        client_id=client_id,
+        override_type="extension",
+        actor=actor,
+        reason=reason,
+        before=client,
+        after=after,
+        metadata={"days": days, "weeks": weeks, "months": months, "until": _iso(until) if until else None},
+    )
+    return after
 
 
 async def set_pilot_expiry(
@@ -525,17 +622,32 @@ async def set_pilot_expiry(
     state["pilot_extended_until"] = None
     state["pilot_manually_overridden"] = True
     state["pilot_override_reason"] = reason
+    if client.get("pilot_expected_first_paid_invoice_at") and not client.get("pilot_original_expected_first_paid_invoice_at"):
+        state["pilot_original_expected_first_paid_invoice_at"] = client.get("pilot_expected_first_paid_invoice_at")
+    state["pilot_account_override_expected_conversion_at"] = exp
+    state["pilot_expected_first_paid_invoice_at"] = exp
     if status == PilotStatus.EXPIRED.value and exp > _utc_now():
         state["pilot_status"] = PilotStatus.ACTIVE.value
 
-    return await _persist_transition(
+    actor = {"type": "admin", "id": actor_id, "email": actor_email}
+    after = await _persist_transition(
         client_id=client_id,
         before=client,
         patch=state,
         action=PilotLifecycleAction.EXPIRY_SET,
-        actor={"type": "admin", "id": actor_id, "email": actor_email},
+        actor=actor,
         reason=reason,
     )
+    await _record_account_override(
+        client_id=client_id,
+        override_type="expiry_override",
+        actor=actor,
+        reason=reason,
+        before=client,
+        after=after,
+        metadata={"expires_at": _iso(exp)},
+    )
+    return after
 
 
 async def cancel_pilot(
@@ -631,15 +743,26 @@ async def comp_account(
     state["pilot_comped_by_email"] = actor_email
     state["pilot_comp_review_expires_at"] = review_expires_at
 
-    return await _persist_transition(
+    actor = {"type": "admin", "id": actor_id, "email": actor_email}
+    after = await _persist_transition(
         client_id=client_id,
         before=client,
         patch=state,
         action=PilotLifecycleAction.COMPED,
-        actor={"type": "admin", "id": actor_id, "email": actor_email},
+        actor=actor,
         reason=reason,
         notes=notes,
     )
+    await _record_account_override(
+        client_id=client_id,
+        override_type="comp",
+        actor=actor,
+        reason=reason,
+        before=client,
+        after=after,
+        metadata={"review_expires_at": _iso(review_expires_at), "notes": notes},
+    )
+    return after
 
 
 async def pause_pilot(
@@ -657,14 +780,24 @@ async def pause_pilot(
     state["pilot_status"] = PilotStatus.PAUSED.value
     state["pilot_manually_overridden"] = True
     state["pilot_override_reason"] = reason
-    return await _persist_transition(
+    actor = {"type": "admin", "id": actor_id, "email": actor_email}
+    after = await _persist_transition(
         client_id=client_id,
         before=client,
         patch=state,
         action=PilotLifecycleAction.PAUSED,
-        actor={"type": "admin", "id": actor_id, "email": actor_email},
+        actor=actor,
         reason=reason,
     )
+    await _record_account_override(
+        client_id=client_id,
+        override_type="pause",
+        actor=actor,
+        reason=reason,
+        before=client,
+        after=after,
+    )
+    return after
 
 
 async def resume_pilot(
@@ -684,14 +817,24 @@ async def resume_pilot(
         new_status = PilotStatus.EXPIRED.value
     state["pilot_status"] = new_status
     state["pilot_override_reason"] = reason
-    return await _persist_transition(
+    actor = {"type": "admin", "id": actor_id, "email": actor_email}
+    after = await _persist_transition(
         client_id=client_id,
         before=client,
         patch=state,
         action=PilotLifecycleAction.RESUMED,
-        actor={"type": "admin", "id": actor_id, "email": actor_email},
+        actor=actor,
         reason=reason,
     )
+    await _record_account_override(
+        client_id=client_id,
+        override_type="resume",
+        actor=actor,
+        reason=reason,
+        before=client,
+        after=after,
+    )
+    return after
 
 
 async def update_notes(
@@ -812,10 +955,13 @@ async def get_pilot_state(client_id: str) -> Dict[str, Any]:
     billing = await database.get_db().client_billing.find_one({"client_id": client_id}, {"_id": 0})
     ops = build_pilot_ops_summary(client, billing)
     pilot_snap = _snapshot_pilot_fields(client)
+    overrides = await list_account_overrides(client_id, limit=50)
     return {
         "client_id": client_id,
         "pilot": pilot_snap,
         "ops": ops,
+        "redeemed_campaign_snapshot": client.get("pilot_redeemed_campaign_snapshot"),
+        "account_overrides": overrides,
         "onboarding_fee": {
             k: pilot_snap.get(k)
             for k in (
@@ -946,6 +1092,13 @@ def build_pilot_ops_summary(
         "pilot_health_score": client.get("pilot_health_score"),
         "pilot_health_band": client.get("pilot_health_band"),
         "pilot_health_flags": client.get("pilot_health_flags") or [],
+        "redeemed_campaign_snapshot": client.get("pilot_redeemed_campaign_snapshot"),
+        "pilot_analytics_family": client.get("pilot_analytics_family"),
+        "pilot_launch_visibility": client.get("pilot_launch_visibility"),
+        "pilot_code_type": client.get("pilot_code_type"),
+        "pilot_campaign_config_version": client.get("pilot_campaign_config_version"),
+        "account_override_expected_conversion_at": _iso(client.get("pilot_account_override_expected_conversion_at")),
+        "original_expected_first_paid_invoice_at": _iso(client.get("pilot_original_expected_first_paid_invoice_at")),
         "comp_review_expires_at": _iso(client.get("pilot_comp_review_expires_at")),
         "cancellation_risk": bool(
             client.get("pilot_cancelled_before_paid_conversion")

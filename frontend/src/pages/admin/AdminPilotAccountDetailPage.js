@@ -81,6 +81,8 @@ export default function AdminPilotAccountDetailPage() {
   const ops = profile?.ops || {};
   const pilot = profile?.pilot || {};
   const risk = profile?.pilot?.pilot_conversion_risk || ops?.conversion_readiness || {};
+  const redeemedSnapshot = profile?.redeemed_campaign_snapshot || pilot?.pilot_redeemed_campaign_snapshot || {};
+  const accountOverrides = profile?.account_overrides || [];
 
   const runRecovery = async (label, fn) => {
     setActionBusy(true);
@@ -232,6 +234,8 @@ export default function AdminPilotAccountDetailPage() {
               <p>Source: {pilot.pilot_discount_source || '—'}</p>
               <p>Duration: {pilot.pilot_duration_months != null ? `${pilot.pilot_duration_months} months` : '—'}</p>
               <p>Invite code: {pilot.pilot_invite_code || '—'}</p>
+              <p>Analytics family: {ops.pilot_analytics_family || pilot.pilot_analytics_family || '—'}</p>
+              <p>Campaign version: {ops.pilot_campaign_config_version || pilot.pilot_campaign_config_version || '—'}</p>
             </CardContent>
           </Card>
           <Card>
@@ -243,6 +247,45 @@ export default function AdminPilotAccountDetailPage() {
               <p>Payment method collected: {pilot.pilot_stripe_payment_method_collected ? 'Yes' : 'No'}</p>
               <p>Default PM: {pilot.pilot_stripe_default_payment_method_id || '—'}</p>
               <p>First paid invoice: {pilot.pilot_first_paid_invoice_paid ? 'Yes' : 'No'}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          <Card data-testid="pilot-redeemed-campaign-snapshot">
+            <CardHeader>
+              <CardTitle className="text-base">Redeemed campaign snapshot</CardTitle>
+              <CardDescription>Immutable campaign truth captured at redemption.</CardDescription>
+            </CardHeader>
+            <CardContent className="text-sm space-y-1">
+              <p>Code: {redeemedSnapshot.redeemed_code || pilot.pilot_invite_code || '—'}</p>
+              <p>Type: {redeemedSnapshot.code_type || pilot.pilot_code_type || '—'}</p>
+              <p>Campaign: {redeemedSnapshot.campaign_name || '—'}</p>
+              <p>Version: {redeemedSnapshot.campaign_config_version || '—'}</p>
+              <p>Visibility: {redeemedSnapshot.launch_visibility || pilot.pilot_launch_visibility || '—'}</p>
+              <p>Redeemed: {formatDate(redeemedSnapshot.redeemed_at || redeemedSnapshot.completed_at)}</p>
+            </CardContent>
+          </Card>
+          <Card data-testid="pilot-account-overrides">
+            <CardHeader>
+              <CardTitle className="text-base">Account overrides</CardTitle>
+              <CardDescription>Account-level changes independent of campaign defaults.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-xs">
+                {accountOverrides.map((o) => (
+                  <li key={o.override_id} className="border rounded p-2">
+                    <p className="font-medium">
+                      {o.override_type} · {formatDate(o.created_at)}
+                    </p>
+                    <p className="text-gray-600">
+                      Expiry: {formatDate(o.before_effective_expiry)} → {formatDate(o.after_effective_expiry)}
+                    </p>
+                    {o.reason && <p>{o.reason}</p>}
+                  </li>
+                ))}
+                {!accountOverrides.length && <li className="text-gray-500">No account overrides recorded.</li>}
+              </ul>
             </CardContent>
           </Card>
         </div>
@@ -394,16 +437,42 @@ export default function AdminPilotAccountDetailPage() {
           extraFields={
             dialog?.type === 'extend'
               ? ({ extra, setExtra }) => (
-                  <label className="block text-sm">
-                    Extend by (months)
-                    <Input
-                      type="number"
-                      min={1}
-                      className="mt-1 w-24"
-                      value={extra.months || 1}
-                      onChange={(e) => setExtra({ months: Number(e.target.value) })}
-                    />
-                  </label>
+                  <div className="space-y-2">
+                    <label className="block text-sm">
+                      Extension mode
+                      <select
+                        className="mt-1 w-full border rounded px-2 py-1 text-sm"
+                        value={extra.mode || 'months'}
+                        onChange={(e) => setExtra({ mode: e.target.value })}
+                      >
+                        <option value="days">Days</option>
+                        <option value="weeks">Weeks</option>
+                        <option value="months">Months</option>
+                        <option value="until">Until date</option>
+                      </select>
+                    </label>
+                    {extra.mode === 'until' ? (
+                      <label className="block text-sm">
+                        Extend until
+                        <Input
+                          type="datetime-local"
+                          className="mt-1"
+                          onChange={(e) => setExtra({ mode: 'until', until: e.target.value })}
+                        />
+                      </label>
+                    ) : (
+                      <label className="block text-sm">
+                        Amount
+                        <Input
+                          type="number"
+                          min={1}
+                          className="mt-1 w-24"
+                          value={extra.amount || extra.months || 1}
+                          onChange={(e) => setExtra({ mode: extra.mode || 'months', amount: Number(e.target.value) })}
+                        />
+                      </label>
+                    )}
+                  </div>
                 )
               : dialog?.type === 'set_expiry'
                 ? ({ extra, setExtra }) => (
@@ -449,7 +518,14 @@ export default function AdminPilotAccountDetailPage() {
             if (t === 'resolve_anomaly') {
               await adminAPI.resolvePilotLifecycleAnomaly(dialog.anomalyId, { resolution_notes: reason });
             } else if (t === 'extend') {
-              await adminAPI.extendPilotAccount(clientId, { reason, months: extra.months || 1 });
+              const mode = extra.mode || 'months';
+              const amount = Number(extra.amount || extra.months || 1);
+              if (mode === 'until' && !extra.until) throw new Error('Extension end datetime required');
+              const body =
+                mode === 'until'
+                  ? { reason, until: new Date(extra.until).toISOString() }
+                  : { reason, [mode]: amount };
+              await adminAPI.extendPilotAccount(clientId, body);
             } else if (t === 'set_expiry') {
               if (!extra.expires_at) throw new Error('Expiry datetime required');
               await adminAPI.setPilotExpiry(clientId, {

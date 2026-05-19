@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from middleware import require_owner_or_admin
@@ -13,15 +13,21 @@ from models.pilot_invite import (
     PilotInviteCodeUpdate,
     PilotInviteStatus,
 )
+from database import database
 from services.pilot_invite_service import (
     build_invite_distribution,
     create_invite_code,
+    duplicate_invite_campaign,
+    generate_invite_code_authoritative,
     get_invite_code,
+    get_invite_operational_metrics,
     get_invite_usage,
     get_pilot_invite_operational_config,
     list_invite_codes,
+    list_invite_validation_attempts,
     normalize_invite_code,
     preview_stripe_coupon_validation,
+    regenerate_invite_code_if_unused,
     suggest_invite_code,
     update_invite_code,
 )
@@ -43,6 +49,17 @@ class PilotInviteDistributionQuery(BaseModel):
     plan_code: str = Field(default="PLAN_1_SOLO", max_length=64)
 
 
+class PilotInviteGenerateBody(BaseModel):
+    code_type: str = Field(default="private_invite", max_length=32)
+    prefix: str = Field(default="", max_length=32)
+    variant: str = Field(default="", max_length=32)
+    campaign_name: str = Field(default="", max_length=200)
+
+
+class PilotInviteDisableBody(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
 @router.get("/operational-config")
 async def get_operational_config(_user: dict = Depends(require_owner_or_admin)) -> Dict[str, Any]:
     """Safe operational/env requirements for pilot invite rollout (no secrets)."""
@@ -55,6 +72,7 @@ async def get_pilot_invites(
     onboarding_policy: Optional[str] = Query(None),
     duration_months: Optional[int] = Query(None, ge=1, le=36),
     plan_code: Optional[str] = Query(None),
+    code_type: Optional[str] = Query(None, description="private_invite|public_promo|referral|partner|internal_test"),
     exhausted_only: bool = Query(False),
     limit: int = Query(200, ge=1, le=500),
     _user: dict = Depends(require_owner_or_admin),
@@ -65,6 +83,7 @@ async def get_pilot_invites(
         onboarding_policy=onboarding_policy,
         duration_months=duration_months,
         plan_code=plan_code,
+        code_type=code_type,
         exhausted_only=exhausted_only,
     )
     return {"invite_codes": codes, "count": len(codes)}
@@ -74,10 +93,29 @@ async def get_pilot_invites(
 async def suggest_code(
     prefix: str = Query("FOUNDING", max_length=32),
     variant: str = Query("", max_length=32),
+    code_type: str = Query("private_invite", max_length=32),
+    campaign_name: str = Query("", max_length=200),
     _user: dict = Depends(require_owner_or_admin),
 ) -> Dict[str, Any]:
-    code = suggest_invite_code(prefix=prefix, variant=variant)
-    return {"code": code, "normalized": normalize_invite_code(code)}
+    code = suggest_invite_code(prefix=prefix, variant=variant, code_type=code_type, campaign_name=campaign_name)
+    return {"code": code, "normalized": normalize_invite_code(code), "preview_only": True}
+
+
+@router.post("/generate")
+async def generate_code(
+    body: PilotInviteGenerateBody,
+    _user: dict = Depends(require_owner_or_admin),
+) -> Dict[str, Any]:
+    try:
+        return await generate_invite_code_authoritative(
+            database.get_db(),
+            code_type=body.code_type,
+            prefix=body.prefix,
+            variant=body.variant,
+            campaign_name=body.campaign_name,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post("/validate-stripe")
@@ -120,6 +158,19 @@ async def get_pilot_accounts(_user: dict = Depends(require_owner_or_admin)) -> D
     return {"accounts": accounts, "count": len(accounts)}
 
 
+@router.get("/{code}/validation-attempts")
+async def get_pilot_invite_validation_attempts(
+    code: str,
+    limit: int = Query(500, ge=1, le=2000),
+    _user: dict = Depends(require_owner_or_admin),
+) -> Dict[str, Any]:
+    inv = await get_invite_code(code)
+    if not inv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
+    attempts = await list_invite_validation_attempts(code, limit=limit)
+    return {"invite_code": inv.get("code"), "attempts": attempts, "count": len(attempts)}
+
+
 @router.get("/{code}")
 async def get_pilot_invite(
     code: str,
@@ -149,15 +200,56 @@ async def patch_pilot_invite(
 @router.patch("/{code}/disable")
 async def disable_pilot_invite(
     code: str,
+    body: Optional[PilotInviteDisableBody] = Body(default=None),
     _user: dict = Depends(require_owner_or_admin),
 ) -> Dict[str, Any]:
+    actor = _user.get("email") or _user.get("portal_user_id")
     doc = await update_invite_code(
         code,
-        PilotInviteCodeUpdate(status=PilotInviteStatus.DISABLED),
+        PilotInviteCodeUpdate(
+            status=PilotInviteStatus.DISABLED,
+            deactivated_by=actor,
+            deactivated_reason=(body.reason if body else None),
+        ),
     )
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
     return {"invite_code": doc}
+
+
+@router.post("/{code}/duplicate")
+async def duplicate_pilot_invite(
+    code: str,
+    _user: dict = Depends(require_owner_or_admin),
+) -> Dict[str, Any]:
+    actor = _user.get("email") or _user.get("portal_user_id")
+    try:
+        doc = await duplicate_invite_campaign(code, created_by=actor)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return {"invite_code": doc}
+
+
+@router.post("/{code}/regenerate")
+async def regenerate_pilot_invite_code(
+    code: str,
+    _user: dict = Depends(require_owner_or_admin),
+) -> Dict[str, Any]:
+    try:
+        return await regenerate_invite_code_if_unused(code)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/{code}/metrics")
+async def get_pilot_invite_metrics(
+    code: str,
+    _user: dict = Depends(require_owner_or_admin),
+) -> Dict[str, Any]:
+    metrics = await get_invite_operational_metrics(code)
+    if not metrics:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
+    return {"metrics": metrics}
 
 
 @router.get("/{code}/usage")

@@ -27,6 +27,8 @@ _STRIPE_TEST_DEFAULTS = {
 }
 for _k, _v in _STRIPE_TEST_DEFAULTS.items():
     os.environ.setdefault(_k, _v)
+os.environ.setdefault("STRIPE_MODE", "test")
+os.environ.setdefault("STRIPE_SECRET_KEY_TEST", "sk_test_pytest_dummy_not_for_production")
 
 # OTP unit tests require a pepper at import-time of services.otp_service (via app import). Not a production secret.
 os.environ.setdefault(

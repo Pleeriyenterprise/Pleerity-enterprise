@@ -446,6 +446,10 @@ export const intakeAPI = {
     if (invite_code) {
       payload.invite_code = invite_code;
     }
+    const iec = body && typeof body.invite_entry_channel === 'string' ? body.invite_entry_channel.trim().toLowerCase() : '';
+    if (iec === 'link' || iec === 'manual') {
+      payload.invite_entry_channel = iec;
+    }
     return apiClient.post('/intake/checkout', payload, {
       params: { client_id: cid },
       headers: { origin },
@@ -1098,6 +1102,7 @@ export const adminAPI = {
   getPilotInviteOperationalConfig: () => apiClient.get('/admin/pilot-invites/operational-config'),
   listPilotInvites: (params = {}) => apiClient.get('/admin/pilot-invites', { params }),
   suggestPilotInviteCode: (params = {}) => apiClient.get('/admin/pilot-invites/suggest-code', { params }),
+  generatePilotInviteCode: (body) => apiClient.post('/admin/pilot-invites/generate', body),
   validatePilotInviteStripe: (body) => apiClient.post('/admin/pilot-invites/validate-stripe', body),
   createPilotInvite: (body) => apiClient.post('/admin/pilot-invites', body),
   getPilotInvite: (code) => apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}`),
@@ -1105,6 +1110,14 @@ export const adminAPI = {
   disablePilotInvite: (code) => apiClient.patch(`/admin/pilot-invites/${encodeURIComponent(code)}/disable`),
   getPilotInviteUsage: (code, params = {}) =>
     apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}/usage`, { params }),
+  getPilotInviteValidationAttempts: (code, params = {}) =>
+    apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}/validation-attempts`, { params }),
+  getPilotInviteMetrics: (code) =>
+    apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}/metrics`),
+  duplicatePilotInvite: (code) =>
+    apiClient.post(`/admin/pilot-invites/${encodeURIComponent(code)}/duplicate`),
+  regeneratePilotInviteCode: (code) =>
+    apiClient.post(`/admin/pilot-invites/${encodeURIComponent(code)}/regenerate`),
   getPilotInviteDistribution: (code, params = {}) =>
     apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}/distribution`, { params }),
   listPilotLifecycleAccounts: (params = {}) => apiClient.get('/admin/pilot-lifecycle/accounts', { params }),

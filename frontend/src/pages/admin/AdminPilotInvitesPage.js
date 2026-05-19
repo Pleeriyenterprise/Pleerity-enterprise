@@ -4,7 +4,8 @@ import {
   Plus,
   RefreshCw,
   Copy,
-  Sparkles,
+  RefreshCw as RefreshCwIcon,
+  Wand2,
   ExternalLink,
   CheckCircle,
   XCircle,
@@ -20,6 +21,8 @@ import { toast } from '@/utils/portalNotifications';
 import { useAuth } from '../../contexts/AuthContext';
 import UnifiedAdminLayout from '../../components/admin/UnifiedAdminLayout';
 import {
+  CAMPAIGN_STATUS_OPTIONS,
+  CODE_TYPE_OPTIONS,
   ONBOARDING_POLICY_OPTIONS,
   PILOT_PLAN_OPTIONS,
   buildDefaultCreateForm,
@@ -28,6 +31,8 @@ import {
   formToCreatePayload,
   formatPilotDuration,
   inviteStatusBadgeClass,
+  isInternalTest,
+  isPublicPromoFamily,
   normalizeInviteCode,
   stripeValidationToDisplay,
 } from '../../utils/pilotInviteAdmin';
@@ -54,6 +59,7 @@ export default function AdminPilotInvitesPage() {
     onboarding_policy: '',
     duration_months: '',
     plan_code: '',
+    code_type: '',
   });
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(buildDefaultCreateForm);
@@ -85,15 +91,30 @@ export default function AdminPilotInvitesPage() {
 
   const filtered = useMemo(() => filterPilotInvites(invites, filters), [invites, filters]);
 
-  const handleSuggestCode = async () => {
+  const [generatingCode, setGeneratingCode] = useState(false);
+
+  const handleGenerateCode = async ({ regenerate = false } = {}) => {
+    setGeneratingCode(true);
     try {
-      const res = await adminAPI.suggestPilotInviteCode({
-        prefix: form.code_prefix || 'FOUNDING',
+      const res = await adminAPI.generatePilotInviteCode({
+        code_type: form.code_type || 'private_invite',
+        prefix: form.code_prefix || (form.code_type === 'public_promo' ? 'LAUNCH' : 'FOUNDING'),
         variant: form.code_variant || '',
+        campaign_name: form.campaign_name || '',
       });
-      setForm((f) => ({ ...f, code: res.data?.code || '', auto_generate: false }));
-    } catch {
-      toast.error('Could not generate code');
+      const generated = res.data?.code || res.data?.normalized || '';
+      setForm((f) => ({
+        ...f,
+        code: generated,
+        auto_generate: false,
+        manual_code_override: true,
+      }));
+      toast.success(regenerate ? 'Code regenerated' : 'Code generated');
+    } catch (e) {
+      const detail = e.response?.data?.detail;
+      toast.error(typeof detail === 'string' ? detail : 'Could not generate code');
+    } finally {
+      setGeneratingCode(false);
     }
   };
 
@@ -129,28 +150,21 @@ export default function AdminPilotInvitesPage() {
       toast.error('Stripe coupon or promotion code ID is required');
       return;
     }
-    let code = normalizeInviteCode(form.code);
-    if (form.auto_generate && !code) {
-      const sug = await adminAPI.suggestPilotInviteCode({
-        prefix: form.code_prefix,
-        variant: form.code_variant,
-      });
-      code = normalizeInviteCode(sug.data?.code);
-    }
-    if (!code) {
-      toast.error('Invite code is required');
+    const payload = formToCreatePayload(form);
+    if (!payload.auto_generate && !payload.code) {
+      toast.error('Generate a code, enter one manually, or enable auto-generate on save');
       return;
     }
     setCreating(true);
     try {
-      const payload = { ...formToCreatePayload({ ...form, code }), code };
       const res = await adminAPI.createPilotInvite(payload);
-      toast.success(`Invite ${res.data?.invite_code?.code || code} created`);
+      const createdCode = res.data?.invite_code?.code || payload.code;
+      toast.success(`Invite ${createdCode} created`);
       setShowCreate(false);
       setForm(buildDefaultCreateForm());
       setStripeResult(null);
       await load();
-      navigate(`/admin/pilot-invites/${encodeURIComponent(code)}`);
+      navigate(`/admin/pilot-invites/${encodeURIComponent(createdCode)}`);
     } catch (e) {
       const detail = e.response?.data?.detail;
       toast.error(typeof detail === 'string' ? detail : 'Create failed');
@@ -269,29 +283,165 @@ export default function AdminPilotInvitesPage() {
           <CardContent>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
-                <label className="block text-sm">
-                  <span className="font-medium">Invite code</span>
-                  <div className="flex gap-2 mt-1">
+                <label className="block text-sm md:col-span-2">
+                  <span className="font-medium">Invite / promo code</span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Server-authoritative generation. Generate, regenerate, manual override, or auto-generate on save.
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-2">
                     <Input
+                      className="flex-1 min-w-[200px] font-mono"
                       value={form.code}
-                      onChange={(e) => setForm((f) => ({ ...f, code: e.target.value, auto_generate: false }))}
-                      placeholder="FOUNDING-2026-AB12"
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          code: e.target.value,
+                          auto_generate: false,
+                          manual_code_override: true,
+                        }))
+                      }
+                      placeholder="FOUNDING-8K4D or LAUNCH2026"
                       disabled={form.auto_generate}
                       data-testid="pilot-invite-code-input"
                     />
-                    <Button type="button" variant="outline" onClick={handleSuggestCode}>
-                      <Sparkles className="h-4 w-4" />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => handleGenerateCode()}
+                      disabled={generatingCode}
+                      data-testid="pilot-invite-generate"
+                    >
+                      {generatingCode ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      ) : (
+                        <Wand2 className="h-4 w-4 mr-1" />
+                      )}
+                      Generate
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleGenerateCode({ regenerate: true })}
+                      disabled={generatingCode || !form.code}
+                      data-testid="pilot-invite-regenerate"
+                    >
+                      <RefreshCwIcon className="h-4 w-4 mr-1" />
+                      Regenerate
                     </Button>
                   </div>
                   <label className="flex items-center gap-2 mt-2 text-xs">
                     <input
                       type="checkbox"
                       checked={form.auto_generate}
-                      onChange={(e) => setForm((f) => ({ ...f, auto_generate: e.target.checked }))}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          auto_generate: e.target.checked,
+                          manual_code_override: !e.target.checked,
+                        }))
+                      }
                     />
-                    Auto-generate on save
+                    Auto-generate on save when the code field is empty
                   </label>
                 </label>
+                <label className="block text-sm">
+                  <span className="font-medium">Code type</span>
+                  <select
+                    className="mt-1 w-full border rounded-md px-3 py-2 text-sm"
+                    value={form.code_type}
+                    onChange={(e) => {
+                      const ct = e.target.value;
+                      const internal = isInternalTest(ct);
+                      setForm((f) => ({
+                        ...f,
+                        code_type: ct,
+                        max_uses: internal ? 5 : f.max_uses,
+                        onboarding_fee_policy: internal ? 'waived' : f.onboarding_fee_policy,
+                        waive_onboarding_fee: internal ? true : f.waive_onboarding_fee,
+                        campaign_status: isPublicPromoFamily(ct) ? 'draft' : 'not_applicable',
+                        campaign_state: isPublicPromoFamily(ct) ? 'draft' : f.campaign_state || 'draft',
+                        launch_visibility: internal ? 'internal' : isPublicPromoFamily(ct) ? 'restricted' : 'private',
+                        analytics_family: internal ? 'internal_test' : ct,
+                        internal_live_test: internal,
+                        is_publicly_enterable: false,
+                        public_entry_enabled: false,
+                      }));
+                    }}
+                    data-testid="pilot-code-type"
+                  >
+                    {CODE_TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {isInternalTest(form.code_type) && (
+                  <Alert className="md:col-span-2">
+                    <AlertDescription>
+                      Internal test campaigns are hidden from public entry, onboarding is waived, analytics are separated,
+                      and max uses are capped at 10.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {isPublicPromoFamily(form.code_type) && (
+                  <>
+                    <label className="block text-sm">
+                      <span className="font-medium">Campaign name</span>
+                      <Input
+                        className="mt-1"
+                        value={form.campaign_name}
+                        onChange={(e) => setForm((f) => ({ ...f, campaign_name: e.target.value }))}
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      <span className="font-medium">Campaign status</span>
+                      <select
+                        className="mt-1 w-full border rounded-md px-3 py-2 text-sm"
+                        value={form.campaign_status}
+                        onChange={(e) => setForm((f) => ({ ...f, campaign_status: e.target.value }))}
+                      >
+                        {CAMPAIGN_STATUS_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm md:col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={form.public_entry_enabled}
+                        onChange={(e) => setForm((f) => ({ ...f, public_entry_enabled: e.target.checked }))}
+                      />
+                      Enable public entry (master switch — off by default)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm md:col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={form.is_publicly_enterable}
+                        onChange={(e) => setForm((f) => ({ ...f, is_publicly_enterable: e.target.checked }))}
+                      />
+                      Allow manual code entry at intake
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={form.one_redemption_per_email}
+                        onChange={(e) => setForm((f) => ({ ...f, one_redemption_per_email: e.target.checked }))}
+                      />
+                      One redemption per email
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={form.first_time_customer_only}
+                        onChange={(e) => setForm((f) => ({ ...f, first_time_customer_only: e.target.checked }))}
+                      />
+                      First-time customers only
+                    </label>
+                  </>
+                )}
                 <label className="block text-sm">
                   <span className="font-medium">Pilot duration (months)</span>
                   <Input
@@ -322,9 +472,21 @@ export default function AdminPilotInvitesPage() {
                   <Input
                     type="number"
                     min={1}
+                    max={isInternalTest(form.code_type) ? 10 : undefined}
                     className="mt-1"
                     value={form.max_uses}
                     onChange={(e) => setForm((f) => ({ ...f, max_uses: Number(e.target.value) }))}
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="font-medium">Max uses per account</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    className="mt-1"
+                    value={form.max_uses_per_account}
+                    onChange={(e) => setForm((f) => ({ ...f, max_uses_per_account: e.target.value }))}
+                    placeholder="Optional"
                   />
                 </label>
                 <label className="block text-sm">
@@ -357,6 +519,7 @@ export default function AdminPilotInvitesPage() {
                       }))
                     }
                     data-testid="onboarding-fee-policy"
+                    disabled={isInternalTest(form.code_type)}
                   >
                     {ONBOARDING_POLICY_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>
@@ -479,6 +642,19 @@ export default function AdminPilotInvitesPage() {
                 </option>
               ))}
             </select>
+            <select
+              className="border rounded px-2 py-1 text-sm"
+              value={filters.code_type}
+              onChange={(e) => setFilters((f) => ({ ...f, code_type: e.target.value }))}
+              data-testid="filter-code-type"
+            >
+              <option value="">All code types</option>
+              {CODE_TYPE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </div>
         </CardHeader>
         <CardContent>
@@ -497,6 +673,7 @@ export default function AdminPilotInvitesPage() {
                 <thead>
                   <tr className="border-b text-left text-gray-600">
                     <th className="py-2 pr-3">Code</th>
+                    <th className="py-2 pr-3">Type</th>
                     <th className="py-2 pr-3">Duration</th>
                     <th className="py-2 pr-3">Onboarding</th>
                     <th className="py-2 pr-3">Uses</th>
@@ -510,6 +687,13 @@ export default function AdminPilotInvitesPage() {
                   {filtered.map((row) => (
                     <tr key={row.code} className="border-b hover:bg-slate-50">
                       <td className="py-2 pr-3 font-mono font-medium">{row.code}</td>
+                      <td className="py-2 pr-3 text-xs">
+                        <span>{row.code_type || 'private_invite'}</span>
+                        {row.code_type === 'internal_test' && (
+                          <span className="ml-1 px-1.5 py-0.5 rounded bg-purple-100 text-purple-800">internal</span>
+                        )}
+                        <div className="text-gray-500">{row.campaign_state || row.campaign_status || '—'}</div>
+                      </td>
                       <td className="py-2 pr-3" data-testid={`duration-${row.code}`}>
                         {formatPilotDuration(row)}
                       </td>

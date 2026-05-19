@@ -4,6 +4,7 @@ Founding pilot invite checkout — validation, Stripe session discounts, webhook
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -56,18 +57,45 @@ def _active_invite_doc(**overrides):
     return doc
 
 
+def _async_empty_cursor():
+    """Empty async iterator for Mongo find() mocks."""
+
+    class _Cursor:
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            raise StopAsyncIteration
+
+    return _Cursor()
+
+
+def _fake_db_for_invite(doc, *, redemption_count=0, client_row=None):
+    fdb: Dict[str, Any] = {}
+    fdb[COL_CODES] = MagicMock()
+    fdb[COL_CODES].find_one = AsyncMock(return_value=doc)
+    fdb[COL_REDEMPTIONS] = MagicMock()
+    fdb[COL_REDEMPTIONS].count_documents = AsyncMock(return_value=redemption_count)
+    fdb["pilot_invite_validation_attempts"] = MagicMock()
+    fdb["pilot_invite_validation_attempts"].insert_one = AsyncMock()
+    fdb["clients"] = MagicMock()
+    fdb["clients"].find_one = AsyncMock(return_value=client_row)
+    fdb["clients"].find = MagicMock(return_value=_async_empty_cursor())
+    return fdb
+
+
 @pytest.mark.asyncio
 async def test_validate_invite_success():
     doc = _active_invite_doc()
-    mock_db = MagicMock()
-    mock_db[COL_CODES].find_one = AsyncMock(return_value=doc)
-    with patch("services.pilot_invite_service.database.get_db", return_value=mock_db):
-        invite_doc, resp = await validate_invite_for_checkout(
-            code="pilottest",
-            plan_code="PLAN_1_SOLO",
-            email="pilot@example.com",
-            for_checkout=True,
-        )
+    fdb = _fake_db_for_invite(doc)
+    with patch("services.pilot_invite_service.database.get_db", return_value=fdb):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            invite_doc, resp = await validate_invite_for_checkout(
+                code="pilottest",
+                plan_code="PLAN_1_SOLO",
+                email="pilot@example.com",
+                for_checkout=True,
+            )
     assert resp.valid is True
     assert resp.discount_applied is True
     assert resp.expected_transition_to_paid is True
@@ -79,60 +107,198 @@ async def test_validate_invite_success():
 
 @pytest.mark.asyncio
 async def test_validate_invite_invalid_code():
-    mock_db = MagicMock()
-    mock_db[COL_CODES].find_one = AsyncMock(return_value=None)
-    with patch("services.pilot_invite_service.database.get_db", return_value=mock_db):
-        with pytest.raises(PilotInvitePublicError) as exc:
-            await validate_invite_for_checkout(code="NOPE", plan_code="PLAN_1_SOLO")
+    fdb = _fake_db_for_invite(None)
+    fdb[COL_CODES].find_one = AsyncMock(return_value=None)
+    with patch("services.pilot_invite_service.database.get_db", return_value=fdb):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            with pytest.raises(PilotInvitePublicError) as exc:
+                await validate_invite_for_checkout(code="NOPE", plan_code="PLAN_1_SOLO")
     assert exc.value.error_code == "PILOT_INVITE_INVALID"
 
 
 @pytest.mark.asyncio
 async def test_validate_invite_expired():
     doc = _active_invite_doc(expires_at=datetime.now(timezone.utc) - timedelta(days=1))
-    mock_db = MagicMock()
-    mock_db[COL_CODES].find_one = AsyncMock(return_value=doc)
-    with patch("services.pilot_invite_service.database.get_db", return_value=mock_db):
-        with pytest.raises(PilotInvitePublicError) as exc:
-            await validate_invite_for_checkout(code="PILOTTEST", plan_code="PLAN_1_SOLO")
+    fdb = _fake_db_for_invite(doc)
+    with patch("services.pilot_invite_service.database.get_db", return_value=fdb):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            with pytest.raises(PilotInvitePublicError) as exc:
+                await validate_invite_for_checkout(code="PILOTTEST", plan_code="PLAN_1_SOLO")
     assert exc.value.error_code == "PILOT_INVITE_EXPIRED"
 
 
 @pytest.mark.asyncio
 async def test_validate_invite_exhausted():
     doc = _active_invite_doc(used_count=5, max_uses=5)
-    mock_db = MagicMock()
-    mock_db[COL_CODES].find_one = AsyncMock(return_value=doc)
-    with patch("services.pilot_invite_service.database.get_db", return_value=mock_db):
-        with pytest.raises(PilotInvitePublicError) as exc:
-            await validate_invite_for_checkout(code="PILOTTEST", plan_code="PLAN_1_SOLO")
+    fdb = _fake_db_for_invite(doc)
+    with patch("services.pilot_invite_service.database.get_db", return_value=fdb):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            with pytest.raises(PilotInvitePublicError) as exc:
+                await validate_invite_for_checkout(code="PILOTTEST", plan_code="PLAN_1_SOLO")
     assert exc.value.error_code == "PILOT_INVITE_EXHAUSTED"
 
 
 @pytest.mark.asyncio
 async def test_validate_invite_plan_not_eligible():
     doc = _active_invite_doc(applies_to_plan_codes=["PLAN_3_PRO"])
-    mock_db = MagicMock()
-    mock_db[COL_CODES].find_one = AsyncMock(return_value=doc)
-    with patch("services.pilot_invite_service.database.get_db", return_value=mock_db):
-        with pytest.raises(PilotInvitePublicError) as exc:
-            await validate_invite_for_checkout(code="PILOTTEST", plan_code="PLAN_1_SOLO")
+    fdb = _fake_db_for_invite(doc)
+    with patch("services.pilot_invite_service.database.get_db", return_value=fdb):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            with pytest.raises(PilotInvitePublicError) as exc:
+                await validate_invite_for_checkout(code="PILOTTEST", plan_code="PLAN_1_SOLO")
     assert exc.value.error_code == "PILOT_INVITE_PLAN_NOT_ELIGIBLE"
 
 
 @pytest.mark.asyncio
 async def test_validate_invite_email_restriction():
     doc = _active_invite_doc(email_restriction="allowed@example.com")
-    mock_db = MagicMock()
-    mock_db[COL_CODES].find_one = AsyncMock(return_value=doc)
-    with patch("services.pilot_invite_service.database.get_db", return_value=mock_db):
-        with pytest.raises(PilotInvitePublicError) as exc:
-            await validate_invite_for_checkout(
+    fdb = _fake_db_for_invite(doc)
+    with patch("services.pilot_invite_service.database.get_db", return_value=fdb):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            with pytest.raises(PilotInvitePublicError) as exc:
+                await validate_invite_for_checkout(
+                    code="PILOTTEST",
+                    plan_code="PLAN_1_SOLO",
+                    email="other@example.com",
+                )
+    assert exc.value.error_code == "PILOT_INVITE_EMAIL_NOT_ELIGIBLE"
+
+
+@pytest.mark.asyncio
+async def test_public_promo_manual_entry_requires_is_publicly_enterable():
+    doc = _active_invite_doc(
+        code_type="public_promo",
+        public_entry_enabled=True,
+        campaign_status="active",
+        is_publicly_enterable=False,
+    )
+    fdb = _fake_db_for_invite(doc)
+    with patch("services.pilot_invite_service.database.get_db", return_value=fdb):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            with pytest.raises(PilotInvitePublicError) as exc:
+                await validate_invite_for_checkout(
+                    code="PILOTTEST",
+                    plan_code="PLAN_1_SOLO",
+                    email="a@b.com",
+                    entry_channel="manual",
+                )
+    assert exc.value.error_code == "PILOT_INVITE_PUBLIC_ENTRY_DISABLED"
+
+
+@pytest.mark.asyncio
+async def test_public_promo_link_skips_is_publicly_enterable():
+    doc = _active_invite_doc(
+        code_type="public_promo",
+        public_entry_enabled=True,
+        campaign_status="active",
+        is_publicly_enterable=False,
+    )
+    fdb = _fake_db_for_invite(doc)
+    with patch("services.pilot_invite_service.database.get_db", return_value=fdb):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            _, resp = await validate_invite_for_checkout(
                 code="PILOTTEST",
                 plan_code="PLAN_1_SOLO",
-                email="other@example.com",
+                email="a@b.com",
+                for_checkout=True,
+                entry_channel="link",
             )
-    assert exc.value.error_code == "PILOT_INVITE_EMAIL_NOT_ELIGIBLE"
+    assert resp.valid is True
+
+
+@pytest.mark.asyncio
+async def test_public_promo_public_entry_master_disabled():
+    doc = _active_invite_doc(
+        code_type="public_promo",
+        public_entry_enabled=False,
+        campaign_status="active",
+        is_publicly_enterable=True,
+    )
+    fdb = _fake_db_for_invite(doc)
+    with patch("services.pilot_invite_service.database.get_db", return_value=fdb):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            with pytest.raises(PilotInvitePublicError) as exc:
+                await validate_invite_for_checkout(
+                    code="PILOTTEST",
+                    plan_code="PLAN_1_SOLO",
+                    entry_channel="link",
+                )
+    assert exc.value.error_code == "PILOT_INVITE_PUBLIC_ENTRY_DISABLED"
+
+
+@pytest.mark.asyncio
+async def test_one_redemption_per_email_blocks():
+    doc = _active_invite_doc(
+        code_type="public_promo",
+        public_entry_enabled=True,
+        campaign_status="active",
+        is_publicly_enterable=True,
+        one_redemption_per_email=True,
+    )
+    fdb = _fake_db_for_invite(doc, redemption_count=1)
+    with patch("services.pilot_invite_service.database.get_db", return_value=fdb):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            with pytest.raises(PilotInvitePublicError) as exc:
+                await validate_invite_for_checkout(
+                    code="PILOTTEST",
+                    plan_code="PLAN_1_SOLO",
+                    email="used@example.com",
+                    entry_channel="manual",
+                )
+    assert exc.value.error_code == "PILOT_INVITE_ALREADY_REDEEMED_EMAIL"
+
+
+@pytest.mark.asyncio
+async def test_private_invite_ignores_public_governance():
+    doc = _active_invite_doc(
+        code_type="private_invite",
+        public_entry_enabled=False,
+        campaign_status="not_applicable",
+        is_publicly_enterable=False,
+    )
+    fdb = _fake_db_for_invite(doc)
+    with patch("services.pilot_invite_service.database.get_db", return_value=fdb):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            _, resp = await validate_invite_for_checkout(
+                code="PILOTTEST",
+                plan_code="PLAN_1_SOLO",
+                email="x@y.com",
+                for_checkout=True,
+                entry_channel="manual",
+            )
+    assert resp.valid is True
+
+
+@pytest.mark.asyncio
+async def test_internal_test_manual_entry_blocked_but_link_allowed():
+    doc = _active_invite_doc(
+        code_type="internal_test",
+        campaign_state="active",
+        launch_visibility="internal",
+        analytics_family="internal_test",
+        public_entry_enabled=False,
+        is_publicly_enterable=False,
+    )
+    fdb = _fake_db_for_invite(doc)
+    with patch("services.pilot_invite_service.database.get_db", return_value=fdb):
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            with pytest.raises(PilotInvitePublicError) as exc:
+                await validate_invite_for_checkout(
+                    code="PILOTTEST",
+                    plan_code="PLAN_1_SOLO",
+                    email="internal@example.com",
+                    entry_channel="manual",
+                )
+            _, resp = await validate_invite_for_checkout(
+                code="PILOTTEST",
+                plan_code="PLAN_1_SOLO",
+                email="internal@example.com",
+                for_checkout=True,
+                entry_channel="link",
+            )
+    assert exc.value.error_code == "PILOT_INVITE_PUBLIC_ENTRY_DISABLED"
+    assert resp.valid is True
+    assert resp.code_type == "internal_test"
 
 
 @pytest.mark.asyncio
@@ -175,8 +341,9 @@ async def test_complete_redemption_idempotent():
     mock_codes.find_one_and_update = AsyncMock(return_value=_active_invite_doc(used_count=1))
 
     with patch("services.pilot_invite_service.database.get_db", return_value=mock_db):
-        ok1 = await complete_redemption_after_provisioning(checkout_session_id="cs_pilot_001")
-        ok2 = await complete_redemption_after_provisioning(checkout_session_id="cs_pilot_001")
+        with patch("utils.audit.create_audit_log", new_callable=AsyncMock):
+            ok1 = await complete_redemption_after_provisioning(checkout_session_id="cs_pilot_001")
+            ok2 = await complete_redemption_after_provisioning(checkout_session_id="cs_pilot_001")
 
     assert ok1 is True
     assert ok2 is True

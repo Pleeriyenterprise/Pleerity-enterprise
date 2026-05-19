@@ -20,7 +20,7 @@ INTAKE-LEVEL GATING (NON-NEGOTIABLE):
   3. Provisioning safeguards (defense in depth)
 """
 from fastapi import APIRouter, HTTPException, Request, status, UploadFile, File, Form, Body
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from database import database
 from models import (
@@ -45,7 +45,7 @@ import uuid
 import string
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from utils.storage_paths import resolve_document_storage_path, resolve_intake_upload_dir
 
@@ -336,6 +336,9 @@ async def get_plans(request: Request):
     invite_code = (request.query_params.get("invite_code") or request.query_params.get("invite") or "").strip()
     plan_code = (request.query_params.get("plan_code") or request.query_params.get("plan") or "").strip()
     email = (request.query_params.get("email") or "").strip() or None
+    invite_entry_channel = (request.query_params.get("invite_entry_channel") or "manual").strip().lower()
+    if invite_entry_channel not in ("manual", "link"):
+        invite_entry_channel = "manual"
 
     pilot_ctx = None
     if invite_code and plan_code:
@@ -347,6 +350,9 @@ async def get_plans(request: Request):
                 plan_code=plan_code,
                 email=email,
                 for_checkout=False,
+                entry_channel=invite_entry_channel,
+                log_audit=False,
+                record_attempts=False,
             )
             from services.pilot_commercial_truth import commercial_context_from_invite
 
@@ -736,6 +742,17 @@ class IntakeAgreementPreviewBody(BaseModel):
     client_id: Optional[str] = None
     intake: Optional[IntakeFormData] = None
     invite_code: Optional[str] = Field(default=None, max_length=64)
+    invite_entry_channel: str = Field(
+        default="manual",
+        max_length=16,
+        description="manual | link — aligns pilot validation with invite URL vs typed code.",
+    )
+
+    @field_validator("invite_entry_channel")
+    @classmethod
+    def _invite_entry_preview(cls, v: Any) -> str:
+        e = str(v or "manual").strip().lower()
+        return e if e in ("manual", "link") else "manual"
 
     @model_validator(mode="after")
     def require_intake_or_client(self) -> "IntakeAgreementPreviewBody":
@@ -840,6 +857,9 @@ async def intake_agreement_preview(request: Request, body: IntakeAgreementPrevie
                 plan_code=plan_for_invite,
                 email=str(getattr(body.intake, "email", "") or "") if body.intake else None,
                 for_checkout=False,
+                entry_channel=body.invite_entry_channel,
+                log_audit=False,
+                record_attempts=False,
             )
         except PilotInvitePublicError:
             pilot_invite_doc = None
@@ -1466,6 +1486,15 @@ _PILOT_INVITE_HTTP_STATUS = {
     "PILOT_INVITE_EMAIL_NOT_ELIGIBLE": status.HTTP_400_BAD_REQUEST,
     "PILOT_INVITE_MISCONFIGURED": status.HTTP_503_SERVICE_UNAVAILABLE,
     "PILOT_ONBOARDING_DEFERRED_NOT_AVAILABLE": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_PUBLIC_ENTRY_DISABLED": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_CAMPAIGN_INACTIVE": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_CAMPAIGN_PAUSED": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_NOT_FIRST_TIME_CUSTOMER": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_EMAIL_DOMAIN_NOT_ALLOWED": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_ALREADY_REDEEMED_EMAIL": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_ALREADY_REDEEMED_CUSTOMER": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_ALREADY_REDEEMED_PAYMENT_METHOD": status.HTTP_400_BAD_REQUEST,
+    "PILOT_INVITE_DAILY_LIMIT_EXCEEDED": status.HTTP_400_BAD_REQUEST,
 }
 
 
@@ -1481,6 +1510,7 @@ async def validate_pilot_invite(body: PilotInviteValidateBody):
             plan_code=body.plan_code,
             email=body.email,
             for_checkout=False,
+            entry_channel=body.entry_channel,
         )
         return resp
     except PilotInvitePublicError as e:
@@ -1541,6 +1571,10 @@ async def create_checkout(request: Request, client_id: str, checkout_body: Intak
         customer_email = client.get("contact_email") or client.get("email")
         lead_id = (client.get("marketing") or {}).get("lead_id") if client.get("marketing") else None
 
+        entry_ch = (checkout_body.invite_entry_channel or "manual").strip().lower()
+        if entry_ch not in ("manual", "link"):
+            entry_ch = "manual"
+
         pilot_invite_doc = None
         invite_raw = (checkout_body.invite_code or "").strip()
         if invite_raw:
@@ -1550,6 +1584,8 @@ async def create_checkout(request: Request, client_id: str, checkout_body: Intak
                     plan_code=plan_code,
                     email=customer_email,
                     for_checkout=True,
+                    entry_channel=entry_ch,
+                    client_id=client_id,
                 )
             except PilotInvitePublicError as e:
                 logger.warning(
@@ -1591,28 +1627,6 @@ async def create_checkout(request: Request, client_id: str, checkout_body: Intak
 
         template_id = str(acc_doc.get("template_id") or "")
         template_version_id = str(acc_doc.get("template_version_id") or "")
-
-        pilot_invite_doc = None
-        invite_raw = (checkout_body.invite_code or "").strip()
-        if invite_raw:
-            try:
-                pilot_invite_doc, _pilot_resp = await validate_invite_for_checkout(
-                    code=invite_raw,
-                    plan_code=plan_code,
-                    email=customer_email,
-                    for_checkout=True,
-                )
-            except PilotInvitePublicError as e:
-                logger.warning(
-                    "Pilot invite rejected client_id=%s request_id=%s error_code=%s",
-                    client_id,
-                    request_id,
-                    e.error_code,
-                )
-                raise HTTPException(
-                    status_code=_PILOT_INVITE_HTTP_STATUS.get(e.error_code, status.HTTP_400_BAD_REQUEST),
-                    detail=_checkout_error_detail(e.error_code, e.message, request_id),
-                )
 
         session = await stripe_service.create_checkout_session(
             client_id=client_id,

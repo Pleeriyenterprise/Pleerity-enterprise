@@ -20,11 +20,52 @@ export const DISCOUNT_DURATION_OPTIONS = [
   { value: 'forever', label: 'Forever' },
 ];
 
+export const CODE_TYPE_OPTIONS = [
+  { value: 'private_invite', label: 'Private invite (founding pilot link)' },
+  { value: 'public_promo', label: 'Public promo (campaign)' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'partner', label: 'Partner' },
+  { value: 'internal_test', label: 'Internal live/test (hidden)' },
+];
+
+export const CAMPAIGN_STATUS_OPTIONS = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'active', label: 'Active' },
+  { value: 'paused', label: 'Paused' },
+  { value: 'ended', label: 'Ended' },
+];
+
+export const CAMPAIGN_STATE_OPTIONS = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'active', label: 'Active' },
+  { value: 'paused', label: 'Paused' },
+  { value: 'expired', label: 'Expired' },
+  { value: 'archived', label: 'Archived' },
+];
+
+export const LAUNCH_VISIBILITY_OPTIONS = [
+  { value: 'private', label: 'Private' },
+  { value: 'restricted', label: 'Restricted' },
+  { value: 'public', label: 'Public' },
+  { value: 'internal', label: 'Internal' },
+];
+
+export function isPublicPromoFamily(codeType) {
+  return ['public_promo', 'referral', 'partner'].includes(String(codeType || '').toLowerCase());
+}
+
+export function isInternalTest(codeType) {
+  return String(codeType || '').toLowerCase() === 'internal_test';
+}
+
+/** Display-only normalization; authoritative rules run on the backend. */
 export function normalizeInviteCode(raw) {
   return String(raw || '')
     .trim()
     .toUpperCase()
-    .replace(/\s+/g, '');
+    .replace(/[^A-Z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 export function filterPilotInvites(invites, filters) {
@@ -33,8 +74,10 @@ export function filterPilotInvites(invites, filters) {
   const policy = (filters?.onboarding_policy || '').toLowerCase();
   const duration = filters?.duration_months ? Number(filters.duration_months) : null;
   const plan = (filters?.plan_code || '').trim().toUpperCase();
+  const codeType = (filters?.code_type || '').trim().toLowerCase();
 
   return list.filter((row) => {
+    if (codeType && (row.code_type || 'private_invite') !== codeType) return false;
     if (status && status !== 'all') {
       if (status === 'exhausted') {
         if ((row.remaining_uses ?? 0) > 0) return false;
@@ -110,6 +153,20 @@ export function buildDefaultCreateForm() {
     stripe_promotion_code_id: '',
     email_restriction: '',
     internal_notes: '',
+    code_type: 'private_invite',
+    campaign_name: '',
+    campaign_status: 'not_applicable',
+    campaign_state: 'draft',
+    launch_visibility: 'private',
+    analytics_family: 'private_invite',
+    max_uses_per_account: '',
+    internal_live_test: false,
+    is_publicly_enterable: false,
+    public_entry_enabled: false,
+    first_time_customer_only: false,
+    one_redemption_per_email: false,
+    one_redemption_per_customer: false,
+    max_uses_per_day: '',
   };
 }
 
@@ -118,11 +175,19 @@ export function formToCreatePayload(form) {
   if (form.internal_notes?.trim()) {
     metadata.internal_notes = form.internal_notes.trim();
   }
+  if (form.code_prefix?.trim()) {
+    metadata.generation_prefix = form.code_prefix.trim();
+  }
+  if (form.code_variant?.trim()) {
+    metadata.generation_variant = form.code_variant.trim();
+  }
+  const internal = isInternalTest(form.code_type);
   return {
     code: normalizeInviteCode(form.code),
+    auto_generate: Boolean(form.auto_generate),
     program_type: form.program_type,
     applies_to_plan_codes: form.applies_to_plan_codes,
-    max_uses: Number(form.max_uses) || 1,
+    max_uses: internal ? Math.min(Number(form.max_uses) || 5, 10) : Number(form.max_uses) || 1,
     expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
     email_restriction: form.email_restriction?.trim() || null,
     stripe_coupon_id: form.stripe_coupon_id?.trim() || null,
@@ -133,8 +198,27 @@ export function formToCreatePayload(form) {
     discount_duration: form.discount_duration,
     discount_duration_in_months:
       form.discount_duration === 'repeating' ? Number(form.discount_duration_in_months) || 2 : null,
-    waive_onboarding_fee: form.onboarding_fee_policy === 'waived',
-    onboarding_fee_policy: form.onboarding_fee_policy,
+    waive_onboarding_fee: internal ? true : form.onboarding_fee_policy === 'waived',
+    onboarding_fee_policy: internal ? 'waived' : form.onboarding_fee_policy,
+    code_type: form.code_type || 'private_invite',
+    campaign_name: form.campaign_name?.trim() || null,
+    campaign_status: isPublicPromoFamily(form.code_type)
+      ? form.campaign_status || 'draft'
+      : 'not_applicable',
+    campaign_state: isPublicPromoFamily(form.code_type)
+      ? form.campaign_status || form.campaign_state || 'draft'
+      : form.campaign_state || 'draft',
+    launch_visibility: internal ? 'internal' : form.launch_visibility || 'private',
+    analytics_family: internal ? 'internal_test' : form.analytics_family || form.code_type || 'private_invite',
+    max_uses_per_account: form.max_uses_per_account ? Number(form.max_uses_per_account) : null,
+    internal_live_test: internal || Boolean(form.internal_live_test),
+    is_publicly_enterable: internal ? false : Boolean(form.is_publicly_enterable),
+    public_entry_enabled: internal ? false : Boolean(form.public_entry_enabled),
+    first_time_customer_only: Boolean(form.first_time_customer_only),
+    one_redemption_per_email: Boolean(form.one_redemption_per_email),
+    one_redemption_per_customer: Boolean(form.one_redemption_per_customer),
+    max_uses_per_day: form.max_uses_per_day ? Number(form.max_uses_per_day) : null,
+    public_description: form.public_description?.trim() || null,
     metadata,
   };
 }

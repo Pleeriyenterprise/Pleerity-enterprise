@@ -86,6 +86,14 @@ function isValidIntakeBillingPlanCode(code) {
   return Boolean(code && Object.prototype.hasOwnProperty.call(PLAN_LIMITS, code));
 }
 
+/** Align with backend invite_entry_channel: link when URL ?invite= matches the code in the field. */
+function pilotInviteEntryChannelFromSources(pilotInviteCode, inviteFromQuery) {
+  const p = (pilotInviteCode || '').trim().toUpperCase().replace(/\s+/g, '');
+  const u = (inviteFromQuery || '').trim().toUpperCase().replace(/\s+/g, '');
+  if (u && p === u) return 'link';
+  return 'manual';
+}
+
 // Property types
 const PROPERTY_TYPES = [
   { value: 'flat', label: 'Flat/Apartment' },
@@ -422,6 +430,7 @@ const IntakePage = () => {
           code: trimmed,
           plan_code: planCode || formData.billing_plan,
           email: email || formData.email || undefined,
+          entry_channel: pilotInviteEntryChannelFromSources(code || pilotInviteCode, inviteParam),
         });
         setPilotInviteValidation(res.data || { valid: false, message: 'Invalid response' });
       } catch (err) {
@@ -435,7 +444,7 @@ const IntakePage = () => {
         setPilotInviteValidating(false);
       }
     },
-    [formData.billing_plan, formData.email],
+    [formData.billing_plan, formData.email, inviteParam, pilotInviteCode],
   );
 
   // Pre-fill invite from distribution URL (?invite=CODE)
@@ -453,6 +462,7 @@ const IntakePage = () => {
         const params = {};
         if ((pilotInviteCode || inviteParam || '').trim()) {
           params.invite = (pilotInviteCode || inviteParam || '').trim();
+          params.invite_entry_channel = pilotInviteEntryChannelFromSources(pilotInviteCode, inviteParam);
         }
         if (formData.billing_plan) params.plan = formData.billing_plan;
         if (formData.email) params.email = formData.email;
@@ -483,10 +493,16 @@ const IntakePage = () => {
 
   const agreementPreviewRequestBody = useMemo(() => {
     const intakePayload = buildIntakeSubmitPayload(formData, intakeSessionId, marketing);
-    return resumeClientId
+    const base = resumeClientId
       ? { intake_session_id: intakeSessionId, client_id: resumeClientId }
       : { intake_session_id: intakeSessionId, intake: intakePayload };
-  }, [formData, intakeSessionId, marketing, resumeClientId]);
+    const trimmed = (pilotInviteCode || '').trim();
+    if (trimmed) {
+      base.invite_code = trimmed.toUpperCase().replace(/\s+/g, '');
+      base.invite_entry_channel = pilotInviteEntryChannelFromSources(pilotInviteCode, inviteParam);
+    }
+    return base;
+  }, [formData, intakeSessionId, marketing, resumeClientId, pilotInviteCode, inviteParam]);
 
   useEffect(() => {
     if (step !== 5) return;
@@ -911,6 +927,7 @@ const IntakePage = () => {
       const trimmedPilotCode = (pilotInviteCode || '').trim();
       if (trimmedPilotCode) {
         checkoutBody.invite_code = trimmedPilotCode;
+        checkoutBody.invite_entry_channel = pilotInviteEntryChannelFromSources(pilotInviteCode, inviteParam);
       }
       const checkoutResponse = await intakeAPI.createCheckout(clientId, checkoutBody);
       const checkoutUrl = checkoutResponse?.data?.checkout_url;
@@ -2976,16 +2993,35 @@ const Step5Review = ({
         </CardContent>
       </Card>
 
-      {/* Founding pilot invite (optional) */}
+      {/* Promo / pilot code (optional) */}
       <Card>
-        <div className="px-6 py-3 bg-gray-50 border-b">
-          <h3 className="font-semibold text-midnight-blue">Founding pilot invite</h3>
-          <p className="text-xs text-gray-500 mt-1">Optional. Authorised codes apply your pilot discount at secure checkout.</p>
+        <div className="px-6 py-3 bg-gray-50 border-b flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="font-semibold text-midnight-blue">Have a code?</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Optional. Enter an authorised pilot or promo code — offers apply at secure checkout after validation.
+            </p>
+          </div>
+          {(pilotInviteCode || '').trim() ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-gray-600 shrink-0"
+              onClick={() => {
+                onPilotInviteCodeChange('');
+                onValidatePilotInvite('');
+              }}
+              data-testid="pilot-invite-clear"
+            >
+              Remove code
+            </Button>
+          ) : null}
         </div>
         <CardContent className="pt-4 space-y-3">
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700" htmlFor="pilot-invite-code">
-              Pilot invite code
+              Code
             </label>
             <Input
               id="pilot-invite-code"
