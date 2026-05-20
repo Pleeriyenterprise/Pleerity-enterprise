@@ -20,7 +20,7 @@
   },
   "classifications": [
     {
-      "journey": "A_guided_structured_evidence_submit",
+      "journey": "B_primary_document_upload",
       "classification": "VERIFIED_OPERATIONALLY",
       "failed_checkpoints": [],
       "reasons": []

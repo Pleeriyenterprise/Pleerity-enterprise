@@ -1,53 +1,27 @@
-# OPS-VERIFY-01 UI notes — Journey A
+# OPS-VERIFY-01 UI notes — Journey B
 
-**Run:** `ops_verify_01_6fd5ac4c_d35a58ae` · **Verifier:** cursor-ops-verify-01 · **Final browser walkthrough:** 2026-05-18
+**Run:** `ops_verify_01_6fd5ac4c_d35a58ae` · **Verifier:** cursor-ops-verify-01 · **Executed:** 2026-05-20
 
-## Environment
+## Preconditions
+- [x] Real client login on staging (`nancy@yopmail.com`, local UI + `pleerity_staging` DB)
+- [x] Requirement: fire_alarm `69fc66fe-e196-44d4-a20e-3fe68d316f7f` (clean baseline: 0 docs, 0 CERs)
+- **Selection note:** Selected fire_alarm (ACTION_REQUIRED, 0 docs/0 CERs). EICR/ePC/hmo_license are NOT_APPLICABLE in client lifecycle and do not appear in Documents upload dropdown.
+- [x] Baseline capture completed before upload
 
-- **DB:** `pleerity_staging` (pilot `6fd5ac4c…` / `d35a58ae…`)
-- **API:** local `http://127.0.0.1:8000` → staging Mongo
-- **UI:** local `http://127.0.0.1:3000` (`REACT_APP_BACKEND_URL=http://127.0.0.1:8000`)
-- **Portal user:** `nancy@yopmail.com` (ROLE_CLIENT_ADMIN)
+## Journey B — Primary document upload
+- **Surfaces visited:** `/requirements?highlight=…`, `/documents?property_id=…&requirement_id=…&focus=upload`
+- **Upload mode:** documents page deep-link + form submit
+- **Document visible in vault (Y/N):** Y
+- **Requirement linkage coherent (Y/N):** Y
+- **Screenshot:** `C:\pleerity-workspace\Pleerity-enterprise\backend\docs\audit\ops_verify_01_6fd5ac4c_d35a58ae\ops_verify_01_journey_b_ui.png`
 
-## Requirement
+## Async convergence observation
+- **T+0:** 2026-05-20T19:07:00.000000+00:00
+- **T+SLA (~95s):** 2026-05-20T19:16:38.670481+00:00
+- **Score headline updated (Y/N):** Y
+- **Queue terminal (Y/N):** Y
+- **Partial signals:** {"pending_flag": false, "queue_pending_or_running": false, "no_terminal_queue_row": false}
 
-- **ID:** `488269bb-1be7-47e7-a030-98accf6dffc4` (`occupation_contract`, Wales, `GUIDED_DECLARATION`)
-- **Mode:** **Existing-CER re-submit** (prior `cer_799b0c6abff04bb6a8d51ec63ec904a0`; new browser CER `cer_979c123533804653a9e20b2f6008b7f6`)
-- **Not a clean first-submit** — only guided requirement on pilot property; greenfield first submit remains watchlist.
-
-## Journey A — Guided structured evidence submit (browser)
-
-### Preconditions
-
-- [x] Authenticated client session (JWT)
-- [x] Requirement visible in browser (accordion expand)
-- [x] Baseline capture before submit
-
-### Submit path (final run)
-
-- [x] Guided modal opened via property deep-link `?open=resolve&requirement_id=…` (row CTA was “View submission” when CER on file)
-- [x] **Submit evidence** in browser (not API-direct)
-- [x] **Submission recorded** summary from returned `evidence_record`
-- [x] Post-submit + convergence captures
-
-### TRUST-01 UI
-
-- [x] **Your submission** visible in requirement details modal
-- [x] CER payload visible (STRUCTURED_DECLARATION, PENDING REVIEW)
-- [x] **View submission** scroll in modal
-- [x] Hard refresh — panel persists
-
-### Async convergence
-
-- Submit ~`2026-05-18T15:45:08Z`
-- Queue correlation → **DONE** ~17s
-- Convergence capture `2026-05-18T15:49:26Z`; `score_converged_observable: true`
-
-### Screenshots / browser log
-
-- `ops_verify_01_journey_a_final_ui.png`
-- `ops_verify_01_browser_journey_a_final.json`
-
-### Classification
-
-**`VERIFIED_OPERATIONALLY`** (Journey A only; OPS-VERIFY-01 unit remains IN_PROGRESS / PARTIAL).
+## Classification
+- **Journey B:** VERIFIED_OPERATIONALLY
+- **Reasons:** 

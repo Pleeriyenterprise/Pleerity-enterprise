@@ -1,0 +1,30 @@
+{
+  "started_at_utc": "2026-05-20T19:05:00.000000+00:00",
+  "finished_at_utc": "2026-05-20T19:07:00.000000+00:00",
+  "frontend_url": "http://127.0.0.1:3000",
+  "api_url": "http://127.0.0.1:8000",
+  "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+  "requirement_type": "fire_alarm",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "upload_mode": "documents_page_deeplink",
+  "upload_path": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=69fc66fe-e196-44d4-a20e-3fe68d316f7f&requirement_code=fire_alarm&focus=upload",
+  "baseline_clean": true,
+  "selection_note": "fire_alarm ACTION_REQUIRED; EICR excluded NOT_APPLICABLE from upload dropdown",
+  "document_id": "a9fd10d8-9ac5-4998-8676-bfe03134a14b",
+  "checkpoints": {
+    "B-1": true,
+    "B-5": true,
+    "B-5_refresh": true
+  },
+  "upload_response": {
+    "http_status": 200,
+    "document_id": "a9fd10d8-9ac5-4998-8676-bfe03134a14b"
+  },
+  "steps": [
+    {"step": "deeplink_prefill", "ok": true, "detail": "requirement bound after hydration"},
+    {"step": "B-1_upload_api_ack", "ok": true, "detail": "status=200"},
+    {"step": "B-5_vault_row", "ok": true, "detail": "a9fd10d8-9ac5-4998-8676-bfe03134a14b"},
+    {"step": "document_type_cleared", "ok": true, "detail": "blank type required — inferred deeplink type caused 400 DOCUMENT_VALIDATION_FAILED"}
+  ],
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae\\ops_verify_01_journey_b_ui.png"
+}
