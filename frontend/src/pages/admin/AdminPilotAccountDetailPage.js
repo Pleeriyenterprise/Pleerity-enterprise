@@ -23,6 +23,7 @@ import { Alert, AlertDescription } from '../../components/ui/alert';
 import { toast } from '@/utils/portalNotifications';
 import { useAuth } from '../../contexts/AuthContext';
 import PilotReasonDialog from '../../components/admin/pilot/PilotReasonDialog';
+import PilotRedemptionRecoverySection from '../../components/admin/pilot/PilotRedemptionRecoverySection';
 import {
   apiErrorMessage,
   formatTimelineEvent,
@@ -46,10 +47,28 @@ export default function AdminPilotAccountDetailPage() {
   const isOwnerRole = Boolean(isOwner?.());
 
   const [profile, setProfile] = useState(null);
+  const [redemptionData, setRedemptionData] = useState({ redemptions: [], eligibility_overrides: [] });
+  const [redemptionsLoading, setRedemptionsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [dialog, setDialog] = useState(null);
+
+  const loadRedemptions = useCallback(async () => {
+    if (!clientId) return;
+    setRedemptionsLoading(true);
+    try {
+      const res = await adminAPI.getPilotAccountRedemptions(clientId, { limit: 100 });
+      setRedemptionData({
+        redemptions: res.data?.redemptions || [],
+        eligibility_overrides: res.data?.eligibility_overrides || [],
+      });
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Failed to load redemption data'));
+    } finally {
+      setRedemptionsLoading(false);
+    }
+  }, [clientId]);
 
   const load = useCallback(async () => {
     if (!clientId) return;
@@ -58,12 +77,13 @@ export default function AdminPilotAccountDetailPage() {
     try {
       const res = await adminAPI.getPilotLifecycleOperationalProfile(clientId);
       setProfile(res.data);
+      await loadRedemptions();
     } catch (e) {
       setError(apiErrorMessage(e, 'Failed to load operational profile'));
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, loadRedemptions]);
 
   useEffect(() => {
     if (canManage) load();
@@ -250,6 +270,17 @@ export default function AdminPilotAccountDetailPage() {
             </CardContent>
           </Card>
         </div>
+
+        <PilotRedemptionRecoverySection
+          context="account"
+          clientId={clientId}
+          inviteCode={pilot.pilot_invite_code || redeemedSnapshot.redeemed_code}
+          redemptions={redemptionData.redemptions}
+          eligibilityOverrides={redemptionData.eligibility_overrides}
+          loading={redemptionsLoading}
+          onReload={loadRedemptions}
+          defaultEmail={profile?.email || profile?.contact_email || pilot?.email}
+        />
 
         <div className="grid md:grid-cols-2 gap-4">
           <Card data-testid="pilot-redeemed-campaign-snapshot">

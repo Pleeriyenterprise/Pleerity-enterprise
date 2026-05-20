@@ -185,16 +185,18 @@ async def list_overrides_for_invite(
 
 async def list_overrides_for_client(client_id: str, *, limit: int = 50) -> List[Dict[str, Any]]:
     db = database.get_db()
+    or_clauses: List[Dict[str, Any]] = [
+        {"scope": EligibilityOverrideScope.CLIENT_ID.value, "scope_value": client_id},
+    ]
+    client = await db["clients"].find_one({"client_id": client_id}, {"_id": 0, "email": 1, "contact_email": 1})
+    if client:
+        for field in ("email", "contact_email"):
+            em = (client.get(field) or "").strip().lower()
+            if em:
+                or_clauses.append({"scope": EligibilityOverrideScope.EMAIL.value, "scope_value": em})
     cursor = (
         db[COL_ELIGIBILITY_OVERRIDES]
-        .find(
-            {
-                "$or": [
-                    {"scope": EligibilityOverrideScope.CLIENT_ID.value, "scope_value": client_id},
-                ]
-            },
-            {"_id": 0},
-        )
+        .find({"$or": or_clauses}, {"_id": 0})
         .sort("override_created_at", -1)
         .limit(limit)
     )

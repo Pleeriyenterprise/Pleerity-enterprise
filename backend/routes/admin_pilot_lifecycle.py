@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel, Field
 
 from middleware import admin_route_guard, require_owner
 from middleware.step_up_auth import require_recent_step_up
@@ -35,6 +37,18 @@ def _actor(user: dict) -> Dict[str, Any]:
         "id": user.get("portal_user_id"),
         "email": user.get("email"),
     }
+
+
+class PilotAccountEligibilityOverrideBody(BaseModel):
+    override_type: str = Field(
+        ...,
+        description="bypass_first_time | allow_promo_retry | manual_attach_promo | recover_onboarding",
+    )
+    override_reason: str = Field(..., min_length=3, max_length=500)
+    override_expires_at: Optional[datetime] = None
+    scope: str = Field(default="client_id", description="email | client_id")
+    scope_value: Optional[str] = Field(default=None, max_length=320)
+    invite_code: Optional[str] = Field(default=None, max_length=64)
 
 
 def _http_from_value_error(e: ValueError) -> HTTPException:
@@ -165,6 +179,52 @@ async def list_account_redemptions(
         "eligibility_overrides": overrides,
         "count": len(redemptions),
     }
+
+
+@router.post("/accounts/{client_id}/eligibility-overrides")
+async def create_account_eligibility_override(
+    request: Request,
+    client_id: str,
+    body: PilotAccountEligibilityOverrideBody,
+    user: dict = Depends(admin_route_guard),
+) -> Dict[str, Any]:
+    await require_recent_step_up(request, user)
+    from services.pilot_invite_service import get_invite_code
+    from services.pilot_redemption_eligibility_service import create_eligibility_override
+
+    scope = (body.scope or "client_id").strip().lower()
+    if scope not in ("email", "client_id"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="scope must be email or client_id")
+    scope_value = (body.scope_value or "").strip()
+    if scope == "client_id":
+        scope_value = scope_value or client_id
+    if not scope_value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="scope_value required")
+
+    invite_code_id = None
+    invite_code = (body.invite_code or "").strip().upper() or None
+    if invite_code:
+        doc = await get_invite_code(invite_code)
+        if not doc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
+        invite_code_id = str(doc.get("invite_code_id") or "")
+
+    actor = _actor(user)
+    try:
+        override = await create_eligibility_override(
+            scope=scope,
+            scope_value=scope_value,
+            override_type=body.override_type,
+            override_reason=body.override_reason,
+            override_actor=actor,
+            invite_code=invite_code,
+            invite_code_id=invite_code_id,
+            override_expires_at=body.override_expires_at,
+            metadata={"client_id": client_id},
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return {"ok": True, "override": override}
 
 
 @router.get("/accounts/{client_id}/history")

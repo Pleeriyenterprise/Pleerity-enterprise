@@ -2094,6 +2094,46 @@ async def admin_allow_redemption_retry(
     return {"redemption": updated, "override": override_doc}
 
 
+async def admin_reset_incomplete_redemption(
+    *,
+    redemption_id: str,
+    actor: Dict[str, Any],
+    reason: str,
+) -> Dict[str, Any]:
+    """Expire/revoke an incomplete attempt without granting a promo retry override."""
+    from services.pilot_redemption_lifecycle import (
+        PilotRedemptionStatus,
+        is_recoverable,
+        is_terminal_consuming,
+        normalize_redemption_status,
+    )
+
+    db = database.get_db()
+    row = await db[COL_REDEMPTIONS].find_one({"redemption_id": redemption_id}, {"_id": 0})
+    if not row:
+        raise ValueError("REDEMPTION_NOT_FOUND")
+    if is_terminal_consuming(row.get("status")):
+        raise ValueError("REDEMPTION_ALREADY_REDEEMED")
+    if not is_recoverable(row.get("status")):
+        raise ValueError("REDEMPTION_NOT_RESETTABLE")
+
+    prior = normalize_redemption_status(row.get("status"))
+    new_status = (
+        PilotRedemptionStatus.EXPIRED.value
+        if prior in (PilotRedemptionStatus.PENDING.value, PilotRedemptionStatus.PAYMENT_STARTED.value)
+        else PilotRedemptionStatus.REVOKED.value
+    )
+    updated = await update_redemption_status(
+        redemption_id=redemption_id,
+        new_status=new_status,
+        failure_reason=f"admin_reset_incomplete: {reason[:200]}",
+        actor=actor,
+    )
+    if not updated:
+        raise ValueError("REDEMPTION_NOT_FOUND")
+    return {"redemption": updated}
+
+
 async def mark_redemption_payment_failed(*, checkout_session_id: str, reason: str = "checkout_abandoned") -> bool:
     from services.pilot_redemption_lifecycle import PilotRedemptionStatus
 

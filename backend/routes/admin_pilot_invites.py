@@ -88,6 +88,10 @@ class PilotAllowRedemptionRetryBody(BaseModel):
     override_expires_at: Optional[datetime] = None
 
 
+class PilotResetIncompleteRedemptionBody(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=500)
+
+
 def _frontend_origin(request: Request) -> str:
     origin = (request.headers.get("origin") or "").strip()
     if origin:
@@ -413,6 +417,31 @@ async def allow_pilot_redemption_retry(
             reason=body.reason,
             create_override=body.create_eligibility_override,
             override_expires_at=body.override_expires_at,
+        )
+    except ValueError as e:
+        msg = str(e)
+        if msg == "REDEMPTION_NOT_FOUND":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+    return {"ok": True, **result}
+
+
+@router.post("/redemptions/{redemption_id}/reset-incomplete")
+async def reset_pilot_redemption_incomplete(
+    request: Request,
+    redemption_id: str,
+    body: PilotResetIncompleteRedemptionBody,
+    user: dict = Depends(require_owner_or_admin),
+) -> Dict[str, Any]:
+    await require_recent_step_up(request, user)
+    from services.pilot_invite_service import admin_reset_incomplete_redemption
+
+    actor = {"type": "admin", "id": user.get("portal_user_id"), "email": user.get("email")}
+    try:
+        result = await admin_reset_incomplete_redemption(
+            redemption_id=redemption_id,
+            actor=actor,
+            reason=body.reason,
         )
     except ValueError as e:
         msg = str(e)

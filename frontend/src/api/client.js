@@ -1132,6 +1132,16 @@ export const adminAPI = {
     apiClient.delete(`/admin/pilot-invites/eligibility-overrides/${encodeURIComponent(overrideId)}`),
   allowPilotRedemptionRetry: (redemptionId, body) =>
     apiClient.post(`/admin/pilot-invites/redemptions/${encodeURIComponent(redemptionId)}/allow-retry`, body),
+  resetPilotRedemptionIncomplete: (redemptionId, body) =>
+    apiClient.post(
+      `/admin/pilot-invites/redemptions/${encodeURIComponent(redemptionId)}/reset-incomplete`,
+      body,
+    ),
+  createPilotAccountEligibilityOverride: (clientId, body) =>
+    apiClient.post(
+      `/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/eligibility-overrides`,
+      body,
+    ),
   listPilotLifecycleAccounts: (params = {}) => apiClient.get('/admin/pilot-lifecycle/accounts', { params }),
   getPilotLifecycleOpsDashboard: (params = {}) => apiClient.get('/admin/pilot-lifecycle/ops-dashboard', { params }),
   getPilotLifecycleAccount: (clientId) => apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}`),
