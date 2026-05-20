@@ -1122,11 +1122,23 @@ export const adminAPI = {
     apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}/distribution`, { params }),
   sendPilotInvite: (code, body) =>
     apiClient.post(`/admin/pilot-invites/${encodeURIComponent(code)}/send`, body),
+  getPilotInviteRedemptions: (code, params = {}) =>
+    apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}/redemptions`, { params }),
+  getPilotInviteEligibilityOverrides: (code) =>
+    apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}/eligibility-overrides`),
+  createPilotEligibilityOverride: (code, body) =>
+    apiClient.post(`/admin/pilot-invites/${encodeURIComponent(code)}/eligibility-overrides`, body),
+  revokePilotEligibilityOverride: (overrideId) =>
+    apiClient.delete(`/admin/pilot-invites/eligibility-overrides/${encodeURIComponent(overrideId)}`),
+  allowPilotRedemptionRetry: (redemptionId, body) =>
+    apiClient.post(`/admin/pilot-invites/redemptions/${encodeURIComponent(redemptionId)}/allow-retry`, body),
   listPilotLifecycleAccounts: (params = {}) => apiClient.get('/admin/pilot-lifecycle/accounts', { params }),
   getPilotLifecycleOpsDashboard: (params = {}) => apiClient.get('/admin/pilot-lifecycle/ops-dashboard', { params }),
   getPilotLifecycleAccount: (clientId) => apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}`),
   getPilotLifecycleOperationalProfile: (clientId) =>
     apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/operational-profile`),
+  getPilotAccountRedemptions: (clientId, params = {}) =>
+    apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/redemptions`, { params }),
   getPilotLifecycleHistory: (clientId, params = {}) =>
     apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/history`, { params }),
   reconcilePilotLifecycleAccount: (clientId) =>

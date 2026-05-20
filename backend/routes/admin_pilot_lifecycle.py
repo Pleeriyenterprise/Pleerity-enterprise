@@ -148,6 +148,25 @@ async def resolve_anomaly_route(
     return {"ok": True, "anomaly_id": anomaly_id}
 
 
+@router.get("/accounts/{client_id}/redemptions")
+async def list_account_redemptions(
+    client_id: str,
+    limit: int = Query(50, ge=1, le=200),
+    _user: dict = Depends(admin_route_guard),
+) -> Dict[str, Any]:
+    from services.pilot_invite_service import list_client_redemptions
+    from services.pilot_redemption_eligibility_service import list_overrides_for_client
+
+    redemptions = await list_client_redemptions(client_id, limit=limit)
+    overrides = await list_overrides_for_client(client_id, limit=limit)
+    return {
+        "client_id": client_id,
+        "redemptions": redemptions,
+        "eligibility_overrides": overrides,
+        "count": len(redemptions),
+    }
+
+
 @router.get("/accounts/{client_id}/history")
 async def get_history(
     client_id: str,

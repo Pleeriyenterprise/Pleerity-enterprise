@@ -94,5 +94,14 @@ async def reconcile_pilot_lifecycle_batch(*, limit: int = 500) -> Dict[str, Any]
         "errors": errors,
         "completed_at": now.isoformat(),
     }
+    try:
+        from services.pilot_invite_service import reconcile_redemption_recovery_batch
+
+        redemption_recovery = await reconcile_redemption_recovery_batch(limit=limit)
+        result["redemption_recovery"] = redemption_recovery
+    except Exception as red_ex:
+        logger.warning("pilot redemption recovery reconcile failed: %s", red_ex)
+        result["redemption_recovery_error"] = str(red_ex)
+
     logger.info("pilot_lifecycle_reconcile batch complete: %s", result)
     return result

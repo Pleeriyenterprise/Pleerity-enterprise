@@ -45,6 +45,9 @@ export default function AdminPilotInviteDetailPage() {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [metrics, setMetrics] = useState(null);
+  const [redemptionRows, setRedemptionRows] = useState([]);
+  const [eligibilityOverrides, setEligibilityOverrides] = useState([]);
+  const [allowingRetryId, setAllowingRetryId] = useState(null);
   const [duplicating, setDuplicating] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [showSendInvite, setShowSendInvite] = useState(false);
@@ -67,11 +70,13 @@ export default function AdminPilotInviteDetailPage() {
     if (!code) return;
     setLoading(true);
     try {
-      const [invRes, useRes, attRes, metricsRes] = await Promise.all([
+      const [invRes, useRes, attRes, metricsRes, redRes, ovRes] = await Promise.all([
         adminAPI.getPilotInvite(code),
         adminAPI.getPilotInviteUsage(code),
         adminAPI.getPilotInviteValidationAttempts(code, { limit: 200 }),
         adminAPI.getPilotInviteMetrics(code),
+        adminAPI.getPilotInviteRedemptions(code, { limit: 200 }),
+        adminAPI.getPilotInviteEligibilityOverrides(code),
       ]);
       const inv = invRes.data?.invite_code;
       setInvite(inv);
@@ -688,14 +693,85 @@ export default function AdminPilotInviteDetailPage() {
             ))}
             {!usage.accounts?.length && <li className="text-gray-500">No accounts yet.</li>}
           </ul>
-          <h3 className="text-sm font-medium mb-2">Redemptions</h3>
-          <ul className="text-xs text-gray-600 space-y-1">
-            {(usage.redemptions || []).map((r) => (
-              <li key={r.redemption_id || r.checkout_session_id}>
-                {r.status} · {formatDate(r.created_at)} · session {r.checkout_session_id?.slice(0, 12)}…
+          <h3 className="text-sm font-medium mb-2">
+            Redemption attempts ({redemptionRows.length})
+            {metrics?.stranded_redemptions > 0 && (
+              <span className="ml-2 text-amber-700 text-xs font-normal">
+                {metrics.stranded_redemptions} may need recovery
+              </span>
+            )}
+          </h3>
+          <ul className="text-xs text-gray-600 space-y-2 mb-4" data-testid="pilot-invite-redemptions">
+            {redemptionRows.map((r) => (
+              <li
+                key={r.redemption_id || r.checkout_session_id}
+                className="flex flex-wrap items-center justify-between gap-2 border border-slate-100 rounded px-2 py-1.5"
+              >
+                <span>
+                  <span className="font-medium text-slate-800">{r.status}</span>
+                  {r.retry_eligible ? (
+                    <span className="text-emerald-700 ml-1">· retry eligible</span>
+                  ) : r.consumes_eligibility ? (
+                    <span className="text-slate-500 ml-1">· consumes eligibility</span>
+                  ) : null}
+                  {' · '}
+                  {formatDate(r.created_at)}
+                  {r.redemption_email ? ` · ${r.redemption_email}` : ''}
+                  {r.client_id ? (
+                    <>
+                      {' · '}
+                      <Link className="text-teal-700 hover:underline" to={`/admin/clients/${r.client_id}`}>
+                        {r.client_id.slice(0, 8)}…
+                      </Link>
+                    </>
+                  ) : null}
+                </span>
+                {r.retry_eligible && r.redemption_id && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={allowingRetryId === r.redemption_id}
+                    data-testid={`allow-retry-${r.redemption_id}`}
+                    onClick={async () => {
+                      const reason = window.prompt('Reason for allowing retry (required):');
+                      if (!reason || reason.trim().length < 3) return;
+                      setAllowingRetryId(r.redemption_id);
+                      try {
+                        await adminAPI.allowPilotRedemptionRetry(r.redemption_id, {
+                          reason: reason.trim(),
+                          create_eligibility_override: true,
+                        });
+                        toast.success('Retry allowed — incomplete attempt released');
+                        await load();
+                      } catch (e) {
+                        toast.error(e.response?.data?.detail || 'Allow retry failed');
+                      } finally {
+                        setAllowingRetryId(null);
+                      }
+                    }}
+                  >
+                    {allowingRetryId === r.redemption_id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      'Allow retry'
+                    )}
+                  </Button>
+                )}
               </li>
             ))}
-            {!usage.redemptions?.length && <li>No redemptions recorded.</li>}
+            {!redemptionRows.length && <li>No redemption attempts recorded.</li>}
+          </ul>
+          <h3 className="text-sm font-medium mb-2">Eligibility overrides ({eligibilityOverrides.length})</h3>
+          <ul className="text-xs text-gray-600 space-y-1">
+            {eligibilityOverrides.map((o) => (
+              <li key={o.override_id}>
+                {o.override_type} · {o.scope}={o.scope_value}
+                {o.revoked_at ? ' · revoked' : ''} · {formatDate(o.override_created_at)}
+                {o.override_reason ? ` — ${o.override_reason}` : ''}
+              </li>
+            ))}
+            {!eligibilityOverrides.length && <li className="text-gray-500">No eligibility overrides.</li>}
           </ul>
         </CardContent>
       </Card>

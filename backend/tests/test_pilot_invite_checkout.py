@@ -61,6 +61,15 @@ def _async_empty_cursor():
     """Empty async iterator for Mongo find() mocks."""
 
     class _Cursor:
+        def sort(self, *args, **kwargs):
+            return self
+
+        def limit(self, *args, **kwargs):
+            return self
+
+        async def to_list(self, length=None):
+            return []
+
         def __aiter__(self):
             return self
 
@@ -76,6 +85,9 @@ def _fake_db_for_invite(doc, *, redemption_count=0, client_row=None):
     fdb[COL_CODES].find_one = AsyncMock(return_value=doc)
     fdb[COL_REDEMPTIONS] = MagicMock()
     fdb[COL_REDEMPTIONS].count_documents = AsyncMock(return_value=redemption_count)
+    fdb[COL_REDEMPTIONS].update_many = AsyncMock(return_value=MagicMock(modified_count=0))
+    fdb["pilot_redemption_eligibility_overrides"] = MagicMock()
+    fdb["pilot_redemption_eligibility_overrides"].find = MagicMock(return_value=_async_empty_cursor())
     fdb["pilot_invite_validation_attempts"] = MagicMock()
     fdb["pilot_invite_validation_attempts"].insert_one = AsyncMock()
     fdb["clients"] = MagicMock()
@@ -325,14 +337,19 @@ async def test_complete_redemption_idempotent():
     mock_db.__getitem__ = MagicMock(side_effect=db_getitem)
 
     async def find_one_and_update_redemption(filter_doc, update, **kw):
-        if filter_doc.get("status") != "pending" or state["redemption_status"] != "pending":
+        st_filt = filter_doc.get("status")
+        pending_ok = st_filt == "pending" or (
+            isinstance(st_filt, dict) and "pending" in (st_filt.get("$in") or [])
+        )
+        if not pending_ok or state["redemption_status"] != "pending":
             return None
-        state["redemption_status"] = "completed"
-        redemption["status"] = "completed"
+        state["redemption_status"] = "redeemed"
+        redemption["status"] = "redeemed"
         return dict(redemption)
 
     async def find_one_redemption(filter_doc, projection=None):
-        if filter_doc.get("status") == "completed":
+        st = filter_doc.get("status")
+        if st == "completed" or (isinstance(st, dict) and st.get("$in")):
             return redemption
         return None
 

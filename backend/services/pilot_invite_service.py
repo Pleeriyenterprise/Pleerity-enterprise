@@ -715,10 +715,10 @@ async def register_pending_redemption(
     redemption_email: Optional[str] = None,
     stripe_payment_method_id: Optional[str] = None,
     plan_code: Optional[str] = None,
-) -> None:
+) -> bool:
     """Create pending redemption (idempotent on checkout_session_id). Usage counted after provisioning."""
     if not checkout_session_id:
-        return
+        return False
     db = database.get_db()
     now = _utc_now()
     from services.pilot_invite_code_governance import normalize_email as _norm_em
@@ -758,7 +758,7 @@ async def register_pending_redemption(
             )
         except Exception as audit_ex:
             logger.warning("pilot redemption abuse audit failed: %s", audit_ex)
-        return
+        return False
 
     doc_insert: Dict[str, Any] = {
         "redemption_id": str(uuid.uuid4()),
@@ -782,11 +782,12 @@ async def register_pending_redemption(
     }
     try:
         await db[COL_REDEMPTIONS].insert_one(doc_insert)
+        return True
     except Exception as e:
         if "duplicate key" in str(e).lower() or "E11000" in str(e):
             logger.info("Pilot redemption already registered for session %s", checkout_session_id)
-        else:
-            raise
+            return True
+        raise
 
 
 async def apply_pilot_tags_to_client(
@@ -887,13 +888,22 @@ async def complete_redemption_after_provisioning(*, checkout_session_id: str) ->
     db = database.get_db()
     now = _utc_now()
 
+    from services.pilot_redemption_lifecycle import PilotRedemptionStatus
+
+    redeemed_status = PilotRedemptionStatus.REDEEMED.value
     redemption = await db[COL_REDEMPTIONS].find_one_and_update(
-        {"checkout_session_id": checkout_session_id, "status": "pending"},
-        {"$set": {"status": "completed", "completed_at": now, "updated_at": now}},
+        {
+            "checkout_session_id": checkout_session_id,
+            "status": {"$in": [PilotRedemptionStatus.PENDING.value, "pending"]},
+        },
+        {"$set": {"status": redeemed_status, "completed_at": now, "updated_at": now}},
     )
     if not redemption:
         done = await db[COL_REDEMPTIONS].find_one(
-            {"checkout_session_id": checkout_session_id, "status": "completed"},
+            {
+                "checkout_session_id": checkout_session_id,
+                "status": {"$in": [redeemed_status, PilotRedemptionStatus.COMPLETED.value, "completed"]},
+            },
             {"_id": 0, "invite_code_id": 1},
         )
         return bool(done)
@@ -1591,11 +1601,41 @@ async def get_invite_operational_metrics(code: str) -> Dict[str, Any]:
             },
         },
     )
+    from services.pilot_redemption_lifecycle import (
+        PilotRedemptionStatus,
+        RECOVERABLE_STATUSES,
+        TERMINAL_CONSUMING_STATUSES,
+    )
+
     pending_redemptions = await db[COL_REDEMPTIONS].count_documents(
-        {"invite_code_id": iid, "status": "pending"}
+        {
+            "invite_code_id": iid,
+            "status": {
+                "$in": [
+                    PilotRedemptionStatus.PENDING.value,
+                    PilotRedemptionStatus.PAYMENT_STARTED.value,
+                    "pending",
+                ]
+            },
+        }
     )
     completed_redemptions = await db[COL_REDEMPTIONS].count_documents(
-        {"invite_code_id": iid, "status": "completed"}
+        {"invite_code_id": iid, "status": {"$in": list(TERMINAL_CONSUMING_STATUSES)}}
+    )
+    recoverable_redemptions = await db[COL_REDEMPTIONS].count_documents(
+        {"invite_code_id": iid, "status": {"$in": list(RECOVERABLE_STATUSES)}}
+    )
+    stranded_redemptions = await db[COL_REDEMPTIONS].count_documents(
+        {
+            "invite_code_id": iid,
+            "status": {
+                "$in": [
+                    PilotRedemptionStatus.PENDING.value,
+                    PilotRedemptionStatus.PROVISIONING_FAILED.value,
+                    "pending",
+                ]
+            },
+        }
     )
 
     exp = inv.get("expires_at")
@@ -1631,6 +1671,9 @@ async def get_invite_operational_metrics(code: str) -> Dict[str, Any]:
         "abuse_attempt_count": abuse_attempts,
         "pending_redemptions": pending_redemptions,
         "completed_redemptions": completed_redemptions,
+        "redeemed_redemptions": completed_redemptions,
+        "recoverable_redemptions": recoverable_redemptions,
+        "stranded_redemptions": stranded_redemptions,
         "nearing_exhaustion": remaining <= max(1, int(max_uses * 0.1)) and remaining > 0,
         "nearing_expiry": nearing_expiry,
         "effective_status": inv.get("effective_status"),
@@ -1700,8 +1743,13 @@ async def regenerate_invite_code_if_unused(code: str) -> Dict[str, Any]:
         raise ValueError("Invite code not found")
     if int(inv.get("used_count") or 0) > 0:
         raise ValueError("Cannot regenerate a code that has already been redeemed")
+    from services.pilot_redemption_lifecycle import TERMINAL_CONSUMING_STATUSES
+
     redemptions = await db[COL_REDEMPTIONS].count_documents(
-        {"invite_code_id": inv.get("invite_code_id"), "status": {"$in": ["pending", "completed"]}}
+        {
+            "invite_code_id": inv.get("invite_code_id"),
+            "status": {"$in": list(TERMINAL_CONSUMING_STATUSES)},
+        }
     )
     if redemptions > 0:
         raise ValueError("Cannot regenerate: redemption records exist")
@@ -1839,8 +1887,13 @@ async def update_invite_code(code: str, body: PilotInviteCodeUpdate) -> Optional
         if field in patch and patch.get(field) != current.get(field)
     }
     if changed_campaign_fields:
+        from services.pilot_redemption_lifecycle import TERMINAL_CONSUMING_STATUSES
+
         completed = await db[COL_REDEMPTIONS].count_documents(
-            {"invite_code_id": current.get("invite_code_id"), "status": "completed"}
+            {
+                "invite_code_id": current.get("invite_code_id"),
+                "status": {"$in": list(TERMINAL_CONSUMING_STATUSES)},
+            }
         )
         if completed > 0:
             previous_version = int(current.get("campaign_config_version") or 1)
@@ -1895,3 +1948,270 @@ async def list_pilot_accounts(*, limit: int = 200) -> List[Dict[str, Any]]:
         .limit(limit)
     )
     return [doc async for doc in cursor]
+
+
+# --- Redemption recovery & admin operations ---
+
+
+async def update_redemption_status(
+    *,
+    redemption_id: str,
+    new_status: str,
+    failure_reason: Optional[str] = None,
+    actor: Optional[Dict[str, Any]] = None,
+) -> Optional[Dict[str, Any]]:
+    from services.pilot_redemption_lifecycle import PilotRedemptionStatus, normalize_redemption_status
+
+    db = database.get_db()
+    now = _utc_now()
+    st = normalize_redemption_status(new_status)
+    patch: Dict[str, Any] = {"status": st, "updated_at": now}
+    if failure_reason:
+        patch["failure_reason"] = failure_reason[:500]
+    if st in (PilotRedemptionStatus.REDEEMED.value, PilotRedemptionStatus.COMPLETED.value):
+        patch["completed_at"] = now
+    res = await db[COL_REDEMPTIONS].find_one_and_update(
+        {"redemption_id": redemption_id},
+        {"$set": patch},
+        return_document=ReturnDocument.AFTER,
+    )
+    if not res:
+        return None
+    res.pop("_id", None)
+    if actor:
+        try:
+            from models import AuditAction, UserRole
+            from utils.audit import create_audit_log
+
+            await create_audit_log(
+                action=AuditAction.ADMIN_ACTION,
+                actor_role=UserRole.ADMIN,
+                actor_id=str(actor.get("id") or ""),
+                client_id=res.get("client_id"),
+                resource_type="pilot_invite_redemption",
+                resource_id=redemption_id,
+                metadata={
+                    "action_type": "PILOT_REDEMPTION_STATUS_UPDATE",
+                    "new_status": st,
+                    "failure_reason": failure_reason,
+                },
+            )
+        except Exception:
+            pass
+    return res
+
+
+async def list_invite_redemptions(
+    invite_code: str,
+    *,
+    limit: int = 100,
+    include_recoverable_only: bool = False,
+) -> List[Dict[str, Any]]:
+    from services.pilot_redemption_lifecycle import RECOVERABLE_STATUSES, summarize_redemption_for_admin
+
+    db = database.get_db()
+    normalized = normalize_invite_code(invite_code)
+    inv = await db[COL_CODES].find_one({"code": normalized}, {"_id": 0, "invite_code_id": 1})
+    if not inv:
+        return []
+    filt: Dict[str, Any] = {"invite_code_id": inv.get("invite_code_id")}
+    if include_recoverable_only:
+        filt["status"] = {"$in": list(RECOVERABLE_STATUSES)}
+    cursor = (
+        db[COL_REDEMPTIONS].find(filt, {"_id": 0})
+        .sort("created_at", -1)
+        .limit(limit)
+    )
+    rows = [doc async for doc in cursor]
+    return [summarize_redemption_for_admin(r) for r in rows]
+
+
+async def list_client_redemptions(client_id: str, *, limit: int = 50) -> List[Dict[str, Any]]:
+    from services.pilot_redemption_lifecycle import summarize_redemption_for_admin
+
+    db = database.get_db()
+    cursor = (
+        db[COL_REDEMPTIONS].find({"client_id": client_id}, {"_id": 0})
+        .sort("created_at", -1)
+        .limit(limit)
+    )
+    rows = [doc async for doc in cursor]
+    return [summarize_redemption_for_admin(r) for r in rows]
+
+
+async def admin_allow_redemption_retry(
+    *,
+    redemption_id: str,
+    actor: Dict[str, Any],
+    reason: str,
+    create_override: bool = True,
+    override_expires_at: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """Release an incomplete redemption so the user can retry (revoked/expired, optional eligibility override)."""
+    from services.pilot_redemption_eligibility_service import (
+        EligibilityOverrideScope,
+        EligibilityOverrideType,
+        create_eligibility_override,
+    )
+    from services.pilot_redemption_lifecycle import (
+        PilotRedemptionStatus,
+        is_terminal_consuming,
+        normalize_redemption_status,
+    )
+
+    db = database.get_db()
+    row = await db[COL_REDEMPTIONS].find_one({"redemption_id": redemption_id}, {"_id": 0})
+    if not row:
+        raise ValueError("REDEMPTION_NOT_FOUND")
+    if is_terminal_consuming(row.get("status")):
+        raise ValueError("REDEMPTION_ALREADY_REDEEMED")
+
+    updated = await update_redemption_status(
+        redemption_id=redemption_id,
+        new_status=PilotRedemptionStatus.REVOKED.value,
+        failure_reason=f"admin_retry_allowed: {reason[:200]}",
+        actor=actor,
+    )
+    override_doc = None
+    if create_override and updated:
+        scope = EligibilityOverrideScope.CLIENT_ID.value
+        scope_value = str(updated.get("client_id") or "")
+        if not scope_value and updated.get("redemption_email"):
+            scope = EligibilityOverrideScope.EMAIL.value
+            scope_value = str(updated.get("redemption_email")).lower()
+        if scope_value:
+            override_doc = await create_eligibility_override(
+                scope=scope,
+                scope_value=scope_value,
+                override_type=EligibilityOverrideType.ALLOW_PROMO_RETRY.value,
+                override_reason=reason,
+                override_actor=actor,
+                invite_code=updated.get("code"),
+                invite_code_id=updated.get("invite_code_id"),
+                override_expires_at=override_expires_at,
+                metadata={"redemption_id": redemption_id, "prior_status": normalize_redemption_status(row.get("status"))},
+            )
+    return {"redemption": updated, "override": override_doc}
+
+
+async def mark_redemption_payment_failed(*, checkout_session_id: str, reason: str = "checkout_abandoned") -> bool:
+    from services.pilot_redemption_lifecycle import PilotRedemptionStatus
+
+    db = database.get_db()
+    now = _utc_now()
+    res = await db[COL_REDEMPTIONS].update_one(
+        {
+            "checkout_session_id": checkout_session_id,
+            "status": {
+                "$in": [
+                    PilotRedemptionStatus.PENDING.value,
+                    PilotRedemptionStatus.PAYMENT_STARTED.value,
+                    "pending",
+                ]
+            },
+        },
+        {
+            "$set": {
+                "status": PilotRedemptionStatus.PAYMENT_FAILED.value,
+                "updated_at": now,
+                "failure_reason": reason[:500],
+            }
+        },
+    )
+    return res.modified_count > 0
+
+
+async def mark_redemption_provisioning_failed(
+    *, checkout_session_id: str, reason: str = "provisioning_failed"
+) -> bool:
+    from services.pilot_redemption_lifecycle import PilotRedemptionStatus
+
+    db = database.get_db()
+    now = _utc_now()
+    res = await db[COL_REDEMPTIONS].update_one(
+        {
+            "checkout_session_id": checkout_session_id,
+            "status": {
+                "$in": [
+                    PilotRedemptionStatus.PENDING.value,
+                    PilotRedemptionStatus.PAYMENT_STARTED.value,
+                    "pending",
+                ]
+            },
+        },
+        {
+            "$set": {
+                "status": PilotRedemptionStatus.PROVISIONING_FAILED.value,
+                "updated_at": now,
+                "failure_reason": reason[:500],
+            }
+        },
+    )
+    return res.modified_count > 0
+
+
+async def reconcile_redemption_recovery_batch(*, limit: int = 200) -> Dict[str, Any]:
+    """Expire stale pending redemptions and surface stranded onboarding attempts."""
+    from datetime import timedelta
+
+    from services.pilot_invite_code_governance import _expire_stale_pending_for_identity
+    from services.pilot_redemption_lifecycle import PilotRedemptionStatus, redemption_retry_grace_hours
+
+    db = database.get_db()
+    now = _utc_now()
+    grace_cutoff = now - timedelta(hours=redemption_retry_grace_hours())
+    expired_count = 0
+    provisioning_failed_marked = 0
+
+    cursor = db[COL_REDEMPTIONS].find(
+        {
+            "status": {
+                "$in": [
+                    PilotRedemptionStatus.PENDING.value,
+                    PilotRedemptionStatus.PAYMENT_STARTED.value,
+                    "pending",
+                ]
+            },
+            "created_at": {"$lt": grace_cutoff},
+        },
+        {"_id": 0, "redemption_id": 1, "redemption_email": 1, "client_id": 1, "invite_code_id": 1},
+    ).limit(limit)
+
+    async for row in cursor:
+        n = await _expire_stale_pending_for_identity(
+            db,
+            invite_code_id=str(row.get("invite_code_id") or ""),
+            email=row.get("redemption_email"),
+            client_id=row.get("client_id"),
+        )
+        expired_count += n
+
+    fail_cursor = db.clients.find(
+        {"onboarding_status": "FAILED", "pilot_invite_code": {"$exists": True, "$ne": None}},
+        {"_id": 0, "client_id": 1},
+    ).limit(limit)
+    async for client in fail_cursor:
+        cid = client.get("client_id")
+        if not cid:
+            continue
+        jobs = (
+            await db.provisioning_jobs.find(
+                {"client_id": cid},
+                {"_id": 0, "checkout_session_id": 1},
+            )
+            .sort("created_at", -1)
+            .limit(1)
+            .to_list(length=1)
+        )
+        job = jobs[0] if jobs else None
+        cs = (job or {}).get("checkout_session_id")
+        if cs and await mark_redemption_provisioning_failed(
+            checkout_session_id=str(cs), reason="provisioning_job_failed"
+        ):
+            provisioning_failed_marked += 1
+
+    return {
+        "expired_stale_pending": expired_count,
+        "provisioning_failed_marked": provisioning_failed_marked,
+        "completed_at": now.isoformat(),
+    }

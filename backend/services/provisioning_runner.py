@@ -272,6 +272,22 @@ async def _run_provisioning_job_locked(job_id: str, job: dict, status: str) -> b
             }
         )
         logger.error(f"Job {job_id}: provisioning core failed: {message}")
+        checkout_session_id = job.get("checkout_session_id")
+        if checkout_session_id:
+            try:
+                from services.pilot_invite_service import mark_redemption_provisioning_failed
+
+                await mark_redemption_provisioning_failed(
+                    checkout_session_id=str(checkout_session_id),
+                    reason=message[:500] or "provisioning_failed",
+                )
+            except Exception as pilot_red_ex:
+                logger.warning(
+                    "Pilot redemption provisioning_failed mark failed job_id=%s session=%s: %s",
+                    job_id,
+                    checkout_session_id,
+                    pilot_red_ex,
+                )
         try:
             from services.analytics_service import log_event
             await log_event("provisioning_failed", {"client_id": client_id, "metadata": {"job_id": job_id, "error": message[:500]}})

@@ -784,22 +784,6 @@ class StripeWebhookService:
                 if normalized_invite:
                     invite_doc = await db[COL_CODES].find_one({"code": normalized_invite}, {"_id": 0})
                 if invite_doc:
-                    await apply_pilot_tags_to_client(
-                        client_id=client_id,
-                        invite_doc=invite_doc,
-                        plan_code=plan_code.value,
-                        checkout_session_id=checkout_session_id,
-                        stripe_subscription_id=stripe_subscription_id,
-                        stripe_event_id=event.get("id") if event else None,
-                    )
-                    try:
-                        from services.pilot_lifecycle_service import sync_stripe_payment_method_status
-
-                        await sync_stripe_payment_method_status(
-                            client_id, stripe_customer_id=stripe_customer_id
-                        )
-                    except Exception as pm_ex:
-                        logger.warning("Pilot PM sync after checkout failed client_id=%s: %s", client_id, pm_ex)
                     pm_raw = session.get("payment_method")
                     pm_id = pm_raw if isinstance(pm_raw, str) else (pm_raw or {}).get("id") if isinstance(pm_raw, dict) else None
                     pm_id = str(pm_id or "").strip() or None
@@ -808,7 +792,7 @@ class StripeWebhookService:
                     if isinstance(cd, dict):
                         redemption_email = cd.get("email")
                     redemption_email = str(redemption_email or session.get("customer_email") or "").strip() or None
-                    await register_pending_redemption(
+                    registered = await register_pending_redemption(
                         checkout_session_id=checkout_session_id or "",
                         client_id=client_id,
                         invite_doc=invite_doc,
@@ -818,6 +802,23 @@ class StripeWebhookService:
                         stripe_payment_method_id=pm_id,
                         plan_code=plan_code.value,
                     )
+                    if registered:
+                        await apply_pilot_tags_to_client(
+                            client_id=client_id,
+                            invite_doc=invite_doc,
+                            plan_code=plan_code.value,
+                            checkout_session_id=checkout_session_id,
+                            stripe_subscription_id=stripe_subscription_id,
+                            stripe_event_id=event.get("id") if event else None,
+                        )
+                    try:
+                        from services.pilot_lifecycle_service import sync_stripe_payment_method_status
+
+                        await sync_stripe_payment_method_status(
+                            client_id, stripe_customer_id=stripe_customer_id
+                        )
+                    except Exception as pm_ex:
+                        logger.warning("Pilot PM sync after checkout failed client_id=%s: %s", client_id, pm_ex)
                 else:
                     logger.error(
                         "Pilot checkout metadata present but invite not found client_id=%s invite_code=%s session=%s",

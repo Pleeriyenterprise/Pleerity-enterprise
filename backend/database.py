@@ -474,6 +474,15 @@ class Database:
                 await self.db.pilot_redeemed_campaign_snapshots.create_index([("analytics_family", 1), ("redeemed_at", -1)])
                 await self.db.pilot_account_overrides.create_index([("client_id", 1), ("created_at", -1)])
                 await self.db.pilot_account_overrides.create_index([("override_type", 1), ("created_at", -1)])
+                await self.db.pilot_redemption_eligibility_overrides.create_index("override_id", unique=True)
+                await self.db.pilot_redemption_eligibility_overrides.create_index(
+                    [("scope", 1), ("scope_value", 1), ("override_type", 1)]
+                )
+                await self.db.pilot_redemption_eligibility_overrides.create_index(
+                    [("invite_code_id", 1), ("override_created_at", -1)]
+                )
+                await self.db.pilot_invite_redemptions.create_index([("client_id", 1), ("created_at", -1)])
+                await self.db.pilot_invite_redemptions.create_index([("status", 1), ("created_at", -1)])
                 await self.db.clients.create_index("pilot_invite_code", sparse=True)
                 await self.db.clients.create_index("pilot_status", sparse=True)
                 await self.db.pilot_lifecycle_audit.create_index([("client_id", 1), ("created_at", -1)])

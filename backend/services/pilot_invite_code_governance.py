@@ -139,6 +139,94 @@ def assert_public_entry_and_campaign(
         )
 
 
+async def _expire_stale_pending_for_identity(
+    db,
+    *,
+    invite_code_id: str,
+    email: Optional[str],
+    client_id: Optional[str],
+) -> int:
+    """Mark stale pending/payment_started rows expired so retries are not blocked."""
+    from datetime import timedelta
+
+    from services.pilot_redemption_lifecycle import (
+        ACTIVE_RESERVATION_STATUSES,
+        PilotRedemptionStatus,
+        redemption_retry_grace_hours,
+    )
+
+    now = datetime.now(timezone.utc)
+    grace_cutoff = now - timedelta(hours=redemption_retry_grace_hours())
+    or_identity: List[Dict[str, Any]] = []
+    em = normalize_email(email)
+    if em:
+        or_identity.append({"redemption_email": em})
+    if client_id:
+        or_identity.append({"client_id": client_id})
+    if not or_identity:
+        return 0
+    filt: Dict[str, Any] = {
+        "invite_code_id": invite_code_id,
+        "status": {"$in": list(ACTIVE_RESERVATION_STATUSES)},
+        "created_at": {"$lt": grace_cutoff},
+    }
+    if len(or_identity) == 1:
+        filt.update(or_identity[0])
+    else:
+        filt["$or"] = or_identity
+    res = await db["pilot_invite_redemptions"].update_many(
+        filt,
+        {
+            "$set": {
+                "status": PilotRedemptionStatus.EXPIRED.value,
+                "updated_at": now,
+                "failure_reason": "retry_grace_expired",
+            }
+        },
+    )
+    return int(res.modified_count or 0)
+
+
+def _blocking_redemption_status_filter(*, grace_cutoff: datetime) -> Dict[str, Any]:
+    from services.pilot_redemption_lifecycle import (
+        ACTIVE_RESERVATION_STATUSES,
+        TERMINAL_CONSUMING_STATUSES,
+    )
+
+    return {
+        "$or": [
+            {"status": {"$in": list(TERMINAL_CONSUMING_STATUSES)}},
+            {
+                "status": {"$in": list(ACTIVE_RESERVATION_STATUSES)},
+                "created_at": {"$gte": grace_cutoff},
+            },
+        ]
+    }
+
+
+async def _has_redeemed_pilot_for_email(db, em: str) -> bool:
+    """True when email has a successfully redeemed/provisioned pilot promo (consumes first-time)."""
+    from services.pilot_redemption_lifecycle import TERMINAL_CONSUMING_STATUSES
+
+    red = await db["pilot_invite_redemptions"].find_one(
+        {
+            "redemption_email": em,
+            "status": {"$in": list(TERMINAL_CONSUMING_STATUSES)},
+        },
+        {"_id": 1},
+    )
+    if red:
+        return True
+    client = await db["clients"].find_one(
+        {
+            "$or": [{"email": em}, {"contact_email": em}],
+            "pilot_redeemed_campaign_snapshot_id": {"$exists": True, "$ne": None},
+        },
+        {"_id": 1},
+    )
+    return bool(client)
+
+
 async def assert_abuse_rules(
     db,
     doc: Dict[str, Any],
@@ -148,23 +236,44 @@ async def assert_abuse_rules(
     stripe_payment_method_id: Optional[str] = None,
 ) -> None:
     """Raise PilotInvitePublicError when abuse / eligibility rules fail."""
+    from datetime import timedelta
+
     from models.pilot_invite import PilotInvitePublicError
+    from services.pilot_redemption_eligibility_service import (
+        EligibilityOverrideType,
+        has_override,
+    )
+    from services.pilot_redemption_lifecycle import redemption_retry_grace_hours
 
     invite_code_id = str(doc.get("invite_code_id") or "")
     em = normalize_email(email)
     dom = email_domain(em)
+    now = datetime.now(timezone.utc)
+    grace_cutoff = now - timedelta(hours=redemption_retry_grace_hours())
 
-    if bool(doc.get("first_time_customer_only")) and em:
-        existing = await db["clients"].find_one(
-            {
-                "$or": [{"email": em}, {"contact_email": em}],
-            },
-            {"_id": 1},
+    if invite_code_id:
+        await _expire_stale_pending_for_identity(
+            db, invite_code_id=invite_code_id, email=em, client_id=client_id
         )
-        if existing:
+
+    bypass_first_time = await has_override(
+        email=em,
+        client_id=client_id,
+        invite_code_id=invite_code_id or None,
+        override_type=EligibilityOverrideType.BYPASS_FIRST_TIME.value,
+    )
+    allow_retry = await has_override(
+        email=em,
+        client_id=client_id,
+        invite_code_id=invite_code_id or None,
+        override_type=EligibilityOverrideType.ALLOW_PROMO_RETRY.value,
+    )
+
+    if bool(doc.get("first_time_customer_only")) and em and not bypass_first_time:
+        if await _has_redeemed_pilot_for_email(db, em):
             raise PilotInvitePublicError(
                 "PILOT_INVITE_NOT_FIRST_TIME_CUSTOMER",
-                "This offer is only available to first-time customers.",
+                "This offer is only available to first-time customers who have not completed a founding pilot redemption.",
             )
 
     allowed = _parse_domain_list(doc.get("allowed_email_domains"))
@@ -180,20 +289,19 @@ async def assert_abuse_rules(
             "This offer is not available for your email domain.",
         )
 
-    if bool(doc.get("one_redemption_per_email")) and em and invite_code_id:
+    blocking_status = _blocking_redemption_status_filter(grace_cutoff=grace_cutoff)
+
+    if bool(doc.get("one_redemption_per_email")) and em and invite_code_id and not allow_retry:
         or_clauses: List[Dict[str, Any]] = [{"redemption_email": em}]
         async for c in db["clients"].find({"$or": [{"email": em}, {"contact_email": em}]}, {"client_id": 1}):
             cid = c.get("client_id")
             if cid:
                 or_clauses.append({"client_id": cid})
+        identity_clause = or_clauses[0] if len(or_clauses) == 1 else {"$or": or_clauses}
         filt: Dict[str, Any] = {
             "invite_code_id": invite_code_id,
-            "status": {"$in": ["pending", "completed"]},
+            "$and": [blocking_status, identity_clause],
         }
-        if len(or_clauses) == 1:
-            filt.update(or_clauses[0])
-        else:
-            filt["$or"] = or_clauses
         dup = await db["pilot_invite_redemptions"].count_documents(filt)
         if dup > 0:
             raise PilotInvitePublicError(
@@ -201,12 +309,12 @@ async def assert_abuse_rules(
                 "This code has already been used with this email address.",
             )
 
-    if bool(doc.get("one_redemption_per_customer")) and client_id and invite_code_id:
+    if bool(doc.get("one_redemption_per_customer")) and client_id and invite_code_id and not allow_retry:
         dup_c = await db["pilot_invite_redemptions"].count_documents(
             {
                 "invite_code_id": invite_code_id,
                 "client_id": client_id,
-                "status": {"$in": ["pending", "completed"]},
+                **blocking_status,
             }
         )
         if dup_c > 0:
@@ -216,7 +324,7 @@ async def assert_abuse_rules(
             )
 
     per_account = doc.get("max_uses_per_account")
-    if per_account is not None and client_id and invite_code_id:
+    if per_account is not None and client_id and invite_code_id and not allow_retry:
         try:
             account_cap = int(per_account)
         except (TypeError, ValueError):
@@ -226,7 +334,7 @@ async def assert_abuse_rules(
                 {
                     "invite_code_id": invite_code_id,
                     "client_id": client_id,
-                    "status": {"$in": ["pending", "completed"]},
+                    **blocking_status,
                 }
             )
             if account_uses >= account_cap:
@@ -236,12 +344,12 @@ async def assert_abuse_rules(
                 )
 
     pm = (stripe_payment_method_id or "").strip()
-    if bool(doc.get("one_redemption_per_payment_method")) and pm and invite_code_id:
+    if bool(doc.get("one_redemption_per_payment_method")) and pm and invite_code_id and not allow_retry:
         dup_pm = await db["pilot_invite_redemptions"].count_documents(
             {
                 "invite_code_id": invite_code_id,
                 "stripe_payment_method_id": pm,
-                "status": {"$in": ["pending", "completed"]},
+                **blocking_status,
             }
         )
         if dup_pm > 0:
@@ -262,7 +370,7 @@ async def assert_abuse_rules(
                 {
                     "invite_code_id": invite_code_id,
                     "created_at": {"$gte": start},
-                    "status": {"$in": ["pending", "completed"]},
+                    **blocking_status,
                 }
             )
             if used_today >= cap:

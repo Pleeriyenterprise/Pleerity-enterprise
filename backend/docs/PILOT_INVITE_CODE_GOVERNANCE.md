@@ -75,9 +75,38 @@ Internal-test redemptions are excluded from public launch analytics and require 
 
 Redeemed campaign snapshots are also written from this completion path, preserving webhook/provisioning authority.
 
+## Redemption lifecycle (recovery-aware)
+
+Each checkout attempt is tracked in `pilot_invite_redemptions` with explicit status:
+
+| Status | Meaning | Consumes first-time / duplicate caps? |
+|--------|---------|--------------------------------------|
+| `pending` | Paid checkout; awaiting provisioning | Only within retry grace window (default 72h, `PILOT_REDEMPTION_RETRY_GRACE_HOURS`) |
+| `payment_started` | Optional checkout-session created | Same as pending (grace) |
+| `payment_failed` | Abandoned/failed checkout | No — user may retry automatically |
+| `provisioning_failed` | Provisioning exhausted | No — user may retry automatically |
+| `redeemed` | Provisioned successfully (`completed` legacy alias) | **Yes** |
+| `expired` | Stale incomplete past grace | No |
+| `revoked` | Admin released for retry | No |
+
+**First-time customer semantics:** `first_time_customer_only` blocks only after a **successful redeemed/provisioned** pilot promo for that email (or a client with `pilot_redeemed_campaign_snapshot_id`). Intake-only client rows, failed payments, and failed provisioning do **not** permanently block retry.
+
+**Automatic recovery:** stale `pending` rows older than the grace window are expired during validation and lifecycle reconciliation so abandoned checkouts do not strand users.
+
+## Eligibility overrides (account-scoped)
+
+Overrides are stored separately in `pilot_redemption_eligibility_overrides` (not campaign mutation):
+
+- `bypass_first_time` — allow existing customers when campaign requires first-time
+- `allow_promo_retry` — bypass duplicate pending/redeemed reservation checks
+- `manual_attach_promo` — auditable admin attach (paired with lifecycle override)
+- `recover_onboarding` — support recovery workflows
+
+Fields: `scope`, `scope_value`, `override_type`, `override_reason`, `override_actor`, `override_created_at`, `override_expires_at`, optional `invite_code` / `invite_code_id`, `revoked_at`.
+
 ## Abuse controls (server-side)
 
-- First-time customer only
+- First-time customer only (redeemed/provisioned definition — see above)
 - Per-email / per-customer / per-payment-method redemption caps
 - Optional `max_uses_per_account`
 - Daily redemption cap (`max_uses_per_day`)
@@ -97,6 +126,12 @@ Redeemed campaign snapshots are also written from this completion path, preservi
 | GET | `/api/admin/pilot-invites/{code}/validation-attempts` | Failed/success validations |
 | GET | `/api/admin/pilot-invites/{code}/distribution` | Canonical `/intake/start` link plus copy/email message templates |
 | POST | `/api/admin/pilot-invites/{code}/send` | Direct founding pilot invite email via `notification_orchestrator.send()` |
+| GET | `/api/admin/pilot-invites/{code}/redemptions` | Redemption attempts with retry eligibility |
+| GET | `/api/admin/pilot-invites/{code}/eligibility-overrides` | Active/historical eligibility overrides |
+| POST | `/api/admin/pilot-invites/{code}/eligibility-overrides` | Grant controlled exception (step-up) |
+| DELETE | `/api/admin/pilot-invites/eligibility-overrides/{override_id}` | Revoke override (step-up) |
+| POST | `/api/admin/pilot-invites/redemptions/{redemption_id}/allow-retry` | Revoke incomplete attempt + optional retry override (step-up) |
+| GET | `/api/admin/pilot-lifecycle/accounts/{client_id}/redemptions` | Client redemption history + overrides |
 
 ## Validation-before-persistence
 
@@ -127,5 +162,6 @@ No invite update should persist if any of those validations fail.
 - **Send audit:** each direct-send attempt is recorded in `pilot_invite_send_attempts` with invite code, recipient, selected plan, actor, status, provider message ID, and failure reason when present. Send audit records are operational logs only and never reserve or consume usage.
 - **Launch campaign:** generate human-readable code, enable public entry, pause via `campaign_state=paused`
 - **Account extension:** extend the account in pilot operations; do not change campaign duration
+- **Stranded onboarding recovery:** review invite redemptions (`pending` / `provisioning_failed`), use **Allow retry** to revoke incomplete attempts; grant `bypass_first_time` or `allow_promo_retry` overrides for goodwill/support cases
 - **Internal test:** use `internal_test`; distribute only controlled links; monitor under `analytics_family=internal_test`
 - **Retire:** disable or archive (`archived=true` sets `campaign_state=archived`)

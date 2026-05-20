@@ -526,15 +526,53 @@ async def admin_create_override(
         "pilot_expected_first_paid_invoice_at": exp,
         "pilot_governance_revoke_access": False,
     }
-    return await _persist_transition(
+    actor = {"type": "admin", "id": actor_id, "email": actor_email}
+    after = await _persist_transition(
         client_id=client_id,
         before=before,
         patch=state,
         action=PilotLifecycleAction.CREATED,
-        actor={"type": "admin", "id": actor_id, "email": actor_email},
+        actor=actor,
         reason=reason,
         notes=notes,
     )
+    try:
+        from services.pilot_redemption_eligibility_service import (
+            EligibilityOverrideScope,
+            EligibilityOverrideType,
+            create_eligibility_override,
+        )
+
+        if invite_code:
+            from services.pilot_invite_service import normalize_invite_code
+
+            db = database.get_db()
+            inv = await db["pilot_invite_codes"].find_one(
+                {"code": normalize_invite_code(invite_code)},
+                {"_id": 0, "invite_code_id": 1, "code": 1},
+            )
+            await create_eligibility_override(
+                scope=EligibilityOverrideScope.CLIENT_ID.value,
+                scope_value=client_id,
+                override_type=EligibilityOverrideType.MANUAL_ATTACH_PROMO.value,
+                override_reason=reason,
+                override_actor=actor,
+                invite_code=invite_code,
+                invite_code_id=str(inv.get("invite_code_id") or "") if inv else None,
+                metadata={"notes": notes, "program_type": program_type},
+            )
+        await _record_account_override(
+            client_id=client_id,
+            override_type="manual_pilot_override",
+            actor=actor,
+            reason=reason,
+            before=before,
+            after=after or state,
+            metadata={"invite_code": invite_code, "program_type": program_type},
+        )
+    except Exception as ov_ex:
+        logger.warning("admin_create_override eligibility/audit record failed client_id=%s: %s", client_id, ov_ex)
+    return after
 
 
 async def extend_pilot(

@@ -4,10 +4,13 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
+from datetime import datetime
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from middleware import require_owner_or_admin
+from middleware.step_up_auth import require_recent_step_up
 from models.pilot_invite import (
     PilotInviteCodeCreate,
     PilotInviteCodeUpdate,
@@ -66,6 +69,23 @@ class PilotInviteSendBody(BaseModel):
     recipient_name: Optional[str] = Field(default=None, max_length=200)
     plan_code: str = Field(..., min_length=1, max_length=64)
     personal_note: Optional[str] = Field(default=None, max_length=2000)
+
+
+class PilotEligibilityOverrideBody(BaseModel):
+    scope: str = Field(..., description="email | client_id | invite_code_id")
+    scope_value: str = Field(..., min_length=1, max_length=320)
+    override_type: str = Field(
+        ...,
+        description="bypass_first_time | allow_promo_retry | manual_attach_promo | recover_onboarding",
+    )
+    override_reason: str = Field(..., min_length=3, max_length=500)
+    override_expires_at: Optional[datetime] = None
+
+
+class PilotAllowRedemptionRetryBody(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=500)
+    create_eligibility_override: bool = Field(default=True)
+    override_expires_at: Optional[datetime] = None
 
 
 def _frontend_origin(request: Request) -> str:
@@ -298,6 +318,108 @@ async def get_pilot_invite_distribution(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     return {"distribution": dist, "commercial": commercial}
+
+
+@router.get("/{code}/redemptions")
+async def list_pilot_invite_redemptions(
+    code: str,
+    limit: int = Query(100, ge=1, le=500),
+    recoverable_only: bool = Query(False),
+    _user: dict = Depends(require_owner_or_admin),
+) -> Dict[str, Any]:
+    from services.pilot_invite_service import list_invite_redemptions
+
+    rows = await list_invite_redemptions(code, limit=limit, include_recoverable_only=recoverable_only)
+    return {"code": code, "redemptions": rows, "count": len(rows)}
+
+
+@router.get("/{code}/eligibility-overrides")
+async def list_pilot_invite_eligibility_overrides(
+    code: str,
+    _user: dict = Depends(require_owner_or_admin),
+) -> Dict[str, Any]:
+    from services.pilot_redemption_eligibility_service import list_overrides_for_invite
+    from services.pilot_invite_service import get_invite_code
+
+    doc = await get_invite_code(code)
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
+    rows = await list_overrides_for_invite(str(doc.get("invite_code_id") or ""))
+    return {"code": code, "overrides": rows, "count": len(rows)}
+
+
+@router.post("/{code}/eligibility-overrides")
+async def create_pilot_eligibility_override(
+    request: Request,
+    code: str,
+    body: PilotEligibilityOverrideBody,
+    user: dict = Depends(require_owner_or_admin),
+) -> Dict[str, Any]:
+    await require_recent_step_up(request, user)
+    from services.pilot_invite_service import get_invite_code
+    from services.pilot_redemption_eligibility_service import create_eligibility_override
+
+    doc = await get_invite_code(code)
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
+    actor = {"type": "admin", "id": user.get("portal_user_id"), "email": user.get("email")}
+    try:
+        override = await create_eligibility_override(
+            scope=body.scope,
+            scope_value=body.scope_value,
+            override_type=body.override_type,
+            override_reason=body.override_reason,
+            override_actor=actor,
+            invite_code=code,
+            invite_code_id=str(doc.get("invite_code_id") or ""),
+            override_expires_at=body.override_expires_at,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return {"ok": True, "override": override}
+
+
+@router.delete("/eligibility-overrides/{override_id}")
+async def revoke_pilot_eligibility_override(
+    request: Request,
+    override_id: str,
+    user: dict = Depends(require_owner_or_admin),
+) -> Dict[str, Any]:
+    await require_recent_step_up(request, user)
+    from services.pilot_redemption_eligibility_service import revoke_eligibility_override
+
+    actor = {"type": "admin", "id": user.get("portal_user_id"), "email": user.get("email")}
+    ok = await revoke_eligibility_override(override_id=override_id, revoked_by=actor)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Override not found or already revoked")
+    return {"ok": True, "override_id": override_id}
+
+
+@router.post("/redemptions/{redemption_id}/allow-retry")
+async def allow_pilot_redemption_retry(
+    request: Request,
+    redemption_id: str,
+    body: PilotAllowRedemptionRetryBody,
+    user: dict = Depends(require_owner_or_admin),
+) -> Dict[str, Any]:
+    await require_recent_step_up(request, user)
+    from services.pilot_invite_service import admin_allow_redemption_retry
+
+    actor = {"type": "admin", "id": user.get("portal_user_id"), "email": user.get("email")}
+    try:
+        result = await admin_allow_redemption_retry(
+            redemption_id=redemption_id,
+            actor=actor,
+            reason=body.reason,
+            create_override=body.create_eligibility_override,
+            override_expires_at=body.override_expires_at,
+        )
+    except ValueError as e:
+        msg = str(e)
+        if msg == "REDEMPTION_NOT_FOUND":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+    return {"ok": True, **result}
 
 
 @router.post("/{code}/send")
