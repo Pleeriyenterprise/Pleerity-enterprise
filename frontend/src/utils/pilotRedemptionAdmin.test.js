@@ -1,8 +1,10 @@
 import {
   buildOverridePayload,
   isOverrideActive,
+  indicatorsToBadges,
   overrideTypeLabel,
   redemptionStatusBadgeClass,
+  shouldShowRecoveryPanel,
   showAllowRetryAction,
   showResetIncompleteAction,
 } from './pilotRedemptionAdmin';
@@ -69,5 +71,20 @@ describe('pilotRedemptionAdmin', () => {
   test('redemptionStatusBadgeClass', () => {
     expect(redemptionStatusBadgeClass('payment_failed')).toContain('red');
     expect(redemptionStatusBadgeClass('redeemed')).toContain('emerald');
+  });
+
+  test('shouldShowRecoveryPanel respects API flag and fallback', () => {
+    expect(shouldShowRecoveryPanel({ showRecoveryPanel: false, redemptions: [{ redemption_id: 'r1' }] })).toBe(
+      false,
+    );
+    expect(shouldShowRecoveryPanel({ redemptions: [{ redemption_id: 'r1' }] })).toBe(true);
+    expect(shouldShowRecoveryPanel({ inviteMetadata: { pilot_invite_code: 'X' } })).toBe(true);
+    expect(shouldShowRecoveryPanel({})).toBe(false);
+  });
+
+  test('indicatorsToBadges adds stranded flag', () => {
+    const badges = indicatorsToBadges({ stranded_onboarding: true, badges: ['payment_failed'] });
+    expect(badges[0]).toBe('stranded_onboarding');
+    expect(badges).toContain('payment_failed');
   });
 });

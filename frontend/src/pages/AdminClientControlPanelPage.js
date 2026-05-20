@@ -12,6 +12,7 @@ import {
 } from '../utils/adminAccountClassification';
 import api, { adminAPI, openBlobApiResponse } from '../api/client';
 import AdminPaymentHistoryTable from '../components/admin/AdminPaymentHistoryTable';
+import ClientPromoRecoveryControls from '../components/admin/pilot/ClientPromoRecoveryControls';
 import { useAuth } from '../contexts/AuthContext';
 import { useStepUpApi } from '../hooks/useStepUpApi';
 import {
@@ -267,7 +268,8 @@ const formatTaskActivityLine = (row) => {
 
 const AdminClientControlPanelPage = () => {
   const { clientId } = useParams();
-  const { user } = useAuth();
+  const { user, isAdmin, isOwner } = useAuth();
+  const canManagePilotRecovery = Boolean(isAdmin?.() || isOwner?.());
   const stepUp = useStepUpApi();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
@@ -355,6 +357,21 @@ const AdminClientControlPanelPage = () => {
   const compliance = data?.compliance_overview || {};
   const ops = data?.operations || {};
   const operationalSnapshot = data?.operational_snapshot || {};
+
+  const promoRecoverySection =
+    canManagePilotRecovery && clientId && !loading && data ? (
+      <ClientPromoRecoveryControls
+        clientId={clientId}
+        defaultEmail={identity?.email}
+        accountHints={{
+          onboarding_stage: account.onboarding_stage,
+          subscription_status: identity?.status,
+          billing_lifecycle_state: billing.billing_lifecycle_state,
+          provisioning_status: operationalSnapshot?.onboarding_checklist?.onboarding_status,
+          plan: identity?.plan,
+        }}
+      />
+    ) : null;
 
   const runAction = async (label, call) => {
     setIsBusy(true);
@@ -1248,6 +1265,7 @@ const AdminClientControlPanelPage = () => {
 
   const operationsTab = !loading && data && (
     <div className="space-y-4 max-w-4xl">
+      {promoRecoverySection}
             <SectionCard title="Operations">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div className="rounded-xl bg-slate-50 p-4 text-center">
@@ -1640,6 +1658,7 @@ const AdminClientControlPanelPage = () => {
     if (activeTab === 'overview') {
       return (
         <div className="space-y-4 max-w-5xl">
+          {promoRecoverySection}
           {readOnlyDiagnosticsSection}
           {operationalActionsBlock}
           {highImpactActionsBlock}

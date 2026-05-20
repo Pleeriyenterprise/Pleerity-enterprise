@@ -23,7 +23,7 @@ import { Alert, AlertDescription } from '../../components/ui/alert';
 import { toast } from '@/utils/portalNotifications';
 import { useAuth } from '../../contexts/AuthContext';
 import PilotReasonDialog from '../../components/admin/pilot/PilotReasonDialog';
-import PilotRedemptionRecoverySection from '../../components/admin/pilot/PilotRedemptionRecoverySection';
+import PilotAccountRecoveryPanel from '../../components/admin/pilot/PilotAccountRecoveryPanel';
 import {
   apiErrorMessage,
   formatTimelineEvent,
@@ -47,43 +47,25 @@ export default function AdminPilotAccountDetailPage() {
   const isOwnerRole = Boolean(isOwner?.());
 
   const [profile, setProfile] = useState(null);
-  const [redemptionData, setRedemptionData] = useState({ redemptions: [], eligibility_overrides: [] });
-  const [redemptionsLoading, setRedemptionsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [profileError, setProfileError] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [dialog, setDialog] = useState(null);
-
-  const loadRedemptions = useCallback(async () => {
-    if (!clientId) return;
-    setRedemptionsLoading(true);
-    try {
-      const res = await adminAPI.getPilotAccountRedemptions(clientId, { limit: 100 });
-      setRedemptionData({
-        redemptions: res.data?.redemptions || [],
-        eligibility_overrides: res.data?.eligibility_overrides || [],
-      });
-    } catch (e) {
-      toast.error(apiErrorMessage(e, 'Failed to load redemption data'));
-    } finally {
-      setRedemptionsLoading(false);
-    }
-  }, [clientId]);
 
   const load = useCallback(async () => {
     if (!clientId) return;
     setLoading(true);
-    setError(null);
+    setProfileError(null);
     try {
       const res = await adminAPI.getPilotLifecycleOperationalProfile(clientId);
       setProfile(res.data);
-      await loadRedemptions();
     } catch (e) {
-      setError(apiErrorMessage(e, 'Failed to load operational profile'));
+      setProfile(null);
+      setProfileError(apiErrorMessage(e, 'Operational profile unavailable'));
     } finally {
       setLoading(false);
     }
-  }, [clientId, loadRedemptions]);
+  }, [clientId]);
 
   useEffect(() => {
     if (canManage) load();
@@ -98,8 +80,9 @@ export default function AdminPilotAccountDetailPage() {
     });
   }, [profile]);
 
-  const ops = profile?.ops || {};
   const pilot = profile?.pilot || {};
+  const hasLifecycleProfile = Boolean(profile);
+  const ops = profile?.ops || {};
   const risk = profile?.pilot?.pilot_conversion_risk || ops?.conversion_readiness || {};
   const redeemedSnapshot = profile?.redeemed_campaign_snapshot || pilot?.pilot_redeemed_campaign_snapshot || {};
   const accountOverrides = profile?.account_overrides || [];
@@ -133,22 +116,7 @@ export default function AdminPilotAccountDetailPage() {
     return (
       <UnifiedAdminLayout>
         <div className="p-6 flex items-center gap-2 text-gray-600">
-          <Loader2 className="h-5 w-5 animate-spin" /> Loading operational profile…
-        </div>
-      </UnifiedAdminLayout>
-    );
-  }
-
-  if (error || !profile) {
-    return (
-      <UnifiedAdminLayout>
-        <div className="p-6">
-          <Alert variant="destructive">
-            <AlertDescription>{error || 'Not found'}</AlertDescription>
-          </Alert>
-          <Button variant="link" asChild className="mt-4">
-            <Link to="/admin/pilot-operations">Back to operations</Link>
-          </Button>
+          <Loader2 className="h-5 w-5 animate-spin" /> Loading account…
         </div>
       </UnifiedAdminLayout>
     );
@@ -166,15 +134,38 @@ export default function AdminPilotAccountDetailPage() {
           <div className="flex-1">
             <h1 className="text-xl font-semibold">{clientId}</h1>
             <p className="text-sm text-gray-600">
-              Invite: {pilot.pilot_invite_code || '—'} · Plan: {profile.billing_plan || pilot.billing_plan || '—'}
+              Invite: {pilot.pilot_invite_code || '—'} · Plan:{' '}
+              {profile?.billing_plan || pilot.billing_plan || '—'}
             </p>
           </div>
-          <span className={`px-2 py-1 rounded text-xs ${healthBandClass(ops.pilot_health_band)}`}>
-            {ops.pilot_health_band || '—'}
-            {ops.pilot_health_score != null ? ` (${ops.pilot_health_score})` : ''}
-          </span>
+          {hasLifecycleProfile && (
+            <span className={`px-2 py-1 rounded text-xs ${healthBandClass(ops.pilot_health_band)}`}>
+              {ops.pilot_health_band || '—'}
+              {ops.pilot_health_score != null ? ` (${ops.pilot_health_score})` : ''}
+            </span>
+          )}
         </div>
 
+        {profileError && (
+          <Alert>
+            <AlertDescription>
+              {profileError} — promo recovery controls below still apply for stranded or incomplete onboarding.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <PilotAccountRecoveryPanel
+          clientId={clientId}
+          defaultEmail={profile?.email || profile?.contact_email}
+          inviteCode={pilot.pilot_invite_code || redeemedSnapshot.redeemed_code}
+          showPilotOpsLink={false}
+          accountClientPathPrefix="/admin/clients"
+          sectionTitle="Promo & Recovery Controls"
+          showAllControls
+        />
+
+        {hasLifecycleProfile && (
+        <>
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Lifecycle summary</CardTitle>
@@ -270,17 +261,6 @@ export default function AdminPilotAccountDetailPage() {
             </CardContent>
           </Card>
         </div>
-
-        <PilotRedemptionRecoverySection
-          context="account"
-          clientId={clientId}
-          inviteCode={pilot.pilot_invite_code || redeemedSnapshot.redeemed_code}
-          redemptions={redemptionData.redemptions}
-          eligibilityOverrides={redemptionData.eligibility_overrides}
-          loading={redemptionsLoading}
-          onReload={loadRedemptions}
-          defaultEmail={profile?.email || profile?.contact_email || pilot?.email}
-        />
 
         <div className="grid md:grid-cols-2 gap-4">
           <Card data-testid="pilot-redeemed-campaign-snapshot">
@@ -457,6 +437,8 @@ export default function AdminPilotAccountDetailPage() {
             </ul>
           </CardContent>
         </Card>
+        </>
+        )}
 
         <PilotReasonDialog
           open={Boolean(dialog)}

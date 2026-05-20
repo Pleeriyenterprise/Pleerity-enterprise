@@ -86,3 +86,51 @@ export function isOverrideActive(override) {
     return true;
   }
 }
+
+/** Badge labels for API indicator keys (display only). */
+export const RECOVERY_BADGE_LABELS = {
+  payment_failed: 'Payment failed',
+  provisioning_failed: 'Provisioning failed',
+  incomplete_redemption: 'Incomplete redemption',
+  retry_blocked: 'Retry blocked',
+  override_active: 'Override active',
+  first_time_bypass: 'First-time bypass',
+  intake_pending: 'Intake pending',
+  pending_in_grace: 'Pending (grace)',
+  stranded_onboarding: 'Stranded onboarding',
+  waiver_active: 'Waiver active',
+  no_subscription: 'No subscription',
+  retry_eligible: 'Retry eligible',
+  onboarding_recovery_needed: 'Onboarding recovery needed',
+};
+
+export function recoveryBadgeLabel(key) {
+  return RECOVERY_BADGE_LABELS[key] || key || '—';
+}
+
+/**
+ * Whether recovery panel should render (prefer API show_recovery_panel; fallback for tests).
+ */
+export function shouldShowRecoveryPanel({
+  showRecoveryPanel,
+  redemptions = [],
+  eligibilityOverrides = [],
+  inviteMetadata = {},
+} = {}) {
+  if (showRecoveryPanel === true) return true;
+  if (showRecoveryPanel === false) return false;
+  if (redemptions.length > 0 || eligibilityOverrides.length > 0) return true;
+  if (inviteMetadata?.pilot_invite_code || inviteMetadata?.pilot_redeemed_campaign_snapshot_id) {
+    return true;
+  }
+  return false;
+}
+
+export function indicatorsToBadges(indicators) {
+  if (!indicators) return [];
+  const fromApi = Array.isArray(indicators.badges) ? [...indicators.badges] : [];
+  if (indicators.stranded_onboarding && !fromApi.includes('stranded_onboarding')) {
+    fromApi.unshift('stranded_onboarding');
+  }
+  return fromApi;
+}

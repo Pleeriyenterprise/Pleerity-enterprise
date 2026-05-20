@@ -44,10 +44,13 @@ describe('PilotRedemptionRecoverySection', () => {
             },
           ]}
           onReload={jest.fn()}
+          showAllControls
         />
       </MemoryRouter>,
     );
     expect(screen.getByTestId('pilot-redemption-recovery-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('waive-onboarding-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('bypass-first-time-btn')).toBeInTheDocument();
     expect(screen.getByTestId('redemption-row-r1')).toBeInTheDocument();
     expect(screen.getByTestId('redemption-failure-reason')).toHaveTextContent('checkout abandoned');
     expect(screen.getByTestId('allow-retry-r1')).toBeInTheDocument();

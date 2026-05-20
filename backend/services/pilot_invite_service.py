@@ -2027,16 +2027,9 @@ async def list_invite_redemptions(
 
 
 async def list_client_redemptions(client_id: str, *, limit: int = 50) -> List[Dict[str, Any]]:
-    from services.pilot_redemption_lifecycle import summarize_redemption_for_admin
+    from services.pilot_promo_recovery_service import list_redemptions_for_account
 
-    db = database.get_db()
-    cursor = (
-        db[COL_REDEMPTIONS].find({"client_id": client_id}, {"_id": 0})
-        .sort("created_at", -1)
-        .limit(limit)
-    )
-    rows = [doc async for doc in cursor]
-    return [summarize_redemption_for_admin(r) for r in rows]
+    return await list_redemptions_for_account(client_id, limit=limit)
 
 
 async def admin_allow_redemption_retry(
