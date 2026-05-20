@@ -1,0 +1,96 @@
+{
+  "started_at_utc": "2026-05-20T20:14:41.176468+00:00",
+  "frontend_url": "http://127.0.0.1:3000",
+  "api_url": "http://127.0.0.1:8000",
+  "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+  "requirement_type": "occupation_contract",
+  "upload_mode": "guided_modal_supporting_only",
+  "upload_path": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad?open=resolve&requirement_id=488269bb-1be7-47e7-a030-98accf6dffc4",
+  "steps": [
+    {
+      "step": "C-modal_opened",
+      "ok": true,
+      "detail": "property_deeplink",
+      "at": "2026-05-20T20:14:50.440350+00:00"
+    },
+    {
+      "step": "C-3_truthful_modal_copy",
+      "ok": true,
+      "detail": "Supporting files vs authoritative submission\n\nUploading supporting files here saves them to your vault only.\n\nIt does no",
+      "at": "2026-05-20T20:14:50.459348+00:00"
+    },
+    {
+      "step": "C-1_supporting_upload",
+      "ok": true,
+      "detail": "status=200 doc=f3ad6a0e-3f48-4821-8344-9f02cc2be580",
+      "at": "2026-05-20T20:14:52.418766+00:00"
+    },
+    {
+      "step": "C-2_no_compliance_evidence_post",
+      "ok": true,
+      "detail": "None",
+      "at": "2026-05-20T20:14:52.418766+00:00"
+    },
+    {
+      "step": "C-4_no_false_submit_summary",
+      "ok": true,
+      "detail": "visible=False",
+      "at": "2026-05-20T20:14:52.423650+00:00"
+    },
+    {
+      "step": "C-2_row_attribution",
+      "ok": true,
+      "detail": "Occupation Contract\nAwaiting review\nAwaiting review\nSupporting added\n\nAuthoritative submission on fi",
+      "at": "2026-05-20T20:15:13.388286+00:00"
+    },
+    {
+      "step": "no_false_submission_panel",
+      "ok": true,
+      "detail": "panel=False",
+      "at": "2026-05-20T20:15:13.639812+00:00"
+    }
+  ],
+  "checkpoints": {
+    "C-3": true,
+    "C-1": true,
+    "C-2": true,
+    "C-4": true,
+    "C-2_row": true
+  },
+  "upload_response": {
+    "http_status": 200,
+    "body": {
+      "message": "Supporting file uploaded. Complete the requirement record to update compliance status.",
+      "document_id": "f3ad6a0e-3f48-4821-8344-9f02cc2be580",
+      "outcome": null,
+      "requirement_workflow_pending": false,
+      "evidence_match": {
+        "match_outcome": "UNKNOWN_TYPE",
+        "match_confidence": 0.0,
+        "predicted_document_type": "UNKNOWN",
+        "mismatch_reason_code": "NO_REQUIREMENT_LINK",
+        "mismatch_reason_text": null,
+        "user_messages": [
+          "We could not confidently classify this file against a requirement yet. Link a requirement or wait for extraction, then confirm details."
+        ],
+        "evidence_satisfies_requirement": null
+      },
+      "document_metadata": null,
+      "validation_result": null
+    },
+    "document_id": "f3ad6a0e-3f48-4821-8344-9f02cc2be580"
+  },
+  "ui_copy_observed": {
+    "truth_banner": "Supporting files vs authoritative submission\n\nUploading supporting files here saves them to your vault only.\n\nIt does not submit or update your formal requirement record until you complete the structured form and press Submit evidence.",
+    "modal_description": "Add compliance evidence\n\nChoose how you want to evidence this obligation. Uploading a certificate stays on the Documents page (or use \u201cUpload document\u201d on the requirement when offered). Other methods create a compliance evidence record for review.\n\nSupporting files vs authoritative submission\n\nUploading supporting files here saves them to your vault only.\n\nIt does not submit or update your formal requirement record until you complete the structured form and press Submit evidence.\n\nLoading allowed methods\u2026\n\nCancel\nSubmit evidence\nClose",
+    "requirement_row": "Occupation Contract\nAwaiting review\nAwaiting review\nSupporting added\n\nAuthoritative submission on file \u2014 awaiting review. Supporting uploads alone do not complete this obligation.\n\nAdditional supporting document uploaded \u2014 does not replace your submission on file.\n\nWritten occupation contract (Wales)\n\nKensington Garden Flat\nWales\nEstimated renewal date: 4 Jun 2026\nPUBLISHED + CORE RULES\n\nEstimated from standard compliance cycles and your property setup. Upload your certificate to confirm this da",
+    "requirement_intel": "Requirement details\n\nOccupation contract (Wales)\n\nKensington Garden Flat\n\nLoading\u2026\nClose"
+  },
+  "document_id": "f3ad6a0e-3f48-4821-8344-9f02cc2be580",
+  "ui_attestations_probe": {
+    "submission_panel_visible": false,
+    "false_complete_implied": false
+  },
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae\\ops_verify_01_journey_c_ui.png",
+  "finished_at_utc": "2026-05-20T20:15:13.873102+00:00"
+}

@@ -57,7 +57,13 @@ import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
 import { NotApplicableGovernedNotice } from '../utils/notApplicableGovernedCopy';
 import { useComplianceOutcomeRefresh } from '../utils/useComplianceOutcomeRefresh';
-import { resolveSubmissionAwareEvidenceBadgeLabel } from '../utils/clientPersistedSubmissionPresentation';
+import {
+  COMPLIANCE_SUPPORTING_UPLOAD_EVENT,
+  readRecentSupportingUploadAttributionFromSession,
+  recentSupportingUploadAttributionSubline,
+  resolveSubmissionAwareEvidenceBadgeLabel,
+  submissionAwaitingReviewSubline,
+} from '../utils/clientPersistedSubmissionPresentation';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -98,6 +104,8 @@ const RequirementsPage = () => {
   const [viewRequirementModal, setViewRequirementModal] = useState(null);
   const [planJobGate, setPlanJobGate] = useState(null);
   const [reopenSavingId, setReopenSavingId] = useState(null);
+  /** @type {Record<string, number>} requirement_id → timestamp of latest supporting-only upload this session */
+  const [recentSupportingUploadAt, setRecentSupportingUploadAt] = useState({});
   const [requirementsLoadError, setRequirementsLoadError] = useState(null);
   const [requirementsLoaded, setRequirementsLoaded] = useState(false);
 
@@ -174,6 +182,17 @@ const RequirementsPage = () => {
   };
 
   useComplianceOutcomeRefresh(fetchData, []);
+
+  useEffect(() => {
+    setRecentSupportingUploadAt((prev) => ({ ...readRecentSupportingUploadAttributionFromSession(), ...prev }));
+    const onSupportingUpload = (event) => {
+      const rid = String(event?.detail?.requirement_id || '').trim();
+      if (!rid) return;
+      setRecentSupportingUploadAt((prev) => ({ ...prev, [rid]: event.detail?.at || Date.now() }));
+    };
+    window.addEventListener(COMPLIANCE_SUPPORTING_UPLOAD_EVENT, onSupportingUpload);
+    return () => window.removeEventListener(COMPLIANCE_SUPPORTING_UPLOAD_EVENT, onSupportingUpload);
+  }, []);
 
   const getPropertyById = (propertyId) => {
     return properties.find(p => p.property_id === propertyId) || {};
@@ -499,9 +518,20 @@ const RequirementsPage = () => {
                 ) : null}
                 {(() => {
                   const badge = resolveSubmissionAwareEvidenceBadgeLabel(req.evidence_badge_label, req);
+                  const recentSupporting = recentSupportingUploadAttributionSubline(
+                    req.requirement_id,
+                    recentSupportingUploadAt,
+                  );
                   return badge ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200" data-testid={`evidence-badge-${req.requirement_id}`}>
-                    Document: {badge}
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border ${
+                      recentSupporting
+                        ? 'bg-teal-50 text-teal-900 border-teal-200'
+                        : 'bg-slate-50 text-slate-700 border-slate-200'
+                    }`}
+                    data-testid={`evidence-badge-${req.requirement_id}`}
+                  >
+                    {recentSupporting ? 'Supporting added' : `Document: ${badge}`}
                   </span>
                   ) : null;
                 })()}
@@ -514,6 +544,22 @@ const RequirementsPage = () => {
               </div>
               {statusConfig.subline ? (
                 <p className="text-xs text-gray-500 mt-1 max-w-prose">{statusConfig.subline}</p>
+              ) : null}
+              {submissionAwaitingReviewSubline(req) ? (
+                <p
+                  className="text-xs text-amber-800 mt-1 max-w-prose"
+                  data-testid={`submission-on-file-subline-${req.requirement_id}`}
+                >
+                  {submissionAwaitingReviewSubline(req)}
+                </p>
+              ) : null}
+              {recentSupportingUploadAttributionSubline(req.requirement_id, recentSupportingUploadAt) ? (
+                <p
+                  className="text-xs text-teal-800 bg-teal-50 border border-teal-200 rounded-md px-2 py-1 mt-1 max-w-prose"
+                  data-testid={`recent-supporting-attribution-${req.requirement_id}`}
+                >
+                  {recentSupportingUploadAttributionSubline(req.requirement_id, recentSupportingUploadAt)}
+                </p>
               ) : null}
               {req.why_it_matters_long ? (
                 <p className="text-sm text-gray-600 mt-1 line-clamp-3" data-testid={`why-long-${req.requirement_id}`}>

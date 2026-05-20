@@ -1,8 +1,10 @@
 import {
+  dispatchSupportingUploadAttribution,
   isSubmissionAwaitingReview,
   requirementHasPersistedClientSubmission,
   resolveClientRequirementLifecycleForPresentation,
   resolveSubmissionAwareEvidenceBadgeLabel,
+  resolveStaticSupportingUploadDisclaimer,
 } from './clientPersistedSubmissionPresentation';
 
 describe('clientPersistedSubmissionPresentation', () => {
@@ -35,8 +37,17 @@ describe('clientPersistedSubmissionPresentation', () => {
     expect(lc.label).toBe('Awaiting review');
   });
 
-  it('replaces misleading not-uploaded badge', () => {
-    expect(resolveSubmissionAwareEvidenceBadgeLabel('Not uploaded', rowWithCer)).toBe('Submission received');
+  it('replaces misleading not-uploaded badge with on-file semantics', () => {
+    expect(resolveSubmissionAwareEvidenceBadgeLabel('Not uploaded', rowWithCer)).toBe('Submission on file');
+  });
+
+  it('dispatches supporting upload attribution event', () => {
+    const handler = jest.fn();
+    window.addEventListener('compliance-supporting-upload', handler);
+    dispatchSupportingUploadAttribution({ requirement_id: 'r1', property_id: 'p1' });
+    window.removeEventListener('compliance-supporting-upload', handler);
+    expect(handler).toHaveBeenCalled();
+    expect(handler.mock.calls[0][0].detail.requirement_id).toBe('r1');
   });
 
   it('leaves badge unchanged when no submission', () => {

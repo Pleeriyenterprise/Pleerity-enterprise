@@ -66,7 +66,10 @@ export function resolveSubmissionAwareEvidenceBadgeLabel(badgeLabel, row) {
   if (!raw) return null;
   if (!isSubmissionAwaitingReview(row)) return raw;
   if (/^not uploaded$/i.test(raw) || /^no document uploaded$/i.test(raw)) {
-    return 'Submission received';
+    return 'Submission on file';
+  }
+  if (/^submission received$/i.test(raw)) {
+    return 'Submission on file';
   }
   return raw;
 }
@@ -76,5 +79,82 @@ export function resolveSubmissionAwareEvidenceBadgeLabel(badgeLabel, row) {
  */
 export function submissionAwaitingReviewSubline(row) {
   if (!isSubmissionAwaitingReview(row)) return null;
-  return 'Your submission is on file and awaiting review.';
+  return 'Authoritative submission on file — awaiting review. Supporting uploads alone do not complete this obligation.';
+}
+
+/** @typedef {{ requirement_id: string; property_id?: string; at?: number; document_count?: number }} SupportingUploadAttributionDetail */
+
+export const COMPLIANCE_SUPPORTING_UPLOAD_EVENT = 'compliance-supporting-upload';
+
+/**
+ * @param {SupportingUploadAttributionDetail} detail
+ */
+const SUPPORTING_UPLOAD_SESSION_PREFIX = 'cvp_recent_supporting_upload:';
+
+export function dispatchSupportingUploadAttribution(detail) {
+  if (typeof window === 'undefined' || !detail?.requirement_id) return;
+  const payload = { at: Date.now(), ...detail };
+  try {
+    sessionStorage.setItem(
+      `${SUPPORTING_UPLOAD_SESSION_PREFIX}${detail.requirement_id}`,
+      JSON.stringify(payload),
+    );
+  } catch {
+    /* ignore quota / private mode */
+  }
+  window.dispatchEvent(
+    new CustomEvent(COMPLIANCE_SUPPORTING_UPLOAD_EVENT, {
+      detail: payload,
+    }),
+  );
+}
+
+/**
+ * @returns {Record<string, number>}
+ */
+export function readRecentSupportingUploadAttributionFromSession() {
+  if (typeof window === 'undefined' || !window.sessionStorage) return {};
+  const out = {};
+  try {
+    for (let i = 0; i < sessionStorage.length; i += 1) {
+      const key = sessionStorage.key(i);
+      if (!key || !key.startsWith(SUPPORTING_UPLOAD_SESSION_PREFIX)) continue;
+      const rid = key.slice(SUPPORTING_UPLOAD_SESSION_PREFIX.length);
+      const raw = sessionStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (parsed?.at) out[rid] = Number(parsed.at);
+    }
+  } catch {
+    return out;
+  }
+  return out;
+}
+
+/**
+ * @param {string|null|undefined} requirementId
+ * @param {Record<string, number>|null|undefined} recentByRequirementId ms timestamp per requirement_id
+ */
+export function recentSupportingUploadAttributionSubline(requirementId, recentByRequirementId) {
+  const rid = String(requirementId || '').trim();
+  if (!rid || !recentByRequirementId || !recentByRequirementId[rid]) return null;
+  return 'Additional supporting document uploaded — does not replace your submission on file.';
+}
+
+/**
+ * Static copy shown before evidence-resolution API finishes (OPS-VERIFY-01 Journey C).
+ * @param {Record<string, unknown>|null|undefined} requirement
+ */
+export function resolveStaticSupportingUploadDisclaimer(requirement) {
+  const hasSubmission = requirementHasPersistedClientSubmission(requirement);
+  const lines = [
+    'Uploading supporting files here saves them to your vault only.',
+    'It does not submit or update your formal requirement record until you complete the structured form and press Submit evidence.',
+  ];
+  if (hasSubmission) {
+    lines.push(
+      'Your authoritative submission is already on file. New supporting files supplement that record — they do not create a new submission.',
+    );
+  }
+  return lines;
 }

@@ -16,6 +16,12 @@ import {
   evaluateStructuredDeclarationConditionalRules,
   RIGHT_TO_RENT_STRUCTURED_DECLARATION_CONDITIONAL_RULES,
 } from '../utils/structuredDeclarationConditionalValidation';
+import {
+  dispatchSupportingUploadAttribution,
+  requirementHasPersistedClientSubmission,
+  resolveStaticSupportingUploadDisclaimer,
+} from '../utils/clientPersistedSubmissionPresentation';
+import { supportingUploadSuccessToast } from '../utils/supportingUploadToastCopy';
 
 /** YYYY-MM-DD for native date input; tolerates other stored strings without coercing. */
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -145,6 +151,8 @@ export default function ComplianceEvidenceResolveModal({
   const isTenancyAgreement = canonicalReqCode === 'tenancy_agreement';
   const selectedMethod = (info?.guided_methods || []).find((x) => x.evidence_mode === selectedMode) || null;
   const selectedChecklistSchema = Array.isArray(selectedMethod?.checklist_schema) ? selectedMethod.checklist_schema : [];
+  const hasExistingAuthoritativeSubmission = requirementHasPersistedClientSubmission(requirement);
+  const staticSupportingDisclaimer = resolveStaticSupportingUploadDisclaimer(requirement);
 
   const setChecklistAnswer = (mode, id, patch) => {
     if (mode === 'STRUCTURED_DECLARATION') setStructuredValidationError('');
@@ -209,9 +217,12 @@ export default function ComplianceEvidenceResolveModal({
       setSupportingUploads((prev) => [...prev, ...uploaded]);
       setSupportingFiles([]);
       if (uploaded.length > 0) {
-        toast.success(
-          `Supporting file${uploaded.length === 1 ? '' : 's'} uploaded. Complete and submit the form below to record this requirement.`,
-        );
+        toast.success(supportingUploadSuccessToast(requirement, uploaded.length));
+        dispatchSupportingUploadAttribution({
+          requirement_id: rid,
+          property_id: propertyId,
+          document_count: uploaded.length,
+        });
       }
     } catch (e) {
       toast.error(e?.response?.data?.detail || 'Could not upload supporting files');
@@ -375,6 +386,25 @@ export default function ComplianceEvidenceResolveModal({
             )}
           </DialogDescription>
         </DialogHeader>
+        <div
+          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1.5 -mt-1"
+          data-testid="supporting-upload-truth-banner"
+        >
+          <p className="text-xs font-semibold text-midnight-blue">Supporting files vs authoritative submission</p>
+          {staticSupportingDisclaimer.map((line) => (
+            <p key={line} className="text-xs text-slate-700">
+              {line}
+            </p>
+          ))}
+        </div>
+        {hasExistingAuthoritativeSubmission ? (
+          <p
+            className="text-xs font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2"
+            data-testid="existing-submission-on-file-banner"
+          >
+            Submission already on file — awaiting review. Uploading supporting files here supplements that record only.
+          </p>
+        ) : null}
         {clientEvidenceDisclosure ? (
           <p className="text-sm text-gray-600 -mt-1 mb-1" data-testid="client-evidence-disclosure">
             {clientEvidenceDisclosure}
@@ -498,14 +528,16 @@ export default function ComplianceEvidenceResolveModal({
                     ? 'Upload supporting evidence (optional)'
                     : 'Supporting evidence uploads'}
               </p>
-              <p className="text-xs text-gray-600">
-                {isTenantDelivery
-                  ? 'Attach emails, scans, or references that support your delivery record. These are reviewed as supporting material.'
-                  : isGuidedDeclaration && isTenancyAgreement
-                    ? 'Attach the signed agreement copy as supporting material after recording tenancy details.'
-                  : isGuidedDeclaration
-                    ? 'Attach copies or scans that support your check record. These are reviewed as supporting material only.'
-                    : 'Supporting files improve verification confidence and are linked to this evidence record.'}
+              <p className="text-xs text-gray-600" data-testid="supporting-upload-section-hint">
+                {hasExistingAuthoritativeSubmission
+                  ? 'Attach additional scans or references to supplement your submission on file. This upload alone does not submit or fulfil the obligation.'
+                  : isTenantDelivery
+                    ? 'Attach emails, scans, or references that support your delivery record. These are reviewed as supporting material only until you submit the form.'
+                    : isGuidedDeclaration && isTenancyAgreement
+                      ? 'Attach the signed agreement copy as supporting material after recording tenancy details.'
+                      : isGuidedDeclaration
+                        ? 'Attach copies or scans that support your check record. These are reviewed as supporting material only until you press Submit evidence.'
+                        : 'Supporting files improve verification confidence. They are not linked to a formal submission until you complete and submit the form below.'}
               </p>
               <input
                 type="file"

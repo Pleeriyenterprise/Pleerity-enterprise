@@ -13,7 +13,8 @@
   ],
   "journeys_executed": [
     "A_guided_structured_evidence_submit",
-    "B_primary_document_upload"
+    "B_primary_document_upload",
+    "C_supporting_upload_only"
   ],
   "verifier": "cursor-ops-verify-01",
   "proof_mode": "operational_browser",
@@ -33,6 +34,13 @@
       "refresh_persisted": true,
       "upload_api_ack": true,
       "user_visible_gap": false
+    },
+    "C_supporting_upload_only": {
+      "supporting_only_copy_truthful": true,
+      "no_false_submission_panel": true,
+      "false_completion_implied": false,
+      "user_visible_gap": false,
+      "upload_only_no_submit": true
     }
   },
   "checkpoint_results": {
@@ -55,18 +63,24 @@
       "B-4": true,
       "B-7": true,
       "B-6": true
+    },
+    "C_supporting_upload_only": {
+      "C-1": true,
+      "C-2": true,
+      "C-3": true,
+      "C-4": true
     }
   },
-  "notes": "Infrastructure replay proof \u2260 operational closure proof. Journey A: backend path verified; browser TRUST-01 surfaces not verified in this session.",
+  "notes": "Infrastructure replay proof \u2260 operational closure proof. Journeys A\u2013C verified via operational_browser on pilot 6fd5ac4c/d35a58ae. Shared baseline/post/convergence snapshots reflect Journey C terminal capture; per-journey DB proof also at commits 091c2848 (A) and 15570386 (B). Journey D optional, not executed.",
   "implementation_scope": "operational_verification_capture_and_classify_only",
   "read_only": true,
   "api_url": "http://127.0.0.1:8000",
-  "submit_via": "browser_documents_upload",
+  "submit_via": "browser_guided_supporting_only",
   "submit_correlation_id": "DOC_UPLOADED:a9fd10d8-9ac5-4998-8676-bfe03134a14b",
   "cer_id": "cer_979c123533804653a9e20b2f6008b7f6",
-  "execution_notes": "Final Journey A browser walkthrough. Existing CER re-submit via property ?open=resolve deep-link. New CER cer_979c123533804653a9e20b2f6008b7f6 Journey B: EICR primary document upload via /documents deeplink; requirement_id=69fc66fe-e196-44d4-a20e-3fe68d316f7f; document_id=a9fd10d8-9ac5-4998-8676-bfe03134a14b.",
+  "execution_notes": "Final Journey A browser walkthrough. Existing CER re-submit via property ?open=resolve deep-link. New CER cer_979c123533804653a9e20b2f6008b7f6 Journey B: EICR primary document upload via /documents deeplink; requirement_id=69fc66fe-e196-44d4-a20e-3fe68d316f7f; document_id=a9fd10d8-9ac5-4998-8676-bfe03134a14b. Journey C: supporting-only via guided modal for 488269bb-1be7-47e7-a030-98accf6dffc4; doc=76552abb-aefe-4c90-afcb-b883ac473288; cer_delta=0; supporting_docs_delta=1. Journey C: supporting-only via guided modal for 488269bb-1be7-47e7-a030-98accf6dffc4; doc=67f88f49-9101-448d-bd99-ca0b6a9ef2d9; cer_delta=0; supporting_docs_delta=1. Journey C: supporting-only via guided modal for 488269bb-1be7-47e7-a030-98accf6dffc4; doc=f3ad6a0e-3f48-4821-8344-9f02cc2be580; cer_delta=0; supporting_docs_delta=1.",
   "submit_mode": "documents_page_deeplink",
   "prior_cer_id": "cer_799b0c6abff04bb6a8d51ec63ec904a0",
   "upload_path": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=69fc66fe-e196-44d4-a20e-3fe68d316f7f&requirement_code=fire_alarm&focus=upload",
-  "document_id": "a9fd10d8-9ac5-4998-8676-bfe03134a14b"
+  "document_id": "f3ad6a0e-3f48-4821-8344-9f02cc2be580"
 }

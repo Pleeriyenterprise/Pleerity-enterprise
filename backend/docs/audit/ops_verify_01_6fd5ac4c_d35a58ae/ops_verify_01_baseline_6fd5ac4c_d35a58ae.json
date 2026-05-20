@@ -1,14 +1,14 @@
 {
   "unit_id": "OPS-VERIFY-01",
   "phase": "baseline",
-  "captured_at_utc": "2026-05-20T19:09:46.954795+00:00",
+  "captured_at_utc": "2026-05-20T20:13:34.894772+00:00",
   "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
   "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-  "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+  "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
   "requirement": {
     "found": true,
-    "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
-    "requirement_type": "fire_alarm",
+    "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+    "requirement_type": "occupation_contract",
     "status": "PENDING",
     "lifecycle_state": null,
     "evidence_status": null,
@@ -35,31 +35,37 @@
         "match_confidence": null,
         "mismatch_reason_code": null,
         "evidence_match_blocks_satisfaction": false,
-        "primary_evidence_mode": "DOCUMENT_UPLOAD",
+        "primary_evidence_mode": "STRUCTURED_DECLARATION",
         "evidence_confidence_level": "MEDIUM",
         "non_document_verification_status": "PENDING_REVIEW",
-        "primary_evidence_record_id": "cer_04f2ea36e9d04b37b434fa93f433c80d",
-        "pending_non_document_evidence_count": 1,
+        "primary_evidence_record_id": "cer_979c123533804653a9e20b2f6008b7f6",
+        "pending_non_document_evidence_count": 3,
         "semantic_state": "MISSING"
       },
-      "fingerprint": "5715683e4b30d5e26d9a19be7a4f6435"
+      "fingerprint": "ea93de1f16f848ed851907d356918b81"
     },
-    "row_fingerprint": "85c926a469da5d99178ba33cd82078c3"
+    "row_fingerprint": "a30cc24da8f6ac9596a2e1c1fcb84583"
   },
   "property_score": {
-    "compliance_score": 67,
+    "compliance_score": 71,
     "compliance_score_pending": false,
-    "compliance_last_calculated_at": "2026-05-20T19:08:14.624650+00:00",
-    "risk_level": "Elevated risk",
-    "fingerprint": "bbaee9e008687840"
+    "compliance_last_calculated_at": "2026-05-20T19:10:44.872009+00:00",
+    "risk_level": "Moderate risk",
+    "fingerprint": "8406818445afce87"
   },
   "queue": {
     "counts_by_status": {
-      "DONE": 135,
-      "TOTAL": 135
+      "DONE": 136,
+      "TOTAL": 136
     },
     "pending_or_running": 0,
     "recent_rows": [
+      {
+        "correlation_id": "DOC_UPLOADED:a9fd10d8-9ac5-4998-8676-bfe03134a14b",
+        "status": "DONE",
+        "created_at": "2026-05-20T19:10:40.186522+00:00",
+        "updated_at": "2026-05-20T19:10:54.250905+00:00"
+      },
       {
         "correlation_id": "DOC_DELETED:a94968d0-d844-4b79-b870-bb2f50f4591f",
         "status": "DONE",
@@ -203,26 +209,20 @@
         "status": "DONE",
         "created_at": "2026-05-15T03:20:20.588276+00:00",
         "updated_at": "2026-05-15T03:27:05.315826+00:00"
-      },
-      {
-        "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-15",
-        "status": "DONE",
-        "created_at": "2026-05-15T00:10:05.159351+00:00",
-        "updated_at": "2026-05-15T00:11:30.837941+00:00"
       }
     ],
-    "fingerprint": "974d769ead2e1ef2"
+    "fingerprint": "455c5dae42e7a4b4"
   },
   "dashboard_tasks": {
-    "compliance_score": 67,
+    "compliance_score": 71,
     "compliance_score_pending": false,
-    "compliance_last_calculated_at": "2026-05-20T19:08:14.624650+00:00",
-    "risk_level": "Elevated risk",
+    "compliance_last_calculated_at": "2026-05-20T19:10:44.872009+00:00",
+    "risk_level": "Moderate risk",
     "top_deficits": [
       {
         "requirement_code": "FIRE_DETECTION",
-        "status": "MISSING",
-        "missing_points": 10.0,
+        "status": "NEEDS_REVIEW",
+        "missing_points": 5.35,
         "risk_level_if_failed": "HIGH"
       },
       {
@@ -281,31 +281,56 @@
       "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
       "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
       "requirement:69fc66fe-e196-44d4-a20e-3fe68d316f7f",
-      "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
-      "risk_signal:rs_f06fa5c8913c",
+      "requirement:d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6",
+      "risk_signal:rs_fd17d70d3ca9",
       "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
     ],
     "stable_task_business_keys_sample": [
-      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence missing: Smoke, Heat & CO Alarms",
-      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|8c4d9635-bce5-4a06-b3ac-eccd59ed9a23|Evidence needed (legacy read): HMO Fire Safety",
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|69fc66fe-e196-44d4-a20e-3fe68d316f7f|Evidence review required: Smoke, Heat & CO Alarms",
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6|Evidence needed (legacy read): HMO Fire Safety",
       "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
       "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
       "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
       "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
     ],
     "fingerprint_mode": "normalized_stable_business_keys_c2a",
-    "fingerprint": "69a1076429932f4dccb331f20a20ecd7",
-    "fingerprint_legacy_volatile_ids": "f961a23d6e5e398859499f5756cd58cb"
+    "fingerprint": "ac7824c34f92cf9b46b5e12b81abcb3b",
+    "fingerprint_legacy_volatile_ids": "65e61888f61320437d438537ef251d58"
   },
   "cer_rows": [
     {
-      "evidence_mode": "DOCUMENT_UPLOAD",
-      "created_at": "2026-05-20T19:07:14.295142+00:00",
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-18T15:45:08.523686+00:00",
       "verification_status": "PENDING_REVIEW",
-      "linked_document_ids": [
-        "a94968d0-d844-4b79-b870-bb2f50f4591f"
-      ]
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-18T15:43:06.318572+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-18T14:22:59.976582+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
     }
   ],
-  "documents": []
+  "documents": [],
+  "supporting_documents_property_scope": {
+    "count": 2,
+    "rows": [
+      {
+        "document_id": "67f88f49-9101-448d-bd99-ca0b6a9ef2d9",
+        "requirement_id": null,
+        "uploaded_at": "2026-05-20T21:07:09.217674+01:00"
+      },
+      {
+        "document_id": "76552abb-aefe-4c90-afcb-b883ac473288",
+        "requirement_id": null,
+        "uploaded_at": "2026-05-20T20:37:02.438171+01:00"
+      }
+    ]
+  }
 }

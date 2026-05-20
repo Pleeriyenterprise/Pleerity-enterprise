@@ -153,7 +153,7 @@ During beta, operators use **Admin → Automation** together with **Control Cent
 
 ### 4.9 Client evidence journeys — operational verification (OPS-VERIFY-01)
 
-**Unit status:** **IN_PROGRESS / PARTIAL** — Journey A `VERIFIED_OPERATIONALLY` (existing-CER re-submit); clean first-submit unverified; B/C not started.
+**Unit status:** **COMPLETE (A/B/C)** — Journey D optional, not executed. Pilot bundle `docs/audit/ops_verify_01_6fd5ac4c_d35a58ae/`.
 
 When users report “submitted but nothing shows” or “upload didn’t count”:
 
@@ -161,7 +161,7 @@ When users report “submitted but nothing shows” or “upload didn’t count�
 2. Run OPS-VERIFY-01 checklist: CER exists → authority blob → queue DONE → UI inspect (Requirement details → Your submission).
 3. Capture read-only bundles via `python -m scripts.ops_verify_01_capture` (baseline → post-submit → convergence) and classify via `python -m scripts.ops_verify_01_classify`.
 4. Do not treat D1/C2 pass as proof the client journey worked — check OPS-VERIFY-01 artefacts.
-5. **Journey A (pilot):** bundle `docs/audit/ops_verify_01_6fd5ac4c_d35a58ae/` — browser guided submit attested; re-submit used property `?open=resolve` deep-link when row CTA is “View submission”.
+5. **Pilot closure (2026-05-20):** A = existing-CER re-submit (`?open=resolve`); clean first-submit remains **watchlist**. B = **fire_alarm** primary upload. C = supporting-only with truthful copy after TRUST remediation. D = not run.
 
 ---
 

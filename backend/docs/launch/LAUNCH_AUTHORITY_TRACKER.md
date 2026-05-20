@@ -4693,7 +4693,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### TRUST-01 — operational coherence remediation (2026-05-16)
 
-**Status:** **IMPLEMENTED** — frontend remediation verified through OPS-VERIFY-01 Journey A browser re-submit path (2026-05-18).
+**Status:** **IMPLEMENTED** — frontend remediation verified through OPS-VERIFY-01 Journey A re-submit (2026-05-18) and Journey C supporting-vs-authoritative copy (2026-05-20).
 
 **Scope:** Product-path read/write coherence only — persisted guided compliance evidence records (CER) are human-inspectable in **Requirement details**; supporting-file upload success is separated from authoritative `POST /compliance-evidence` completion; no authority, fanout, lifecycle, or governance expansion.
 
@@ -4703,25 +4703,25 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ---
 
-### OPS-VERIFY-01 — client evidence journey operational closure (IN_PROGRESS / PARTIAL)
+### OPS-VERIFY-01 — client evidence journey operational closure (COMPLETE — A/B/C)
 
 **Scope:** Staging walkthrough + DB + async convergence for real client journeys (guided submit, primary upload, supporting-only). **Not** D1/E1/C1/C2/F1 replacement.
 
 **Rule:** Infrastructure replay proof ≠ operational closure proof.
 
-**Unit status:** **IN_PROGRESS / PARTIAL** — required journeys not all complete; unit is **not** DONE.
+**Unit status:** **COMPLETE** for required journeys A–C. Journey **D** is optional and **waived** (not executed); OPS-VERIFY-01 is **not** PARTIAL solely because D was skipped.
 
 | Journey | Status |
 |---------|--------|
-| **A** guided structured evidence submit | **VERIFIED_OPERATIONALLY** — pilot `occupation_contract` (`488269bb-…`) existing-CER **re-submit** via browser (`proof_mode: operational_browser`); bundle `docs/audit/ops_verify_01_6fd5ac4c_d35a58ae/`. |
-| **A** clean first-submit | **Unverified / watchlist** — no greenfield guided requirement on pilot property; first-time modal submit not attested. |
-| **B** primary document upload | **NOT_STARTED** |
-| **C** supporting-upload-only | **NOT_STARTED** |
-| **D** verify/review (optional) | **NOT_STARTED** |
+| **A** guided structured evidence submit | **VERIFIED_OPERATIONALLY** — existing-CER **re-submit** on pilot `occupation_contract` (`488269bb-…`) via browser `?open=resolve` (`proof_mode: operational_browser`); bundle `docs/audit/ops_verify_01_6fd5ac4c_d35a58ae/`. |
+| **A** clean first-submit | **Watchlist** — no greenfield guided requirement on pilot property; first-time modal submit not attested. |
+| **B** primary document upload | **VERIFIED_OPERATIONALLY** — **fire_alarm** `69fc66fe-…` primary document upload via `/documents` deeplink. |
+| **C** supporting-upload-only | **VERIFIED_OPERATIONALLY** — supporting upload only; `cer_delta=0`; truthful UI after TRUST remediation (2026-05-20). |
+| **D** verify/review (optional) | **NOT_STARTED** — optional; not required for unit closure. |
 
-**Harness:** Read-only capture/classify scripts `backend/scripts/ops_verify_01_{capture,manifest,classify,snapshot}.py`; evidence bundles under `docs/audit/ops_verify_01_{slug}/`.
+**Harness:** Read-only capture/classify scripts `backend/scripts/ops_verify_01_{capture,manifest,classify,snapshot}.py`; evidence bundles under `docs/audit/ops_verify_01_{slug}/`. Classifier run per journey against journey-appropriate capture snapshots; roll-up `ops_verify_01_classifications.json` lists A–C `VERIFIED_OPERATIONALLY`.
 
-**Done when:** Evidence bundles under `audit/ops_verify_01_*` and classifications A–C `VERIFIED_OPERATIONALLY` (or signed waiver) — **not met**.
+**Done when:** Evidence bundles under `audit/ops_verify_01_*` and classifications A–C `VERIFIED_OPERATIONALLY` (or signed waiver) — **met** (2026-05-20).
 
 **Out of scope:** Governance expansion, architecture redesign, new RC systems.
 

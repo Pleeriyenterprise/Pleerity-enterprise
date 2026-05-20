@@ -45,14 +45,43 @@ describe('ComplianceEvidenceResolveModal TRUST-01', () => {
         requirement={baseRequirement}
       />,
     );
+    expect(screen.getByTestId('supporting-upload-truth-banner')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText('Declaration')).toBeInTheDocument());
     const input = document.querySelector('input[type="file"]');
     const file = new File(['x'], 'proof.pdf', { type: 'application/pdf' });
     fireEvent.change(input, { target: { files: [file] } });
     fireEvent.click(screen.getByRole('button', { name: /upload supporting files/i }));
     await waitFor(() => expect(toast.success).toHaveBeenCalled());
-    expect(toast.success.mock.calls[0][0]).toMatch(/complete and submit the form below/i);
+    expect(toast.success.mock.calls[0][0]).toMatch(/submit evidence/i);
     expect(clientAPI.postComplianceEvidence).not.toHaveBeenCalled();
+  });
+
+  it('shows existing submission banner and attribution toast when CER on file', async () => {
+    clientAPI.uploadComplianceSupportingAttachment.mockResolvedValue({
+      data: { document_id: 'doc-2' },
+    });
+    const rowWithCer = {
+      requirement_id: 'req-1',
+      requirement_type: 'occupation_contract',
+      jurisdiction: 'Wales',
+      evidence_authority: { primary_evidence_record_id: 'cer_existing' },
+    };
+    render(
+      <ComplianceEvidenceResolveModal
+        open
+        onOpenChange={jest.fn()}
+        propertyId="prop-1"
+        requirement={rowWithCer}
+      />,
+    );
+    expect(screen.getByTestId('existing-submission-on-file-banner')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Declaration')).toBeInTheDocument());
+    const input = document.querySelector('input[type="file"]');
+    fireEvent.change(input, { target: { files: [new File(['x'], 'proof.pdf', { type: 'application/pdf' })] } });
+    fireEvent.click(screen.getByRole('button', { name: /upload supporting files/i }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalled());
+    expect(toast.success.mock.calls[0][0]).toMatch(/existing submission/i);
+    expect(toast.success.mock.calls[0][0]).not.toMatch(/requirement recorded/i);
   });
 
   it('post-submit summary uses authoritative evidence_record payload', async () => {
