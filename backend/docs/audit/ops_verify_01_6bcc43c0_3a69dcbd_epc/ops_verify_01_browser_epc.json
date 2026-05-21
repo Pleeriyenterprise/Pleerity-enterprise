@@ -1,0 +1,205 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-02",
+  "obligation": "epc",
+  "started_at_utc": "2026-05-21T17:53:28.771649+00:00",
+  "requirement_id": "aa40f412-4990-466d-8052-c392d3adc161",
+  "requirement_type": "epc",
+  "upload_path": "/documents?property_id=3a69dcbd-74fd-4291-839b-3d52750598a1&requirement_id=aa40f412-4990-466d-8052-c392d3adc161&requirement_code=epc&focus=upload",
+  "steps": [
+    {
+      "step": "matrix_row",
+      "ok": false,
+      "detail": "",
+      "at": "2026-05-21T17:53:36.943011+00:00"
+    },
+    {
+      "step": "deeplink_prefill",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-21T17:53:41.691157+00:00"
+    },
+    {
+      "step": "upload_api",
+      "ok": true,
+      "detail": "200",
+      "at": "2026-05-21T17:53:51.212690+00:00"
+    },
+    {
+      "step": "vault_row",
+      "ok": true,
+      "detail": "a9a8359e-7728-4c28-a3df-5215e21b16db",
+      "at": "2026-05-21T17:53:53.077826+00:00"
+    },
+    {
+      "step": "refresh_persisted",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-21T17:53:58.222645+00:00"
+    }
+  ],
+  "checkpoints": {
+    "B-1": true,
+    "B-5": true,
+    "B-5_refresh": true
+  },
+  "upload_response": {
+    "http_status": 200,
+    "body": {
+      "message": "Document uploaded successfully",
+      "document_id": "a9a8359e-7728-4c28-a3df-5215e21b16db",
+      "outcome": {
+        "score_change": 0,
+        "new_score": 67,
+        "risk_change": "unchanged",
+        "status_change": "unchanged",
+        "message": "epc evidence uploaded \u2014 file saved. Confirm extracted dates in Documents before this fully satisfies the requirement. (Compliance score +0; risk unchanged)",
+        "idempotent": false
+      },
+      "requirement_workflow_pending": false,
+      "evidence_match": {
+        "match_outcome": "MATCH_LIKELY",
+        "match_confidence": 0.45,
+        "predicted_document_type": "EPC",
+        "mismatch_reason_code": "NONE",
+        "mismatch_reason_text": null,
+        "user_messages": [
+          "This file is plausibly the right evidence type. Review extracted details before treating it as compliant."
+        ],
+        "evidence_satisfies_requirement": true
+      },
+      "document_validation": {
+        "valid": true,
+        "reason": null,
+        "jurisdiction": "England",
+        "scoring_jurisdiction": "ENGLAND_WALES",
+        "portfolio_jurisdiction": "England",
+        "missing_metadata_fields": []
+      },
+      "document_metadata": null,
+      "validation_result": {
+        "valid": true,
+        "jurisdiction": "England",
+        "validated_at": "2026-05-21T17:53:42.934216+00:00",
+        "missing_metadata_fields": [],
+        "reason": null,
+        "scoring_jurisdiction": "ENGLAND_WALES",
+        "portfolio_jurisdiction": "England",
+        "document_type_input": null
+      },
+      "workflow_activation_observability": {
+        "workflow_class": "DOCUMENT_UPLOAD",
+        "obligation_slice": "epc",
+        "document_upload_correlation_id": "DOC_UPLOADED:a9a8359e-7728-4c28-a3df-5215e21b16db",
+        "transition_id": "tr:aa40f412-4990-466d-8052-c392d3adc161:4295fae01b43433a",
+        "requirement_transition_correlation_id": "DOC_UPLOADED:a9a8359e-7728-4c28-a3df-5215e21b16db",
+        "transition_outcome": "TRANSITION_NOOP",
+        "rst_core_backbone_activation": {
+          "activation_family": "REQUIREMENT_STATE_TRANSITION_CORE_BACKBONE",
+          "activation_governance_version": "workflow_runtime_activation_registry_v3",
+          "activation_guard_result": "GUARD_RESULT_PERMITTED",
+          "activation_reason": "rst_core_backbone_registry_allows_authority_gap_recalc_regen_chain",
+          "activation_scope": "requirement_state_transition_core_backbone_only",
+          "activation_state": "ACTIVATION_LIMITED",
+          "child_compliance_recalc_permitted": true,
+          "child_regeneration_recalc_permitted": true,
+          "degraded_propagation_continuity": "DEGRADED_PROPAGATION_CONTINUITY_VISIBLE",
+          "downstream_propagation_state": "DOWNSTREAM_PROPAGATION_PENDING",
+          "permitted": true,
+          "propagation_continuity": "PROPAGATION_CONTINUITY_ACTIVE",
+          "propagation_skipped_visibility": false,
+          "reconciliation_continuity": "RECONCILIATION_CONTINUITY_VISIBLE",
+          "registry_ceiling": "ACTIVATION_LIMITED",
+          "replay_continuity": "REPLAY_CONTINUITY_VISIBLE"
+        },
+        "approved_downstream_observations": [
+          {
+            "downstream_target": "compliance_gap_sync.sync_compliance_gaps_for_requirement",
+            "trigger_mode": "sync",
+            "enqueue_attempted": true,
+            "enqueue_succeeded": true,
+            "propagation_degraded_possible": false,
+            "reconciliation_recommended": false
+          },
+          {
+            "downstream_target": "compliance_recalc_queue.enqueue_compliance_recalc",
+            "trigger_mode": "async_queue",
+            "enqueue_attempted": true,
+            "enqueue_succeeded": true,
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "duplicate_suppression_reason": null,
+            "propagation_stage": "post_client_upload_authority_sync",
+            "reconciliation_recommended": false,
+            "degraded_possible": false,
+            "downstream_correlation_id": "DOC_UPLOADED:a9a8359e-7728-4c28-a3df-5215e21b16db",
+            "trigger_origin": "routes.documents.perform_client_document_upload",
+            "replay_chain_detected": false,
+            "document_replacement_detected": false,
+            "verification_replay_possible": false,
+            "revert_retrigger_possible": false,
+            "stale_document_transition_possible": true,
+            "review_chain_reentry_detected": false,
+            "admin_override_possible": false,
+            "review_reversal_possible": false,
+            "reviewer_retrigger_possible": false,
+            "reassignment_replay_possible": false,
+            "authority_override_replay_possible": false,
+            "document_id": "a9a8359e-7728-4c28-a3df-5215e21b16db",
+            "automated_transition_possible": false,
+            "generic_touch_sync": false,
+            "reconciliation_sync_possible": false,
+            "backfill_replay_possible": false,
+            "system_reentry_possible": false,
+            "idempotency_boundary": "compliance_recalc_queue unique (property_id, correlation_id)",
+            "enqueue_property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+            "resolved_queue_correlation_id": "DOC_UPLOADED:a9a8359e-7728-4c28-a3df-5215e21b16db",
+            "replay_duplicate_enqueue_safe": true,
+            "activation_state": "ACTIVATION_LIMITED",
+            "activation_reason": "registry_allows_limited_compliance_score_recalc_enqueue",
+            "activation_scope": "compliance_recalc_enqueue_only",
+            "activation_family": "COMPLIANCE_SCORE_RECALC",
+            "activation_guard_result": "GUARD_RESULT_PERMITTED",
+            "activation_governance_version": "workflow_runtime_activation_registry_v3"
+          },
+          {
+            "downstream_target": "risk_signal_regen_queue.enqueue_risk_signal_regen",
+            "trigger_mode": "delegate_from_recalc_enqueue",
+            "enqueue_attempted": true,
+            "enqueue_succeeded": true,
+            "enqueue_outcome": "ENQUEUE_ACCEPTED",
+            "duplicate_suppression_reason": null,
+            "propagation_stage": "post_client_upload_authority_sync:risk_regen_delegate_ok",
+            "reconciliation_recommended": false,
+            "degraded_possible": false,
+            "downstream_correlation_id": null,
+            "trigger_origin": "routes.documents.perform_client_document_upload",
+            "replay_chain_detected": false,
+            "document_replacement_detected": false,
+            "verification_replay_possible": false,
+            "revert_retrigger_possible": false,
+            "stale_document_transition_possible": true,
+            "review_chain_reentry_detected": false,
+            "admin_override_possible": false,
+            "review_reversal_possible": false,
+            "reviewer_retrigger_possible": false,
+            "reassignment_replay_possible": false,
+            "authority_override_replay_possible": false,
+            "document_id": "a9a8359e-7728-4c28-a3df-5215e21b16db",
+            "automated_transition_possible": false,
+            "generic_touch_sync": false,
+            "reconciliation_sync_possible": false,
+            "backfill_replay_possible": false,
+            "system_reentry_possible": false
+          }
+        ]
+      }
+    },
+    "document_id": "a9a8359e-7728-4c28-a3df-5215e21b16db"
+  },
+  "wording_checks": {
+    "post_upload_overstates_verified": false
+  },
+  "document_id": "a9a8359e-7728-4c28-a3df-5215e21b16db",
+  "matrix_row_excerpt_post": "Energy Performance Certificate (EPC)\tEnergy\t\nValidEvidence on file\n\t11 Aug 2036\tLinked\tHigh\t\nView evidence\nRequirement details",
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6bcc43c0_3a69dcbd_epc\\screenshots\\epc_post_upload.png",
+  "finished_at_utc": "2026-05-21T17:54:03.570712+00:00"
+}

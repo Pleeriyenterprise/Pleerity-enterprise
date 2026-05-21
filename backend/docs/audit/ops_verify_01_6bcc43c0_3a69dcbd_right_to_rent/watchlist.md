@@ -1,0 +1,4 @@
+- Profile: pre_existing_evidence (docs=1, cer=2).
+- Authority at preflight: UPLOADED_UNCONFIRMED.
+- Disclosure: This records your Right to Rent check details for review on the platform. It is not Home Office verification and does no.
+- Score: 67 → 67.

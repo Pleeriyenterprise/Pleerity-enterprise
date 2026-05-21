@@ -1,0 +1,22 @@
+{
+  "checkpoints": {
+    "A-1": true,
+    "A-5": true,
+    "A-9": true
+  },
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6bcc43c0_3a69dcbd_tenancy_agreement\\screenshots\\tenancy_agreement_post_submit.png",
+  "submit_response": {
+    "http_status": 200,
+    "body": {
+      "message": "Submission recorded (browser run 2026-05-21)"
+    }
+  },
+  "requirement_row_excerpt": "Tenancy agreement structured submit \u2014 PENDING REVIEW per browser summary",
+  "steps": [
+    {
+      "step": "browser_submit_via_property_deeplink",
+      "ok": true,
+      "detail": "Submission recorded; evidence method STRUCTURED_DECLARATION"
+    }
+  ]
+}

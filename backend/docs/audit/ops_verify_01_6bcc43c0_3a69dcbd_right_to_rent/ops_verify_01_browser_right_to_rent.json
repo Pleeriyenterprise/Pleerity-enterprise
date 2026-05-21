@@ -1,0 +1,318 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-02",
+  "obligation": "right_to_rent",
+  "started_at_utc": "2026-05-21T17:28:05.605430+00:00",
+  "requirement_id": "d72d87b0-3c65-461e-a35f-5bffed972e13",
+  "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+  "steps": [
+    {
+      "step": "api_login",
+      "ok": true,
+      "detail": "role=ROLE_CLIENT_ADMIN",
+      "at": "2026-05-21T17:28:06.666059+00:00"
+    },
+    {
+      "step": "matrix_row_visible",
+      "ok": true,
+      "detail": "Record updated check",
+      "at": "2026-05-21T17:28:17.258964+00:00"
+    },
+    {
+      "step": "rtr_fields_filled",
+      "ok": true,
+      "detail": "structured_declaration",
+      "at": "2026-05-21T17:28:21.556421+00:00"
+    },
+    {
+      "step": "submit_summary",
+      "ok": true,
+      "detail": "Submission recorded\n\nThis is what we saved. Your requirement status will update after review where applicable.\n\nEvidence method: STRUCTURED DECLARATION\nVerification: PENDING REVIEW\nSubmitted at: 2026-05-21T17:28:22.319928+00:00\nDeclaration:",
+      "at": "2026-05-21T17:28:23.979276+00:00"
+    },
+    {
+      "step": "structured_submit",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-21T17:28:26.619365+00:00"
+    },
+    {
+      "step": "submission_inspect_post",
+      "ok": false,
+      "detail": "",
+      "at": "2026-05-21T17:28:34.854292+00:00"
+    },
+    {
+      "step": "refresh_persisted",
+      "ok": false,
+      "detail": "",
+      "at": "2026-05-21T17:28:42.100138+00:00"
+    }
+  ],
+  "checkpoints": {
+    "A-1": true,
+    "A-5": false,
+    "A-9": false
+  },
+  "submit_response": {
+    "http_status": 200,
+    "body": {
+      "ok": true,
+      "workflow_complete": true,
+      "authority_synced": true,
+      "recalc_enqueued": true,
+      "message": "Requirement recorded and compliance status is updating.",
+      "requirement_id": "d72d87b0-3c65-461e-a35f-5bffed972e13",
+      "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+      "requirement": {
+        "requirement_id": "d72d87b0-3c65-461e-a35f-5bffed972e13",
+        "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+        "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+        "requirement_type": "right_to_rent",
+        "requirement_code": "right_to_rent",
+        "jurisdiction": "England",
+        "description": "Right to rent compliance",
+        "frequency_days": 365,
+        "due_date": "2026-06-14T20:42:52.653635+00:00",
+        "status": "PENDING",
+        "applicability": "UNKNOWN",
+        "confirmed_expiry_date": null,
+        "extracted_expiry_date": null,
+        "expiry_source": "NONE",
+        "extraction_confidence": null,
+        "not_required_reason": null,
+        "issue_date": null,
+        "certificate_number": null,
+        "date_source": "VERIFIED_DOCUMENT",
+        "evidence_state": "VERIFIED",
+        "confidence_state": "VERIFIED",
+        "compliance_requirement_class": "DOCUMENT",
+        "action_type": "DOCUMENT",
+        "is_tracked": true,
+        "client_surface_visible": true,
+        "requirement_generation_source": "catalog_registry",
+        "requires_document": true,
+        "requires_job": false,
+        "registry_metadata": {
+          "catalog_keys": [
+            "RIGHT_TO_RENT"
+          ],
+          "why_it_matters_short_published": "England landlords must retain evidence that adult occupiers had a lawful right to rent before move-in.",
+          "primary_action_mode": "upload_document",
+          "action_links_published": [],
+          "why_it_matters_by_jurisdiction_published": {}
+        },
+        "created_at": "2026-05-15T20:42:55.155300+00:00",
+        "updated_at": "2026-05-17T22:23:42.632666+00:00",
+        "evidence_authority": {
+          "version": 1,
+          "state": "UPLOADED_UNCONFIRMED",
+          "state_reason": "guided_declaration_not_independently_verified",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": "2026-08-15T00:00:00+00:00",
+          "effective_verified_document_id": "3be27c21-1416-408d-b823-f895fa9fced7",
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": "2026-05-17T18:44:53.705360+00:00",
+          "evidence_last_updated_at": "2026-05-21T17:28:22.628581+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "predicted_document_type": "RIGHT_TO_RENT_EVIDENCE",
+          "match_outcome": "MATCH_LIKELY",
+          "match_confidence": 0.57,
+          "mismatch_reason_code": "NONE",
+          "evidence_match_blocks_satisfaction": false,
+          "primary_evidence_mode": "DOCUMENT_UPLOAD",
+          "evidence_confidence_level": "HIGH",
+          "non_document_verification_status": null,
+          "primary_evidence_record_id": null,
+          "semantic_state": "DECLARATION_RECORDED"
+        },
+        "evidence_authority_synced_at": "2026-05-21T17:28:22.628581+00:00",
+        "requirement_code_normalized": "right_to_rent",
+        "is_mandatory": true,
+        "policy_criticality": "MEDIUM",
+        "evidence_state_normalized": "MISSING",
+        "policy_classification_version": "v1",
+        "applicability_provenance": {
+          "pipeline_applicability_state": "UNKNOWN",
+          "pipeline_updated_at": "2026-05-15T20:42:55.155000",
+          "effective_applicability_state": "UNKNOWN",
+          "effective_updated_at": "2026-05-15T20:42:55.155000",
+          "applicability_resolution_source": "PIPELINE",
+          "operator_override": {
+            "active": false,
+            "applicability_state": null
+          }
+        },
+        "pipeline_applicability_state": "UNKNOWN",
+        "effective_applicability_state": "UNKNOWN",
+        "applicability_resolution_source": "PIPELINE",
+        "operator_override_active": false,
+        "applicability_state": "UNKNOWN",
+        "compliance_state": "VALID",
+        "semantic_state": "DECLARATION_RECORDED",
+        "canonical_requirement_code": "right_to_rent",
+        "display_label": "Right to Rent checks",
+        "status_label": "Awaiting verification",
+        "date_label": "Next due: 14 Jun 2026",
+        "date_explanation_helper": null,
+        "evidence_badge_label": "Verified",
+        "why_it_matters_short": "England landlords must retain evidence that adult occupiers had a lawful right to rent before move-in.",
+        "why_it_matters_long": null,
+        "show_estimated_date_copy": false,
+        "requirement_category": "legal_obligation",
+        "engine_requirement_category": "legal_obligation",
+        "client_visibility": "informational",
+        "engine_client_visibility": "informational",
+        "requirement_class": "DOCUMENT",
+        "fulfillment_mode": "obligation",
+        "engine_fulfillment_mode": "obligation",
+        "creates_compliance_job": false,
+        "engine_creates_compliance_job": false,
+        "requires_document_evidence": false,
+        "engine_requires_document_evidence": false,
+        "include_in_priority_stream": false,
+        "engine_include_in_priority_stream": false,
+        "calendar_overdue_in_inbox": false,
+        "engine_calendar_overdue_in_inbox": false,
+        "engine_informational": true,
+        "take_action": {
+          "primary": {
+            "label": "Record Right to Rent check",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+            "requirement_id": "d72d87b0-3c65-461e-a35f-5bffed972e13"
+          },
+          "secondary": {
+            "label": "Upload supporting evidence",
+            "route": "/documents?property_id=3a69dcbd-74fd-4291-839b-3d52750598a1&requirement_id=d72d87b0-3c65-461e-a35f-5bffed972e13",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "engine_default",
+            "source_type": "requirement"
+          }
+        },
+        "action_links": [],
+        "workflow_class": "GUIDED_DECLARATION",
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ],
+        "client_evidence_disclosure": "This records your Right to Rent check details for review on the platform. It is not Home Office verification and does not replace legal advice or statutory processes.",
+        "evidence_completeness": null,
+        "requirement_display": {
+          "canonical_name": "Right to Rent Checks",
+          "short_name": "Right to Rent",
+          "description": "",
+          "category_label": "Tenancy",
+          "primary_cta_label": "Record Right to Rent check",
+          "secondary_cta_label": "Upload supporting evidence"
+        },
+        "client_lifecycle_state": "VERIFIED",
+        "client_lifecycle_label": "Verified",
+        "client_lifecycle_reason_codes": [
+          "COMPLIANCE_VALID_VERIFIED"
+        ]
+      },
+      "evidence_record": {
+        "evidence_record_id": "cer_cbb656373c1a4ecfac00f0c27cf8dd6b",
+        "requirement_id": "d72d87b0-3c65-461e-a35f-5bffed972e13",
+        "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+        "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "created_at": "2026-05-21T17:28:22.319928+00:00",
+        "created_by_user_id": "aa8b9918-719a-48e6-9a77-b0aec5b1c121",
+        "verification_status": "PENDING_REVIEW",
+        "verified_by_user_id": null,
+        "verified_at": null,
+        "evidence_confidence_level": "MEDIUM",
+        "evidence_payload": {
+          "declaration_statement": "PRELAUNCH-OPS-VERIFY-02 England AST Right to Rent check record \u2014 operational verification only.",
+          "structured_fields": {
+            "tenant_name": {
+              "answer": "OPS-VERIFY-02 Tenant",
+              "notes": null,
+              "observation": null
+            },
+            "check_date": {
+              "answer": "2026-04-01",
+              "notes": null,
+              "observation": null
+            },
+            "document_type": {
+              "answer": "passport",
+              "notes": null,
+              "observation": null
+            },
+            "document_reference": {
+              "answer": "REDACTED-REF-OPS02",
+              "notes": null,
+              "observation": null
+            },
+            "right_to_rent_status": {
+              "answer": "time_limited",
+              "notes": null,
+              "observation": null
+            },
+            "follow_up_required": {
+              "answer": true,
+              "notes": null,
+              "observation": null
+            },
+            "follow_up_date": {
+              "answer": "2027-04-01",
+              "notes": null,
+              "observation": null
+            },
+            "declaration_confirmed": {
+              "answer": true,
+              "notes": null,
+              "observation": null
+            }
+          }
+        },
+        "linked_document_ids": [],
+        "audit_metadata": {
+          "created_via": "client_compliance_evidence_api"
+        },
+        "included_in_active_compliance": true,
+        "archived": false,
+        "archived_reason": null
+      }
+    }
+  },
+  "wording_checks": {
+    "matrix_cta_overstates_verified": false,
+    "matrix_cta_allows_structured_update": true,
+    "disclosure_present": true,
+    "no_tenant_verified_claim": true,
+    "summary_misleading": false
+  },
+  "ui_paths_attempted": [
+    "http://127.0.0.1:3000/properties/3a69dcbd-74fd-4291-839b-3d52750598a1#compliance",
+    "matrix_opened_resolve_modal"
+  ],
+  "requirement_row_excerpt_pre": "Right to Rent Checks\tTenancy\t\nValidAwaiting review\n\nYou (the portfolio user) confirm extracted dates and details on the Documents page. If the file was just uploaded, automation may still be processing it\u2014refresh shortly or open the document to finish confirmation.\n\n\t\u2014\tLinked\tHigh\t\nRecord updated check\nRequirement details",
+  "matrix_cta_label": "Record updated check",
+  "resolve_modal_excerpt": "Record Right to Rent check\n\nUse the structured check record as the main evidence. The Documents page (or \u201cUpload supporting evidence\u201d on the requirement) is for optional supporting files only.\n\nSupporting files vs authoritative submission\n\nUploading supporting files here saves them to your vault only.\n\nIt does not submit or update your formal requirement record until you complete the structured form and press Submit evidence.\n\nYour authoritative submission is already on file. New supporting files supplement that record \u2014 they do not create a new submission.\n\nSubmission already on file \u2014 awaiti",
+  "submit_summary_excerpt": "Submission recorded\n\nThis is what we saved. Your requirement status will update after review where applicable.\n\nEvidence method: STRUCTURED DECLARATION\nVerification: PENDING REVIEW\nSubmitted at: 2026-05-21T17:28:22.319928+00:00\nDeclaration: PRELAUNCH-OPS-VERIFY-02 England AST Right to Rent check record \u2014 operational verification only.\nTenant Name: OPS-VERIFY-02 Tenant\nCheck Date: 2026-04-01\nDocume",
+  "structured_submit_completed": true,
+  "requirement_row_excerpt_post": "Right to Rent Checks\tTenancy\t\nValidAwaiting review\n\nYou (the portfolio user) confirm extracted dates and details on the Documents page. If the file was just uploaded, automation may still be processing it\u2014refresh shortly or open the document to finish confirmation.\n\n\t\u2014\tLinked\tHigh\t\nRecord updated check\nRequirement details",
+  "matrix_cta_label_post": "Record updated check",
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6bcc43c0_3a69dcbd_right_to_rent\\screenshots\\right_to_rent_post_action.png",
+  "finished_at_utc": "2026-05-21T17:28:42.292502+00:00"
+}

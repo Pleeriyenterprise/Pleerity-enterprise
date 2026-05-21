@@ -4,6 +4,12 @@
  */
 
 import { resolveClientRequirementLifecycleForPresentation } from './clientPersistedSubmissionPresentation';
+import {
+  authorityPermitsVerifiedPresentationLanguage,
+  isRightToRentMixedEvidencePendingReview,
+  isRightToRentRequirement,
+  resolveRightToRentMixedEvidenceCtaPresentation,
+} from './rightToRentTrustPresentation';
 
 /**
  * @param {string} label
@@ -25,6 +31,8 @@ export function primaryLabelSuggestsInitialObligation(label) {
  */
 export function applyLifecycleAwareCtaPresentation(requirement, cta) {
   if (!cta || typeof cta !== 'object') return cta || {};
+  const rtrCta = resolveRightToRentMixedEvidenceCtaPresentation(requirement, cta);
+  if (rtrCta) return rtrCta;
   const { state } = resolveClientRequirementLifecycleForPresentation(requirement);
   if (state === 'ACTION_REQUIRED' || state === 'NOT_APPLICABLE') {
     return cta;
@@ -43,7 +51,16 @@ export function applyLifecycleAwareCtaPresentation(requirement, cta) {
   } else if (state === 'SATISFIED_UNVERIFIED') {
     primary_action_label = handler === 'guided_evidence' ? 'View or update evidence' : 'View evidence';
   } else if (state === 'VERIFIED') {
-    primary_action_label = handler === 'guided_evidence' ? 'View verified evidence' : 'View evidence';
+    const suppressVerified =
+      isRightToRentMixedEvidencePendingReview(requirement) ||
+      (isRightToRentRequirement(requirement) && !authorityPermitsVerifiedPresentationLanguage(requirement));
+    if (suppressVerified && handler === 'guided_evidence') {
+      primary_action_label = 'View evidence under review';
+    } else if (suppressVerified) {
+      primary_action_label = 'View evidence';
+    } else {
+      primary_action_label = handler === 'guided_evidence' ? 'View verified evidence' : 'View evidence';
+    }
   }
   let secondary_action = cta.secondary_action;
   if (secondary_action && typeof secondary_action === 'object') {

@@ -1,0 +1,333 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "phase": "baseline",
+  "captured_at_utc": "2026-05-21T21:48:23.350843+00:00",
+  "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+  "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+  "requirement_id": "e47d1c2d-ccae-4f2b-94ca-3ca2fc5c2b40",
+  "requirement": {
+    "found": true,
+    "requirement_id": "e47d1c2d-ccae-4f2b-94ca-3ca2fc5c2b40",
+    "requirement_type": "tenancy_agreement",
+    "status": "PENDING",
+    "lifecycle_state": null,
+    "evidence_status": null,
+    "client_surface_visible": true,
+    "updated_at": "2026-05-15T20:42:54.443337+00:00",
+    "authority": {
+      "evidence_authority": {
+        "version": 1,
+        "state": "MISSING",
+        "state_reason": "no_evidence_document",
+        "effective_expiry_date": null,
+        "effective_expiry_is_null": true,
+        "effective_issue_date": null,
+        "effective_verified_document_id": null,
+        "expiry_source": "NONE",
+        "mismatch_flag": false,
+        "mismatch_reason": null,
+        "evidence_confidence": null,
+        "authoritative_property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+        "evidence_scope_type": "PROPERTY",
+        "evidence_scope_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+        "predicted_document_type": null,
+        "match_outcome": null,
+        "match_confidence": null,
+        "mismatch_reason_code": null,
+        "evidence_match_blocks_satisfaction": false,
+        "primary_evidence_mode": "STRUCTURED_DECLARATION",
+        "evidence_confidence_level": "MEDIUM",
+        "non_document_verification_status": "PENDING_REVIEW",
+        "primary_evidence_record_id": "cer_7dc13987fdc24538a3457bbe271b897c",
+        "pending_non_document_evidence_count": 6,
+        "semantic_state": "MISSING"
+      },
+      "fingerprint": "9220d31b3efb99f5f50df8db978a6639"
+    },
+    "row_fingerprint": "eee402d1b0005e439bea36e877deb4a4"
+  },
+  "property_score": {
+    "compliance_score": 67,
+    "compliance_score_pending": false,
+    "compliance_last_calculated_at": "2026-05-21T21:42:02.493096+00:00",
+    "risk_level": "Elevated risk",
+    "fingerprint": "f9b7a3510147d9ab"
+  },
+  "queue": {
+    "counts_by_status": {
+      "DONE": 47,
+      "TOTAL": 47
+    },
+    "pending_or_running": 0,
+    "recent_rows": [
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:cfb04b08-4265-4893-89e2-70369db7e5e3:cer_4cf97475f92446e0895eaabd1200117a",
+        "status": "DONE",
+        "created_at": "2026-05-21T21:41:48.130327+00:00",
+        "updated_at": "2026-05-21T21:42:26.671527+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:d72d87b0-3c65-461e-a35f-5bffed972e13:cer_d12746401beb429faf96fdebc2a3f460",
+        "status": "DONE",
+        "created_at": "2026-05-21T21:32:07.195436+00:00",
+        "updated_at": "2026-05-21T21:32:41.073364+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:f3b23246-806c-4ba1-ad3b-117ef0bed33b:cer_e873810de9ce4ce39e132ca7d2749808",
+        "status": "DONE",
+        "created_at": "2026-05-21T21:23:34.563592+00:00",
+        "updated_at": "2026-05-21T21:24:11.686787+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:f3b23246-806c-4ba1-ad3b-117ef0bed33b:cer_ab311c37370b4f23aba0812a89cbcf3d",
+        "status": "DONE",
+        "created_at": "2026-05-21T21:13:00.705509+00:00",
+        "updated_at": "2026-05-21T21:13:41.416058+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:e47d1c2d-ccae-4f2b-94ca-3ca2fc5c2b40:cer_7dc13987fdc24538a3457bbe271b897c",
+        "status": "DONE",
+        "created_at": "2026-05-21T21:05:34.420525+00:00",
+        "updated_at": "2026-05-21T21:06:11.645881+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:f3b23246-806c-4ba1-ad3b-117ef0bed33b:cer_9e32c98b5ee34de89433b4320d5ce777",
+        "status": "DONE",
+        "created_at": "2026-05-21T20:21:12.692215+00:00",
+        "updated_at": "2026-05-21T20:21:30.083269+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:f3b23246-806c-4ba1-ad3b-117ef0bed33b:cer_bc44f082f6564dcabd299e687fc80249",
+        "status": "DONE",
+        "created_at": "2026-05-21T20:12:24.984344+00:00",
+        "updated_at": "2026-05-21T20:12:44.621860+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:f3b23246-806c-4ba1-ad3b-117ef0bed33b:cer_b608c64610124699a7e83f7efc3bdc8c",
+        "status": "DONE",
+        "created_at": "2026-05-21T19:52:30.291642+00:00",
+        "updated_at": "2026-05-21T19:52:56.378562+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:f3b23246-806c-4ba1-ad3b-117ef0bed33b:cer_002f078389e145cf9014928bcef8fd78",
+        "status": "DONE",
+        "created_at": "2026-05-21T19:45:40.046127+00:00",
+        "updated_at": "2026-05-21T19:46:00.674929+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:e47d1c2d-ccae-4f2b-94ca-3ca2fc5c2b40:cer_c58ca1f8bbe64e4aaf2511048be15917",
+        "status": "DONE",
+        "created_at": "2026-05-21T19:36:38.924919+00:00",
+        "updated_at": "2026-05-21T19:37:00.198616+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:e47d1c2d-ccae-4f2b-94ca-3ca2fc5c2b40:cer_e781e20c46fb468497f1335f89ddb2dc",
+        "status": "DONE",
+        "created_at": "2026-05-21T19:31:08.241125+00:00",
+        "updated_at": "2026-05-21T19:31:41.071825+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:e47d1c2d-ccae-4f2b-94ca-3ca2fc5c2b40:cer_12c62de248154892927619f62e43b60a",
+        "status": "DONE",
+        "created_at": "2026-05-21T19:26:05.371213+00:00",
+        "updated_at": "2026-05-21T19:26:29.964921+00:00"
+      },
+      {
+        "correlation_id": "DOC_UPLOADED:c90f43fe-feb7-4e82-8496-9b52d969878f",
+        "status": "DONE",
+        "created_at": "2026-05-21T18:37:44.425224+00:00",
+        "updated_at": "2026-05-21T18:38:02.054265+00:00"
+      },
+      {
+        "correlation_id": "DOC_UPLOADED:0c43f966-6ab3-4db9-98a1-cfd75bdaacbe",
+        "status": "DONE",
+        "created_at": "2026-05-21T18:16:18.031847+00:00",
+        "updated_at": "2026-05-21T18:16:56.344125+00:00"
+      },
+      {
+        "correlation_id": "DOC_UPLOADED:a9a8359e-7728-4c28-a3df-5215e21b16db",
+        "status": "DONE",
+        "created_at": "2026-05-21T17:53:43.940226+00:00",
+        "updated_at": "2026-05-21T17:54:00.936024+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:d72d87b0-3c65-461e-a35f-5bffed972e13:cer_cbb656373c1a4ecfac00f0c27cf8dd6b",
+        "status": "DONE",
+        "created_at": "2026-05-21T17:28:23.029200+00:00",
+        "updated_at": "2026-05-21T17:28:44.817828+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:cfb04b08-4265-4893-89e2-70369db7e5e3:cer_93eec78b811c409db8b8b955938acab1",
+        "status": "DONE",
+        "created_at": "2026-05-21T15:27:08.004794+00:00",
+        "updated_at": "2026-05-21T15:27:37.220913+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:f3b23246-806c-4ba1-ad3b-117ef0bed33b:cer_28261d8a08104acd8a27ac64431d12e6",
+        "status": "DONE",
+        "created_at": "2026-05-21T15:05:04.975282+00:00",
+        "updated_at": "2026-05-21T15:05:41.208426+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:e47d1c2d-ccae-4f2b-94ca-3ca2fc5c2b40:cer_ef0118ff1701496986887f5c360e5bca",
+        "status": "DONE",
+        "created_at": "2026-05-21T14:26:17.506528+00:00",
+        "updated_at": "2026-05-21T14:26:45.450047+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:3a69dcbd-74fd-4291-839b-3d52750598a1:e47d1c2d-ccae-4f2b-94ca-3ca2fc5c2b40:cer_4ec7019627684e22b2055dab58be07dd",
+        "status": "DONE",
+        "created_at": "2026-05-21T14:16:32.637148+00:00",
+        "updated_at": "2026-05-21T14:17:11.348827+00:00"
+      },
+      {
+        "correlation_id": "SCHEDULED_PROPERTY_BATCH:3a69dcbd-74fd-4291-839b-3d52750598a1:2026-05-21",
+        "status": "DONE",
+        "created_at": "2026-05-21T03:20:04.042562+00:00",
+        "updated_at": "2026-05-21T03:21:36.558572+00:00"
+      },
+      {
+        "correlation_id": "EXPIRY_JOB:3a69dcbd-74fd-4291-839b-3d52750598a1:2026-05-21",
+        "status": "DONE",
+        "created_at": "2026-05-21T00:10:08.146102+00:00",
+        "updated_at": "2026-05-21T00:13:26.864805+00:00"
+      },
+      {
+        "correlation_id": "REMINDER_JOB:3a69dcbd-74fd-4291-839b-3d52750598a1:2026-05-20",
+        "status": "DONE",
+        "created_at": "2026-05-20T09:02:31.553772+00:00",
+        "updated_at": "2026-05-20T09:03:33.208882+00:00"
+      },
+      {
+        "correlation_id": "SCHEDULED_PROPERTY_BATCH:3a69dcbd-74fd-4291-839b-3d52750598a1:2026-05-20",
+        "status": "DONE",
+        "created_at": "2026-05-20T03:20:03.817219+00:00",
+        "updated_at": "2026-05-20T03:21:53.396686+00:00"
+      },
+      {
+        "correlation_id": "EXPIRY_JOB:3a69dcbd-74fd-4291-839b-3d52750598a1:2026-05-20",
+        "status": "DONE",
+        "created_at": "2026-05-20T00:10:08.204637+00:00",
+        "updated_at": "2026-05-20T00:13:30.965956+00:00"
+      }
+    ],
+    "fingerprint": "0be5741b570f3334"
+  },
+  "dashboard_tasks": {
+    "compliance_score": 67,
+    "compliance_score_pending": false,
+    "compliance_last_calculated_at": "2026-05-21T21:42:02.493096+00:00",
+    "risk_level": "Elevated risk",
+    "top_deficits": [
+      {
+        "requirement_code": "FIRE_DETECTION",
+        "status": "EXPIRING_SOON",
+        "missing_points": 3.49,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "LEGIONELLA",
+        "status": "EXPIRING_SOON",
+        "missing_points": 3.49,
+        "risk_level_if_failed": "MEDIUM"
+      },
+      {
+        "requirement_code": "RIGHT_TO_RENT",
+        "status": "NEEDS_REVIEW",
+        "missing_points": 2.67,
+        "risk_level_if_failed": "MEDIUM"
+      },
+      {
+        "requirement_code": "GAS_SAFETY",
+        "status": "VALID",
+        "missing_points": 1.05,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "EICR",
+        "status": "VALID",
+        "missing_points": 1.05,
+        "risk_level_if_failed": "HIGH"
+      }
+    ],
+    "digest_summary": {
+      "urgent_count": 0,
+      "upcoming_count": 3,
+      "in_progress_count": 0,
+      "recently_completed_count": 0,
+      "snoozed_count": 0,
+      "hidden_count": 0,
+      "habit": {
+        "urgent_open_total": 0,
+        "items_due_or_expiring_in_7_days": 0,
+        "tasks_acknowledged_last_7_days": 0
+      }
+    },
+    "task_count": 3,
+    "task_sections_summary": {
+      "urgent_count": 0,
+      "upcoming_count": 3,
+      "in_progress_count": 0,
+      "recently_completed_count": 0,
+      "snoozed_count": 0,
+      "hidden_count": 0,
+      "habit": {
+        "urgent_open_total": 0,
+        "items_due_or_expiring_in_7_days": 0,
+        "tasks_acknowledged_last_7_days": 0
+      }
+    },
+    "task_ids_sample": [
+      "requirement:53cfffcb-b5de-4982-adc5-117493c865f4",
+      "requirement:791864ff-9688-4cf9-a61b-005308d4dd9b",
+      "requirement:fb213701-15b9-46aa-9619-4c36564dbfd5"
+    ],
+    "stable_task_business_keys_sample": [
+      "missing_document|3a69dcbd-74fd-4291-839b-3d52750598a1|53cfffcb-b5de-4982-adc5-117493c865f4|Evidence needed (legacy read): PAT",
+      "missing_document|3a69dcbd-74fd-4291-839b-3d52750598a1|791864ff-9688-4cf9-a61b-005308d4dd9b|Evidence needed (legacy read): Legionella",
+      "missing_document|3a69dcbd-74fd-4291-839b-3d52750598a1|fb213701-15b9-46aa-9619-4c36564dbfd5|Evidence needed (legacy read): Smoke, Heat & CO Alarms"
+    ],
+    "fingerprint_mode": "normalized_stable_business_keys_c2a",
+    "fingerprint": "6892820fe0261514a672d8b9d72ed063",
+    "fingerprint_legacy_volatile_ids": "08baece490828af08b93a4f5873a4f9d"
+  },
+  "cer_rows": [
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-21T21:05:33.264521+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-21T19:36:38.175119+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-21T19:31:07.386100+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-21T19:26:04.616717+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-21T14:26:16.809156+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-21T14:16:31.738977+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    }
+  ],
+  "documents": []
+}

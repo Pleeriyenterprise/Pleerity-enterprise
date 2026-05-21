@@ -1,0 +1,17 @@
+{
+  "programme_id": "PRELAUNCH-OPS-VERIFY-02",
+  "obligation_code": "right_to_rent",
+  "slug": "6bcc43c0_3a69dcbd_right_to_rent",
+  "classifications": [
+    {
+      "classification": "ASYNC_CONVERGENCE_PARTIAL",
+      "failed_checkpoints": [
+        "A-5",
+        "A-9"
+      ],
+      "reasons": [
+        "ui_inspect_partial"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "unit_name": "Client Evidence Journey Operational Closure Verification",
+  "run_id": "ops_verify_01_6bcc43c0_3a69dcbd_eicr_20260521T183603Z",
+  "slug": "6bcc43c0_3a69dcbd_eicr",
+  "captured_at_utc": "2026-05-21T18:36:03.444483+00:00",
+  "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+  "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+  "requirement_ids": [
+    "9630a9de-47da-4810-8abb-ada61dd5edcf"
+  ],
+  "journeys_executed": [
+    "B_primary_document_upload"
+  ],
+  "verifier": "cursor-prelaunch-ops-verify-02",
+  "proof_mode": "operational_browser",
+  "replay_or_fixture_driver": false,
+  "browser_walkthrough_completed": true,
+  "staging_url": "",
+  "async_sla_minutes": 15,
+  "ui_attestations": {
+    "B_primary_document_upload": {
+      "document_visible": true,
+      "refresh_persisted": true,
+      "upload_api_ack": true,
+      "user_visible_gap": false,
+      "trust_risk": false
+    }
+  },
+  "checkpoint_results": {
+    "B_primary_document_upload": {
+      "B-1": true,
+      "B-2": true,
+      "B-3": true,
+      "B-4": false,
+      "B-5": true,
+      "B-6": true,
+      "B-7": true,
+      "B-8": true
+    }
+  },
+  "notes": "Infrastructure replay proof \u2260 operational closure proof.",
+  "implementation_scope": "operational_verification_capture_and_classify_only",
+  "read_only": true,
+  "programme_id": "PRELAUNCH-OPS-VERIFY-02",
+  "phase": "England_AST",
+  "obligation_code": "eicr",
+  "workflow_family": "LEGACY_DOCUMENT_UPLOAD",
+  "preflight": {
+    "surfaced": true,
+    "status": "COMPLIANT",
+    "lifecycle": null,
+    "authority": "VERIFIED_CURRENT",
+    "workflow": "LEGACY_DOCUMENT_UPLOAD",
+    "modes": [
+      "DOCUMENT_UPLOAD"
+    ],
+    "cer_count": 1,
+    "document_count": 1,
+    "existing_documents": [
+      {
+        "document_id": "ddd4e723-7c6b-4274-9726-73451fba5bdf",
+        "status": "VERIFIED"
+      }
+    ],
+    "effective_expiry_date": "2031-08-10T00:00:00+00:00",
+    "effective_verified_document_id": "ddd4e723-7c6b-4274-9726-73451fba5bdf",
+    "baseline_profile": "pre_existing_verified_current",
+    "modal_title": "Add compliance evidence",
+    "primary_cta": "Add compliance evidence"
+  },
+  "submit_correlation_id": "DOC_UPLOADED:c90f43fe-feb7-4e82-8496-9b52d969878f",
+  "document_id": "c90f43fe-feb7-4e82-8496-9b52d969878f",
+  "post_authority_state": "VERIFIED_CURRENT",
+  "post_effective_expiry": "2031-08-10T00:00:00+00:00",
+  "obligation_classification": "VERIFIED_OPERATIONALLY"
+}

@@ -106,6 +106,11 @@ import {
   isPendingConfirmationForRequirementAttention,
 } from '../utils/documentClientPresentation';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
+import {
+  guidedMixedEvidenceInitialMode,
+  isRightToRentMixedEvidencePendingReview,
+} from '../utils/rightToRentTrustPresentation';
+import { requirementHasPersistedClientSubmission } from '../utils/clientPersistedSubmissionPresentation';
 import ClientDocumentPreviewModal from '../components/client/ClientDocumentPreviewModal';
 import { downloadClientDocumentFile } from '../utils/clientDocumentPreview';
 import { toast } from '@/utils/portalNotifications';
@@ -330,6 +335,10 @@ export default function PropertyDetailPage() {
   /** Compliance matrix / cards: full requirement intelligence (GET /requirements/:id). */
   const [requirementIntelRow, setRequirementIntelRow] = useState(null);
   const [requirementIntelFocusSubmission, setRequirementIntelFocusSubmission] = useState(false);
+  const openComplianceRequirementIntel = useCallback((row) => {
+    setRequirementIntelRow(row);
+    setRequirementIntelFocusSubmission(requirementHasPersistedClientSubmission(row));
+  }, []);
   // Tab-specific data
   const [workOrders, setWorkOrders] = useState([]);
   const [workOrdersLoading, setWorkOrdersLoading] = useState(false);
@@ -390,6 +399,8 @@ export default function PropertyDetailPage() {
   const [urgentExplainOpenId, setUrgentExplainOpenId] = useState(null);
   /** Deep-link: `/properties/:id?open=resolve&requirement_id=…` opens compliance tab + guided flow when data is ready. */
   const [pendingComplianceResolve, setPendingComplianceResolve] = useState(null);
+  /** Deeplink `?open=intel&requirement_id=&focus=submission` for post-submit inspect (GF-CLOSURE-01). */
+  const [pendingIntelOpen, setPendingIntelOpen] = useState(null);
   const [operatingFeedItems, setOperatingFeedItems] = useState([]);
   const [operatingFeedLoading, setOperatingFeedLoading] = useState(false);
 
@@ -477,6 +488,29 @@ export default function PropertyDetailPage() {
   }, [location.search, propertyId]);
 
   useEffect(() => {
+    const q = new URLSearchParams(location.search || '');
+    if (q.get('open') !== 'intel') return;
+    const rid = q.get('requirement_id');
+    if (!rid || !propertyId) return;
+    setActiveTab(TAB_COMPLIANCE);
+    setPendingIntelOpen({
+      requirementId: rid,
+      focusSubmission: q.get('focus') === 'submission',
+    });
+  }, [location.search, propertyId]);
+
+  useEffect(() => {
+    if (!pendingIntelOpen || !propertyId || !requirements.length) return;
+    const { requirementId, focusSubmission } = pendingIntelOpen;
+    const row = requirements.find((r) => String(r.requirement_id || r.id || '') === String(requirementId));
+    setPendingIntelOpen(null);
+    navigate({ pathname: `/properties/${propertyId}`, search: '', hash: location.hash || '' }, { replace: true });
+    if (!row) return;
+    setRequirementIntelRow(row);
+    setRequirementIntelFocusSubmission(Boolean(focusSubmission) || requirementHasPersistedClientSubmission(row));
+  }, [pendingIntelOpen, requirements, propertyId, navigate, location.hash]);
+
+  useEffect(() => {
     if (!pendingComplianceResolve || !propertyId) return;
     const { requirementId, initialEvidenceMode } = pendingComplianceResolve;
     if (!requirements.length) return;
@@ -484,6 +518,16 @@ export default function PropertyDetailPage() {
     setPendingComplianceResolve(null);
     navigate({ pathname: `/properties/${propertyId}`, search: '', hash: location.hash || '' }, { replace: true });
     if (!row) return;
+    const guidedMode = initialEvidenceMode || guidedMixedEvidenceInitialMode() || null;
+    if (isRightToRentMixedEvidencePendingReview(row) && openGuidedEvidence) {
+      openGuidedEvidence({
+        propertyId,
+        requirement: row,
+        onSubmitted: fetchData,
+        initialEvidenceMode: guidedMode || undefined,
+      });
+      return;
+    }
     executeRequirementPrimaryCta({
       requirement: row,
       pagePropertyId: propertyId,
@@ -494,7 +538,7 @@ export default function PropertyDetailPage() {
         setRequirementIntelFocusSubmission(true);
       },
       onSubmitted: fetchData,
-      guidedInitialOverride: initialEvidenceMode || null,
+      guidedInitialOverride: guidedMode,
     });
   }, [pendingComplianceResolve, requirements, propertyId, navigate, location.hash, openGuidedEvidence, fetchData]);
 
@@ -2028,7 +2072,7 @@ export default function PropertyDetailPage() {
                                 <button
                                   type="button"
                                   className="text-left text-xs font-normal text-gray-600 hover:text-midnight-blue underline-offset-2 hover:underline py-0.5"
-                                  onClick={() => setRequirementIntelRow(r)}
+                                  onClick={() => openComplianceRequirementIntel(r)}
                                 >
                                   Requirement details
                                 </button>
@@ -2241,7 +2285,7 @@ export default function PropertyDetailPage() {
                                         className="h-auto min-h-0 py-0.5 px-1 text-xs font-normal text-gray-600 hover:text-midnight-blue underline-offset-2 hover:underline"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setRequirementIntelRow(r);
+                                          openComplianceRequirementIntel(r);
                                         }}
                                         data-testid={`property-compliance-requirement-intel-${rowReqId(r)}`}
                                       >
@@ -2299,7 +2343,7 @@ export default function PropertyDetailPage() {
                                           variant="outline"
                                           onClick={() => {
                                             setComplianceExpandedReqId(null);
-                                            setRequirementIntelRow(r);
+                                            openComplianceRequirementIntel(r);
                                           }}
                                         >
                                           Requirement details
@@ -2400,7 +2444,7 @@ export default function PropertyDetailPage() {
                               size="sm"
                               variant="ghost"
                               className="h-auto min-h-0 py-0.5 px-1 text-xs font-normal text-gray-600 hover:text-midnight-blue underline-offset-2 hover:underline"
-                              onClick={() => setRequirementIntelRow(r)}
+                              onClick={() => openComplianceRequirementIntel(r)}
                             >
                               Requirement details
                             </Button>

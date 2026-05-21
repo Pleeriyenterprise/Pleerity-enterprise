@@ -1,0 +1,12 @@
+{
+  "programme_id": "GUIDED-FLOW-CLOSURE-01",
+  "obligation_code": "deposit_pi",
+  "slug": "6bcc43c0_3a69dcbd_deposit_pi",
+  "classifications": [
+    {
+      "classification": "VERIFIED_OPERATIONALLY",
+      "failed_checkpoints": [],
+      "reasons": []
+    }
+  ]
+}

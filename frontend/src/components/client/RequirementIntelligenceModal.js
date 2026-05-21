@@ -22,6 +22,10 @@ import { resolveDocumentsPath } from '../../utils/clientPortalNavigation';
 import { useGuidedEvidenceModal } from '../../context/GuidedEvidenceModalContext';
 import { projectResolvedRequirementSemantics } from '../../utils/resolvedRequirementViewModel';
 import { NotApplicableGovernedNotice } from '../../utils/notApplicableGovernedCopy';
+import {
+  guidedMixedEvidenceInitialMode,
+  shouldPreferGuidedEvidenceOverIntelView,
+} from '../../utils/rightToRentTrustPresentation';
 
 function formatIntelDate(value) {
   if (value == null || value === '') return null;
@@ -226,6 +230,20 @@ export default function RequirementIntelligenceModal({
   const primaryHandler = () => {
     if (!resolved) return;
     if (isViewExistingSubmissionCta(resolved) && hasSubmission) {
+      if (shouldPreferGuidedEvidenceOverIntelView(merged, resolved) && pid && rid) {
+        onClose();
+        openGuidedEvidence({
+          propertyId: pid,
+          requirement: merged || { requirement_id: rid },
+          initialEvidenceMode:
+            resolved.guided_initial_evidence_mode || guidedMixedEvidenceInitialMode() || undefined,
+          onSubmitted: () => {
+            loadSubmissionPresence();
+            onEvidenceSubmitted?.();
+          },
+        });
+        return;
+      }
       scrollToSubmissionPanel();
       return;
     }
@@ -267,6 +285,9 @@ export default function RequirementIntelligenceModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="requirement-intel-title"
+        data-testid="requirement-intel-dialog"
+        data-cer-loading={cerLoading ? 'true' : 'false'}
+        data-cer-ready={!cerLoading && hasSubmission ? 'true' : 'false'}
       >
         <div className="px-6 pt-5 pb-3 border-b border-gray-100 shrink-0">
           <h2 id="requirement-intel-title" className="text-lg font-semibold text-midnight-blue">

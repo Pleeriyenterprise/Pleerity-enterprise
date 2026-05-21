@@ -1,0 +1,4 @@
+- Workflow family: TENANT_DELIVERY.
+- Preflight profile: pre_existing_evidence.
+- Modal CTA: Record How to Rent delivery.
+- Score: 67 → 67.

@@ -1,0 +1,65 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "unit_name": "Client Evidence Journey Operational Closure Verification",
+  "run_id": "ops_verify_01_6bcc43c0_3a69dcbd_deposit_pi_20260521T150317Z",
+  "slug": "6bcc43c0_3a69dcbd_deposit_pi",
+  "captured_at_utc": "2026-05-21T15:03:17.787224+00:00",
+  "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+  "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+  "requirement_ids": [
+    "f3b23246-806c-4ba1-ad3b-117ef0bed33b"
+  ],
+  "journeys_executed": [
+    "A_guided_structured_evidence_submit"
+  ],
+  "verifier": "cursor-prelaunch-ops-verify-02",
+  "proof_mode": "operational_browser",
+  "replay_or_fixture_driver": false,
+  "browser_walkthrough_completed": true,
+  "staging_url": "http://127.0.0.1:3000",
+  "async_sla_minutes": 15,
+  "ui_attestations": {
+    "A_guided_structured_evidence_submit": {
+      "submission_visible": false,
+      "refresh_persisted": false,
+      "user_visible_gap": false,
+      "trust_risk": false
+    }
+  },
+  "checkpoint_results": {
+    "A_guided_structured_evidence_submit": {
+      "A-1": true,
+      "A-2": true,
+      "A-3": true,
+      "A-4": false,
+      "A-5": false,
+      "A-6": true,
+      "A-7": false,
+      "A-8": true,
+      "A-9": false
+    }
+  },
+  "notes": "Infrastructure replay proof \u2260 operational closure proof.",
+  "implementation_scope": "operational_verification_capture_and_classify_only",
+  "read_only": true,
+  "programme_id": "PRELAUNCH-OPS-VERIFY-02",
+  "phase": "England_AST",
+  "obligation_code": "deposit_pi",
+  "preflight": {
+    "surfaced": true,
+    "status": "PENDING",
+    "lifecycle": null,
+    "authority": null,
+    "workflow": "GUIDED_DECLARATION",
+    "modes": [
+      "STRUCTURED_DECLARATION",
+      "DOCUMENT_UPLOAD"
+    ],
+    "cer_count": 0,
+    "document_count": 0,
+    "baseline_profile": "greenfield",
+    "non_document_review": true
+  },
+  "api_url": "http://127.0.0.1:8000",
+  "obligation_classification": "IMPLEMENTED_NOT_VERIFIED"
+}

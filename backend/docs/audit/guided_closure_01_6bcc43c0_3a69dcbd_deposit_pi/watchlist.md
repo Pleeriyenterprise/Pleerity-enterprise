@@ -1,0 +1,3 @@
+- Preflight profile: pre_existing_evidence.
+- Non-document review semantics: True.
+- Score: 67 → 67.

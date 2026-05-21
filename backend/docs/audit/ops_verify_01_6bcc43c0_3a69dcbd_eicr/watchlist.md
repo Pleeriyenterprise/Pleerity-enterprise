@@ -1,0 +1,4 @@
+- Baseline: pre_existing_verified_current authority=VERIFIED_CURRENT expiry=2031-08-10T00:00:00+00:00.
+- Score: 67 → 67.
+- EPC/RTR carry-forward: pre-existing verified upload patterns; inspect/refresh watchlist.
+- Post effective expiry (authority): 2031-08-10T00:00:00+00:00.

@@ -1,0 +1,14 @@
+{
+  "programme_id": "PRELAUNCH-OPS-VERIFY-02",
+  "obligation_code": "eicr",
+  "slug": "6bcc43c0_3a69dcbd_eicr",
+  "classifications": [
+    {
+      "classification": "VERIFIED_OPERATIONALLY",
+      "failed_checkpoints": [
+        "B-4"
+      ],
+      "reasons": []
+    }
+  ]
+}

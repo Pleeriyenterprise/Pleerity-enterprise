@@ -1,0 +1,14 @@
+{
+  "programme_id": "PRELAUNCH-OPS-VERIFY-02",
+  "obligation_code": "how_to_rent",
+  "slug": "6bcc43c0_3a69dcbd_how_to_rent",
+  "classifications": [
+    {
+      "classification": "VERIFIED_OPERATIONALLY",
+      "failed_checkpoints": [
+        "A-9"
+      ],
+      "reasons": []
+    }
+  ]
+}

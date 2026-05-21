@@ -10,6 +10,14 @@ import { documentVerificationAwaitingSubline } from '../domain/presentDomain';
 import { isConditionStandardWorkflowHint, isMultiEvidenceStyleWorkflow } from './workflowSemantics';
 import { mergeGovernanceUxPilotChip } from './governanceUxPilotAdapter';
 import { resolveClientRequirementLifecycleForPresentation } from './clientPersistedSubmissionPresentation';
+import {
+  isRightToRentMixedEvidencePendingReview,
+  rightToRentPendingReviewEvidenceLine,
+} from './rightToRentTrustPresentation';
+import {
+  isSubmissionAwaitingReview,
+  requirementHasPersistedClientSubmission,
+} from './clientPersistedSubmissionPresentation';
 
 function awaitingVerificationSubline() {
   const s = documentVerificationAwaitingSubline();
@@ -125,12 +133,22 @@ export function workflowAwareMissingEvidenceLabel(row) {
   const wf = _workflowClass(row);
   const tenancyStatus = _tenancyAgreementStatusText(row);
   if (tenancyStatus) return tenancyStatus;
+  if (requirementHasPersistedClientSubmission(row) && isSubmissionAwaitingReview(row)) {
+    if (wf === 'GUIDED_DECLARATION') {
+      if (isRightToRentMixedEvidencePendingReview(row)) return rightToRentPendingReviewEvidenceLine();
+      return 'Authoritative declaration on file — awaiting review';
+    }
+    if (wf === 'TENANT_DELIVERY') return 'Delivery record on file — awaiting review';
+  }
   if (_isActiveStandardRow(row)) return 'Condition status needs review';
   if (wf === 'DOCUMENT_UPLOAD' || wf === 'LEGACY_DOCUMENT_UPLOAD') {
     return 'Certificate or evidence document missing — action required';
   }
   if (wf === 'GUIDANCE_ONLY') return 'Guidance item — review recommended';
-  if (wf === 'GUIDED_DECLARATION') return 'Declaration not recorded — action required';
+  if (wf === 'GUIDED_DECLARATION') {
+    if (isRightToRentMixedEvidencePendingReview(row)) return rightToRentPendingReviewEvidenceLine();
+    return 'Declaration not recorded — action required';
+  }
   if (wf === 'TENANT_DELIVERY') return 'Delivery record missing — action required';
   if (wf === 'REGISTRATION_TRACKING') return 'Registration details not recorded — action required';
   if (wf === 'EXTERNAL_ASSESSMENT_EVIDENCE') return 'Assessment not recorded — action required';

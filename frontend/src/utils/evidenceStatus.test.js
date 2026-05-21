@@ -36,6 +36,21 @@ describe('workflowAwareMissingEvidenceLabel', () => {
       }),
     ).toBe('Agreement not recorded — action required');
   });
+
+  it('uses awaiting-review copy when structured submission is on file', () => {
+    const row = {
+      workflow_class: 'GUIDED_DECLARATION',
+      client_lifecycle_state: 'ACTION_REQUIRED',
+      evidence_authority: {
+        primary_evidence_record_id: 'cer_test',
+        state: 'MISSING',
+        non_document_verification_status: 'PENDING_REVIEW',
+      },
+    };
+    expect(workflowAwareMissingEvidenceLabel(row)).toBe(
+      'Authoritative declaration on file — awaiting review',
+    );
+  });
 });
 
 describe('getEvidenceStatus', () => {

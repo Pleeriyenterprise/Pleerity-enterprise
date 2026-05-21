@@ -1,0 +1,24 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "unit_name": "Client Evidence Journey Operational Closure Verification",
+  "run_id": "ops_verify_01_6bcc43c0_3a69dcbd_tenancy_agreement_20260521T192930Z",
+  "slug": "6bcc43c0_3a69dcbd_tenancy_agreement",
+  "captured_at_utc": "2026-05-21T19:29:30.145282+00:00",
+  "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+  "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+  "requirement_ids": [
+    "e47d1c2d-ccae-4f2b-94ca-3ca2fc5c2b40"
+  ],
+  "journeys_executed": [],
+  "verifier": "cursor-prelaunch-ops-verify-02",
+  "proof_mode": "unproven",
+  "replay_or_fixture_driver": false,
+  "browser_walkthrough_completed": false,
+  "staging_url": "",
+  "async_sla_minutes": 15,
+  "ui_attestations": {},
+  "checkpoint_results": {},
+  "notes": "Infrastructure replay proof \u2260 operational closure proof.",
+  "implementation_scope": "operational_verification_capture_and_classify_only",
+  "read_only": true
+}

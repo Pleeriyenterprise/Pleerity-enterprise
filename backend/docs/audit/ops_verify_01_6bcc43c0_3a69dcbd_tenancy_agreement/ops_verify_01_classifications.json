@@ -1,0 +1,18 @@
+{
+  "programme_id": "PRELAUNCH-OPS-VERIFY-02",
+  "obligation_code": "tenancy_agreement",
+  "slug": "6bcc43c0_3a69dcbd_tenancy_agreement",
+  "classifications": [
+    {
+      "classification": "SYSTEM_OUTCOME_UNPROVEN",
+      "failed_checkpoints": [
+        "A-3",
+        "A-6",
+        "A-7"
+      ],
+      "reasons": [
+        "no_cer_delta"
+      ]
+    }
+  ]
+}

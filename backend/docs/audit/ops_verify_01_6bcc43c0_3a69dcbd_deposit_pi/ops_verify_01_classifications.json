@@ -1,0 +1,19 @@
+{
+  "programme_id": "PRELAUNCH-OPS-VERIFY-02",
+  "obligation_code": "deposit_pi",
+  "slug": "6bcc43c0_3a69dcbd_deposit_pi",
+  "classifications": [
+    {
+      "classification": "IMPLEMENTED_NOT_VERIFIED",
+      "failed_checkpoints": [
+        "A-4",
+        "A-5",
+        "A-7",
+        "A-9"
+      ],
+      "reasons": [
+        "checkpoints_incomplete"
+      ]
+    }
+  ]
+}

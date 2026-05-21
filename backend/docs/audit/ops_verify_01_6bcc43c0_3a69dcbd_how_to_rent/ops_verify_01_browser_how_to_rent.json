@@ -1,0 +1,310 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-02",
+  "obligation": "how_to_rent",
+  "workflow_family": "TENANT_DELIVERY",
+  "started_at_utc": "2026-05-21T15:26:54.382999+00:00",
+  "requirement_id": "cfb04b08-4265-4893-89e2-70369db7e5e3",
+  "requirement_type": "how_to_rent",
+  "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+  "steps": [
+    {
+      "step": "api_login",
+      "ok": true,
+      "detail": "role=ROLE_CLIENT_ADMIN",
+      "at": "2026-05-21T15:26:55.486128+00:00"
+    },
+    {
+      "step": "open_guided_modal",
+      "ok": true,
+      "detail": "http://127.0.0.1:3000/properties/3a69dcbd-74fd-4291-839b-3d52750598a1?open=resolve&requirement_id=cfb04b08-4265-4893-89e2-70369db7e5e3",
+      "at": "2026-05-21T15:27:05.153791+00:00"
+    },
+    {
+      "step": "tenant_delivery_copy",
+      "ok": true,
+      "detail": "Record How to Rent delivery\n\nUse structured delivery details as the main record. The Documents page ",
+      "at": "2026-05-21T15:27:05.153791+00:00"
+    },
+    {
+      "step": "requirement_visible",
+      "ok": true,
+      "detail": "How to Rent Guide\tTenancy\t\nEvidence missing \u2014 action required\n\nEvidence missing \u2014 action required\n\n\t",
+      "at": "2026-05-21T15:27:05.160313+00:00"
+    },
+    {
+      "step": "delivery_fields_filled",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-21T15:27:06.344725+00:00"
+    },
+    {
+      "step": "submit_summary",
+      "ok": true,
+      "detail": "Submission recorded\n\nThis is what we saved. Your requirement status will update after review where applicable.\n\nEvidence method: STRUCTURED DECLARATION\nVerification: PENDING REVIEW\nSubmitted at: 2026-05-21T15:27:07.12115",
+      "at": "2026-05-21T15:27:08.846120+00:00"
+    },
+    {
+      "step": "submission_inspect",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-21T15:27:20.254927+00:00"
+    },
+    {
+      "step": "refresh_persisted",
+      "ok": false,
+      "detail": "",
+      "at": "2026-05-21T15:27:25.426554+00:00"
+    }
+  ],
+  "checkpoints": {
+    "A-1": true,
+    "A-5": true,
+    "A-9": false
+  },
+  "submit_response": {
+    "http_status": 200,
+    "body": {
+      "ok": true,
+      "workflow_complete": true,
+      "authority_synced": true,
+      "recalc_enqueued": true,
+      "message": "Requirement recorded and compliance status is updating.",
+      "requirement_id": "cfb04b08-4265-4893-89e2-70369db7e5e3",
+      "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+      "requirement": {
+        "requirement_id": "cfb04b08-4265-4893-89e2-70369db7e5e3",
+        "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+        "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+        "requirement_type": "how_to_rent",
+        "requirement_code": "how_to_rent",
+        "jurisdiction": "England",
+        "description": "How to rent guide (England)",
+        "frequency_days": 365,
+        "due_date": "2026-06-14T20:42:52.653635+00:00",
+        "status": "PENDING",
+        "applicability": "UNKNOWN",
+        "confirmed_expiry_date": null,
+        "extracted_expiry_date": null,
+        "expiry_source": "NONE",
+        "extraction_confidence": null,
+        "not_required_reason": null,
+        "issue_date": null,
+        "certificate_number": null,
+        "date_source": "SYSTEM_ESTIMATED",
+        "evidence_state": "MISSING",
+        "confidence_state": "ESTIMATED",
+        "compliance_requirement_class": "DOCUMENT",
+        "action_type": "DOCUMENT",
+        "is_tracked": true,
+        "client_surface_visible": true,
+        "requirement_generation_source": "catalog_registry",
+        "requires_document": true,
+        "requires_job": false,
+        "registry_metadata": {
+          "catalog_keys": [
+            "HOW_TO_RENT"
+          ],
+          "why_it_matters_short_published": "Serving the current How to Rent booklet is part of England tenancy paperwork compliance at start.",
+          "primary_action_mode": "upload_document",
+          "action_links_published": [],
+          "why_it_matters_by_jurisdiction_published": {}
+        },
+        "created_at": "2026-05-15T20:42:54.681358+00:00",
+        "updated_at": "2026-05-15T20:42:54.681362+00:00",
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-05-21T15:27:07.484371+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "predicted_document_type": null,
+          "match_outcome": null,
+          "match_confidence": null,
+          "mismatch_reason_code": null,
+          "evidence_match_blocks_satisfaction": false,
+          "primary_evidence_mode": "STRUCTURED_DECLARATION",
+          "evidence_confidence_level": "MEDIUM",
+          "non_document_verification_status": "PENDING_REVIEW",
+          "primary_evidence_record_id": "cer_93eec78b811c409db8b8b955938acab1",
+          "pending_non_document_evidence_count": 1,
+          "semantic_state": "MISSING"
+        },
+        "evidence_authority_synced_at": "2026-05-21T15:27:07.484371+00:00",
+        "requirement_code_normalized": "how_to_rent",
+        "is_mandatory": true,
+        "policy_criticality": "MEDIUM",
+        "evidence_state_normalized": "MISSING",
+        "policy_classification_version": "v1",
+        "applicability_provenance": {
+          "pipeline_applicability_state": "UNKNOWN",
+          "pipeline_updated_at": "2026-05-15T20:42:54.681000",
+          "effective_applicability_state": "UNKNOWN",
+          "effective_updated_at": "2026-05-15T20:42:54.681000",
+          "applicability_resolution_source": "PIPELINE",
+          "operator_override": {
+            "active": false,
+            "applicability_state": null
+          }
+        },
+        "pipeline_applicability_state": "UNKNOWN",
+        "effective_applicability_state": "UNKNOWN",
+        "applicability_resolution_source": "PIPELINE",
+        "operator_override_active": false,
+        "applicability_state": "UNKNOWN",
+        "semantic_state": "MISSING",
+        "canonical_requirement_code": "how_to_rent",
+        "display_label": "How to Rent guide",
+        "status_label": "Awaiting verification",
+        "date_label": "Estimated renewal date: 14 Jun 2026",
+        "date_explanation_helper": "Estimated from standard compliance cycles and your property setup. Upload your certificate to confirm this date.",
+        "evidence_badge_label": "Not uploaded",
+        "why_it_matters_short": "Serving the current How to Rent booklet is part of England tenancy paperwork compliance at start.",
+        "why_it_matters_long": null,
+        "show_estimated_date_copy": true,
+        "requirement_category": "legal_obligation",
+        "engine_requirement_category": "legal_obligation",
+        "client_visibility": "informational",
+        "engine_client_visibility": "informational",
+        "requirement_class": "DOCUMENT",
+        "fulfillment_mode": "obligation",
+        "engine_fulfillment_mode": "obligation",
+        "creates_compliance_job": false,
+        "engine_creates_compliance_job": false,
+        "requires_document_evidence": false,
+        "engine_requires_document_evidence": false,
+        "include_in_priority_stream": false,
+        "engine_include_in_priority_stream": false,
+        "calendar_overdue_in_inbox": false,
+        "engine_calendar_overdue_in_inbox": false,
+        "engine_informational": true,
+        "take_action": {
+          "primary": {
+            "label": "Record How to Rent delivery",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+            "requirement_id": "cfb04b08-4265-4893-89e2-70369db7e5e3"
+          },
+          "secondary": {
+            "label": "Upload delivery proof",
+            "route": "/documents?property_id=3a69dcbd-74fd-4291-839b-3d52750598a1&requirement_id=cfb04b08-4265-4893-89e2-70369db7e5e3",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "engine_default",
+            "source_type": "requirement"
+          }
+        },
+        "action_links": [],
+        "workflow_class": "TENANT_DELIVERY",
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ],
+        "client_evidence_disclosure": "This records your How to Rent delivery details for review on the platform. It does not verify service with government or a court, and does not replace legal advice.",
+        "evidence_completeness": null,
+        "requirement_display": {
+          "canonical_name": "How to Rent Guide",
+          "short_name": "How to Rent",
+          "description": "",
+          "category_label": "Tenancy",
+          "primary_cta_label": "Record How to Rent delivery",
+          "secondary_cta_label": "Upload delivery proof"
+        },
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "client_lifecycle_label": "Action required",
+        "client_lifecycle_reason_codes": [
+          "EA:MISSING"
+        ]
+      },
+      "evidence_record": {
+        "evidence_record_id": "cer_93eec78b811c409db8b8b955938acab1",
+        "requirement_id": "cfb04b08-4265-4893-89e2-70369db7e5e3",
+        "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+        "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "created_at": "2026-05-21T15:27:07.121159+00:00",
+        "created_by_user_id": "aa8b9918-719a-48e6-9a77-b0aec5b1c121",
+        "verification_status": "PENDING_REVIEW",
+        "verified_by_user_id": null,
+        "verified_at": null,
+        "evidence_confidence_level": "MEDIUM",
+        "evidence_payload": {
+          "declaration_statement": "PRELAUNCH-OPS-VERIFY-02 England AST How to Rent tenant delivery operational verification.",
+          "structured_fields": {
+            "tenancy_start_date": {
+              "answer": "2026-04-01",
+              "notes": null,
+              "observation": null
+            },
+            "guide_version_or_publication_date": {
+              "answer": "Gov.uk How to Rent guide \u2014 April 2026 edition",
+              "notes": null,
+              "observation": null
+            },
+            "delivery_date": {
+              "answer": "2026-04-02",
+              "notes": null,
+              "observation": null
+            },
+            "delivery_method": {
+              "answer": "email",
+              "notes": null,
+              "observation": null
+            },
+            "tenant_recipient": {
+              "answer": "OPS-VERIFY-02 Tenant",
+              "notes": null,
+              "observation": null
+            },
+            "proof_of_delivery": {
+              "answer": "Email sent ref OPS-VERIFY-02-HTR",
+              "notes": null,
+              "observation": null
+            },
+            "declaration_confirmed": {
+              "answer": true,
+              "notes": null,
+              "observation": null
+            }
+          }
+        },
+        "linked_document_ids": [],
+        "audit_metadata": {
+          "created_via": "client_compliance_evidence_api"
+        },
+        "included_in_active_compliance": true,
+        "archived": false,
+        "archived_reason": null
+      }
+    }
+  },
+  "modal_copy_checks": {
+    "tenant_delivery_disclaimer": true,
+    "not_document_only": true,
+    "misleading_completion": false
+  },
+  "resolve_deeplink": "http://127.0.0.1:3000/properties/3a69dcbd-74fd-4291-839b-3d52750598a1?open=resolve&requirement_id=cfb04b08-4265-4893-89e2-70369db7e5e3",
+  "requirement_row_excerpt": "How to Rent Guide\tTenancy\t\nEvidence missing \u2014 action required\n\nEvidence missing \u2014 action required\n\n\t14 Jun 2026\t\u2014\tMedium\t\nRecord How to Rent delivery\nNot applicable\nRequirement details",
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6bcc43c0_3a69dcbd_how_to_rent\\screenshots\\how_to_rent_post_submit.png",
+  "finished_at_utc": "2026-05-21T15:27:25.555707+00:00"
+}

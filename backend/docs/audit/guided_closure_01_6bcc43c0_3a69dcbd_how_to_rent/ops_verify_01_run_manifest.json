@@ -1,0 +1,69 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "unit_name": "Client Evidence Journey Operational Closure Verification",
+  "run_id": "ops_verify_01_6bcc43c0_3a69dcbd_how_to_rent_20260521T213930Z",
+  "slug": "6bcc43c0_3a69dcbd_how_to_rent",
+  "captured_at_utc": "2026-05-21T21:39:30.536103+00:00",
+  "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+  "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+  "requirement_ids": [
+    "cfb04b08-4265-4893-89e2-70369db7e5e3"
+  ],
+  "journeys_executed": [
+    "A_guided_structured_evidence_submit"
+  ],
+  "verifier": "cursor-prelaunch-ops-verify-02",
+  "proof_mode": "operational_browser",
+  "replay_or_fixture_driver": false,
+  "browser_walkthrough_completed": true,
+  "staging_url": "http://127.0.0.1:3000",
+  "async_sla_minutes": 15,
+  "ui_attestations": {
+    "A_guided_structured_evidence_submit": {
+      "submission_visible": true,
+      "refresh_persisted": true,
+      "user_visible_gap": false,
+      "trust_risk": false
+    }
+  },
+  "checkpoint_results": {
+    "A_guided_structured_evidence_submit": {
+      "A-1": true,
+      "A-2": true,
+      "A-3": true,
+      "A-4": true,
+      "A-5": true,
+      "A-6": true,
+      "A-7": true,
+      "A-8": true,
+      "A-9": true
+    }
+  },
+  "notes": "Infrastructure replay proof \u2260 operational closure proof.",
+  "implementation_scope": "operational_verification_capture_and_classify_only",
+  "read_only": true,
+  "programme_id": "PRELAUNCH-OPS-VERIFY-02",
+  "phase": "England_AST",
+  "obligation_code": "how_to_rent",
+  "workflow_family": "TENANT_DELIVERY",
+  "preflight": {
+    "surfaced": true,
+    "status": "PENDING",
+    "lifecycle": null,
+    "authority": "MISSING",
+    "workflow": "TENANT_DELIVERY",
+    "modes": [
+      "STRUCTURED_DECLARATION",
+      "DOCUMENT_UPLOAD"
+    ],
+    "cer_count": 1,
+    "document_count": 0,
+    "baseline_profile": "pre_existing_evidence",
+    "tenant_delivery": true,
+    "modal_title": "Record How to Rent delivery",
+    "primary_cta": "Record How to Rent delivery",
+    "client_disclosure": "This records your How to Rent delivery details for review on the platform. It does not verify service with government or"
+  },
+  "api_url": "http://127.0.0.1:8000",
+  "obligation_classification": "VERIFIED_OPERATIONALLY"
+}

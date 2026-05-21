@@ -4,6 +4,11 @@
  */
 import { workflowAwareMissingEvidenceLabel } from './evidenceStatus';
 import { operationalLabelForToken } from './presentationLanguage';
+import {
+  isRightToRentMixedEvidencePendingReview,
+  rightToRentPendingReviewComplianceLine,
+  rightToRentPendingReviewEvidenceLine,
+} from './rightToRentTrustPresentation';
 
 const WORKFLOW_STATUS_LABELS = {
   NOT_APPLICABLE: 'Not applicable',
@@ -106,6 +111,13 @@ function humanizeServerComplianceLabel(s) {
  */
 export function requirementStatusSummaryForModal(requirement) {
   const pair = requirementWorkflowDisplayPair(requirement);
+  if (isRightToRentMixedEvidencePendingReview(requirement)) {
+    return {
+      workflow: pair.workflow,
+      compliance: rightToRentPendingReviewComplianceLine(),
+      evidenceLine: rightToRentPendingReviewEvidenceLine(),
+    };
+  }
   const evRaw = String(requirement?.evidence_state || '').trim().toUpperCase();
   const statusRaw = String(requirement?.status || '').trim().toUpperCase();
   const complianceRaw = String(requirement?.compliance_state || '').trim().toUpperCase();

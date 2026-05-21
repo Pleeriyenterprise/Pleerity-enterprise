@@ -1,0 +1,3 @@
+- Preflight profile: greenfield.
+- Non-document review semantics: True.
+- Score: 67 → 67.

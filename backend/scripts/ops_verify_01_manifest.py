@@ -59,7 +59,10 @@ PROOF_MODES_ALLOWED = ("operational_browser", "replay", "fixture", "unproven")
 
 
 def bundle_dir(audit_root: Path, slug: str) -> Path:
-    return audit_root / f"ops_verify_01_{slug.strip()}"
+    import os
+
+    prefix = (os.environ.get("OPS_VERIFY_BUNDLE_PREFIX") or "ops_verify_01").strip()
+    return audit_root / f"{prefix}_{slug.strip()}"
 
 
 def bundle_paths(bundle: Path, slug: str) -> Dict[str, Path]:

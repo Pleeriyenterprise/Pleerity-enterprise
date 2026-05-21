@@ -1,0 +1,3 @@
+- Baseline: pre_existing_verified_current authority=VERIFIED_CURRENT expiry=2036-08-11T00:00:00+00:00.
+- Score: 67 → 67.
+- RTR carry-forward: trust fixed; ASYNC_CONVERGENCE_PARTIAL (inspect/refresh).

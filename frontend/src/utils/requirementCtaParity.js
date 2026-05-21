@@ -6,6 +6,10 @@
 import { resolveRequirementAction } from './requirementTakeActionResolver';
 import { isViewExistingSubmissionCta } from './complianceEvidenceSubmissionView';
 import { applyLifecycleAwareCtaPresentation } from './requirementLifecyclePresentation';
+import {
+  guidedMixedEvidenceInitialMode,
+  shouldPreferGuidedEvidenceOverIntelView,
+} from './rightToRentTrustPresentation';
 
 export const GUIDED_CTA_UNAVAILABLE_TITLE =
   'This obligation is configured for guided resolution but required property or requirement context is missing. Use supporting links or contact support if this persists.';
@@ -73,6 +77,17 @@ export function executeRequirementPrimaryCta(ctx) {
   }
   if (ta.primary_action_handler === 'guided_evidence') {
     if (isViewExistingSubmissionCta(ta) && openRequirementIntel && requirement) {
+      if (shouldPreferGuidedEvidenceOverIntelView(requirement, ta) && openGuidedEvidence && effectivePid && rid) {
+        const mode =
+          guidedInitialOverride || ta.guided_initial_evidence_mode || guidedMixedEvidenceInitialMode() || undefined;
+        openGuidedEvidence({
+          propertyId: effectivePid,
+          requirement,
+          onSubmitted,
+          initialEvidenceMode: mode,
+        });
+        return { handled: true, ta };
+      }
       openRequirementIntel(requirement, { scrollToSubmission: true });
       return { handled: true, ta };
     }
